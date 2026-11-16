@@ -51,13 +51,25 @@ It needs `tauri android init`, a Kotlin plugin with a `SurfaceView` under the We
 ## Commands
 
 ```powershell
-./scripts/fetch-cores.ps1        # downloads mgba_libretro.dll into cores/ (not versioned)
-cd app; npm install; npm run tauri dev
+./scripts/fetch-cores.ps1                     # downloads mgba_libretro.dll into cores/ (not versioned)
+git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
+./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
+cd app; pnpm install                          # frontend dependencies (pnpm only: npm refuses, see docs/decisions.md)
+pnpm tauri dev                                # app in development (from app/)
+pnpm lint                                     # ESLint (app/eslint.config.js)
+pnpm format                                   # Prettier writes; format:check only checks
+pnpm typecheck                                # vue-tsc
+cargo test --workspace
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all
 ```
 
-- Checks: `cargo fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings` (zero warnings),
-  `npm run build` in `app/` (also runs `vue-tsc`).
+- `sh scripts/check` and `pnpm check` (from `app/`) run the same list as `./scripts/check.ps1`, from Git Bash or Linux:
+  on Windows `sh` is not on the PATH that PowerShell and pnpm see, so there use `./scripts/check.ps1`.
 - The SDL3 build needs CMake. If it is not on PATH, set `CMAKE` for that command only (VS Build Tools 2022 ships one).
+- Every worktree builds in **its own** cargo target dir (the default `target/` inside it). Never share
+  `CARGO_TARGET_DIR` between worktrees: workspace crates get the same artifact names everywhere and cargo can reuse
+  another worktree's stale build.
 - Environment variables:
   - `EMUDOME_VIDEO=native|webview` forces the video path.
   - `EMUDOME_CORES_DIR` tells where to look for the cores.
@@ -74,7 +86,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          ErrorCode (errors for the UI as code + params)
 crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS
 app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands
-app/src                  Vue interface: App.vue, QuickMenu, GameCanvas (webview mode), Toasts, emu.ts (typed bridge),
+app/src                  Vue interface: App.vue, QuickMenu, GameCanvas (webview mode), ToastStack, emu.ts (typed bridge),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text)
 ```
 
@@ -114,8 +126,41 @@ app/src                  Vue interface: App.vue, QuickMenu, GameCanvas (webview 
 - License GPL-3.0-or-later; the cores are separate projects with their own licenses.
 - Features live in the shell, not in the cores: same interface for GBA, NDS and 3DS.
   Where a core cannot support a feature, the interface shows it disabled with the reason.
+- **No `unwrap()` outside tests, no `_ =>` on an enum, no glob imports** (`use x::*`): declared in
+  `[workspace.lints.clippy]` of the root `Cargo.toml`, every crate opts in with `[lints] workspace = true`.
+  Where a fallback arm is unavoidable (a `#[non_exhaustive]` enum from another crate), an `#[expect]` with a `reason`.
+- LF line endings everywhere (`.gitattributes`, `.editorconfig`).
+- Formatting: Prettier for the frontend (`app/.prettierrc.json`), `cargo fmt` for Rust. Nobody formats by hand.
+- pnpm only for the frontend (`packageManager` and `devEngines` in `app/package.json`).
 - Settings will be the strong point (Phase 1): levels Default → Global → Console → Game → Session,
   plus a "per device" axis. UI generated from a single schema in Rust. Do not write scattered settings by hand.
+
+## What is checked, and what holds only because it is read
+
+`./scripts/check.ps1` (`scripts/check`) is **the** list: the README, the pre-commit hook and this file point to it
+instead of repeating commands. No CI, by choice. It runs everything and summarizes what failed.
+
+**Checked**: `cargo fmt`, clippy with the workspace lints (no `unwrap`, no `_ =>` on enums, no glob imports),
+`cargo test`, `vue-tsc`, ESLint, Prettier (`format:check`), and the gates: no merge conflict marker,
+no `#[cfg(target_os)]` outside `crates/emudome-platform`, `invoke` only in `app/src/emu.ts`, no emoji,
+no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`).
+Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,
+Prettier on the staged frontend files).
+
+**Held only by review** (no script can see them):
+- The Rust backend sends codes and values, never sentences; a new `ErrorCode` comes with its TypeScript mirror and
+  `errors.<code>` in both message files.
+- Text built in `<script>` or TypeScript (toasts, computed labels) goes through `t()`: the visible-text gate reads
+  templates only.
+- Features live in the shell, not in the cores; a feature a core cannot support is shown disabled with the reason.
+- Settings come from the single schema in Rust, never written by hand.
+- Every menu is fully usable with the controller.
+- Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
+- The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
+
+**A rule arrives with its check, in the same commit**: a rule added here either comes with its lint / test / gate
+(seen failing once on a real violation or a fixture, its blind spots written next to it), or is added to the
+review-only list above. A rule in neither place is the thing this section exists to stop.
 
 ## Interface and tone
 
