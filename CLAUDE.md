@@ -83,10 +83,12 @@ cargo fmt --all
 crates/libretro-sys      libretro API types and constants (added as they are needed)
 crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulation thread),
                          Command/Event, Shared (RGBA frame, audio queue, input, stats), speed, states, .sav,
-                         ErrorCode (errors for the UI as code + params)
+                         ErrorCode (errors for the UI as code + params),
+                         hotkeys.rs (controller routing: game / combos / menu navigation, the combo table)
 crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS
 app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands
 app/src                  Vue interface: App.vue, QuickMenu, GameCanvas (webview mode), ToastStack, emu.ts (typed bridge),
+                         nav.ts (controller/keyboard focus navigation for every screen),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text)
 ```
 
@@ -100,8 +102,23 @@ app/src                  Vue interface: App.vue, QuickMenu, GameCanvas (webview 
 - Audio: shared queue, linear resampling to the device's rate,
   ±0.5% correction on the queue's fill level. Muted when the speed is not 1×.
 - Keyboard: for now it goes through the webview (`input` command). Controllers go through an SDL3 thread
-  with RetroArch-style positional mapping; the Home button opens the menu.
-  Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`.
+  (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
+  count as L2/R2 and d-pad.
+- **Controller routing lives in Rust**, as a pure function: `emudome_core::hotkeys::Router::step`
+  (previous state, buttons, time → game mask + actions), unit-tested without SDL. Three modes:
+  - in game: buttons go to the core, except the modifier L3, which never does;
+  - L3 held: combos from the **one table** `DEFAULT_COMBOS` (`hotkeys.rs`, remappable in Phase 1),
+    carried out by `Hotkeys` in `gamepad.rs` (session `Command`s, or events for the UI);
+    the full table and its TODOs are in `docs/combo-tasti.md` section 5;
+  - the interface has the input (quick menu open, or no game): the game gets nothing, d-pad / A / B
+    become `emu://nav` steps with key repeat (400 ms, then every 120 ms).
+  The interface tells Rust the menu is open with the `set_menu_open` command.
+- Navigation in the interface: `app/src/nav.ts`. A screen calls `useNavScope(root, { back, autofocus })`
+  and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
+  move the focus spatially (nearest element in that direction), confirm clicks, back calls `back`.
+  The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
+- Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
+  `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused).
 
 ## Lessons already learned (do not repeat)
 
@@ -154,7 +171,8 @@ Prettier on the staged frontend files).
   templates only.
 - Features live in the shell, not in the cores; a feature a core cannot support is shown disabled with the reason.
 - Settings come from the single schema in Rust, never written by hand.
-- Every menu is fully usable with the controller.
+- Every menu is fully usable with the controller: a new screen registers `useNavScope` (`app/src/nav.ts`)
+  and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
 

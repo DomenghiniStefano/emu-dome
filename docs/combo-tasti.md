@@ -174,6 +174,10 @@ On the pad the convention comes from the distributions and the autoconfiguration
 
 ## 4. Proposal for EmuDome
 
+> Superseded on one point by the decision in section 5: the modifier is **L3**, not Select.
+> The rest of the proposal (two ways to open the menu, no destructive combos, everything
+> remappable later) stands.
+
 ### Principles
 
 - **Two ways to open the quick menu**:
@@ -232,6 +236,58 @@ Notes on the table:
 - Android: does `KEYCODE_BUTTON_MODE` reach the app on common pads (Xbox, DualSense, 8BitDo)?
 - M's block time (RetroArch uses 5 frames [8]) and how a held Select behaves in games.
 - Whether to detect Steam or the Game Bar and show a warning ("Steam uses the Guide button: open the menu with Select + Start").
+
+## 5. Decision and implementation (2026-11-16)
+
+### The modifier is L3
+
+- The owner chose **L3** (left stick click) as the combo modifier ("M"), remappable later.
+- Why not Select: Select is a GBA, DS and 3DS button, so it would need RetroArch's block delay
+  (section 4) and a held Select would reach games late. **No GBA, NDS or 3DS game uses a stick click**,
+  so L3 can be taken whole: no delay, no ambiguity.
+- Why not Guide: Steam, the Game Bar and Android take it (section 3). Guide alone still opens the menu.
+- Cost: pads without stick clicks (many SNES-style ones) have no combos; they still have Guide and the menu.
+
+### Rules as implemented
+
+- **L3 never reaches the core.** While L3 is held **nothing** reaches the game (face, shoulders, d-pad):
+  the game sees a released pad. A button pressed with L3 stays away from the game until it is released,
+  even if L3 is released first.
+- Each combo fires **once per press** of the second button. A button already held when L3 goes down does not fire.
+- L3 + R2 is the only hold combo: fast forward lasts until R2 is released (with or without L3).
+- While the quick menu is open only the menu combo (L3 + Start) and Guide work; the d-pad / left stick,
+  A and B navigate the menu (see `app/src/nav.ts`).
+- The left stick past half travel is the d-pad; the triggers past half travel are L2/R2.
+
+### Implemented table
+
+The table is `DEFAULT_COMBOS` in `crates/emudome-core/src/hotkeys.rs`, with `DEFAULT_MODIFIER = L3`;
+the Phase 1 settings engine will build other `Bindings` from it. The actions run in
+`app/src-tauri/src/gamepad.rs` (`Hotkeys`).
+
+| Combo | Action | Status |
+|---|---|---|
+| Guide (alone) | Open/close the quick menu | done |
+| L3 + Start | Open/close the quick menu (fallback for Steam / Game Bar) | done |
+| L3 + R1 | Quick save to the current slot | done |
+| L3 + L1 | Quick load from the current slot | done |
+| L3 + d-pad right / left | Next / previous slot, 1 to 9, wrapping; toast "Slot N" | done |
+| L3 + R2 (held) | Fast forward while held, then back to the previous speed | done |
+| L3 + d-pad up | Fast forward on/off (Max ↔ 1×) | done |
+| L3 + d-pad down | Slow motion on/off (0.5× ↔ 1×) | done |
+| L3 + X | FPS indicator on/off | done |
+| L3 + A | Pause on/off without the menu ("Paused" chip) | done |
+| L3 + L2 (held) | Rewind | TODO, Phase 1 (rewind does not exist yet) |
+| L3 + B | Screenshot | TODO (screenshots do not exist yet) |
+| L3 + Y | Swap screens | TODO, Phase 2 (NDS/3DS) |
+| L3 + R3 | Next screen layout | TODO, Phase 2 (NDS/3DS) |
+| L3 + ? | Fullscreen on/off | TODO: was M + L3 in section 4, L3 is now the modifier; button to choose (Select is free) |
+
+Known limits of this first version:
+
+- The current slot lives in the controller thread and starts at 1 at every launch; the quick menu still
+  lists slots 1 to 3 and the keyboard's F1 / F4 still use slot 1.
+- Not verified yet on hardware: whether Guide reaches the app with Steam or the Game Bar open (section 3).
 
 ## Sources
 
