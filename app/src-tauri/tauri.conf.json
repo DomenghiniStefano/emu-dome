@@ -26,6 +26,9 @@
     ],
     "resources": {
       "../../cores/": "cores/"
+    },
+    "android": {
+      "minSdkVersion": 26
     }
   }
 }

@@ -1,8 +1,12 @@
-//! Native renderer: draws the core's latest frame onto the window with wgpu,
-//! under the interface's transparent webview. Runs on a thread of its own.
+//! Native renderer: draws the core's latest frame with wgpu under the interface's
+//! transparent webview. Runs on a thread of its own.
+//!
+//! The surface is either Tauri's window (desktop) or one the system hands over later
+//! and may take back (Android's `SurfaceView`): [`Renderer::attach`] / [`Renderer::detach`].
 
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use emudome_core::Shared;
@@ -10,6 +14,8 @@ use emudome_core::Shared;
 enum Msg {
     Resize(u32, u32),
     Source(Option<Arc<Shared>>),
+    Attach(wgpu::SurfaceTarget<'static>, u32, u32),
+    Detach(Sender<()>),
 }
 
 #[derive(Clone)]
@@ -18,15 +24,24 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// Must be called on the main thread: on Windows and Linux the window's native
-    /// handle is only available there (from another thread Tauri blocks waiting for it).
-    /// Drawing then continues on a dedicated thread.
+    /// Draws on Tauri's window. Must be called on the main thread: on Windows and Linux
+    /// the window's native handle is only available there (from another thread Tauri
+    /// blocks waiting for it). Drawing then continues on a dedicated thread.
     pub fn spawn(window: tauri::Window, width: u32, height: u32) -> Result<Self> {
-        let gpu = Gpu::new(window, width, height)?;
+        let gpu = Gpu::new(window.into(), width, height)?;
+        Self::start(Some(gpu))
+    }
+
+    /// Starts with no surface: it arrives with [`Self::attach`].
+    pub fn spawn_detached() -> Result<Self> {
+        Self::start(None)
+    }
+
+    fn start(gpu: Option<Gpu>) -> Result<Self> {
         let (tx, rx) = mpsc::channel();
         std::thread::Builder::new()
             .name("emudome-video".into())
-            .spawn(move || gpu.run(rx))?;
+            .spawn(move || Video::new(gpu).run(rx))?;
         Ok(Self { tx })
     }
 
@@ -36,6 +51,106 @@ impl Renderer {
 
     pub fn set_source(&self, shared: Option<Arc<Shared>>) {
         let _ = self.tx.send(Msg::Source(shared));
+    }
+
+    /// A new surface to draw on (it replaces the current one, if any).
+    pub fn attach(&self, target: wgpu::SurfaceTarget<'static>, width: u32, height: u32) {
+        let _ = self.tx.send(Msg::Attach(target, width, height));
+    }
+
+    /// Lets go of the surface; returns once it is no longer used.
+    pub fn detach(&self) {
+        let (ack_tx, ack_rx) = mpsc::channel();
+        if self.tx.send(Msg::Detach(ack_tx)).is_ok() {
+            let _ = ack_rx.recv_timeout(Duration::from_secs(2));
+        }
+    }
+}
+
+/// How often the video thread logs the frame rates (to measure FPS from the logs too).
+const FPS_LOG_EVERY: Duration = Duration::from_secs(10);
+
+/// The video thread: the GPU (while there is a surface) and the game it shows.
+struct Video {
+    gpu: Option<Gpu>,
+    source: Option<Arc<Shared>>,
+    presented: u32,
+    since: Instant,
+}
+
+impl Video {
+    fn new(gpu: Option<Gpu>) -> Self {
+        Self {
+            gpu,
+            source: None,
+            presented: 0,
+            since: Instant::now(),
+        }
+    }
+
+    fn run(mut self, rx: Receiver<Msg>) {
+        loop {
+            // Incoming messages; with nothing to draw, wait instead of spinning.
+            let mut msgs: Vec<Msg> = rx.try_iter().collect();
+            if (self.source.is_none() || self.gpu.is_none()) && msgs.is_empty() {
+                match rx.recv_timeout(Duration::from_millis(100)) {
+                    Ok(m) => msgs.push(m),
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    Err(mpsc::RecvTimeoutError::Disconnected) => return,
+                }
+            }
+            for m in msgs {
+                match m {
+                    Msg::Resize(w, h) => {
+                        if let Some(gpu) = &mut self.gpu {
+                            gpu.resize(w, h);
+                        }
+                    }
+                    Msg::Source(s) => {
+                        self.source = s;
+                        if let Some(gpu) = &mut self.gpu {
+                            gpu.reset_game();
+                        }
+                    }
+                    Msg::Attach(target, w, h) => {
+                        self.gpu = None;
+                        match Gpu::new(target, w, h) {
+                            Ok(gpu) => self.gpu = Some(gpu),
+                            Err(e) => log::error!("native video: surface not usable: {e:#}"),
+                        }
+                    }
+                    Msg::Detach(ack) => {
+                        self.gpu = None;
+                        let _ = ack.send(());
+                    }
+                }
+            }
+            if let Some(gpu) = &mut self.gpu {
+                gpu.upload_frame(self.source.as_deref());
+                if gpu.draw() {
+                    self.presented += 1;
+                }
+            }
+            self.log_fps();
+        }
+    }
+
+    fn log_fps(&mut self) {
+        let elapsed = self.since.elapsed();
+        if elapsed < FPS_LOG_EVERY {
+            return;
+        }
+        if let Some(source) = &self.source {
+            let stats = source.stats.lock();
+            log::info!(
+                "fps: core {:.2}, presented {:.2} (target {:.2})",
+                stats.emu_fps,
+                f64::from(self.presented) / elapsed.as_secs_f64(),
+                stats.av_info.timing.fps,
+            );
+        }
+        self.presented = 0;
+        self.since = Instant::now();
     }
 }
 
@@ -85,18 +200,17 @@ struct Gpu {
     layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     game: Option<GameTexture>,
-    source: Option<Arc<Shared>>,
     last_seq: u64,
 }
 
 impl Gpu {
-    fn new(window: tauri::Window, width: u32, height: u32) -> Result<Self> {
-        // No display handle: Windows does not need it, and on Linux Tauri's one
-        // does not match the surface's (MismatchingDisplayHandle).
+    fn new(target: wgpu::SurfaceTarget<'static>, width: u32, height: u32) -> Result<Self> {
+        // No display handle: Windows and Android do not need it, and on Linux Tauri's
+        // one does not match the surface's (MismatchingDisplayHandle).
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let surface = instance
-            .create_surface(window)
+            .create_surface(target)
             .map_err(|e| anyhow::anyhow!("wgpu surface not created: {e:?}"))?;
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
@@ -109,6 +223,9 @@ impl Gpu {
         let (device, queue) =
             pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("emudome"),
+                // Mobile GPUs do not reach the desktop defaults.
+                required_limits:
+                    wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
                 ..Default::default()
             }))?;
 
@@ -204,44 +321,26 @@ impl Gpu {
             layout,
             sampler,
             game: None,
-            source: None,
             last_seq: u64::MAX,
         })
     }
 
-    fn run(mut self, rx: Receiver<Msg>) {
-        loop {
-            // Incoming messages; with no game, wait instead of spinning.
-            let mut msgs: Vec<Msg> = rx.try_iter().collect();
-            if self.source.is_none() && msgs.is_empty() {
-                match rx.recv_timeout(std::time::Duration::from_millis(100)) {
-                    Ok(m) => msgs.push(m),
-                    Err(mpsc::RecvTimeoutError::Timeout) => {}
-                    Err(mpsc::RecvTimeoutError::Disconnected) => return,
-                }
-            }
-            for m in msgs {
-                match m {
-                    Msg::Resize(w, h) if w > 0 && h > 0 => {
-                        self.config.width = w;
-                        self.config.height = h;
-                        self.surface.configure(&self.device, &self.config);
-                    }
-                    Msg::Resize(..) => {}
-                    Msg::Source(s) => {
-                        self.source = s;
-                        self.game = None;
-                        self.last_seq = u64::MAX;
-                    }
-                }
-            }
-            self.upload_frame();
-            self.draw();
+    fn resize(&mut self, width: u32, height: u32) {
+        if width > 0 && height > 0 {
+            self.config.width = width;
+            self.config.height = height;
+            self.surface.configure(&self.device, &self.config);
         }
     }
 
-    fn upload_frame(&mut self) {
-        let Some(source) = self.source.clone() else {
+    /// Another game (or none): the next frame is uploaded whatever its number.
+    fn reset_game(&mut self) {
+        self.game = None;
+        self.last_seq = u64::MAX;
+    }
+
+    fn upload_frame(&mut self, source: Option<&Shared>) {
+        let Some(source) = source else {
             return;
         };
         let frame = source.frame.lock();
@@ -322,18 +421,19 @@ impl Gpu {
         (((sw - vw) / 2.0).floor(), ((sh - vh) / 2.0).floor(), vw, vh)
     }
 
-    fn draw(&mut self) {
+    /// Draws and presents; false when no frame was presented.
+    fn draw(&mut self) -> bool {
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t)
             | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
                 self.surface.configure(&self.device, &self.config);
-                return;
+                return false;
             }
             other => {
                 log::debug!("frame skipped: {other:?}");
-                std::thread::sleep(std::time::Duration::from_millis(8));
-                return;
+                std::thread::sleep(Duration::from_millis(8));
+                return false;
             }
         };
         let view = output.texture.create_view(&Default::default());
@@ -367,5 +467,6 @@ impl Gpu {
         }
         self.queue.submit([encoder.finish()]);
         self.queue.present(output);
+        true
     }
 }

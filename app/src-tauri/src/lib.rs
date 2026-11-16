@@ -7,8 +7,11 @@
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
 mod audio;
+// SDL3 is built for the desktop only: controllers on Android come later (Android input events).
+#[cfg(desktop)]
 mod gamepad;
 mod video;
+mod window;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -18,7 +21,7 @@ use emudome_core::{Command, ErrorCode, Event, Session, SessionOptions, Shared, S
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::webview::Color;
-use tauri::{Emitter, LogicalPosition, Manager, WebviewUrl, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 
 /// The active session, read by renderer, audio and controllers.
 pub type CurrentShared = Arc<Mutex<Option<Arc<Shared>>>>;
@@ -172,7 +175,7 @@ fn video_mode(state: tauri::State<'_, AppState>) -> (VideoMode, bool) {
 /// Game given on the command line (`emudome game.gba`), opened at startup.
 #[tauri::command]
 fn startup_game() -> Option<String> {
-    std::env::args().skip(1).find(|a| !a.starts_with('-'))
+    emudome_platform::startup_game()
 }
 
 /// Switches mode live (only where the native renderer exists), to compare the two.
@@ -304,36 +307,41 @@ fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
     }
 }
 
+/// Hands the system's surface (Android's `SurfaceView` under the webview) to the renderer.
+fn attach_surface(ui: &tauri::Webview, renderer: video::Renderer) {
+    emudome_platform::attach_external_surface(ui, move |event| match event {
+        emudome_platform::SurfaceEvent::Ready(surface) => {
+            let (width, height) = surface.size();
+            renderer.attach(wgpu::SurfaceTarget::from(surface), width, height);
+        }
+        emudome_platform::SurfaceEvent::Resized { width, height } => renderer.resize(width, height),
+        emudome_platform::SurfaceEvent::Lost => renderer.detach(),
+    });
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    emudome_platform::init_logging();
     log::info!("EmuDome on {}", emudome_platform::OS_NAME);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| frame_protocol(ctx.app_handle(), &req))
         .setup(|app| {
-            let window = tauri::window::WindowBuilder::new(app, "main")
-                .title("EmuDome")
-                .inner_size(1280.0, 800.0)
-                .min_inner_size(640.0, 480.0)
-                .build()?;
-
-            let scale = window.scale_factor()?;
+            let (window, ui) = window::create(app)?;
             let size = window.inner_size()?;
-            let ui = window.add_child(
-                tauri::webview::WebviewBuilder::new("ui", WebviewUrl::App("index.html".into()))
-                    .transparent(true)
-                    .auto_resize(),
-                LogicalPosition::new(0.0, 0.0),
-                size.to_logical::<f64>(scale),
-            )?;
 
             let current: CurrentShared = Arc::new(Mutex::new(None));
             // The native renderer is created only where it can sit under the webview:
             // where it covers the interface (Linux/GTK) the game goes into the webview's canvas.
             let native = emudome_platform::native_video_default();
             let renderer = if native {
-                match video::Renderer::spawn(window.clone(), size.width, size.height) {
+                let spawned = if emudome_platform::EXTERNAL_SURFACE {
+                    video::Renderer::spawn_detached().inspect(|r| attach_surface(&ui, r.clone()))
+                } else {
+                    video::Renderer::spawn(window.clone(), size.width, size.height)
+                };
+                match spawned {
                     Ok(r) => Some(r),
                     Err(e) => {
                         log::error!("native video unavailable, using the webview: {e:#}");
@@ -351,9 +359,14 @@ pub fn run() {
             };
             ui.set_background_color(Some(mode.webview_background()))?;
             let audio = audio::AudioOutput::start(current.clone());
+            #[cfg(desktop)]
             gamepad::spawn(app.handle().clone(), current.clone());
 
-            if let Some(resize) = renderer.clone() {
+            // An external surface reports its own size.
+            if let Some(resize) = renderer
+                .clone()
+                .filter(|_| !emudome_platform::EXTERNAL_SURFACE)
+            {
                 window.on_window_event(move |ev| {
                     if let WindowEvent::Resized(s) = ev {
                         resize.resize(s.width, s.height);
