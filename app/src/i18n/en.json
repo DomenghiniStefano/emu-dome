@@ -37,6 +37,17 @@
   "canvas": {
     "label": "Game screen"
   },
+  "touch": {
+    "label": "Touch controls",
+    "menu": "Open the quick menu",
+    "dpad": "D-pad",
+    "a": "A",
+    "b": "B",
+    "l": "L",
+    "r": "R",
+    "start": "START",
+    "select": "SELECT"
+  },
   "toast": {
     "stateSaved": "Saved to slot {slot}",
     "stateLoaded": "Loaded slot {slot}",

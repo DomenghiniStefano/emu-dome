@@ -37,6 +37,17 @@
   "canvas": {
     "label": "Schermo del gioco"
   },
+  "touch": {
+    "label": "Comandi touch",
+    "menu": "Apri il menu rapido",
+    "dpad": "Croce direzionale",
+    "a": "A",
+    "b": "B",
+    "l": "L",
+    "r": "R",
+    "start": "START",
+    "select": "SELECT"
+  },
   "toast": {
     "stateSaved": "Salvato nello slot {slot}",
     "stateLoaded": "Caricato lo slot {slot}",

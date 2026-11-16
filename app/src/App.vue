@@ -7,6 +7,7 @@ import { errorText, gamepadName, speedLabel } from "./i18n/labels";
 import GameCanvas from "./components/GameCanvas.vue";
 import QuickMenu from "./components/QuickMenu.vue";
 import Toasts from "./components/Toasts.vue";
+import TouchControls from './components/TouchControls.vue'
 
 const { t, n } = useI18n();
 
@@ -19,6 +20,8 @@ const error = ref<string | null>(null);
 const toasts = ref<InstanceType<typeof Toasts> | null>(null);
 const videoMode = ref<VideoMode>("native");
 const nativeAvailable = ref(false);
+// Touch screen (Android): on-screen buttons while playing.
+const touch = window.matchMedia('(pointer: coarse)').matches
 
 async function setVideoMode(mode: VideoMode) {
   try {
@@ -159,6 +162,7 @@ onUnmounted(() => {
         {{ t("hud.fps", { fps: n(stats.emuFps, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }) }}
       </div>
     </div>
+    <TouchControls v-if="touch && !menuOpen" @menu="setMenu(true)" />
     <QuickMenu
       v-if="menuOpen"
       :game="game"
