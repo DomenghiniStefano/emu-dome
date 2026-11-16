@@ -14,6 +14,7 @@ mod video;
 mod window;
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use emudome_core::input::{Button, Source};
@@ -52,6 +53,9 @@ struct AppState {
     /// `None` where the native renderer cannot sit under the webview (Linux) or is off.
     renderer: Option<video::Renderer>,
     video_mode: Mutex<VideoMode>,
+    /// Whether the quick menu is open, set by the interface: while it is, the controllers
+    /// navigate the menu instead of playing (see `gamepad.rs`).
+    menu_open: Arc<AtomicBool>,
     data_dir: PathBuf,
     resource_dir: Option<PathBuf>,
     _audio: audio::AudioOutput,
@@ -251,13 +255,34 @@ fn response_error(e: tauri::http::Error) -> tauri::http::Response<Vec<u8>> {
 }
 
 fn send(state: &tauri::State<'_, AppState>, cmd: Command) -> Result<(), ErrorCode> {
-    match state.session.lock().as_ref() {
-        Some(s) => {
-            s.send(cmd);
-            Ok(())
+    state.send(cmd)
+}
+
+impl AppState {
+    fn send(&self, cmd: Command) -> Result<(), ErrorCode> {
+        match self.session.lock().as_ref() {
+            Some(s) => {
+                s.send(cmd);
+                Ok(())
+            }
+            None => Err(ErrorCode::NoGame),
         }
-        None => Err(ErrorCode::NoGame),
     }
+}
+
+/// A command to the running game from outside a Tauri command (the controller combos).
+/// False when there is no game, or before the state exists.
+#[cfg(desktop)]
+fn send_command(app: &tauri::AppHandle, cmd: Command) -> bool {
+    app.try_state::<AppState>()
+        .is_some_and(|state| state.send(cmd).is_ok())
+}
+
+/// The interface tells when the quick menu opens and closes, so the controllers
+/// navigate it instead of reaching the game.
+#[tauri::command]
+fn set_menu_open(state: tauri::State<'_, AppState>, open: bool) {
+    state.menu_open.store(open, Ordering::Relaxed);
 }
 
 #[tauri::command]
@@ -368,8 +393,9 @@ pub fn run() {
             };
             ui.set_background_color(Some(mode.webview_background()))?;
             let audio = audio::AudioOutput::start(current.clone());
+            let menu_open = Arc::new(AtomicBool::new(false));
             #[cfg(desktop)]
-            gamepad::spawn(app.handle().clone(), current.clone());
+            gamepad::spawn(app.handle().clone(), current.clone(), menu_open.clone());
 
             // An external surface reports its own size.
             if let Some(resize) = renderer
@@ -390,6 +416,7 @@ pub fn run() {
                 current,
                 renderer,
                 video_mode: Mutex::new(mode),
+                menu_open,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
                 _audio: audio,
@@ -409,6 +436,7 @@ pub fn run() {
             video_mode,
             set_video_mode,
             startup_game,
+            set_menu_open,
         ])
         .run(tauri::generate_context!())
         .expect("EmuDome failed to start");
