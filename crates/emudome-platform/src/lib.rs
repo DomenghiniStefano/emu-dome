@@ -6,8 +6,14 @@
 
 use std::path::{Path, PathBuf};
 
+use raw_window_handle::{
+    DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle,
+};
+
 #[cfg(target_os = "android")]
 mod android;
+#[cfg(not(target_os = "android"))]
+mod desktop;
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "macos")]
@@ -37,9 +43,22 @@ pub fn native_video_default() -> bool {
 /// System name, for logs and diagnostics.
 pub const OS_NAME: &str = imp::OS_NAME;
 
+/// Starts the log output: stderr on the desktop (`RUST_LOG` filters it, `info` by default),
+/// logcat on Android (tag `EmuDome`).
+pub fn init_logging() {
+    imp::init_logging();
+}
+
+/// The game to open at startup: the first non-flag argument on the desktop
+/// (`emudome game.gba`), the `game` extra of the launch intent on Android
+/// (`adb shell am start -n <package>/.MainActivity --es game /path/game.gba`).
+pub fn startup_game() -> Option<String> {
+    imp::startup_game()
+}
+
 /// File name of a libretro core, e.g. `mgba` → `mgba_libretro.dll` on Windows.
 pub fn core_file_name(core: &str) -> String {
-    format!("{core}_libretro.{}", imp::DYLIB_EXT)
+    imp::core_file_name(core)
 }
 
 /// Where to look for the cores, in order. The first one holding the file wins.
@@ -73,11 +92,70 @@ pub fn core_search_dirs(resource_dir: Option<&Path>) -> Vec<PathBuf> {
     dirs
 }
 
-/// Finds the core file by searching the candidate folders.
+/// Finds the core file by searching the candidate folders. Where the system
+/// loads libraries by name (Android: the `.so` packaged in the APK) and no folder
+/// holds the file, the bare file name is returned for the dynamic loader.
 pub fn find_core(core: &str, resource_dir: Option<&Path>) -> Option<PathBuf> {
     let name = core_file_name(core);
     core_search_dirs(resource_dir)
         .into_iter()
         .map(|d| d.join(&name))
         .find(|p| p.is_file())
+        .or_else(|| imp::packaged_core(&name))
 }
+
+/// True where the native video cannot draw on Tauri's window and gets a surface of
+/// its own from the system instead (Android: a `SurfaceView` under the WebView),
+/// handed over through [`attach_external_surface`].
+pub const EXTERNAL_SURFACE: bool = imp::EXTERNAL_SURFACE;
+
+/// A drawing surface handed over by the system outside Tauri's window.
+/// It keeps the system object alive until dropped.
+pub struct ExternalSurface {
+    window: imp::SurfaceWindow,
+    width: u32,
+    height: u32,
+}
+
+impl ExternalSurface {
+    /// Size in physical pixels when it was handed over.
+    pub fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+}
+
+impl HasWindowHandle for ExternalSurface {
+    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
+        self.window.window_handle()
+    }
+}
+
+/// The system's display handle: wgpu's GLES backend (EGL) needs it to create the surface.
+impl HasDisplayHandle for ExternalSurface {
+    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
+        imp::surface_display_handle(&self.window)
+    }
+}
+
+/// Life cycle of the external surface.
+pub enum SurfaceEvent {
+    /// A new surface to draw on.
+    Ready(ExternalSurface),
+    /// The current surface changed size (physical pixels).
+    Resized { width: u32, height: u32 },
+    /// The surface is going away: the listener must return only once it is no
+    /// longer used (the system destroys it right after).
+    Lost,
+}
+
+/// Puts the external surface under `webview` (made transparent) and reports its life
+/// cycle to `on_event`. Does nothing where [`EXTERNAL_SURFACE`] is false.
+pub fn attach_external_surface<R: tauri::Runtime>(
+    webview: &tauri::Webview<R>,
+    on_event: impl Fn(SurfaceEvent) + Send + Sync + 'static,
+) {
+    imp::attach_external_surface(webview, Box::new(on_event));
+}
+
+/// Listener of the external surface, boxed for the per-OS modules.
+pub(crate) type SurfaceListener = Box<dyn Fn(SurfaceEvent) + Send + Sync>;

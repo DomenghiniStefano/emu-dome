@@ -1,8 +1,14 @@
 //! Linux: besides `cores/`, also the folders where distributions install libretro cores.
 use std::path::PathBuf;
 
+pub use crate::desktop::*;
+
 pub const OS_NAME: &str = "Linux";
-pub const DYLIB_EXT: &str = "so";
+pub fn core_file_name(core: &str) -> String {
+    format!("{core}_libretro.{DYLIB_EXT}")
+}
+
+const DYLIB_EXT: &str = "so";
 
 pub fn extra_core_dirs() -> Vec<PathBuf> {
     vec![

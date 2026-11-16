@@ -4,5 +4,24 @@ description = "Operating-system-dependent code for EmuDome."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+# `links` turns the Android library in `android/` into a Gradle module of the app:
+# build.rs prints `android_library_path`, Cargo hands it to the app's build script as
+# `DEP_EMUDOME_PLATFORM_ANDROID_LIBRARY_PATH` and tauri-build includes it in the Gradle project.
+links = "emudome-platform"
+build = "build.rs"
 
 [dependencies]
+log = "0.4"
+raw-window-handle = "0.6"
+# Only for `Webview::with_webview` (the Android JNI handle); features unify with the app's.
+tauri = { version = "2.12", default-features = false, features = ["wry"] }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+env_logger = "0.11"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.15"
+# Same versions as wry/tao: the `JNIEnv` handed by `JniHandle::exec` is jni 0.21's.
+jni = "0.21"
+ndk = { version = "0.9", default-features = false, features = ["rwh_06"] }
+parking_lot = "0.12"
