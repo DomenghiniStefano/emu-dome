@@ -114,6 +114,14 @@ forbid 'invoke outside emu.ts' 'Call the command through a typed function in app
 forbid 'no emoji' 'Use a Lucide icon or plain text.' \
 	git grep --untracked -nP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}]' -- app/src app/src-tauri/src crates
 
+# "User interface: never hardcoded": text nodes and static placeholder / title / aria-label /
+# alt / label attributes in the .vue templates must go through t(). The rules, the exemptions
+# (<kbd>, <code>, the product and key names) and what it cannot see are in the script.
+printf '\n=== visible text\n'
+# shellcheck disable=SC2046 # one path per word; the repo has no spaces in .vue paths
+node scripts/visible-text.mjs $(git ls-files --cached --others --exclude-standard -- '*.vue') ||
+	failed="$failed [visible text]"
+
 # "Never include Nintendo files (games, BIOS, firmware, keys)".
 forbid 'no nintendo files' 'Remove it: the user adds games; the cores bring open-source BIOS replacements.' \
 	nintendo_files
