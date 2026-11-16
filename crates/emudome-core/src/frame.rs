@@ -1,6 +1,6 @@
 //! The latest frame produced by the core, already converted to RGBA8.
 
-use libretro_sys::*;
+use libretro_sys::{RETRO_PIXEL_FORMAT_RGB565, RETRO_PIXEL_FORMAT_XRGB8888};
 
 #[derive(Default, Clone)]
 pub struct Frame {

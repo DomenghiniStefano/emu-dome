@@ -330,7 +330,9 @@ impl Gpu {
                 self.surface.configure(&self.device, &self.config);
                 return;
             }
-            other => {
+            other @ (wgpu::CurrentSurfaceTexture::Timeout
+            | wgpu::CurrentSurfaceTexture::Occluded
+            | wgpu::CurrentSurfaceTexture::Validation) => {
                 log::debug!("frame skipped: {other:?}");
                 std::thread::sleep(std::time::Duration::from_millis(8));
                 return;

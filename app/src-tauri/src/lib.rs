@@ -220,14 +220,14 @@ fn frame_protocol(
         return builder
             .status(StatusCode::NO_CONTENT)
             .body(Vec::new())
-            .unwrap();
+            .unwrap_or_else(response_error);
     };
     let frame = shared.frame.lock();
     if frame.rgba.is_empty() || since == Some(frame.seq) {
         return builder
             .status(StatusCode::NO_CONTENT)
             .body(Vec::new())
-            .unwrap();
+            .unwrap_or_else(response_error);
     }
     builder
         .header(header::CONTENT_TYPE, "application/octet-stream")
@@ -235,7 +235,16 @@ fn frame_protocol(
         .header("x-height", frame.height)
         .header("x-seq", frame.seq)
         .body(frame.rgba.clone())
-        .unwrap()
+        .unwrap_or_else(response_error)
+}
+
+/// A response the builder refused (an invalid header value): logged, and answered with an
+/// empty 500 so the canvas skips the frame instead of the protocol handler panicking.
+fn response_error(e: tauri::http::Error) -> tauri::http::Response<Vec<u8>> {
+    log::error!("emu://frame response: {e}");
+    let mut res = tauri::http::Response::new(Vec::new());
+    *res.status_mut() = tauri::http::StatusCode::INTERNAL_SERVER_ERROR;
+    res
 }
 
 fn send(state: &tauri::State<'_, AppState>, cmd: Command) -> Result<(), ErrorCode> {

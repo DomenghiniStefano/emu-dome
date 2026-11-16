@@ -106,6 +106,12 @@ fn build_stream(current: CurrentShared) -> anyhow::Result<cpal::Stream> {
     };
 
     let err = |e| log::error!("audio error: {e}");
+    // cpal::SampleFormat is `#[non_exhaustive]`: a fallback arm is the only way to match it, and
+    // every format without an arm here is reported as an error, never silently mis-played.
+    #[expect(
+        clippy::wildcard_enum_match_arm,
+        reason = "cpal::SampleFormat is non_exhaustive: the fallback arm is required"
+    )]
     let stream = match sample_format {
         cpal::SampleFormat::F32 => {
             device.build_output_stream(config, move |data: &mut [f32], _| fill(data), err, None)?

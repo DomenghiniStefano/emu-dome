@@ -5,8 +5,17 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use libloading::Library;
-use libretro_sys::symbols::*;
-use libretro_sys::*;
+use libretro_sys::symbols::{
+    RetroApiVersion, RetroDeinit, RetroGetMemoryData, RetroGetMemorySize, RetroGetSystemAvInfo,
+    RetroGetSystemInfo, RetroInit, RetroLoadGame, RetroReset, RetroRun, RetroSerialize,
+    RetroSerializeSize, RetroSetAudioSample, RetroSetAudioSampleBatch,
+    RetroSetControllerPortDevice, RetroSetEnvironment, RetroSetInputPoll, RetroSetInputState,
+    RetroSetVideoRefresh, RetroUnloadGame, RetroUnserialize,
+};
+use libretro_sys::{
+    retro_game_info, retro_system_av_info, retro_system_info, RETRO_API_VERSION,
+    RETRO_DEVICE_JOYPAD, RETRO_MEMORY_SAVE_RAM,
+};
 
 /// A libretro core loaded in memory. Every call must happen
 /// on the same thread (the emulation one).

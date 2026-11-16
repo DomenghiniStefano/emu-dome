@@ -321,12 +321,17 @@ fn emu_thread(
 
 /// Reads a slot and hands it to the core, telling an empty slot from a broken one.
 fn load_slot(core: &LoadedCore, files: &GameFiles, slot: u8) -> Result<(), ErrorCode> {
-    let data = std::fs::read(files.slot(slot)).map_err(|e| match e.kind() {
-        std::io::ErrorKind::NotFound => ErrorCode::SlotEmpty { slot },
-        _ => ErrorCode::StateLoadFailed {
-            slot,
-            detail: e.to_string(),
-        },
+    // An `if` rather than a `match`: io::ErrorKind is non-exhaustive, so a match would need
+    // the `_ =>` arm the workspace lints forbid.
+    let data = std::fs::read(files.slot(slot)).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            ErrorCode::SlotEmpty { slot }
+        } else {
+            ErrorCode::StateLoadFailed {
+                slot,
+                detail: e.to_string(),
+            }
+        }
     })?;
     core.load_state(&data)
         .map_err(|_| ErrorCode::StateInvalid { slot })
