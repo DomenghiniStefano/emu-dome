@@ -4,7 +4,22 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
 export type Speed = { kind: 'factor'; value: number } | { kind: 'max' }
 export type Button =
-  'a' | 'b' | 'x' | 'y' | 'l' | 'r' | 'start' | 'select' | 'up' | 'down' | 'left' | 'right'
+  | 'a'
+  | 'b'
+  | 'x'
+  | 'y'
+  | 'l'
+  | 'r'
+  | 'l2'
+  | 'r2'
+  | 'l3'
+  | 'r3'
+  | 'start'
+  | 'select'
+  | 'up'
+  | 'down'
+  | 'left'
+  | 'right'
 
 export interface GameInfo {
   title: string
@@ -51,6 +66,20 @@ export interface GamepadEvent {
 
 export type VideoMode = 'native' | 'webview'
 
+/** One focus step (`emu://nav`, mirror of `emudome_core::hotkeys::Nav`), also produced by the keyboard. */
+export type NavAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'
+
+/**
+ * Payload of `emu://hotkey` (mirror of `HotkeyEvent` in src-tauri/src/gamepad.rs): what a
+ * controller combo changed that the interface shows. The combos themselves run in Rust.
+ */
+export type HotkeyEvent =
+  | { kind: 'fps' }
+  | { kind: 'slot'; slot: number }
+  | { kind: 'speed'; speed: Speed }
+  | { kind: 'turbo'; held: boolean }
+  | { kind: 'paused'; paused: boolean }
+
 /** URL of the `emu://` protocol (on Windows it becomes http://emu.localhost/...). */
 export const frameUrl = convertFileSrc('frame', 'emu')
 
@@ -62,6 +91,8 @@ export const emu = {
   closeGame: () => invoke<void>('close_game'),
   setSpeed: (speed: Speed) => invoke<void>('set_speed', { speed }),
   setPaused: (paused: boolean) => invoke<void>('set_paused', { paused }),
+  /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing. */
+  setMenuOpen: (open: boolean) => invoke<void>('set_menu_open', { open }),
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
   loadState: (slot: number) => invoke<void>('load_state', { slot }),
   reset: () => invoke<void>('reset_game'),
@@ -70,6 +101,10 @@ export const emu = {
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://event', e => cb(e.payload)),
   onMenu: (cb: () => void): Promise<UnlistenFn> => listen('emu://menu', () => cb()),
+  onNav: (cb: (action: NavAction) => void): Promise<UnlistenFn> =>
+    listen<{ action: NavAction }>('emu://nav', e => cb(e.payload.action)),
+  onHotkey: (cb: (e: HotkeyEvent) => void): Promise<UnlistenFn> =>
+    listen<HotkeyEvent>('emu://hotkey', e => cb(e.payload)),
   onGamepadConnected: (cb: (e: GamepadEvent) => void): Promise<UnlistenFn> =>
     listen<GamepadEvent>('emu://gamepad-connected', e => cb(e.payload)),
   onGamepadDisconnected: (cb: (e: GamepadEvent) => void): Promise<UnlistenFn> =>

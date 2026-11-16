@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
 import type { GameInfo, Speed, VideoMode } from '../emu'
 import { speedLabel } from '../i18n/labels'
+import { useNavScope } from '../nav'
 
 const { t } = useI18n()
 
@@ -21,6 +23,10 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// Controller and keyboard: B / Esc resume, the focus starts on "Resume".
+const root = ref<HTMLElement | null>(null)
+useNavScope(root, { back: () => emit('resume'), autofocus: true })
+
 const speeds: Speed[] = [
   { kind: 'factor', value: 0.5 },
   { kind: 'factor', value: 1 },
@@ -39,7 +45,7 @@ const isSelected = (s: Speed) =>
 </script>
 
 <template>
-  <aside class="menu glass-thick" :aria-label="t('menu.label')">
+  <aside ref="root" class="menu glass-thick" :aria-label="t('menu.label')">
     <header>
       <div>
         <div class="title">{{ game.title }}</div>
@@ -112,7 +118,7 @@ const isSelected = (s: Speed) =>
     </section>
 
     <footer>
-      <button class="btn btn-primary resume" @click="emit('resume')">
+      <button class="btn btn-primary resume" data-nav-initial @click="emit('resume')">
         {{ t('menu.resume') }} <span class="esc">Esc</span>
       </button>
     </footer>

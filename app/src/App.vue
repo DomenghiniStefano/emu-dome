@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
-import { emu, KEYMAP, type GameInfo, type Speed, type Stats, type VideoMode } from './emu'
+import {
+  emu,
+  KEYMAP,
+  type GameInfo,
+  type HotkeyEvent,
+  type Speed,
+  type Stats,
+  type VideoMode,
+} from './emu'
 import { errorText, gamepadName, speedLabel } from './i18n/labels'
+import { dispatchNav, keyToNav, showFocusRing, useNavScope } from './nav'
 import GameCanvas from './components/GameCanvas.vue'
 import QuickMenu from './components/QuickMenu.vue'
 import ToastStack from './components/ToastStack.vue'
@@ -13,6 +22,8 @@ const { t, n } = useI18n()
 
 const game = ref<GameInfo | null>(null)
 const menuOpen = ref(false)
+// Paused with the controller combo (L3 + A), menu closed.
+const paused = ref(false)
 const showFps = ref(false)
 const stats = ref<Stats | null>(null)
 const speed = ref<Speed>({ kind: 'factor', value: 1 })
@@ -40,6 +51,13 @@ function applyBackground() {
     videoMode.value === 'native' ? 'transparent' : 'var(--bg)'
 }
 
+// Start screen: reachable with the controller too (the focus starts on "Open a game").
+const startCard = ref<HTMLElement | null>(null)
+useNavScope(startCard, { autofocus: true })
+
+// While the menu is open, Rust sends the controllers to the menu (emu://nav), not to the game.
+watch(menuOpen, open => void emu.setMenuOpen(open))
+
 const turboHeld = ref(false)
 let statsTimer: number | undefined
 const unlisten: Array<() => void> = []
@@ -57,6 +75,7 @@ async function openGame(given?: string) {
     game.value = await emu.openGame(path)
     speed.value = { kind: 'factor', value: 1 }
     menuOpen.value = false
+    paused.value = false
   } catch (e) {
     error.value = errorText(e)
   }
@@ -71,6 +90,7 @@ async function closeGame() {
 async function setMenu(openMenu: boolean) {
   if (!game.value) return
   menuOpen.value = openMenu
+  paused.value = false
   await emu.setPaused(openMenu)
 }
 
@@ -79,9 +99,38 @@ async function setSpeed(s: Speed) {
   await emu.setSpeed(s)
 }
 
+/** What a controller combo changed (the combo itself already ran in Rust). */
+function onHotkey(h: HotkeyEvent) {
+  switch (h.kind) {
+    case 'fps':
+      showFps.value = !showFps.value
+      return
+    case 'slot':
+      toasts.value?.push(t('toast.slot', { slot: h.slot }))
+      return
+    case 'speed':
+      speed.value = h.speed
+      return
+    case 'turbo':
+      turboHeld.value = h.held
+      return
+    case 'paused':
+      paused.value = h.paused
+  }
+}
+
 function onKey(e: KeyboardEvent, pressed: boolean) {
+  if (pressed) showFocusRing()
   if (e.code === 'Escape' && pressed) return void setMenu(!menuOpen.value)
-  if (!game.value || menuOpen.value) return
+  // Menu or start screen: arrows move the focus, Enter confirms.
+  if (!game.value || menuOpen.value) {
+    const nav = pressed ? keyToNav(e) : null
+    if (nav) {
+      e.preventDefault()
+      dispatchNav(nav)
+    }
+    return
+  }
   if (pressed && !e.repeat) {
     if (e.code === 'F1') return void (e.preventDefault(), emu.saveState(1))
     if (e.code === 'F4') return void (e.preventDefault(), emu.loadState(1))
@@ -111,7 +160,12 @@ onMounted(async () => {
   window.addEventListener('keydown', down)
   window.addEventListener('keyup', up)
   unlisten.push(
-    await emu.onMenu(() => setMenu(!menuOpen.value)),
+    await emu.onMenu(() => {
+      showFocusRing()
+      void setMenu(!menuOpen.value)
+    }),
+    await emu.onNav(dispatchNav),
+    await emu.onHotkey(onHotkey),
     await emu.onGamepadConnected(p =>
       toasts.value?.push(t('toast.gamepadConnected', { name: gamepadName(p) })),
     ),
@@ -142,11 +196,13 @@ onUnmounted(() => {
 <template>
   <!-- No game: the Phase 0 start screen. -->
   <main v-if="!game" class="start">
-    <section class="glass-thick start-card">
+    <section ref="startCard" class="glass-thick start-card">
       <div class="overline">{{ t('start.overline') }}</div>
       <h1>EmuDome</h1>
       <p class="lead">{{ t('start.lead') }}</p>
-      <button class="btn btn-primary" @click="openGame()">{{ t('start.openGame') }}</button>
+      <button class="btn btn-primary" data-nav-initial @click="openGame()">
+        {{ t('start.openGame') }}
+      </button>
       <p v-if="error" class="error">{{ error }}</p>
       <I18nT keypath="start.hint" tag="p" class="hint">
         <template #path><code>tools/test-rom/emudome-test.gba</code></template>
@@ -164,6 +220,7 @@ onUnmounted(() => {
       >
         {{ speedLabel(turboHeld ? { kind: 'max' } : speed) }}
       </div>
+      <div v-if="paused && !menuOpen" class="chip">{{ t('hud.paused') }}</div>
       <div v-if="showFps && stats" class="chip num">
         {{
           t('hud.fps', {

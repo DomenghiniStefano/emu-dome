@@ -7,7 +7,8 @@
     "dialogFilter": "Giochi GBA"
   },
   "hud": {
-    "fps": "{fps} FPS"
+    "fps": "{fps} FPS",
+    "paused": "In pausa"
   },
   "speed": {
     "max": "Max",
@@ -53,7 +54,8 @@
     "stateLoaded": "Caricato lo slot {slot}",
     "gamepadConnected": "Controller collegato: {name}",
     "gamepadDisconnected": "Controller scollegato: {name}",
-    "gamepadUnnamed": "Controller"
+    "gamepadUnnamed": "Controller",
+    "slot": "Slot {slot}"
   },
   "console": {
     "nds": "Nintendo DS",

@@ -7,7 +7,8 @@
     "dialogFilter": "GBA games"
   },
   "hud": {
-    "fps": "{fps} FPS"
+    "fps": "{fps} FPS",
+    "paused": "Paused"
   },
   "speed": {
     "max": "Max",
@@ -53,7 +54,8 @@
     "stateLoaded": "Loaded slot {slot}",
     "gamepadConnected": "Controller connected: {name}",
     "gamepadDisconnected": "Controller disconnected: {name}",
-    "gamepadUnnamed": "Controller"
+    "gamepadUnnamed": "Controller",
+    "slot": "Slot {slot}"
   },
   "console": {
     "nds": "Nintendo DS",

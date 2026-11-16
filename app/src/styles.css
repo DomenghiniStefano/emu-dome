@@ -47,9 +47,13 @@ button {
   color: inherit;
   cursor: pointer;
 }
-button:focus-visible {
+/* Focus ring for controller and keyboard navigation (src/nav.ts sets data-nav on <html>
+   while the user moves without the mouse): accent outline with a soft glow. */
+:root[data-nav] :focus,
+:root[data-nav] [data-nav-focus] {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 kbd {
   font: inherit;
