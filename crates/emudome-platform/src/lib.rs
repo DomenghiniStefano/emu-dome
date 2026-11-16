@@ -10,6 +10,8 @@ use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle,
 };
 
+mod cpu;
+
 #[cfg(target_os = "android")]
 mod android;
 #[cfg(not(target_os = "android"))]
@@ -31,13 +33,28 @@ use macos as imp;
 use windows as imp;
 
 /// Whether the game is drawn natively under the webview (otherwise in a canvas
-/// inside the webview). Can be forced with `EMUDOME_VIDEO=native|webview`.
+/// inside the webview) on this system. `EMUDOME_VIDEO=native|webview` overrides it
+/// (read with the other knobs in `emudome_core::tuning`).
 pub fn native_video_default() -> bool {
-    match std::env::var("EMUDOME_VIDEO").as_deref() {
-        Ok("native") => true,
-        Ok("webview") => false,
-        _ => imp::NATIVE_VIDEO_DEFAULT,
+    imp::NATIVE_VIDEO_DEFAULT
+}
+
+/// The wgpu backends the native video tries first, spelled as `WGPU_BACKEND` spells them
+/// (`WGPU_BACKEND` overrides it); `None` leaves the choice to wgpu. If they give no usable
+/// adapter, the renderer tries every backend. On Windows DX12 presents more regularly than
+/// Vulkan and costs less CPU (docs/bench-windows.md).
+pub fn preferred_gpu_backends() -> Option<&'static str> {
+    if cfg!(target_os = "windows") {
+        Some("dx12")
+    } else {
+        None
     }
+}
+
+/// CPU time used so far by this process (user + kernel, every thread), for the bench
+/// reports; `None` where the system does not say.
+pub fn process_cpu_time() -> Option<std::time::Duration> {
+    cpu::process_cpu_time()
 }
 
 /// System name, for logs and diagnostics.

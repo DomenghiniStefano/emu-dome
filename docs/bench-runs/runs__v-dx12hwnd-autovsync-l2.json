@@ -1,0 +1,180 @@
+﻿{
+    "audio":  {
+                  "callback_interval_ms_max":  17.5249,
+                  "callbacks":  3000,
+                  "device":  {
+                                 "buffer":  "default",
+                                 "channels":  8,
+                                 "default_channels":  8,
+                                 "default_rate":  44100,
+                                 "devices":  [
+                                                 "CABLE Input (VB-Audio Virtual Cable)",
+                                                 "Altoparlanti (VB-Audio Virtual Cable)",
+                                                 "Altoparlanti (Logitech G432 Gaming Headset)",
+                                                 "LG ULTRAGEAR+ (NVIDIA High Definition Audio)"
+                                             ],
+                                 "name":  "Altoparlanti (Logitech G432 Gaming Headset)",
+                                 "rate":  44100,
+                                 "sample_format":  "F32",
+                                 "supported":  [
+                                                   "8 ch, 8000-8000 Hz, F32, 80..80 frames",
+                                                   "8 ch, 11025-11025 Hz, F32, 110..110 frames",
+                                                   "8 ch, 12000-12000 Hz, F32, 120..120 frames",
+                                                   "8 ch, 16000-16000 Hz, F32, 160..160 frames",
+                                                   "8 ch, 22050-22050 Hz, F32, 221..221 frames",
+                                                   "8 ch, 24000-24000 Hz, F32, 240..240 frames",
+                                                   "8 ch, 32000-32000 Hz, F32, 320..320 frames",
+                                                   "8 ch, 44100-44100 Hz, F32, 441..441 frames",
+                                                   "8 ch, 48000-48000 Hz, F32, 480..480 frames",
+                                                   "8 ch, 64000-64000 Hz, F32, 640..640 frames",
+                                                   "8 ch, 88200-88200 Hz, F32, 882..882 frames",
+                                                   "8 ch, 96000-96000 Hz, F32, 960..960 frames",
+                                                   "8 ch, 176400-176400 Hz, F32, 1764..1764 frames",
+                                                   "8 ch, 192000-192000 Hz, F32, 1920..1920 frames",
+                                                   "8 ch, 352800-352800 Hz, F32, 3528..3528 frames",
+                                                   "8 ch, 384000-384000 Hz, F32, 3840..3840 frames"
+                                               ]
+                             },
+                  "device_latency_ms":  {
+                                            "avg":  31.885540212666843,
+                                            "max":  31.927437000000005
+                                        },
+                  "error":  null,
+                  "fill_ms":  {
+                                  "avg":  46.68526713053385,
+                                  "max":  65.12451171875,
+                                  "min":  15.68603515625
+                              },
+                  "frames_per_callback":  [
+                                              441,
+                                              441
+                                          ],
+                  "queue_overflow_samples":  0,
+                  "ratio":  {
+                                "avg":  0.9988904389275488,
+                                "max":  1.0004270426432291,
+                                "min":  0.9963071695963541
+                            },
+                  "tone_discontinuities":  0,
+                  "underrun_callbacks":  0,
+                  "underrun_frames":  0,
+                  "windows_10s":  [
+                                      {
+                                          "device_latency_ms_avg":  31.866613838161626,
+                                          "fill_ms_avg":  35.247025313553635,
+                                          "underrun_frames":  0
+                                      },
+                                      {
+                                          "device_latency_ms_avg":  31.895859028970822,
+                                          "fill_ms_avg":  49.46870451326018,
+                                          "underrun_frames":  0
+                                      }
+                                  ]
+              },
+    "build":  "release",
+    "core":  {
+                 "fps":  59.73315114722234,
+                 "frames":  1792,
+                 "target_fps":  59.727500915527344
+             },
+    "cpu":  {
+                "process_pct_of_machine":  0.9114555533938955,
+                "process_pct_of_one_core":  7.291644427151164
+            },
+    "gpu":  {
+                "adapter":  "NVIDIA GeForce RTX 3060",
+                "alpha_mode":  "Opaque",
+                "backend":  "Dx12",
+                "device_type":  "DiscreteGpu",
+                "driver":  "32.0.16.1742",
+                "driver_info":  "",
+                "format":  "Bgra8UnormSrgb",
+                "frame_latency":  2,
+                "present_mode_requested":  "AutoVsync",
+                "present_mode_used":  "AutoVsync",
+                "present_modes_supported":  [
+                                                "Mailbox",
+                                                "Fifo",
+                                                "Immediate"
+                                            ]
+            },
+    "logical_cpus":  8,
+    "main_unix_ms":  1794868465547.567,
+    "native_error":  null,
+    "os":  "Windows",
+    "schema":  1,
+    "seconds":  30.0000915,
+    "startup":  {
+                    "first_frame_ms_since_main":  510.2101
+                },
+    "status":  "ok",
+    "surface_errors":  {
+
+                       },
+    "tuning":  {
+                   "audio":  {
+                                 "buffer":  "default",
+                                 "channels":  null,
+                                 "device":  null,
+                                 "rate":  null,
+                                 "target_ms":  60
+                             },
+                   "bench":  {
+                                 "open_menu_after":  null,
+                                 "out":  "C:\\Users\\stefa\\AppData\\Local\\Temp\\claude\\1d77cf7c0241ae40\\8ca35029-1f34-4f84-8062-658f4c7aac8d\\scratchpad\\bench\\runs\\v-dx12hwnd-autovsync-l2.json",
+                                 "seconds":  30.0,
+                                 "tone":  null,
+                                 "warmup_seconds":  2.0
+                             },
+                   "data_dir":  "C:\\Users\\stefa\\AppData\\Local\\Temp\\claude\\1d77cf7c0241ae40\\8ca35029-1f34-4f84-8062-658f4c7aac8d\\scratchpad\\bench\\data",
+                   "video":  {
+                                 "dx12_presentation":  "Hwnd",
+                                 "frame_latency":  2,
+                                 "path":  null,
+                                 "present_mode":  "autovsync",
+                                 "wgpu_backend":  "dx12"
+                             },
+                   "warnings":  [
+
+                                ]
+               },
+    "video":  {
+                  "dropped_frames":  0,
+                  "duplicated_presents":  5410,
+                  "expected_new_frames":  1791.830492532154,
+                  "new_frame_fps":  59.76648437888931,
+                  "new_frame_interval_ms":  {
+                                                "count":  1792,
+                                                "max":  21.07930000000124,
+                                                "mean":  16.739753515624994,
+                                                "p50":  16.660799999997835,
+                                                "p95":  16.79189999999835,
+                                                "p99":  20.839799999997922
+                                            },
+                  "new_frame_intervals_off_by_25pct":  23,
+                  "new_frames":  1793,
+                  "present_fps":  240.09926769723353,
+                  "present_interval_ms":  {
+                                              "count":  7202,
+                                              "max":  10.386599999999817,
+                                              "mean":  4.165181657872796,
+                                              "p50":  4.163599999996222,
+                                              "p95":  4.250099999999293,
+                                              "p99":  4.340700000000652
+                                          },
+                  "presents":  7203
+              },
+    "video_mode":  "native",
+    "launcher":  {
+                     "name":  "v-dx12hwnd-autovsync-l2",
+                     "pid":  21372,
+                     "exit_code":  0,
+                     "still_running":  false,
+                     "focus_taken":  false,
+                     "foreground_pid_before":  21840,
+                     "process_start_unix_ms":  1794868465539,
+                     "screenshot":  null,
+                     "tree_pids":  7,
+                     "tree_cpu_pct_of_one_core":  8.7404554981891049
+                 }
+}

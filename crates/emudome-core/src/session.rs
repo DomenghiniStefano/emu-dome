@@ -2,6 +2,7 @@
 
 use std::ffi::CString;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -84,6 +85,8 @@ pub struct Shared {
     pub audio: Mutex<AudioQueue>,
     pub input: InputState,
     pub stats: Mutex<Stats>,
+    /// Frames emulated since the game started (`retro_run` calls), duplicated ones included.
+    pub frames_run: AtomicU64,
 }
 
 pub struct SessionOptions {
@@ -284,6 +287,7 @@ fn emu_thread(
         }
 
         unsafe { (core.run)() };
+        shared.frames_run.fetch_add(1, Ordering::Relaxed);
 
         // Emulation FPS.
         fps_window.1 += 1;

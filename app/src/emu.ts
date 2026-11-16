@@ -80,6 +80,16 @@ export type HotkeyEvent =
   | { kind: 'turbo'; held: boolean }
   | { kind: 'paused'; paused: boolean }
 
+/**
+ * One round of the canvas loop in bench mode (mirror of `WebviewFrame` in
+ * src-tauri/src/bench.rs): `t` in ms since the Unix epoch, `seq` the game frame on the canvas.
+ */
+export interface BenchFrame {
+  t: number
+  seq: number
+  drawn: boolean
+}
+
 /** URL of the `emu://` protocol (on Windows it becomes http://emu.localhost/...). */
 export const frameUrl = convertFileSrc('frame', 'emu')
 
@@ -98,6 +108,9 @@ export const emu = {
   reset: () => invoke<void>('reset_game'),
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
   stats: () => invoke<Stats>('stats'),
+  /** Bench mode (`EMUDOME_BENCH`): the canvas reports its rounds with `benchFrames`. */
+  benchActive: () => invoke<boolean>('bench_active'),
+  benchFrames: (frames: BenchFrame[]) => invoke<void>('bench_frames', { frames }),
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://event', e => cb(e.payload)),
   onMenu: (cb: () => void): Promise<UnlistenFn> => listen('emu://menu', () => cb()),

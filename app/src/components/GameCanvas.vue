@@ -3,7 +3,7 @@
 // Used where native video cannot sit under the webview (Linux) and to compare the two paths.
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { frameUrl } from '../emu'
+import { emu, frameUrl, type BenchFrame } from '../emu'
 
 const { t } = useI18n()
 
@@ -12,6 +12,19 @@ const style = ref<Record<string, string>>({})
 let seq = -1
 let running = true
 let size = { w: 0, h: 0 }
+
+// Bench mode: every round of the loop is recorded and sent to Rust once a second,
+// so the bench report measures the webview path like the native one.
+let benchFrames: BenchFrame[] | null = null
+let benchTimer: number | undefined
+function benchRecord(drawn: boolean) {
+  benchFrames?.push({ t: performance.timeOrigin + performance.now(), seq, drawn })
+}
+function benchFlush() {
+  if (!benchFrames?.length) return
+  void emu.benchFrames(benchFrames)
+  benchFrames = []
+}
 
 function layout() {
   if (!size.w) return
@@ -37,6 +50,9 @@ async function tick() {
         layout()
       }
       c.getContext('2d')!.putImageData(new ImageData(data, w, h), 0, 0)
+      benchRecord(true)
+    } else {
+      benchRecord(false)
     }
   } catch {
     // frame lost: try again on the next round
@@ -44,13 +60,18 @@ async function tick() {
   requestAnimationFrame(tick)
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('resize', layout)
   requestAnimationFrame(tick)
+  if (await emu.benchActive()) {
+    benchFrames = []
+    benchTimer = window.setInterval(benchFlush, 1000)
+  }
 })
 onUnmounted(() => {
   running = false
   window.removeEventListener('resize', layout)
+  window.clearInterval(benchTimer)
 })
 </script>
 

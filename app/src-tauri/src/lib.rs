@@ -7,6 +7,7 @@
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
 mod audio;
+mod bench;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
 mod gamepad;
@@ -16,8 +17,10 @@ mod window;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::{Instant, SystemTime};
 
 use emudome_core::input::{Button, Source};
+use emudome_core::tuning::{Tuning, VideoPath};
 use emudome_core::{Command, ErrorCode, Event, Session, SessionOptions, Shared, Speed};
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -52,13 +55,17 @@ struct AppState {
     current: CurrentShared,
     /// `None` where the native renderer cannot sit under the webview (Linux) or is off.
     renderer: Option<video::Renderer>,
+    /// Why the native renderer could not start, when it was wanted.
+    native_error: Option<String>,
     video_mode: Mutex<VideoMode>,
     /// Whether the quick menu is open, set by the interface: while it is, the controllers
     /// navigate the menu instead of playing (see `gamepad.rs`).
     menu_open: Arc<AtomicBool>,
     data_dir: PathBuf,
     resource_dir: Option<PathBuf>,
-    _audio: audio::AudioOutput,
+    audio: audio::AudioOutput,
+    /// Bench mode (`EMUDOME_BENCH`), off otherwise.
+    bench: Option<Arc<bench::Bench>>,
 }
 
 #[derive(Serialize)]
@@ -140,6 +147,9 @@ fn open_game(
     });
 
     let shared = session.shared().clone();
+    if let Some(tone) = state.bench.as_ref().and_then(|b| b.tone()) {
+        shared.audio.lock().set_test_tone(Some(tone));
+    }
     *state.current.lock() = Some(shared.clone());
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
@@ -355,30 +365,58 @@ fn attach_surface(ui: &tauri::Webview, renderer: video::Renderer) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let main_start = Instant::now();
+    let main_wall = SystemTime::now();
     emudome_platform::init_logging();
     log::info!("EmuDome on {}", emudome_platform::OS_NAME);
+    let tuning = Tuning::from_env();
+    for ignored in &tuning.warnings {
+        log::warn!("ignored, the default stays: {ignored}");
+    }
+    let bench = bench::Bench::new(&tuning, main_start, main_wall);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| frame_protocol(ctx.app_handle(), &req))
-        .setup(|app| {
-            let (window, ui) = window::create(app)?;
+        .setup(move |app| {
+            let data_dir = match &tuning.data_dir {
+                Some(dir) => dir.clone(),
+                None => app.path().app_data_dir()?,
+            };
+            log::info!("data in {}", data_dir.display());
+            let (window, ui) = window::create(
+                app,
+                &window::Options {
+                    // A bench runs while the PC is in use: it never takes the focus.
+                    focused: bench.is_none(),
+                    webview_data_dir: tuning.data_dir.as_ref().map(|d| d.join("webview")),
+                },
+            )?;
             let size = window.inner_size()?;
 
             let current: CurrentShared = Arc::new(Mutex::new(None));
             // The native renderer is created only where it can sit under the webview:
             // where it covers the interface (Linux/GTK) the game goes into the webview's canvas.
-            let native = emudome_platform::native_video_default();
+            let native = tuning
+                .video
+                .path
+                .map_or_else(emudome_platform::native_video_default, |p| {
+                    p == VideoPath::Native
+                });
+            let surface = video::SurfaceSettings::from_tuning(&tuning.video);
+            let mut native_error = None;
             let renderer = if native {
                 let spawned = if emudome_platform::EXTERNAL_SURFACE {
-                    video::Renderer::spawn_detached().inspect(|r| attach_surface(&ui, r.clone()))
+                    video::Renderer::spawn_detached(surface)
+                        .inspect(|r| attach_surface(&ui, r.clone()))
                 } else {
-                    video::Renderer::spawn(window.clone(), size.width, size.height)
+                    video::Renderer::spawn(window.clone(), size.width, size.height, surface)
                 };
                 match spawned {
                     Ok(r) => Some(r),
                     Err(e) => {
                         log::error!("native video unavailable, using the webview: {e:#}");
+                        native_error = Some(format!("{e:#}"));
                         None
                     }
                 }
@@ -392,7 +430,11 @@ pub fn run() {
                 VideoMode::Webview
             };
             ui.set_background_color(Some(mode.webview_background()))?;
-            let audio = audio::AudioOutput::start(current.clone());
+            let audio = audio::AudioOutput::start(
+                current.clone(),
+                tuning.audio.clone(),
+                bench.as_ref().and_then(|b| b.tone()),
+            );
             let menu_open = Arc::new(AtomicBool::new(false));
             #[cfg(desktop)]
             gamepad::spawn(app.handle().clone(), current.clone(), menu_open.clone());
@@ -409,18 +451,21 @@ pub fn run() {
                 });
             }
 
-            let data_dir = app.path().app_data_dir()?;
-            log::info!("data in {}", data_dir.display());
             app.manage(AppState {
                 session: Mutex::new(None),
                 current,
                 renderer,
+                native_error,
                 video_mode: Mutex::new(mode),
                 menu_open,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
-                _audio: audio,
+                audio,
+                bench: bench.clone(),
             });
+            if let Some(bench) = bench.clone() {
+                bench::spawn(app.handle().clone(), bench);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -437,6 +482,8 @@ pub fn run() {
             set_video_mode,
             startup_game,
             set_menu_open,
+            bench::bench_active,
+            bench::bench_frames,
         ])
         .run(tauri::generate_context!())
         .expect("EmuDome failed to start");
