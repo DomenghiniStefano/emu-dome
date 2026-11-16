@@ -13,7 +13,11 @@ use sdl3_sys::events::{
     SDL_Event, SDL_PollEvent, SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_AXIS_MOTION,
     SDL_EVENT_GAMEPAD_BUTTON_DOWN, SDL_EVENT_GAMEPAD_BUTTON_UP, SDL_EVENT_GAMEPAD_REMOVED,
 };
-use sdl3_sys::gamepad::*;
+use sdl3_sys::gamepad::{
+    SDL_CloseGamepad, SDL_GamepadAxis, SDL_GamepadButton, SDL_GetGamepadID, SDL_GetGamepadName,
+    SDL_GetGamepadProduct, SDL_GetGamepadStringForAxis, SDL_GetGamepadStringForButton,
+    SDL_GetGamepadStringForType, SDL_GetGamepadType, SDL_GetGamepadVendor, SDL_OpenGamepad,
+};
 use sdl3_sys::hints::{
     SDL_SetHint, SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, SDL_HINT_JOYSTICK_HIDAPI_STEAM,
 };

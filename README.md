@@ -22,15 +22,19 @@ Rust shell with Tauri 2 and a Vite + Vue interface; the emulation cores are inte
 
 ## Running on Windows
 
-Requirements: stable Rust, Node 20+, the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11),
+Requirements: stable Rust, Node 20+, pnpm 12 (the frontend refuses npm), the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11),
 and CMake for the SDL3 build (on PATH, or in the `CMAKE` variable; VS Build Tools 2022 ships one).
 
 ```powershell
-./scripts/fetch-cores.ps1      # downloads mgba_libretro.dll into cores/
+./scripts/fetch-cores.ps1                     # downloads mgba_libretro.dll into cores/
+git config core.hooksPath scripts/git-hooks   # once per clone: the pre-commit hook
 cd app
-npm install
-npm run tauri dev
+pnpm install
+pnpm tauri dev
 ```
+
+Every check (format, lint, types, clippy, tests, the project's gates) is one command: `./scripts/check.ps1`
+(`sh scripts/check` on Linux or Git Bash). The list lives in `scripts/check`.
 
 Then "Open a game". The executable also accepts a game path as an argument and opens it right away. To try it without games there is `tools/test-rom/emudome-test.gba`:
 magenta screen, it turns green while A is held (X key).
@@ -80,7 +84,7 @@ crates/
 app/
   src/               Vue interface (Vite); i18n/ holds the message files (en.json, it.json)
   src-tauri/         Tauri shell: window, wgpu video, cpal audio, SDL3 controllers, commands
-scripts/             core downloads
+scripts/             core downloads, scripts/check (every check), git hooks
 tools/test-rom/      GBA test ROM (homebrew, made here)
 ```
 

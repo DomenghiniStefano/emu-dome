@@ -125,7 +125,11 @@ pub type retro_input_state_t =
 
 /// The functions every libretro core exports, loaded by name.
 pub mod symbols {
-    use super::*;
+    use super::{
+        c_uint, c_void, retro_audio_sample_batch_t, retro_audio_sample_t, retro_environment_t,
+        retro_game_info, retro_input_poll_t, retro_input_state_t, retro_system_av_info,
+        retro_system_info, retro_video_refresh_t,
+    };
     pub type RetroInit = unsafe extern "C" fn();
     pub type RetroDeinit = unsafe extern "C" fn();
     pub type RetroApiVersion = unsafe extern "C" fn() -> c_uint;

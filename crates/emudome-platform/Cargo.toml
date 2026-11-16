@@ -10,6 +10,9 @@ license.workspace = true
 links = "emudome-platform"
 build = "build.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 log = "0.4"
 raw-window-handle = "0.6"
