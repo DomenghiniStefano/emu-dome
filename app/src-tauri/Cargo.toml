@@ -1,0 +1,41 @@
+[package]
+name = "emudome"
+description = "EmuDome: GBA, NDS and 3DS in a single app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "emudome_app"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5", features = [] }
+
+[dependencies]
+emudome-core.workspace = true
+emudome-platform.workspace = true
+# "unstable" enables several webviews in the same window: needed to have
+# the game's native surface underneath and the transparent web interface on top.
+tauri = { version = "2.12", features = ["unstable"] }
+tauri-plugin-dialog = "2.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+log = "0.4"
+env_logger = "0.11"
+parking_lot = "0.12"
+wgpu = "30"
+pollster = "0.4"
+bytemuck = { version = "1", features = ["derive"] }
+cpal = "0.18"
+# Controllers through SDL3, joystick/gamepad and HIDAPI only (Steam Controller, PS, Switch).
+# Built from source and linked statically: no SDL3.dll to ship.
+# Needs CMake (CMAKE variable or cmake on PATH) and the system C compiler.
+sdl3-sys = { version = "0.7", default-features = false, features = [
+    "build-from-source-static",
+    "no-default-subsystems",
+    "sdl-joystick",
+    "sdl-hidapi",
+    "sdl-unix-console-build",
+] }

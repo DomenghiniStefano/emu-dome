@@ -1,0 +1,65 @@
+{
+  "start": {
+    "overline": "PHASE 0 · PROTOTYPE",
+    "lead": "Open a GBA game to try native video, audio, controllers, speed and states.",
+    "openGame": "Open a game",
+    "hint": "No games at hand? Use {path}: the screen is magenta and turns green while you hold A.",
+    "dialogFilter": "GBA games"
+  },
+  "hud": {
+    "fps": "{fps} FPS"
+  },
+  "speed": {
+    "max": "Max",
+    "factor": "{value}×"
+  },
+  "menu": {
+    "label": "Quick menu",
+    "status": "{console} · core {core} · paused",
+    "speed": "SPEED",
+    "speedLabel": "Game speed",
+    "turboHint": "Hold {key} for turbo. Audio is muted in fast forward.",
+    "saves": "SAVES",
+    "slot": "Slot {slot}",
+    "save": "Save",
+    "load": "Load",
+    "savesHint": "{save} saves and {load} loads slot 1, even with the menu closed.",
+    "video": "VIDEO (PHASE 0)",
+    "videoLabel": "Video path",
+    "native": "Native",
+    "webview": "In the webview",
+    "videoCompare": "Compare smoothness and latency of the two paths.",
+    "videoNoNative": "Native video is not available on this system.",
+    "reset": "Restart the game",
+    "close": "Close the game",
+    "resume": "Resume"
+  },
+  "canvas": {
+    "label": "Game screen"
+  },
+  "toast": {
+    "stateSaved": "Saved to slot {slot}",
+    "stateLoaded": "Loaded slot {slot}",
+    "gamepadConnected": "Controller connected: {name}",
+    "gamepadDisconnected": "Controller disconnected: {name}",
+    "gamepadUnnamed": "Controller"
+  },
+  "console": {
+    "nds": "Nintendo DS",
+    "3ds": "Nintendo 3DS"
+  },
+  "errors": {
+    "unsupportedFormat": "EmuDome can't open .{ext} files. Choose a GBA game (.gba, .gb, .gbc).",
+    "consoleNotYet": "{console} support arrives in Phase {phase}. For now, open a GBA game.",
+    "coreNotFound": "Core {file} not found. Run scripts/fetch-cores (see the README) or set EMUDOME_CORES_DIR.",
+    "openFailed": "Couldn't open the game. Check that the file is a working GBA game. Details: {detail}",
+    "noGame": "No game is open. Open one first.",
+    "nativeVideoUnavailable": "Native video isn't available on this system. Keep using “In the webview”.",
+    "webviewBackgroundFailed": "Couldn't change the interface background: {detail}. Try again.",
+    "slotEmpty": "Slot {slot} is empty. Save to it first.",
+    "stateSaveFailed": "Couldn't save to slot {slot}: {detail}. Check that the save folder is writable.",
+    "stateLoadFailed": "Couldn't read slot {slot}: {detail}. Try again or use another slot.",
+    "stateInvalid": "The state in slot {slot} doesn't fit this game or this core version. Save it again.",
+    "unexpected": "Something went wrong: {detail}"
+  }
+}

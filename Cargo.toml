@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/libretro-sys",
+    "crates/emudome-core",
+    "crates/emudome-platform",
+    "app/src-tauri",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/DomenghiniStefano/emu-dome"
+
+[workspace.dependencies]
+libretro-sys = { path = "crates/libretro-sys" }
+emudome-core = { path = "crates/emudome-core" }
+emudome-platform = { path = "crates/emudome-platform" }
+
+[profile.dev.package."*"]
+# Dependencies (wgpu, cpal...) built optimised in debug too,
+# so the prototype runs at full speed during development.
+opt-level = 2

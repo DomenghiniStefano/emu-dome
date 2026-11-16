@@ -1,0 +1,8 @@
+[package]
+name = "emudome-platform"
+description = "Operating-system-dependent code for EmuDome."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]

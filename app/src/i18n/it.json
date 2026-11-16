@@ -1,0 +1,65 @@
+{
+  "start": {
+    "overline": "FASE 0 · PROTOTIPO",
+    "lead": "Apri un gioco GBA per provare video nativo, audio, controller, velocità e stati.",
+    "openGame": "Apri un gioco",
+    "hint": "Senza giochi: {path} (schermo magenta, verde tenendo premuto A).",
+    "dialogFilter": "Giochi GBA"
+  },
+  "hud": {
+    "fps": "{fps} FPS"
+  },
+  "speed": {
+    "max": "Max",
+    "factor": "{value}×"
+  },
+  "menu": {
+    "label": "Menu rapido",
+    "status": "{console} · core {core} · in pausa",
+    "speed": "VELOCITÀ",
+    "speedLabel": "Velocità di gioco",
+    "turboHint": "Tieni premuto {key} per il turbo. In avanti veloce l'audio è muto.",
+    "saves": "SALVATAGGI",
+    "slot": "Slot {slot}",
+    "save": "Salva",
+    "load": "Carica",
+    "savesHint": "{save} salva e {load} carica lo slot 1 anche senza menu.",
+    "video": "VIDEO (FASE 0)",
+    "videoLabel": "Percorso video",
+    "native": "Nativo",
+    "webview": "Nella webview",
+    "videoCompare": "Confronta fluidità e latenza delle due strade.",
+    "videoNoNative": "Su questo sistema il video nativo non è disponibile.",
+    "reset": "Riavvia il gioco",
+    "close": "Chiudi il gioco",
+    "resume": "Riprendi"
+  },
+  "canvas": {
+    "label": "Schermo del gioco"
+  },
+  "toast": {
+    "stateSaved": "Salvato nello slot {slot}",
+    "stateLoaded": "Caricato lo slot {slot}",
+    "gamepadConnected": "Controller collegato: {name}",
+    "gamepadDisconnected": "Controller scollegato: {name}",
+    "gamepadUnnamed": "Controller"
+  },
+  "console": {
+    "nds": "Nintendo DS",
+    "3ds": "Nintendo 3DS"
+  },
+  "errors": {
+    "unsupportedFormat": "Formato non riconosciuto: .{ext}",
+    "consoleNotYet": "Il {console} arriva nella Fase {phase}.",
+    "coreNotFound": "Core {file} non trovato. Esegui scripts/fetch-cores (vedi README) oppure imposta EMUDOME_CORES_DIR.",
+    "openFailed": "Non riesco ad aprire il gioco. Controlla che il file sia un gioco GBA funzionante. Dettagli: {detail}",
+    "noGame": "Nessun gioco aperto",
+    "nativeVideoUnavailable": "Il video nativo non è disponibile su questo sistema.",
+    "webviewBackgroundFailed": "Non riesco a cambiare il fondo dell'interfaccia: {detail}",
+    "slotEmpty": "Lo slot {slot} è vuoto. Salva prima di caricarlo.",
+    "stateSaveFailed": "Non riesco a scrivere lo slot {slot}: {detail}. Controlla che la cartella dei salvataggi sia scrivibile.",
+    "stateLoadFailed": "Non riesco a leggere lo slot {slot}: {detail}. Riprova o usa un altro slot.",
+    "stateInvalid": "Lo stato nello slot {slot} non è valido per questo gioco o questa versione del core. Salvalo di nuovo.",
+    "unexpected": "Qualcosa è andato storto: {detail}"
+  }
+}
