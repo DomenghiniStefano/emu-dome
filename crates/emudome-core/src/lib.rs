@@ -11,6 +11,7 @@ mod frame;
 mod session;
 
 pub mod audio;
+pub mod hotkeys;
 pub mod input;
 
 pub use error::ErrorCode;

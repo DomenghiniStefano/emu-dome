@@ -19,6 +19,14 @@ pub enum Button {
     X = 9,
     L = 10,
     R = 11,
+    /// Left trigger (RetroPad L2).
+    L2 = 12,
+    /// Right trigger (RetroPad R2).
+    R2 = 13,
+    /// Left stick click (RetroPad L3): EmuDome's combo modifier, never sent to the core.
+    L3 = 14,
+    /// Right stick click (RetroPad R3).
+    R3 = 15,
 }
 
 impl Button {
