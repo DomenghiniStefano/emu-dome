@@ -218,6 +218,14 @@ review-only list above. A rule in neither place is the thing this section exists
 ## Handoff with Cowork
 
 Analysis, decisions and design are handled in a separate Cowork session, which reads this folder but does not see the Claude Code conversation.
+
+**Who does what** (owner, 2026-11-16):
+- **Cowork: design.** Look, layout, screens, flows, texts' wording, the design system. Claude Code does not invent or
+  restyle UI on its own: a visual problem it notices goes on Trello for Cowork, not into the code.
+- **Claude Code: backend structure and feasibility.** Rust crates, cores, platforms, video/audio/input, IPC, settings
+  engine, build and checks, prototypes that answer "can it be done". It implements the interface **from Cowork's designs**,
+  wiring them to the backend; until a design exists, the UI stays a functional placeholder (correct, i18n, controller-usable,
+  design-system tokens), not a design proposal.
 After every Phase 0 test, update **`docs/fase0-esito.md`** (create it if missing) in this format, without deleting the earlier entries:
 
 ```
