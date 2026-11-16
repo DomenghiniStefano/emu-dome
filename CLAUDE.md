@@ -25,7 +25,9 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
 ## Current state: Phase 0, feasibility prototype
 
 The goal is to find out whether the video architecture holds up, before building the rest.
-**No push** until feasibility is confirmed. Local commits only when the user asks for them.
+Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
+`C:\Projects\emu-dome.wt\<name>` and is merged into `develop` from the main worktree. Pushing `develop` is allowed
+(owner, 2026-11-16). No push to `main`.
 
 Already done and verified on Linux (virtual X11, mGBA 0.10.2):
 
