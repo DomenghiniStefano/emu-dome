@@ -1,0 +1,125 @@
+#!/bin/sh
+# Every check in the project, in a single command: `sh scripts/check` (Git Bash, Linux),
+# `./scripts/check.ps1` (PowerShell), or `pnpm check` / `npm run check` from app/.
+#
+# There's no CI: this is the list, and it lives here and nowhere else. The README, the
+# pre-commit hook and CLAUDE.md point to this file instead of repeating the commands, so
+# they can't drift apart. Run it before wrapping up a piece of work.
+#
+# It doesn't stop at the first failure: it runs everything and summarizes at the end.
+# Knowing that three different things failed changes what you do next; finding them out
+# one at a time doesn't. Exit 1 with a FAILED list, or "all green". It never rewrites a file.
+#
+# Frontend steps run in app/ through its package.json scripts, and only when the script exists
+# (they say "skipped" otherwise). The package manager is pnpm when app/pnpm-lock.yaml exists,
+# npm before the switch.
+#
+# The gates at the end are greps over the files git sees (tracked, plus untracked files that
+# are not ignored): target/, node_modules/, dist/ and cores/ are never read.
+
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+if [ -f app/pnpm-lock.yaml ]; then pm=pnpm; else pm=npm; fi
+
+failed=''
+run() {
+	name=$1
+	shift
+	printf '\n=== %s\n' "$name"
+	if "$@"; then
+		return 0
+	fi
+	failed="$failed [$name]"
+	return 1
+}
+
+# Whether app/package.json declares the package script $1.
+has_script() {
+	node -e 'process.exit(require("./app/package.json").scripts?.[process.argv[1]] ? 0 : 1)' "$1"
+}
+
+in_app() {
+	(cd app && "$@")
+}
+
+run_script() {
+	if has_script "$1"; then
+		run "$pm run $1" in_app "$pm" run "$1"
+	else
+		printf '\n=== %s run %s\nskipped: no %s script in app/package.json\n' "$pm" "$1" "$1"
+	fi
+}
+
+# A gate that fails when the command FINDS something. git grep / grep: exit 0 = found (fail,
+# the matches are already printed), 1 = nothing found (pass), anything else = error (fail).
+forbid() {
+	name=$1
+	why=$2
+	shift 2
+	printf '\n=== %s\n' "$name"
+	"$@"
+	rc=$?
+	if [ "$rc" -eq 1 ]; then
+		printf 'none\n'
+		return 0
+	fi
+	[ "$rc" -eq 0 ] && printf '%s\n' "$why"
+	failed="$failed [$name]"
+	return 1
+}
+
+# Files that must never be in the repository: ROMs and Nintendo BIOS / firmware / keys, by
+# name. The homebrew test ROM is the one allowed exception. Cannot see a file renamed to
+# another extension, or one kept in a git-ignored folder (cores/, *.sav: never committed).
+nintendo_files() {
+	git ls-files --cached --others --exclude-standard |
+		grep -iE '\.(gb|gbc|gba|nds|dsi|srl|3ds|3dsx|cia|cci|cxi|cxa|z3ds)$|(^|/)(gba_bios|bios7|bios9|dsi_bios7|dsi_bios9|firmware|dsi_firmware|dsi_nand|boot9|boot11|aes_keys|seeddb|movable|secinfo|otp)\.(bin|txt|sed|dat)$' |
+		grep -vxF 'tools/test-rom/emudome-test.gba'
+}
+
+# --- Rust
+run 'cargo fmt' cargo fmt --all --check
+run 'cargo clippy' cargo clippy --workspace --all-targets -- -D warnings
+run 'cargo test' cargo test --workspace
+
+# --- Frontend (app/)
+run_script typecheck
+run_script test
+run_script lint
+run_script format:check
+
+# --- Gates (CLAUDE.md rules made into checks)
+
+# No merge conflict marker left in a text file: Markdown, CSS and many text files parse fine
+# with them. A line of seven `=` alone is not flagged (valid Markdown underline).
+forbid 'conflict markers' 'Finish resolving the merge.' \
+	git grep --untracked -nIE '^(<{7} |>{7} |\|{7}( |$))'
+
+# "No #[cfg(target_os)] outside crates/emudome-platform": every OS-specific line lives there.
+# Sees cfg(...) / cfg!(...) / cfg_attr(...) naming target_os, target_family, windows or unix on
+# one line. Cannot see a cfg split across lines, or OS code chosen at runtime (env::consts::OS).
+forbid 'os code outside emudome-platform' 'Move it into crates/emudome-platform (one module per OS).' \
+	git grep --untracked -nE 'cfg(_attr)?!?\([^)]*(target_os|target_family|windows|unix)' -- '*.rs' ':!crates/emudome-platform/'
+
+# "The UI never touches the core: it calls the Tauri commands through emu.ts". `invoke` or
+# @tauri-apps/api/core anywhere in app/src but emu.ts. Cannot see `invoke` renamed on import
+# from a module other than @tauri-apps/api/core.
+forbid 'invoke outside emu.ts' 'Call the command through a typed function in app/src/emu.ts.' \
+	git grep --untracked -nE '\binvoke\b|@tauri-apps/api/core' -- 'app/src/' ':!app/src/emu.ts'
+
+# "Lucide icons, no emoji": emoji and decorative symbols (U+2600-27BF dingbats such as check
+# marks, U+2B00-2BFF, U+1F000-1FAFF, the emoji selector U+FE0F) in the UI and in the Rust
+# sources (error messages reach the UI). Cannot see an emoji built from code points at runtime.
+forbid 'no emoji' 'Use a Lucide icon or plain text.' \
+	git grep --untracked -nP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B00}-\x{2BFF}\x{FE0F}]' -- app/src app/src-tauri/src crates
+
+# "Never include Nintendo files (games, BIOS, firmware, keys)".
+forbid 'no nintendo files' 'Remove it: the user adds games; the cores bring open-source BIOS replacements.' \
+	nintendo_files
+
+if [ -n "$failed" ]; then
+	printf '\nFAILED:%s\n' "$failed"
+	exit 1
+fi
+printf '\nall green\n'

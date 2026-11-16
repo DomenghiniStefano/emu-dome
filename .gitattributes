@@ -1,0 +1,38 @@
+# Every text file is LF, in the repository and in the working copy. With core.autocrlf=true
+# (the Windows default) git would check text files out as CRLF, and Prettier (endOfLine "lf")
+# would then report every frontend file as unformatted: `format:check` would be red on files
+# that are correct in the repository. Forcing LF in the working copy too makes the two agree.
+# An existing working copy keeps its CRLF files until they are checked out again (or rewritten
+# by `cargo fmt` / Prettier).
+* text=auto eol=lf
+
+# Shell scripts run under sh: CRLF would put a \r at the end of every command. Already covered
+# by the rule above; kept explicit because these break outright with CRLF.
+scripts/check text eol=lf
+scripts/git-hooks/* text eol=lf
+*.sh text eol=lf
+
+# Binaries: never converted.
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.wav binary
+*.ogg binary
+
+# Libretro cores and emulator data (cores/, *.sav and *.state are git-ignored; listed so that a
+# file added by force is still never converted).
+*.dll binary
+*.so binary
+*.dylib binary
+*.sav binary
+*.state binary
+# The homebrew test ROM in tools/test-rom (the only ROM the repository may hold).
+*.gba binary

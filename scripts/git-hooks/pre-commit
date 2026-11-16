@@ -1,0 +1,42 @@
+#!/bin/sh
+# Pre-commit hook: only the fast checks, on what is being committed.
+#
+# Installed once per clone with `git config core.hooksPath scripts/git-hooks`: from then on
+# the hook travels with the repo instead of living in `.git/hooks`, which isn't cloned.
+# The full list (clippy, tests, typecheck, lint, gates) is `scripts/check`, run before wrapping
+# up a piece of work: running it here would be slow enough that people would bypass the
+# hook, which is how hooks die.
+
+set -u
+cd "$(dirname "$0")/../.." || exit 1
+
+failed=0
+
+printf 'pre-commit: cargo fmt --all --check\n'
+cargo fmt --all --check || failed=1
+
+# Conflict markers in the staged content (the index, not the working copy). git grep exits 0
+# when it finds one, 1 when there is none.
+printf 'pre-commit: conflict markers in the staged files\n'
+if git grep --cached -nIE '^(<{7} |>{7} |\|{7}( |$))'; then
+	printf 'conflict markers staged: finish resolving the merge.\n'
+	failed=1
+fi
+
+# Prettier on the staged frontend files Prettier knows (app/, minus .prettierignore). Checks
+# the working copy of those files: stage what you format. Skipped until the frontend
+# dependencies are installed.
+prettier=app/node_modules/.bin/prettier
+if [ -x "$prettier" ]; then
+	staged=$(git diff --cached --name-only --diff-filter=ACMR -- 'app/*.ts' 'app/*.js' 'app/*.vue' 'app/*.css' 'app/*.json' 'app/*.html' | sed 's#^app/##')
+	if [ -n "$staged" ]; then
+		printf 'pre-commit: prettier --check on the staged frontend files\n'
+		# shellcheck disable=SC2086 # one path per word; the repo has no spaces in app/ paths
+		(cd app && node_modules/.bin/prettier --check --ignore-unknown $staged) || failed=1
+	fi
+fi
+
+if [ "$failed" -ne 0 ]; then
+	printf '\ncommit rejected. `cargo fmt --all` and `pnpm format` (in app/) fix the formatting; the full list is scripts/check.\n'
+	exit 1
+fi

@@ -1,0 +1,23 @@
+# Editor defaults for every file. Prettier (app/) reads the indentation from here only where
+# app/.prettierrc.json says nothing, so the web files must stay at 2 spaces; Rust is formatted by
+# `cargo fmt` whatever this file says.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.{rs,toml,py,ps1}]
+indent_size = 4
+
+# sh scripts are indented with tabs (as in GameDome).
+[{scripts/check,scripts/git-hooks/*,*.sh}]
+indent_style = tab
+
+# Markdown: two trailing spaces are a hard line break.
+[*.md]
+trim_trailing_whitespace = false

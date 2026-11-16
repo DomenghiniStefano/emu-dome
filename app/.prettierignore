@@ -1,0 +1,15 @@
+# Prettier formats the frontend: src/ and the config files of app/. It runs from app/ (where
+# package.json and node_modules live), so this file and .prettierrc.json live here too.
+# (node_modules and the .gitignore entries are skipped by Prettier on its own; they are repeated
+# here so the list reads complete.)
+node_modules
+dist
+package-lock.json
+pnpm-lock.yaml
+
+# Rust side: formatted by `cargo fmt`, and its JSON (tauri.conf.json, capabilities, the generated
+# schemas in gen/) belongs to the Tauri configuration, not to the frontend.
+src-tauri
+
+# Markdown is wrapped by hand: Prettier would reflow tables and lists on every edit.
+*.md
