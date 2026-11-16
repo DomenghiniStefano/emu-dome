@@ -91,3 +91,30 @@ Errors and fixes:
 
 Checks: `cargo fmt --all` clean, `cargo clippy --workspace --all-targets -- -D warnings` ok, `cargo build -p emudome` ok, `npm run build` ok.
 Proposed next step: Phase 0 step 4, Android.
+
+## 2026-11-16 21:53 · Android: Samsung Galaxy A71 (SM-A715F, Android 13), debug APK
+
+APK `app-arm64-debug.apk` (arm64-v8a), core `libmgba_libretro_android.so` (libretro nightly, 2,472,240 bytes) packaged in the APK,
+ROM `tools/test-rom/emudome-test.gba` copied to `/data/user/0/com.domenghini.emudome/files/` and opened through the launch intent
+(`am start ... --es game <path>`). wgpu uses **Vulkan** (Adreno 618). Portrait, touch overlay on.
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | ok | SurfaceView under the transparent WebView: the magenta game shows under the touch buttons and, with the quick menu open, through the panel's glass (tinted, not blurred). Screenshots in the agent's scratchpad: game, A held (green), menu open, webview mode, after background/resume |
+| 2. FPS at 1× | core 59.39–59.80, presented 59.87–59.99 | From the 10 s log line `fps: core …, presented …` (target 59.73); first window after start 52.3 presented, after resume 57.2 |
+| 3. Audio | partly | AAudio stream opened (48,000 Hz, 2 ch, F32) and `started` in `dumpsys audio`. The test ROM makes no sound: quality and delay not tested |
+| 4. Controller | not tested | SDL3 not built for Android; controllers on Android come later |
+| 5. Native vs webview | both work | Switch from the quick menu works; webview mode draws the canvas smaller (CSS scale). Smoothness and latency not compared by eye |
+
+Also verified: touch A turns the screen green; the quick menu opens from the touch menu button; going to the home screen and back
+re-creates the surface without a crash (same process).
+
+Errors and fixes:
+- `tauri android build`: "Creation symbolic link is not allowed for this system" (the CLI symlinks `libemudome_app.so` into jniLibs; Windows
+  developer mode is off). Workaround: the Rust part compiles anyway; copy the `.so` into `gen/android/app/src/main/jniLibs/arm64-v8a/`
+  and run `gradlew assembleArm64Debug -x rustBuildArm64Debug`. Real fix: enable developer mode.
+- `video.rs`: `CreateSurfaceError { inner: Hal(MissingDisplayHandle) }`: wgpu's GLES backend needs a display handle even when Vulkan is used.
+  Fix: `ExternalSurface` also implements `HasDisplayHandle` (`DisplayHandle::android()`).
+- Build stopped once with a full disk (C: at 0 bytes); space freed by the manager.
+
+Proposed next step: test audio with a game that makes sound, then landscape layout and Android controllers.
