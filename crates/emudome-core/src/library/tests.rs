@@ -152,13 +152,14 @@ fn pixel(icon: &super::Icon, x: usize, y: usize) -> [u8; 4] {
 // ---- Identity ----
 
 #[test]
-fn gba_identity_is_the_file_hash_and_the_header_title() {
+fn gba_identity_is_the_file_hash_and_the_title_is_the_file_name() {
     let dir = TestDir::new("lib-gba");
-    let rom = gba_rom("EMUTEST", 0);
-    let id = identify(&write(&dir, "a.gba", &rom)).unwrap();
+    // A ROM hack keeps its base game's header: the file name is the better name.
+    let rom = gba_rom("POKEMON FIRE", 0);
+    let id = identify(&write(&dir, "Pokemon Unbound.gba", &rom)).unwrap();
     assert_eq!(id.id, format!("gba:{}", sha1_hex(&rom)));
     assert_eq!(id.console, ConsoleId::Gba);
-    assert_eq!(id.title, "EMUTEST");
+    assert_eq!(id.title, "Pokemon Unbound");
     assert_eq!(id.code.as_deref(), Some("ZTST"));
     assert_eq!(id.version, Some(1));
     assert!(!id.has_icon);
@@ -201,9 +202,9 @@ fn an_empty_header_title_falls_back_to_the_file_name() {
 fn gb_and_gbc_identity() {
     let dir = TestDir::new("lib-gb");
     let rom = gb_rom("HELLO", 0);
-    let id = identify(&write(&dir, "h.gb", &rom)).unwrap();
+    let id = identify(&write(&dir, "Hello World.gb", &rom)).unwrap();
     assert_eq!(id.id, format!("gb:{}", sha1_hex(&rom)));
-    assert_eq!(id.title, "HELLO");
+    assert_eq!(id.title, "Hello World");
     // CGB-only cartridge: GBC whatever the extension.
     let id = identify(&write(&dir, "c.gb", &gb_rom("COLOUR", 0xC0))).unwrap();
     assert_eq!(id.console, ConsoleId::Gbc);
