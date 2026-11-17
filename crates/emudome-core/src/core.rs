@@ -235,4 +235,15 @@ impl GameFiles {
     pub fn thumb(&self, slot: u8) -> PathBuf {
         self.slot(slot).with_extension("png")
     }
+
+    /// The folder of the saves and slots.
+    pub fn save_dir(&self) -> &Path {
+        &self.save_dir
+    }
+
+    /// The ROM file name without extension: every file of the game starts with it.
+    /// TODO(game identity, Trello #21): two games with the same file name share their saves.
+    pub fn stem(&self) -> &str {
+        &self.stem
+    }
 }
