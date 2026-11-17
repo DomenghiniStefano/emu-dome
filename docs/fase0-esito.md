@@ -119,7 +119,7 @@ Errors and fixes:
 
 Proposed next step: test audio with a game that makes sound, then landscape layout and Android controllers.
 
-## 2026-11-17 22:09 · Hardware rendering spike, step 0: core options, Azahar and melonDS DS on the PC (headless)
+## 2026-11-17 22:09 Â· Hardware rendering spike, step 0: core options, Azahar and melonDS DS on the PC (headless)
 
 Windows 11, AMD Ryzen 7 9700X. Windowless `headless` example, release build, software frames, no audio device.
 Cores: libretro nightlies of 2026-11-17 (`azahar_libretro.dll` = Azahar 2127.0-rc3, `melondsds_libretro.dll`), fetched with
@@ -132,7 +132,7 @@ Cores: libretro nightlies of 2026-11-17 (`azahar_libretro.dll` = Azahar 2127.0-r
 | Item | Result | Notes |
 | --- | --- | --- |
 | 1. Native video under the menu | not tested | headless only |
-| 2. FPS at 1× | melonDS DS 59.8; Azahar 17.4 | melonDS DS software renderer in the 3D lab scene (after tapping A through the intro), 10 s window; Max 222 fps there, 541 fps on the 2D intro. Azahar `citra_graphics_api=Software` on the Craftus title screen, 10 s window (first 5 s run: 19.4); Max 16 fps, so it is saturated |
+| 2. FPS at 1Ã— | melonDS DS 59.8; Azahar 17.4 | melonDS DS software renderer in the 3D lab scene (after tapping A through the intro), 10 s window; Max 222 fps there, 541 fps on the 2D intro. Azahar `citra_graphics_api=Software` on the Craftus title screen, 10 s window (first 5 s run: 19.4); Max 16 fps, so it is saturated |
 | 3. Audio | not tested | headless |
 | 4. Controller | not tested | headless; A tapped from the example |
 | 5. Native vs webview | not tested | headless |
