@@ -173,7 +173,7 @@ The fetch scripts guessed `melonds_ds`; fixed to `melondsds`, and the Android sc
 and `GET_HW_RENDER_INTERFACE`; **Software never calls `SET_HW_RENDER`**. `auto` is always Vulkan on Android and
 asks `GET_PREFERRED_HW_RENDER` elsewhere. A refused `SET_HW_RENDER` makes the load fail. **Consequence**: our host
 answers `GET_VARIABLE` with `false`, so Azahar runs `auto` and fails to load everywhere; step 0 needs
-`GET_VARIABLE` to answer `citra_graphics_api=software` (the first core option the settings engine must feed).
+`GET_VARIABLE` to answer `citra_graphics_api=Software` (the first core option the settings engine must feed).
 
 **melonDS DS** (JesseTG/melonds-ds, main): software is the default renderer, said to fall back to software when GL
 is unavailable (fallback code not read: **to verify**). Its GL renderer asks for `OPENGL_CORE` 3.2 (4.3 for
@@ -186,6 +186,26 @@ FBO and `glReadPixels` back to RGBA. No Rust frontend with `SET_HW_RENDER` on wg
 **Order from here**: (0) answer `citra_graphics_api=software`, measure Azahar software and melonDS DS on the PC and
 the A71; (1) GL readback (desktop GL 4.3, Android GLES 3.2), useful for Azahar only; (2) if GLES readback is slow on
 the A71, go to Vulkan negotiation, which Azahar already supports in full.
+
+### 2026-11-17 · Step 0, PC measurements (Windows)
+
+Host: `GET_VARIABLE` now answers core options (`crates/emudome-core/src/core_options.rs`). The exact value is
+**`citra_graphics_api` = `Software`**, capital S: Azahar's definition lists `Auto`, `Vulkan`, `OpenGL`, `Software`
+and compares case-sensitively; anything else (including its own declared default `auto`) means auto. Without the option
+Azahar's `retro_load_game` returns false (seen); with it the core starts and never calls `SET_HW_RENDER`.
+Both cores ask `GET_CORE_OPTIONS_VERSION` and register their options with `SET_CORE_OPTIONS_V2`.
+
+AMD Ryzen 7 9700X, release build of the windowless `headless` example, software frames, nightly cores of 2026-11-17.
+
+| Core | Renderer | Content | Started | 1x | Max (unthrottled) |
+|---|---|---|---|---|---|
+| melonDS DS | software (default) | Breaking Bad DS 1.0.6, 3D lab scene | yes, built-in firmware + FreeBIOS | 59.8 fps (target 59.83) | 222 fps (3D scene), 541 fps (2D intro) |
+| Azahar 2127.0-rc3 | Software (forced) | Craftus Reloaded 0.3, title screen (citro3d) | yes | 17.4 fps over 10 s (target 60) | 16 fps |
+
+Azahar's software renderer runs at about a quarter of full speed on a fast desktop CPU, on a title screen only (the
+menu needs the touch screen, which the host does not feed, so no in-world scene was measured). Software is therefore
+not a usable 3DS path even on the PC, let alone the A71: step 1 (GL readback) is needed to learn anything about phones.
+melonDS DS in software has ample headroom on the PC. A71 measurements: not done (no phone access in this session).
 
 ## Sources
 
