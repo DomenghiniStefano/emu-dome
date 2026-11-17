@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use serde_json::json;
 
-use super::catalog::{CURRENT_PHASE, ENTRIES, PAGES, SECTIONS};
+use super::catalog::{CURRENT_PHASE, ENTRIES, GROUPS, PAGES, SECTIONS};
 use super::test_dir::TestDir;
 use super::{entry, CommitTarget, ConsoleId, GameId, Kind, Level, Scope, Settings, Value};
 use crate::settings::schema::Device;
@@ -575,6 +575,15 @@ fn choices_have_unique_well_formed_options() {
             );
         }
     }
+}
+
+#[test]
+fn the_groups_list_every_page_once_in_page_order() {
+    let grouped: Vec<_> = GROUPS
+        .iter()
+        .flat_map(|g| g.pages.iter().copied())
+        .collect();
+    assert_eq!(grouped, PAGES.to_vec());
 }
 
 #[test]

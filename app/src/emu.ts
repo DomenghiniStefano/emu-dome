@@ -1,6 +1,7 @@
 // Typed bridge to the Rust commands. The interface goes through here only.
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 export type Speed = { kind: 'factor'; value: number } | { kind: 'max' }
@@ -154,6 +155,8 @@ export interface SettingsSchema {
   /** Entries with a later `phase`, or whose `platform` excludes `device`, are not shown. */
   currentPhase: number
   pages: string[]
+  /** The category list's groups (`settings.groups.<id>`), in order, with their pages. */
+  groups: { id: string; pages: string[] }[]
   /** Every page's headings in order, each with its entries. */
   sections: SettingSection[]
   entries: SettingEntry[]
@@ -276,6 +279,8 @@ export const emu = {
     onChanged: (cb: (e: SettingsChanged) => void): Promise<UnlistenFn> =>
       listen<SettingsChanged>('settings://changed', e => cb(e.payload)),
   },
+  /** EmuDome's version (tauri.conf.json). */
+  appVersion: () => getVersion(),
   library: {
     get: () => invoke<Library>('library_get'),
     /** Native folder picker; the folder joins `library.folders` and is scanned. null = cancelled. */

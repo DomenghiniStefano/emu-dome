@@ -8,11 +8,33 @@
 //! are a sensible guess that contains the default on the step grid, and Cowork confirms them in 2b.
 
 use super::schema::{
-    ActionStyle, ChoiceStyle, DefaultValue, Entry, Kind, Levels, Platform, Section, Unit,
+    ActionStyle, ChoiceStyle, DefaultValue, Entry, Kind, Levels, PageGroup, Platform, Section, Unit,
 };
 
 /// Phase the app is in: entries of later phases stay hidden.
 pub const CURRENT_PHASE: u8 = 1;
+
+/// The groups of the category list, in order, with their pages (text `settings.groups.<id>`).
+pub static GROUPS: &[PageGroup] = &[
+    PageGroup {
+        id: "game",
+        pages: &["video", "fx", "screens", "audio", "speed", "saves"],
+    },
+    PageGroup {
+        id: "controls",
+        pages: &["pad", "touch"],
+    },
+    PageGroup {
+        id: "app",
+        pages: &["general", "library", "cloud", "a11y", "presets"],
+    },
+    PageGroup {
+        id: "system",
+        pages: &[
+            "bios", "consoles", "cores", "perf", "online", "adv", "about",
+        ],
+    },
+];
 
 /// Page ids in display order.
 pub static PAGES: &[&str] = &[

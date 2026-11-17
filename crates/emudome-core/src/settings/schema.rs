@@ -284,6 +284,13 @@ pub fn page_entries(page: &str) -> impl Iterator<Item = &'static Entry> + '_ {
         .filter(move |e| e.page() == page)
 }
 
+/// A group of pages in the category list («GIOCO», «CONTROLLI», …).
+#[derive(Clone, Copy, Debug, Serialize)]
+pub struct PageGroup {
+    pub id: &'static str,
+    pub pages: &'static [&'static str],
+}
+
 /// A heading of a settings page and the entries under it, in order.
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct Section {
@@ -303,6 +310,8 @@ pub struct SchemaDto {
     pub current_phase: u8,
     /// Page ids in display order.
     pub pages: &'static [&'static str],
+    /// The category list's groups, in order, with their pages.
+    pub groups: &'static [PageGroup],
     /// The headings of every page, in order, with their entries.
     pub sections: &'static [Section],
     pub entries: Vec<EntryDto>,
@@ -329,6 +338,7 @@ pub fn schema(device: Device) -> SchemaDto {
         device,
         current_phase: super::catalog::CURRENT_PHASE,
         pages: super::catalog::PAGES,
+        groups: super::catalog::GROUPS,
         sections: super::catalog::SECTIONS,
         entries: super::catalog::ENTRIES
             .iter()
