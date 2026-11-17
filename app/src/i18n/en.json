@@ -1,10 +1,22 @@
 {
-  "start": {
-    "overline": "PHASE 0 · PROTOTYPE",
-    "lead": "Open a GBA game to try native video, audio, controllers, speed and states.",
-    "openGame": "Open a game",
-    "hint": "No games at hand? Use {path}: the screen is magenta and turns green while you hold A.",
+  "shell": {
+    "sections": "Sections",
+    "library": "Library",
+    "saves": "Saves",
+    "controls": "Controls",
+    "cloud": "Cloud",
+    "settings": "Settings"
+  },
+  "library": {
+    "emptyTitle": "Add your games",
+    "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, or drag them here.",
+    "chooseFolder": "Choose a folder…",
+    "openFile": "Open a file…",
     "dialogFilter": "GBA games"
+  },
+  "placeholder": {
+    "line": "This section arrives in a later version.",
+    "chooseFolder": "Folders arrive with the library. For now, open a file."
   },
   "hud": {
     "fps": "{fps} FPS",

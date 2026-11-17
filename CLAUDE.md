@@ -73,6 +73,7 @@ cargo fmt --all
 - Environment variables:
   - `EMUDOME_VIDEO=native|webview` forces the video path.
   - `EMUDOME_CORES_DIR` tells where to look for the cores.
+  - `EMUDOME_THEME=dark|black|light` forces the theme (otherwise it follows the system).
   - `RUST_LOG=debug` for the logs.
 - The executable accepts a game path as an argument and opens it at startup.
 - Homebrew test ROM: `tools/test-rom/emudome-test.gba`. Magenta screen, green while A is held (X key).
@@ -86,8 +87,11 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          ErrorCode (errors for the UI as code + params),
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table)
 crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS
-app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands
-app/src                  Vue interface: App.vue, QuickMenu, GameCanvas (webview mode), ToastStack, emu.ts (typed bridge),
+app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
+                         theme.rs (Scuro / Nero / Chiaro: system preference or EMUDOME_THEME, unit-tested)
+app/src                  Vue interface: App.vue, AppShell (rail + sections, outside the game), LibraryEmpty,
+                         QuickMenu, GameCanvas (webview mode), ToastStack, emu.ts (typed bridge),
+                         theme.ts (data-theme on <html>), sections.ts,
                          nav.ts (controller/keyboard focus navigation for every screen),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text)
 ```

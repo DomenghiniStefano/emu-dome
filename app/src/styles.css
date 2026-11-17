@@ -1,24 +1,36 @@
-/* Tokens from the EmuDome Design System (dark theme). */
+/* Tokens from the EmuDome Design System. :root holds Scuro (dark), the default and what the
+   page shows before src/theme.ts sets data-theme; Nero and Chiaro override only what differs.
+   The accent fills (accent, accent-crown, accent-deep, on-accent) are the same in all three. */
 :root {
   --bg: #0e0f13;
   --surface: #16181e;
   --surface-raised: #1e2129;
   --surface-hover: #262a33;
+  --glass-thin: #0e0f1399;
   --glass: #16181ea3;
   --glass-thick: #1a1c23e6;
   --glass-edge: #ffffff17;
   --line: #ffffff12;
   --line-strong: #717684;
+  --scrim: #07080a99;
   --ink: #eceef3;
   --ink-muted: #a4a8b5;
+  --ink-faint: #6b6f7b;
+  --violet: #7c5cff;
   --accent: #7152f7;
+  --accent-hover: #6544ee;
   --accent-deep: #5a3fdc;
   --accent-crown: #8a70ff;
+  --on-accent: #ffffff;
   --accent-text: #a593ff;
   --accent-soft: #7c5cff2e;
   --focus-ring: #a593ff;
   --success: #3ed68e;
+  --warning: #f5a524;
   --danger: #ff7a7a;
+  --shadow-float: 0 24px 64px #0000008c, 0 2px 8px #00000059;
+  /* Ambient haze behind the shell (ambient-strength); Nero switches it off. */
+  --haze-opacity: 0.5;
   --radius-6: 6px;
   --radius-10: 10px;
   --radius-16: 16px;
@@ -28,6 +40,46 @@
   line-height: 18px;
   color: var(--ink);
   color-scheme: dark;
+}
+
+/* Nero: true black for OLED screens, no haze. */
+:root[data-theme='black'] {
+  --bg: #000000;
+  --surface: #0b0c0f;
+  --surface-raised: #15161b;
+  --surface-hover: #1d1f25;
+  --glass-thin: #000000b3;
+  --glass: #0b0c0fb3;
+  --glass-thick: #0b0c0fe6;
+  --line: #ffffff14;
+  --haze-opacity: 0;
+}
+
+/* Chiaro. */
+:root[data-theme='light'] {
+  --bg: #f4f3f0;
+  --surface: #ffffff;
+  --surface-raised: #f7f6f3;
+  --surface-hover: #efeee9;
+  --glass-thin: #f4f3f0a6;
+  --glass: #ffffff9e;
+  --glass-thick: #ffffffe0;
+  --glass-edge: #ffffffb3;
+  --line: #00000012;
+  --line-strong: #80838c;
+  --scrim: #1a1b2059;
+  --ink: #17181c;
+  --ink-muted: #5d606a;
+  --ink-faint: #9a9ca3;
+  --accent-text: #5a3ce6;
+  --accent-soft: #7c5cff1f;
+  --focus-ring: #6a48ff;
+  --success: #0f7a54;
+  --warning: #9a5800;
+  --danger: #c42b3a;
+  --shadow-float: 0 24px 64px #1a1b202e, 0 2px 8px #1a1b2014;
+  --haze-opacity: 0.35;
+  color-scheme: light;
 }
 
 /* The webview is transparent: the natively drawn game is underneath. */
@@ -55,6 +107,12 @@ button {
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
+/* Without data-nav the user is on the mouse: no browser outline on the element a screen
+   focused by itself (autofocus). Any key press sets data-nav first (App.vue), so Tab still
+   shows the ring above. */
+:root:not([data-nav]) :focus {
+  outline: none;
+}
 kbd {
   font: inherit;
   font-size: 11px;
@@ -70,8 +128,7 @@ kbd {
   border-radius: var(--radius-16);
   box-shadow:
     inset 0 1px 0 var(--glass-edge),
-    0 24px 64px #0000008c,
-    0 2px 8px #00000059;
+    var(--shadow-float);
   backdrop-filter: blur(24px) saturate(140%);
 }
 
@@ -95,7 +152,7 @@ kbd {
   height: 40px;
   padding: 0 18px;
   border: 0;
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
   font-size: 14px;
   background: linear-gradient(
@@ -107,7 +164,7 @@ kbd {
   box-shadow: 0 0 12px #7c5cff73;
 }
 .btn-primary:hover {
-  background: #6544ee;
+  background: var(--accent-hover);
 }
 .overline {
   font-size: 11px;

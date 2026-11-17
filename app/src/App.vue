@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { I18nT, useI18n } from 'vue-i18n'
+import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import {
   emu,
@@ -12,7 +12,9 @@ import {
   type VideoMode,
 } from './emu'
 import { errorText, gamepadName, speedLabel } from './i18n/labels'
-import { dispatchNav, keyToNav, showFocusRing, useNavScope } from './nav'
+import { dispatchNav, keyToNav, showFocusRing } from './nav'
+import type { Section } from './sections'
+import AppShell from './components/AppShell.vue'
 import GameCanvas from './components/GameCanvas.vue'
 import QuickMenu from './components/QuickMenu.vue'
 import ToastStack from './components/ToastStack.vue'
@@ -21,6 +23,8 @@ import TouchControls from './components/TouchControls.vue'
 const { t, n } = useI18n()
 
 const game = ref<GameInfo | null>(null)
+// The shell's section: kept while a game is open, so closing it comes back here.
+const section = ref<Section>('library')
 const menuOpen = ref(false)
 // Paused with the controller combo (L3 + A), menu closed.
 const paused = ref(false)
@@ -51,10 +55,6 @@ function applyBackground() {
     videoMode.value === 'native' ? 'transparent' : 'var(--bg)'
 }
 
-// Start screen: reachable with the controller too (the focus starts on "Open a game").
-const startCard = ref<HTMLElement | null>(null)
-useNavScope(startCard, { autofocus: true })
-
 // While the menu is open, Rust sends the controllers to the menu (emu://nav), not to the game.
 watch(menuOpen, open => void emu.setMenuOpen(open))
 
@@ -68,7 +68,7 @@ async function openGame(given?: string) {
     given ??
     (await open({
       multiple: false,
-      filters: [{ name: t('start.dialogFilter'), extensions: ['gba', 'gb', 'gbc'] }],
+      filters: [{ name: t('library.dialogFilter'), extensions: ['gba', 'gb', 'gbc'] }],
     }))
   if (typeof path !== 'string') return
   try {
@@ -122,7 +122,7 @@ function onHotkey(h: HotkeyEvent) {
 function onKey(e: KeyboardEvent, pressed: boolean) {
   if (pressed) showFocusRing()
   if (e.code === 'Escape' && pressed) return void setMenu(!menuOpen.value)
-  // Menu or start screen: arrows move the focus, Enter confirms.
+  // Menu or shell: arrows move the focus, Enter confirms.
   if (!game.value || menuOpen.value) {
     const nav = pressed ? keyToNav(e) : null
     if (nav) {
@@ -194,21 +194,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- No game: the Phase 0 start screen. -->
-  <main v-if="!game" class="start">
-    <section ref="startCard" class="glass-thick start-card">
-      <div class="overline">{{ t('start.overline') }}</div>
-      <h1>EmuDome</h1>
-      <p class="lead">{{ t('start.lead') }}</p>
-      <button class="btn btn-primary" data-nav-initial @click="openGame()">
-        {{ t('start.openGame') }}
-      </button>
-      <p v-if="error" class="error">{{ error }}</p>
-      <I18nT keypath="start.hint" tag="p" class="hint">
-        <template #path><code>tools/test-rom/emudome-test.gba</code></template>
-      </I18nT>
-    </section>
-  </main>
+  <!-- No game: the shell (rail, sections). -->
+  <AppShell v-if="!game" v-model="section" :error="error" @open-file="openGame()" />
 
   <!-- In game: no interface, except discreet indicators and the quick menu. -->
   <template v-else>
@@ -250,46 +237,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.start {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 32px;
-}
-.start-card {
-  width: min(460px, 100%);
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-start;
-}
-h1 {
-  margin: 0;
-  font-size: 32px;
-  line-height: 38px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.lead {
-  margin: 0 0 8px;
-  font-size: 15px;
-  line-height: 22px;
-  color: var(--ink-muted);
-}
-.hint {
-  margin: 8px 0 0;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-muted);
-}
-.error {
-  margin: 0;
-  color: var(--danger);
-}
-code {
-  font-size: 12px;
-}
 .hud {
   position: fixed;
   top: 16px;

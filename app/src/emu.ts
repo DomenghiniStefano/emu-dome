@@ -66,6 +66,9 @@ export interface GamepadEvent {
 
 export type VideoMode = 'native' | 'webview'
 
+/** Interface theme (mirror of `Theme` in src-tauri/src/theme.rs): Scuro, Nero, Chiaro. */
+export type Theme = 'dark' | 'black' | 'light'
+
 /** One focus step (`emu://nav`, mirror of `emudome_core::hotkeys::Nav`), also produced by the keyboard. */
 export type NavAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'
 
@@ -98,6 +101,8 @@ export const emu = {
   reset: () => invoke<void>('reset_game'),
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
   stats: () => invoke<Stats>('stats'),
+  /** The theme to show: `EMUDOME_THEME` if set, else the system's (dark → Scuro, light → Chiaro). */
+  theme: (systemDark: boolean) => invoke<Theme>('theme', { systemDark }),
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://event', e => cb(e.payload)),
   onMenu: (cb: () => void): Promise<UnlistenFn> => listen('emu://menu', () => cb()),

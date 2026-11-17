@@ -10,6 +10,7 @@ mod audio;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
 mod gamepad;
+mod theme;
 mod video;
 mod window;
 
@@ -437,6 +438,7 @@ pub fn run() {
             set_video_mode,
             startup_game,
             set_menu_open,
+            theme::theme,
         ])
         .run(tauri::generate_context!())
         .expect("EmuDome failed to start");
