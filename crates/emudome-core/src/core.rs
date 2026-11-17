@@ -230,4 +230,9 @@ impl GameFiles {
         self.save_dir
             .join(format!("{}.slot{}.state", self.stem, slot))
     }
+
+    /// The thumbnail of a slot: the frame on screen when it was saved.
+    pub fn thumb(&self, slot: u8) -> PathBuf {
+        self.slot(slot).with_extension("png")
+    }
 }

@@ -13,6 +13,20 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// The frame as a PNG file (slot thumbnails, screenshots). Errors on an empty frame.
+    pub fn to_png(&self) -> Result<Vec<u8>, png::EncodingError> {
+        let mut out = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut out, self.width, self.height);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            let mut writer = encoder.write_header()?;
+            writer.write_image_data(&self.rgba)?;
+            writer.finish()?;
+        }
+        Ok(out)
+    }
+
     /// Converts the core's buffer (with its `pitch`) to RGBA8.
     ///
     /// # Safety

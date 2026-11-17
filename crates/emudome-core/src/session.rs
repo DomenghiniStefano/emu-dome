@@ -109,6 +109,52 @@ pub struct SessionOptions {
     pub resume_auto: bool,
 }
 
+/// One quick save slot of a game, for the quick menu (G07).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SlotInfo {
+    pub slot: u8,
+    /// When the slot was written; None = empty.
+    pub saved_at: Option<std::time::SystemTime>,
+    /// The thumbnail file, when there is one.
+    pub thumb: Option<PathBuf>,
+}
+
+/// The auto quick save and slots `1..=count` of a game.
+pub fn slot_infos(
+    save_dir: &std::path::Path,
+    game_path: &std::path::Path,
+    count: u8,
+) -> Vec<SlotInfo> {
+    let files = GameFiles::new(save_dir, game_path);
+    (0..=count)
+        .map(|slot| {
+            let saved_at = std::fs::metadata(files.slot(slot))
+                .and_then(|m| m.modified())
+                .ok();
+            let thumb = files.thumb(slot);
+            SlotInfo {
+                slot,
+                saved_at,
+                thumb: (saved_at.is_some() && thumb.is_file()).then_some(thumb),
+            }
+        })
+        .collect()
+}
+
+/// Writes the thumbnail of a slot from the frame on screen (failures only logged: a slot
+/// without a picture still loads).
+fn write_thumb(files: &GameFiles, slot: u8, shared: &Shared) {
+    let png = shared.frame.lock().to_png();
+    match png {
+        Ok(bytes) => {
+            if let Err(e) = std::fs::write(files.thumb(slot), bytes) {
+                log::warn!("slot {slot} thumbnail not written: {e}");
+            }
+        }
+        Err(e) => log::warn!("slot {slot} thumbnail not encoded: {e}"),
+    }
+}
+
 /// Whether a game has an auto quick save to resume from.
 pub fn has_auto_save(save_dir: &std::path::Path, game_path: &std::path::Path) -> bool {
     GameFiles::new(save_dir, game_path)
@@ -250,7 +296,10 @@ fn emu_thread(
     let save_auto = |core: &LoadedCore| match core.save_state().and_then(|data| {
         std::fs::write(files.slot(AUTO_SLOT), data).context("cannot write the auto save")
     }) {
-        Ok(()) => shared.stats.lock().auto_saved_at = Some(std::time::SystemTime::now()),
+        Ok(()) => {
+            write_thumb(&files, AUTO_SLOT, &shared);
+            shared.stats.lock().auto_saved_at = Some(std::time::SystemTime::now());
+        }
         Err(e) => {
             let _ = events.send(Event::Error {
                 error: ErrorCode::StateSaveFailed {
@@ -311,6 +360,9 @@ fn emu_thread(
                     let res = core.save_state().and_then(|data| {
                         std::fs::write(files.slot(slot), data).context("cannot write the slot")
                     });
+                    if res.is_ok() {
+                        write_thumb(&files, slot, &shared);
+                    }
                     let _ = events.send(match res {
                         Ok(()) => Event::StateSaved { slot },
                         Err(e) => Event::Error {
@@ -405,13 +457,19 @@ fn load_slot(core: &LoadedCore, files: &GameFiles, slot: u8) -> Result<(), Error
 mod tests {
     use std::path::Path;
 
-    use super::{has_auto_save, GameFiles, AUTO_SLOT};
+    use super::{has_auto_save, slot_infos, GameFiles, AUTO_SLOT};
 
     #[test]
     fn the_auto_quick_save_has_its_own_file() {
         let files = GameFiles::new(Path::new("saves"), Path::new("games/Game.gba"));
         assert!(files.slot(AUTO_SLOT).ends_with("Game.auto.state"));
         assert!(files.slot(1).ends_with("Game.slot1.state"));
+        assert!(files.thumb(3).ends_with("Game.slot3.png"));
+        let empty = slot_infos(Path::new("no-such-dir"), Path::new("games/Game.gba"), 3);
+        assert_eq!(empty.len(), 4);
+        assert!(empty
+            .iter()
+            .all(|s| s.saved_at.is_none() && s.thumb.is_none()));
         assert!(!has_auto_save(
             Path::new("no-such-dir"),
             Path::new("games/Game.gba")
