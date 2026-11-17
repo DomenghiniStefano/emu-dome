@@ -289,7 +289,8 @@ onUnmounted(() => unlistenSettings?.())
               @click="open(hero)"
             >
               <Play :size="16" fill="currentColor" :stroke-width="0" aria-hidden="true" />
-              {{ t('library.hero.resume') }}
+              <!-- Glossary: «Riprendi» resumes from a quick save, «Gioca» starts without one. -->
+              {{ t(hero.lastStateThumbUrl ? 'library.hero.resume' : 'library.hero.play') }}
             </button>
             <button class="btn tall" disabled :title="t('placeholder.line')">
               {{ t('library.hero.chooseSave') }}

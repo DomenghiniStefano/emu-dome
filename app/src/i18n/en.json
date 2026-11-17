@@ -31,6 +31,7 @@
       "label": "LAST PLAYED",
       "meta": "{console} · {time} played · {when}",
       "resume": "Resume",
+      "play": "Play",
       "chooseSave": "Choose a save",
       "details": "Game details",
       "autoSave": "Auto quick save"

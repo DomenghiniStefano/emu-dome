@@ -31,6 +31,7 @@
       "label": "ULTIMO GIOCO",
       "meta": "{console} · {time} di gioco · {when}",
       "resume": "Riprendi",
+      "play": "Gioca",
       "chooseSave": "Scegli un salvataggio",
       "details": "Dettagli del gioco",
       "autoSave": "Salvataggio rapido automatico"
