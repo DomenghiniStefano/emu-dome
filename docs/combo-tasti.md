@@ -281,7 +281,8 @@ the Phase 1 settings engine will build other `Bindings` from it. The actions run
 | L3 + B | Screenshot | TODO (screenshots do not exist yet) |
 | L3 + Y | Swap screens | TODO, Phase 2 (NDS/3DS) |
 | L3 + R3 | Next screen layout | TODO, Phase 2 (NDS/3DS) |
-| L3 + ? | Fullscreen on/off | TODO: was M + L3 in section 4, L3 is now the modifier; button to choose (Select is free) |
+| L3 + Select | Close/open the lid (NDS/3DS), also from the quick menu | TODO, Phase 2 (decided 2026-11-17) |
+| (none) | Fullscreen on/off: keyboard F11 only, no controller combo | TODO (decided 2026-11-17) |
 
 Known limits of this first version:
 

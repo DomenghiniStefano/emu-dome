@@ -51,3 +51,10 @@ The desk checks that followed are in `docs/feasibility.md`.
 - **Touch skins: our own pack format with import/export from day one**; `.deltaskin` and RetroArch overlay
   importers in Phase 5. Built-in skins contain only our own art.
 - **Macros: always allowed** (a future hardcore mode would disable them).
+- **No emulation core of our own.** The existing cores (mGBA, melonDS DS, Azahar) are mature; writing one
+  would only make sense if they were poor, and testing it would cost too much (2026-11-17).
+- **Keyboard F11 = fullscreen**, the usual convention; no controller combo for it. Swap screens stays L3 + Y
+  (2026-11-17).
+- **NDS/3DS lid: L3 + Select**, and also from the quick menu (Tools) (2026-11-17).
+- **Reference Android phones: the Galaxy A71** as the minimum for GBA and NDS, **plus a powerful recent phone**
+  for 3DS, model still to choose (2026-11-17).
