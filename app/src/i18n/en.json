@@ -1599,5 +1599,31 @@
     "choose": "Choose",
     "none": "None",
     "done": "Done"
+  },
+  "flow": {
+    "starting": "Starting",
+    "startFailed": "Can’t start {title}",
+    "gotIt": "Got it",
+    "hintEsc": "Esc",
+    "hintOr": "or",
+    "hintHome": "Home",
+    "hintText": "for the quick menu",
+    "closing": "Closing {title}",
+    "stepAuto": "Auto quick save",
+    "stepInGame": "In-game save",
+    "resumeTitle": "Do you want to resume where you left off?",
+    "resume": "Resume",
+    "restart": "Start from the in-game save",
+    "crashTitle": "The game stopped because of an error",
+    "crashText": "The {console} emulator stopped responding.",
+    "crashSaved": "The auto quick save from {when} is safe.",
+    "crashNoSave": "This game has no auto quick save yet.",
+    "copyDetails": "Copy the details for a report",
+    "detailsCopied": "Details copied",
+    "backToLibrary": "Back to the library",
+    "resumeAuto": "Resume from the auto quick save",
+    "slowTitle": "The game runs slower than normal ({fps} FPS of {target})",
+    "slowText": "This device struggles to keep the game at the right speed. Try the “Maximum performance” preset in Settings.",
+    "notNow": "Not now"
   }
 }

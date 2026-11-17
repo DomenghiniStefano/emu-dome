@@ -1599,5 +1599,31 @@
     "choose": "Scegli",
     "none": "Nessuno",
     "done": "Fatto"
+  },
+  "flow": {
+    "starting": "Avvio in corso",
+    "startFailed": "Impossibile avviare {title}",
+    "gotIt": "Ho capito",
+    "hintEsc": "Esc",
+    "hintOr": "o",
+    "hintHome": "Home",
+    "hintText": "per il menu rapido",
+    "closing": "Chiusura di {title}",
+    "stepAuto": "Salvataggio rapido automatico",
+    "stepInGame": "Salvataggio del gioco",
+    "resumeTitle": "Vuoi riprendere da dove avevi lasciato?",
+    "resume": "Riprendi",
+    "restart": "Ricomincia dal salvataggio del gioco",
+    "crashTitle": "Il gioco si è fermato per un errore",
+    "crashText": "L’emulatore del {console} ha smesso di rispondere.",
+    "crashSaved": "Il salvataggio automatico di {when} è al sicuro.",
+    "crashNoSave": "Questa partita non ha ancora un salvataggio automatico.",
+    "copyDetails": "Copia i dettagli per una segnalazione",
+    "detailsCopied": "Dettagli copiati",
+    "backToLibrary": "Torna alla libreria",
+    "resumeAuto": "Riprendi dal salvataggio automatico",
+    "slowTitle": "Il gioco va più lento del normale ({fps} FPS su {target})",
+    "slowText": "Questo dispositivo fatica a tenere il gioco alla velocità giusta. Prova la preimpostazione «Prestazioni massime» nelle Impostazioni.",
+    "notNow": "Non ora"
   }
 }
