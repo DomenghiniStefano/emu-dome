@@ -6,7 +6,6 @@ import { Library } from '@lucide/vue'
 import {
   AUTO_SLOT,
   emu,
-  KEYMAP,
   type GameInfo,
   type HotkeyEvent,
   type LibraryGame,
@@ -18,6 +17,7 @@ import { startLibrary } from './library'
 import { flow, gameStarted as flowStarted, sample } from './gameFlow'
 import { errorText, gamepadName, speedLabel } from './i18n/labels'
 import { dispatchNav, keyToNav, showFocusRing } from './nav'
+import { keymap, loadKeymap } from './keymap'
 import type { Section } from './sections'
 import AppShell from './components/AppShell.vue'
 import GameCanvas from './components/GameCanvas.vue'
@@ -63,6 +63,11 @@ function applyBackground() {
 
 // While the menu is open, Rust sends the controllers to the menu (emu://nav), not to the game.
 watch(menuOpen, open => void emu.setMenuOpen(open))
+// The keyboard's keys follow the open game's settings, or «Tutti i giochi» without one.
+watch(
+  () => game.value !== null,
+  inGame => void loadKeymap(inGame),
+)
 
 const turboHeld = ref(false)
 let statsTimer: number | undefined
@@ -242,6 +247,11 @@ function onHotkey(h: HotkeyEvent) {
 function onKey(e: KeyboardEvent, pressed: boolean) {
   if (pressed) showFocusRing()
   if (e.code === 'Escape' && pressed) return void setMenu(!menuOpen.value)
+  if (e.code === 'F11') {
+    e.preventDefault()
+    if (pressed && !e.repeat) void emu.toggleFullscreen()
+    return
+  }
   // Menu or shell: arrows move the focus, Enter confirms.
   if (!game.value || menuOpen.value) {
     const nav = pressed ? keyToNav(e) : null
@@ -264,7 +274,7 @@ function onKey(e: KeyboardEvent, pressed: boolean) {
     void emu.setSpeed(pressed ? { kind: 'max' } : speed.value)
     return
   }
-  const button = KEYMAP[e.code]
+  const button = keymap.value[e.code]
   if (button) {
     e.preventDefault()
     if (!e.repeat) void emu.input(button, pressed)
@@ -279,7 +289,11 @@ onMounted(async () => {
   applyBackground()
   window.addEventListener('keydown', down)
   window.addEventListener('keyup', up)
+  void loadKeymap(false)
   unlisten.push(
+    await emu.settings.onChanged(e => {
+      if (e.key === 'pad.remap') void loadKeymap(game.value !== null)
+    }),
     await emu.onMenu(() => {
       showFocusRing()
       void setMenu(!menuOpen.value)

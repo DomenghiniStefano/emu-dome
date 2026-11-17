@@ -31,7 +31,13 @@ const props = defineProps<{
   /** Quick menu: no per-row reset or «Come in …» (the bar at the bottom handles the changes). */
   compact?: boolean
 }>()
-const emit = defineEmits<{ set: [SettingValue]; reset: []; error: [string] }>()
+const emit = defineEmits<{
+  set: [SettingValue]
+  reset: []
+  error: [string]
+  /** A binding list (`pad.remap`, `pad.combos`): open the Controls section, where it is edited. */
+  open: []
+}>()
 
 const { t, te } = useI18n()
 const key = computed(() => props.entry.key)
@@ -273,6 +279,16 @@ function swatchName(hex: string): string {
           :disabled="disabled"
           @change="set(($event.target as HTMLInputElement).value)"
         />
+
+        <!-- binding list: edited in the Controls section -->
+        <button
+          v-else-if="kind.type === 'bindings'"
+          class="btn"
+          :disabled="disabled || compact"
+          @click="emit('open')"
+        >
+          {{ t('settingsUi.openControls') }}
+        </button>
 
         <!-- file, action -->
         <template v-else-if="kind.type === 'file' || kind.type === 'action'">
