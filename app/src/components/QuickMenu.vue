@@ -399,11 +399,12 @@ watch(tab, k => {
 </template>
 
 <style scoped>
+/* As tall as its content (no empty band), at most the window. */
 .menu {
   position: fixed;
   top: 16px;
   right: 16px;
-  bottom: 16px;
+  max-height: calc(100vh - 32px);
   width: 420px;
   max-width: calc(100vw - 32px);
   display: flex;
@@ -417,9 +418,9 @@ watch(tab, k => {
   line-height: 22px;
   font-weight: 600;
 }
+/* Each tab as wide as its label: «Salvataggi rapidi» fits without being cut. */
 .tabs {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
   gap: 2px;
   padding: 2px;
   border-radius: var(--radius-6);
@@ -427,8 +428,9 @@ watch(tab, k => {
   border: 1px solid var(--line);
 }
 .tab {
+  flex: 1 1 auto;
   height: 28px;
-  padding: 0 4px;
+  padding: 0 6px;
   border: 0;
   border-radius: 4px;
   background: none;
@@ -445,7 +447,7 @@ watch(tab, k => {
   font-weight: 600;
 }
 .body {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   display: flex;
@@ -499,7 +501,7 @@ watch(tab, k => {
   gap: 8px;
 }
 .row-actions .btn {
-  flex: 1;
+  flex: 1 1 100%;
 }
 /* «Annulla il caricamento»: a secondary action under the load / save pair. */
 .btn.undo {
