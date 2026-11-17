@@ -81,6 +81,8 @@ let closingNow = false
 // When the open game started («stai giocando da …») and the controller in use (quick menu).
 const startedAt = ref(Date.now())
 const controller = ref<string | null>(null)
+// The slot the controller shortcuts use (L3 + ← →): the quick menu opens on it.
+const comboSlot = ref(1)
 // A load happened in this game: the quick menu offers «Annulla il caricamento» (`saves.undo`).
 const canUndoLoad = ref(false)
 // E04: the game whose in-game save was set aside, to open again after restoring a backup.
@@ -283,6 +285,7 @@ function onHotkey(h: HotkeyEvent) {
       showFps.value = !showFps.value
       return
     case 'slot':
+      comboSlot.value = h.slot
       toasts.value?.push(t('toast.slot', { slot: h.slot }))
       return
     case 'speed':
@@ -298,7 +301,11 @@ function onHotkey(h: HotkeyEvent) {
 
 function onKey(e: KeyboardEvent, pressed: boolean) {
   if (pressed) showFocusRing()
-  if (e.code === 'Escape' && pressed) return void setMenu(!menuOpen.value)
+  if (e.code === 'Escape' && pressed) {
+    // In the quick menu Esc is «back»: one level up, and from its main screen the game resumes.
+    if (menuOpen.value) return dispatchNav('back')
+    return void setMenu(true)
+  }
   if (e.code === 'F11') {
     e.preventDefault()
     if (pressed && !e.repeat) void emu.toggleFullscreen()
@@ -447,6 +454,7 @@ onUnmounted(() => {
       :native-available="nativeAvailable"
       :started-at="startedAt"
       :controller="controller"
+      :current-slot="comboSlot"
       :can-undo-load="canUndoLoad"
       @video-mode="setVideoMode"
       @resume="setMenu(false)"

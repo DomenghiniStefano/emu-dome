@@ -1629,42 +1629,28 @@
   },
   "qm": {
     "label": "Quick menu",
-    "tabs": "Quick menu sections",
     "playing": "{console} · playing for {time}",
-    "tab": {
-      "saves": "Quick saves",
-      "speed": "Speed",
-      "screens": "Screens",
-      "controls": "Controls",
-      "tools": "Tools"
-    },
     "auto": "Automatic",
     "slot": "Slot {slot}",
     "empty": "Empty",
-    "loadAuto": "Load the auto quick save",
+    "loadAuto": "Load from the auto slot",
     "loadSlot": "Load from slot {slot}",
-    "saveFree": "Save to a free slot",
     "saveSlot": "Save to slot {slot}",
     "autoEvery": "Auto quick save: {every}",
     "keys": "{save} saves · {load} loads slot 1",
-    "speedTitle": "GAME SPEED",
-    "speedNote": "For now the audio is muted when the speed is not 1×. “Max” goes as fast as the device can.",
-    "ffTitle": "FAST FORWARD",
-    "rewTitle": "REWIND",
-    "imageTitle": "IMAGE",
-    "displayTitle": "DISPLAY METHOD",
+    "speedTitle": "SPEED",
+    "speedNote": "Audio is muted when not at 1×",
     "noNative": "The Accelerated method is not available on this system.",
     "controller": "Controller in use",
     "noController": "No controller connected: use the keyboard.",
     "shortcuts": "Controller shortcuts",
-    "shortcutsHint": "Hold L3 and press another button",
-    "showList": "Show the list",
+    "shortcutsHint": "Hold {modifier} and press a button",
     "remap": "Remap the buttons for this game",
     "screenshot": "Take a screenshot",
     "reset": "Restart the game",
-    "resetHint": "unsaved progress is lost",
+    "resetHint": "Back to the start, your saves stay",
     "close": "Close the game",
-    "closeHint": "saves automatically before closing",
+    "closeHint": "Saves automatically before closing",
     "trial": "{n} changes on trial: {names}",
     "trialOne": "1 change on trial: {names}",
     "trialHint": "You already see them in the game. If you close the game without saving them, they go back to how they were.",
@@ -1673,7 +1659,49 @@
     "saveConsole": "Save for all {console} games instead",
     "resume": "Resume the game",
     "notYet": "This arrives in a future update",
-    "undoLoad": "Undo load"
+    "undoLoad": "Undo load",
+    "savesTitle": "QUICK SAVES",
+    "slotsLabel": "Slots",
+    "more": "More slots and saves",
+    "moreShort": "More slots",
+    "moreLabel": "More",
+    "saveAuto": "Save to the auto slot",
+    "emptySlot": "Slot {slot} is empty",
+    "emptyAuto": "The auto slot is empty",
+    "speedNormal": "Normal speed",
+    "ff": "Fast forward",
+    "slow": "Slow motion",
+    "hint": {
+      "save": "save",
+      "load": "load",
+      "slot": "change slot",
+      "ffHold": "fast forward while held",
+      "slow": "slow motion"
+    },
+    "hintPair": "{a} {b}",
+    "dir": {
+      "up": "up",
+      "down": "down",
+      "left": "←",
+      "right": "→"
+    },
+    "row": {
+      "screens": {
+        "name": "Screens and picture",
+        "sub": "Size, smoothing, screen effects"
+      },
+      "controls": {
+        "name": "Controls",
+        "sub": "Remap for this game, shortcuts",
+        "subTouch": "Touch controls opacity, remap"
+      },
+      "tools": {
+        "name": "Tools",
+        "sub": "Screenshot, restart, close the game"
+      }
+    },
+    "resumeShort": "Resume",
+    "resumeKeys": "{esc} · {back}"
   },
   "controls": {
     "keyboard": "Keyboard",
@@ -1944,6 +1972,7 @@
       "keepThis": "Keep this one",
       "keepBoth": "Keep both",
       "later": "Decide later, open this device's version"
-    }
+    },
+    "slotMore": "More actions for the slot"
   }
 }
