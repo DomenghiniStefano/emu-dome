@@ -10,10 +10,11 @@ import { useI18n } from 'vue-i18n'
 import { Cloud, Gamepad2, Library, Save, Settings2 } from '@lucide/vue'
 import { useNavScope } from '../nav'
 import { SECTIONS, type Section } from '../sections'
-import LibraryEmpty from './LibraryEmpty.vue'
+import type { LibraryGame } from '../emu'
+import LibraryView from './LibraryView.vue'
 
 defineProps<{ error: string | null }>()
-const emit = defineEmits<{ openFile: [] }>()
+const emit = defineEmits<{ openFile: []; openGame: [LibraryGame]; error: [string] }>()
 const section = defineModel<Section>({ required: true })
 
 const { t } = useI18n()
@@ -66,7 +67,13 @@ function initialOn(s: Section) {
         </template>
       </nav>
       <main class="content">
-        <LibraryEmpty v-if="section === 'library'" :error="error" @open-file="emit('openFile')" />
+        <LibraryView
+          v-if="section === 'library'"
+          :error="error"
+          @open="g => emit('openGame', g)"
+          @open-file="emit('openFile')"
+          @error="text => emit('error', text)"
+        />
         <section v-else class="placeholder">
           <h1 class="title">{{ t(`shell.${section}`) }}</h1>
           <p class="line">{{ t('placeholder.line') }}</p>

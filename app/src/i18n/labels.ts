@@ -38,3 +38,31 @@ export function speedLabel(s: Speed | null): string {
 export function gamepadName(e: GamepadEvent): string {
   return e.name ?? t('toast.gamepadUnnamed')
 }
+
+/** Play time on a cover ("14 h", "32 min") or, `long`, in the «Riprendi» hero ("14 h 32 min"). */
+export function playTimeLabel(secs: number, long = false): string {
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  if (h === 0) return t('library.time.minutes', { m })
+  if (long && m > 0) return t('library.time.hoursMinutes', { h, m })
+  return t('library.time.hours', { h })
+}
+
+/**
+ * When a game was last played, as the L01 board writes it: "today", "yesterday", "3 days ago",
+ * "last week", then the month ("October", with the year when it is not this one).
+ */
+export function lastPlayedLabel(ms: number, now = Date.now()): string {
+  const locale = i18n.global.locale.value
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const then = new Date(ms)
+  const days = Math.round((day(new Date(now)) - day(then)) / 86_400_000)
+  const rel = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  if (days < 7) return rel.format(-Math.max(0, days), 'day')
+  if (days < 14) return rel.format(-1, 'week')
+  const sameYear = then.getFullYear() === new Date(now).getFullYear()
+  return new Intl.DateTimeFormat(
+    locale,
+    sameYear ? { month: 'long' } : { month: 'long', year: 'numeric' },
+  ).format(then)
+}

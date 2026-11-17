@@ -2,15 +2,18 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
+import { Library } from '@lucide/vue'
 import {
   emu,
   KEYMAP,
   type GameInfo,
   type HotkeyEvent,
+  type LibraryGame,
   type Speed,
   type Stats,
   type VideoMode,
 } from './emu'
+import { startLibrary } from './library'
 import { errorText, gamepadName, speedLabel } from './i18n/labels'
 import { dispatchNav, keyToNav, showFocusRing } from './nav'
 import type { Section } from './sections'
@@ -62,6 +65,13 @@ const turboHeld = ref(false)
 let statsTimer: number | undefined
 const unlisten: Array<() => void> = []
 
+function gameStarted(info: GameInfo) {
+  game.value = info
+  speed.value = { kind: 'factor', value: 1 }
+  menuOpen.value = false
+  paused.value = false
+}
+
 async function openGame(given?: string) {
   error.value = null
   const path =
@@ -72,12 +82,30 @@ async function openGame(given?: string) {
     }))
   if (typeof path !== 'string') return
   try {
-    game.value = await emu.openGame(path)
-    speed.value = { kind: 'factor', value: 1 }
-    menuOpen.value = false
-    paused.value = false
+    gameStarted(await emu.openGame(path))
   } catch (e) {
     error.value = errorText(e)
+  }
+}
+
+/** A game from the library (L01): same flow, and the backend counts its play time. */
+async function openLibraryGame(g: LibraryGame) {
+  try {
+    gameStarted(await emu.library.open(g.id))
+  } catch (e) {
+    toasts.value?.push(errorText(e), 'error')
+  }
+}
+
+// Files or folders dragged over the window, outside the game: overlay, then into the library.
+const dragOver = ref(false)
+async function onDrop(paths: string[]) {
+  dragOver.value = false
+  if (game.value || paths.length === 0) return
+  try {
+    await emu.library.addPaths(paths)
+  } catch (e) {
+    toasts.value?.push(errorText(e), 'error')
   }
 }
 
@@ -172,6 +200,12 @@ onMounted(async () => {
     await emu.onGamepadDisconnected(p =>
       toasts.value?.push(t('toast.gamepadDisconnected', { name: gamepadName(p) })),
     ),
+    await emu.library.onDragDrop(e => {
+      if (e.type === 'over') dragOver.value = !game.value
+      else if (e.type === 'leave') dragOver.value = false
+      else void onDrop(e.paths)
+    }),
+    ...(await startLibrary()),
     await emu.onEvent(ev => {
       if (ev.type === 'stateSaved') toasts.value?.push(t('toast.stateSaved', { slot: ev.slot }))
       if (ev.type === 'stateLoaded') toasts.value?.push(t('toast.stateLoaded', { slot: ev.slot }))
@@ -195,7 +229,14 @@ onUnmounted(() => {
 
 <template>
   <!-- No game: the shell (rail, sections). -->
-  <AppShell v-if="!game" v-model="section" :error="error" @open-file="openGame()" />
+  <AppShell
+    v-if="!game"
+    v-model="section"
+    :error="error"
+    @open-file="openGame()"
+    @open-game="openLibraryGame"
+    @error="text => toasts?.push(text, 'error')"
+  />
 
   <!-- In game: no interface, except discreet indicators and the quick menu. -->
   <template v-else>
@@ -233,10 +274,45 @@ onUnmounted(() => {
     />
   </template>
 
+  <!-- Drag and drop over the window: games and folders go into the library. -->
+  <div v-if="dragOver && !game" class="drop" aria-hidden="true">
+    <div class="drop-box">
+      <Library :size="44" :stroke-width="1.5" />
+      <div class="drop-text">{{ t('library.drop') }}</div>
+    </div>
+  </div>
+
   <ToastStack ref="toasts" />
 </template>
 
 <style scoped>
+.drop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  padding: 16px;
+  display: flex;
+  background: var(--scrim);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+.drop-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 2px dashed var(--accent-text);
+  border-radius: var(--radius-16);
+  color: var(--accent-text);
+}
+.drop-text {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  color: var(--ink);
+}
 .hud {
   position: fixed;
   top: 16px;
