@@ -16,7 +16,7 @@ import {
 } from './emu'
 import { startLibrary } from './library'
 import { flow, gameStarted as flowStarted, sample } from './gameFlow'
-import { errorText, gamepadName, speedLabel } from './i18n/labels'
+import { errorText, gamepadName, isErrorCode, speedLabel } from './i18n/labels'
 import { dispatchNav, keyToNav, showFocusRing } from './nav'
 import type { Section } from './sections'
 import AppShell from './components/AppShell.vue'
@@ -76,6 +76,10 @@ let closingNow = false
 // When the open game started («stai giocando da …») and the controller in use (quick menu).
 const startedAt = ref(Date.now())
 const controller = ref<string | null>(null)
+// A load happened in this game: the quick menu offers «Annulla il caricamento» (`saves.undo`).
+const canUndoLoad = ref(false)
+// E04: the game whose in-game save was set aside, to open again after restoring a backup.
+let brokenOpened: { opened: Opened; title: string; colour: string | null } | null = null
 
 async function gameStarted(info: GameInfo, resumeAuto = false) {
   game.value = info
@@ -83,6 +87,7 @@ async function gameStarted(info: GameInfo, resumeAuto = false) {
   speed.value = { kind: 'factor', value: 1 }
   menuOpen.value = false
   paused.value = false
+  canUndoLoad.value = false
   flowStarted()
   if (resumeAuto) {
     await emu.loadState(AUTO_SLOT)
@@ -93,8 +98,13 @@ async function gameStarted(info: GameInfo, resumeAuto = false) {
   }
 }
 
-/** G01 while the core loads, G02 if it cannot start. */
-async function start(opened: Opened, title: string, colour: string | null, resumeAuto = false) {
+/** G01 while the core loads, G02 if it cannot start, E04 if its in-game save is unreadable. */
+async function start(
+  opened: Opened,
+  title: string,
+  colour: string | null,
+  resumeAuto = false,
+): Promise<boolean> {
   error.value = null
   flow.launching = { title, colour }
   try {
@@ -104,11 +114,37 @@ async function start(opened: Opened, title: string, colour: string | null, resum
         : await emu.library.open(opened.game.id)
     lastOpened = opened
     await gameStarted(info, resumeAuto)
+    return true
   } catch (e) {
-    flow.startError = { title, reason: errorText(e) }
+    if (isErrorCode(e) && e.code === 'saveUnreadable') {
+      brokenOpened = { opened, title, colour }
+      flow.saveBroken = { title, backupAt: e.params.backupAt }
+    } else {
+      flow.startError = { title, reason: errorText(e) }
+    }
+    return false
   } finally {
     flow.launching = null
   }
+}
+
+/** E04 «Usa il backup di …»: the newest backup becomes the in-game save, then the game opens. */
+async function useLatestBackup() {
+  const b = brokenOpened
+  flow.saveBroken = null
+  brokenOpened = null
+  if (!b) return
+  try {
+    await emu.saves.restoreLatest(b.opened.kind === 'path' ? b.opened.path : b.opened.game.path)
+  } catch (e) {
+    flow.startError = { title: b.title, reason: errorText(e) }
+    return
+  }
+  await start(b.opened, b.title, b.colour)
+}
+function closeBroken() {
+  flow.saveBroken = null
+  brokenOpened = null
 }
 
 /** The file name without folder and extension, as the title of a game outside the library. */
@@ -128,9 +164,17 @@ async function openGame(given?: string) {
   await start({ kind: 'path', path }, fileTitle(path), null)
 }
 
-/** A game from the library (L01): same flow, and the backend counts its play time. */
-async function openLibraryGame(g: LibraryGame) {
-  await start({ kind: 'library', game: g }, g.title, g.colour)
+/**
+ * A game from the library (L01): same flow, and the backend counts its play time. With `slot`
+ * (V03 «Apri il gioco e carica») that quick save is loaded once the game runs.
+ */
+async function openLibraryGame(g: LibraryGame, slot?: number) {
+  const started = await start({ kind: 'library', game: g }, g.title, g.colour)
+  if (!started || slot === undefined) return
+  // The quick save asked for wins over the resume question.
+  flow.resumeAsk = false
+  await emu.setPaused(false)
+  await emu.loadState(slot)
 }
 
 async function onResumeAnswer(resume: boolean) {
@@ -304,8 +348,13 @@ onMounted(async () => {
       // Slot 0 is the auto quick save: it works silently.
       if (ev.type === 'stateSaved' && ev.slot !== AUTO_SLOT)
         toasts.value?.push(t('toast.stateSaved', { slot: ev.slot }))
+      if (ev.type === 'stateLoaded') canUndoLoad.value = true
       if (ev.type === 'stateLoaded' && ev.slot !== AUTO_SLOT)
         toasts.value?.push(t('toast.stateLoaded', { slot: ev.slot }))
+      if (ev.type === 'loadUndone') {
+        canUndoLoad.value = false
+        toasts.value?.push(t('toast.loadUndone'))
+      }
       if (ev.type === 'error') toasts.value?.push(errorText(ev.error), 'error')
       if (ev.type === 'stopped' && !closingNow) crashed()
     }),
@@ -341,6 +390,7 @@ onUnmounted(() => {
     @open-file="openGame()"
     @open-game="openLibraryGame"
     @error="text => toasts?.push(text, 'error')"
+    @notice="text => toasts?.push(text)"
   />
 
   <!-- In game: no interface, except discreet indicators and the quick menu. -->
@@ -375,11 +425,13 @@ onUnmounted(() => {
       :native-available="nativeAvailable"
       :started-at="startedAt"
       :controller="controller"
+      :can-undo-load="canUndoLoad"
       @video-mode="setVideoMode"
       @resume="setMenu(false)"
       @speed="setSpeed"
       @save="(slot: number) => emu.saveState(slot)"
       @load="(slot: number) => emu.loadState(slot)"
+      @undo-load="emu.undoLoad()"
       @reset="emu.reset()"
       @close="closeGame"
       @error="text => toasts?.push(text, 'error')"
@@ -401,6 +453,8 @@ onUnmounted(() => {
     @crash-library="crashToLibrary"
     @crash-resume="crashResume"
     @slow-close="flow.slow = null"
+    @broken-use="useLatestBackup"
+    @broken-close="closeBroken"
   />
 
   <ToastStack ref="toasts" :in-game="!!game" />
