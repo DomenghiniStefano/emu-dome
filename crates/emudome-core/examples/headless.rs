@@ -32,6 +32,9 @@ fn main() -> anyhow::Result<()> {
             game_path: args[2].clone().into(),
             system_dir: tmp.join("system"),
             save_dir: tmp.join("saves"),
+            autosave_every: None,
+            autosave_on_exit: false,
+            resume_auto: false,
         },
         tx,
     )?;

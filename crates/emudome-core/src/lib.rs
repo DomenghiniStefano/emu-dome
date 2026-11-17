@@ -18,4 +18,6 @@ pub mod settings;
 
 pub use error::ErrorCode;
 pub use frame::Frame;
-pub use session::{Command, Event, Session, SessionOptions, Shared, Speed, Stats};
+pub use session::{
+    has_auto_save, Command, Event, Session, SessionOptions, Shared, Speed, Stats, AUTO_SLOT,
+};
