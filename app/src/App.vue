@@ -73,9 +73,13 @@ type Opened = { kind: 'path'; path: string } | { kind: 'library'; game: LibraryG
 let lastOpened: Opened | null = null
 // True while closing on purpose: the core's `stopped` event is then expected.
 let closingNow = false
+// When the open game started («stai giocando da …») and the controller in use (quick menu).
+const startedAt = ref(Date.now())
+const controller = ref<string | null>(null)
 
 async function gameStarted(info: GameInfo, resumeAuto = false) {
   game.value = info
+  startedAt.value = Date.now()
   speed.value = { kind: 'factor', value: 1 }
   menuOpen.value = false
   paused.value = false
@@ -282,12 +286,14 @@ onMounted(async () => {
     }),
     await emu.onNav(dispatchNav),
     await emu.onHotkey(onHotkey),
-    await emu.onGamepadConnected(p =>
-      toasts.value?.push(t('toast.gamepadConnected', { name: gamepadName(p) })),
-    ),
-    await emu.onGamepadDisconnected(p =>
-      toasts.value?.push(t('toast.gamepadDisconnected', { name: gamepadName(p) })),
-    ),
+    await emu.onGamepadConnected(p => {
+      controller.value = gamepadName(p)
+      toasts.value?.push(t('toast.gamepadConnected', { name: gamepadName(p) }))
+    }),
+    await emu.onGamepadDisconnected(p => {
+      if (controller.value === gamepadName(p)) controller.value = null
+      toasts.value?.push(t('toast.gamepadDisconnected', { name: gamepadName(p) }))
+    }),
     await emu.library.onDragDrop(e => {
       if (e.type === 'over') dragOver.value = !game.value
       else if (e.type === 'leave') dragOver.value = false
@@ -367,6 +373,8 @@ onUnmounted(() => {
       :speed="speed"
       :video-mode="videoMode"
       :native-available="nativeAvailable"
+      :started-at="startedAt"
+      :controller="controller"
       @video-mode="setVideoMode"
       @resume="setMenu(false)"
       @speed="setSpeed"
@@ -374,6 +382,7 @@ onUnmounted(() => {
       @load="(slot: number) => emu.loadState(slot)"
       @reset="emu.reset()"
       @close="closeGame"
+      @error="text => toasts?.push(text, 'error')"
     />
   </template>
 

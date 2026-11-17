@@ -28,6 +28,8 @@ const props = defineProps<{
   levelName: (level: SettingLevel) => string
   /** The page offers more than one level (scope bar shown). */
   scoped: boolean
+  /** Quick menu: no per-row reset or «Come in …» (the bar at the bottom handles the changes). */
+  compact?: boolean
 }>()
 const emit = defineEmits<{ set: [SettingValue]; reset: []; error: [string] }>()
 
@@ -191,10 +193,10 @@ function swatchName(hex: string): string {
       </div>
 
       <div class="control">
-        <span v-if="inheritedFrom && !changedHere" class="from">
+        <span v-if="inheritedFrom && !changedHere && !compact" class="from">
           {{ t('settingsUi.sameAs', { level: inheritedFrom }) }}
         </span>
-        <button v-if="changedHere" class="ghost" @click="emit('reset')">
+        <button v-if="changedHere && !compact" class="ghost" @click="emit('reset')">
           <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />
           {{ fallback ? t('settingsUi.useValueOf', { level: fallback }) : t('settingsUi.reset') }}
         </button>

@@ -48,6 +48,11 @@ export function lockReason(
   if (entry.platform !== 'all' && entry.platform !== schema.device)
     return entry.platform === 'phone' ? 'settingsUi.lockedPhone' : 'settingsUi.lockedDesktop'
   if (entry.kind.type === 'action') return null
+  // Session («in prova», quick menu): open to what can be saved per console or per game.
+  if (level === 'session')
+    return entry.levels.includes('console') || entry.levels.includes('game')
+      ? null
+      : 'settingsUi.lockedGlobal'
   if (!entry.levels.includes(level))
     return entry.levels.includes('global') ? 'settingsUi.lockedGlobal' : 'settingsUi.lockedScoped'
   return null
