@@ -9,14 +9,14 @@
   },
   "library": {
     "emptyTitle": "Add your games",
-    "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, or drag them here.",
+    "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games.",
     "chooseFolder": "Choose a folder…",
     "openFile": "Open a file…",
     "dialogFilter": "GBA games"
   },
   "placeholder": {
-    "line": "This section arrives in a later version.",
-    "chooseFolder": "Folders arrive with the library. For now, open a file."
+    "line": "This section arrives in a future update.",
+    "chooseFolder": "For now, open one game at a time with “Open a file…”. Choosing a folder arrives in a future update."
   },
   "hud": {
     "fps": "{fps} FPS",

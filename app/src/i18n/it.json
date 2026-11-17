@@ -9,14 +9,14 @@
   },
   "library": {
     "emptyTitle": "Aggiungi i tuoi giochi",
-    "emptyLead": "Scegli la cartella dove tieni i tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS, oppure trascinali qui.",
+    "emptyLead": "Scegli la cartella dove tieni i tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS.",
     "chooseFolder": "Scegli una cartella…",
     "openFile": "Apri un file…",
     "dialogFilter": "Giochi GBA"
   },
   "placeholder": {
-    "line": "Questa sezione arriva in una prossima versione.",
-    "chooseFolder": "Le cartelle arrivano con la libreria. Per ora apri un file."
+    "line": "Questa sezione arriva con un prossimo aggiornamento.",
+    "chooseFolder": "Per ora apri un gioco alla volta con «Apri un file…». La scelta della cartella arriva con un prossimo aggiornamento."
   },
   "hud": {
     "fps": "{fps} FPS",
