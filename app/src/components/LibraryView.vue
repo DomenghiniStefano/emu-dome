@@ -1,15 +1,23 @@
 <script setup lang="ts">
-// The Library section (board L01 · Desktop · Libreria): the «Riprendi» hero for the last game
-// played, the console chips, the order (`library.sort`, Global) and the L03 panel, the cover
-// grid. Around it: E01 banners for folders that are not reachable (their games stay, faded),
+// The Library section (board L01 · Desktop · Libreria, Libreria2 17/11): «Continua a giocare»
+// with up to four games played last («Riprendi» opens one and loads its newest quick save,
+// «Salvataggi» shows its saves), then «I tuoi giochi»: the console chips, the order
+// (`library.sort`, Global) and the L03 panel, the cover grid. Around it: E01 banners for folders that are not reachable (their games stay, faded),
 // the scan progress, L11 «N giochi aggiunti» after a scan, L12 to choose a cover.
 // No games at all: L02 (LibraryEmpty).
 //
 // Controller / keyboard: the shell's nav scope covers this view; L03 and L12 open their own.
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, FolderX, ImageIcon, Play, Plus, TriangleAlert, X } from '@lucide/vue'
-import { emu, type ConsoleId, type LibraryGame, type SettingsScope } from '../emu'
+import { ChevronDown, FolderX, ImageIcon, Plus, TriangleAlert, X } from '@lucide/vue'
+import {
+  AUTO_SLOT,
+  emu,
+  type ConsoleId,
+  type LibraryGame,
+  type QuickSave,
+  type SettingsScope,
+} from '../emu'
 import { errorText, lastPlayedLabel, playTimeLabel } from '../i18n/labels'
 import { chooseFolder, library, replaceFolder } from '../library'
 import {
@@ -28,7 +36,14 @@ import LibraryEmpty from './LibraryEmpty.vue'
 import LibraryFilters from './LibraryFilters.vue'
 
 defineProps<{ error: string | null }>()
-const emit = defineEmits<{ open: [LibraryGame]; openFile: []; error: [string] }>()
+const emit = defineEmits<{
+  /** `slot`: the quick save to load once the game runs («Riprendi»). */
+  open: [game: LibraryGame, slot?: number]
+  /** «Salvataggi» on a «Continua a giocare» card: the Saves section on that game. */
+  openSaves: [LibraryGame]
+  openFile: []
+  error: [string]
+}>()
 
 const { t } = useI18n()
 
@@ -111,16 +126,80 @@ const games = computed(() =>
   ),
 )
 
-// ---- The «Riprendi» hero: the last game played, whatever the filters ----
+// ---- «Continua a giocare»: the four games played last, whatever the filters ----
 
-const hero = computed(() =>
+const CONTINUE = 4
+const recent = computed(() =>
   library.games
     .filter(g => !g.hidden && g.lastPlayed !== null)
-    .reduce<LibraryGame | null>(
-      (best, g) => (best === null || (g.lastPlayed ?? 0) > (best.lastPlayed ?? 0) ? g : best),
-      null,
-    ),
+    .sort((a, b) => (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0))
+    .slice(0, CONTINUE),
 )
+
+/** Where «Riprendi» picks up: the newest quick save (auto or a slot), else the in-game save. */
+interface ResumePoint {
+  /** The quick save to load; null = start from the in-game save. */
+  slot: number | null
+  thumbUrl: string | null
+  /** Nothing saved at all: the button says «Gioca». */
+  none: boolean
+}
+const resume = ref<Record<string, ResumePoint>>({})
+
+async function loadResume() {
+  const games = recent.value
+  if (games.length === 0) return
+  let slots = 10
+  try {
+    const row = (await emu.settings.page('saves', GLOBAL)).find(r => r.key === 'saves.slots')
+    slots = Number(row?.value ?? 10) || 10
+  } catch (e) {
+    emit('error', errorText(e))
+  }
+  const points = await Promise.all(
+    games.map(async (g): Promise<[string, ResumePoint]> => {
+      try {
+        const saves = await emu.saves.game(g.path, slots)
+        let newest: QuickSave | null = null
+        for (const q of saves.quick)
+          if (q.savedAt !== null && (newest === null || q.savedAt > (newest.savedAt ?? 0)))
+            newest = q
+        return [
+          g.id,
+          {
+            slot: newest?.slot ?? null,
+            thumbUrl: newest?.thumbUrl ?? null,
+            none: !newest && !saves.inGame,
+          },
+        ]
+      } catch {
+        // Saves unreadable for now: open the game as «Gioca» would.
+        return [g.id, { slot: null, thumbUrl: null, none: true }]
+      }
+    }),
+  )
+  resume.value = Object.fromEntries(points)
+}
+watch(
+  () => recent.value.map(g => `${g.id}:${g.lastPlayed}`).join(),
+  () => void loadResume(),
+  { immediate: true },
+)
+
+function resumeFrom(p: ResumePoint | undefined): string {
+  if (!p || p.none) return ''
+  if (p.slot === null) return t('library.continue.fromInGame')
+  if (p.slot === AUTO_SLOT) return t('library.continue.fromAuto')
+  return t('library.continue.fromSlot', { slot: p.slot })
+}
+
+function resumeGame(g: LibraryGame) {
+  if (!g.available) {
+    emit('error', errorText({ code: 'libraryGameUnavailable', params: { id: g.id } }))
+    return
+  }
+  emit('open', g, resume.value[g.id]?.slot ?? undefined)
+}
 
 const consoleName = (c: ConsoleId) => t(`console.${c}`)
 
@@ -268,49 +347,53 @@ onUnmounted(() => unlistenSettings?.())
     />
 
     <template v-else-if="library.loaded">
-      <!-- «Riprendi»: the last game played. -->
-      <section v-if="hero" class="hero glass" :aria-label="t('library.hero.label')">
-        <GameCover
-          class="hero-cover"
-          :game="hero"
-          :badge="false"
-          :style="{ boxShadow: `0 0 28px ${hero.colour}80` }"
-        />
-        <div class="hero-body">
-          <div class="overline">{{ t('library.hero.label') }}</div>
-          <h1 class="hero-title">{{ hero.title }}</h1>
-          <div class="hero-meta num">
-            {{
-              t('library.hero.meta', {
-                console: consoleName(hero.console),
-                time: playTimeLabel(hero.playTimeSecs, true),
-                when: lastPlayedLabel(hero.lastPlayed ?? 0),
-              })
-            }}
-          </div>
-          <div class="hero-actions">
-            <button
-              class="btn btn-primary"
-              data-nav-initial
-              :disabled="!hero.available"
-              @click="open(hero)"
-            >
-              <Play :size="16" fill="currentColor" :stroke-width="0" aria-hidden="true" />
-              <!-- Glossary: «Riprendi» resumes from a quick save, «Gioca» starts without one. -->
-              {{ t(hero.lastStateThumbUrl ? 'library.hero.resume' : 'library.hero.play') }}
-            </button>
-            <button class="btn tall" disabled :title="t('placeholder.line')">
-              {{ t('library.hero.chooseSave') }}
-            </button>
-            <button class="btn tall" disabled :title="t('placeholder.line')">
-              {{ t('library.hero.details') }}
-            </button>
+      <!-- «Continua a giocare»: the games played last. -->
+      <section v-if="recent.length" class="continue" :aria-label="t('library.continue.title')">
+        <div class="continue-head">
+          <h1 class="h2">{{ t('library.continue.title') }}</h1>
+          <span class="muted small">{{ t('library.continue.lead') }}</span>
+        </div>
+        <div class="continue-row">
+          <div
+            v-for="(g, i) in recent"
+            :key="g.id"
+            class="continue-card"
+            :class="{ off: !g.available }"
+          >
+            <span class="shot" aria-hidden="true" :style="{ background: g.colour }">
+              <img v-if="resume[g.id]?.thumbUrl" :src="resume[g.id]?.thumbUrl ?? ''" alt="" />
+            </span>
+            <div class="continue-body">
+              <div class="continue-title">{{ g.title }}</div>
+              <div class="muted small num">
+                {{
+                  t('library.continue.meta', {
+                    console: t(`consoleShort.${g.console}`),
+                    time: playTimeLabel(g.playTimeSecs),
+                    when: lastPlayedLabel(g.lastPlayed ?? 0),
+                  })
+                }}
+              </div>
+              <div class="continue-actions">
+                <button
+                  class="btn small-btn"
+                  :class="{ 'btn-primary': i === 0 }"
+                  :data-nav-initial="i === 0 ? '' : undefined"
+                  :disabled="!g.available"
+                  @click="resumeGame(g)"
+                >
+                  {{ t(resume[g.id]?.none ? 'library.hero.play' : 'library.hero.resume') }}
+                </button>
+                <button class="btn small-btn" @click="emit('openSaves', g)">
+                  {{ t('shell.saves') }}
+                </button>
+              </div>
+              <div v-if="resumeFrom(resume[g.id])" class="from">
+                {{ resumeFrom(resume[g.id]) }}
+              </div>
+            </div>
           </div>
         </div>
-        <figure v-if="hero.lastStateThumbUrl" class="hero-shot">
-          <img :src="hero.lastStateThumbUrl" alt="" />
-          <figcaption>{{ t('library.hero.autoSave') }}</figcaption>
-        </figure>
       </section>
 
       <div class="toolbar">
@@ -322,7 +405,7 @@ onUnmounted(() => unlistenSettings?.())
             class="chip"
             :class="{ on: c.id === consoleFilter }"
             :aria-pressed="c.id === consoleFilter"
-            :data-nav-initial="!hero && c.id === 'all' ? '' : undefined"
+            :data-nav-initial="!recent.length && c.id === 'all' ? '' : undefined"
             @click="consoleFilter = c.id"
           >
             {{ c.id === 'all' ? t('library.all') : consoleName(c.id) }}
@@ -554,69 +637,76 @@ onUnmounted(() => unlistenSettings?.())
   font-weight: 600;
 }
 
-/* Hero */
-.hero {
-  padding: 20px;
+/* «Continua a giocare» */
+.continue {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.continue-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 24px;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
 }
-.hero-cover {
-  width: 120px;
-  font-size: 14px;
-  line-height: 17px;
+.continue-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.continue-card {
+  display: flex;
+  gap: 12px;
   padding: 10px;
+  border-radius: var(--radius-10);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  min-width: 0;
 }
-.hero-body {
-  flex: 1 1 320px;
+.continue-card.off .shot {
+  opacity: 0.45;
+}
+.shot {
+  flex: 0 0 auto;
+  width: 96px;
+  aspect-ratio: 3 / 2;
+  border-radius: var(--radius-6);
+  overflow: hidden;
+}
+.shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+.continue-body {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
-.hero-title {
-  margin: 0;
-  font-size: 32px;
-  line-height: 38px;
+.continue-title {
   font-weight: 600;
-  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.hero-meta {
-  color: var(--ink-muted);
-  font-size: 15px;
-  line-height: 22px;
-}
-.hero-actions {
+.continue-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: auto;
 }
-.btn.tall {
-  height: 40px;
-  padding: 0 14px;
+.small-btn {
+  height: 28px;
 }
-.hero-shot {
-  margin: 0;
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.hero-shot img {
-  display: block;
-  width: 160px;
-  padding: 6px;
-  background: #000;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-10);
-  image-rendering: pixelated;
-}
-.hero-shot figcaption {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-muted);
+.from {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ink-faint);
 }
 
 /* Toolbar */

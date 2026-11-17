@@ -124,3 +124,25 @@ export function saveWhenLabel(ms: number, now = Date.now()): string {
   ).format(then)
   return t('saves.when.date', { date, time })
 }
+
+/** When a setting was last changed, as the T01 board writes it: "today", "yesterday", "12 Nov"
+ * (with the year when it is not this one). */
+export function changedWhenLabel(ms: number, now = Date.now()): string {
+  const locale = i18n.global.locale.value
+  const then = new Date(ms)
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const days = Math.round((day(new Date(now)) - day(then)) / 86_400_000)
+  if (days <= 1) {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
+      -Math.max(0, days),
+      'day',
+    )
+  }
+  const sameYear = then.getFullYear() === new Date(now).getFullYear()
+  return new Intl.DateTimeFormat(
+    locale,
+    sameYear
+      ? { day: 'numeric', month: 'short' }
+      : { day: 'numeric', month: 'short', year: 'numeric' },
+  ).format(then)
+}
