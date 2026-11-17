@@ -62,7 +62,79 @@ struct AppState {
     menu_open: Arc<AtomicBool>,
     data_dir: PathBuf,
     resource_dir: Option<PathBuf>,
+    /// The file of the open game (its slots and thumbnails sit beside its saves).
+    game_path: Mutex<Option<PathBuf>>,
     _audio: audio::AudioOutput,
+}
+
+impl AppState {
+    fn save_dir(&self) -> PathBuf {
+        self.data_dir.join("saves")
+    }
+}
+
+/// One quick save slot for the quick menu (G07). Mirror: `SlotInfo` in app/src/emu.ts.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SlotDto {
+    slot: u8,
+    /// Unix ms of the last save; null = empty.
+    saved_at: Option<u64>,
+    /// `emu://slot/<n>?v=<ms>`, the frame on screen when it was saved.
+    thumb_url: Option<String>,
+}
+
+fn unix_ms(t: std::time::SystemTime) -> Option<u64> {
+    t.duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|d| u64::try_from(d.as_millis()).ok())
+}
+
+/// The auto quick save (slot 0) and slots `1..=count` of the open game.
+#[tauri::command]
+fn list_slots(state: tauri::State<'_, AppState>, count: u8) -> Vec<SlotDto> {
+    let Some(game) = state.game_path.lock().clone() else {
+        return Vec::new();
+    };
+    emudome_core::slot_infos(&state.save_dir(), &game, count)
+        .into_iter()
+        .map(|s| {
+            let saved_at = s.saved_at.and_then(unix_ms);
+            SlotDto {
+                slot: s.slot,
+                saved_at,
+                thumb_url: s.thumb.map(|_| {
+                    emudome_platform::protocol_url(
+                        "emu",
+                        &format!("slot/{}?v={}", s.slot, saved_at.unwrap_or(0)),
+                    )
+                }),
+            }
+        })
+        .collect()
+}
+
+/// `emu://slot/<n>`: the thumbnail of a slot of the open game.
+fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Response<Vec<u8>> {
+    use tauri::http::{header, Response, StatusCode};
+    let bytes = slot.parse::<u8>().ok().and_then(|slot| {
+        let state = app.try_state::<AppState>()?;
+        let game = state.game_path.lock().clone()?;
+        let info = emudome_core::slot_infos(&state.save_dir(), &game, slot)
+            .into_iter()
+            .find(|s| s.slot == slot)?;
+        std::fs::read(info.thumb?).ok()
+    });
+    let builder = Response::builder().header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    match bytes {
+        // The URL carries the save time (`?v=`): a new save is a new URL.
+        Some(b) => builder
+            .header(header::CONTENT_TYPE, "image/png")
+            .header(header::CACHE_CONTROL, "max-age=31536000, immutable")
+            .body(b),
+        None => builder.status(StatusCode::NOT_FOUND).body(Vec::new()),
+    }
+    .unwrap_or_else(response_error)
 }
 
 #[derive(Serialize)]
@@ -170,7 +242,7 @@ fn open_path(
 
     let console_id = console.unwrap_or(ext_console);
     let flow = settings::game_flow(app, console_id, &game);
-    let save_dir = state.data_dir.join("saves");
+    let save_dir = state.save_dir();
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game_path);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
@@ -202,6 +274,7 @@ fn open_path(
     *state.current.lock() = Some(shared.clone());
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
+    *state.game_path.lock() = Some(game_path.clone());
     settings::begin_session(app, console_id, game);
 
     Ok(GameInfo {
@@ -226,6 +299,7 @@ fn close_current(app: &tauri::AppHandle, state: &AppState) {
     state.native_source(None);
     *state.current.lock() = None;
     state.session.lock().take();
+    state.game_path.lock().take();
 }
 
 #[tauri::command]
@@ -241,6 +315,7 @@ fn abandon_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
     settings::end_session(&app);
     state.native_source(None);
     *state.current.lock() = None;
+    state.game_path.lock().take();
     let session = state.session.lock().take();
     if let Some(session) = session {
         session.abandon();
@@ -455,10 +530,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| {
-            // `emu://cover/<id>`: covers; anything else: the frame.
-            match req.uri().path().strip_prefix("/cover/") {
-                Some(id) => library::cover_response(ctx.app_handle(), id),
-                None => frame_protocol(ctx.app_handle(), &req),
+            // `emu://cover/<id>`: covers; `emu://slot/<n>`: slot thumbnails; else the frame.
+            let path = req.uri().path();
+            if let Some(id) = path.strip_prefix("/cover/") {
+                library::cover_response(ctx.app_handle(), id)
+            } else if let Some(slot) = path.strip_prefix("/slot/") {
+                slot_thumb_response(ctx.app_handle(), slot)
+            } else {
+                frame_protocol(ctx.app_handle(), &req)
             }
         })
         .setup(|app| {
@@ -521,6 +600,7 @@ pub fn run() {
                 menu_open,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
+                game_path: Mutex::new(None),
                 _audio: audio,
             });
             library::startup(app.handle());
@@ -530,6 +610,7 @@ pub fn run() {
             open_game,
             close_game,
             abandon_game,
+            list_slots,
             set_speed,
             set_paused,
             save_state,

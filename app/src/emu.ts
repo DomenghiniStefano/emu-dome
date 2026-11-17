@@ -45,6 +45,14 @@ export interface Stats {
   autoSavedAt: number | null
 }
 
+/** A quick save slot of the open game (G07). Mirror of `SlotDto` in src-tauri/src/lib.rs. */
+export interface SlotInfo {
+  slot: number
+  /** Unix ms of the last save; null = empty. */
+  savedAt: number | null
+  thumbUrl: string | null
+}
+
 /** Slot 0: the auto quick save («Salvataggio rapido automatico»). */
 export const AUTO_SLOT = 0
 
@@ -266,6 +274,8 @@ export const emu = {
   closeGame: () => invoke<void>('close_game'),
   /** E11: let go of a core that stopped answering (does not wait for it). */
   abandonGame: () => invoke<void>('abandon_game'),
+  /** The auto quick save (slot 0) and slots 1..count of the open game. */
+  listSlots: (count: number) => invoke<SlotInfo[]>('list_slots', { count }),
   setSpeed: (speed: Speed) => invoke<void>('set_speed', { speed }),
   setPaused: (paused: boolean) => invoke<void>('set_paused', { paused }),
   /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing. */
