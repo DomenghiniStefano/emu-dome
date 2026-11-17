@@ -1644,42 +1644,28 @@
   },
   "qm": {
     "label": "Menu rapido",
-    "tabs": "Sezioni del menu rapido",
     "playing": "{console} · stai giocando da {time}",
-    "tab": {
-      "saves": "Salvataggi rapidi",
-      "speed": "Velocità",
-      "screens": "Schermi",
-      "controls": "Controlli",
-      "tools": "Strumenti"
-    },
     "auto": "Automatico",
     "slot": "Slot {slot}",
     "empty": "Vuoto",
-    "loadAuto": "Carica il salvataggio automatico",
+    "loadAuto": "Carica dallo slot automatico",
     "loadSlot": "Carica dallo slot {slot}",
-    "saveFree": "Salva in uno slot libero",
     "saveSlot": "Salva nello slot {slot}",
     "autoEvery": "Salvataggio rapido automatico: {every}",
     "keys": "{save} salva · {load} carica lo slot 1",
-    "speedTitle": "VELOCITÀ DI GIOCO",
-    "speedNote": "Per ora l’audio è muto quando la velocità non è 1×. «Max» va veloce quanto il dispositivo riesce.",
-    "ffTitle": "AVANTI VELOCE",
-    "rewTitle": "RIAVVOLGI",
-    "imageTitle": "ASPETTO DELL’IMMAGINE",
-    "displayTitle": "METODO DI VISUALIZZAZIONE",
+    "speedTitle": "VELOCITÀ",
+    "speedNote": "Audio muto fuori da 1×",
     "noNative": "Su questo sistema il metodo Accelerato non è disponibile.",
     "controller": "Controller in uso",
     "noController": "Nessun controller collegato: usa la tastiera.",
     "shortcuts": "Scorciatoie del controller",
-    "shortcutsHint": "Tieni premuto L3 e premi un altro pulsante",
-    "showList": "Mostra l’elenco",
+    "shortcutsHint": "Tieni premuto {modifier} e premi un pulsante",
     "remap": "Rimappa i pulsanti per questo gioco",
     "screenshot": "Cattura schermata",
     "reset": "Riavvia il gioco",
-    "resetHint": "i progressi non salvati si perdono",
+    "resetHint": "Torna all’inizio, i salvataggi restano",
     "close": "Chiudi il gioco",
-    "closeHint": "salva in automatico prima di chiudere",
+    "closeHint": "Salva in automatico prima di chiudere",
     "trial": "{n} modifiche in prova: {names}",
     "trialOne": "1 modifica in prova: {names}",
     "trialHint": "Le vedi già nel gioco. Se chiudi il gioco senza salvarle, tornano come prima.",
@@ -1688,7 +1674,49 @@
     "saveConsole": "Salva invece per tutti i giochi {console}",
     "resume": "Riprendi il gioco",
     "notYet": "Arriva con un prossimo aggiornamento",
-    "undoLoad": "Annulla il caricamento"
+    "undoLoad": "Annulla il caricamento",
+    "savesTitle": "SALVATAGGI RAPIDI",
+    "slotsLabel": "Slot",
+    "more": "Altri slot e salvataggi",
+    "moreShort": "Altri slot",
+    "moreLabel": "Altro",
+    "saveAuto": "Salva nello slot automatico",
+    "emptySlot": "Slot {slot} vuoto",
+    "emptyAuto": "Slot automatico vuoto",
+    "speedNormal": "Velocità normale",
+    "ff": "Avanti veloce",
+    "slow": "Rallentatore",
+    "hint": {
+      "save": "salva",
+      "load": "carica",
+      "slot": "cambia slot",
+      "ffHold": "avanti veloce tenendo premuto",
+      "slow": "rallentatore"
+    },
+    "hintPair": "{a} {b}",
+    "dir": {
+      "up": "su",
+      "down": "giù",
+      "left": "←",
+      "right": "→"
+    },
+    "row": {
+      "screens": {
+        "name": "Schermi e immagine",
+        "sub": "Dimensione, smussatura, effetti schermo"
+      },
+      "controls": {
+        "name": "Controlli",
+        "sub": "Rimappa per questo gioco, scorciatoie",
+        "subTouch": "Opacità dei controlli touch, rimappa"
+      },
+      "tools": {
+        "name": "Strumenti",
+        "sub": "Schermata, riavvia, chiudi il gioco"
+      }
+    },
+    "resumeShort": "Riprendi",
+    "resumeKeys": "{esc} · {back}"
   },
   "controls": {
     "keyboard": "Tastiera",
@@ -1978,6 +2006,7 @@
       "keepThis": "Tieni questa",
       "keepBoth": "Tienile entrambe",
       "later": "Decidi dopo, apro la versione di questo dispositivo"
-    }
+    },
+    "slotMore": "Altre azioni per lo slot"
   }
 }
