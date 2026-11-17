@@ -91,8 +91,8 @@ fn core_for(path: &Path) -> Result<(&'static str, &'static str, ConsoleId), Erro
         .unwrap_or_default();
     match ext.as_str() {
         "gba" => Ok(("mgba", "GBA", ConsoleId::Gba)),
-        "gb" => Ok(("mgba", "GBA", ConsoleId::Gb)),
-        "gbc" => Ok(("mgba", "GBA", ConsoleId::Gbc)),
+        "gb" => Ok(("mgba", "GB", ConsoleId::Gb)),
+        "gbc" => Ok(("mgba", "GBC", ConsoleId::Gbc)),
         "nds" => Err(ErrorCode::ConsoleNotYet {
             console: "nds".into(),
             phase: 2,

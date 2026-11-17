@@ -5,6 +5,8 @@ import { onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type Button } from '../emu'
 
+/** GB and GBC have no shoulder buttons: L/R are not drawn for them. */
+const props = defineProps<{ shoulders: boolean }>()
 const emit = defineEmits<{ menu: [] }>()
 const { t } = useI18n()
 
@@ -71,6 +73,7 @@ const faces: Array<{ button: Button; key: string }> = [
 <template>
   <div class="touch" :aria-label="t('touch.label')">
     <button
+      v-if="props.shoulders"
       class="pad shoulder left"
       @pointerdown="hold($event, 'l')"
       @pointerup="press('l', false)"
@@ -79,6 +82,7 @@ const faces: Array<{ button: Button; key: string }> = [
       {{ t('touch.l') }}
     </button>
     <button
+      v-if="props.shoulders"
       class="pad shoulder right"
       @pointerdown="hold($event, 'r')"
       @pointerup="press('r', false)"
