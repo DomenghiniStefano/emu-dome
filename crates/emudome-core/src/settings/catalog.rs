@@ -582,69 +582,6 @@ pub static ENTRIES: &[Entry] = &[
     act("about.log", G),
 ];
 
-#[cfg(test)]
-mod tests {
-    use super::{ENTRIES, PAGES};
-    use crate::settings::schema::{DefaultValue, Kind};
-
-    #[test]
-    fn has_the_designs_157_entries_with_unique_keys_on_known_pages() {
-        assert_eq!(ENTRIES.len(), 157);
-        for (i, entry) in ENTRIES.iter().enumerate() {
-            assert!(
-                ENTRIES[..i].iter().all(|other| other.key != entry.key),
-                "duplicate key {}",
-                entry.key
-            );
-            assert!(PAGES.contains(&entry.page()), "unknown page {}", entry.key);
-            assert!((1..=5).contains(&entry.phase), "phase of {}", entry.key);
-        }
-    }
-
-    #[test]
-    fn pages_come_in_catalogue_order() {
-        let order: Vec<&str> = ENTRIES.iter().fold(Vec::new(), |mut acc, entry| {
-            if acc.last() != Some(&entry.page()) {
-                acc.push(entry.page());
-            }
-            acc
-        });
-        assert_eq!(order, PAGES);
-    }
-
-    #[test]
-    fn every_default_is_valid_for_its_kind() {
-        for entry in ENTRIES {
-            let value = entry.default_value();
-            if entry.has_value() {
-                assert!(
-                    value.as_ref().is_some_and(|v| entry.accepts_value(v)),
-                    "{}: invalid default {value:?}",
-                    entry.key
-                );
-            } else {
-                assert_eq!(entry.default, DefaultValue::None, "{}", entry.key);
-            }
-        }
-    }
-
-    #[test]
-    fn theme_options_match_the_app_themes() {
-        let theme = ENTRIES.iter().find(|e| e.key == "general.theme");
-        let options = theme.map(|e| (e.kind, e.default));
-        assert!(matches!(
-            options,
-            Some((
-                Kind::Choice {
-                    options: &["system", "dark", "black", "light"],
-                    ..
-                },
-                DefaultValue::Text("system")
-            ))
-        ));
-    }
-}
-
 /// The sections of each page, in display order, with their entries in order: the headings the
 /// interface shows (`settings.sections.<page>.<id>`). Every entry is in exactly one section of
 /// its page (tested).
@@ -979,3 +916,66 @@ pub static SECTIONS: &[Section] = &[
         keys: &["about.lic", "about.log"],
     },
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::{ENTRIES, PAGES};
+    use crate::settings::schema::{DefaultValue, Kind};
+
+    #[test]
+    fn has_the_designs_157_entries_with_unique_keys_on_known_pages() {
+        assert_eq!(ENTRIES.len(), 157);
+        for (i, entry) in ENTRIES.iter().enumerate() {
+            assert!(
+                ENTRIES[..i].iter().all(|other| other.key != entry.key),
+                "duplicate key {}",
+                entry.key
+            );
+            assert!(PAGES.contains(&entry.page()), "unknown page {}", entry.key);
+            assert!((1..=5).contains(&entry.phase), "phase of {}", entry.key);
+        }
+    }
+
+    #[test]
+    fn pages_come_in_catalogue_order() {
+        let order: Vec<&str> = ENTRIES.iter().fold(Vec::new(), |mut acc, entry| {
+            if acc.last() != Some(&entry.page()) {
+                acc.push(entry.page());
+            }
+            acc
+        });
+        assert_eq!(order, PAGES);
+    }
+
+    #[test]
+    fn every_default_is_valid_for_its_kind() {
+        for entry in ENTRIES {
+            let value = entry.default_value();
+            if entry.has_value() {
+                assert!(
+                    value.as_ref().is_some_and(|v| entry.accepts_value(v)),
+                    "{}: invalid default {value:?}",
+                    entry.key
+                );
+            } else {
+                assert_eq!(entry.default, DefaultValue::None, "{}", entry.key);
+            }
+        }
+    }
+
+    #[test]
+    fn theme_options_match_the_app_themes() {
+        let theme = ENTRIES.iter().find(|e| e.key == "general.theme");
+        let options = theme.map(|e| (e.kind, e.default));
+        assert!(matches!(
+            options,
+            Some((
+                Kind::Choice {
+                    options: &["system", "dark", "black", "light"],
+                    ..
+                },
+                DefaultValue::Text("system")
+            ))
+        ));
+    }
+}
