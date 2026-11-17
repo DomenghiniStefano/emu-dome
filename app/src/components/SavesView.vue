@@ -11,7 +11,7 @@
 // Controller / keyboard: the shell's nav scope covers this view; the dialogs open their own.
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Save, Search, TriangleAlert } from '@lucide/vue'
+import { Ellipsis, Save, Search, TriangleAlert } from '@lucide/vue'
 import {
   emu,
   type GameSaves,
@@ -477,13 +477,9 @@ onUnmounted(() => unlistenSettings?.())
 
           <section class="block">
             <h3 class="overline">{{ t('saves.quickTitle') }}</h3>
+            <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03). -->
             <div v-if="details.quick.length" class="slots">
-              <button
-                v-for="q in details.quick"
-                :key="q.slot"
-                class="slot"
-                @click="openQuick(q, $event)"
-              >
+              <div v-for="q in details.quick" :key="q.slot" class="slot">
                 <span class="thumb" aria-hidden="true">
                   <img v-if="q.thumbUrl" :src="q.thumbUrl" alt="" />
                 </span>
@@ -492,7 +488,20 @@ onUnmounted(() => unlistenSettings?.())
                 <span v-if="q.savedAt !== null" class="muted small num">
                   {{ saveWhenLabel(q.savedAt) }}
                 </span>
-              </button>
+                <span class="slot-actions">
+                  <button class="play-here" @click="emit('openGame', selected, q.slot)">
+                    {{ t('saves.quick.load') }}
+                  </button>
+                  <button
+                    class="slot-more"
+                    :aria-label="t('saves.slotMore')"
+                    :title="t('saves.slotMore')"
+                    @click="openQuick(q, $event)"
+                  >
+                    <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+                  </button>
+                </span>
+              </div>
             </div>
             <p v-else class="muted">{{ t('saves.noQuick') }}</p>
           </section>
@@ -838,7 +847,7 @@ onUnmounted(() => unlistenSettings?.())
 }
 .slots {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 .slot {
@@ -851,7 +860,34 @@ onUnmounted(() => unlistenSettings?.())
   border: 1px solid var(--line);
   text-align: left;
 }
-.slot:hover {
+.slot-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+.slot-actions button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-6);
+  font-weight: 500;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.play-here {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.slot-more {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+.slot-actions button:hover {
   background: var(--surface-hover);
 }
 .thumb,
