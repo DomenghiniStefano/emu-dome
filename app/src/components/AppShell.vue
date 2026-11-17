@@ -12,10 +12,17 @@ import { useNavScope } from '../nav'
 import { SECTIONS, type Section } from '../sections'
 import type { LibraryGame } from '../emu'
 import LibraryView from './LibraryView.vue'
+import SavesView from './SavesView.vue'
 import SettingsView from './SettingsView.vue'
 
 defineProps<{ error: string | null }>()
-const emit = defineEmits<{ openFile: []; openGame: [LibraryGame]; error: [string] }>()
+const emit = defineEmits<{
+  openFile: []
+  /** `slot`: a quick save to load once the game runs (Saves, V03). */
+  openGame: [game: LibraryGame, slot?: number]
+  error: [string]
+  notice: [string]
+}>()
 const section = defineModel<Section>({ required: true })
 
 const { t } = useI18n()
@@ -45,7 +52,7 @@ useNavScope(root, {
 // The section's own first control takes the initial focus; a section without one
 // (the placeholders) leaves it on its rail item.
 const contentHasInitial = computed(
-  () => section.value === 'library' || section.value === 'settings',
+  () => section.value === 'library' || section.value === 'settings' || section.value === 'saves',
 )
 function initialOn(s: Section) {
   return s === section.value && !contentHasInitial.value ? '' : undefined
@@ -75,13 +82,20 @@ function initialOn(s: Section) {
           </button>
         </template>
       </nav>
-      <main class="content" :class="{ flush: section === 'settings' }">
+      <main class="content" :class="{ flush: section === 'settings' || section === 'saves' }">
         <LibraryView
           v-if="section === 'library'"
           :error="error"
           @open="g => emit('openGame', g)"
           @open-file="emit('openFile')"
           @error="text => emit('error', text)"
+        />
+        <SavesView
+          v-else-if="section === 'saves'"
+          @open-game="(g, slot) => emit('openGame', g, slot)"
+          @open-library="section = 'library'"
+          @error="text => emit('error', text)"
+          @notice="text => emit('notice', text)"
         />
         <SettingsView
           v-else-if="section === 'settings'"

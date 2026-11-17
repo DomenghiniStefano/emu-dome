@@ -11,6 +11,7 @@ mod audio;
 #[cfg(desktop)]
 mod gamepad;
 mod library;
+mod saves;
 mod settings;
 mod theme;
 mod video;
@@ -259,6 +260,8 @@ fn open_path(
     let console_id = console.unwrap_or(ext_console);
     let flow = settings::game_flow(app, console_id, &game);
     let save_dir = state.save_dir();
+    // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
+    saves::before_open(app, &save_dir, &game_path)?;
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game_path);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
@@ -483,6 +486,12 @@ fn load_state(state: tauri::State<'_, AppState>, slot: u8) -> Result<(), ErrorCo
     send(&state, Command::LoadState(slot))
 }
 
+/// «Annulla il caricamento» (`saves.undo`): back to before the last load.
+#[tauri::command]
+fn undo_load(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
+    send(&state, Command::UndoLoad)
+}
+
 #[tauri::command]
 fn reset_game(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
     send(&state, Command::Reset)
@@ -547,10 +556,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| {
-            // `emu://cover/<id>`: covers; `emu://slot/<n>`: slot thumbnails; else the frame.
+            // `emu://cover/<id>`: covers; `emu://slot/<n>`: slot thumbnails of the open game;
+            // `emu://savethumb/<game>/<n>`: those of any game (Saves section); else the frame.
             let path = req.uri().path();
             if let Some(id) = path.strip_prefix("/cover/") {
                 library::cover_response(ctx.app_handle(), id)
+            } else if let Some(rest) = path.strip_prefix("/savethumb/") {
+                saves::thumb_response(ctx.app_handle(), rest)
             } else if let Some(slot) = path.strip_prefix("/slot/") {
                 slot_thumb_response(ctx.app_handle(), slot)
             } else {
@@ -632,6 +644,7 @@ pub fn run() {
             set_paused,
             save_state,
             load_state,
+            undo_load,
             reset_game,
             input,
             stats,
@@ -655,6 +668,14 @@ pub fn run() {
             library::library_open,
             library::library_set_cover,
             library::library_set_flags,
+            saves::saves_summary,
+            saves::saves_game,
+            saves::saves_restore,
+            saves::saves_restore_latest,
+            saves::saves_delete_quick,
+            saves::saves_export,
+            saves::saves_import_pick,
+            saves::saves_import,
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")

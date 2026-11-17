@@ -31,6 +31,8 @@ const props = defineProps<{
   startedAt: number
   /** Name of the controller in use, null with none. */
   controller: string | null
+  /** A quick save was loaded in this game: «Annulla il caricamento» can go back (`saves.undo`). */
+  canUndoLoad?: boolean
 }>()
 const emit = defineEmits<{
   videoMode: [VideoMode]
@@ -38,6 +40,7 @@ const emit = defineEmits<{
   speed: [Speed]
   save: [number]
   load: [number]
+  undoLoad: []
   reset: []
   close: []
   error: [string]
@@ -248,6 +251,14 @@ watch(tab, k => {
             {{ chosen === 0 ? t('qm.saveFree') : t('qm.saveSlot', { slot: chosen }) }}
           </button>
         </div>
+        <button
+          v-if="canUndoLoad && value('saves.undo') !== false"
+          class="btn undo"
+          @click="emit('undoLoad')"
+        >
+          <RotateCcw :size="14" :stroke-width="1.75" aria-hidden="true" />
+          {{ t('qm.undoLoad') }}
+        </button>
         <div class="muted small">{{ t('qm.autoEvery', { every: autoEvery }) }}</div>
         <I18nT keypath="qm.keys" tag="div" class="muted small">
           <template #save><kbd>F1</kbd></template>
@@ -489,6 +500,10 @@ watch(tab, k => {
 }
 .row-actions .btn {
   flex: 1;
+}
+/* «Annulla il caricamento»: a secondary action under the load / save pair. */
+.btn.undo {
+  align-self: flex-start;
 }
 .segmented {
   display: flex;

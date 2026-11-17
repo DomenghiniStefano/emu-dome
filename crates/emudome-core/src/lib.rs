@@ -15,8 +15,10 @@ pub mod audio;
 pub mod hotkeys;
 pub mod input;
 pub mod library;
+pub mod saves;
 pub mod settings;
 
+pub use core::GameFiles;
 pub use error::ErrorCode;
 pub use frame::Frame;
 pub use session::{

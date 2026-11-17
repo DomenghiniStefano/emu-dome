@@ -118,7 +118,8 @@
     "gamepadConnected": "Controller connected: {name}",
     "gamepadDisconnected": "Controller disconnected: {name}",
     "gamepadUnnamed": "Controller",
-    "slot": "Slot {slot}"
+    "slot": "Slot {slot}",
+    "loadUndone": "Load undone"
   },
   "console": {
     "gb": "Game Boy",
@@ -148,7 +149,13 @@
     "libraryGameUnavailable": "This game's file can't be reached right now. Reconnect the drive that holds it, or choose another folder.",
     "libraryWriteFailed": "Couldn't save the library: {detail}. Check that the data folder is writable and try again.",
     "coverInvalid": "That image can't be used as a cover: {detail}. Choose a PNG, JPEG or WebP image.",
-    "unexpected": "Something went wrong: {detail}"
+    "unexpected": "Something went wrong: {detail}",
+    "nothingToUndo": "There's no load to undo.",
+    "undoFailed": "Couldn't go back to before the load: {detail}. Load another quick save.",
+    "saveUnreadable": "The in-game save can't be read, so EmuDome set it aside. Restore a backup from Saves.",
+    "saveGameOpen": "This game is open. Close it and try again.",
+    "saveImportInvalid": "This file isn't a save EmuDome can import ({detail}). Choose a .sav, .dsv or .duc file.",
+    "saveFileFailed": "Couldn't use the save file: {detail}. Check that the saves folder is writable and try again."
   },
   "consoleShort": {
     "gb": "GB",
@@ -1603,7 +1610,12 @@
     "resumeAuto": "Resume from the auto quick save",
     "slowTitle": "The game runs slower than normal ({fps} FPS of {target})",
     "slowText": "This device struggles to keep the game at the right speed. Try the “Maximum performance” preset in Settings.",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "brokenTitle": "{title}'s save can't be read",
+    "brokenText": "The file is damaged, perhaps by an interrupted copy. You can use the most recent backup; the damaged file stays aside, just in case.",
+    "brokenNoBackup": "The file is damaged, perhaps by an interrupted copy, and there's no backup to use. The damaged file stays aside; if you open the game again, it starts without a save.",
+    "brokenBackup": "Backup from {when}",
+    "brokenUse": "Use the backup from {when}"
   },
   "qm": {
     "label": "Quick menu",
@@ -1650,6 +1662,98 @@
     "saveGame": "Save for this game",
     "saveConsole": "Save for all {console} games instead",
     "resume": "Resume the game",
-    "notYet": "This arrives in a future update"
+    "notYet": "This arrives in a future update",
+    "undoLoad": "Undo load"
+  },
+  "saves": {
+    "import": "Import…",
+    "search": "Search for a game",
+    "games": "Games with saves",
+    "metaQuick": "1 quick save · {size} | {n} quick saves · {size}",
+    "metaInGame": "In-game save only · {size}",
+    "gameMeta": "{console} · {meta}",
+    "details": "Game details",
+    "brokenBadge": "Damaged save",
+    "noneShown": "No game matches the search.",
+    "inGameTitle": "IN-GAME SAVE",
+    "inGameLine": "Saved {when} · {size}",
+    "noInGame": "This game hasn't written a save yet.",
+    "export": "Export…",
+    "quickTitle": "QUICK SAVES",
+    "noQuick": "No quick saves. Save from the quick menu while you play.",
+    "backupsTitle": "IN-GAME SAVE BACKUPS",
+    "noBackups": "No backups yet.",
+    "restore": "Restore",
+    "reason": {
+      "launch": "Game started",
+      "import": "Before an import",
+      "restore": "Before a restore"
+    },
+    "backupNote": "A backup is made every time the game starts and before every import. Restoring makes a backup too.",
+    "brokenNote": "The in-game save couldn't be read and was set aside ({file}). Restore a backup below.",
+    "exported": "Save exported",
+    "restored": "Backup restored",
+    "deleted": "Quick save deleted",
+    "imported": "Save imported",
+    "when": {
+      "today": "today at {time}",
+      "yesterday": "yesterday at {time}",
+      "date": "{date} at {time}"
+    },
+    "quick": {
+      "load": "Open the game and load",
+      "overwriteHint": "To overwrite it, open the game and save from the quick menu.",
+      "delete": "Delete",
+      "close": "Close",
+      "deleteTitle": "Delete the quick save in {slot}?",
+      "deleteText": "This can't be undone.",
+      "deleteConfirm": "Delete {slot}",
+      "cancel": "Cancel"
+    },
+    "empty": {
+      "title": "No saves yet",
+      "text1min": "When you play, EmuDome saves automatically every minute and when you close the game. You make quick saves from the quick menu or with L3 + R1.",
+      "text5min": "When you play, EmuDome saves automatically every 5 minutes and when you close the game. You make quick saves from the quick menu or with L3 + R1.",
+      "textNever": "When you play, EmuDome saves automatically when you close the game. You make quick saves from the quick menu or with L3 + R1.",
+      "openLibrary": "Open the library",
+      "import": "Import saves…",
+      "formats": "Also from DeSmuME and other emulators: .sav, .dsv, .duc"
+    },
+    "importer": {
+      "title": "Import a save",
+      "intro": "From DeSmuME, an Action Replay backup or another emulator. Before importing, EmuDome makes a backup of the current save.",
+      "file": "Chosen file",
+      "noFile": "No file chosen yet.",
+      "pick": "Choose a file…",
+      "change": "Change file…",
+      "format": {
+        "raw": "{file} · save from another emulator",
+        "desmume": "{file} · recognised as a DeSmuME save",
+        "actionReplay": "{file} · recognised as an Action Replay backup"
+      },
+      "game": "Game",
+      "gameFound": "{title} ({console}) · found from the file name",
+      "gameChosen": "{title} ({console})",
+      "gameNone": "Choose the game this save belongs to.",
+      "chooseGame": "Choose the game…",
+      "otherGame": "Choose another game…",
+      "replaceWarn": "This game already has a save ({when}). It will be replaced; the current version stays among the backups.",
+      "cancel": "Cancel",
+      "replace": "Import and replace",
+      "go": "Import",
+      "formats": "Formats: DeSmuME (.dsv), Action Replay (.duc), .sav files from other emulators. To export a save, choose the game and use “Export…”.",
+      "pickTitle": "Choose the game"
+    },
+    "conflict": {
+      "title": "Two versions of the same save",
+      "text": "{title} was saved on two devices since the last sync. Choose which one to use: the other stays among the backups.",
+      "saved": "Saved",
+      "playTime": "Play time",
+      "size": "Size",
+      "newest": "Newest",
+      "keepThis": "Keep this one",
+      "keepBoth": "Keep both",
+      "later": "Decide later, open this device's version"
+    }
   }
 }
