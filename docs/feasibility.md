@@ -155,6 +155,38 @@ Questions, in order; stop when the answer is clear:
 
 Report in `docs/fase0-esito.md` (or a new `docs/hw-render.md`), facts only, with FPS per device and renderer.
 
+### 2026-11-17 · Step 0, desk part (no code run)
+
+**Nightlies** (buildbot listings read 2026-11-17): both cores ship for the three platforms.
+
+| Platform | Azahar | melonDS DS |
+|---|---|---|
+| android/latest/arm64-v8a | `azahar_libretro.so.zip` (no `_android` suffix) | `melondsds_libretro_android.so.zip` |
+| windows/x86_64/latest | `azahar_libretro.dll.zip` | `melondsds_libretro.dll.zip` |
+| linux/x86_64/latest | `azahar_libretro.so.zip` | `melondsds_libretro.so.zip` |
+
+The fetch scripts guessed `melonds_ds`; fixed to `melondsds`, and the Android script maps Azahar's file name.
+
+**Azahar** (`src/citra_libretro/citra_libretro.cpp`, master): the renderer follows the core option
+`citra_graphics_api` = `auto` | `vulkan` | `opengl` | `software` (default `auto`). OpenGL asks for
+`OPENGL_CORE` 4.3 on desktop and `OPENGLES3` 3.2 on Android; Vulkan asks for `VULKAN` 1.1 with context negotiation
+and `GET_HW_RENDER_INTERFACE`; **Software never calls `SET_HW_RENDER`**. `auto` is always Vulkan on Android and
+asks `GET_PREFERRED_HW_RENDER` elsewhere. A refused `SET_HW_RENDER` makes the load fail. **Consequence**: our host
+answers `GET_VARIABLE` with `false`, so Azahar runs `auto` and fails to load everywhere; step 0 needs
+`GET_VARIABLE` to answer `citra_graphics_api=software` (the first core option the settings engine must feed).
+
+**melonDS DS** (JesseTG/melonds-ds, main): software is the default renderer, said to fall back to software when GL
+is unavailable (fallback code not read: **to verify**). Its GL renderer asks for `OPENGL_CORE` 3.2 (4.3 for
+"Compute"); OpenGL is off by default in Android builds, so **no GLES and no Vulkan**: on phones melonDS DS is
+software only.
+
+**Prior art**: `retro-rs` (Rust) implements step 1 with a surfman GL context, the core drawing into the surface's
+FBO and `glReadPixels` back to RGBA. No Rust frontend with `SET_HW_RENDER` on wgpu was found.
+
+**Order from here**: (0) answer `citra_graphics_api=software`, measure Azahar software and melonDS DS on the PC and
+the A71; (1) GL readback (desktop GL 4.3, Android GLES 3.2), useful for Azahar only; (2) if GLES readback is slow on
+the A71, go to Vulkan negotiation, which Azahar already supports in full.
+
 ## Sources
 
 - [D1] Google, Choose Google Drive API scopes: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
