@@ -307,6 +307,8 @@ fn emu_thread(
     let mut fps_window = (Instant::now(), 0u32);
     let mut last_sram_flush = Instant::now();
     let mut last_autosave = Instant::now();
+    // Pacing diagnostics (Trello #57): frames run, sleeps and resets per 10 s window, logged.
+    let mut pace = (Instant::now(), 0u32, 0u32, 0u32);
 
     let save_auto = |core: &LoadedCore| match core.save_state().and_then(|data| {
         std::fs::write(files.slot(AUTO_SLOT), data).context("cannot write the auto save")
@@ -363,6 +365,7 @@ fn emu_thread(
         {
             match cmd {
                 Command::SetSpeed(s) => {
+                    log::info!("pacing: speed set to {s:?}");
                     speed = s;
                     callbacks::set_audio_enabled(s.is_normal());
                     if !s.is_normal() {
@@ -457,10 +460,24 @@ fn emu_thread(
             let now = Instant::now();
             if next_frame > now {
                 std::thread::sleep(next_frame - now);
+                pace.2 += 1;
             } else if now - next_frame > period * 4 {
                 // Too far behind (e.g. window dragged): restart without catching up.
                 next_frame = now;
+                pace.3 += 1;
             }
+        }
+        pace.1 += 1;
+        let window = pace.0.elapsed();
+        if window >= Duration::from_secs(10) {
+            log::info!(
+                "pacing: {:.2} frames/s over {:.1} s (speed {speed:?}, base {base_fps:.4},                  {} sleeps, {} resets)",
+                f64::from(pace.1) / window.as_secs_f64(),
+                window.as_secs_f64(),
+                pace.2,
+                pace.3,
+            );
+            pace = (Instant::now(), 0, 0, 0);
         }
     }
 
