@@ -145,8 +145,8 @@ app/src                  Vue interface: App.vue, AppShell (rail + sections, outs
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log. Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
-  Game identity is a hash of the ROM path for now (TODO, Trello #21). Option ids of `sel` entries and slider
-  ranges are placeholders until Cowork completes them (2b).
+  Game identity is a hash of the ROM path for now (TODO, Trello #21). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
+  live in `SYNONYMS` (catalog.rs).
 - Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `settings://changed` (`{ key, level }`).
