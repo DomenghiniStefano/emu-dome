@@ -1543,6 +1543,61 @@
         "desc": "A file to attach when you report a problem.",
         "button": "Export…"
       }
+    },
+    "groups": {
+      "game": "GAME",
+      "controls": "CONTROLS",
+      "app": "APP",
+      "system": "SYSTEM"
     }
+  },
+  "settingsUi": {
+    "title": "Settings",
+    "search": "Search for a setting",
+    "searchPlaceholder": "Search, e.g. V-Sync",
+    "categories": "Settings categories",
+    "scopeTitle": "You’re changing settings for:",
+    "scopeRegion": "Which games the changes apply to",
+    "onlyChanged": "Show only changed settings",
+    "scope": {
+      "global": "All games",
+      "globalSub": "The starting value for every game",
+      "console": "{console} games",
+      "consoleSub": "Only {short} games. Wins over “All games”",
+      "globalLine": "You change the starting value. Consoles and games with a value of their own keep it: the line under the setting tells you.",
+      "consoleLine": "You change only {console} games. Settings with a dot differ from “All games”; the others follow it."
+    },
+    "appWide": "These settings apply to the whole app, not to a single game.",
+    "changed": "Changed",
+    "changedSr": "(changed)",
+    "sameAs": "Same as “{level}”",
+    "useValueOf": "Use the value of “{level}”",
+    "reset": "Reset",
+    "onlyHere": {
+      "desktop": "Only on this computer",
+      "phone": "Only on this phone"
+    },
+    "lockedGlobal": "It always applies to all games. To change it, choose “All games” at the top.",
+    "lockedScoped": "It is set per console or per game: choose a level at the top.",
+    "lockedPhone": "It is set on the phone.",
+    "lockedDesktop": "It is set on the computer.",
+    "notYet": "This arrives in a future update.",
+    "emptyOnly": "No settings changed here. Every value is inherited.",
+    "noResults": "No settings for “{query}”",
+    "resultsTitle": "Results for “{query}”",
+    "hint": "With keyboard and controller: arrows or D-pad to move, A to confirm, B to go back, L1 and R1 to change level.",
+    "intro": {
+      "bios": "EmuDome works without these files thanks to free replacements already built in. If you copied the files from your console, you can use them for the best compatibility.",
+      "cores": "These are the options of the emulation engines. Change them only if you know what they do: those marked “from the next start” apply when you reopen the game."
+    },
+    "unit": {
+      "percent": "{v}%",
+      "px": "{v} px",
+      "seconds": "{v} s",
+      "copies": "{v} copies"
+    },
+    "choose": "Choose",
+    "none": "None",
+    "done": "Done"
   }
 }

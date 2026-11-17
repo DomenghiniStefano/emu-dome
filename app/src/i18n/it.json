@@ -1543,6 +1543,61 @@
         "desc": "Un file da allegare quando segnali un problema.",
         "button": "Esporta…"
       }
+    },
+    "groups": {
+      "game": "GIOCO",
+      "controls": "CONTROLLI",
+      "app": "APP",
+      "system": "SISTEMA"
     }
+  },
+  "settingsUi": {
+    "title": "Impostazioni",
+    "search": "Cerca un’impostazione",
+    "searchPlaceholder": "Cerca, es. V-Sync",
+    "categories": "Categorie delle impostazioni",
+    "scopeTitle": "Stai cambiando le impostazioni di:",
+    "scopeRegion": "A quali giochi si applicano le modifiche",
+    "onlyChanged": "Mostra solo le impostazioni modificate",
+    "scope": {
+      "global": "Tutti i giochi",
+      "globalSub": "Il valore di partenza per ogni gioco",
+      "console": "Giochi {console}",
+      "consoleSub": "Solo i giochi {short}. Vince su «Tutti i giochi»",
+      "globalLine": "Cambi il valore di partenza. Le console e i giochi che hanno un valore proprio lo tengono: lo vedi dalla scritta sotto la voce.",
+      "consoleLine": "Cambi solo i giochi {console}. Le voci con il pallino sono diverse da «Tutti i giochi»; le altre lo seguono."
+    },
+    "appWide": "Queste impostazioni valgono per tutta l’app, non per un singolo gioco.",
+    "changed": "Modificato",
+    "changedSr": "(modificata)",
+    "sameAs": "Come in «{level}»",
+    "useValueOf": "Usa il valore di «{level}»",
+    "reset": "Ripristina",
+    "onlyHere": {
+      "desktop": "Solo su questo computer",
+      "phone": "Solo su questo telefono"
+    },
+    "lockedGlobal": "Vale sempre per tutti i giochi. Per cambiarla scegli «Tutti i giochi» in alto.",
+    "lockedScoped": "Si imposta per una console o per un gioco: scegli un livello in alto.",
+    "lockedPhone": "Si imposta sul telefono.",
+    "lockedDesktop": "Si imposta sul computer.",
+    "notYet": "Arriva con un prossimo aggiornamento.",
+    "emptyOnly": "Nessuna impostazione modificata qui. Tutti i valori sono ereditati.",
+    "noResults": "Nessuna impostazione per «{query}»",
+    "resultsTitle": "Risultati per «{query}»",
+    "hint": "Con tastiera e controller: frecce o croce direzionale per spostarti, A per confermare, B per tornare indietro, L1 e R1 per cambiare livello.",
+    "intro": {
+      "bios": "EmuDome funziona senza questi file grazie a sostituti liberi già integrati. Se hai copiato i file dalla tua console, puoi usarli per la massima compatibilità.",
+      "cores": "Sono le opzioni dei motori di emulazione. Cambiale solo se sai cosa fanno: quelle con «al prossimo avvio» si applicano quando riapri il gioco."
+    },
+    "unit": {
+      "percent": "{v} %",
+      "px": "{v} px",
+      "seconds": "{v} s",
+      "copies": "{v} copie"
+    },
+    "choose": "Scegli",
+    "none": "Nessuno",
+    "done": "Fatto"
   }
 }
