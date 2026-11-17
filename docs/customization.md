@@ -782,6 +782,8 @@ netplay notes revisited, covers scraping (opt-in).
 
 ### For the owner (product)
 
+Answered on 2026-11-17: see `docs/decisions.md`, section "Product".
+
 1. Default face layout: positional (today) or label? Per controller model default (Nintendo-layout pads → label)?
 2. Shell-side vs core-side NDS/3DS screen layout (recommendation: shell-side, section 3)?
 3. GB/GBC support (mGBA does it for free): show or hide those options?
