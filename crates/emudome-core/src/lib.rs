@@ -6,6 +6,7 @@
 
 mod callbacks;
 mod core;
+mod core_options;
 mod error;
 mod frame;
 mod session;

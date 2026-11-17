@@ -4,21 +4,28 @@
 //! `thread_local`: everything happens on the emulation thread.
 
 use std::cell::RefCell;
-use std::ffi::{c_void, CString};
+use std::ffi::{c_void, CStr, CString};
 use std::os::raw::{c_char, c_uint};
 use std::sync::Arc;
 
 use libretro_sys::{
-    retro_game_geometry, retro_system_av_info, RETRO_DEVICE_ID_JOYPAD_MASK, RETRO_DEVICE_JOYPAD,
-    RETRO_ENVIRONMENT_EXPERIMENTAL, RETRO_ENVIRONMENT_GET_CAN_DUPE,
-    RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY,
-    RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, RETRO_ENVIRONMENT_GET_VARIABLE,
-    RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, RETRO_ENVIRONMENT_SET_GEOMETRY,
+    retro_core_option_definition, retro_core_option_v2_definition, retro_core_option_value,
+    retro_core_options_intl, retro_core_options_v2, retro_core_options_v2_intl,
+    retro_game_geometry, retro_system_av_info, retro_variable, RETRO_DEVICE_ID_JOYPAD_MASK,
+    RETRO_DEVICE_JOYPAD, RETRO_ENVIRONMENT_EXPERIMENTAL, RETRO_ENVIRONMENT_GET_CAN_DUPE,
+    RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION, RETRO_ENVIRONMENT_GET_INPUT_BITMASKS,
+    RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY,
+    RETRO_ENVIRONMENT_GET_VARIABLE, RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE,
+    RETRO_ENVIRONMENT_SET_CORE_OPTIONS, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY,
+    RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2,
+    RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL, RETRO_ENVIRONMENT_SET_GEOMETRY,
     RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, RETRO_ENVIRONMENT_SET_PIXEL_FORMAT,
     RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, RETRO_ENVIRONMENT_SET_VARIABLES,
-    RETRO_PIXEL_FORMAT_0RGB1555, RETRO_PIXEL_FORMAT_RGB565, RETRO_PIXEL_FORMAT_XRGB8888,
+    RETRO_NUM_CORE_OPTION_VALUES_MAX, RETRO_PIXEL_FORMAT_0RGB1555, RETRO_PIXEL_FORMAT_RGB565,
+    RETRO_PIXEL_FORMAT_XRGB8888,
 };
 
+use crate::core_options::{CoreOptions, OptionDef};
 use crate::session::Shared;
 
 pub(crate) struct CallbackCtx {
@@ -28,6 +35,8 @@ pub(crate) struct CallbackCtx {
     pub save_dir: CString,
     /// When false, the produced audio is dropped (e.g. in fast forward).
     pub audio_enabled: bool,
+    /// Answers to `GET_VARIABLE`: the core's definitions and the shell's values.
+    pub options: CoreOptions,
 }
 
 thread_local! {
@@ -46,6 +55,15 @@ pub(crate) fn set_audio_enabled(enabled: bool) {
     CTX.with(|c| {
         if let Some(ctx) = c.borrow_mut().as_mut() {
             ctx.audio_enabled = enabled;
+        }
+    });
+}
+
+/// Changes a core option while the game runs (seen at the core's next `GET_VARIABLE_UPDATE`).
+pub(crate) fn set_core_option(key: String, value: String) {
+    CTX.with(|c| {
+        if let Some(ctx) = c.borrow_mut().as_mut() {
+            ctx.options.set(key, value);
         }
     });
 }
@@ -95,19 +113,126 @@ pub(crate) unsafe extern "C" fn environment(cmd: c_uint, data: *mut c_void) -> b
             });
             true
         }
-        // Accepted and ignored for now: button descriptors, core variables.
-        RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS | RETRO_ENVIRONMENT_SET_VARIABLES => true,
-        // No variable changed: the core uses its defaults.
-        // The settings engine will handle them in Phase 1.
-        RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE => {
-            if !data.is_null() {
-                *(data as *mut bool) = false;
-            }
+        // Accepted and ignored for now: button descriptors, how options are shown.
+        RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS | RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY => {
             true
         }
-        RETRO_ENVIRONMENT_GET_VARIABLE => false,
+        // Core options: the core declares them in one of four layouts, the shell answers
+        // GET_VARIABLE (core_options.rs). Version 2 lets the cores send their richest layout.
+        RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION => {
+            if data.is_null() {
+                return false;
+            }
+            *(data as *mut c_uint) = 2;
+            true
+        }
+        RETRO_ENVIRONMENT_SET_VARIABLES => define(variables_v0(data as *const retro_variable)),
+        RETRO_ENVIRONMENT_SET_CORE_OPTIONS => {
+            define(definitions_v1(data as *const retro_core_option_definition))
+        }
+        RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL => {
+            let intl = data as *const retro_core_options_intl;
+            !intl.is_null() && define(definitions_v1((*intl).us))
+        }
+        RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2 => {
+            let opts = data as *const retro_core_options_v2;
+            !opts.is_null() && define(definitions_v2((*opts).definitions))
+        }
+        RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL => {
+            let intl = data as *const retro_core_options_v2_intl;
+            if intl.is_null() || (*intl).us.is_null() {
+                return false;
+            }
+            define(definitions_v2((*(*intl).us).definitions))
+        }
+        RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE => {
+            if data.is_null() {
+                return false;
+            }
+            *(data as *mut bool) = with_ctx(|c| c.options.take_updated()).unwrap_or(false);
+            true
+        }
+        RETRO_ENVIRONMENT_GET_VARIABLE => {
+            let var = data as *mut retro_variable;
+            if var.is_null() || (*var).key.is_null() {
+                return false;
+            }
+            let key = CStr::from_ptr((*var).key).to_string_lossy();
+            // The pointer stays valid while the answer does not change (core_options.rs).
+            let value = with_ctx(|c| c.options.answer(&key).map(CStr::as_ptr)).flatten();
+            match value {
+                Some(p) => {
+                    (*var).value = p;
+                    true
+                }
+                None => {
+                    (*var).value = std::ptr::null();
+                    false
+                }
+            }
+        }
         _ => false,
     }
+}
+
+/// Stores the definitions the core declared; false when there is no session to store them in.
+fn define(defs: Vec<OptionDef>) -> bool {
+    log::debug!("core declared {} options", defs.len());
+    with_ctx(|c| c.options.define(defs)).is_some()
+}
+
+unsafe fn c_string(p: *const c_char) -> Option<String> {
+    (!p.is_null()).then(|| CStr::from_ptr(p).to_string_lossy().into_owned())
+}
+
+/// `SET_VARIABLES`: an array of `{ key, "Description; a|b|c" }` ending with a null key.
+unsafe fn variables_v0(mut var: *const retro_variable) -> Vec<OptionDef> {
+    let mut defs = Vec::new();
+    while !var.is_null() && !(*var).key.is_null() {
+        if let (Some(key), Some(raw)) = (c_string((*var).key), c_string((*var).value)) {
+            defs.extend(OptionDef::from_variable(&key, &raw));
+        }
+        var = var.add(1);
+    }
+    defs
+}
+
+unsafe fn values(
+    list: &[retro_core_option_value; RETRO_NUM_CORE_OPTION_VALUES_MAX],
+) -> Vec<String> {
+    list.iter().map_while(|v| c_string(v.value)).collect()
+}
+
+/// `SET_CORE_OPTIONS` (v1): an array of definitions ending with a null key.
+unsafe fn definitions_v1(mut d: *const retro_core_option_definition) -> Vec<OptionDef> {
+    let mut defs = Vec::new();
+    while !d.is_null() && !(*d).key.is_null() {
+        if let Some(key) = c_string((*d).key) {
+            defs.push(OptionDef::new(
+                key,
+                values(&(*d).values),
+                c_string((*d).default_value),
+            ));
+        }
+        d = d.add(1);
+    }
+    defs
+}
+
+/// `SET_CORE_OPTIONS_V2`: same as v1 with categories, which the shell ignores for now.
+unsafe fn definitions_v2(mut d: *const retro_core_option_v2_definition) -> Vec<OptionDef> {
+    let mut defs = Vec::new();
+    while !d.is_null() && !(*d).key.is_null() {
+        if let Some(key) = c_string((*d).key) {
+            defs.push(OptionDef::new(
+                key,
+                values(&(*d).values),
+                c_string((*d).default_value),
+            ));
+        }
+        d = d.add(1);
+    }
+    defs
 }
 
 pub(crate) unsafe extern "C" fn video_refresh(

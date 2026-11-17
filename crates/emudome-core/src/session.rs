@@ -14,6 +14,7 @@ use parking_lot::Mutex;
 use crate::audio::AudioQueue;
 use crate::callbacks::{self, CallbackCtx};
 use crate::core::{GameFiles, LoadedCore};
+use crate::core_options::CoreOptions;
 use crate::error::ErrorCode;
 use crate::frame::Frame;
 use crate::input::InputState;
@@ -40,6 +41,11 @@ pub enum Command {
     SetPaused(bool),
     SaveState(u8),
     LoadState(u8),
+    /// Changes a core option (`GET_VARIABLE` key and value) while the game runs.
+    SetCoreOption {
+        key: String,
+        value: String,
+    },
     Reset,
     Stop,
 }
@@ -107,6 +113,10 @@ pub struct SessionOptions {
     pub autosave_on_exit: bool,
     /// Load the auto quick save right after the game starts (`saves.resume` = always).
     pub resume_auto: bool,
+    /// Core options the shell chooses (`GET_VARIABLE` key and value, e.g.
+    /// `citra_graphics_api` = `Software`). A value the core does not accept falls back to
+    /// the core's default; a key not listed answers the core's default.
+    pub core_options: Vec<(String, String)>,
 }
 
 /// One quick save slot of a game, for the quick menu (G07).
@@ -237,6 +247,7 @@ fn emu_thread(
         system_dir: to_c(&opts.system_dir),
         save_dir: to_c(&opts.save_dir),
         audio_enabled: true,
+        options: CoreOptions::new(opts.core_options.iter().cloned()),
     });
 
     let started = (|| -> Result<(LoadedCore, GameFiles)> {
@@ -379,6 +390,7 @@ fn emu_thread(
                         Err(error) => Event::Error { error },
                     });
                 }
+                Command::SetCoreOption { key, value } => callbacks::set_core_option(key, value),
                 Command::Reset => unsafe { (core.reset)() },
                 Command::Stop => break 'main,
             }
