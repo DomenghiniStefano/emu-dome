@@ -25,12 +25,15 @@ is settled and what is still **to verify** with code on a real machine. Owner de
 
 **To verify**:
 
-- `librashader-reflect` pulls `glslang-sys` and `spirv-cross-sys` (C++ built with `cc`): cross-compiling them for
-  Android arm64 with the NDK is not tested.
+- ~~Cross-compiling the C++ of `librashader-reflect` for Android arm64~~: **done 2026-11-17** (Windows host, NDK
+  27.1.12297006, `aarch64-linux-android26-clang` as `CC`/`CXX`/linker, `llvm-ar`): a scratch crate with
+  `librashader 0.12.1` (`runtime-wgpu`) + `wgpu 30` builds for `aarch64-linux-android` in 5.5 min at 2 jobs, no
+  warnings; `glslang-sys 0.8.1` and `spirv-cross-sys 0.7.4` compile, one wgpu (30.0.2) in the tree. Still untested:
+  linking into the app's `.so` and running a preset on the device.
 - Runtime cost on the Adreno 618 (A71) of a typical preset (e.g. an LCD-grid shader) at GBA resolution.
 - Shaders exist only on the native video path (webview mode shows them disabled with the reason).
 
-**Verdict**: feasible for Phase 1 on desktop; Android after the cross-compile check.
+**Verdict**: feasible for Phase 1 on desktop; on Android it builds, the runtime cost on the A71 is the open point.
 
 ## 2026-11-17 · Google Drive sync
 
