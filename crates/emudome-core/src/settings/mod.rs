@@ -10,6 +10,9 @@
 //!   (`store.rs`).
 //! - **Session**: bound to the open game; set live, committed to Game or Console, discarded on
 //!   close. Never written to disk until committed.
+//! - **Recent changes** («Modificate di recente», T01): every write to a level records when, next
+//!   to the value (`store.rs`, `$changed`); [`Settings::recent`] lists the newest across levels.
+//!   The session records nothing: its changes count when committed.
 //!
 //! Pure logic and file I/O only: the Tauri commands are in `app/src-tauri/src/settings.rs`.
 
@@ -171,11 +174,36 @@ struct SessionLayer {
     values: BTreeMap<&'static str, Value>,
 }
 
+/// A value changed recently, at one level («Modificate di recente», T01).
+/// Mirror: `SettingRecent` in app/src/emu.ts.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentChange {
+    pub key: &'static str,
+    /// Global, Console or Game.
+    pub level: Level,
+    /// The console of a Console level.
+    pub console: Option<ConsoleId>,
+    /// The game of a Game level.
+    pub game: Option<GameId>,
+    /// Unix ms.
+    pub at: u64,
+}
+
+/// Unix ms now.
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX))
+}
+
 /// The settings of this device: files plus the open game's session.
 pub struct Settings {
     device: Device,
     store: Store,
     session: Option<SessionLayer>,
+    /// Unix ms now, for the change records (replaced in the tests).
+    clock: fn() -> u64,
 }
 
 impl Settings {
@@ -186,6 +214,7 @@ impl Settings {
             device,
             store: Store::new(synced_dir, device_file),
             session: None,
+            clock: now_ms,
         }
     }
 
@@ -242,6 +271,7 @@ impl Settings {
                         key: entry.key,
                         per_device: entry.per_device,
                         value: Some(json),
+                        at: Some((self.clock)()),
                     }],
                 )?;
             }
@@ -263,6 +293,7 @@ impl Settings {
                     key: entry.key,
                     per_device: entry.per_device,
                     value: None,
+                    at: Some((self.clock)()),
                 }],
             )?,
             None => {
@@ -308,6 +339,7 @@ impl Settings {
             CommitTarget::Game => (Level::Game, FileId::Game(session.game.clone())),
             CommitTarget::Console => (Level::Console, FileId::Console(session.console)),
         };
+        let at = (self.clock)();
         let changes = session
             .values
             .iter()
@@ -324,6 +356,7 @@ impl Settings {
                     key: entry.key,
                     per_device: entry.per_device,
                     value: Some(json),
+                    at: Some(at),
                 })
             })
             .collect::<Result<Vec<Change<'static>>, _>>()?;
@@ -337,6 +370,49 @@ impl Settings {
     pub fn discard_session(&mut self) -> Result<Vec<&'static str>, ErrorCode> {
         let values = std::mem::take(&mut self.session_mut()?.values);
         Ok(values.into_keys().collect())
+    }
+
+    /// The `limit` newest changes across every level (Global, each console, each game), newest
+    /// first. Keys this version does not know, and entries without a value, are left out.
+    pub fn recent(&mut self, limit: usize) -> Vec<RecentChange> {
+        let consoles = [
+            ConsoleId::Gb,
+            ConsoleId::Gbc,
+            ConsoleId::Gba,
+            ConsoleId::Nds,
+            ConsoleId::N3ds,
+        ];
+        let mut files: Vec<FileId> = vec![FileId::Global];
+        files.extend(consoles.into_iter().map(FileId::Console));
+        files.extend(self.store.game_ids().into_iter().map(FileId::Game));
+        let mut out: Vec<RecentChange> = Vec::new();
+        for file in files {
+            for (key, at) in self.store.changed_in(&file) {
+                let Some(entry) = entry(&key).filter(|e| e.has_value()) else {
+                    continue;
+                };
+                let (level, console, game) = match &file {
+                    FileId::Global => (Level::Global, None, None),
+                    FileId::Console(c) => (Level::Console, Some(*c), None),
+                    FileId::Game(g) => (Level::Game, None, Some(g.clone())),
+                };
+                out.push(RecentChange {
+                    key: entry.key,
+                    level,
+                    console,
+                    game,
+                    at,
+                });
+            }
+        }
+        // Newest first; equal times in a stable order (key, then level).
+        out.sort_by(|a, b| {
+            b.at.cmp(&a.at)
+                .then_with(|| a.key.cmp(b.key))
+                .then_with(|| a.level.cmp(&b.level))
+        });
+        out.truncate(limit);
+        out
     }
 
     fn session_mut(&mut self) -> Result<&mut SessionLayer, ErrorCode> {

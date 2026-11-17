@@ -54,6 +54,7 @@ const fn e(key: &'static str, kind: Kind, default: DefaultValue, levels: Levels)
         per_device: false,
         platform: Platform::All,
         phase: 1,
+        most_used: false,
     }
 }
 
@@ -261,6 +262,15 @@ impl Entry {
     const fn phase(self, phase: u8) -> Self {
         Self { phase, ..self }
     }
+
+    /// Listed in «Usate più spesso» (T01, board Settings2, 17/11): changed at the Global level
+    /// right from the first settings page.
+    const fn most_used(self) -> Self {
+        Self {
+            most_used: true,
+            ..self
+        }
+    }
 }
 
 const G: Levels = Levels::GLOBAL;
@@ -273,7 +283,7 @@ const ALL: Levels = Levels::ALL;
 
 pub static ENTRIES: &[Entry] = &[
     // ---- Video (video) ----
-    seg("video.scale", &["fit", "integer", "fill"], "fit", ALL),
+    seg("video.scale", &["fit", "integer", "fill"], "fit", ALL).most_used(),
     sel(
         "video.aspect",
         &["original", "4_3", "16_9"],
@@ -356,7 +366,8 @@ pub static ENTRIES: &[Entry] = &[
         ],
         "none",
         ALL,
-    ),
+    )
+    .most_used(),
     pct("fx.fxint", 60, ALL),
     slider("fx.fxbright", 110, (80, 150, 5), Unit::Percent, ALL),
     act("fx.fxfile", G),
@@ -389,7 +400,7 @@ pub static ENTRIES: &[Entry] = &[
     )
     .phase(3),
     // ---- Audio (audio) ----
-    pct("audio.vol", 80, GG),
+    pct("audio.vol", 80, GG).most_used(),
     seg("audio.ff", &["mute", "pitch_up", "same_pitch"], "mute", GG),
     sel("audio.mic", &["blow", "real", "silence"], "blow", CG).phase(2),
     sel_more("audio.out", &["system"], "system", G)
@@ -405,14 +416,14 @@ pub static ENTRIES: &[Entry] = &[
         G,
     ),
     seg("speed.ffmode", &["hold", "toggle"], "hold", G),
-    seg("speed.ffval", &["2", "3", "4", "max"], "4", GG),
+    seg("speed.ffval", &["2", "3", "4", "max"], "4", GG).most_used(),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
     sw("speed.rew", true, ALL),
     slider("speed.rewlen", 30, (10, 120, 10), Unit::Seconds, ALL).device(),
     sel("speed.runahead", &["off", "1", "2", "3"], "off", GM).phase(5),
     // ---- Salvataggi (saves) ----
     seg("saves.slots", &["3", "5", "10"], "10", G),
-    seg("saves.autoq", &["1min", "5min", "never"], "5min", ALL),
+    seg("saves.autoq", &["1min", "5min", "never"], "5min", ALL).most_used(),
     sw("saves.autoexit", true, ALL),
     seg("saves.resume", &["ask", "always", "ingame"], "always", ALL),
     sw("saves.undo", true, G),
@@ -478,7 +489,8 @@ pub static ENTRIES: &[Entry] = &[
         &["system", "dark", "black", "light"],
         "system",
         G,
-    ),
+    )
+    .most_used(),
     e(
         "general.accent",
         Kind::Colour {
@@ -1030,7 +1042,7 @@ pub static SECTIONS: &[Section] = &[
 #[cfg(test)]
 mod tests {
     use super::{ENTRIES, PAGES};
-    use crate::settings::schema::{DefaultValue, Kind};
+    use crate::settings::schema::{DefaultValue, Kind, Platform};
 
     #[test]
     fn has_the_designs_157_entries_with_unique_keys_on_known_pages() {
@@ -1087,5 +1099,33 @@ mod tests {
                 DefaultValue::Text("system")
             ))
         ));
+    }
+
+    #[test]
+    fn the_most_used_are_six_global_phase_one_values_for_every_device() {
+        let most: Vec<&str> = ENTRIES
+            .iter()
+            .filter(|e| e.most_used)
+            .map(|e| e.key)
+            .collect();
+        // Board Settings2 (T01, 17/11), in catalogue order.
+        assert_eq!(
+            most,
+            [
+                "video.scale",
+                "fx.fxpick",
+                "audio.vol",
+                "speed.ffval",
+                "saves.autoq",
+                "general.theme"
+            ]
+        );
+        for entry in ENTRIES.iter().filter(|e| e.most_used) {
+            assert!(entry.has_value(), "{}", entry.key);
+            assert!(entry.levels.global, "{} is shown at Global", entry.key);
+            assert_eq!(entry.phase, 1, "{}", entry.key);
+            assert_eq!(entry.platform, Platform::All, "{}", entry.key);
+            assert!(!entry.per_device, "{}", entry.key);
+        }
     }
 }

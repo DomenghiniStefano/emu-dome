@@ -783,3 +783,193 @@ fn synonyms_point_at_entries_and_reach_the_schema() {
     let vsync = schema.entries.iter().find(|e| e.key == "video.vsync");
     assert!(vsync.is_some_and(|e| e.synonyms.contains(&"strappo")));
 }
+
+// ---- Recent changes («Modificate di recente», T01) ----
+
+thread_local! {
+    /// The test clock: each test runs on its own thread.
+    static NOW: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+fn test_clock() -> u64 {
+    NOW.with(std::cell::Cell::get)
+}
+
+fn at(ms: u64) {
+    NOW.with(|now| now.set(ms));
+}
+
+fn timed_settings(dir: &TestDir) -> Settings {
+    let mut s = settings(dir);
+    s.clock = test_clock;
+    s
+}
+
+fn recent_keys(s: &mut Settings) -> Vec<(&'static str, Level, u64)> {
+    s.recent(10)
+        .into_iter()
+        .map(|r| (r.key, r.level, r.at))
+        .collect()
+}
+
+#[test]
+fn recent_changes_list_the_newest_first_across_levels() {
+    let dir = TestDir::new("recent-levels");
+    let mut s = timed_settings(&dir);
+    at(1_000);
+    s.set("video.scale", &Scope::Global, option("video.scale", 2))
+        .unwrap();
+    at(3_000);
+    s.set("fx.fxint", &console_scope(), Value::Int(40)).unwrap();
+    at(2_000);
+    s.set("video.filter", &game_scope(), option("video.filter", 0))
+        .unwrap();
+
+    let recent = s.recent(10);
+    assert_eq!(
+        recent
+            .iter()
+            .map(|r| (r.key, r.level, r.at))
+            .collect::<Vec<_>>(),
+        [
+            ("fx.fxint", Level::Console, 3_000),
+            ("video.filter", Level::Game, 2_000),
+            ("video.scale", Level::Global, 1_000),
+        ]
+    );
+    assert_eq!(recent[0].console, Some(ConsoleId::Gba));
+    assert_eq!(recent[0].game, None);
+    assert_eq!(recent[1].game, Some(game()));
+    assert_eq!(recent[2].console, None);
+    // The limit keeps the newest.
+    assert_eq!(s.recent(1).len(), 1);
+    assert_eq!(s.recent(1)[0].key, "fx.fxint");
+}
+
+#[test]
+fn a_new_change_moves_the_key_up_and_survives_a_restart() {
+    let dir = TestDir::new("recent-update");
+    {
+        let mut s = timed_settings(&dir);
+        at(1_000);
+        s.set("video.scale", &Scope::Global, option("video.scale", 1))
+            .unwrap();
+        at(2_000);
+        s.set("audio.vol", &Scope::Global, Value::Int(30)).unwrap();
+        at(5_000);
+        s.set("video.scale", &Scope::Global, option("video.scale", 2))
+            .unwrap();
+    }
+    let mut fresh = settings(&dir);
+    assert_eq!(
+        recent_keys(&mut fresh),
+        [
+            ("video.scale", Level::Global, 5_000),
+            ("audio.vol", Level::Global, 2_000),
+        ]
+    );
+}
+
+#[test]
+fn a_reset_counts_as_a_change_at_its_level() {
+    let dir = TestDir::new("recent-reset");
+    let mut s = timed_settings(&dir);
+    at(1_000);
+    s.set("fx.fxint", &console_scope(), Value::Int(40)).unwrap();
+    at(4_000);
+    s.reset("fx.fxint", &console_scope()).unwrap();
+    assert_eq!(recent_keys(&mut s), [("fx.fxint", Level::Console, 4_000)]);
+    // The value itself is gone: the weaker level shows through.
+    assert_eq!(
+        value_of(&mut s, "fx.fxint", &console_scope()).1,
+        Level::Default
+    );
+}
+
+#[test]
+fn the_session_records_nothing_until_committed() {
+    let dir = TestDir::new("recent-session");
+    let mut s = timed_settings(&dir);
+    s.begin_session(ConsoleId::Gba, game());
+    at(1_000);
+    s.set("fx.fxint", &Scope::Session, Value::Int(50)).unwrap();
+    assert!(s.recent(10).is_empty());
+    at(7_000);
+    s.commit_session(CommitTarget::Console).unwrap();
+    assert_eq!(recent_keys(&mut s), [("fx.fxint", Level::Console, 7_000)]);
+}
+
+#[test]
+fn change_times_follow_the_value_into_its_file() {
+    let dir = TestDir::new("recent-files");
+    let mut s = timed_settings(&dir);
+    at(1_000);
+    // Per device: the time stays on this device, like the value.
+    s.set("video.vsync", &Scope::Global, Value::Bool(false))
+        .unwrap();
+    at(2_000);
+    s.set("video.scale", &Scope::Global, option("video.scale", 1))
+        .unwrap();
+
+    assert!(!synced_text(&dir).contains("video.vsync"));
+    let synced: serde_json::Value = serde_json::from_str(&dir.read("synced/global.json")).unwrap();
+    assert_eq!(synced["$changed"]["video.scale"], json!(2_000));
+    let device: serde_json::Value = serde_json::from_str(&dir.read("local/device.json")).unwrap();
+    assert_eq!(device["global"]["$changed"]["video.vsync"], json!(1_000));
+    assert_eq!(
+        recent_keys(&mut s),
+        [
+            ("video.scale", Level::Global, 2_000),
+            ("video.vsync", Level::Global, 1_000),
+        ]
+    );
+}
+
+#[test]
+fn unknown_or_malformed_change_records_are_skipped() {
+    let dir = TestDir::new("recent-unknown");
+    dir.write(
+        "synced/global.json",
+        r#"{ "$changed": { "future.thing": 9000, "video.scale": "soon", "audio.vol": 10, "presets.preset": 20 } }"#,
+    );
+    dir.write("synced/console/gba.json", r#"{ "$changed": [1, 2] }"#);
+    let mut s = settings(&dir);
+    assert_eq!(recent_keys(&mut s), [("audio.vol", Level::Global, 10)]);
+    // And the unknown record survives the next write.
+    s.set("audio.vol", &Scope::Global, Value::Int(20)).unwrap();
+    let synced: serde_json::Value = serde_json::from_str(&dir.read("synced/global.json")).unwrap();
+    assert_eq!(synced["$changed"]["future.thing"], json!(9000));
+}
+
+#[test]
+fn recent_changes_have_the_interface_shape() {
+    let dir = TestDir::new("recent-shape");
+    let mut s = timed_settings(&dir);
+    at(42);
+    s.set("fx.fxint", &console_scope(), Value::Int(40)).unwrap();
+    let json = serde_json::to_value(s.recent(1)).unwrap();
+    assert_eq!(
+        json,
+        json!([{ "key": "fx.fxint", "level": "console", "console": "gba", "game": null, "at": 42 }])
+    );
+}
+
+#[test]
+fn the_most_used_reach_the_schema() {
+    let schema = super::schema(Device::Desktop);
+    let most: Vec<&str> = schema
+        .entries
+        .iter()
+        .filter(|e| e.most_used)
+        .map(|e| e.key)
+        .collect();
+    assert_eq!(most.len(), 6);
+    let json = serde_json::to_value(&schema).unwrap();
+    let scale = json["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["key"] == "video.scale")
+        .unwrap();
+    assert_eq!(scale["mostUsed"], json!(true));
+}
