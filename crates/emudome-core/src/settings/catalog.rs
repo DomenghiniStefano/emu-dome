@@ -7,10 +7,34 @@
 //! Slider ranges and steps are not in the design, which gives only the default: the ranges below
 //! are a sensible guess that contains the default on the step grid, and Cowork confirms them in 2b.
 
-use super::schema::{ActionStyle, ChoiceStyle, DefaultValue, Entry, Kind, Levels, Platform, Unit};
+use super::schema::{
+    ActionStyle, ChoiceStyle, DefaultValue, Entry, Kind, Levels, PageGroup, Platform, Section, Unit,
+};
 
 /// Phase the app is in: entries of later phases stay hidden.
 pub const CURRENT_PHASE: u8 = 1;
+
+/// The groups of the category list, in order, with their pages (text `settings.groups.<id>`).
+pub static GROUPS: &[PageGroup] = &[
+    PageGroup {
+        id: "game",
+        pages: &["video", "fx", "screens", "audio", "speed", "saves"],
+    },
+    PageGroup {
+        id: "controls",
+        pages: &["pad", "touch"],
+    },
+    PageGroup {
+        id: "app",
+        pages: &["general", "library", "cloud", "a11y", "presets"],
+    },
+    PageGroup {
+        id: "system",
+        pages: &[
+            "bios", "consoles", "cores", "perf", "online", "adv", "about",
+        ],
+    },
+];
 
 /// Page ids in display order.
 pub static PAGES: &[&str] = &[
@@ -49,7 +73,7 @@ const fn choice(
         Kind::Choice {
             style,
             options,
-            placeholder: false,
+            more_at_runtime: false,
         },
         DefaultValue::Text(default),
         levels,
@@ -76,20 +100,31 @@ const fn cards(
     choice(key, ChoiceStyle::Cards, options, default, levels)
 }
 
-/// Single choice shown as a list (`sel`). The design does not list these options yet: the set
-/// holds only the default's id, and it is marked as a placeholder.
-// TODO(2b): options from Cowork for every `sel` entry.
-const fn sel(key: &'static str, default: &'static [&'static str], levels: Levels) -> Entry {
-    e(
-        key,
-        Kind::Choice {
-            style: ChoiceStyle::List,
-            options: default,
-            placeholder: true,
-        },
-        DefaultValue::Text(default[0]),
-        levels,
-    )
+/// Single choice shown as a list (`sel`).
+const fn sel(
+    key: &'static str,
+    options: &'static [&'static str],
+    default: &'static str,
+    levels: Levels,
+) -> Entry {
+    choice(key, ChoiceStyle::List, options, default, levels)
+}
+
+/// A list whose options continue at run time after the fixed ones (audio devices, the
+/// user's saved layouts): the fixed ones are the schema's, the rest come from the device.
+const fn sel_more(
+    key: &'static str,
+    options: &'static [&'static str],
+    default: &'static str,
+    levels: Levels,
+) -> Entry {
+    let mut entry = sel(key, options, default, levels);
+    entry.kind = Kind::Choice {
+        style: ChoiceStyle::List,
+        options,
+        more_at_runtime: true,
+    };
+    entry
 }
 
 /// Multiple choice (`chips`). The design gives no default: every option is on.
@@ -194,24 +229,23 @@ const ALL: Levels = Levels::ALL;
 pub static ENTRIES: &[Entry] = &[
     // ---- Video (video) ----
     seg("video.scale", &["fit", "integer", "fill"], "fit", ALL),
-    sel("video.aspect", &["console"], ALL),
+    sel(
+        "video.aspect",
+        &["original", "4_3", "16_9"],
+        "original",
+        ALL,
+    ),
     seg("video.filter", &["none", "light", "soft"], "light", ALL),
     // `blurred_game` is PC only in the design: per-option platforms come with 2b.
     cards(
         "video.surround",
-        &[
-            "black",
-            "cover_colour",
-            "blurred_game",
-            "backdrop",
-            "custom_image",
-        ],
+        &["black", "cover", "blur", "builtin", "image"],
         "black",
         ALL,
     ),
     cards(
         "video.surroundSet",
-        &["aurora", "sunset", "night", "forest", "graphite", "checks"],
+        &["aurora", "sunset", "night", "forest", "graphite", "grid"],
         "aurora",
         ALL,
     ),
@@ -227,7 +261,7 @@ pub static ENTRIES: &[Entry] = &[
     )
     .device()
     .pc(),
-    seg("video.winsize", &["x1", "x2", "x3", "x4", "free"], "x3", GC)
+    seg("video.winsize", &["1x", "2x", "3x", "4x", "free"], "3x", GC)
         .device()
         .pc(),
     seg("video.portrait", &["center", "top"], "top", ALL)
@@ -249,9 +283,21 @@ pub static ENTRIES: &[Entry] = &[
     )
     .device(),
     sw("video.vsync", true, ALL).device(),
-    sel("video.api", &["auto"], G).device(),
-    sel("video.res3d", &["x1"], CG).phase(2),
-    sel("video.texf", &["none"], CG).phase(3),
+    sel(
+        "video.api",
+        &["auto", "vulkan", "d3d12", "opengl"],
+        "auto",
+        G,
+    )
+    .device(),
+    sel("video.res3d", &["1x", "2x", "3x", "4x"], "1x", CG).phase(2),
+    sel(
+        "video.texf",
+        &["none", "bicubic", "scaleforce", "xbrz", "mmpx", "anime4k"],
+        "none",
+        CG,
+    )
+    .phase(3),
     // ---- Effetti schermo (fx) ----
     cards(
         "fx.fxpick",
@@ -272,7 +318,7 @@ pub static ENTRIES: &[Entry] = &[
     // ---- Schermi di DS e 3DS (screens) ----
     chips(
         "screens.cycle",
-        &["vertical", "side_by_side", "large_small", "top_only"],
+        &["vertical", "side", "big_small", "top_only"],
         CG,
     )
     .phase(2),
@@ -281,56 +327,49 @@ pub static ENTRIES: &[Entry] = &[
     slider("screens.gap", 0, (0, 100, 1), Unit::Px, CG).phase(2),
     seg(
         "screens.rot",
-        &["none", "left", "right", "upside_down"],
+        &["none", "left", "right", "flip"],
         "none",
         GM,
     )
     .phase(2),
     seg("screens.swap", &["toggle", "hold"], "toggle", G).phase(2),
     sw("screens.second", false, G).device().pc().phase(5),
-    sel("screens.stereo", &["off"], GM).phase(3),
+    sel(
+        "screens.stereo",
+        &["off", "side", "anaglyph", "interlaced"],
+        "off",
+        GM,
+    )
+    .phase(3),
     // ---- Audio (audio) ----
     pct("audio.vol", 80, GG),
-    seg(
-        "audio.ff",
-        &["mute", "higher_pitch", "same_pitch"],
-        "mute",
-        GG,
-    ),
-    sel("audio.mic", &["simulated_blow"], CG).phase(2),
-    sel("audio.out", &["system"], G).device().pc(),
+    seg("audio.ff", &["mute", "pitch_up", "same_pitch"], "mute", GG),
+    sel("audio.mic", &["blow", "real", "silence"], "blow", CG).phase(2),
+    sel_more("audio.out", &["system"], "system", G)
+        .device()
+        .pc(),
     seg("audio.lat", &["low", "balanced", "safe"], "balanced", G).device(),
     // ---- Velocità di gioco (speed) ----
-    seg("speed.spstart", &["x0_5", "x1", "x2"], "x1", GG),
+    seg("speed.spstart", &["0.5", "1", "2"], "1", GG),
     chips(
         "speed.splist",
-        &["x0_5", "x1", "x1_5", "x2", "x3", "x4", "max"],
+        &["0.5", "1", "1.5", "2", "3", "4", "max"],
         G,
     ),
     seg("speed.ffmode", &["hold", "toggle"], "hold", G),
-    seg("speed.ffval", &["x2", "x3", "x4", "max"], "x4", GG),
-    seg("speed.slow", &["x0_25", "x0_5", "x0_75"], "x0_5", G),
+    seg("speed.ffval", &["2", "3", "4", "max"], "4", GG),
+    seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
     sw("speed.rew", true, ALL),
     slider("speed.rewlen", 30, (10, 120, 5), Unit::Seconds, ALL).device(),
-    sel("speed.runahead", &["off"], GM).phase(5),
+    sel("speed.runahead", &["off", "1", "2", "3"], "off", GM).phase(5),
     // ---- Salvataggi (saves) ----
-    seg("saves.slots", &["three", "five", "ten"], "ten", G),
-    seg(
-        "saves.autoq",
-        &["every_minute", "every_5_minutes", "never"],
-        "every_5_minutes",
-        ALL,
-    ),
+    seg("saves.slots", &["3", "5", "10"], "10", G),
+    seg("saves.autoq", &["1min", "5min", "never"], "5min", ALL),
     sw("saves.autoexit", true, ALL),
-    seg(
-        "saves.resume",
-        &["ask", "always", "game_save"],
-        "always",
-        ALL,
-    ),
+    seg("saves.resume", &["ask", "always", "ingame"], "always", ALL),
     sw("saves.undo", true, G),
     slider("saves.backups", 5, (1, 20, 1), Unit::Copies, G),
-    seg("saves.rtc", &["real", "shifted", "fixed_date"], "real", GM),
+    seg("saves.rtc", &["real", "offset", "fixed"], "real", GM),
     act("saves.import", GM),
     act("saves.savedir", G).device(),
     // ---- Controller e tastiera (pad) ----
@@ -339,35 +378,46 @@ pub static ENTRIES: &[Entry] = &[
     seg("pad.ab", &["nintendo", "printed"], "nintendo", G),
     link("pad.remap", ALL),
     link("pad.turbo", ALL),
-    sel("pad.mod", &["l3"], G),
+    sel("pad.mod", &["l3", "r3", "select"], "l3", G),
     link("pad.combos", ALL),
-    sel("pad.lid", &["l3_select"], GC).phase(2),
+    sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC).phase(2),
     pct("pad.dead", 15, G),
     pct("pad.stickdpad", 50, GC),
     pct("pad.trig", 50, G),
     pct("pad.rumble", 70, GG).phase(2),
-    sel("pad.gyro", &["controller_gyro"], CG).phase(3),
-    sel("pad.pointer", &["mouse"], CG).phase(2),
-    seg("pad.confirm", &["a_right", "a_bottom"], "a_right", G),
-    sel("pad.repeat", &["normal"], G),
+    sel(
+        "pad.gyro",
+        &["controller", "phone", "mouse", "right_stick", "off"],
+        "controller",
+        CG,
+    )
+    .phase(3),
+    sel(
+        "pad.pointer",
+        &["mouse", "right_stick", "touch"],
+        "mouse",
+        CG,
+    )
+    .phase(2),
+    seg("pad.confirm", &["right", "bottom"], "right", G),
+    sel("pad.repeat", &["slow", "normal", "fast"], "normal", G),
     // ---- Controlli touch (touch) ----
     link("touch.tedit", ALL).phone().phase(4),
-    sel("touch.tport", &["default"], ALL).phone().phase(4),
-    sel("touch.tland", &["default"], ALL).phone().phase(4),
+    sel_more("touch.tport", &["default"], "default", ALL)
+        .phone()
+        .phase(4),
+    sel_more("touch.tland", &["default"], "default", ALL)
+        .phone()
+        .phase(4),
     link("touch.tskin", G).phone().phase(4),
     pct("touch.topac", 60, ALL).phone().phase(4),
     pct("touch.thapt", 40, G).device().phone().phase(4),
-    seg(
-        "touch.thide",
-        &["never", "after_5s", "after_10s"],
-        "never",
-        G,
-    )
-    .phone()
-    .phase(4),
+    seg("touch.thide", &["never", "5s", "10s"], "never", G)
+        .phone()
+        .phase(4),
     sw("touch.tpad", true, G).phone().phase(4),
     // ---- Generale (general) ----
-    sel("general.lang", &["system"], G),
+    sel("general.lang", &["system", "it", "en"], "system", G),
     seg(
         "general.theme",
         &["system", "dark", "black", "light"],
@@ -396,39 +446,44 @@ pub static ENTRIES: &[Entry] = &[
     sw("library.watch", false, G).device().pc(),
     seg(
         "library.sort",
-        &["last_played", "name", "play_time", "date_added"],
+        &["last_played", "name", "play_time", "added"],
         "last_played",
         G,
     ),
     sw("library.group", false, G),
-    sel("library.region", &["europe_america"], G),
+    sel("library.region", &["eu_us", "us_eu", "jp"], "eu_us", G),
     link("library.hidden", G),
-    sel("library.covers", &["colour_title"], G),
+    sel(
+        "library.covers",
+        &["color_title", "rom_icon", "title_only"],
+        "color_title",
+        G,
+    ),
     // ---- Cloud (cloud) ----
     act("cloud.acct", G).device(),
     action("cloud.space", ActionStyle::Storage, G),
     sw("cloud.ssaves", true, G),
-    seg("cloud.squick", &["all", "latest", "none"], "all", GC),
+    seg("cloud.squick", &["all", "last", "none"], "all", GC),
     sw("cloud.ssettings", true, G),
     link("cloud.sgames", G),
-    seg(
-        "cloud.sauto",
-        &["start_and_exit", "manual"],
-        "start_and_exit",
-        G,
-    ),
+    seg("cloud.sauto", &["game", "manual"], "game", G),
     sw("cloud.swifi", true, G).device().phone(),
     // ---- Accessibilità (a11y) ----
     slider("a11y.textsize", 100, (80, 200, 10), Unit::Percent, G).device(),
-    seg("a11y.motion", &["system", "yes", "no"], "system", G),
-    seg("a11y.transp", &["system", "yes", "no"], "system", G),
+    seg("a11y.motion", &["system", "on", "off"], "system", G),
+    seg("a11y.transp", &["system", "on", "off"], "system", G),
     sw("a11y.toggle", false, G),
-    sel("a11y.cblind", &["none"], GG),
+    sel(
+        "a11y.cblind",
+        &["none", "protan", "deutan", "tritan"],
+        "none",
+        GG,
+    ),
     // ---- Preimpostazioni (presets) ----
     // TODO(2b): the design gives no default preset; the first one stands in.
     cards(
         "presets.preset",
-        &["faithful", "performance", "quality", "battery_saver"],
+        &["faithful", "performance", "quality", "battery"],
         "faithful",
         G,
     ),
@@ -444,37 +499,60 @@ pub static ENTRIES: &[Entry] = &[
     // ---- Opzioni per console (consoles) ----
     seg(
         "consoles.gbmodel",
-        &["auto", "game_boy", "game_boy_color", "super_game_boy"],
+        &["auto", "gb", "gbc", "sgb"],
         "auto",
         CG,
     ),
-    sel("consoles.gbpal", &["original_green"], CG),
+    sel(
+        "consoles.gbpal",
+        &["green", "pocket", "light", "gbc"],
+        "green",
+        CG,
+    ),
     sw("consoles.sgb", true, CG),
-    seg("consoles.gbacc", &["off", "gba_screen", "auto"], "auto", CG),
-    sel("consoles.gbablend", &["off"], CG),
+    seg("consoles.gbacc", &["off", "gba", "auto"], "auto", CG),
+    sel("consoles.gbablend", &["off", "auto", "on"], "off", CG),
     pct("consoles.solar", 50, GM),
     seg("consoles.dsmode", &["auto", "ds", "dsi"], "auto", GM).phase(2),
     // Empty = the OS user name, resolved when the DS core arrives.
     e("consoles.dsname", Kind::Text, DefaultValue::Text(""), C).phase(2),
-    sel("consoles.dslang", &["italian"], C).phase(2),
-    sel("consoles.slot2", &["none"], GM).phase(2),
-    seg("consoles.n3dsmodel", &["original", "new"], "new", CG).phase(3),
-    sel("consoles.n3dsreg", &["auto"], CG).phase(3),
+    sel(
+        "consoles.dslang",
+        &["ja", "en", "fr", "de", "it", "es"],
+        "it",
+        C,
+    )
+    .phase(2),
+    sel(
+        "consoles.slot2",
+        &["none", "rumble", "memory", "gba_game"],
+        "none",
+        GM,
+    )
+    .phase(2),
+    seg("consoles.n3dsmodel", &["o3ds", "n3ds"], "n3ds", CG).phase(3),
+    sel(
+        "consoles.n3dsreg",
+        &["auto", "jpn", "usa", "eur", "kor", "chn", "twn"],
+        "auto",
+        CG,
+    )
+    .phase(3),
     // ---- Opzioni avanzate dell'emulatore (cores) ----
     sw("cores.mgbabios", true, CG),
     sw("cores.mgbaskip", false, CG),
     sw("cores.mgbalp", false, CG),
     sw("cores.mgbaopp", false, CG),
     link("cores.mgbaall", CG),
-    sel("cores.mdsrender", &["software"], CG).phase(2),
-    seg("cores.mdsboot", &["direct", "ds_menu"], "direct", CG).phase(2),
+    sel("cores.mdsrender", &["software", "opengl"], "software", CG).phase(2),
+    seg("cores.mdsboot", &["direct", "menu"], "direct", CG).phase(2),
     link("cores.mdsall", CG).phase(2),
     seg("cores.azaudio", &["hle", "lle"], "hle", CG).phase(3),
     link("cores.azall", CG).phase(3),
     // ---- Prestazioni (perf) ----
     seg(
         "perf.frameskip",
-        &["auto", "never", "one", "two", "three", "four"],
+        &["auto", "never", "1", "2", "3", "4"],
         "auto",
         ALL,
     )
@@ -502,6 +580,341 @@ pub static ENTRIES: &[Entry] = &[
     info("about.emaz", G).phase(3),
     link("about.lic", G),
     act("about.log", G),
+];
+
+/// The sections of each page, in display order, with their entries in order: the headings the
+/// interface shows (`settings.sections.<page>.<id>`). Every entry is in exactly one section of
+/// its page (tested).
+pub static SECTIONS: &[Section] = &[
+    Section {
+        page: "video",
+        id: "image",
+        keys: &[
+            "video.scale",
+            "video.aspect",
+            "video.filter",
+            "video.surround",
+            "video.surroundSet",
+            "video.surroundImg",
+            "video.surroundDim",
+            "video.surroundAnim",
+            "video.fps",
+        ],
+    },
+    Section {
+        page: "video",
+        id: "window",
+        keys: &[
+            "video.window",
+            "video.winsize",
+            "video.portrait",
+            "video.orient",
+        ],
+    },
+    Section {
+        page: "video",
+        id: "gpu",
+        keys: &["video.path", "video.vsync", "video.api"],
+    },
+    Section {
+        page: "video",
+        id: "3d",
+        keys: &["video.res3d", "video.texf"],
+    },
+    Section {
+        page: "fx",
+        id: "effect",
+        keys: &["fx.fxpick"],
+    },
+    Section {
+        page: "fx",
+        id: "adjust",
+        keys: &["fx.fxint", "fx.fxbright", "fx.fxfile"],
+    },
+    Section {
+        page: "screens",
+        id: "layout",
+        keys: &[
+            "screens.cycle",
+            "screens.custom",
+            "screens.ratio",
+            "screens.gap",
+            "screens.rot",
+        ],
+    },
+    Section {
+        page: "screens",
+        id: "other",
+        keys: &["screens.swap", "screens.second", "screens.stereo"],
+    },
+    Section {
+        page: "audio",
+        id: "audio",
+        keys: &["audio.vol", "audio.ff", "audio.mic"],
+    },
+    Section {
+        page: "audio",
+        id: "device",
+        keys: &["audio.out", "audio.lat"],
+    },
+    Section {
+        page: "speed",
+        id: "speed",
+        keys: &["speed.spstart", "speed.splist"],
+    },
+    Section {
+        page: "speed",
+        id: "ff",
+        keys: &["speed.ffmode", "speed.ffval", "speed.slow"],
+    },
+    Section {
+        page: "speed",
+        id: "rewind",
+        keys: &["speed.rew", "speed.rewlen", "speed.runahead"],
+    },
+    Section {
+        page: "saves",
+        id: "quick",
+        keys: &[
+            "saves.slots",
+            "saves.autoq",
+            "saves.autoexit",
+            "saves.resume",
+            "saves.undo",
+        ],
+    },
+    Section {
+        page: "saves",
+        id: "ingame",
+        keys: &["saves.backups", "saves.rtc", "saves.import"],
+    },
+    Section {
+        page: "saves",
+        id: "folder",
+        keys: &["saves.savedir"],
+    },
+    Section {
+        page: "pad",
+        id: "devices",
+        keys: &["pad.dev1", "pad.dev2"],
+    },
+    Section {
+        page: "pad",
+        id: "buttons",
+        keys: &["pad.ab", "pad.remap", "pad.turbo"],
+    },
+    Section {
+        page: "pad",
+        id: "shortcuts",
+        keys: &["pad.mod", "pad.combos", "pad.lid"],
+    },
+    Section {
+        page: "pad",
+        id: "sticks",
+        keys: &[
+            "pad.dead",
+            "pad.stickdpad",
+            "pad.trig",
+            "pad.rumble",
+            "pad.gyro",
+            "pad.pointer",
+        ],
+    },
+    Section {
+        page: "pad",
+        id: "menus",
+        keys: &["pad.confirm", "pad.repeat"],
+    },
+    Section {
+        page: "touch",
+        id: "layout",
+        keys: &["touch.tedit", "touch.tport", "touch.tland", "touch.tskin"],
+    },
+    Section {
+        page: "touch",
+        id: "behaviour",
+        keys: &["touch.topac", "touch.thapt", "touch.thide", "touch.tpad"],
+    },
+    Section {
+        page: "general",
+        id: "look",
+        keys: &[
+            "general.lang",
+            "general.theme",
+            "general.accent",
+            "general.ui",
+        ],
+    },
+    Section {
+        page: "general",
+        id: "behaviour",
+        keys: &[
+            "general.start",
+            "general.bgpause",
+            "general.confirmdel",
+            "general.qmorder",
+            "general.updates",
+        ],
+    },
+    Section {
+        page: "library",
+        id: "folders",
+        keys: &["library.folders", "library.scanstart", "library.watch"],
+    },
+    Section {
+        page: "library",
+        id: "view",
+        keys: &[
+            "library.sort",
+            "library.group",
+            "library.region",
+            "library.hidden",
+            "library.covers",
+        ],
+    },
+    Section {
+        page: "cloud",
+        id: "account",
+        keys: &["cloud.acct", "cloud.space"],
+    },
+    Section {
+        page: "cloud",
+        id: "what",
+        keys: &[
+            "cloud.ssaves",
+            "cloud.squick",
+            "cloud.ssettings",
+            "cloud.sgames",
+        ],
+    },
+    Section {
+        page: "cloud",
+        id: "when",
+        keys: &["cloud.sauto", "cloud.swifi"],
+    },
+    Section {
+        page: "a11y",
+        id: "ui",
+        keys: &["a11y.textsize", "a11y.motion", "a11y.transp"],
+    },
+    Section {
+        page: "a11y",
+        id: "game",
+        keys: &["a11y.toggle", "a11y.cblind"],
+    },
+    Section {
+        page: "presets",
+        id: "ready",
+        keys: &["presets.preset"],
+    },
+    Section {
+        page: "presets",
+        id: "file",
+        keys: &["presets.export", "presets.importset"],
+    },
+    Section {
+        page: "bios",
+        id: "gba",
+        keys: &["bios.bgba"],
+    },
+    Section {
+        page: "bios",
+        id: "nds",
+        keys: &["bios.bds7", "bios.bds9", "bios.bdsfw", "bios.bdsi"],
+    },
+    Section {
+        page: "bios",
+        id: "3ds",
+        keys: &["bios.b3ds"],
+    },
+    Section {
+        page: "consoles",
+        id: "gb",
+        keys: &["consoles.gbmodel", "consoles.gbpal", "consoles.sgb"],
+    },
+    Section {
+        page: "consoles",
+        id: "gba",
+        keys: &["consoles.gbacc", "consoles.gbablend", "consoles.solar"],
+    },
+    Section {
+        page: "consoles",
+        id: "nds",
+        keys: &[
+            "consoles.dsmode",
+            "consoles.dsname",
+            "consoles.dslang",
+            "consoles.slot2",
+        ],
+    },
+    Section {
+        page: "consoles",
+        id: "3ds",
+        keys: &["consoles.n3dsmodel", "consoles.n3dsreg"],
+    },
+    Section {
+        page: "cores",
+        id: "mgba",
+        keys: &[
+            "cores.mgbabios",
+            "cores.mgbaskip",
+            "cores.mgbalp",
+            "cores.mgbaopp",
+            "cores.mgbaall",
+        ],
+    },
+    Section {
+        page: "cores",
+        id: "melonds",
+        keys: &["cores.mdsrender", "cores.mdsboot", "cores.mdsall"],
+    },
+    Section {
+        page: "cores",
+        id: "azahar",
+        keys: &["cores.azaudio", "cores.azall"],
+    },
+    Section {
+        page: "perf",
+        id: "perf",
+        keys: &[
+            "perf.frameskip",
+            "perf.jit",
+            "perf.shcache",
+            "perf.cpuclock",
+        ],
+    },
+    Section {
+        page: "online",
+        id: "online",
+        keys: &["online.wfc", "online.ra", "online.discord"],
+    },
+    Section {
+        page: "adv",
+        id: "adv",
+        keys: &[
+            "adv.advon",
+            "adv.inputs",
+            "adv.framecnt",
+            "adv.movies",
+            "adv.cheatsearch",
+            "adv.devtools",
+        ],
+    },
+    Section {
+        page: "about",
+        id: "app",
+        keys: &["about.ver", "about.upd"],
+    },
+    Section {
+        page: "about",
+        id: "engines",
+        keys: &["about.emgba", "about.emds", "about.emaz"],
+    },
+    Section {
+        page: "about",
+        id: "help",
+        keys: &["about.lic", "about.log"],
+    },
 ];
 
 #[cfg(test)]

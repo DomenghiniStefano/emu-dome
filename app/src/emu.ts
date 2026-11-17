@@ -1,6 +1,7 @@
 // Typed bridge to the Rust commands. The interface goes through here only.
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 export type Speed = { kind: 'factor'; value: number } | { kind: 'max' }
@@ -25,7 +26,12 @@ export type Button =
 export interface GameInfo {
   title: string
   console: string
+  consoleId: ConsoleId
   core: string
+  /** `saves.resume` is «ask» and an auto quick save exists: ask whether to resume. */
+  resumable: boolean
+  /** `saves.autoexit`: closing writes the auto quick save. */
+  autosaveOnExit: boolean
 }
 export interface Stats {
   running: boolean
@@ -33,7 +39,22 @@ export interface Stats {
   targetFps: number
   speed: Speed | null
   paused: boolean
+  /** Frames emulated since the start (hang watchdog, E11). */
+  frames: number
+  /** Unix ms of the last auto quick save in this session. */
+  autoSavedAt: number | null
 }
+
+/** A quick save slot of the open game (G07). Mirror of `SlotDto` in src-tauri/src/lib.rs. */
+export interface SlotInfo {
+  slot: number
+  /** Unix ms of the last save; null = empty. */
+  savedAt: number | null
+  thumbUrl: string | null
+}
+
+/** Slot 0: the auto quick save («Salvataggio rapido automatico»). */
+export const AUTO_SLOT = 0
 
 /**
  * Mirror of `emudome_core::ErrorCode` (crates/emudome-core/src/error.rs): what every
@@ -80,7 +101,8 @@ export type VideoMode = 'native' | 'webview'
 export type Theme = 'dark' | 'black' | 'light'
 
 /** One focus step (`emu://nav`, mirror of `emudome_core::hotkeys::Nav`), also produced by the keyboard. */
-export type NavAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'
+/** `prev` / `next` are L1 / R1: tabs or levels of the screen. */
+export type NavAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back' | 'prev' | 'next'
 
 /**
  * Payload of `emu://hotkey` (mirror of `HotkeyEvent` in src-tauri/src/gamepad.rs): what a
@@ -110,8 +132,8 @@ export type SettingKind =
       type: 'choice'
       style: 'segments' | 'list' | 'cards'
       options: string[]
-      /** The design has not listed the options yet (completed in 2b). */
-      placeholder: boolean
+      /** The device adds options after these (audio outputs, saved touch layouts). */
+      moreAtRuntime: boolean
     }
   | { type: 'multi'; options: string[] }
   | {
@@ -141,11 +163,22 @@ export interface SettingEntry {
   phase: number
 }
 
+/** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */
+export interface SettingSection {
+  page: string
+  id: string
+  keys: string[]
+}
+
 export interface SettingsSchema {
   device: SettingDevice
   /** Entries with a later `phase`, or whose `platform` excludes `device`, are not shown. */
   currentPhase: number
   pages: string[]
+  /** The category list's groups (`settings.groups.<id>`), in order, with their pages. */
+  groups: { id: string; pages: string[] }[]
+  /** Every page's headings in order, each with its entries. */
+  sections: SettingSection[]
   entries: SettingEntry[]
 }
 
@@ -239,6 +272,10 @@ export const emu = {
   setVideoMode: (mode: VideoMode) => invoke<void>('set_video_mode', { mode }),
   openGame: (path: string) => invoke<GameInfo>('open_game', { path }),
   closeGame: () => invoke<void>('close_game'),
+  /** E11: let go of a core that stopped answering (does not wait for it). */
+  abandonGame: () => invoke<void>('abandon_game'),
+  /** The auto quick save (slot 0) and slots 1..count of the open game. */
+  listSlots: (count: number) => invoke<SlotInfo[]>('list_slots', { count }),
   setSpeed: (speed: Speed) => invoke<void>('set_speed', { speed }),
   setPaused: (paused: boolean) => invoke<void>('set_paused', { paused }),
   /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing. */
@@ -266,6 +303,8 @@ export const emu = {
     onChanged: (cb: (e: SettingsChanged) => void): Promise<UnlistenFn> =>
       listen<SettingsChanged>('settings://changed', e => cb(e.payload)),
   },
+  /** EmuDome's version (tauri.conf.json). */
+  appVersion: () => getVersion(),
   library: {
     get: () => invoke<Library>('library_get'),
     /** Native folder picker; the folder joins `library.folders` and is scanned. null = cancelled. */

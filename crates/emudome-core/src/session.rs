@@ -67,6 +67,10 @@ pub enum Event {
     Stopped,
 }
 
+/// The auto quick save («Salvataggio rapido automatico»): written periodically
+/// (`saves.autoq`) and on close (`saves.autoexit`), loaded to resume (`saves.resume`).
+pub const AUTO_SLOT: u8 = 0;
+
 /// Statistics read by the interface (about once a second).
 #[derive(Debug, Clone, Default)]
 pub struct Stats {
@@ -75,6 +79,10 @@ pub struct Stats {
     pub paused: bool,
     /// Frames emulated in the last second.
     pub emu_fps: f64,
+    /// Frames emulated since the start: a watchdog sees a core that stopped answering.
+    pub frames: u64,
+    /// When the auto quick save was last written in this session.
+    pub auto_saved_at: Option<std::time::SystemTime>,
 }
 
 /// State shared by emulation, renderer, audio and interface.
@@ -93,6 +101,65 @@ pub struct SessionOptions {
     pub system_dir: PathBuf,
     /// Folder of the game saves and the slots.
     pub save_dir: PathBuf,
+    /// Auto quick save this often while the game runs (`saves.autoq`; None = never).
+    pub autosave_every: Option<Duration>,
+    /// Auto quick save when the game closes (`saves.autoexit`).
+    pub autosave_on_exit: bool,
+    /// Load the auto quick save right after the game starts (`saves.resume` = always).
+    pub resume_auto: bool,
+}
+
+/// One quick save slot of a game, for the quick menu (G07).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SlotInfo {
+    pub slot: u8,
+    /// When the slot was written; None = empty.
+    pub saved_at: Option<std::time::SystemTime>,
+    /// The thumbnail file, when there is one.
+    pub thumb: Option<PathBuf>,
+}
+
+/// The auto quick save and slots `1..=count` of a game.
+pub fn slot_infos(
+    save_dir: &std::path::Path,
+    game_path: &std::path::Path,
+    count: u8,
+) -> Vec<SlotInfo> {
+    let files = GameFiles::new(save_dir, game_path);
+    (0..=count)
+        .map(|slot| {
+            let saved_at = std::fs::metadata(files.slot(slot))
+                .and_then(|m| m.modified())
+                .ok();
+            let thumb = files.thumb(slot);
+            SlotInfo {
+                slot,
+                saved_at,
+                thumb: (saved_at.is_some() && thumb.is_file()).then_some(thumb),
+            }
+        })
+        .collect()
+}
+
+/// Writes the thumbnail of a slot from the frame on screen (failures only logged: a slot
+/// without a picture still loads).
+fn write_thumb(files: &GameFiles, slot: u8, shared: &Shared) {
+    let png = shared.frame.lock().to_png();
+    match png {
+        Ok(bytes) => {
+            if let Err(e) = std::fs::write(files.thumb(slot), bytes) {
+                log::warn!("slot {slot} thumbnail not written: {e}");
+            }
+        }
+        Err(e) => log::warn!("slot {slot} thumbnail not encoded: {e}"),
+    }
+}
+
+/// Whether a game has an auto quick save to resume from.
+pub fn has_auto_save(save_dir: &std::path::Path, game_path: &std::path::Path) -> bool {
+    GameFiles::new(save_dir, game_path)
+        .slot(AUTO_SLOT)
+        .is_file()
 }
 
 pub struct Session {
@@ -135,6 +202,15 @@ impl Session {
 
     pub fn shared(&self) -> &Arc<Shared> {
         &self.shared
+    }
+
+    /// Lets go of an emulation thread that stopped answering (E11): asks it to stop but does not
+    /// wait for it, since joining a core stuck inside `retro_run` would block forever.
+    pub fn abandon(mut self) {
+        let _ = self.tx.send(Command::Stop);
+        if let Some(t) = self.thread.take() {
+            log::warn!("emulation thread abandoned: {:?}", t.thread().name());
+        }
     }
 }
 
@@ -215,6 +291,31 @@ fn emu_thread(
     let mut next_frame = Instant::now();
     let mut fps_window = (Instant::now(), 0u32);
     let mut last_sram_flush = Instant::now();
+    let mut last_autosave = Instant::now();
+
+    let save_auto = |core: &LoadedCore| match core.save_state().and_then(|data| {
+        std::fs::write(files.slot(AUTO_SLOT), data).context("cannot write the auto save")
+    }) {
+        Ok(()) => {
+            write_thumb(&files, AUTO_SLOT, &shared);
+            shared.stats.lock().auto_saved_at = Some(std::time::SystemTime::now());
+        }
+        Err(e) => {
+            let _ = events.send(Event::Error {
+                error: ErrorCode::StateSaveFailed {
+                    slot: AUTO_SLOT,
+                    detail: format!("{e:#}"),
+                },
+            });
+        }
+    };
+
+    if opts.resume_auto && files.slot(AUTO_SLOT).is_file() {
+        let _ = events.send(match load_slot(&core, &files, AUTO_SLOT) {
+            Ok(()) => Event::StateLoaded { slot: AUTO_SLOT },
+            Err(error) => Event::Error { error },
+        });
+    }
 
     let write_sram = |core: &LoadedCore| {
         if let Some(ram) = core.save_ram() {
@@ -259,6 +360,9 @@ fn emu_thread(
                     let res = core.save_state().and_then(|data| {
                         std::fs::write(files.slot(slot), data).context("cannot write the slot")
                     });
+                    if res.is_ok() {
+                        write_thumb(&files, slot, &shared);
+                    }
                     let _ = events.send(match res {
                         Ok(()) => Event::StateSaved { slot },
                         Err(e) => Event::Error {
@@ -284,6 +388,15 @@ fn emu_thread(
         }
 
         unsafe { (core.run)() };
+        shared.stats.lock().frames += 1;
+
+        // Auto quick save every `saves.autoq`, only while the game runs.
+        if let Some(every) = opts.autosave_every {
+            if last_autosave.elapsed() >= every {
+                save_auto(&core);
+                last_autosave = Instant::now();
+            }
+        }
 
         // Emulation FPS.
         fps_window.1 += 1;
@@ -313,6 +426,9 @@ fn emu_thread(
         }
     }
 
+    if opts.autosave_on_exit {
+        save_auto(&core);
+    }
     write_sram(&core);
     drop(core);
     callbacks::clear();
@@ -335,4 +451,28 @@ fn load_slot(core: &LoadedCore, files: &GameFiles, slot: u8) -> Result<(), Error
     })?;
     core.load_state(&data)
         .map_err(|_| ErrorCode::StateInvalid { slot })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::{has_auto_save, slot_infos, GameFiles, AUTO_SLOT};
+
+    #[test]
+    fn the_auto_quick_save_has_its_own_file() {
+        let files = GameFiles::new(Path::new("saves"), Path::new("games/Game.gba"));
+        assert!(files.slot(AUTO_SLOT).ends_with("Game.auto.state"));
+        assert!(files.slot(1).ends_with("Game.slot1.state"));
+        assert!(files.thumb(3).ends_with("Game.slot3.png"));
+        let empty = slot_infos(Path::new("no-such-dir"), Path::new("games/Game.gba"), 3);
+        assert_eq!(empty.len(), 4);
+        assert!(empty
+            .iter()
+            .all(|s| s.saved_at.is_none() && s.thumb.is_none()));
+        assert!(!has_auto_save(
+            Path::new("no-such-dir"),
+            Path::new("games/Game.gba")
+        ));
+    }
 }

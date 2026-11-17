@@ -146,11 +146,11 @@ pub enum Kind {
     /// On / off (`sw`). Value: bool.
     Toggle,
     /// One of `options` (stable ids, snake_case English). Value: the option id.
-    /// `placeholder`: the design has not listed the options yet, Cowork completes them (2b).
+    /// `more_at_runtime`: the device adds options after these (audio outputs, saved layouts).
     Choice {
         style: ChoiceStyle,
         options: &'static [&'static str],
-        placeholder: bool,
+        more_at_runtime: bool,
     },
     /// Any subset of `options` (`chips`). Value: list of option ids.
     Multi { options: &'static [&'static str] },
@@ -284,6 +284,22 @@ pub fn page_entries(page: &str) -> impl Iterator<Item = &'static Entry> + '_ {
         .filter(move |e| e.page() == page)
 }
 
+/// A group of pages in the category list («GIOCO», «CONTROLLI», …).
+#[derive(Clone, Copy, Debug, Serialize)]
+pub struct PageGroup {
+    pub id: &'static str,
+    pub pages: &'static [&'static str],
+}
+
+/// A heading of a settings page and the entries under it, in order.
+#[derive(Clone, Copy, Debug, Serialize)]
+pub struct Section {
+    pub page: &'static str,
+    /// Stable id; text `settings.sections.<page>.<id>`.
+    pub id: &'static str,
+    pub keys: &'static [&'static str],
+}
+
 /// The schema as the interface reads it. Mirror: `SettingsSchema` in app/src/emu.ts.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -294,6 +310,10 @@ pub struct SchemaDto {
     pub current_phase: u8,
     /// Page ids in display order.
     pub pages: &'static [&'static str],
+    /// The category list's groups, in order, with their pages.
+    pub groups: &'static [PageGroup],
+    /// The headings of every page, in order, with their entries.
+    pub sections: &'static [Section],
     pub entries: Vec<EntryDto>,
 }
 
@@ -318,6 +338,8 @@ pub fn schema(device: Device) -> SchemaDto {
         device,
         current_phase: super::catalog::CURRENT_PHASE,
         pages: super::catalog::PAGES,
+        groups: super::catalog::GROUPS,
+        sections: super::catalog::SECTIONS,
         entries: super::catalog::ENTRIES
             .iter()
             .map(|e| EntryDto {

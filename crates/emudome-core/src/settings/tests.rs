@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use serde_json::json;
 
-use super::catalog::{CURRENT_PHASE, ENTRIES, PAGES};
+use super::catalog::{CURRENT_PHASE, ENTRIES, GROUPS, PAGES, SECTIONS};
 use super::test_dir::TestDir;
 use super::{entry, CommitTarget, ConsoleId, GameId, Kind, Level, Scope, Settings, Value};
 use crate::settings::schema::Device;
@@ -499,13 +499,13 @@ fn scopes_and_errors_have_the_interface_shape() {
 
 // ---- Schema invariants ----
 
-fn is_snake_case(id: &str) -> bool {
-    !id.is_empty()
-        && id
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-        && !id.starts_with('_')
-        && !id.ends_with('_')
+/// Cowork's final option ids: lowercase letters, digits, `_` and `.` (speeds like `0.5`),
+/// starting and ending with a letter or digit. The interface turns `.` into `_` in i18n keys.
+fn is_option_id(id: &str) -> bool {
+    let edge = |c: char| c.is_ascii_lowercase() || c.is_ascii_digit();
+    id.chars().next().is_some_and(edge)
+        && id.chars().last().is_some_and(edge)
+        && id.chars().all(|c| edge(c) || c == '_' || c == '.')
 }
 
 #[test]
@@ -551,7 +551,7 @@ fn every_default_is_valid_for_its_kind() {
 }
 
 #[test]
-fn choices_have_snake_case_unique_options() {
+fn choices_have_unique_well_formed_options() {
     for e in ENTRIES {
         let options: &[&str] = match e.kind {
             Kind::Choice { options, .. } | Kind::Multi { options } => options,
@@ -567,9 +567,41 @@ fn choices_have_snake_case_unique_options() {
         let unique: HashSet<_> = options.iter().collect();
         assert_eq!(unique.len(), options.len(), "{}: duplicate options", e.key);
         for id in options {
-            assert!(is_snake_case(id), "{}: option {id:?}", e.key);
+            assert!(is_option_id(id), "{}: option {id:?}", e.key);
+            assert!(
+                !options.contains(&id.replace('.', "_").as_str()) || !id.contains('.'),
+                "{}: {id:?} collides with its i18n key",
+                e.key
+            );
         }
     }
+}
+
+#[test]
+fn the_groups_list_every_page_once_in_page_order() {
+    let grouped: Vec<_> = GROUPS
+        .iter()
+        .flat_map(|g| g.pages.iter().copied())
+        .collect();
+    assert_eq!(grouped, PAGES.to_vec());
+}
+
+#[test]
+fn every_entry_is_in_one_section_of_its_page_in_catalogue_order() {
+    let mut seen = HashSet::new();
+    let mut order = Vec::new();
+    for s in SECTIONS {
+        assert!(PAGES.contains(&s.page), "section {} of unknown page", s.id);
+        assert!(!s.keys.is_empty(), "empty section {}.{}", s.page, s.id);
+        for key in s.keys {
+            let e = entry(key).expect("section key is an entry");
+            assert_eq!(e.page(), s.page, "{key} is not on page {}", s.page);
+            assert!(seen.insert(*key), "{key} is in two sections");
+            order.push(*key);
+        }
+    }
+    let catalogue: Vec<_> = ENTRIES.iter().map(|e| e.key).collect();
+    assert_eq!(order, catalogue, "sections follow the catalogue order");
 }
 
 #[test]

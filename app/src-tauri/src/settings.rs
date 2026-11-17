@@ -79,6 +79,46 @@ pub fn end_session(app: &AppHandle) {
     }
 }
 
+/// What the game flow reads from the settings for one game (step 4): `saves.autoq`,
+/// `saves.autoexit`, `saves.resume`. Missing values fall back to the schema's defaults.
+pub struct GameFlow {
+    pub autosave_every: Option<std::time::Duration>,
+    pub autosave_on_exit: bool,
+    /// `ask`, `always` or `ingame`.
+    pub resume: String,
+}
+
+pub fn game_flow(app: &AppHandle, console: ConsoleId, game: &GameId) -> GameFlow {
+    let scope = Scope::Game {
+        console,
+        game: game.clone(),
+    };
+    let read = |key: &str| -> Option<Value> {
+        let state = app.try_state::<SettingsState>()?;
+        let resolved = state.0.lock().resolve(key, &scope);
+        match resolved {
+            Ok(r) => r.value,
+            Err(e) => {
+                log::warn!("{key} unavailable: {e:?}");
+                None
+            }
+        }
+    };
+    let text = |key: &str| match read(key) {
+        Some(Value::Text(t)) => Some(t),
+        Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
+    };
+    GameFlow {
+        autosave_every: match text("saves.autoq").as_deref() {
+            Some("1min") => Some(std::time::Duration::from_secs(60)),
+            Some("never") => None,
+            Some(_) | None => Some(std::time::Duration::from_secs(300)),
+        },
+        autosave_on_exit: !matches!(read("saves.autoexit"), Some(Value::Bool(false))),
+        resume: text("saves.resume").unwrap_or_else(|| "always".into()),
+    }
+}
+
 /// The value of `general.theme` for every game (`system`, `dark`, `black`, `light`).
 pub fn theme_setting(state: &SettingsState) -> Option<String> {
     match state.0.lock().resolve("general.theme", &Scope::Global) {

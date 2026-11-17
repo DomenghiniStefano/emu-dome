@@ -17,6 +17,8 @@ import type { NavAction } from './emu'
 interface Scope {
   root: Ref<HTMLElement | null>
   back?: () => void
+  /** L1 / R1 (`prev` / `next`): the screen's own tabs or levels. */
+  tab?: (dir: -1 | 1) => void
 }
 
 const scopes: Scope[] = []
@@ -132,6 +134,10 @@ export function dispatchNav(action: NavAction) {
     case 'back':
       scope.back?.()
       return
+    case 'prev':
+    case 'next':
+      scope.tab?.(action === 'prev' ? -1 : 1)
+      return
     case 'confirm': {
       const el = current(root)
       if (el) el.click()
@@ -142,12 +148,30 @@ export function dispatchNav(action: NavAction) {
     case 'down':
     case 'left':
     case 'right':
+      if (stepSlider(current(root), action)) return
       move(root, action)
   }
 }
 
+/** A focused slider takes left / right as its own steps (the focus stays on it). */
+function stepSlider(el: HTMLElement | null, dir: Direction): boolean {
+  if (!(el instanceof HTMLInputElement) || el.type !== 'range') return false
+  if (dir !== 'left' && dir !== 'right') return false
+  if (dir === 'left') el.stepDown()
+  else el.stepUp()
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+  el.dispatchEvent(new Event('change', { bubbles: true }))
+  return true
+}
+
 /** Keyboard → step: arrows and Enter. Null for any other key (Esc stays with each screen). */
 export function keyToNav(e: KeyboardEvent): NavAction | null {
+  // A text field keeps left / right for its caret.
+  const t = e.target
+  const typing =
+    t instanceof HTMLTextAreaElement ||
+    (t instanceof HTMLInputElement && !['range', 'checkbox', 'radio', 'button'].includes(t.type))
+  if (typing && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return null
   switch (e.code) {
     case 'ArrowUp':
       return 'up'
@@ -171,9 +195,9 @@ export function keyToNav(e: KeyboardEvent): NavAction | null {
  */
 export function useNavScope(
   root: Ref<HTMLElement | null>,
-  options: { back?: () => void; autofocus?: boolean } = {},
+  options: { back?: () => void; tab?: (dir: -1 | 1) => void; autofocus?: boolean } = {},
 ) {
-  const scope: Scope = { root, back: options.back }
+  const scope: Scope = { root, back: options.back, tab: options.tab }
   onMounted(() => {
     scopes.push(scope)
     if (options.autofocus && root.value) focusInitial(root.value)

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { Library } from '@lucide/vue'
 import {
+  AUTO_SLOT,
   emu,
   KEYMAP,
   type GameInfo,
@@ -14,6 +15,7 @@ import {
   type VideoMode,
 } from './emu'
 import { startLibrary } from './library'
+import { flow, gameStarted as flowStarted, sample } from './gameFlow'
 import { errorText, gamepadName, speedLabel } from './i18n/labels'
 import { dispatchNav, keyToNav, showFocusRing } from './nav'
 import type { Section } from './sections'
@@ -21,6 +23,7 @@ import AppShell from './components/AppShell.vue'
 import GameCanvas from './components/GameCanvas.vue'
 import QuickMenu from './components/QuickMenu.vue'
 import ToastStack from './components/ToastStack.vue'
+import GameFlowOverlays from './components/GameFlowOverlays.vue'
 import TouchControls from './components/TouchControls.vue'
 
 const { t, n } = useI18n()
@@ -65,15 +68,56 @@ const turboHeld = ref(false)
 let statsTimer: number | undefined
 const unlisten: Array<() => void> = []
 
-function gameStarted(info: GameInfo) {
+// The last game opened, to reopen it after the emulator stopped (E11).
+type Opened = { kind: 'path'; path: string } | { kind: 'library'; game: LibraryGame }
+let lastOpened: Opened | null = null
+// True while closing on purpose: the core's `stopped` event is then expected.
+let closingNow = false
+// When the open game started («stai giocando da …») and the controller in use (quick menu).
+const startedAt = ref(Date.now())
+const controller = ref<string | null>(null)
+
+async function gameStarted(info: GameInfo, resumeAuto = false) {
   game.value = info
+  startedAt.value = Date.now()
   speed.value = { kind: 'factor', value: 1 }
   menuOpen.value = false
   paused.value = false
+  flowStarted()
+  if (resumeAuto) {
+    await emu.loadState(AUTO_SLOT)
+  } else if (info.resumable) {
+    // `saves.resume` = ask: hold the game until the answer.
+    await emu.setPaused(true)
+    flow.resumeAsk = true
+  }
+}
+
+/** G01 while the core loads, G02 if it cannot start. */
+async function start(opened: Opened, title: string, colour: string | null, resumeAuto = false) {
+  error.value = null
+  flow.launching = { title, colour }
+  try {
+    const info =
+      opened.kind === 'path'
+        ? await emu.openGame(opened.path)
+        : await emu.library.open(opened.game.id)
+    lastOpened = opened
+    await gameStarted(info, resumeAuto)
+  } catch (e) {
+    flow.startError = { title, reason: errorText(e) }
+  } finally {
+    flow.launching = null
+  }
+}
+
+/** The file name without folder and extension, as the title of a game outside the library. */
+function fileTitle(path: string): string {
+  const name = path.split(/[\\/]/).pop() ?? path
+  return name.replace(/\.[^.]+$/, '')
 }
 
 async function openGame(given?: string) {
-  error.value = null
   const path =
     given ??
     (await open({
@@ -81,19 +125,55 @@ async function openGame(given?: string) {
       filters: [{ name: t('library.dialogFilter'), extensions: ['gba', 'gb', 'gbc'] }],
     }))
   if (typeof path !== 'string') return
-  try {
-    gameStarted(await emu.openGame(path))
-  } catch (e) {
-    error.value = errorText(e)
-  }
+  await start({ kind: 'path', path }, fileTitle(path), null)
 }
 
 /** A game from the library (L01): same flow, and the backend counts its play time. */
 async function openLibraryGame(g: LibraryGame) {
+  await start({ kind: 'library', game: g }, g.title, g.colour)
+}
+
+async function onResumeAnswer(resume: boolean) {
+  flow.resumeAsk = false
+  if (resume) await emu.loadState(AUTO_SLOT)
+  await emu.setPaused(false)
+}
+
+// ---- E11: the emulator stopped ----
+function crashed() {
+  if (!game.value || flow.crashed) return
+  menuOpen.value = false
+  const s = stats.value
+  flow.crashed = {
+    console: game.value.consoleId,
+    at: s?.autoSavedAt ?? null,
+    detail: [
+      `${game.value.title} · ${game.value.core}`,
+      `frames ${s?.frames ?? 0} · ${s ? s.emuFps.toFixed(1) : '0'} / ${s?.targetFps ?? 0} FPS`,
+      new Date().toISOString(),
+    ].join('\n'),
+  }
+}
+async function crashToLibrary() {
+  flow.crashed = null
+  await emu.abandonGame()
+  game.value = null
+}
+async function crashResume() {
+  const opened = lastOpened
+  const title = game.value?.title ?? ''
+  flow.crashed = null
+  await emu.abandonGame()
+  game.value = null
+  if (opened)
+    await start(opened, title, opened.kind === 'library' ? opened.game.colour : null, true)
+}
+async function crashCopy() {
   try {
-    gameStarted(await emu.library.open(g.id))
+    await navigator.clipboard.writeText(flow.crashed?.detail ?? '')
+    toasts.value?.push(t('flow.detailsCopied'))
   } catch (e) {
-    toasts.value?.push(errorText(e), 'error')
+    toasts.value?.push(String(e), 'error')
   }
 }
 
@@ -109,10 +189,22 @@ async function onDrop(paths: string[]) {
   }
 }
 
+/** G14: auto quick save and in-game save, then back to the section you came from. */
 async function closeGame() {
-  await emu.closeGame()
-  game.value = null
+  if (!game.value) return
+  flow.closing = { title: game.value.title, autosave: game.value.autosaveOnExit }
   menuOpen.value = false
+  closingNow = true
+  const shown = Date.now()
+  try {
+    await emu.closeGame()
+  } finally {
+    // Long enough to read, never longer than the work.
+    await new Promise(r => window.setTimeout(r, Math.max(0, 400 - (Date.now() - shown))))
+    closingNow = false
+    flow.closing = null
+    game.value = null
+  }
 }
 
 async function setMenu(openMenu: boolean) {
@@ -194,12 +286,14 @@ onMounted(async () => {
     }),
     await emu.onNav(dispatchNav),
     await emu.onHotkey(onHotkey),
-    await emu.onGamepadConnected(p =>
-      toasts.value?.push(t('toast.gamepadConnected', { name: gamepadName(p) })),
-    ),
-    await emu.onGamepadDisconnected(p =>
-      toasts.value?.push(t('toast.gamepadDisconnected', { name: gamepadName(p) })),
-    ),
+    await emu.onGamepadConnected(p => {
+      controller.value = gamepadName(p)
+      toasts.value?.push(t('toast.gamepadConnected', { name: gamepadName(p) }))
+    }),
+    await emu.onGamepadDisconnected(p => {
+      if (controller.value === gamepadName(p)) controller.value = null
+      toasts.value?.push(t('toast.gamepadDisconnected', { name: gamepadName(p) }))
+    }),
     await emu.library.onDragDrop(e => {
       if (e.type === 'over') dragOver.value = !game.value
       else if (e.type === 'leave') dragOver.value = false
@@ -207,15 +301,26 @@ onMounted(async () => {
     }),
     ...(await startLibrary()),
     await emu.onEvent(ev => {
-      if (ev.type === 'stateSaved') toasts.value?.push(t('toast.stateSaved', { slot: ev.slot }))
-      if (ev.type === 'stateLoaded') toasts.value?.push(t('toast.stateLoaded', { slot: ev.slot }))
+      // Slot 0 is the auto quick save: it works silently.
+      if (ev.type === 'stateSaved' && ev.slot !== AUTO_SLOT)
+        toasts.value?.push(t('toast.stateSaved', { slot: ev.slot }))
+      if (ev.type === 'stateLoaded' && ev.slot !== AUTO_SLOT)
+        toasts.value?.push(t('toast.stateLoaded', { slot: ev.slot }))
       if (ev.type === 'error') toasts.value?.push(errorText(ev.error), 'error')
+      if (ev.type === 'stopped' && !closingNow) crashed()
     }),
   )
   const startup = await emu.startupGame()
   if (startup) await openGame(startup)
   statsTimer = window.setInterval(async () => {
-    if (game.value) stats.value = await emu.stats()
+    if (!game.value) return
+    const s = await emu.stats()
+    stats.value = s
+    const running =
+      !paused.value && !menuOpen.value && !flow.resumeAsk && !flow.crashed && !flow.slow
+    const seen = sample(s, running)
+    if (seen === 'hang') crashed()
+    else if (seen === 'slow') flow.slow = { fps: s.emuFps, target: s.targetFps }
   }, 500)
 })
 
@@ -268,6 +373,8 @@ onUnmounted(() => {
       :speed="speed"
       :video-mode="videoMode"
       :native-available="nativeAvailable"
+      :started-at="startedAt"
+      :controller="controller"
       @video-mode="setVideoMode"
       @resume="setMenu(false)"
       @speed="setSpeed"
@@ -275,6 +382,7 @@ onUnmounted(() => {
       @load="(slot: number) => emu.loadState(slot)"
       @reset="emu.reset()"
       @close="closeGame"
+      @error="text => toasts?.push(text, 'error')"
     />
   </template>
 
@@ -286,7 +394,16 @@ onUnmounted(() => {
     </div>
   </div>
 
-  <ToastStack ref="toasts" />
+  <GameFlowOverlays
+    @start-error-close="flow.startError = null"
+    @resume="onResumeAnswer"
+    @crash-copy="crashCopy"
+    @crash-library="crashToLibrary"
+    @crash-resume="crashResume"
+    @slow-close="flow.slow = null"
+  />
+
+  <ToastStack ref="toasts" :in-game="!!game" />
 </template>
 
 <style scoped>

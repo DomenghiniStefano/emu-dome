@@ -40,13 +40,13 @@
       "last_played": "Sort by: last played",
       "name": "Sort by: name",
       "play_time": "Sort by: play time",
-      "date_added": "Sort by: date added"
+      "added": "Sort by: date added"
     },
     "sort": {
       "last_played": "Last played",
       "name": "Name",
       "play_time": "Play time",
-      "date_added": "Date added"
+      "added": "Date added"
     },
     "filters": {
       "label": "Filter and sort",
@@ -97,27 +97,6 @@
   "speed": {
     "max": "Max",
     "factor": "{value}×"
-  },
-  "menu": {
-    "label": "Quick menu",
-    "status": "{console} · core {core} · paused",
-    "speed": "SPEED",
-    "speedLabel": "Game speed",
-    "turboHint": "Hold {key} for turbo. Audio is muted in fast forward.",
-    "saves": "SAVES",
-    "slot": "Slot {slot}",
-    "save": "Save",
-    "load": "Load",
-    "savesHint": "{save} saves and {load} loads slot 1, even with the menu closed.",
-    "video": "VIDEO (PHASE 0)",
-    "videoLabel": "Video path",
-    "native": "Native",
-    "webview": "In the webview",
-    "videoCompare": "Compare smoothness and latency of the two paths.",
-    "videoNoNative": "Native video is not available on this system.",
-    "reset": "Restart the game",
-    "close": "Close the game",
-    "resume": "Resume"
   },
   "canvas": {
     "label": "Game screen"
@@ -177,5 +156,1500 @@
     "gba": "GBA",
     "nds": "DS",
     "3ds": "3DS"
+  },
+  "settings": {
+    "pages": {
+      "video": {
+        "name": "Video",
+        "summary": "Image size, smoothing, window, graphics card"
+      },
+      "fx": {
+        "name": "Screen effects",
+        "summary": "LCD screen, CRT TV, adjustments"
+      },
+      "screens": {
+        "name": "DS and 3DS screens",
+        "summary": "Layout of the two screens, gap, rotation"
+      },
+      "audio": {
+        "name": "Audio",
+        "summary": "Volume, output, latency, microphone"
+      },
+      "speed": {
+        "name": "Game speed",
+        "summary": "Fast forward, slow motion, rewind"
+      },
+      "saves": {
+        "name": "Saves",
+        "summary": "Quick saves, backups, import"
+      },
+      "pad": {
+        "name": "Controller and keyboard",
+        "summary": "Remapping, shortcuts, sticks and triggers"
+      },
+      "touch": {
+        "name": "Touch controls",
+        "summary": "Layout, opacity, vibration"
+      },
+      "general": {
+        "name": "General",
+        "summary": "Language, theme, startup, updates"
+      },
+      "library": {
+        "name": "Library",
+        "summary": "Game folders, sorting, covers"
+      },
+      "cloud": {
+        "name": "Cloud",
+        "summary": "Google account, what to sync"
+      },
+      "a11y": {
+        "name": "Accessibility",
+        "summary": "Text, animations, transparency, colours"
+      },
+      "presets": {
+        "name": "Presets",
+        "summary": "Ready-made setups, export and import"
+      },
+      "bios": {
+        "name": "BIOS and firmware",
+        "summary": "Optional: the built-in replacements are already active"
+      },
+      "consoles": {
+        "name": "Console options",
+        "summary": "Models, colours, DS user"
+      },
+      "cores": {
+        "name": "Advanced emulator options",
+        "summary": "The options of mGBA, melonDS DS and Azahar"
+      },
+      "perf": {
+        "name": "Performance",
+        "summary": "Frame skip, compilation, processor"
+      },
+      "online": {
+        "name": "Online and integrations",
+        "summary": "DS Wi-Fi, RetroAchievements, Discord"
+      },
+      "adv": {
+        "name": "Advanced tools",
+        "summary": "For speedruns, videos and homebrew development"
+      },
+      "about": {
+        "name": "About",
+        "summary": "Version, engines, licences, log"
+      }
+    },
+    "sections": {
+      "video": {
+        "image": "IMAGE",
+        "window": "WINDOW",
+        "gpu": "GRAPHICS CARD OF THIS DEVICE",
+        "3d": "3D GAMES (NINTENDO DS AND 3DS)"
+      },
+      "fx": {
+        "effect": "EFFECT",
+        "adjust": "EFFECT ADJUSTMENTS"
+      },
+      "screens": {
+        "layout": "LAYOUT",
+        "other": "OTHER"
+      },
+      "audio": {
+        "audio": "AUDIO",
+        "device": "THIS DEVICE"
+      },
+      "speed": {
+        "speed": "SPEED",
+        "ff": "FAST FORWARD AND SLOW MOTION",
+        "rewind": "REWIND"
+      },
+      "saves": {
+        "quick": "QUICK SAVES",
+        "ingame": "IN-GAME SAVE",
+        "folder": "FOLDER"
+      },
+      "pad": {
+        "devices": "CONNECTED DEVICES",
+        "buttons": "BUTTONS",
+        "shortcuts": "SHORTCUTS",
+        "sticks": "STICKS, TRIGGERS AND VIBRATION",
+        "menus": "MENUS"
+      },
+      "touch": {
+        "layout": "LAYOUT",
+        "behaviour": "BEHAVIOUR"
+      },
+      "general": {
+        "look": "APPEARANCE",
+        "behaviour": "BEHAVIOUR"
+      },
+      "library": {
+        "folders": "GAME FOLDERS",
+        "view": "DISPLAY"
+      },
+      "cloud": {
+        "account": "ACCOUNT",
+        "what": "WHAT TO SYNC",
+        "when": "WHEN"
+      },
+      "a11y": {
+        "ui": "INTERFACE",
+        "game": "GAME"
+      },
+      "presets": {
+        "ready": "READY-MADE PRESETS",
+        "file": "SETTINGS FILE"
+      },
+      "bios": {
+        "gba": "GAME BOY ADVANCE",
+        "nds": "NINTENDO DS",
+        "3ds": "NINTENDO 3DS"
+      },
+      "consoles": {
+        "gb": "GAME BOY AND GAME BOY COLOR",
+        "gba": "GAME BOY ADVANCE",
+        "nds": "NINTENDO DS",
+        "3ds": "NINTENDO 3DS"
+      },
+      "cores": {
+        "mgba": "MGBA · GAME BOY AND GAME BOY ADVANCE",
+        "melonds": "MELONDS DS · NINTENDO DS",
+        "azahar": "AZAHAR · NINTENDO 3DS"
+      },
+      "perf": {
+        "perf": "PERFORMANCE"
+      },
+      "online": {
+        "online": "ONLINE"
+      },
+      "adv": {
+        "adv": "ADVANCED TOOLS"
+      },
+      "about": {
+        "app": "EMUDOME",
+        "engines": "EMULATION ENGINES",
+        "help": "SUPPORT"
+      }
+    },
+    "video": {
+      "scale": {
+        "name": "Image size",
+        "desc": "Whole pixels keeps every pixel the same size and leaves borders at the sides.",
+        "option": {
+          "fit": "Fit to screen",
+          "integer": "Whole pixels",
+          "fill": "Fill the screen"
+        }
+      },
+      "aspect": {
+        "name": "Aspect ratio",
+        "desc": "Use the console’s original proportions or force others.",
+        "option": {
+          "original": "Console original",
+          "4_3": "4:3",
+          "16_9": "16:9 (stretched)"
+        }
+      },
+      "filter": {
+        "name": "Pixel smoothing",
+        "desc": "How much to soften the pixels when the image is enlarged.",
+        "option": {
+          "none": "None",
+          "light": "Light",
+          "soft": "Soft"
+        }
+      },
+      "surround": {
+        "name": "Background around the game",
+        "desc": "What you see in the empty space when the game does not fill the screen.",
+        "option": {
+          "black": "Black",
+          "cover": "Cover colour",
+          "blur": "Blurred game",
+          "builtin": "Built-in background",
+          "image": "Your image"
+        },
+        "optionDesc": {
+          "black": "No distractions",
+          "cover": "A gradient taken from the cover",
+          "blur": "The game enlarged and blurred. Computer only",
+          "builtin": "EmuDome gradients and patterns",
+          "image": "A photo or picture from your files"
+        }
+      },
+      "surroundSet": {
+        "name": "Built-in background",
+        "desc": "Shown when you choose “Built-in background”. Moves slowly with “Animated background”.",
+        "option": {
+          "aurora": "Aurora",
+          "sunset": "Sunset",
+          "night": "Night",
+          "forest": "Forest",
+          "graphite": "Graphite",
+          "grid": "Grid"
+        },
+        "optionDesc": {
+          "aurora": "Purple and teal",
+          "sunset": "Orange and pink",
+          "night": "Deep blue",
+          "forest": "Dark greens",
+          "graphite": "Neutral grey",
+          "grid": "Light pattern"
+        }
+      },
+      "surroundImg": {
+        "name": "Background image",
+        "desc": "Shown when you choose “Your image”. JPG or PNG; fits the screen.",
+        "button": "Choose an image…"
+      },
+      "surroundDim": {
+        "name": "Darken the background",
+        "desc": "A darker background distracts less from the game."
+      },
+      "surroundAnim": {
+        "name": "Animated background",
+        "desc": "The gradients move slowly. Off when “Reduce motion” is on."
+      },
+      "fps": {
+        "name": "Show frames per second (FPS)",
+        "desc": "A counter in a corner of the screen. Shortcuts: F3 on the keyboard, L3 + X on the controller."
+      },
+      "window": {
+        "name": "Window mode",
+        "desc": "How EmuDome opens on the computer.",
+        "option": {
+          "windowed": "In a window",
+          "fullscreen": "Full screen",
+          "borderless": "Borderless"
+        }
+      },
+      "winsize": {
+        "name": "Window size",
+        "desc": "Exact multiples of the console resolution, or free.",
+        "option": {
+          "1x": "1×",
+          "2x": "2×",
+          "3x": "3×",
+          "4x": "4×",
+          "free": "Free"
+        }
+      },
+      "portrait": {
+        "name": "Game position in portrait",
+        "desc": "Where to put the game when you hold the phone upright.",
+        "option": {
+          "center": "Centre",
+          "top": "Top, above the touch controls"
+        }
+      },
+      "orient": {
+        "name": "Screen orientation",
+        "desc": "Lock the phone in portrait or landscape for this game.",
+        "option": {
+          "auto": "Automatic",
+          "portrait": "Portrait",
+          "landscape": "Landscape"
+        }
+      },
+      "path": {
+        "name": "Display method",
+        "desc": "Accelerated is faster and needed for screen effects. Choose Compatible if the screen stays black or the menu does not appear over the game.",
+        "option": {
+          "accelerated": "Accelerated",
+          "compatible": "Compatible"
+        }
+      },
+      "vsync": {
+        "name": "Vertical sync (V-Sync)",
+        "desc": "Removes tearing lines from the image. May add a little input delay."
+      },
+      "api": {
+        "name": "Graphics API",
+        "desc": "Change it only if you see image problems. Applies the next time the game starts.",
+        "option": {
+          "auto": "Automatic",
+          "vulkan": "Vulkan",
+          "d3d12": "Direct3D 12",
+          "opengl": "OpenGL"
+        },
+        "value": {
+          "autoWith": "Automatic ({api})"
+        }
+      },
+      "res3d": {
+        "name": "Resolution of 3D games",
+        "desc": "Sharper 3D games. Needs a more powerful graphics card.",
+        "option": {
+          "1x": "1× (original)",
+          "2x": "2×",
+          "3x": "3×",
+          "4x": "4×"
+        }
+      },
+      "texf": {
+        "name": "Texture filter",
+        "desc": "Smooths or redraws the textures of Nintendo 3DS games.",
+        "option": {
+          "none": "None",
+          "bicubic": "Bicubic",
+          "scaleforce": "ScaleForce",
+          "xbrz": "xBRZ",
+          "mmpx": "MMPX",
+          "anime4k": "Anime4K"
+        }
+      }
+    },
+    "fx": {
+      "fxpick": {
+        "name": "Screen effect",
+        "desc": "Shows at once on the paused game. Needs the Accelerated display method.",
+        "option": {
+          "none": "No effect",
+          "lcd": "LCD screen",
+          "lcd_grid": "LCD grid",
+          "crt": "CRT TV",
+          "crt_curved": "Curved TV",
+          "soft_pixels": "Soft pixels"
+        },
+        "optionDesc": {
+          "none": "The original image",
+          "lcd": "Thin lines like on the Game Boy Advance",
+          "lcd_grid": "Every pixel apart, as seen up close",
+          "crt": "Scan lines and warm colours",
+          "crt_curved": "Tube TV with curved edges",
+          "soft_pixels": "Scaling that rounds the edges"
+        }
+      },
+      "fxint": {
+        "name": "Strength",
+        "desc": "How visible the effect is over the image."
+      },
+      "fxbright": {
+        "name": "Brightness",
+        "desc": "Makes up for the darkening caused by the effect."
+      },
+      "fxfile": {
+        "name": "Add an effect from a file",
+        "desc": "Effects in RetroArch format (.slangp) that you downloaded yourself.",
+        "button": "Choose a file…"
+      }
+    },
+    "screens": {
+      "cycle": {
+        "name": "Layouts to cycle through",
+        "desc": "The ones you step through with the shortcut or the quick menu, in this order.",
+        "button": "Edit the list",
+        "option": {
+          "vertical": "Vertical",
+          "side": "Side by side",
+          "big_small": "Large and small",
+          "top_only": "Top screen only"
+        }
+      },
+      "custom": {
+        "name": "Free layout",
+        "desc": "Drag and resize the two screens wherever you want.",
+        "button": "Customise the screens"
+      },
+      "ratio": {
+        "name": "Screen size ratio",
+        "desc": "How large the main screen is compared with the other."
+      },
+      "gap": {
+        "name": "Gap between screens",
+        "desc": "Quick choice: “Like on the DS” uses the real distance.",
+        "button": "Like on the DS"
+      },
+      "rot": {
+        "name": "Rotation",
+        "desc": "For games you hold like a book.",
+        "option": {
+          "none": "None",
+          "left": "90° left",
+          "right": "90° right",
+          "flip": "Upside down"
+        }
+      },
+      "swap": {
+        "name": "Swap screens",
+        "desc": "How the button that swaps the two screens behaves.",
+        "option": {
+          "toggle": "Toggle",
+          "hold": "Hold"
+        }
+      },
+      "second": {
+        "name": "Second screen on another monitor",
+        "desc": "Shows the bottom screen on a second connected monitor."
+      },
+      "stereo": {
+        "name": "Stereoscopic 3D",
+        "desc": "The Nintendo 3DS 3D effect on a normal screen.",
+        "option": {
+          "off": "Off",
+          "side": "Side by side",
+          "anaglyph": "Red and cyan anaglyph",
+          "interlaced": "Interlaced"
+        }
+      }
+    },
+    "audio": {
+      "vol": {
+        "name": "Volume",
+        "desc": "Game volume, separate from the system volume."
+      },
+      "ff": {
+        "name": "Sound in fast forward",
+        "desc": "What you hear while the game runs faster.",
+        "option": {
+          "mute": "Muted",
+          "pitch_up": "Higher pitch",
+          "same_pitch": "Same pitch"
+        }
+      },
+      "mic": {
+        "name": "Microphone (Nintendo DS and 3DS)",
+        "desc": "For games that ask you to blow or speak. The real microphone asks for permission.",
+        "option": {
+          "blow": "Simulated blow",
+          "real": "Real microphone",
+          "silence": "Silence"
+        }
+      },
+      "out": {
+        "name": "Audio output",
+        "desc": "Where the game sound plays.",
+        "option": {
+          "system": "System default"
+        }
+      },
+      "lat": {
+        "name": "Latency",
+        "desc": "Low responds sooner; Safe avoids crackling on slow devices.",
+        "option": {
+          "low": "Low",
+          "balanced": "Balanced",
+          "safe": "Safe"
+        }
+      }
+    },
+    "speed": {
+      "spstart": {
+        "name": "Speed at start",
+        "desc": "The speed every game starts at.",
+        "option": {
+          "0_5": "0.5×",
+          "1": "1×",
+          "2": "2×"
+        }
+      },
+      "splist": {
+        "name": "Speeds in the quick menu",
+        "desc": "The speeds you can pick while playing.",
+        "button": "Edit the list",
+        "option": {
+          "0_5": "0.5×",
+          "1": "1×",
+          "1_5": "1.5×",
+          "2": "2×",
+          "3": "3×",
+          "4": "4×",
+          "max": "Maximum"
+        }
+      },
+      "ffmode": {
+        "name": "Fast forward on the keyboard",
+        "desc": "How the Tab key works. On the controller: hold L3 + R2, or L3 + up to turn it on and off.",
+        "option": {
+          "hold": "Hold",
+          "toggle": "Toggle"
+        }
+      },
+      "ffval": {
+        "name": "Fast-forward speed",
+        "desc": "“Maximum” goes as fast as the device can.",
+        "option": {
+          "2": "2×",
+          "3": "3×",
+          "4": "4×",
+          "max": "Maximum"
+        }
+      },
+      "slow": {
+        "name": "Slow motion",
+        "desc": "Speed when slow motion is on.",
+        "option": {
+          "0_25": "0.25×",
+          "0_5": "0.5×",
+          "0_75": "0.75×"
+        }
+      },
+      "rew": {
+        "name": "Rewind while held",
+        "desc": "Backspace on the keyboard, hold L3 + L2 on the controller. Experimental on the Nintendo 3DS."
+      },
+      "rewlen": {
+        "name": "How far you can rewind",
+        "desc": "More seconds use more of the device’s memory."
+      },
+      "runahead": {
+        "name": "Reduce input delay (run-ahead)",
+        "desc": "Computes frames ahead for a quicker response. Uses more processor.",
+        "option": {
+          "off": "Off",
+          "1": "1 frame",
+          "2": "2 frames",
+          "3": "3 frames"
+        }
+      }
+    },
+    "saves": {
+      "slots": {
+        "name": "Number of quick save slots",
+        "desc": "Controller shortcuts reach slot 9.",
+        "option": {
+          "3": "3",
+          "5": "5",
+          "10": "10"
+        }
+      },
+      "autoq": {
+        "name": "Automatic quick save",
+        "desc": "A slot EmuDome updates by itself while you play.",
+        "option": {
+          "1min": "Every minute",
+          "5min": "Every 5 minutes",
+          "never": "Never"
+        }
+      },
+      "autoexit": {
+        "name": "Automatic quick save on close",
+        "desc": "So you can pick up exactly where you left off."
+      },
+      "resume": {
+        "name": "When a game starts",
+        "desc": "What to do when you open a game you have played before.",
+        "option": {
+          "ask": "Ask whether to resume",
+          "always": "Always resume",
+          "ingame": "Start from the in-game save"
+        }
+      },
+      "undo": {
+        "name": "Allow undoing a load",
+        "desc": "Keeps your game aside before every load."
+      },
+      "backups": {
+        "name": "Backups of the in-game save",
+        "desc": "How many earlier copies to keep, to go back if something goes wrong.",
+        "unit": "copies"
+      },
+      "rtc": {
+        "name": "Game’s internal clock",
+        "desc": "For games that use the date and time (events, seasons).",
+        "option": {
+          "real": "Real time",
+          "offset": "Shifted time",
+          "fixed": "Fixed date"
+        }
+      },
+      "import": {
+        "name": "Import saves from other emulators",
+        "desc": "DeSmuME (.dsv), Action Replay backups (.duc) and .sav files.",
+        "button": "Import a save…"
+      },
+      "savedir": {
+        "name": "Saves folder",
+        "desc": "Where EmuDome keeps saves and quick saves on this device.",
+        "button": "Change folder…"
+      }
+    },
+    "pad": {
+      "dev1": {
+        "name": "{controllerName}",
+        "desc": "Connected · A/B layout {layout}",
+        "button": "Remap buttons",
+        "value": {
+          "layoutNintendo": "like on Nintendo",
+          "layoutPrinted": "as printed"
+        }
+      },
+      "dev2": {
+        "name": "Keyboard",
+        "desc": "Always available on this computer",
+        "button": "Remap keys"
+      },
+      "ab": {
+        "name": "A/B layout",
+        "desc": "Like on Nintendo: A is the right button. As printed: A is the button labelled A.",
+        "option": {
+          "nintendo": "Like on Nintendo",
+          "printed": "As printed on the controller"
+        }
+      },
+      "remap": {
+        "name": "Button remapping",
+        "desc": "Choose which button does what, for all games, for a console or for one game.",
+        "value": {
+          "default": "Default",
+          "custom": "Custom"
+        }
+      },
+      "turbo": {
+        "name": "Repeated press (turbo)",
+        "desc": "Buttons that repeat by themselves while you hold them.",
+        "value": {
+          "none": "No buttons"
+        }
+      },
+      "mod": {
+        "name": "Shortcut button",
+        "desc": "Hold it and press another button to save, load or change speed.",
+        "option": {
+          "l3": "L3 (left stick click)",
+          "r3": "R3 (right stick click)",
+          "select": "Select"
+        }
+      },
+      "combos": {
+        "name": "Controller shortcuts",
+        "desc": "The full list, editable.",
+        "value": {
+          "count": "{n} shortcuts"
+        }
+      },
+      "lid": {
+        "name": "Close and open the lid",
+        "desc": "For Nintendo DS and 3DS games that ask you to close the console.",
+        "option": {
+          "l3_select": "L3 + Select",
+          "menu_only": "Quick menu only"
+        }
+      },
+      "dead": {
+        "name": "Stick dead zone",
+        "desc": "How far to move the stick before the game notices."
+      },
+      "stickdpad": {
+        "name": "Use the left stick as the D-pad",
+        "desc": "Past this point the stick counts as the D-pad."
+      },
+      "trig": {
+        "name": "Trigger threshold",
+        "desc": "How far to press the analogue triggers for them to count."
+      },
+      "rumble": {
+        "name": "Vibration",
+        "desc": "For games that use the Rumble Pak."
+      },
+      "gyro": {
+        "name": "Gyroscope",
+        "desc": "For Nintendo 3DS games you control by tilting the console.",
+        "option": {
+          "controller": "Controller gyroscope",
+          "phone": "Phone gyroscope",
+          "mouse": "Mouse",
+          "right_stick": "Right stick",
+          "off": "Off"
+        }
+      },
+      "pointer": {
+        "name": "Touching the bottom screen",
+        "desc": "How to touch the DS and 3DS bottom screen.",
+        "option": {
+          "mouse": "Mouse",
+          "right_stick": "Right stick as a pointer",
+          "touch": "Touch screen"
+        }
+      },
+      "confirm": {
+        "name": "Confirm button in menus",
+        "desc": "Only for EmuDome menus, not for games.",
+        "option": {
+          "right": "A on the right (like Nintendo)",
+          "bottom": "A at the bottom (like Xbox)"
+        }
+      },
+      "repeat": {
+        "name": "Button repeat in menus",
+        "desc": "How soon a held button starts repeating.",
+        "option": {
+          "slow": "Slow",
+          "normal": "Normal",
+          "fast": "Fast"
+        }
+      }
+    },
+    "touch": {
+      "tedit": {
+        "name": "Customise touch controls",
+        "desc": "Move and resize the buttons over the paused game.",
+        "button": "Open the editor"
+      },
+      "tport": {
+        "name": "Portrait layout",
+        "desc": "The one used when you hold the phone upright.",
+        "option": {
+          "default": "Default"
+        }
+      },
+      "tland": {
+        "name": "Landscape layout",
+        "desc": "The one used when you hold the phone sideways.",
+        "option": {
+          "default": "Default"
+        }
+      },
+      "tskin": {
+        "name": "Button look",
+        "desc": "Style of the touch buttons, including the ones you import.",
+        "value": {
+          "glass": "Glass",
+          "outlines": "Outlines only",
+          "contrast": "High contrast"
+        }
+      },
+      "topac": {
+        "name": "Opacity",
+        "desc": "How visible the buttons are over the game."
+      },
+      "thapt": {
+        "name": "Vibration on touch",
+        "desc": "A small vibration on every press."
+      },
+      "thide": {
+        "name": "Hide the buttons after",
+        "desc": "They come back as soon as you touch the screen.",
+        "option": {
+          "never": "Never",
+          "5s": "5 seconds",
+          "10s": "10 seconds"
+        }
+      },
+      "tpad": {
+        "name": "Hide when a controller is connected",
+        "desc": "The buttons come back if you disconnect the controller."
+      }
+    },
+    "general": {
+      "lang": {
+        "name": "Language",
+        "desc": "EmuDome’s language. Games keep their own language.",
+        "option": {
+          "system": "Same as the system ({language})",
+          "it": "Italiano",
+          "en": "English"
+        }
+      },
+      "theme": {
+        "name": "Theme",
+        "desc": "Black turns pixels off on OLED screens.",
+        "option": {
+          "system": "Same as the system",
+          "dark": "Dark",
+          "black": "Black",
+          "light": "Light"
+        }
+      },
+      "accent": {
+        "name": "Accent colour",
+        "desc": "The colour of main buttons and of the selection.",
+        "option": {
+          "violet": "Violet",
+          "blue": "Blue",
+          "teal": "Teal",
+          "orange": "Orange",
+          "pink": "Pink"
+        },
+        "swatch": {
+          "7152f7": "Violet",
+          "2f7ae5": "Blue",
+          "1f9d8a": "Teal",
+          "d9622b": "Orange",
+          "c2417a": "Pink"
+        }
+      },
+      "ui": {
+        "name": "Interface",
+        "desc": "TV mode uses large text and is driven with the controller. Automatic turns it on in full screen with a controller connected.",
+        "option": {
+          "auto": "Automatic",
+          "desktop": "Desktop mode",
+          "tv": "TV mode"
+        }
+      },
+      "start": {
+        "name": "When EmuDome starts, open",
+        "desc": "What you see when you open the app.",
+        "option": {
+          "library": "The library",
+          "last_game": "The last game"
+        }
+      },
+      "bgpause": {
+        "name": "Pause when EmuDome is in the background",
+        "desc": "The game stops if you switch to another window or app."
+      },
+      "confirmdel": {
+        "name": "Ask before deleting",
+        "desc": "For saves, slots and games on Google Drive."
+      },
+      "qmorder": {
+        "name": "Quick menu order",
+        "desc": "Which tabs you see in the quick menu and in what order.",
+        "value": {
+          "default": "Default",
+          "custom": "Custom"
+        }
+      },
+      "updates": {
+        "name": "EmuDome updates",
+        "desc": "On Android, updates come from the Play Store.",
+        "option": {
+          "auto": "Automatic",
+          "ask": "Ask first",
+          "off": "Off"
+        }
+      }
+    },
+    "library": {
+      "folders": {
+        "name": "Game folders",
+        "desc": "EmuDome looks for games in these folders on this device.",
+        "button": "Add a folder…",
+        "value": {
+          "remove": "Remove"
+        }
+      },
+      "scanstart": {
+        "name": "Look for new games at start",
+        "desc": "Checks the folders every time you open EmuDome."
+      },
+      "watch": {
+        "name": "Add new games right away",
+        "desc": "Watches the folders while EmuDome is open."
+      },
+      "sort": {
+        "name": "Sort by",
+        "desc": "Order of the game grid.",
+        "option": {
+          "last_played": "Last played",
+          "name": "Name",
+          "play_time": "Play time",
+          "added": "Date added"
+        }
+      },
+      "group": {
+        "name": "Group by console",
+        "desc": "Splits the library into sections by console."
+      },
+      "region": {
+        "name": "Preferred region for names",
+        "desc": "When a game has different names in different regions.",
+        "option": {
+          "eu_us": "Europe, then America",
+          "us_eu": "America, then Europe",
+          "jp": "Japan"
+        }
+      },
+      "hidden": {
+        "name": "Hidden games",
+        "desc": "Games you removed from the library without deleting them.",
+        "value": {
+          "count": "{n} games",
+          "none": "None"
+        }
+      },
+      "covers": {
+        "name": "Generated covers",
+        "desc": "The style used for games without an image of yours.",
+        "option": {
+          "color_title": "Colour and title",
+          "rom_icon": "Game icon when there is one",
+          "title_only": "Title only"
+        }
+      }
+    },
+    "cloud": {
+      "acct": {
+        "name": "Google account",
+        "desc": "{name} · EmuDome only sees the files it uploads to Google Drive.",
+        "button": "Sign out",
+        "value": {
+          "signedOut": "You are not signed in",
+          "signIn": "Sign in with Google"
+        }
+      },
+      "space": {
+        "name": "Google Drive space",
+        "desc": "EmuDome uses {used}. Free: {free} of {total}."
+      },
+      "ssaves": {
+        "name": "In-game saves",
+        "desc": "Always recommended: they are tiny."
+      },
+      "squick": {
+        "name": "Quick saves",
+        "desc": "Nintendo 3DS ones can take more than 100 MB.",
+        "option": {
+          "all": "All",
+          "last": "Only the latest",
+          "none": "None"
+        }
+      },
+      "ssettings": {
+        "name": "Settings",
+        "desc": "Device-specific ones stay on that device."
+      },
+      "sgames": {
+        "name": "Games on Google Drive",
+        "desc": "Upload a game to download it on your other devices.",
+        "value": {
+          "count": "{n} games · {size}"
+        }
+      },
+      "sauto": {
+        "name": "Automatic sync",
+        "desc": "Downloads before a game starts and uploads when you close it.",
+        "option": {
+          "game": "When each game starts and closes",
+          "manual": "Manual only"
+        }
+      },
+      "swifi": {
+        "name": "Wi-Fi only",
+        "desc": "Does not use mobile data for large files."
+      }
+    },
+    "a11y": {
+      "textsize": {
+        "name": "Text size",
+        "desc": "Enlarges EmuDome’s text, not the games’."
+      },
+      "motion": {
+        "name": "Reduce motion",
+        "desc": "Replaces movement with short fades.",
+        "option": {
+          "system": "Same as the system",
+          "on": "Yes",
+          "off": "No"
+        }
+      },
+      "transp": {
+        "name": "Reduce transparency",
+        "desc": "Solid panels instead of glass.",
+        "option": {
+          "system": "Same as the system",
+          "on": "Yes",
+          "off": "No"
+        }
+      },
+      "toggle": {
+        "name": "Toggle instead of hold",
+        "desc": "For fast forward, rewind and repeated press."
+      },
+      "cblind": {
+        "name": "Colour-blind filter on the game",
+        "desc": "Adjusts the game’s colours so they are easier to tell apart.",
+        "option": {
+          "none": "None",
+          "protan": "Protanopia (red)",
+          "deutan": "Deuteranopia (green)",
+          "tritan": "Tritanopia (blue)"
+        }
+      }
+    },
+    "presets": {
+      "preset": {
+        "name": "Apply a preset",
+        "desc": "Changes several settings at once. You can always change them afterwards or reset them.",
+        "option": {
+          "faithful": "True to the original",
+          "performance": "Maximum performance",
+          "quality": "Maximum quality",
+          "battery": "Battery saver"
+        },
+        "optionDesc": {
+          "faithful": "Whole pixels, LCD effect, 1× speed",
+          "performance": "Frame skipping, no effects",
+          "quality": "High 3D resolution, LCD screen effect",
+          "battery": "Black theme, 30 FPS in menus, no blur"
+        }
+      },
+      "export": {
+        "name": "Export settings",
+        "desc": "A file to keep as a copy or to share.",
+        "button": "Export…"
+      },
+      "importset": {
+        "name": "Import settings",
+        "desc": "From a file exported by EmuDome.",
+        "button": "Import…"
+      }
+    },
+    "bios": {
+      "bgba": {
+        "name": "Game Boy Advance BIOS",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Built-in replacement in use",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: using the built-in replacement"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Go back to the built-in replacement"
+        }
+      },
+      "bds7": {
+        "name": "Nintendo DS ARM7 BIOS",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Built-in replacement in use",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: using the built-in replacement"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Go back to the built-in replacement"
+        }
+      },
+      "bds9": {
+        "name": "Nintendo DS ARM9 BIOS",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Built-in replacement in use",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: using the built-in replacement"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Go back to the built-in replacement"
+        }
+      },
+      "bdsfw": {
+        "name": "Nintendo DS firmware",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Built-in replacement in use",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: using the built-in replacement"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Go back to the built-in replacement"
+        }
+      },
+      "bdsi": {
+        "name": "Nintendo DSi internal memory",
+        "desc": "Only needed for DSi-exclusive games.",
+        "button": "Use your file…"
+      },
+      "b3ds": {
+        "name": "Nintendo 3DS system files",
+        "desc": "Some games need them, for example for Miis.",
+        "button": "Use your files…"
+      }
+    },
+    "consoles": {
+      "gbmodel": {
+        "name": "Model",
+        "desc": "Which console runs Game Boy games.",
+        "option": {
+          "auto": "Automatic",
+          "gb": "Game Boy",
+          "gbc": "Game Boy Color",
+          "sgb": "Super Game Boy"
+        }
+      },
+      "gbpal": {
+        "name": "Game Boy game colours",
+        "desc": "The palette used for black-and-white games.",
+        "option": {
+          "green": "Original green",
+          "pocket": "Game Boy Pocket greys",
+          "light": "Game Boy Light",
+          "gbc": "Game Boy Color automatic colours"
+        }
+      },
+      "sgb": {
+        "name": "Super Game Boy borders",
+        "desc": "Shows the decorative borders of the games that have them."
+      },
+      "gbacc": {
+        "name": "Colour correction",
+        "desc": "Imitates the duller colours of the original screen.",
+        "option": {
+          "off": "Off",
+          "gba": "GBA screen",
+          "auto": "Automatic"
+        }
+      },
+      "gbablend": {
+        "name": "Frame blending",
+        "desc": "Some games use it for transparency effects.",
+        "option": {
+          "off": "Off",
+          "auto": "Automatic",
+          "on": "Always on"
+        }
+      },
+      "solar": {
+        "name": "Solar sensor",
+        "desc": "How much light the cartridge of sensor games “sees”."
+      },
+      "dsmode": {
+        "name": "Console",
+        "desc": "DSi is only needed for DSi-exclusive or DSi-enhanced games.",
+        "option": {
+          "auto": "Automatic",
+          "ds": "Nintendo DS",
+          "dsi": "Nintendo DSi"
+        }
+      },
+      "dsname": {
+        "name": "User name",
+        "desc": "The name games see."
+      },
+      "dslang": {
+        "name": "Console language",
+        "desc": "Many games pick their language from here.",
+        "option": {
+          "ja": "日本語",
+          "en": "English",
+          "fr": "Français",
+          "de": "Deutsch",
+          "it": "Italiano",
+          "es": "Español"
+        }
+      },
+      "slot2": {
+        "name": "Cartridge in the GBA slot",
+        "desc": "Rumble Pak, memory expansion or a GBA game for the DS games that use them.",
+        "option": {
+          "none": "None",
+          "rumble": "Rumble Pak",
+          "memory": "Memory expansion",
+          "gba_game": "A GBA game from the library…"
+        }
+      },
+      "n3dsmodel": {
+        "name": "Model",
+        "desc": "New Nintendo 3DS is more powerful and needed for some games.",
+        "option": {
+          "o3ds": "Nintendo 3DS",
+          "n3ds": "New Nintendo 3DS"
+        }
+      },
+      "n3dsreg": {
+        "name": "Region and language",
+        "desc": "They must match the game’s region.",
+        "option": {
+          "auto": "Automatic from the game",
+          "jpn": "Japan",
+          "usa": "Americas",
+          "eur": "Europe",
+          "kor": "Korea",
+          "chn": "China",
+          "twn": "Taiwan"
+        }
+      }
+    },
+    "cores": {
+      "mgbabios": {
+        "name": "Use the BIOS if present",
+        "desc": "At the next start. Otherwise the built-in replacement is used."
+      },
+      "mgbaskip": {
+        "name": "Skip the start-up animation",
+        "desc": "At the next start."
+      },
+      "mgbalp": {
+        "name": "Audio low-pass filter",
+        "desc": "Makes the sound less harsh."
+      },
+      "mgbaopp": {
+        "name": "Allow opposite directions",
+        "desc": "Left and right together: some games freeze."
+      },
+      "mgbaall": {
+        "name": "All mGBA options",
+        "desc": "{n} options, grouped as in the engine.",
+        "button": "Show"
+      },
+      "mdsrender": {
+        "name": "Renderer",
+        "desc": "Software is the most compatible.",
+        "option": {
+          "software": "Software",
+          "opengl": "OpenGL"
+        }
+      },
+      "mdsboot": {
+        "name": "Start",
+        "desc": "Direct skips the console menu.",
+        "option": {
+          "direct": "Direct",
+          "menu": "From the DS menu"
+        }
+      },
+      "mdsall": {
+        "name": "All melonDS DS options",
+        "desc": "{n} options.",
+        "button": "Show"
+      },
+      "azaudio": {
+        "name": "Audio emulation",
+        "desc": "Accurate is more faithful but heavier.",
+        "option": {
+          "hle": "Fast (HLE)",
+          "lle": "Accurate (LLE)"
+        }
+      },
+      "azall": {
+        "name": "All Azahar options",
+        "desc": "{n} options.",
+        "button": "Show"
+      }
+    },
+    "perf": {
+      "frameskip": {
+        "name": "Skip frames on a slow device",
+        "desc": "Keeps the right speed by drawing fewer images.",
+        "option": {
+          "auto": "Automatic",
+          "never": "Never",
+          "1": "1",
+          "2": "2",
+          "3": "3",
+          "4": "4"
+        }
+      },
+      "jit": {
+        "name": "Fast compilation (JIT)",
+        "desc": "Much faster; turn it off only if a game freezes."
+      },
+      "shcache": {
+        "name": "Keep compiled shaders",
+        "desc": "Reduces stutter in 3DS games after the first time."
+      },
+      "cpuclock": {
+        "name": "Emulated processor speed",
+        "desc": "Higher removes slowdowns in some games, but costs more."
+      }
+    },
+    "online": {
+      "wfc": {
+        "name": "Wi-Fi server for DS games",
+        "desc": "Alternative server for playing online with the games that support it.",
+        "value": {
+          "none": "None"
+        }
+      },
+      "ra": {
+        "name": "RetroAchievements",
+        "desc": "Achievements for Game Boy, GBA and DS games.",
+        "button": "Sign in…"
+      },
+      "discord": {
+        "name": "Show on Discord what you are playing",
+        "desc": "The game’s name appears on your Discord profile."
+      }
+    },
+    "adv": {
+      "advon": {
+        "name": "Show advanced tools",
+        "desc": "Adds the Advanced tools tab to the quick menu."
+      },
+      "inputs": {
+        "name": "Show pressed buttons",
+        "desc": "As an overlay, for videos and streaming."
+      },
+      "framecnt": {
+        "name": "Show the frame counter",
+        "desc": "Current frame number and dropped frames."
+      },
+      "movies": {
+        "name": "Record and replay a run",
+        "desc": "Records the buttons pressed and replays the exact same run.",
+        "button": "Open"
+      },
+      "cheatsearch": {
+        "name": "Find a cheat",
+        "desc": "Find a value in memory (lives, money) and create a code.",
+        "button": "Open"
+      },
+      "devtools": {
+        "name": "Developer tools",
+        "desc": "Memory, graphics (tiles, palettes, sprites), disassembler.",
+        "button": "Open"
+      }
+    },
+    "about": {
+      "ver": {
+        "name": "Version",
+        "desc": "{version}"
+      },
+      "upd": {
+        "name": "Updates",
+        "desc": "Last checked: {when}",
+        "button": "Check now"
+      },
+      "emgba": {
+        "name": "mGBA",
+        "desc": "Game Boy, Game Boy Color, Game Boy Advance · version {v}"
+      },
+      "emds": {
+        "name": "melonDS DS",
+        "desc": "Nintendo DS and DSi · version {v}"
+      },
+      "emaz": {
+        "name": "Azahar",
+        "desc": "Nintendo 3DS · version {v}"
+      },
+      "lic": {
+        "name": "Open source licences",
+        "desc": "EmuDome and its components.",
+        "button": "Show"
+      },
+      "log": {
+        "name": "Export the log",
+        "desc": "A file to attach when you report a problem.",
+        "button": "Export…"
+      }
+    },
+    "groups": {
+      "game": "GAME",
+      "controls": "CONTROLS",
+      "app": "APP",
+      "system": "SYSTEM"
+    }
+  },
+  "settingsUi": {
+    "title": "Settings",
+    "search": "Search for a setting",
+    "searchPlaceholder": "Search, e.g. V-Sync",
+    "categories": "Settings categories",
+    "scopeTitle": "You’re changing settings for:",
+    "scopeRegion": "Which games the changes apply to",
+    "onlyChanged": "Show only changed settings",
+    "scope": {
+      "global": "All games",
+      "globalSub": "The starting value for every game",
+      "console": "{console} games",
+      "consoleSub": "Only {short} games. Wins over “All games”",
+      "globalLine": "You change the starting value. Consoles and games with a value of their own keep it: the line under the setting tells you.",
+      "consoleLine": "You change only {console} games. Settings with a dot differ from “All games”; the others follow it."
+    },
+    "appWide": "These settings apply to the whole app, not to a single game.",
+    "changed": "Changed",
+    "changedSr": "(changed)",
+    "sameAs": "Same as “{level}”",
+    "useValueOf": "Use the value of “{level}”",
+    "reset": "Reset",
+    "onlyHere": {
+      "desktop": "Only on this computer",
+      "phone": "Only on this phone"
+    },
+    "lockedGlobal": "It always applies to all games. To change it, choose “All games” at the top.",
+    "lockedScoped": "It is set per console or per game: choose a level at the top.",
+    "lockedPhone": "It is set on the phone.",
+    "lockedDesktop": "It is set on the computer.",
+    "notYet": "This arrives in a future update.",
+    "emptyOnly": "No settings changed here. Every value is inherited.",
+    "noResults": "No settings for “{query}”",
+    "resultsTitle": "Results for “{query}”",
+    "hint": "With keyboard and controller: arrows or D-pad to move, A to confirm, B to go back, L1 and R1 to change level.",
+    "intro": {
+      "bios": "EmuDome works without these files thanks to free replacements already built in. If you copied the files from your console, you can use them for the best compatibility.",
+      "cores": "These are the options of the emulation engines. Change them only if you know what they do: those marked “from the next start” apply when you reopen the game."
+    },
+    "unit": {
+      "percent": "{v}%",
+      "px": "{v} px",
+      "seconds": "{v} s",
+      "copies": "{v} copies"
+    },
+    "choose": "Choose",
+    "none": "None",
+    "done": "Done"
+  },
+  "flow": {
+    "starting": "Starting",
+    "startFailed": "Can’t start {title}",
+    "gotIt": "Got it",
+    "hintEsc": "Esc",
+    "hintOr": "or",
+    "hintHome": "Home",
+    "hintText": "for the quick menu",
+    "closing": "Closing {title}",
+    "stepAuto": "Auto quick save",
+    "stepInGame": "In-game save",
+    "resumeTitle": "Do you want to resume where you left off?",
+    "resume": "Resume",
+    "restart": "Start from the in-game save",
+    "crashTitle": "The game stopped because of an error",
+    "crashText": "The {console} emulator stopped responding.",
+    "crashSaved": "The auto quick save from {when} is safe.",
+    "crashNoSave": "This game has no auto quick save yet.",
+    "copyDetails": "Copy the details for a report",
+    "detailsCopied": "Details copied",
+    "backToLibrary": "Back to the library",
+    "resumeAuto": "Resume from the auto quick save",
+    "slowTitle": "The game runs slower than normal ({fps} FPS of {target})",
+    "slowText": "This device struggles to keep the game at the right speed. Try the “Maximum performance” preset in Settings.",
+    "notNow": "Not now"
+  },
+  "qm": {
+    "label": "Quick menu",
+    "tabs": "Quick menu sections",
+    "playing": "{console} · playing for {time}",
+    "tab": {
+      "saves": "Quick saves",
+      "speed": "Speed",
+      "screens": "Screens",
+      "controls": "Controls",
+      "tools": "Tools"
+    },
+    "auto": "Automatic",
+    "slot": "Slot {slot}",
+    "empty": "Empty",
+    "loadAuto": "Load the auto quick save",
+    "loadSlot": "Load from slot {slot}",
+    "saveFree": "Save to a free slot",
+    "saveSlot": "Save to slot {slot}",
+    "autoEvery": "Auto quick save: {every}",
+    "keys": "{save} saves · {load} loads slot 1",
+    "speedTitle": "GAME SPEED",
+    "speedNote": "For now the audio is muted when the speed is not 1×. “Max” goes as fast as the device can.",
+    "ffTitle": "FAST FORWARD",
+    "rewTitle": "REWIND",
+    "imageTitle": "IMAGE",
+    "displayTitle": "DISPLAY METHOD",
+    "noNative": "The Accelerated method is not available on this system.",
+    "controller": "Controller in use",
+    "noController": "No controller connected: use the keyboard.",
+    "shortcuts": "Controller shortcuts",
+    "shortcutsHint": "Hold L3 and press another button",
+    "showList": "Show the list",
+    "remap": "Remap the buttons for this game",
+    "screenshot": "Take a screenshot",
+    "reset": "Restart the game",
+    "resetHint": "unsaved progress is lost",
+    "close": "Close the game",
+    "closeHint": "saves automatically before closing",
+    "trial": "{n} changes on trial: {names}",
+    "trialOne": "1 change on trial: {names}",
+    "trialHint": "You already see them in the game. If you close the game without saving them, they go back to how they were.",
+    "undo": "Undo changes",
+    "saveGame": "Save for this game",
+    "saveConsole": "Save for all {console} games instead",
+    "resume": "Resume the game",
+    "notYet": "This arrives in a future update"
   }
 }

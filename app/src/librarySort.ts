@@ -2,7 +2,7 @@
 import type { ConsoleId, LibraryGame } from './emu'
 
 /** Option ids of the `library.sort` setting (crates/emudome-core/src/settings/catalog.rs). */
-export const SORTS = ['last_played', 'name', 'play_time', 'date_added'] as const
+export const SORTS = ['last_played', 'name', 'play_time', 'added'] as const
 export type Sort = (typeof SORTS)[number]
 export const DEFAULT_SORT: Sort = 'last_played'
 
@@ -37,7 +37,7 @@ export function sorted(games: LibraryGame[], sort: Sort): LibraryGame[] {
         return g.lastPlayed ?? -Infinity
       case 'play_time':
         return g.playTimeSecs
-      case 'date_added':
+      case 'added':
         return g.addedAt
       case 'name':
         return 0

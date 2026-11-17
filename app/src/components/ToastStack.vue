@@ -6,6 +6,8 @@ interface Toast {
   text: string
   kind: 'info' | 'error'
 }
+/** In game (G13): at the top, never over the centre of the game, 2 s at most for every kind. */
+const props = defineProps<{ inGame?: boolean }>()
 const toasts = ref<Toast[]>([])
 let next = 0
 
@@ -15,7 +17,7 @@ function push(text: string, kind: Toast['kind'] = 'info') {
   toasts.value.push({ id, text, kind })
   window.setTimeout(
     () => (toasts.value = toasts.value.filter(t => t.id !== id)),
-    kind === 'error' ? 5000 : 2000,
+    kind === 'error' && !props.inGame ? 5000 : 2000,
   )
 }
 
@@ -23,7 +25,7 @@ defineExpose({ push })
 </script>
 
 <template>
-  <div class="toasts" aria-live="polite">
+  <div class="toasts" :class="{ top: inGame }" aria-live="polite">
     <div v-for="t in toasts" :key="t.id" class="toast glass-thick" :class="t.kind">
       {{ t.text }}
     </div>
@@ -39,6 +41,13 @@ defineExpose({ push })
   flex-direction: column;
   gap: 8px;
   pointer-events: none;
+}
+.toasts.top {
+  left: 50%;
+  bottom: auto;
+  top: 16px;
+  transform: translateX(-50%);
+  align-items: center;
 }
 .toast {
   padding: 10px 14px;

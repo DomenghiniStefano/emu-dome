@@ -34,13 +34,17 @@ pub enum Nav {
     Right,
     Confirm,
     Back,
+    /// L1: the previous tab or level (the settings scope bar, TV mode tabs).
+    Prev,
+    /// R1: the next tab or level.
+    Next,
 }
 
 impl Nav {
     fn repeats(self) -> bool {
         match self {
             Nav::Up | Nav::Down | Nav::Left | Nav::Right => true,
-            Nav::Confirm | Nav::Back => false,
+            Nav::Confirm | Nav::Back | Nav::Prev | Nav::Next => false,
         }
     }
 }
@@ -53,6 +57,8 @@ const NAV_BUTTONS: &[(Button, Nav)] = &[
     (Button::Right, Nav::Right),
     (Button::A, Nav::Confirm),
     (Button::B, Nav::Back),
+    (Button::L, Nav::Prev),
+    (Button::R, Nav::Next),
 ];
 
 /// A shell feature reachable from the controller.
@@ -423,6 +429,15 @@ mod tests {
             r.step(pad(&[Button::B]), true, t).actions,
             vec![Action::Nav(Nav::Back)]
         );
+        r.step(pad(&[]), true, t);
+        assert_eq!(
+            r.step(pad(&[Button::L]), true, t).actions,
+            vec![Action::Nav(Nav::Prev)]
+        );
+        r.step(pad(&[]), true, t);
+        let out = r.step(pad(&[Button::R]), true, t);
+        assert_eq!(out.actions, vec![Action::Nav(Nav::Next)]);
+        assert_eq!(out.game_mask, 0);
     }
 
     #[test]

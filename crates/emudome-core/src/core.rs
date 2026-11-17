@@ -221,8 +221,18 @@ impl GameFiles {
         }
     }
 
+    /// The file of a quick save slot; slot 0 ([`crate::AUTO_SLOT`]) is the auto quick
+    /// save («Salvataggio rapido automatico»), the others are the user's slots.
     pub fn slot(&self, slot: u8) -> PathBuf {
+        if slot == crate::AUTO_SLOT {
+            return self.save_dir.join(format!("{}.auto.state", self.stem));
+        }
         self.save_dir
             .join(format!("{}.slot{}.state", self.stem, slot))
+    }
+
+    /// The thumbnail of a slot: the frame on screen when it was saved.
+    pub fn thumb(&self, slot: u8) -> PathBuf {
+        self.slot(slot).with_extension("png")
     }
 }
