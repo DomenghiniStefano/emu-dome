@@ -50,7 +50,7 @@ pub fn open(app: &tauri::App) -> tauri::Result<SettingsState> {
     ))))
 }
 
-fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
+pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
     for key in keys {
         if let Err(e) = app.emit("settings://changed", Changed { key, level }) {
             log::warn!("settings://changed {key}: {e}");
@@ -126,6 +126,7 @@ pub fn settings_set(
 ) -> Result<(), ErrorCode> {
     let level = state.0.lock().set(&key, &scope, value)?;
     emit_changed(&app, &[&key], level);
+    crate::library::on_setting_changed(&app, &key);
     Ok(())
 }
 
@@ -139,6 +140,7 @@ pub fn settings_reset(
 ) -> Result<(), ErrorCode> {
     let level = state.0.lock().reset(&key, &scope)?;
     emit_changed(&app, &[&key], level);
+    crate::library::on_setting_changed(&app, &key);
     Ok(())
 }
 

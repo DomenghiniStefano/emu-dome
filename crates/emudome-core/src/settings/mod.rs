@@ -27,6 +27,7 @@ pub use schema::{
     entry, page_entries, schema, ActionStyle, ChoiceStyle, DefaultValue, Device, Entry, Kind,
     Level, Levels, Platform, SchemaDto, Unit, Value,
 };
+pub(crate) use store::write_atomic;
 use store::{Change, FileId, Store};
 
 use crate::ErrorCode;

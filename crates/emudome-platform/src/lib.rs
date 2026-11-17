@@ -43,6 +43,18 @@ pub fn native_video_default() -> bool {
 /// System name, for logs and diagnostics.
 pub const OS_NAME: &str = imp::OS_NAME;
 
+/// The URL the webview loads for `path` on the app's custom protocol `scheme` (what
+/// `convertFileSrc(path, scheme)` gives in the interface): WebView2 and Android's WebView
+/// reach custom protocols as `http://<scheme>.localhost/`, the others as `<scheme>://localhost/`.
+/// `path` must already be URL-safe.
+pub fn protocol_url(scheme: &str, path: &str) -> String {
+    if cfg!(any(target_os = "windows", target_os = "android")) {
+        format!("http://{scheme}.localhost/{path}")
+    } else {
+        format!("{scheme}://localhost/{path}")
+    }
+}
+
 /// Starts the log output: stderr on the desktop (`RUST_LOG` filters it, `info` by default),
 /// logcat on Android (tag `EmuDome`).
 pub fn init_logging() {
