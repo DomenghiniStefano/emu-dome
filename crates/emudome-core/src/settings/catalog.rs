@@ -8,7 +8,8 @@
 //! are a sensible guess that contains the default on the step grid, and Cowork confirms them in 2b.
 
 use super::schema::{
-    ActionStyle, ChoiceStyle, DefaultValue, Entry, Kind, Levels, PageGroup, Platform, Section, Unit,
+    ActionStyle, BindingTable, ChoiceStyle, DefaultValue, Entry, Kind, Levels, PageGroup, Platform,
+    Section, Unit,
 };
 
 /// Phase the app is in: entries of later phases stay hidden.
@@ -183,6 +184,16 @@ const fn link(key: &'static str, levels: Levels) -> Entry {
 }
 
 /// Shows information (`info`).
+/// A binding list (`pad.remap`, `pad.combos`): overrides of the defaults, empty by default.
+const fn bindings(key: &'static str, table: BindingTable, levels: Levels) -> Entry {
+    e(
+        key,
+        Kind::Bindings { table },
+        DefaultValue::List(&[]),
+        levels,
+    )
+}
+
 const fn info(key: &'static str, levels: Levels) -> Entry {
     action(key, ActionStyle::Info, levels)
 }
@@ -376,10 +387,10 @@ pub static ENTRIES: &[Entry] = &[
     link("pad.dev1", G),
     link("pad.dev2", G).pc(),
     seg("pad.ab", &["nintendo", "printed"], "nintendo", G),
-    link("pad.remap", ALL),
+    bindings("pad.remap", BindingTable::Remap, ALL),
     link("pad.turbo", ALL),
     sel("pad.mod", &["l3", "r3", "select"], "l3", G),
-    link("pad.combos", ALL),
+    bindings("pad.combos", BindingTable::Combos, ALL),
     sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC).phase(2),
     pct("pad.dead", 15, G),
     pct("pad.stickdpad", 50, GC),

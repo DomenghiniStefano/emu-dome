@@ -12,8 +12,15 @@
 //! so it is tested without SDL or a window. The shell reads the pads, calls `step` and
 //! dispatches the [`Action`]s; the game gets [`Routed::game_mask`].
 //!
-//! The combo table is [`DEFAULT_COMBOS`] with the modifier [`DEFAULT_MODIFIER`]: the
-//! Phase 1 settings engine will make it remappable by building a different [`Bindings`].
+//! The router works on **positions**, not on what the game sees: every bit is the RetroPad
+//! button that sits at that place on a Nintendo pad (A = right face button, B = bottom one,
+//! see [`crate::bindings::Pos`]). Combos and menu navigation therefore never move when the
+//! game's buttons are remapped; the shell turns [`Routed::game_mask`] into the game's buttons
+//! with each pad's [`crate::bindings::PadMap`].
+//!
+//! The default combo table is [`DEFAULT_COMBOS`] with the modifier [`DEFAULT_MODIFIER`];
+//! the settings (`pad.combos`, `pad.mod`, `pad.confirm`, `pad.repeat`) build other
+//! [`Bindings`] through [`crate::bindings::PadConfig`].
 
 use std::time::{Duration, Instant};
 
@@ -49,14 +56,13 @@ impl Nav {
     }
 }
 
-/// Buttons that navigate the interface while it has the input.
+/// Buttons that navigate the interface while it has the input, confirm and back aside
+/// (they follow [`Bindings::confirm`]).
 const NAV_BUTTONS: &[(Button, Nav)] = &[
     (Button::Up, Nav::Up),
     (Button::Down, Nav::Down),
     (Button::Left, Nav::Left),
     (Button::Right, Nav::Right),
-    (Button::A, Nav::Confirm),
-    (Button::B, Nav::Back),
     (Button::L, Nav::Prev),
     (Button::R, Nav::Next),
 ];
@@ -84,6 +90,40 @@ pub enum Hotkey {
 }
 
 impl Hotkey {
+    /// Every hotkey, in the order of the shortcuts list (C03).
+    pub const ALL: [Hotkey; 10] = [
+        Hotkey::ToggleMenu,
+        Hotkey::SaveState,
+        Hotkey::LoadState,
+        Hotkey::NextSlot,
+        Hotkey::PreviousSlot,
+        Hotkey::FastForwardHold,
+        Hotkey::FastForwardToggle,
+        Hotkey::SlowMotionToggle,
+        Hotkey::FpsOverlay,
+        Hotkey::Pause,
+    ];
+
+    /// The stable id in `pad.combos` values and in the interface (`controls.hotkey.<id>`).
+    pub fn id(self) -> &'static str {
+        match self {
+            Hotkey::ToggleMenu => "menu",
+            Hotkey::SaveState => "save",
+            Hotkey::LoadState => "load",
+            Hotkey::NextSlot => "next_slot",
+            Hotkey::PreviousSlot => "prev_slot",
+            Hotkey::FastForwardHold => "ff_hold",
+            Hotkey::FastForwardToggle => "ff_toggle",
+            Hotkey::SlowMotionToggle => "slow",
+            Hotkey::FpsOverlay => "fps",
+            Hotkey::Pause => "pause",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Hotkey> {
+        Hotkey::ALL.into_iter().find(|h| h.id() == id)
+    }
+
     /// Whether the action lasts while the button is held (and then gets a release).
     pub fn is_hold(self) -> bool {
         match self {
@@ -132,12 +172,19 @@ pub const DEFAULT_COMBOS: &[(Button, Hotkey)] = &[
     //       its button is still to choose (Select is free).
 ];
 
-/// The controller bindings the router follows. Today only the defaults exist;
-/// the settings engine (Phase 1) will build other ones.
-#[derive(Debug, Clone)]
+/// The controller bindings the router follows, built from the settings by
+/// [`crate::bindings::PadConfig::bindings`].
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bindings {
     pub modifier: Button,
     pub combos: Vec<(Button, Hotkey)>,
+    /// The position that confirms in the menus (`pad.confirm`): [`Button::A`] (right, like
+    /// Nintendo) or [`Button::B`] (bottom, like Xbox). The other one goes back.
+    pub confirm: Button,
+    /// Menu key repeat (`pad.repeat`): first repeat after `repeat_delay`, then every
+    /// `repeat_interval`.
+    pub repeat_delay: Duration,
+    pub repeat_interval: Duration,
 }
 
 impl Default for Bindings {
@@ -145,7 +192,31 @@ impl Default for Bindings {
         Self {
             modifier: DEFAULT_MODIFIER,
             combos: DEFAULT_COMBOS.to_vec(),
+            confirm: Button::A,
+            repeat_delay: REPEAT_DELAY,
+            repeat_interval: REPEAT_INTERVAL,
         }
+    }
+}
+
+impl Bindings {
+    /// The navigation step of a position while the interface has the input.
+    fn nav(&self, button: Button) -> Option<Nav> {
+        if button == self.confirm {
+            return Some(Nav::Confirm);
+        }
+        let back = if self.confirm == Button::B {
+            Button::A
+        } else {
+            Button::B
+        };
+        if button == back {
+            return Some(Nav::Back);
+        }
+        NAV_BUTTONS
+            .iter()
+            .find(|(b, _)| *b == button)
+            .map(|(_, nav)| *nav)
     }
 }
 
@@ -199,6 +270,20 @@ impl Router {
         }
     }
 
+    /// New bindings from the settings; the routing state carries on.
+    pub fn set_bindings(&mut self, bindings: Bindings) {
+        self.bindings = bindings;
+    }
+
+    /// A poll the router must not act on (the Controls section is capturing a button):
+    /// nothing fires, the game gets nothing, and the buttons held now stay away from the game
+    /// and from the menu until released, so the button just assigned does not also click.
+    pub fn absorb(&mut self, input: PadInput) {
+        self.suppressed |= input.buttons;
+        self.repeat = None;
+        self.prev = input;
+    }
+
     /// Routes one poll. `ui_has_input` is true while the interface takes the controller
     /// (quick menu open, or no game running).
     pub fn step(&mut self, input: PadInput, ui_has_input: bool, now: Instant) -> Routed {
@@ -242,11 +327,16 @@ impl Router {
             self.suppressed |= held & !modifier;
             self.repeat = None;
         } else if ui_has_input {
-            for &(button, nav) in NAV_BUTTONS {
+            // A button absorbed during a capture does not navigate until released.
+            let pressed = pressed & !self.suppressed;
+            for button in Button::ALL {
+                let Some(nav) = self.bindings.nav(button) else {
+                    continue;
+                };
                 if pressed & button.bit() != 0 {
                     actions.push(Action::Nav(nav));
                     if nav.repeats() {
-                        self.repeat = Some((button, nav, now + REPEAT_DELAY));
+                        self.repeat = Some((button, nav, now + self.bindings.repeat_delay));
                     }
                 }
             }
@@ -256,11 +346,11 @@ impl Router {
                 } else if now >= next {
                     actions.push(Action::Nav(nav));
                     // A late poll does not fire a burst to catch up.
-                    let on_time = next + REPEAT_INTERVAL;
+                    let on_time = next + self.bindings.repeat_interval;
                     let after = if on_time > now {
                         on_time
                     } else {
-                        now + REPEAT_INTERVAL
+                        now + self.bindings.repeat_interval
                     };
                     self.repeat = Some((button, nav, after));
                 }
@@ -537,5 +627,80 @@ mod tests {
         let out = r.step(pad(&[Button::Down]), false, t + REPEAT_DELAY);
         assert!(out.actions.is_empty());
         assert_eq!(out.game_mask, 0);
+    }
+
+    #[test]
+    fn confirm_at_the_bottom_swaps_confirm_and_back() {
+        let mut r = Router::new(Bindings {
+            confirm: Button::B,
+            ..Bindings::default()
+        });
+        let t = Instant::now();
+        r.step(pad(&[]), true, t);
+        assert_eq!(
+            r.step(pad(&[Button::B]), true, t).actions,
+            vec![Action::Nav(Nav::Confirm)]
+        );
+        r.step(pad(&[]), true, t);
+        assert_eq!(
+            r.step(pad(&[Button::A]), true, t).actions,
+            vec![Action::Nav(Nav::Back)]
+        );
+    }
+
+    #[test]
+    fn the_repeat_follows_the_bindings() {
+        let delay = Duration::from_millis(250);
+        let interval = Duration::from_millis(70);
+        let mut r = Router::new(Bindings {
+            repeat_delay: delay,
+            repeat_interval: interval,
+            ..Bindings::default()
+        });
+        let t = Instant::now();
+        r.step(pad(&[]), true, t);
+        r.step(pad(&[Button::Up]), true, t);
+        assert_eq!(
+            r.step(pad(&[Button::Up]), true, t + delay).actions,
+            vec![Action::Nav(Nav::Up)]
+        );
+        assert_eq!(
+            r.step(pad(&[Button::Up]), true, t + delay + interval)
+                .actions,
+            vec![Action::Nav(Nav::Up)]
+        );
+    }
+
+    #[test]
+    fn a_button_absorbed_by_a_capture_neither_navigates_nor_plays_until_released() {
+        let mut r = router();
+        let t = Instant::now();
+        r.step(pad(&[]), true, t);
+        // Captured while held: the capture ends with B still down.
+        r.absorb(pad(&[Button::B]));
+        assert!(r.step(pad(&[Button::B]), true, t).actions.is_empty());
+        r.step(pad(&[]), true, t);
+        assert_eq!(
+            r.step(pad(&[Button::B]), true, t).actions,
+            vec![Action::Nav(Nav::Back)]
+        );
+        // In game too.
+        r.absorb(pad(&[Button::A]));
+        assert_eq!(r.step(pad(&[Button::A]), false, t).game_mask, 0);
+        r.step(pad(&[]), false, t);
+        assert_eq!(
+            r.step(pad(&[Button::A]), false, t).game_mask,
+            Button::A.bit()
+        );
+    }
+
+    #[test]
+    fn hotkey_ids_round_trip() {
+        for h in Hotkey::ALL {
+            assert_eq!(Hotkey::from_id(h.id()), Some(h));
+        }
+        for b in Button::ALL {
+            assert_eq!(Button::from_id(b.id()), Some(b));
+        }
     }
 }
