@@ -90,9 +90,90 @@ export type EmuEvent =
   | { type: 'error'; error: ErrorCode }
   | { type: 'stopped' }
 
-/** Payload of `emu://gamepad-connected` / `emu://gamepad-disconnected`; `name` is null when SDL knows none. */
-export interface GamepadEvent {
+// ---- Controllers (mirrors of emudome_core::bindings and src-tauri/src/pads.rs) ----
+
+/**
+ * A place on the controller, by position (SDL's names), the same on every controller whatever
+ * is printed on it. Mirror of `Pos`. Names per controller type: `controls.pos.<family>.<pos>`.
+ */
+export type Pos =
+  | 'south'
+  | 'east'
+  | 'west'
+  | 'north'
+  | 'l1'
+  | 'r1'
+  | 'l2'
+  | 'r2'
+  | 'l3'
+  | 'r3'
+  | 'back'
+  | 'start'
+  | 'up'
+  | 'down'
+  | 'left'
+  | 'right'
+
+/** Controller type: one remap table each, plus the keyboard. Mirror of `Family`. */
+export type PadFamily = 'xbox' | 'playstation' | 'switch' | 'generic' | 'keyboard'
+
+/**
+ * A connected controller: payload of `emu://gamepad-connected` / `emu://gamepad-disconnected`
+ * and the rows of `gamepad_list`. `name` is null when SDL knows none.
+ */
+export interface PadInfo {
+  id: number
   name: string | null
+  family: Exclude<PadFamily, 'keyboard'>
+  vendor: number
+  product: number
+}
+/** Kept for the toasts, which only need the name. */
+export type GamepadEvent = Pick<PadInfo, 'name'>
+
+/** One pad's live state (`emu://pad-state`, while watched). */
+export interface PadState {
+  id: number
+  /** Positions held: buttons, and triggers past `pad.trig`. */
+  held: Pos[]
+  /** Left x, left y, right x, right y (-32768..32767, y down), left trigger, right trigger. */
+  axes: [number, number, number, number, number, number]
+}
+
+/** One game button of the remap table. `source`: a `Pos` (controllers) or a key code (keyboard). */
+export interface RemapRow {
+  button: Button
+  source: string | null
+  default: string | null
+  changed: boolean
+}
+
+/** One controller shortcut: `pos` pressed with the shortcut button (null = none). */
+export interface ComboRow {
+  hotkey: HotkeyId
+  pos: Pos | null
+  default: Pos | null
+}
+
+/** Mirror of `Hotkey::id` (crates/emudome-core/src/hotkeys.rs). */
+export type HotkeyId =
+  | 'menu'
+  | 'save'
+  | 'load'
+  | 'next_slot'
+  | 'prev_slot'
+  | 'ff_hold'
+  | 'ff_toggle'
+  | 'slow'
+  | 'fps'
+  | 'pause'
+
+/** The bindings of a family seen from a scope, with the defaults already applied. */
+export interface ControlsBindings {
+  remap: RemapRow[]
+  combos: ComboRow[]
+  /** The shortcut button (`pad.mod`). */
+  modifier: Pos
 }
 
 export type VideoMode = 'native' | 'webview'
@@ -148,6 +229,8 @@ export type SettingKind =
   | { type: 'colour'; swatches: string[] }
   | { type: 'text' }
   | { type: 'action'; style: 'button' | 'link' | 'info' | 'storage' }
+  /** A binding list edited in the Controls section (`pad.remap`, `pad.combos`): a link here. */
+  | { type: 'bindings'; table: 'remap' | 'combos' }
 
 export interface SettingEntry {
   /** `<page>.<key>`, stable. */
@@ -280,6 +363,8 @@ export const emu = {
   setPaused: (paused: boolean) => invoke<void>('set_paused', { paused }),
   /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing. */
   setMenuOpen: (open: boolean) => invoke<void>('set_menu_open', { open }),
+  /** F11: fullscreen on / off (keyboard only). */
+  toggleFullscreen: () => invoke<void>('toggle_fullscreen'),
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
   loadState: (slot: number) => invoke<void>('load_state', { slot }),
   reset: () => invoke<void>('reset_game'),
@@ -342,25 +427,21 @@ export const emu = {
     listen<{ action: NavAction }>('emu://nav', e => cb(e.payload.action)),
   onHotkey: (cb: (e: HotkeyEvent) => void): Promise<UnlistenFn> =>
     listen<HotkeyEvent>('emu://hotkey', e => cb(e.payload)),
-  onGamepadConnected: (cb: (e: GamepadEvent) => void): Promise<UnlistenFn> =>
-    listen<GamepadEvent>('emu://gamepad-connected', e => cb(e.payload)),
-  onGamepadDisconnected: (cb: (e: GamepadEvent) => void): Promise<UnlistenFn> =>
-    listen<GamepadEvent>('emu://gamepad-disconnected', e => cb(e.payload)),
-}
-
-/** Keyboard → RetroPad. Becomes configurable in the settings (Phase 1). */
-export const KEYMAP: Record<string, Button> = {
-  ArrowUp: 'up',
-  ArrowDown: 'down',
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  KeyX: 'a',
-  KeyZ: 'b',
-  KeyA: 'l',
-  KeyS: 'r',
-  KeyW: 'x',
-  KeyQ: 'y',
-  Enter: 'start',
-  ShiftRight: 'select',
-  Backspace: 'select',
+  onGamepadConnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
+    listen<PadInfo>('emu://gamepad-connected', e => cb(e.payload)),
+  onGamepadDisconnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
+    listen<PadInfo>('emu://gamepad-disconnected', e => cb(e.payload)),
+  controls: {
+    /** The connected controllers. */
+    pads: () => invoke<PadInfo[]>('gamepad_list'),
+    /** While on, `onPadState` receives every change (tester, capture). */
+    watch: (on: boolean) => invoke<void>('gamepad_watch', { on }),
+    /** While on, the controllers neither play nor navigate (a button is being captured). */
+    capture: (on: boolean) => invoke<void>('gamepad_capture', { on }),
+    /** Remap table and shortcuts of a family at a scope, defaults applied. */
+    bindings: (family: PadFamily, scope: SettingsScope) =>
+      invoke<ControlsBindings>('controls_bindings', { family, scope }),
+    onPadState: (cb: (pads: PadState[]) => void): Promise<UnlistenFn> =>
+      listen<{ pads: PadState[] }>('emu://pad-state', e => cb(e.payload.pads)),
+  },
 }
