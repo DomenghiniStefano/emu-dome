@@ -1,6 +1,9 @@
-# EmuDome: instructions for Claude Code
+# CLAUDE.md
 
-One emulator for **Game Boy Advance, Nintendo DS and Nintendo 3DS**, on **Windows, Linux and Android**.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+**EmuDome**: one emulator for **Game Boy Advance, Nintendo DS and Nintendo 3DS**, on **Windows, Linux and Android**
+(GB/GBC are also planned as first-class consoles, `docs/decisions.md`).
 Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interchangeable libretro libraries:
 
 - GBA: mGBA
@@ -29,43 +32,45 @@ Git: `develop` is the integration branch, checked out in the main worktree; work
 `C:\Projects\emu-dome.wt\<name>` and is merged into `develop` from the main worktree. Pushing `develop` is allowed
 (owner, 2026-11-16). No push to `main`.
 
-Already done and verified on Linux (virtual X11, mGBA 0.10.2):
+The architecture question is answered: the native video under a transparent webview holds up. The full test log,
+entry by entry, is `docs/fase0-esito.md`; in short:
 
-- Windowless libretro host (`cargo run -p emudome-core --example headless -- <core> tools/test-rom/emudome-test.gba`):
-  1× ≈ 59.7 FPS, 2× ≈ 120, Max ≈ 900; save states and `.sav` work.
-- Full app in "webview" video mode: game on screen, buttons, quick menu over the game, speed, slots.
-
-To verify now, **on Windows**:
-
-1. **Native** video mode: with the quick menu (Esc) open, the game must stay visible under the interface.
-   This is the question that decides the architecture.
-2. FPS (F3) ≈ 59.7 at 1×.
-3. Clean audio, with no delay growing over time.
-4. Controller recognised ("Controller connected" toast).
-5. Smoothness and latency compared between "Native" and "In the webview" (selector in the quick menu).
-
-After Windows comes Phase 0 step 4: **Android**.
-It needs `tauri android init`, a Kotlin plugin with a `SurfaceView` under the WebView, the `.so` cores in jniLibs
-(loading still to be completed in `crates/emudome-platform/src/android.rs`) and a few touch buttons.
+- **Linux** (virtual X11, mGBA 0.10.2): windowless host 1× ≈ 59.7 FPS, 2× ≈ 120, Max ≈ 900; app in webview mode
+  works. Native mode does not (the GTK surface covers the webview).
+- **Windows** (2026-11-16): native video under the quick menu ok (wgpu picks Vulkan), 59.7 FPS at 1×, audio heard ok,
+  controllers ok through SDL3 (Steam Controller, 8BitDo). Last reported open: the window turns transparent in webview mode.
+- **Android** (Galaxy A71, 2026-11-16): `SurfaceView` under the WebView ok, ≈ 59.8 FPS (Vulkan), touch controls,
+  surface survives background/resume. Not tested yet: audio quality and delay (the test ROM is silent),
+  Android controllers (SDL3 not built for Android), landscape layout.
+- Since then, on `develop`: L3 controller combos, controller navigation in every menu, the L01 app shell and themes,
+  the settings engine (2a).
 
 ## Commands
 
 ```powershell
 ./scripts/fetch-cores.ps1                     # downloads mgba_libretro.dll into cores/ (not versioned)
+./scripts/fetch-cores-android.ps1 [-Abi arm64-v8a]  # Android cores into cores/android/<abi>/ as lib*_libretro_android.so
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
+                                              # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
 cd app; pnpm install                          # frontend dependencies (pnpm only: npm refuses, see docs/decisions.md)
 pnpm tauri dev                                # app in development (from app/)
 pnpm lint                                     # ESLint (app/eslint.config.js)
 pnpm format                                   # Prettier writes; format:check only checks
 pnpm typecheck                                # vue-tsc
 cargo test --workspace
+cargo test -p emudome-core settings::         # one module (settings tests live in settings/tests.rs)
+cargo test -p emudome-core hotkeys::<name>    # one test
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all
+cargo run -p emudome-core --example headless -- <core> tools/test-rom/emudome-test.gba   # windowless core host
+cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe (app/src-tauri/examples)
 ```
 
-- `sh scripts/check` and `pnpm check` (from `app/`) run the same list as `./scripts/check.ps1`, from Git Bash or Linux:
-  on Windows `sh` is not on the PATH that PowerShell and pnpm see, so there use `./scripts/check.ps1`.
+- On Windows `sh` is not on the PATH that PowerShell and pnpm see, so there use `./scripts/check.ps1`.
+- Android build: `tauri android build` fails with "Creation symbolic link is not allowed" when Windows developer mode
+  is off (the CLI symlinks the `.so` into jniLibs). Workaround: copy `libemudome_app.so` into
+  `app/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/` and run `gradlew assembleArm64Debug -x rustBuildArm64Debug`.
 - The SDL3 build needs CMake. If it is not on PATH, set `CMAKE` for that command only (VS Build Tools 2022 ships one).
 - Every worktree builds in **its own** cargo target dir (the default `target/` inside it). Never share
   `CARGO_TARGET_DIR` between worktrees: workspace crates get the same artifact names everywhere and cargo can reuse
@@ -88,12 +93,15 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          settings/ (settings engine: schema.rs types, catalog.rs the 157 entries,
                          mod.rs levels / resolve / session, store.rs files; pure, unit-tested)
-crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS
+crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS;
+                         android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
+                         jniLibs from cores/android/<abi>/)
 app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
                          settings.rs (settings commands, file locations, settings://changed),
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
 app/src                  Vue interface: App.vue, AppShell (rail + sections, outside the game), LibraryEmpty,
-                         QuickMenu, GameCanvas (webview mode), ToastStack, emu.ts (typed bridge),
+                         QuickMenu, GameCanvas (webview mode), ToastStack, TouchControls (Android overlay),
+                         emu.ts (typed bridge),
                          theme.ts (data-theme on <html>), sections.ts,
                          nav.ts (controller/keyboard focus navigation for every screen),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text)
@@ -151,6 +159,14 @@ app/src                  Vue interface: App.vue, AppShell (rail + sections, outs
   - `color_space` in `SurfaceConfiguration`
   - `Some(&layout)` in `bind_group_layouts`
 - cpal 0.18: `build_output_stream` takes the `StreamConfig` by value.
+- On Android wgpu's GLES backend wants a display handle even when Vulkan is chosen
+  (`CreateSurfaceError ... MissingDisplayHandle`): `ExternalSurface` also implements `HasDisplayHandle`
+  (`DisplayHandle::android()`).
+- Controllers use SDL3, not gilrs: gilrs' Windows.Gaming.Input backend reads buttons only while a window of the
+  process has the focus, and the focus is in WebView2.
+- The static SDL3 build fails with MSBuild FTK1011 (260-character path limit) when the build folder's path is long.
+  The repo's own `target\` is fine: one more reason never to move `CARGO_TARGET_DIR`.
+- A Windows audio device can open with 8 channels: `audio.rs` writes left/right on the first two and zeroes the rest.
 
 ## Project rules
 
@@ -158,6 +174,8 @@ app/src                  Vue interface: App.vue, AppShell (rail + sections, outs
   (no Apple license). iOS is excluded. The code must stay ready to add macOS without rewrites.
 - **Never include, download or point to Nintendo files** (games, BIOS, firmware, keys). The user adds the games only.
   The cores use their built-in open source replacements. 3DS games must be decrypted.
+  Syncing the user's own games to the user's own Google Drive (planned, `docs/decisions.md`) is not EmuDome
+  distributing them: it is allowed.
 - License GPL-3.0-or-later; the cores are separate projects with their own licenses.
 - Features live in the shell, not in the cores: same interface for GBA, NDS and 3DS.
   Where a core cannot support a feature, the interface shows it disabled with the reason.
@@ -218,6 +236,11 @@ review-only list above. A rule in neither place is the thing this section exists
 - Analysis and integrations (cores, platforms, settings catalogue, risks, roadmap):
   https://claude.ai/artifact/A8hWdUgrW6qieC7XxQm6ou
 - Interface prototype (draft, paused): https://claude.ai/artifact/HeL9MWZ9Pd41dGLGCZWzaj
+- `docs/decisions.md`: the owner's tooling and product decisions with their reasons (GB/GBC support, Google Drive
+  sync, game identity from the content, no cover scraping, positional face layout, NDS/3DS screens composed by
+  EmuDome, no core of our own). Read it before designing anything they touch.
+- `docs/customization.md` (what can be customized, how, at what cost), `docs/feasibility.md` (desk checks of
+  those decisions), `docs/combo-tasti.md` (controller combos), `docs/fase0-esito.md` (Phase 0 test log).
 - Roadmap:
   - Phase 0: video, GBA, Windows and Android
   - Phase 1: desktop shell (library, settings engine, complete saves, shaders with librashader)
