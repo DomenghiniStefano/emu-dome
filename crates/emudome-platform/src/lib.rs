@@ -109,6 +109,10 @@ pub fn find_core(core: &str, resource_dir: Option<&Path>) -> Option<PathBuf> {
 /// handed over through [`attach_external_surface`].
 pub const EXTERNAL_SURFACE: bool = imp::EXTERNAL_SURFACE;
 
+/// True on phones (Android), false on the desktop: decides which settings exist here
+/// (`Platform` in the settings schema) and, later, the phone interface.
+pub const PHONE: bool = imp::PHONE;
+
 /// A drawing surface handed over by the system outside Tauri's window.
 /// It keeps the system object alive until dropped.
 pub struct ExternalSurface {

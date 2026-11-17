@@ -85,6 +85,10 @@
     "stateSaveFailed": "Non riesco a scrivere lo slot {slot}: {detail}. Controlla che la cartella dei salvataggi sia scrivibile.",
     "stateLoadFailed": "Non riesco a leggere lo slot {slot}: {detail}. Riprova o usa un altro slot.",
     "stateInvalid": "Lo stato nello slot {slot} non è valido per questo gioco o questa versione del core. Salvalo di nuovo.",
+    "settingUnknown": "Questa versione di EmuDome non conosce l'impostazione {key}. Aggiorna l'app.",
+    "settingLevelRefused": "L'impostazione {key} non si può salvare qui. Scegli un altro livello nella barra in alto.",
+    "settingInvalidValue": "Questo valore non va bene per l'impostazione {key}. Scegli uno dei valori proposti.",
+    "settingsWriteFailed": "Non è stato possibile salvare le impostazioni: {detail}. Controlla che la cartella dei dati sia scrivibile e riprova.",
     "unexpected": "Qualcosa è andato storto: {detail}"
   }
 }
