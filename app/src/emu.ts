@@ -80,7 +80,8 @@ export type VideoMode = 'native' | 'webview'
 export type Theme = 'dark' | 'black' | 'light'
 
 /** One focus step (`emu://nav`, mirror of `emudome_core::hotkeys::Nav`), also produced by the keyboard. */
-export type NavAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'
+/** `prev` / `next` are L1 / R1: tabs or levels of the screen. */
+export type NavAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back' | 'prev' | 'next'
 
 /**
  * Payload of `emu://hotkey` (mirror of `HotkeyEvent` in src-tauri/src/gamepad.rs): what a
