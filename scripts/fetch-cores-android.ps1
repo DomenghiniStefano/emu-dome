@@ -14,16 +14,23 @@ $dest = Join-Path $root "cores/android/$Abi"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 
 $base = "https://buildbot.libretro.com/nightly/android/latest/$Abi"
-$cores = @("mgba")   # Phase 2: "melonds_ds"   Phase 3: "azahar"
+# Core name -> file on the buildbot. Most are "<core>_libretro_android.so"; Azahar is
+# published without the suffix (checked 2026-11-17). Saved as lib<core>_libretro_android.so either way.
+$sources = @{
+    "mgba"      = "mgba_libretro_android.so"
+    "melondsds" = "melondsds_libretro_android.so"
+    "azahar"    = "azahar_libretro.so"
+}
+$cores = @("mgba")   # Phase 2: "melondsds"   Phase 3: "azahar"
 
 foreach ($core in $cores) {
-    $file = "$core`_libretro_android.so"
+    $file = $sources[$core]
     $zip = Join-Path $dest "$file.zip"
     Write-Host "Downloading $core ($Abi)..."
     Invoke-WebRequest -Uri "$base/$file.zip" -OutFile $zip
     Expand-Archive -Path $zip -DestinationPath $dest -Force
     Remove-Item $zip
-    Move-Item -Force (Join-Path $dest $file) (Join-Path $dest "lib$file")
+    Move-Item -Force (Join-Path $dest $file) (Join-Path $dest "lib$core`_libretro_android.so")
 }
 Write-Host "Done. Cores in $dest"
 Get-ChildItem $dest -Filter *.so | ForEach-Object { Write-Host " - $($_.Name)" }

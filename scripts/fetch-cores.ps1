@@ -8,7 +8,7 @@ $dest = Join-Path $root "cores"
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 
 $base = "https://buildbot.libretro.com/nightly/windows/x86_64/latest"
-$cores = @("mgba")   # Phase 2: "melonds_ds"   Phase 3: "azahar"
+$cores = @("mgba")   # Phase 2: "melondsds"   Phase 3: "azahar"
 
 foreach ($core in $cores) {
     $zip = Join-Path $env:TEMP "$core`_libretro.dll.zip"
