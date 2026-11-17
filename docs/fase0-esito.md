@@ -118,3 +118,35 @@ Errors and fixes:
 - Build stopped once with a full disk (C: at 0 bytes); space freed by the manager.
 
 Proposed next step: test audio with a game that makes sound, then landscape layout and Android controllers.
+
+## 2026-11-17 22:09 · Hardware rendering spike, step 0: core options, Azahar and melonDS DS on the PC (headless)
+
+Windows 11, AMD Ryzen 7 9700X. Windowless `headless` example, release build, software frames, no audio device.
+Cores: libretro nightlies of 2026-11-17 (`azahar_libretro.dll` = Azahar 2127.0-rc3, `melondsds_libretro.dll`), fetched with
+`./scripts/fetch-cores.ps1 -Cores melondsds,azahar`. Content, homebrew only, downloaded outside the repo:
+- NDS: **Breaking Bad DS** 1.0.6 (William278), Apache-2.0, 3D lab scene,
+  https://github.com/WiIIiam278/breaking-bad-ds/releases/download/1.0.6/breaking-bad-ds.nds
+- 3DS: **Craftus Reloaded** 0.3 (RSDuck), MIT (textures CC BY-SA), citro3d,
+  https://github.com/RSDuck/craftus_reloaded/releases/download/0.3/craftus_reloaded.3dsx
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless only |
+| 2. FPS at 1× | melonDS DS 59.8; Azahar 17.4 | melonDS DS software renderer in the 3D lab scene (after tapping A through the intro), 10 s window; Max 222 fps there, 541 fps on the 2D intro. Azahar `citra_graphics_api=Software` on the Craftus title screen, 10 s window (first 5 s run: 19.4); Max 16 fps, so it is saturated |
+| 3. Audio | not tested | headless |
+| 4. Controller | not tested | headless; A tapped from the example |
+| 5. Native vs webview | not tested | headless |
+
+Also verified: melonDS DS starts with no BIOS or firmware (its built-in firmware and FreeBIOS); save state, load state and
+pause work on both cores. Azahar without the option: `retro_load_game` returns false (its default `auto` asks for a hardware
+renderer). Craftus's menu needs the touch screen, which the host does not send, so no in-world 3DS scene was measured.
+
+Errors and fixes:
+- `crates/emudome-core/src/callbacks.rs`: `GET_VARIABLE` always answered false, so Azahar picked `auto` and refused to load.
+  Fix: core options stored per session (`core_options.rs`, definitions from `SET_VARIABLES` / `SET_CORE_OPTIONS` v1 and v2),
+  `GET_CORE_OPTIONS_VERSION` = 2, the shell's values in `SessionOptions::core_options`, the app forces
+  `citra_graphics_api=Software` for Azahar (`FORCED_CORE_OPTIONS` in `app/src-tauri/src/lib.rs`).
+- The option value is `Software`, not `software`: Azahar compares case-sensitively.
+
+Proposed next step: step 1, `SET_HW_RENDER` with OpenGL and readback, since Azahar's software renderer is at a quarter of full
+speed on the PC.

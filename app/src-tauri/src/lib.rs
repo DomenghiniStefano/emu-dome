@@ -222,6 +222,22 @@ fn open_library_game(
     Ok(info)
 }
 
+/// Core options the shell always sets, per core (`GET_VARIABLE` key and value).
+/// Azahar: the software renderer, the only one that does not ask for `SET_HW_RENDER`, which the
+/// host does not implement yet (Trello #16); its default `auto` fails to load.
+/// TODO(settings engine): the `cores.*` entries will be mapped to core options here.
+const FORCED_CORE_OPTIONS: &[(&str, &[(&str, &str)])] =
+    &[("azahar", &[("citra_graphics_api", "Software")])];
+
+fn forced_core_options(core_name: &str) -> Vec<(String, String)> {
+    FORCED_CORE_OPTIONS
+        .iter()
+        .filter(|(core, _)| *core == core_name)
+        .flat_map(|(_, opts)| opts.iter())
+        .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+        .collect()
+}
+
 /// Closes the open game, then opens `game_path` with `game` as its settings identity.
 /// `title` and `console` come from the library when known (else the file name and the extension).
 fn open_path(
@@ -258,6 +274,7 @@ fn open_path(
             autosave_every: flow.autosave_every,
             autosave_on_exit: flow.autosave_on_exit,
             resume_auto: flow.resume == "always",
+            core_options: forced_core_options(core_name),
         },
         tx,
     )
