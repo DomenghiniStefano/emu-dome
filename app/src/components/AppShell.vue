@@ -11,6 +11,7 @@ import { Cloud, Gamepad2, Library, Save, Settings2 } from '@lucide/vue'
 import { useNavScope } from '../nav'
 import { SECTIONS, type Section } from '../sections'
 import type { LibraryGame } from '../emu'
+import ControlsView from './ControlsView.vue'
 import LibraryView from './LibraryView.vue'
 import SavesView from './SavesView.vue'
 import SettingsView from './SettingsView.vue'
@@ -41,18 +42,22 @@ function focusRail() {
   rail.value?.querySelector<HTMLElement>('[aria-current="page"]')?.focus()
 }
 
-// L1 / R1 go to the section that has tabs or levels (the settings scope bar).
+// L1 / R1 go to the section that has tabs or levels (the settings scope bar, the controls tabs).
 const settingsView = ref<InstanceType<typeof SettingsView> | null>(null)
+const controlsView = ref<InstanceType<typeof ControlsView> | null>(null)
 useNavScope(root, {
   autofocus: true,
   back: focusRail,
-  tab: dir => settingsView.value?.tab(dir),
+  tab: dir => {
+    settingsView.value?.tab(dir)
+    controlsView.value?.tab(dir)
+  },
 })
 
 // The section's own first control takes the initial focus; a section without one
 // (the placeholders) leaves it on its rail item.
-const contentHasInitial = computed(
-  () => section.value === 'library' || section.value === 'settings' || section.value === 'saves',
+const contentHasInitial = computed(() =>
+  ['library', 'settings', 'controls', 'saves'].includes(section.value),
 )
 function initialOn(s: Section) {
   return s === section.value && !contentHasInitial.value ? '' : undefined
@@ -82,7 +87,10 @@ function initialOn(s: Section) {
           </button>
         </template>
       </nav>
-      <main class="content" :class="{ flush: section === 'settings' || section === 'saves' }">
+      <main
+        class="content"
+        :class="{ flush: section === 'settings' || section === 'controls' || section === 'saves' }"
+      >
         <LibraryView
           v-if="section === 'library'"
           :error="error"
@@ -100,6 +108,12 @@ function initialOn(s: Section) {
         <SettingsView
           v-else-if="section === 'settings'"
           ref="settingsView"
+          @error="text => emit('error', text)"
+          @open-controls="section = 'controls'"
+        />
+        <ControlsView
+          v-else-if="section === 'controls'"
+          ref="controlsView"
           @error="text => emit('error', text)"
         />
         <section v-else class="placeholder">

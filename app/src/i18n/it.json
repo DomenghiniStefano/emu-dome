@@ -1584,7 +1584,8 @@
     },
     "choose": "Scegli",
     "none": "Nessuno",
-    "done": "Fatto"
+    "done": "Fatto",
+    "openControls": "Apri Controlli"
   },
   "flow": {
     "starting": "Avvio in corso",
@@ -1664,6 +1665,186 @@
     "resume": "Riprendi il gioco",
     "notYet": "Arriva con un prossimo aggiornamento",
     "undoLoad": "Annulla il caricamento"
+  },
+  "controls": {
+    "keyboard": "Tastiera",
+    "keyboardDetail": "Sempre disponibile",
+    "connected": "Collegato",
+    "devices": "Dispositivi",
+    "devicesHeading": "DISPOSITIVI",
+    "tabsLabel": "Sezioni del dispositivo",
+    "tab": {
+      "remap": "Rimappatura dei pulsanti",
+      "shortcuts": "Scorciatoie",
+      "sticks": "Stick e grilletti"
+    },
+    "e05": {
+      "title": "Nessun controller collegato",
+      "lead": "Collega un controller con il cavo o via Bluetooth: EmuDome lo riconosce da solo. Nel frattempo puoi giocare con la tastiera.",
+      "keyboard": "Vedi i tasti della tastiera"
+    },
+    "levelGame": "Solo questo gioco",
+    "appliesTo": "Si applica a",
+    "ab": {
+      "nintendo": "Come su Nintendo",
+      "printed": "Come stampata"
+    },
+    "inGame": "NEL GIOCO",
+    "onPad": "SUL CONTROLLER",
+    "onKeyboard": "SULLA TASTIERA",
+    "changeButton": "{button}: {source}. Premi per cambiarlo",
+    "pressButton": "Premi un pulsante… {n}",
+    "pressKey": "Premi un tasto… {n}",
+    "usedTwice": "Usato anche da un altro",
+    "conflict": "{source} è già {button}. Scambiali?",
+    "swap": "Scambia",
+    "cancel": "Annulla",
+    "tester": "PROVA I PULSANTI",
+    "testerHint": "Premi un pulsante per vedere cosa fa nel gioco. Clicca una riga per cambiarla.",
+    "captureHintPad": "Premi il pulsante da usare per «{button}». Tieni premuto {back} per un secondo per annullare.",
+    "captureHintKey": "Premi il tasto da usare per «{button}». Tieni premuto {back} per un secondo per annullare.",
+    "noPress": "Nessun pulsante premuto",
+    "otherActions": "ALTRE AZIONI",
+    "restoreDefaults": "Ripristina i pulsanti predefiniti",
+    "copyFrom": "Copia da un altro controller…",
+    "turbo": "Pressione ripetuta (turbo)…",
+    "assigned": "{source} assegnato a {button}",
+    "pressInGame": "{source} → nel gioco: {button}",
+    "pressUnused": "{source} → non usato nel gioco",
+    "none": "Nessuno",
+    "withSide": "{name} ({side})",
+    "combo": "{modifier} + {button}",
+    "side": {
+      "south": "basso",
+      "east": "destra",
+      "west": "sinistra",
+      "north": "alto"
+    },
+    "pos": {
+      "common": {
+        "south": "Basso",
+        "east": "Destra",
+        "west": "Sinistra",
+        "north": "Alto",
+        "l1": "L1",
+        "r1": "R1",
+        "l2": "L2",
+        "r2": "R2",
+        "l3": "L3",
+        "r3": "R3",
+        "back": "Select",
+        "start": "Start",
+        "up": "Croce su",
+        "down": "Croce giù",
+        "left": "Croce sinistra",
+        "right": "Croce destra"
+      },
+      "xbox": {
+        "south": "A",
+        "east": "B",
+        "west": "X",
+        "north": "Y",
+        "l1": "LB",
+        "r1": "RB",
+        "l2": "LT",
+        "r2": "RT",
+        "back": "Visualizza",
+        "start": "Menu"
+      },
+      "playstation": {
+        "south": "Croce",
+        "east": "Cerchio",
+        "west": "Quadrato",
+        "north": "Triangolo",
+        "back": "Create",
+        "start": "Options"
+      },
+      "switch": {
+        "south": "B",
+        "east": "A",
+        "west": "Y",
+        "north": "X",
+        "l1": "L",
+        "r1": "R",
+        "l2": "ZL",
+        "r2": "ZR",
+        "back": "−",
+        "start": "+"
+      }
+    },
+    "key": {
+      "Enter": "Invio",
+      "NumpadEnter": "Invio",
+      "Space": "Spazio",
+      "Backspace": "Backspace",
+      "Tab": "Tab",
+      "Escape": "Esc",
+      "ShiftLeft": "Maiusc sinistro",
+      "ShiftRight": "Maiusc destro",
+      "ControlLeft": "Ctrl sinistro",
+      "ControlRight": "Ctrl destro",
+      "AltLeft": "Alt",
+      "AltRight": "Alt Gr",
+      "ArrowUp": "Freccia su",
+      "ArrowDown": "Freccia giù",
+      "ArrowLeft": "Freccia sinistra",
+      "ArrowRight": "Freccia destra"
+    },
+    "button": {
+      "a": "A",
+      "b": "B",
+      "x": "X",
+      "y": "Y",
+      "l": "L",
+      "r": "R",
+      "l2": "ZL (solo 3DS)",
+      "r2": "ZR (solo 3DS)",
+      "start": "Start",
+      "select": "Select",
+      "up": "Croce su",
+      "down": "Croce giù",
+      "left": "Croce sinistra",
+      "right": "Croce destra"
+    },
+    "hotkey": {
+      "menu": "Apri o chiudi il menu rapido",
+      "save": "Salvataggio rapido nello slot attuale",
+      "load": "Carica dallo slot attuale",
+      "next_slot": "Slot successivo",
+      "prev_slot": "Slot precedente",
+      "ff_hold": "Avanti veloce finché tieni premuto",
+      "ff_toggle": "Avanti veloce: attiva e disattiva",
+      "slow": "Rallentatore: attiva e disattiva",
+      "fps": "Mostra i fotogrammi al secondo",
+      "pause": "Pausa senza menu"
+    },
+    "modNote": "Nessun gioco GBA, DS o 3DS usa L3, quindi non interferisce. Il pulsante Home apre sempre il menu rapido.",
+    "menuCombo": "Home, oppure {combo}",
+    "changeShortcut": "Cambia la scorciatoia: {action}",
+    "change": "Cambia",
+    "comboConflict": "{source} è già «{action}». Scambiali?",
+    "later": {
+      "rewind": "Riavvolgi finché tieni premuto",
+      "screenshot": "Cattura schermata",
+      "swap": "Scambia gli schermi",
+      "layout": "Disposizione degli schermi successiva",
+      "lid": "Chiudi e apri il coperchio (anche dal menu rapido)"
+    },
+    "badge": {
+      "soon": "In arrivo",
+      "nds": "Con Nintendo DS"
+    },
+    "keys": {
+      "fullscreen": "Schermo intero",
+      "menu": "Apri o chiudi il menu rapido",
+      "save1": "Salva nello slot 1",
+      "load1": "Carica dallo slot 1",
+      "ffHold": "Avanti veloce finché tieni premuto",
+      "fps": "Mostra i fotogrammi al secondo"
+    },
+    "keyboardOnly": "Tastiera: {key}",
+    "stickLabel": "Posizione attuale dello stick sinistro",
+    "stickHint": "Muovi lo stick: il cerchio tratteggiato è la zona morta, il punto viola la posizione attuale."
   },
   "saves": {
     "import": "Importa…",

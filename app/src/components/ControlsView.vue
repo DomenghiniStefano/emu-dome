@@ -1,0 +1,385 @@
+<script setup lang="ts">
+// The Controls section (boards «Controlli» C01–C04, «Errori» E05): the devices on the left
+// (connected controllers, live, and the keyboard, always available), the chosen device on the
+// right with three tabs: button remapping (C02), shortcuts (C03), sticks and triggers (C04).
+// With no controller connected the section shows E05 until the keyboard is chosen.
+//
+// Controller: the shell's nav scope; L1 / R1 change tab (exposed `tab`, called by AppShell).
+// The tester and the capture field read `emu://pad-state`, watched while this section is open.
+//
+// TODO(E06, Trello): unknown controller banner and guided setup (14 buttons, saved as an SDL
+// mapping). SDL opens as gamepads only the controllers it has a mapping for, so an unknown one
+// never reaches this list: detecting it needs the joystick events, not done yet.
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { Gamepad2 } from '@lucide/vue'
+import {
+  emu,
+  type PadFamily,
+  type PadInfo,
+  type PadState,
+  type Pos,
+  type SettingRow,
+  type SettingsSchema,
+} from '../emu'
+import { errorText, gamepadName } from '../i18n/labels'
+import { loadSchema } from '../settingsModel'
+import type { CaptureDevice } from '../controls'
+import ControlsRemap from './ControlsRemap.vue'
+import ControlsShortcuts from './ControlsShortcuts.vue'
+import ControlsSticks from './ControlsSticks.vue'
+
+const emit = defineEmits<{ error: [string] }>()
+const { t } = useI18n()
+
+const pads = ref<PadInfo[]>([])
+/** The chosen device: a controller id or the keyboard; null = the first controller. */
+const chosen = ref<number | 'keyboard' | null>(null)
+const states = ref<PadState[]>([])
+
+const device = computed<PadInfo | 'keyboard' | null>(() => {
+  if (chosen.value === 'keyboard') return 'keyboard'
+  return pads.value.find(p => p.id === chosen.value) ?? pads.value[0] ?? null
+})
+const family = computed<PadFamily>(() =>
+  device.value === 'keyboard' || !device.value ? 'keyboard' : device.value.family,
+)
+/** E05: no controller, and the keyboard not chosen. */
+const empty = computed(() => device.value === null)
+
+const deviceName = computed(() =>
+  device.value === 'keyboard' || !device.value ? t('controls.keyboard') : gamepadName(device.value),
+)
+const deviceDetail = computed(() =>
+  device.value === 'keyboard' ? t('controls.keyboardDetail') : t('controls.connected'),
+)
+
+// ---- Settings shared by the tabs: the schema and the pad page at «Tutti i giochi» ----
+const schema = ref<SettingsSchema | null>(null)
+const globalRows = ref<Record<string, SettingRow>>({})
+async function loadGlobal() {
+  try {
+    const rows = await emu.settings.page('pad', { level: 'global' })
+    globalRows.value = Object.fromEntries(rows.map(r => [r.key, r]))
+  } catch (e) {
+    emit('error', errorText(e))
+  }
+}
+
+/** The menu's «back» position (`pad.confirm`): B held 1 s cancels a capture. */
+const backPos = computed<Pos>(() =>
+  globalRows.value['pad.confirm']?.value === 'bottom' ? 'east' : 'south',
+)
+const captureDevice = computed<CaptureDevice>(() =>
+  device.value === 'keyboard' || !device.value
+    ? { kind: 'keyboard' }
+    : { kind: 'pad', id: device.value.id, back: backPos.value },
+)
+
+// ---- Tabs ----
+type Tab = 'remap' | 'shortcuts' | 'sticks'
+const tabs = computed<Tab[]>(() =>
+  family.value === 'keyboard' ? ['remap', 'shortcuts'] : ['remap', 'shortcuts', 'sticks'],
+)
+const tab = ref<Tab>('remap')
+watch(tabs, list => {
+  if (!list.includes(tab.value)) tab.value = 'remap'
+})
+/** L1 / R1: the previous / next tab. */
+function stepTab(dir: -1 | 1) {
+  if (empty.value) return
+  const list = tabs.value
+  tab.value = list[(list.indexOf(tab.value) + dir + list.length) % list.length]!
+}
+defineExpose({ tab: stepTab })
+
+function pick(d: number | 'keyboard') {
+  chosen.value = d
+}
+
+const unlisten: Array<() => void> = []
+onMounted(async () => {
+  schema.value = await loadSchema()
+  await loadGlobal()
+  try {
+    pads.value = await emu.controls.pads()
+  } catch (e) {
+    emit('error', errorText(e))
+  }
+  unlisten.push(
+    await emu.onGamepadConnected(p => {
+      if (!pads.value.some(x => x.id === p.id)) pads.value = [...pads.value, p]
+    }),
+    await emu.onGamepadDisconnected(p => {
+      pads.value = pads.value.filter(x => x.id !== p.id)
+      if (chosen.value === p.id) chosen.value = null
+    }),
+    await emu.controls.onPadState(s => (states.value = s)),
+    await emu.settings.onChanged(e => {
+      if (e.key.startsWith('pad.')) void loadGlobal()
+    }),
+  )
+  await emu.controls.watch(true)
+})
+onBeforeUnmount(() => {
+  unlisten.forEach(u => u())
+  void emu.controls.watch(false)
+})
+</script>
+
+<template>
+  <div class="controls">
+    <!-- E05: no controller connected -->
+    <section v-if="empty" class="empty">
+      <h1 class="section-title">{{ t('shell.controls') }}</h1>
+      <div class="empty-body">
+        <span class="empty-icon" aria-hidden="true">
+          <Gamepad2 :size="24" :stroke-width="1.75" />
+        </span>
+        <h2 class="empty-title">{{ t('controls.e05.title') }}</h2>
+        <p class="muted">{{ t('controls.e05.lead') }}</p>
+        <button class="btn tall" data-nav-initial @click="pick('keyboard')">
+          {{ t('controls.e05.keyboard') }}
+        </button>
+      </div>
+    </section>
+
+    <template v-else>
+      <nav class="devices" :aria-label="t('controls.devices')">
+        <h1 class="section-title">{{ t('shell.controls') }}</h1>
+        <div class="overline">{{ t('controls.devicesHeading') }}</div>
+        <div class="list">
+          <button
+            v-for="(p, i) in pads"
+            :key="p.id"
+            class="device"
+            :class="{ on: device !== 'keyboard' && device?.id === p.id }"
+            :aria-current="device !== 'keyboard' && device?.id === p.id ? 'page' : undefined"
+            :data-nav-initial="i === 0 ? '' : undefined"
+            @click="pick(p.id)"
+          >
+            <span class="device-text">
+              <span class="device-name">{{ gamepadName(p) }}</span>
+              <span class="device-detail">{{ t('controls.connected') }}</span>
+            </span>
+            <span class="dot on" aria-hidden="true"></span>
+          </button>
+          <button
+            class="device"
+            :class="{ on: device === 'keyboard' }"
+            :aria-current="device === 'keyboard' ? 'page' : undefined"
+            :data-nav-initial="pads.length === 0 ? '' : undefined"
+            @click="pick('keyboard')"
+          >
+            <span class="device-text">
+              <span class="device-name">{{ t('controls.keyboard') }}</span>
+              <span class="device-detail">{{ t('controls.keyboardDetail') }}</span>
+            </span>
+            <span class="dot on" aria-hidden="true"></span>
+          </button>
+        </div>
+      </nav>
+
+      <main class="main">
+        <div class="head">
+          <h2 class="device-title">{{ deviceName }}</h2>
+          <div class="muted">{{ deviceDetail }}</div>
+        </div>
+        <div class="tabs" role="tablist" :aria-label="t('controls.tabsLabel')">
+          <button
+            v-for="tb in tabs"
+            :key="tb"
+            class="tab"
+            role="tab"
+            :aria-selected="tb === tab"
+            :class="{ on: tb === tab }"
+            @click="tab = tb"
+          >
+            {{ t(`controls.tab.${tb}`) }}
+          </button>
+        </div>
+
+        <template v-if="schema">
+          <ControlsRemap
+            v-if="tab === 'remap'"
+            :key="`remap-${family}`"
+            :family="family"
+            :device="captureDevice"
+            :states="states"
+            :global-rows="globalRows"
+            @error="text => emit('error', text)"
+          />
+          <ControlsShortcuts
+            v-else-if="tab === 'shortcuts'"
+            :family="family"
+            :device="captureDevice"
+            :states="states"
+            :schema="schema"
+            :global-rows="globalRows"
+            @error="text => emit('error', text)"
+          />
+          <ControlsSticks
+            v-else
+            :device="captureDevice"
+            :states="states"
+            :schema="schema"
+            :global-rows="globalRows"
+            @error="text => emit('error', text)"
+          />
+        </template>
+      </main>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.controls {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.section-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+}
+.muted {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+/* E05 */
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+}
+.empty-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  max-width: 460px;
+  margin: 0 auto;
+}
+.empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-16);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--ink-muted);
+}
+.empty-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+}
+.btn.tall {
+  height: 36px;
+  margin-top: 4px;
+}
+
+/* C01: devices */
+.devices {
+  flex: 0 0 300px;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-right: 1px solid var(--line);
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+}
+.device:hover {
+  background: var(--surface-hover);
+}
+.device.on {
+  background: var(--accent-soft);
+}
+.device-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.device-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.device-detail {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-muted);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+}
+.dot.on {
+  border: 0;
+  background: var(--success);
+}
+
+/* Device page */
+.main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 24px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.device-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.tab.on {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--accent-text);
+}
+</style>

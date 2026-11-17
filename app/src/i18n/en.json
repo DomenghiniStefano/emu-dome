@@ -1584,7 +1584,8 @@
     },
     "choose": "Choose",
     "none": "None",
-    "done": "Done"
+    "done": "Done",
+    "openControls": "Open Controls"
   },
   "flow": {
     "starting": "Starting",
@@ -1664,6 +1665,186 @@
     "resume": "Resume the game",
     "notYet": "This arrives in a future update",
     "undoLoad": "Undo load"
+  },
+  "controls": {
+    "keyboard": "Keyboard",
+    "keyboardDetail": "Always available",
+    "connected": "Connected",
+    "devices": "Devices",
+    "devicesHeading": "DEVICES",
+    "tabsLabel": "Device sections",
+    "tab": {
+      "remap": "Button remapping",
+      "shortcuts": "Shortcuts",
+      "sticks": "Sticks and triggers"
+    },
+    "e05": {
+      "title": "No controller connected",
+      "lead": "Connect a controller with a cable or over Bluetooth: EmuDome recognises it by itself. Meanwhile you can play with the keyboard.",
+      "keyboard": "See the keyboard keys"
+    },
+    "levelGame": "This game only",
+    "appliesTo": "Applies to",
+    "ab": {
+      "nintendo": "Like on Nintendo",
+      "printed": "As printed"
+    },
+    "inGame": "IN THE GAME",
+    "onPad": "ON THE CONTROLLER",
+    "onKeyboard": "ON THE KEYBOARD",
+    "changeButton": "{button}: {source}. Press to change it",
+    "pressButton": "Press a button… {n}",
+    "pressKey": "Press a key… {n}",
+    "usedTwice": "Also used by another",
+    "conflict": "{source} is already {button}. Swap them?",
+    "swap": "Swap",
+    "cancel": "Cancel",
+    "tester": "TRY THE BUTTONS",
+    "testerHint": "Press a button to see what it does in the game. Click a row to change it.",
+    "captureHintPad": "Press the button to use for “{button}”. Hold {back} for a second to cancel.",
+    "captureHintKey": "Press the key to use for “{button}”. Hold {back} for a second to cancel.",
+    "noPress": "No button pressed",
+    "otherActions": "OTHER ACTIONS",
+    "restoreDefaults": "Restore the default buttons",
+    "copyFrom": "Copy from another controller…",
+    "turbo": "Rapid fire (turbo)…",
+    "assigned": "{source} assigned to {button}",
+    "pressInGame": "{source} → in the game: {button}",
+    "pressUnused": "{source} → not used in the game",
+    "none": "None",
+    "withSide": "{name} ({side})",
+    "combo": "{modifier} + {button}",
+    "side": {
+      "south": "bottom",
+      "east": "right",
+      "west": "left",
+      "north": "top"
+    },
+    "pos": {
+      "common": {
+        "south": "Bottom",
+        "east": "Right",
+        "west": "Left",
+        "north": "Top",
+        "l1": "L1",
+        "r1": "R1",
+        "l2": "L2",
+        "r2": "R2",
+        "l3": "L3",
+        "r3": "R3",
+        "back": "Select",
+        "start": "Start",
+        "up": "D-pad up",
+        "down": "D-pad down",
+        "left": "D-pad left",
+        "right": "D-pad right"
+      },
+      "xbox": {
+        "south": "A",
+        "east": "B",
+        "west": "X",
+        "north": "Y",
+        "l1": "LB",
+        "r1": "RB",
+        "l2": "LT",
+        "r2": "RT",
+        "back": "View",
+        "start": "Menu"
+      },
+      "playstation": {
+        "south": "Cross",
+        "east": "Circle",
+        "west": "Square",
+        "north": "Triangle",
+        "back": "Create",
+        "start": "Options"
+      },
+      "switch": {
+        "south": "B",
+        "east": "A",
+        "west": "Y",
+        "north": "X",
+        "l1": "L",
+        "r1": "R",
+        "l2": "ZL",
+        "r2": "ZR",
+        "back": "−",
+        "start": "+"
+      }
+    },
+    "key": {
+      "Enter": "Enter",
+      "NumpadEnter": "Enter",
+      "Space": "Space",
+      "Backspace": "Backspace",
+      "Tab": "Tab",
+      "Escape": "Esc",
+      "ShiftLeft": "Left Shift",
+      "ShiftRight": "Right Shift",
+      "ControlLeft": "Left Ctrl",
+      "ControlRight": "Right Ctrl",
+      "AltLeft": "Alt",
+      "AltRight": "Alt Gr",
+      "ArrowUp": "Up arrow",
+      "ArrowDown": "Down arrow",
+      "ArrowLeft": "Left arrow",
+      "ArrowRight": "Right arrow"
+    },
+    "button": {
+      "a": "A",
+      "b": "B",
+      "x": "X",
+      "y": "Y",
+      "l": "L",
+      "r": "R",
+      "l2": "ZL (3DS only)",
+      "r2": "ZR (3DS only)",
+      "start": "Start",
+      "select": "Select",
+      "up": "D-pad up",
+      "down": "D-pad down",
+      "left": "D-pad left",
+      "right": "D-pad right"
+    },
+    "hotkey": {
+      "menu": "Open or close the quick menu",
+      "save": "Quick save to the current slot",
+      "load": "Load from the current slot",
+      "next_slot": "Next slot",
+      "prev_slot": "Previous slot",
+      "ff_hold": "Fast forward while you hold it",
+      "ff_toggle": "Fast forward: on and off",
+      "slow": "Slow motion: on and off",
+      "fps": "Show frames per second",
+      "pause": "Pause without the menu"
+    },
+    "modNote": "No GBA, DS or 3DS game uses L3, so it never gets in the way. The Home button always opens the quick menu.",
+    "menuCombo": "Home, or {combo}",
+    "changeShortcut": "Change the shortcut: {action}",
+    "change": "Change",
+    "comboConflict": "{source} is already “{action}”. Swap them?",
+    "later": {
+      "rewind": "Rewind while you hold it",
+      "screenshot": "Take a screenshot",
+      "swap": "Swap the screens",
+      "layout": "Next screen layout",
+      "lid": "Close and open the lid (also from the quick menu)"
+    },
+    "badge": {
+      "soon": "Coming",
+      "nds": "With Nintendo DS"
+    },
+    "keys": {
+      "fullscreen": "Fullscreen",
+      "menu": "Open or close the quick menu",
+      "save1": "Save to slot 1",
+      "load1": "Load from slot 1",
+      "ffHold": "Fast forward while you hold it",
+      "fps": "Show frames per second"
+    },
+    "keyboardOnly": "Keyboard: {key}",
+    "stickLabel": "Current position of the left stick",
+    "stickHint": "Move the stick: the dashed circle is the dead zone, the purple dot its current position."
   },
   "saves": {
     "import": "Import…",

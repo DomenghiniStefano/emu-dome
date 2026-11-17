@@ -11,6 +11,7 @@ mod audio;
 #[cfg(desktop)]
 mod gamepad;
 mod library;
+mod pads;
 mod saves;
 mod settings;
 mod theme;
@@ -461,6 +462,18 @@ fn send_command(app: &tauri::AppHandle, cmd: Command) -> bool {
 
 /// The interface tells when the quick menu opens and closes, so the controllers
 /// navigate it instead of reaching the game.
+/// F11: fullscreen on / off. Keyboard only: no controller shortcut (docs/combo-tasti.md).
+#[tauri::command]
+fn toggle_fullscreen(app: tauri::AppHandle) {
+    let Some(window) = app.get_window("main") else {
+        return;
+    };
+    let on = window.is_fullscreen().unwrap_or(false);
+    if let Err(e) = window.set_fullscreen(!on) {
+        log::warn!("fullscreen {}: {e}", !on);
+    }
+}
+
 #[tauri::command]
 fn set_menu_open(state: tauri::State<'_, AppState>, open: bool) {
     state.menu_open.store(open, Ordering::Relaxed);
@@ -602,8 +615,15 @@ pub fn run() {
             ui.set_background_color(Some(mode.webview_background()))?;
             let audio = audio::AudioOutput::start(current.clone());
             let menu_open = Arc::new(AtomicBool::new(false));
+            let pads = pads::PadsState::default();
+            app.manage(pads.clone());
             #[cfg(desktop)]
-            gamepad::spawn(app.handle().clone(), current.clone(), menu_open.clone());
+            gamepad::spawn(
+                app.handle().clone(),
+                current.clone(),
+                menu_open.clone(),
+                pads,
+            );
 
             // An external surface reports its own size.
             if let Some(resize) = renderer
@@ -652,6 +672,7 @@ pub fn run() {
             set_video_mode,
             startup_game,
             set_menu_open,
+            toggle_fullscreen,
             theme::theme,
             settings::settings_schema,
             settings::settings_page,
@@ -660,6 +681,10 @@ pub fn run() {
             settings::settings_reset,
             settings::settings_session_commit,
             settings::settings_session_discard,
+            pads::gamepad_list,
+            pads::gamepad_watch,
+            pads::gamepad_capture,
+            pads::controls_bindings,
             library::library_get,
             library::library_choose_folder,
             library::library_remove_folder,

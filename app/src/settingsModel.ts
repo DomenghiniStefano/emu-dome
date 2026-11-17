@@ -71,6 +71,7 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'folders':
     case 'colour':
     case 'text':
+    case 'bindings':
       return false
   }
 }

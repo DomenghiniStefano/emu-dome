@@ -26,7 +26,7 @@ import { library } from '../library'
 import { fold, isShown, loadSchema, msg, pageLevels } from '../settingsModel'
 import SettingRowView from './SettingRow.vue'
 
-const emit = defineEmits<{ error: [string] }>()
+const emit = defineEmits<{ error: [string]; openControls: [] }>()
 const { t } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
@@ -305,6 +305,7 @@ const INTROS = new Set(['bios', 'cores'])
             @set="v => set(e.key, v)"
             @reset="reset(e.key)"
             @error="text => emit('error', text)"
+            @open="emit('openControls')"
           />
         </div>
       </section>

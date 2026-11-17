@@ -6,6 +6,8 @@
 
 use serde::{Deserialize, Serialize};
 
+pub use crate::bindings::Table as BindingTable;
+
 /// Where a value comes from, from the weakest to the strongest.
 /// Mirror: `SettingLevel` in app/src/emu.ts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -171,6 +173,9 @@ pub enum Kind {
     Text,
     /// No value: a button, a link to another screen, information.
     Action { style: ActionStyle },
+    /// A binding list edited in the Controls section, shown as a link in the settings pages
+    /// (`pad.remap`, `pad.combos`). Value: list of overrides, shapes in `crate::bindings`.
+    Bindings { table: BindingTable },
 }
 
 /// A stored or resolved value. Mirror: `SettingValue` in app/src/emu.ts.
@@ -250,6 +255,9 @@ impl Entry {
             }
             (Kind::File | Kind::Text, Value::Text(_)) | (Kind::Folders, Value::List(_)) => true,
             (Kind::Colour { .. }, Value::Text(c)) => is_colour(c),
+            (Kind::Bindings { table }, Value::List(items)) => {
+                crate::bindings::valid_list(table, items)
+            }
             (
                 Kind::Toggle
                 | Kind::Choice { .. }
@@ -259,7 +267,8 @@ impl Entry {
                 | Kind::Folders
                 | Kind::Colour { .. }
                 | Kind::Text
-                | Kind::Action { .. },
+                | Kind::Action { .. }
+                | Kind::Bindings { .. },
                 Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_),
             ) => false,
         }

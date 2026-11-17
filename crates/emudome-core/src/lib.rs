@@ -12,6 +12,7 @@ mod frame;
 mod session;
 
 pub mod audio;
+pub mod bindings;
 pub mod hotkeys;
 pub mod input;
 pub mod library;

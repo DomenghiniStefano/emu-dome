@@ -30,8 +30,54 @@ pub enum Button {
 }
 
 impl Button {
+    /// Every button, in libretro id order.
+    pub const ALL: [Button; 16] = [
+        Button::B,
+        Button::Y,
+        Button::Select,
+        Button::Start,
+        Button::Up,
+        Button::Down,
+        Button::Left,
+        Button::Right,
+        Button::A,
+        Button::X,
+        Button::L,
+        Button::R,
+        Button::L2,
+        Button::R2,
+        Button::L3,
+        Button::R3,
+    ];
+
     pub fn bit(self) -> u16 {
         1 << (self as u16)
+    }
+
+    /// The stable id (same as the serde name): settings values and the interface use it.
+    pub fn id(self) -> &'static str {
+        match self {
+            Button::B => "b",
+            Button::Y => "y",
+            Button::Select => "select",
+            Button::Start => "start",
+            Button::Up => "up",
+            Button::Down => "down",
+            Button::Left => "left",
+            Button::Right => "right",
+            Button::A => "a",
+            Button::X => "x",
+            Button::L => "l",
+            Button::R => "r",
+            Button::L2 => "l2",
+            Button::R2 => "r2",
+            Button::L3 => "l3",
+            Button::R3 => "r3",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Button> {
+        Button::ALL.into_iter().find(|b| b.id() == id)
     }
 }
 
