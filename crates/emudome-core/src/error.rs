@@ -8,6 +8,8 @@
 
 use serde::Serialize;
 
+use crate::settings::Level;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "code", content = "params", rename_all = "camelCase")]
 pub enum ErrorCode {
@@ -33,6 +35,15 @@ pub enum ErrorCode {
     StateLoadFailed { slot: u8, detail: String },
     /// The core refused the state (another game or another core version).
     StateInvalid { slot: u8 },
+    /// No setting has this key.
+    SettingUnknown { key: String },
+    /// The setting cannot be stored at this level (e.g. a global-only one for a single game).
+    SettingLevelRefused { key: String, level: Level },
+    /// The value does not fit the setting (wrong type, unknown option, out of range), or the
+    /// setting holds no value (an action).
+    SettingInvalidValue { key: String },
+    /// A settings file could not be written.
+    SettingsWriteFailed { detail: String },
 }
 
 #[cfg(test)]

@@ -39,6 +39,7 @@ pub fn packaged_core(name: &str) -> Option<PathBuf> {
 /// Game drawn natively under the transparent webview, on the `SurfaceView`.
 pub const NATIVE_VIDEO_DEFAULT: bool = true;
 pub const EXTERNAL_SURFACE: bool = true;
+pub const PHONE: bool = true;
 
 pub fn init_logging() {
     android_logger::init_once(

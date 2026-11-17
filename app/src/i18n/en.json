@@ -85,6 +85,10 @@
     "stateSaveFailed": "Couldn't save to slot {slot}: {detail}. Check that the save folder is writable.",
     "stateLoadFailed": "Couldn't read slot {slot}: {detail}. Try again or use another slot.",
     "stateInvalid": "The state in slot {slot} doesn't fit this game or this core version. Save it again.",
+    "settingUnknown": "This version of EmuDome doesn't know the setting {key}. Update the app.",
+    "settingLevelRefused": "The setting {key} can't be saved here. Choose another level in the bar at the top.",
+    "settingInvalidValue": "That value doesn't fit the setting {key}. Choose one of the values offered.",
+    "settingsWriteFailed": "Couldn't save the settings: {detail}. Check that the data folder is writable and try again.",
     "unexpected": "Something went wrong: {detail}"
   }
 }

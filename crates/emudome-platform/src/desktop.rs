@@ -20,6 +20,7 @@ pub fn packaged_core(_name: &str) -> Option<PathBuf> {
 }
 
 pub const EXTERNAL_SURFACE: bool = false;
+pub const PHONE: bool = false;
 
 /// Never built on the desktop: the native video uses the window.
 pub enum SurfaceWindow {}

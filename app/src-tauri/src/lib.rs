@@ -10,6 +10,7 @@ mod audio;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
 mod gamepad;
+mod settings;
 mod theme;
 mod video;
 mod window;
@@ -19,6 +20,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use emudome_core::input::{Button, Source};
+use emudome_core::settings::{ConsoleId, GameId};
 use emudome_core::{Command, ErrorCode, Event, Session, SessionOptions, Shared, Speed};
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -80,14 +82,16 @@ struct StatsDto {
     paused: bool,
 }
 
-/// Which core to use for a file, by its extension.
-fn core_for(path: &Path) -> Result<(&'static str, &'static str), ErrorCode> {
+/// Which core to use for a file, by its extension, the console shown and its settings level.
+fn core_for(path: &Path) -> Result<(&'static str, &'static str, ConsoleId), ErrorCode> {
     let ext = path
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
     match ext.as_str() {
-        "gba" | "gb" | "gbc" => Ok(("mgba", "GBA")),
+        "gba" => Ok(("mgba", "GBA", ConsoleId::Gba)),
+        "gb" => Ok(("mgba", "GBA", ConsoleId::Gb)),
+        "gbc" => Ok(("mgba", "GBA", ConsoleId::Gbc)),
         "nds" => Err(ErrorCode::ConsoleNotYet {
             console: "nds".into(),
             phase: 2,
@@ -107,13 +111,14 @@ fn open_game(
     path: String,
 ) -> Result<GameInfo, ErrorCode> {
     let game_path = PathBuf::from(&path);
-    let (core_name, console) = core_for(&game_path)?;
+    let (core_name, console, console_id) = core_for(&game_path)?;
     let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref())
         .ok_or_else(|| ErrorCode::CoreNotFound {
             file: emudome_platform::core_file_name(core_name),
         })?;
 
     // Close the previous game before opening another one.
+    settings::end_session(&app);
     state.native_source(None);
     *state.current.lock() = None;
     state.session.lock().take();
@@ -144,6 +149,7 @@ fn open_game(
     *state.current.lock() = Some(shared.clone());
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
+    settings::begin_session(&app, console_id, GameId::from_rom_path(&game_path));
 
     Ok(GameInfo {
         title: game_path
@@ -156,7 +162,8 @@ fn open_game(
 }
 
 #[tauri::command]
-fn close_game(state: tauri::State<'_, AppState>) {
+fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+    settings::end_session(&app);
     state.native_source(None);
     *state.current.lock() = None;
     state.session.lock().take();
@@ -410,6 +417,7 @@ pub fn run() {
                 });
             }
 
+            app.manage(settings::open(app)?);
             let data_dir = app.path().app_data_dir()?;
             log::info!("data in {}", data_dir.display());
             app.manage(AppState {
@@ -439,6 +447,13 @@ pub fn run() {
             startup_game,
             set_menu_open,
             theme::theme,
+            settings::settings_schema,
+            settings::settings_page,
+            settings::settings_game_scope,
+            settings::settings_set,
+            settings::settings_reset,
+            settings::settings_session_commit,
+            settings::settings_session_discard,
         ])
         .run(tauri::generate_context!())
         .expect("EmuDome failed to start");

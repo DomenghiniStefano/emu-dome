@@ -73,7 +73,7 @@ cargo fmt --all
 - Environment variables:
   - `EMUDOME_VIDEO=native|webview` forces the video path.
   - `EMUDOME_CORES_DIR` tells where to look for the cores.
-  - `EMUDOME_THEME=dark|black|light` forces the theme (otherwise it follows the system).
+  - `EMUDOME_THEME=dark|black|light` forces the theme (otherwise the `general.theme` setting, then the system).
   - `RUST_LOG=debug` for the logs.
 - The executable accepts a game path as an argument and opens it at startup.
 - Homebrew test ROM: `tools/test-rom/emudome-test.gba`. Magenta screen, green while A is held (X key).
@@ -85,10 +85,13 @@ crates/libretro-sys      libretro API types and constants (added as they are nee
 crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulation thread),
                          Command/Event, Shared (RGBA frame, audio queue, input, stats), speed, states, .sav,
                          ErrorCode (errors for the UI as code + params),
-                         hotkeys.rs (controller routing: game / combos / menu navigation, the combo table)
+                         hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
+                         settings/ (settings engine: schema.rs types, catalog.rs the 157 entries,
+                         mod.rs levels / resolve / session, store.rs files; pure, unit-tested)
 crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS
 app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
-                         theme.rs (Scuro / Nero / Chiaro: system preference or EMUDOME_THEME, unit-tested)
+                         settings.rs (settings commands, file locations, settings://changed),
+                         theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
 app/src                  Vue interface: App.vue, AppShell (rail + sections, outside the game), LibraryEmpty,
                          QuickMenu, GameCanvas (webview mode), ToastStack, emu.ts (typed bridge),
                          theme.ts (data-theme on <html>), sections.ts,
@@ -121,8 +124,19 @@ app/src                  Vue interface: App.vue, AppShell (rail + sections, outs
   and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
   move the focus spatially (nearest element in that direction), confirm clicks, back calls `back`.
   The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 157 entries: key
+  `<page>.<key>`, kind, default, accepted levels, per-device flag, platform, phase); the interface builds its
+  pages from `settings_schema` and never lists settings by hand. Levels Default → Global → Console → Game →
+  Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
+  (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<id>}.json` (synced later),
+  per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
+  kept, invalid values ignored with a `settingInvalidValue` log. Session = the quick menu's changes «in prova»:
+  in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
+  Game identity is a hash of the ROM path for now (TODO, Trello #21). Option ids of `sel` entries and slider
+  ranges are placeholders until Cowork completes them (2b).
 - Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
-  `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused).
+  `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
+  `settings://changed` (`{ key, level }`).
 
 ## Lessons already learned (do not repeat)
 

@@ -51,6 +51,10 @@ export type ErrorCode =
   | { code: 'stateSaveFailed'; params: { slot: number; detail: string } }
   | { code: 'stateLoadFailed'; params: { slot: number; detail: string } }
   | { code: 'stateInvalid'; params: { slot: number } }
+  | { code: 'settingUnknown'; params: { key: string } }
+  | { code: 'settingLevelRefused'; params: { key: string; level: SettingLevel } }
+  | { code: 'settingInvalidValue'; params: { key: string } }
+  | { code: 'settingsWriteFailed'; params: { detail: string } }
 
 export type EmuEvent =
   | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
@@ -83,6 +87,84 @@ export type HotkeyEvent =
   | { kind: 'turbo'; held: boolean }
   | { kind: 'paused'; paused: boolean }
 
+// ---- Settings (mirrors of crates/emudome-core/src/settings, schema.rs and mod.rs) ----
+
+/** Where a value comes from, weakest first: default, «Tutti i giochi», «Giochi <console>», «Solo questo gioco», «in prova». */
+export type SettingLevel = 'default' | 'global' | 'console' | 'game' | 'session'
+export type ConsoleId = 'gb' | 'gbc' | 'gba' | 'nds' | '3ds'
+export type SettingDevice = 'desktop' | 'phone'
+export type SettingPlatform = 'all' | SettingDevice
+/** bool (toggle), number (slider), string (choice, file, colour, text), string[] (multi, folders). */
+export type SettingValue = boolean | number | string | string[]
+
+/** Kind of an entry. Texts: `settings.<key>.name|desc`, options `settings.<key>.option.<id>`. */
+export type SettingKind =
+  | { type: 'toggle' }
+  | {
+      type: 'choice'
+      style: 'segments' | 'list' | 'cards'
+      options: string[]
+      /** The design has not listed the options yet (completed in 2b). */
+      placeholder: boolean
+    }
+  | { type: 'multi'; options: string[] }
+  | {
+      type: 'slider'
+      min: number
+      max: number
+      step: number
+      unit: 'percent' | 'px' | 'seconds' | 'copies'
+    }
+  | { type: 'file' }
+  | { type: 'folders' }
+  | { type: 'colour'; swatches: string[] }
+  | { type: 'text' }
+  | { type: 'action'; style: 'button' | 'link' | 'info' | 'storage' }
+
+export interface SettingEntry {
+  /** `<page>.<key>`, stable. */
+  key: string
+  page: string
+  kind: SettingKind
+  /** null for actions. */
+  default: SettingValue | null
+  /** Accepted levels, weakest first. */
+  levels: SettingLevel[]
+  perDevice: boolean
+  platform: SettingPlatform
+  phase: number
+}
+
+export interface SettingsSchema {
+  device: SettingDevice
+  /** Entries with a later `phase`, or whose `platform` excludes `device`, are not shown. */
+  currentPhase: number
+  pages: string[]
+  entries: SettingEntry[]
+}
+
+/** What a page shows or a change targets. `session` = the open game with its changes «in prova». */
+export type SettingsScope =
+  | { level: 'global' }
+  | { level: 'console'; console: ConsoleId }
+  | { level: 'game'; console: ConsoleId; game: string }
+  | { level: 'session' }
+
+export interface SettingRow {
+  key: string
+  value: SettingValue | null
+  /** Weaker than the page's scope → «Come in "…"»; equal → the row can be reset. */
+  source: SettingLevel
+  /** Differs from the default. */
+  changed: boolean
+}
+
+/** Payload of `settings://changed`. */
+export interface SettingsChanged {
+  key: string
+  level: SettingLevel
+}
+
 /** URL of the `emu://` protocol (on Windows it becomes http://emu.localhost/...). */
 export const frameUrl = convertFileSrc('frame', 'emu')
 
@@ -101,8 +183,24 @@ export const emu = {
   reset: () => invoke<void>('reset_game'),
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
   stats: () => invoke<Stats>('stats'),
-  /** The theme to show: `EMUDOME_THEME` if set, else the system's (dark → Scuro, light → Chiaro). */
+  /** The theme to show: `EMUDOME_THEME` if set, else `general.theme`, else the system's. */
   theme: (systemDark: boolean) => invoke<Theme>('theme', { systemDark }),
+  settings: {
+    schema: () => invoke<SettingsSchema>('settings_schema'),
+    page: (page: string, scope: SettingsScope) =>
+      invoke<SettingRow[]>('settings_page', { page, scope }),
+    /** The open game's scope (null without one). */
+    gameScope: () => invoke<SettingsScope | null>('settings_game_scope'),
+    set: (key: string, scope: SettingsScope, value: SettingValue) =>
+      invoke<void>('settings_set', { key, scope, value }),
+    reset: (key: string, scope: SettingsScope) => invoke<void>('settings_reset', { key, scope }),
+    /** Saves the changes «in prova» for this game or its console (all or nothing). */
+    commitSession: (target: 'game' | 'console') =>
+      invoke<void>('settings_session_commit', { target }),
+    discardSession: () => invoke<void>('settings_session_discard'),
+    onChanged: (cb: (e: SettingsChanged) => void): Promise<UnlistenFn> =>
+      listen<SettingsChanged>('settings://changed', e => cb(e.payload)),
+  },
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://event', e => cb(e.payload)),
   onMenu: (cb: () => void): Promise<UnlistenFn> => listen('emu://menu', () => cb()),
