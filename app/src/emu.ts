@@ -74,7 +74,11 @@ export type ErrorCode =
   | { code: 'stateLoadFailed'; params: { slot: number; detail: string } }
   | { code: 'stateInvalid'; params: { slot: number } }
   | { code: 'settingUnknown'; params: { key: string } }
-  | { code: 'settingLevelRefused'; params: { key: string; level: SettingLevel } }
+  | {
+      code: 'settingLevelRefused'
+      /** `levels`: where the setting can be stored, weakest first. */
+      params: { key: string; level: SettingLevel; levels: SettingLevel[] }
+    }
   | { code: 'settingInvalidValue'; params: { key: string } }
   | { code: 'settingsWriteFailed'; params: { detail: string } }
   | { code: 'libraryFolderUnreachable'; params: { path: string } }
@@ -209,7 +213,8 @@ export type HotkeyEvent =
 export type SettingLevel = 'default' | 'global' | 'console' | 'game' | 'session'
 export type ConsoleId = 'gb' | 'gbc' | 'gba' | 'nds' | '3ds'
 export type SettingDevice = 'desktop' | 'phone'
-export type SettingPlatform = 'all' | SettingDevice
+/** `touch`: only where there is a touch screen (for now the phone). */
+export type SettingPlatform = 'all' | SettingDevice | 'touch'
 /** bool (toggle), number (slider), string (choice, file, colour, text), string[] (multi, folders). */
 export type SettingValue = boolean | number | string | string[]
 
@@ -236,6 +241,8 @@ export type SettingKind =
   | { type: 'colour'; swatches: string[] }
   | { type: 'text' }
   | { type: 'action'; style: 'button' | 'link' | 'info' | 'storage' }
+  /** No value: cards that each apply a bundle of settings after a confirmation (`presets.preset`). */
+  | { type: 'apply'; options: string[] }
   /** A binding list edited in the Controls section (`pad.remap`, `pad.combos`): a link here. */
   | { type: 'bindings'; table: 'remap' | 'combos' }
 
@@ -251,6 +258,10 @@ export interface SettingEntry {
   perDevice: boolean
   platform: SettingPlatform
   phase: number
+  /** Options of a choice this device does not offer: not shown. */
+  hiddenOptions: string[]
+  /** Extra words the search matches, in any language. */
+  synonyms: string[]
 }
 
 /** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */
