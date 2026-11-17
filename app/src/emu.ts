@@ -1,6 +1,7 @@
 // Typed bridge to the Rust commands. The interface goes through here only.
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 
 export type Speed = { kind: 'factor'; value: number } | { kind: 'max' }
 export type Button =
@@ -55,6 +56,11 @@ export type ErrorCode =
   | { code: 'settingLevelRefused'; params: { key: string; level: SettingLevel } }
   | { code: 'settingInvalidValue'; params: { key: string } }
   | { code: 'settingsWriteFailed'; params: { detail: string } }
+  | { code: 'libraryFolderUnreachable'; params: { path: string } }
+  | { code: 'libraryGameUnknown'; params: { id: string } }
+  | { code: 'libraryGameUnavailable'; params: { id: string } }
+  | { code: 'libraryWriteFailed'; params: { detail: string } }
+  | { code: 'coverInvalid'; params: { detail: string } }
 
 export type EmuEvent =
   | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
@@ -165,6 +171,65 @@ export interface SettingsChanged {
   level: SettingLevel
 }
 
+// ---- Library (mirrors of crates/emudome-core/src/library and src-tauri/src/library.rs) ----
+
+/**
+ * Identity of a game, from its content (docs/feasibility.md "Game identity"), never the file
+ * name: `<console>:<hex>` (SHA-1 of the file for GB/GBC/GBA, of the used size for NDS; title
+ * id + version for 3DS). Opaque to the interface.
+ */
+export type GameId = string
+
+/** Which picture a cover shows (L12): the user's image, the icon inside the ROM, or a generated one. */
+export type CoverKind = 'user' | 'icon' | 'generated'
+
+export interface LibraryGame {
+  id: GameId
+  console: ConsoleId
+  /** From the header / NDS banner / 3DS SMDH, or the user's override. Never the id. */
+  title: string
+  path: string
+  /** The library folder it was found in; null when added as a single file (drag and drop). */
+  folder: string | null
+  size: number
+  /** false when the file or its folder is not reachable now (E01): shown faded, not removed. */
+  available: boolean
+  playTimeSecs: number
+  /** Unix ms, null if never played. */
+  lastPlayed: number | null
+  /** Unix ms. */
+  addedAt: number
+  cover: CoverKind
+  /** What `cover` shows, loadable by the webview (`emu://cover/...`); null for `generated`. */
+  coverUrl: string | null
+  /** True when the ROM has an icon (NDS banner, 3DS SMDH): L12 offers it. */
+  hasIcon: boolean
+  /** Background colour of the generated cover, `#rrggbb`, stable per game. */
+  colour: string
+  favourite: boolean
+  hidden: boolean
+  /** Thumbnail of the newest save state for the «Riprendi» hero; null while states have none. */
+  lastStateThumbUrl: string | null
+}
+
+export interface LibraryFolder {
+  path: string
+  reachable: boolean
+}
+
+export interface Library {
+  games: LibraryGame[]
+  /** `library.folders` of this device, with whether each is reachable now. */
+  folders: LibraryFolder[]
+  scanning: boolean
+}
+
+/** Payload of `library://scan`. `added` at `done` drives L11 «N giochi aggiunti». */
+export type LibraryScanEvent =
+  | { phase: 'started' }
+  | { phase: 'progress'; checked: number; found: number }
+  | { phase: 'done'; found: number; added: number; unreachable: string[] }
+
 /** URL of the `emu://` protocol (on Windows it becomes http://emu.localhost/...). */
 export const frameUrl = convertFileSrc('frame', 'emu')
 
@@ -200,6 +265,36 @@ export const emu = {
     discardSession: () => invoke<void>('settings_session_discard'),
     onChanged: (cb: (e: SettingsChanged) => void): Promise<UnlistenFn> =>
       listen<SettingsChanged>('settings://changed', e => cb(e.payload)),
+  },
+  library: {
+    get: () => invoke<Library>('library_get'),
+    /** Native folder picker; the folder joins `library.folders` and is scanned. null = cancelled. */
+    chooseFolder: () => invoke<string | null>('library_choose_folder'),
+    removeFolder: (path: string) => invoke<void>('library_remove_folder', { path }),
+    /** Drag and drop: folders join `library.folders`, files are added one by one. Then a scan. */
+    addPaths: (paths: string[]) => invoke<void>('library_add_paths', { paths }),
+    /** Rescans every folder in the background; progress on `library://scan`. */
+    scan: () => invoke<void>('library_scan'),
+    /** Opens the game (like `openGame`) and counts its play time until it closes. */
+    open: (id: GameId) => invoke<GameInfo>('library_open', { id }),
+    /** L12. `user` opens an image picker first; resolves false if it was cancelled. */
+    setCover: (id: GameId, kind: CoverKind) => invoke<boolean>('library_set_cover', { id, kind }),
+    setFlags: (id: GameId, flags: { favourite?: boolean; hidden?: boolean }) =>
+      invoke<void>('library_set_flags', { id, ...flags }),
+    onScan: (cb: (e: LibraryScanEvent) => void): Promise<UnlistenFn> =>
+      listen<LibraryScanEvent>('library://scan', e => cb(e.payload)),
+    /** Something in the library changed (scan, cover, flags, play time): call `get` again. */
+    onChanged: (cb: () => void): Promise<UnlistenFn> => listen('library://changed', () => cb()),
+    /** Files or folders dragged over the window: `over` while hovering, `drop` with the paths, `leave`. */
+    onDragDrop: (
+      cb: (e: { type: 'over' } | { type: 'drop'; paths: string[] } | { type: 'leave' }) => void,
+    ): Promise<UnlistenFn> =>
+      getCurrentWebview().onDragDropEvent(e => {
+        const p = e.payload
+        if (p.type === 'drop') cb({ type: 'drop', paths: p.paths })
+        else if (p.type === 'leave') cb({ type: 'leave' })
+        else cb({ type: 'over' })
+      }),
   },
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://event', e => cb(e.payload)),
