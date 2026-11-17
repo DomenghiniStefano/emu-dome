@@ -48,7 +48,7 @@ entry by entry, is `docs/fase0-esito.md`; in short:
 ## Commands
 
 ```powershell
-./scripts/fetch-cores.ps1                     # downloads mgba_libretro.dll into cores/ (not versioned)
+./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar]  # downloads the cores into cores/ (not versioned; default mgba)
 ./scripts/fetch-cores-android.ps1 [-Abi arm64-v8a]  # Android cores into cores/android/<abi>/ as lib*_libretro_android.so
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
@@ -256,7 +256,9 @@ review-only list above. A rule in neither place is the thing this section exists
 
 ## Known gaps of the prototype (intentional, for later)
 
-- `RETRO_ENVIRONMENT_GET_VARIABLE` always answers `false`: core options come with the settings engine.
+- Core options are answered (`core_options.rs`), but the only values the shell sets are the forced ones in
+  `FORCED_CORE_OPTIONS` (`app/src-tauri/src/lib.rs`: Azahar's software renderer); the settings engine's `cores.*`
+  entries are not mapped to them yet.
 - Audio is muted in fast forward and slow motion.
 - The cores are not included in the build; the package takes them from `cores/` as a resource.
 - No game library, no button remapping, no rewind: they are Phase 1.
