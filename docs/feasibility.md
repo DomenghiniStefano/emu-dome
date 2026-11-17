@@ -105,7 +105,8 @@ a 1 GB file with interruption; `changes.list` latency.
 
 - ROM hacks (decided: a different game): the identity is the hash of the patched content, computed after applying
   the patch in memory; metadata keeps the original's identity.
-- Display name: from the header (or SMDH/banner for 3DS/NDS) with a user override, never the identity.
+- Display name: GB/GBC/GBA from the file name (headers are short and a ROM hack keeps its base game's, e.g.
+  «POKEMON FIRE»; owner's UAT 2026-11-17), NDS banner / 3DS SMDH title, user override later; never the identity.
 - A crate exists for NDS headers (`ds-rom` on crates.io [N3]); the GB/GBA/NDS reads are a few lines each.
 
 **Verdict**: feasible, small (S). Hashing a 512 MB NDS file costs about a second on a phone: done once at import
@@ -187,7 +188,7 @@ FBO and `glReadPixels` back to RGBA. No Rust frontend with `SET_HW_RENDER` on wg
 the A71; (1) GL readback (desktop GL 4.3, Android GLES 3.2), useful for Azahar only; (2) if GLES readback is slow on
 the A71, go to Vulkan negotiation, which Azahar already supports in full.
 
-### 2026-11-17 � Step 0, PC measurements (Windows)
+### 2026-11-17 · Step 0, PC measurements (Windows)
 
 Host: `GET_VARIABLE` now answers core options (`crates/emudome-core/src/core_options.rs`). The exact value is
 **`citra_graphics_api` = `Software`**, capital S: Azahar's definition lists `Auto`, `Vulkan`, `OpenGL`, `Software`
