@@ -158,6 +158,23 @@ enum Key {
     Known(String),
 }
 
+/// The name shown for a game. GB / GBC / GBA headers hold 11–16 upper-case characters and a
+/// ROM hack keeps its base game's («POKEMON FIRE» for a FireRed hack): the file name says
+/// more, so it wins there. NDS banners and 3DS SMDH carry the real name: they win, with the
+/// file name as the fallback. The user's own override comes with the game details (L04).
+pub fn display_title(console: ConsoleId, header_title: &str, path: &Path) -> String {
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().trim().to_owned())
+        .unwrap_or_default();
+    let by_file = matches!(console, ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba);
+    if (by_file && !stem.is_empty()) || header_title.trim().is_empty() {
+        stem
+    } else {
+        header_title.to_owned()
+    }
+}
+
 /// Identifies the game in `path`: reads the header and hashes what the identity needs.
 pub fn identify(path: &Path) -> Result<Identity, NotAGame> {
     let mut file = File::open(path)?;
@@ -166,13 +183,7 @@ pub fn identify(path: &Path) -> Result<Identity, NotAGame> {
         Key::Hash(n) => sha1_prefix(&mut file, n)?,
         Key::Known(hex) => hex,
     };
-    let title = if header.title.is_empty() {
-        path.file_stem()
-            .map(|s| s.to_string_lossy().trim().to_owned())
-            .unwrap_or_default()
-    } else {
-        header.title
-    };
+    let title = display_title(header.console, &header.title, path);
     Ok(Identity {
         id: format!("{}:{hex}", header.console.id()),
         console: header.console,

@@ -153,7 +153,11 @@ impl Walker<'_> {
             .filter(|c| c.size == size && c.mtime == mtime)
             .map(|c| c.identity.clone());
         let identity = match cached {
-            Some(identity) => Some(identity),
+            // The display rule may have changed since the file was cached: apply it again.
+            Some(mut identity) => {
+                identity.title = identity::display_title(identity.console, &identity.title, path);
+                Some(identity)
+            }
             None => match identity::identify(path) {
                 Ok(identity) => Some(identity),
                 Err(e) => {
