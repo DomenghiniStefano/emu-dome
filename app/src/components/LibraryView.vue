@@ -83,6 +83,13 @@ async function resetFilters() {
   await loadSort()
 }
 
+/** «Togli i filtri» under «Nessun gioco corrisponde…»: the L03 switches and the console chip. */
+const filtering = computed(() => consoleFilter.value !== 'all' || SHOW_KEYS.some(k => show[k]))
+function clearFilters() {
+  for (const k of SHOW_KEYS) show[k] = false
+  consoleFilter.value = 'all'
+}
+
 const base = computed(() => shown(library.games, show))
 const chips = computed(() => {
   const present = CONSOLES.filter(c => base.value.some(g => g.console === c))
@@ -376,7 +383,12 @@ onUnmounted(() => unlistenSettings?.())
           </div>
         </div>
       </div>
-      <p v-if="games.length === 0" class="muted">{{ t('library.noneShown') }}</p>
+      <div v-if="games.length === 0" class="none-shown">
+        <p class="muted">{{ t('library.noneShown') }}</p>
+        <button v-if="filtering" class="btn" @click="clearFilters">
+          {{ t('library.clearFilters') }}
+        </button>
+      </div>
 
       <p v-if="unreachable.length" class="muted">
         <TriangleAlert class="warn inline" :size="14" :stroke-width="1.75" aria-hidden="true" />
@@ -389,6 +401,15 @@ onUnmounted(() => unlistenSettings?.())
 </template>
 
 <style scoped>
+.none-shown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.none-shown p {
+  margin: 0;
+}
 .library {
   flex: 1;
   display: flex;

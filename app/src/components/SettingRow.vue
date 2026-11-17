@@ -100,14 +100,18 @@ const buttonText = computed(() => {
   return te(msg.button(k)) ? t(msg.button(k)) : ''
 })
 
+/** The options this device offers (a choice may have some for another device only). */
 const options = computed(() => {
   const k = kind.value
-  if (k.type !== 'choice' && k.type !== 'multi') return []
-  return k.options.map(id => ({
-    id,
-    text: t(msg.option(key.value, id)),
-    desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
-  }))
+  if (k.type !== 'choice' && k.type !== 'multi' && k.type !== 'apply') return []
+  const hidden = props.entry.hiddenOptions
+  return k.options
+    .filter(id => !hidden.includes(id))
+    .map(id => ({
+      id,
+      text: t(msg.option(key.value, id)),
+      desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
+    }))
 })
 
 function set(v: SettingValue) {
@@ -374,6 +378,21 @@ function swatchName(hex: string): string {
         :aria-checked="o.id === value"
         :disabled="disabled"
         @click="set(o.id)"
+      >
+        <span class="thumb" aria-hidden="true" :style="{ background: cardBg(o.id, i) }"></span>
+        <span class="card-title">{{ o.text }}</span>
+        <span v-if="o.desc" class="card-desc">{{ o.desc }}</span>
+      </button>
+    </div>
+
+    <!-- apply (presets): cards that apply a bundle, nothing is ever selected -->
+    <div v-if="kind.type === 'apply'" class="cards" role="group" :aria-label="name">
+      <button
+        v-for="(o, i) in options"
+        :key="o.id"
+        class="card"
+        :disabled="disabled"
+        :title="notYet ? t('settingsUi.notYet') : undefined"
       >
         <span class="thumb" aria-hidden="true" :style="{ background: cardBg(o.id, i) }"></span>
         <span class="card-title">{{ o.text }}</span>

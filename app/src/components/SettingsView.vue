@@ -4,9 +4,10 @@
 // scope bar «Stai cambiando le impostazioni di:» fixed at the top while scrolling.
 // Every page is built from the Rust schema (`settings_schema`): groups, sections, entries.
 //
-// Levels: «Tutti i giochi», and «Giochi <console>» for the console of the open game, else of the
-// last game played (TODO Cowork, #41: which console when nothing was played). «Solo questo
-// gioco» belongs to the game details (L04) and the quick menu (Session), not to this section.
+// Levels: «Tutti i giochi», and «Giochi <console> ▾», a small menu of the consoles that have games
+// in the library, starting on the open game's console, else the last one played (Cowork, #41).
+// With an empty library only «Tutti i giochi». «Solo questo gioco» belongs to the game details
+// (L04) and the quick menu (Session), not to this section.
 // Controller: the shell's nav scope; L1 / R1 change level (exposed `tab`, called by AppShell).
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -25,6 +26,7 @@ import { errorText } from '../i18n/labels'
 import { library } from '../library'
 import { fold, isShown, loadSchema, msg, pageLevels } from '../settingsModel'
 import SettingRowView from './SettingRow.vue'
+import SettingSelect from './SettingSelect.vue'
 
 const emit = defineEmits<{ error: [string]; openControls: [] }>()
 const { t } = useI18n()
@@ -46,24 +48,51 @@ const shownOn = (p: string) =>
   (schema.value?.entries ?? []).filter(e => e.page === p && isShown(e, schema.value!))
 
 // ---- Scope ----
+const CONSOLES: ConsoleId[] = ['gb', 'gbc', 'gba', 'nds', '3ds']
 const contextConsole = ref<ConsoleId | null>(null)
-async function findContextConsole() {
-  const open = await emu.settings.gameScope().catch(() => null)
-  if (open && open.level === 'game') return (contextConsole.value = open.console)
+/** The open game's console, when a game is open. */
+const openConsole = ref<ConsoleId | null>(null)
+/** The consoles of the scope menu: those with games in the library (and the open game's). */
+const consoles = computed(() =>
+  CONSOLES.filter(c => c === openConsole.value || library.games.some(g => g.console === c)),
+)
+const consoleOptions = computed(() =>
+  consoles.value.map(c => ({
+    id: c,
+    text: t('settingsUi.scope.console', { console: t(`console.${c}`) }),
+  })),
+)
+function lastPlayedConsole(): ConsoleId | null {
   const last = [...library.games]
     .filter(g => g.lastPlayed !== null)
     .sort((a, b) => (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0))[0]
-  contextConsole.value = last?.console ?? null
+  return last?.console ?? null
+}
+async function findContextConsole() {
+  const open = await emu.settings.gameScope().catch(() => null)
+  openConsole.value = open && open.level === 'game' ? open.console : null
+  contextConsole.value = openConsole.value ?? lastPlayedConsole() ?? consoles.value[0] ?? null
+}
+// The library may answer after this section opened, or lose the chosen console's last game.
+watch(consoles, list => {
+  if (contextConsole.value && list.includes(contextConsole.value)) return
+  contextConsole.value = lastPlayedConsole() ?? list[0] ?? null
+})
+function pickConsole(id: string) {
+  const c = consoles.value.find(x => x === id)
+  if (!c) return
+  contextConsole.value = c
+  level.value = 'console'
 }
 
 const pageEntries = computed(() => shownOn(page.value))
+/** The page has settings per console: the scope bar is shown (only «Tutti i giochi» without games). */
+const scoped = computed(() => pageLevels(pageEntries.value).has('console'))
 const levels = computed<SettingLevel[]>(() => {
-  const accepted = pageLevels(pageEntries.value)
   const out: SettingLevel[] = ['global']
-  if (accepted.has('console') && contextConsole.value) out.push('console')
+  if (scoped.value && contextConsole.value) out.push('console')
   return out
 })
-const scoped = computed(() => levels.value.length > 1)
 const effective = computed<'global' | 'console'>(() =>
   level.value === 'console' && levels.value.includes('console') ? 'console' : 'global',
 )
@@ -147,7 +176,9 @@ const searchResults = computed<ShownSection[]>(() => {
   const out: ShownSection[] = []
   for (const p of s.pages) {
     const hits = shownOn(p).filter(e =>
-      fold(`${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${e.key}`).includes(q),
+      fold(`${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${e.key} ${e.synonyms.join(' ')}`).includes(
+        q,
+      ),
     )
     if (hits.length) out.push({ id: 'results', page: p, entries: hits })
   }
@@ -162,7 +193,7 @@ function pick(p: string) {
 
 /** L1 / R1: the previous / next level of the scope bar. */
 function tab(dir: -1 | 1) {
-  if (!scoped.value) return
+  if (levels.value.length < 2) return
   const i = levels.value.indexOf(effective.value)
   const next = levels.value[(i + dir + levels.value.length) % levels.value.length]
   if (next === 'global' || next === 'console') level.value = next
@@ -246,33 +277,45 @@ const INTROS = new Set(['bios', 'cores'])
             :style="{ gridTemplateColumns: `repeat(${levels.length}, minmax(0, 1fr))` }"
           >
             <button
-              v-for="l in levels"
-              :key="l"
               class="level"
-              :class="{ on: l === effective }"
+              :class="{ on: effective === 'global' }"
               role="radio"
-              :aria-checked="l === effective"
-              @click="level = l === 'console' ? 'console' : 'global'"
+              :aria-checked="effective === 'global'"
+              @click="level = 'global'"
             >
-              <component
-                :is="l === 'console' ? Gamepad2 : Layers"
-                :size="20"
-                :stroke-width="1.75"
-                aria-hidden="true"
-              />
+              <Layers :size="20" :stroke-width="1.75" aria-hidden="true" />
               <span class="level-text">
-                <span class="level-name">{{ levelName(l) }}</span>
+                <span class="level-name">{{ levelName('global') }}</span>
+                <span class="level-sub">{{ t('settingsUi.scope.globalSub') }}</span>
+              </span>
+            </button>
+            <!-- «Giochi <console> ▾»: picking a console also selects this level -->
+            <div
+              v-if="levels.includes('console') && contextConsole"
+              class="level"
+              :class="{ on: effective === 'console' }"
+              role="radio"
+              :aria-checked="effective === 'console'"
+              @click="level = 'console'"
+            >
+              <Gamepad2 :size="20" :stroke-width="1.75" aria-hidden="true" />
+              <span class="level-text">
+                <SettingSelect
+                  :label="t('settingsUi.scope.consolePick')"
+                  :value="contextConsole"
+                  :options="consoleOptions"
+                  @pick="pickConsole"
+                  @click.stop
+                />
                 <span class="level-sub">
                   {{
-                    l === 'console' && contextConsole
-                      ? t('settingsUi.scope.consoleSub', {
-                          short: t(`consoleShort.${contextConsole}`),
-                        })
-                      : t('settingsUi.scope.globalSub')
+                    t('settingsUi.scope.consoleSub', {
+                      short: t(`consoleShort.${contextConsole}`),
+                    })
                   }}
                 </span>
               </span>
-            </button>
+            </div>
           </div>
           <div class="muted">
             {{
@@ -526,6 +569,15 @@ const INTROS = new Set(['bios', 'cores'])
   gap: 2px;
 }
 .level-name {
+  font-weight: 600;
+}
+.level-text :deep(.field) {
+  min-width: 0;
+  height: 26px;
+  margin: -3px 0 0 -10px;
+  border-color: transparent;
+  background: none;
+  color: inherit;
   font-weight: 600;
 }
 .level-sub {
