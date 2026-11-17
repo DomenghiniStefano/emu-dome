@@ -82,11 +82,18 @@ export type ErrorCode =
   | { code: 'libraryGameUnavailable'; params: { id: string } }
   | { code: 'libraryWriteFailed'; params: { detail: string } }
   | { code: 'coverInvalid'; params: { detail: string } }
+  | { code: 'nothingToUndo' }
+  | { code: 'undoFailed'; params: { detail: string } }
+  | { code: 'saveUnreadable'; params: { aside: string; backupAt: number | null } }
+  | { code: 'saveGameOpen' }
+  | { code: 'saveImportInvalid'; params: { detail: string } }
+  | { code: 'saveFileFailed'; params: { detail: string } }
 
 export type EmuEvent =
   | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
   | { type: 'stateSaved'; slot: number }
   | { type: 'stateLoaded'; slot: number }
+  | { type: 'loadUndone' }
   | { type: 'error'; error: ErrorCode }
   | { type: 'stopped' }
 
@@ -263,6 +270,68 @@ export type LibraryScanEvent =
   | { phase: 'progress'; checked: number; found: number }
   | { phase: 'done'; found: number; added: number; unreachable: string[] }
 
+// ---- Saves (mirrors of src-tauri/src/saves.rs; games named by their ROM path) ----
+
+/** V01: what a game has saved. Mirror: `SummaryDto`. */
+export interface SavesSummary {
+  path: string
+  inGame: boolean
+  quickCount: number
+  /** In-game save, quick saves and thumbnails. */
+  bytes: number
+  /** Unix ms of the newest change. */
+  lastChange: number | null
+  /** An unreadable in-game save was set aside (E04). */
+  broken: boolean
+}
+
+export interface SaveFile {
+  size: number
+  modified: number | null
+}
+
+/** A quick save that exists; slot 0 is the auto quick save. */
+export interface QuickSave {
+  slot: number
+  size: number
+  savedAt: number | null
+  thumbUrl: string | null
+}
+
+export type BackupReason = 'launch' | 'import' | 'restore'
+
+export interface SaveBackup {
+  /** What `restore` takes. */
+  name: string
+  /** Unix ms. */
+  at: number
+  reason: BackupReason
+  size: number
+}
+
+/** V02. Mirror: `GameSavesDto`. */
+export interface GameSaves {
+  inGame: SaveFile | null
+  quick: QuickSave[]
+  /** Newest first. */
+  backups: SaveBackup[]
+  /** In-game saves set aside as unreadable (E04), newest first. */
+  broken: string[]
+}
+
+export type ImportFormat = 'raw' | 'desmume' | 'actionReplay'
+
+/** V05: the chosen file, read and recognised. */
+export interface ImportCandidate {
+  path: string
+  fileName: string
+  format: ImportFormat
+  /** Bytes of the save inside the file. */
+  size: number
+}
+
+export type SaveExport = { kind: 'inGame' } | { kind: 'quick'; slot: number }
+
 /** URL of the `emu://` protocol (on Windows it becomes http://emu.localhost/...). */
 export const frameUrl = convertFileSrc('frame', 'emu')
 
@@ -283,6 +352,8 @@ export const emu = {
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
   loadState: (slot: number) => invoke<void>('load_state', { slot }),
   reset: () => invoke<void>('reset_game'),
+  /** «Annulla il caricamento» (`saves.undo`): back to before the last load (`loadUndone`). */
+  undoLoad: () => invoke<void>('undo_load'),
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
   stats: () => invoke<Stats>('stats'),
   /** The theme to show: `EMUDOME_THEME` if set, else `general.theme`, else the system's. */
@@ -334,6 +405,22 @@ export const emu = {
         else if (p.type === 'leave') cb({ type: 'leave' })
         else cb({ type: 'over' })
       }),
+  },
+  saves: {
+    summary: (paths: string[], slots: number) =>
+      invoke<SavesSummary[]>('saves_summary', { paths, slots }),
+    game: (path: string, slots: number) => invoke<GameSaves>('saves_game', { path, slots }),
+    /** The current in-game save becomes a backup first. */
+    restore: (path: string, name: string) => invoke<void>('saves_restore', { path, name }),
+    /** E04: puts the newest backup back. */
+    restoreLatest: (path: string) => invoke<void>('saves_restore_latest', { path }),
+    deleteQuick: (path: string, slot: number) => invoke<void>('saves_delete_quick', { path, slot }),
+    /** Opens a save dialog; resolves false if it was cancelled. */
+    export: (path: string, what: SaveExport) => invoke<boolean>('saves_export', { path, what }),
+    /** Opens a file picker and recognises the file; null = cancelled. */
+    importPick: () => invoke<ImportCandidate | null>('saves_import_pick'),
+    /** `file` becomes the in-game save of `game`; the current one becomes a backup first. */
+    import: (file: string, game: string) => invoke<void>('saves_import', { file, game }),
   },
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://event', e => cb(e.payload)),
