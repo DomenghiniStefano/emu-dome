@@ -62,6 +62,14 @@ pub const RETRO_ENVIRONMENT_SET_GEOMETRY: c_uint = 37;
 pub const RETRO_ENVIRONMENT_GET_LANGUAGE: c_uint = 39;
 pub const RETRO_ENVIRONMENT_GET_INPUT_BITMASKS: c_uint = 51 | RETRO_ENVIRONMENT_EXPERIMENTAL;
 pub const RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION: c_uint = 52;
+pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS: c_uint = 53;
+pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL: c_uint = 54;
+pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY: c_uint = 55;
+pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2: c_uint = 67;
+pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL: c_uint = 68;
+
+/// Size of the fixed `values` array of a core option definition (v1 and v2).
+pub const RETRO_NUM_CORE_OPTION_VALUES_MAX: usize = 128;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -111,6 +119,71 @@ pub struct retro_game_info {
 pub struct retro_variable {
     pub key: *const c_char,
     pub value: *const c_char,
+}
+
+/// One accepted value of a core option; the list ends with a null `value`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_core_option_value {
+    pub value: *const c_char,
+    pub label: *const c_char,
+}
+
+/// Core options v1 (`SET_CORE_OPTIONS`): an array ending with a null `key`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_core_option_definition {
+    pub key: *const c_char,
+    pub desc: *const c_char,
+    pub info: *const c_char,
+    pub values: [retro_core_option_value; RETRO_NUM_CORE_OPTION_VALUES_MAX],
+    pub default_value: *const c_char,
+}
+
+/// Core options v1 with translations (`SET_CORE_OPTIONS_INTL`).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_core_options_intl {
+    pub us: *const retro_core_option_definition,
+    pub local: *const retro_core_option_definition,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_core_option_v2_category {
+    pub key: *const c_char,
+    pub desc: *const c_char,
+    pub info: *const c_char,
+}
+
+/// Core options v2: an array ending with a null `key`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_core_option_v2_definition {
+    pub key: *const c_char,
+    pub desc: *const c_char,
+    pub desc_categorized: *const c_char,
+    pub info: *const c_char,
+    pub info_categorized: *const c_char,
+    pub category_key: *const c_char,
+    pub values: [retro_core_option_value; RETRO_NUM_CORE_OPTION_VALUES_MAX],
+    pub default_value: *const c_char,
+}
+
+/// Core options v2 (`SET_CORE_OPTIONS_V2`).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_core_options_v2 {
+    pub categories: *const retro_core_option_v2_category,
+    pub definitions: *const retro_core_option_v2_definition,
+}
+
+/// Core options v2 with translations (`SET_CORE_OPTIONS_V2_INTL`).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_core_options_v2_intl {
+    pub us: *const retro_core_options_v2,
+    pub local: *const retro_core_options_v2,
 }
 
 pub type retro_environment_t = unsafe extern "C" fn(cmd: c_uint, data: *mut c_void) -> bool;

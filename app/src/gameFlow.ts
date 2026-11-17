@@ -17,6 +17,8 @@ export const flow = reactive({
   launching: null as null | { title: string; colour: string | null },
   /** G02: the game could not start. */
   startError: null as null | { title: string; reason: string },
+  /** E04: the in-game save could not be read and was set aside; `backupAt` = newest backup. */
+  saveBroken: null as null | { title: string; backupAt: number | null },
   /** G06: «Esc o Home per il menu rapido», fades after 4 s. */
   hint: false,
   /** «Riprendi» asked at start (`saves.resume` = ask, an auto quick save exists). */

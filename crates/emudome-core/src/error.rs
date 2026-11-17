@@ -54,6 +54,23 @@ pub enum ErrorCode {
     LibraryWriteFailed { detail: String },
     /// The chosen cover cannot be used (not an image, too large, or no icon in the ROM).
     CoverInvalid { detail: String },
+    /// «Annulla il caricamento» with no load to undo in this session.
+    NothingToUndo,
+    /// The core refused the state from before the last load.
+    UndoFailed { detail: String },
+    /// E04: the in-game save cannot be used (unreadable, empty, too large). It was moved aside
+    /// as `aside`; `backup_at` is the Unix ms of the newest backup, if there is one.
+    #[serde(rename_all = "camelCase")]
+    SaveUnreadable {
+        aside: String,
+        backup_at: Option<u64>,
+    },
+    /// The game is open: its saves cannot change under the running session.
+    SaveGameOpen,
+    /// The chosen file is not a save EmuDome can import.
+    SaveImportInvalid { detail: String },
+    /// A save file could not be read, written, copied or deleted.
+    SaveFileFailed { detail: String },
 }
 
 #[cfg(test)]
@@ -69,5 +86,15 @@ mod tests {
         );
         let json = serde_json::to_value(ErrorCode::NoGame).unwrap();
         assert_eq!(json, serde_json::json!({ "code": "noGame" }));
+        let json = serde_json::to_value(ErrorCode::SaveUnreadable {
+            aside: "Game.broken-1.sav".into(),
+            backup_at: Some(5),
+        })
+        .unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({ "code": "saveUnreadable",
+                "params": { "aside": "Game.broken-1.sav", "backupAt": 5 } })
+        );
     }
 }

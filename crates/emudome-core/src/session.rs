@@ -14,6 +14,7 @@ use parking_lot::Mutex;
 use crate::audio::AudioQueue;
 use crate::callbacks::{self, CallbackCtx};
 use crate::core::{GameFiles, LoadedCore};
+use crate::core_options::CoreOptions;
 use crate::error::ErrorCode;
 use crate::frame::Frame;
 use crate::input::InputState;
@@ -40,6 +41,13 @@ pub enum Command {
     SetPaused(bool),
     SaveState(u8),
     LoadState(u8),
+    /// «Annulla il caricamento» (`saves.undo`): back to the state from before the last load.
+    UndoLoad,
+    /// Changes a core option (`GET_VARIABLE` key and value) while the game runs.
+    SetCoreOption {
+        key: String,
+        value: String,
+    },
     Reset,
     Stop,
 }
@@ -61,6 +69,8 @@ pub enum Event {
     StateLoaded {
         slot: u8,
     },
+    /// The last load was undone.
+    LoadUndone,
     Error {
         error: ErrorCode,
     },
@@ -107,6 +117,10 @@ pub struct SessionOptions {
     pub autosave_on_exit: bool,
     /// Load the auto quick save right after the game starts (`saves.resume` = always).
     pub resume_auto: bool,
+    /// Core options the shell chooses (`GET_VARIABLE` key and value, e.g.
+    /// `citra_graphics_api` = `Software`). A value the core does not accept falls back to
+    /// the core's default; a key not listed answers the core's default.
+    pub core_options: Vec<(String, String)>,
 }
 
 /// One quick save slot of a game, for the quick menu (G07).
@@ -237,6 +251,7 @@ fn emu_thread(
         system_dir: to_c(&opts.system_dir),
         save_dir: to_c(&opts.save_dir),
         audio_enabled: true,
+        options: CoreOptions::new(opts.core_options.iter().cloned()),
     });
 
     let started = (|| -> Result<(LoadedCore, GameFiles)> {
@@ -310,16 +325,22 @@ fn emu_thread(
         }
     };
 
+    // The state from before the last load, for «Annulla il caricamento». Always kept (one
+    // state in memory); the interface offers it only when `saves.undo` is on.
+    let mut before_load: Option<Vec<u8>> = None;
+
     if opts.resume_auto && files.slot(AUTO_SLOT).is_file() {
-        let _ = events.send(match load_slot(&core, &files, AUTO_SLOT) {
-            Ok(()) => Event::StateLoaded { slot: AUTO_SLOT },
-            Err(error) => Event::Error { error },
-        });
+        let _ = events.send(
+            match load_undoable(&core, &files, AUTO_SLOT, &mut before_load) {
+                Ok(()) => Event::StateLoaded { slot: AUTO_SLOT },
+                Err(error) => Event::Error { error },
+            },
+        );
     }
 
     let write_sram = |core: &LoadedCore| {
         if let Some(ram) = core.save_ram() {
-            if let Err(e) = std::fs::write(&files.sram, ram) {
+            if let Err(e) = crate::saves::write_atomic(&files.sram, ram) {
                 log::warn!("game save not written: {e}");
             }
         }
@@ -374,11 +395,28 @@ fn emu_thread(
                     });
                 }
                 Command::LoadState(slot) => {
-                    let _ = events.send(match load_slot(&core, &files, slot) {
-                        Ok(()) => Event::StateLoaded { slot },
-                        Err(error) => Event::Error { error },
+                    let _ =
+                        events.send(match load_undoable(&core, &files, slot, &mut before_load) {
+                            Ok(()) => Event::StateLoaded { slot },
+                            Err(error) => Event::Error { error },
+                        });
+                }
+                Command::UndoLoad => {
+                    let _ = events.send(match before_load.take() {
+                        Some(data) => match core.load_state(&data) {
+                            Ok(()) => Event::LoadUndone,
+                            Err(e) => Event::Error {
+                                error: ErrorCode::UndoFailed {
+                                    detail: format!("{e:#}"),
+                                },
+                            },
+                        },
+                        None => Event::Error {
+                            error: ErrorCode::NothingToUndo,
+                        },
                     });
                 }
+                Command::SetCoreOption { key, value } => callbacks::set_core_option(key, value),
                 Command::Reset => unsafe { (core.reset)() },
                 Command::Stop => break 'main,
             }
@@ -433,6 +471,19 @@ fn emu_thread(
     drop(core);
     callbacks::clear();
     let _ = events.send(Event::Stopped);
+}
+
+/// [`load_slot`], keeping the state from before it in `before` when it succeeds.
+fn load_undoable(
+    core: &LoadedCore,
+    files: &GameFiles,
+    slot: u8,
+    before: &mut Option<Vec<u8>>,
+) -> Result<(), ErrorCode> {
+    let state = core.save_state().ok();
+    load_slot(core, files, slot)?;
+    *before = state;
+    Ok(())
 }
 
 /// Reads a slot and hands it to the core, telling an empty slot from a broken one.

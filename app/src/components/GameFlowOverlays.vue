@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // What the game flow shows over the game or the shell (boards «Stati» and «Errori»):
 // G01 starting, G02 cannot start, G06 the quick-menu hint, G14 closing, the resume question,
-// E11 the emulator stopped, E12 slower than normal. State in gameFlow.ts; App.vue reacts to the
+// E04 the in-game save cannot be read, E11 the emulator stopped, E12 slower than normal. State in gameFlow.ts; App.vue reacts to the
 // emitted choices.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { flow } from '../gameFlow'
+import { saveWhenLabel } from '../i18n/labels'
 import FlowDialog from './FlowDialog.vue'
 
 const emit = defineEmits<{
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   crashLibrary: []
   crashResume: []
   slowClose: []
+  brokenUse: []
+  brokenClose: []
 }>()
 
 const { t, locale } = useI18n()
@@ -74,6 +77,34 @@ const savedWhen = computed(() => {
     <p class="p">{{ flow.startError.reason }}</p>
     <template #actions>
       <button class="btn btn-primary" data-nav-initial @click="emit('startErrorClose')">
+        {{ t('flow.gotIt') }}
+      </button>
+    </template>
+  </FlowDialog>
+
+  <!-- E04: the in-game save cannot be read (set aside by the backend). -->
+  <!-- TODO(E04): «Apri la cartella» needs an opener for folders (no plugin yet). -->
+  <FlowDialog
+    v-if="flow.saveBroken"
+    :title="t('flow.brokenTitle', { title: flow.saveBroken.title })"
+    tone="warning"
+    @back="emit('brokenClose')"
+  >
+    <template v-if="flow.saveBroken.backupAt !== null">
+      <p class="p">{{ t('flow.brokenText') }}</p>
+      <div class="backup-row num">
+        {{ t('flow.brokenBackup', { when: saveWhenLabel(flow.saveBroken.backupAt) }) }}
+      </div>
+    </template>
+    <p v-else class="p">{{ t('flow.brokenNoBackup') }}</p>
+    <template #actions>
+      <template v-if="flow.saveBroken.backupAt !== null">
+        <button class="btn" @click="emit('brokenClose')">{{ t('flow.notNow') }}</button>
+        <button class="btn btn-primary" data-nav-initial @click="emit('brokenUse')">
+          {{ t('flow.brokenUse', { when: saveWhenLabel(flow.saveBroken.backupAt) }) }}
+        </button>
+      </template>
+      <button v-else class="btn btn-primary" data-nav-initial @click="emit('brokenClose')">
         {{ t('flow.gotIt') }}
       </button>
     </template>
@@ -224,6 +255,15 @@ kbd {
 }
 .p {
   margin: 0;
+}
+/* E04: the backup offered, as a row (board E04). */
+.backup-row {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-10);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
 }
 @media (prefers-reduced-motion: reduce) {
   .bar span {

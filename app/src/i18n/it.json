@@ -118,7 +118,8 @@
     "gamepadConnected": "Controller collegato: {name}",
     "gamepadDisconnected": "Controller scollegato: {name}",
     "gamepadUnnamed": "Controller",
-    "slot": "Slot {slot}"
+    "slot": "Slot {slot}",
+    "loadUndone": "Caricamento annullato"
   },
   "console": {
     "gb": "Game Boy",
@@ -148,7 +149,13 @@
     "libraryGameUnavailable": "Il file di questo gioco ora non è raggiungibile. Ricollega il disco che lo contiene o scegli un’altra cartella.",
     "libraryWriteFailed": "Non è stato possibile salvare la libreria: {detail}. Controlla che la cartella dei dati sia scrivibile e riprova.",
     "coverInvalid": "Questa immagine non si può usare come copertina: {detail}. Scegli un’immagine PNG, JPEG o WebP.",
-    "unexpected": "Qualcosa è andato storto: {detail}"
+    "unexpected": "Qualcosa è andato storto: {detail}",
+    "nothingToUndo": "Non c’è un caricamento da annullare.",
+    "undoFailed": "Non riesco a tornare a prima del caricamento: {detail}. Carica un altro salvataggio rapido.",
+    "saveUnreadable": "Il salvataggio del gioco non si legge, quindi EmuDome l’ha messo da parte. Ripristina un backup da Salvataggi.",
+    "saveGameOpen": "Questo gioco è aperto. Chiudilo e riprova.",
+    "saveImportInvalid": "Questo file non è un salvataggio che EmuDome sa importare ({detail}). Scegli un file .sav, .dsv o .duc.",
+    "saveFileFailed": "Non riesco a usare il file del salvataggio: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova."
   },
   "consoleShort": {
     "gb": "GB",
@@ -1604,7 +1611,12 @@
     "resumeAuto": "Riprendi dal salvataggio automatico",
     "slowTitle": "Il gioco va più lento del normale ({fps} FPS su {target})",
     "slowText": "Questo dispositivo fatica a tenere il gioco alla velocità giusta. Prova la preimpostazione «Prestazioni massime» nelle Impostazioni.",
-    "notNow": "Non ora"
+    "notNow": "Non ora",
+    "brokenTitle": "Il salvataggio di {title} non si legge",
+    "brokenText": "Il file è rovinato, forse per una copia interrotta. Puoi usare il backup più recente; il file rovinato resta da parte, nel caso.",
+    "brokenNoBackup": "Il file è rovinato, forse per una copia interrotta, e non c’è un backup da usare. Il file rovinato resta da parte; se apri di nuovo il gioco, riparte senza salvataggio.",
+    "brokenBackup": "Backup di {when}",
+    "brokenUse": "Usa il backup di {when}"
   },
   "qm": {
     "label": "Menu rapido",
@@ -1651,7 +1663,8 @@
     "saveGame": "Salva per questo gioco",
     "saveConsole": "Salva invece per tutti i giochi {console}",
     "resume": "Riprendi il gioco",
-    "notYet": "Arriva con un prossimo aggiornamento"
+    "notYet": "Arriva con un prossimo aggiornamento",
+    "undoLoad": "Annulla il caricamento"
   },
   "controls": {
     "keyboard": "Tastiera",
@@ -1832,5 +1845,96 @@
     "keyboardOnly": "Tastiera: {key}",
     "stickLabel": "Posizione attuale dello stick sinistro",
     "stickHint": "Muovi lo stick: il cerchio tratteggiato è la zona morta, il punto viola la posizione attuale."
+  },
+  "saves": {
+    "import": "Importa…",
+    "search": "Cerca un gioco",
+    "games": "Giochi con salvataggi",
+    "metaQuick": "1 salvataggio rapido · {size} | {n} salvataggi rapidi · {size}",
+    "metaInGame": "Solo salvataggio del gioco · {size}",
+    "gameMeta": "{console} · {meta}",
+    "details": "Dettagli del gioco",
+    "brokenBadge": "Salvataggio rovinato",
+    "noneShown": "Nessun gioco corrisponde alla ricerca.",
+    "inGameTitle": "SALVATAGGIO DEL GIOCO",
+    "inGameLine": "Salvato {when} · {size}",
+    "noInGame": "Questo gioco non ha ancora scritto un salvataggio.",
+    "export": "Esporta…",
+    "quickTitle": "SALVATAGGI RAPIDI",
+    "noQuick": "Nessun salvataggio rapido. Salva dal menu rapido mentre giochi.",
+    "backupsTitle": "BACKUP DEL SALVATAGGIO DEL GIOCO",
+    "noBackups": "Ancora nessun backup.",
+    "restore": "Ripristina",
+    "reason": {
+      "launch": "Avvio del gioco",
+      "import": "Prima dell’importazione",
+      "restore": "Prima di un ripristino"
+    },
+    "backupNote": "Un backup viene fatto a ogni avvio del gioco e prima di ogni importazione. Ripristinare crea a sua volta un backup.",
+    "brokenNote": "Il salvataggio del gioco non si leggeva ed è stato messo da parte ({file}). Ripristina un backup qui sotto.",
+    "exported": "Salvataggio esportato",
+    "restored": "Backup ripristinato",
+    "deleted": "Salvataggio rapido eliminato",
+    "imported": "Salvataggio importato",
+    "when": {
+      "today": "oggi alle {time}",
+      "yesterday": "ieri alle {time}",
+      "date": "{date} alle {time}"
+    },
+    "quick": {
+      "load": "Apri il gioco e carica",
+      "overwriteHint": "Per sovrascriverlo, apri il gioco e salva dal menu rapido.",
+      "delete": "Elimina",
+      "close": "Chiudi",
+      "deleteTitle": "Vuoi eliminare il salvataggio rapido in {slot}?",
+      "deleteText": "Non si può annullare.",
+      "deleteConfirm": "Elimina {slot}",
+      "cancel": "Annulla"
+    },
+    "empty": {
+      "title": "Ancora nessun salvataggio",
+      "text1min": "Quando giochi, EmuDome salva in automatico ogni minuto e quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con L3 + R1.",
+      "text5min": "Quando giochi, EmuDome salva in automatico ogni 5 minuti e quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con L3 + R1.",
+      "textNever": "Quando giochi, EmuDome salva in automatico quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con L3 + R1.",
+      "openLibrary": "Apri la libreria",
+      "import": "Importa salvataggi…",
+      "formats": "Anche da DeSmuME e da altri emulatori: .sav, .dsv, .duc"
+    },
+    "importer": {
+      "title": "Importa un salvataggio",
+      "intro": "Da DeSmuME, da un backup Action Replay o da un altro emulatore. Prima dell’importazione EmuDome fa un backup del salvataggio attuale.",
+      "file": "File scelto",
+      "noFile": "Nessun file scelto.",
+      "pick": "Scegli un file…",
+      "change": "Cambia file…",
+      "format": {
+        "raw": "{file} · salvataggio di un altro emulatore",
+        "desmume": "{file} · riconosciuto come salvataggio di DeSmuME",
+        "actionReplay": "{file} · riconosciuto come backup Action Replay"
+      },
+      "game": "Gioco",
+      "gameFound": "{title} ({console}) · trovato dal nome del file",
+      "gameChosen": "{title} ({console})",
+      "gameNone": "Scegli il gioco a cui appartiene il salvataggio.",
+      "chooseGame": "Scegli il gioco…",
+      "otherGame": "Scegli un altro gioco…",
+      "replaceWarn": "Questo gioco ha già un salvataggio ({when}). Verrà sostituito; la versione attuale resta tra i backup.",
+      "cancel": "Annulla",
+      "replace": "Importa e sostituisci",
+      "go": "Importa",
+      "formats": "Formati: DeSmuME (.dsv), Action Replay (.duc), file .sav di altri emulatori. Per esportare un salvataggio, scegli il gioco e usa «Esporta…».",
+      "pickTitle": "Scegli il gioco"
+    },
+    "conflict": {
+      "title": "Due versioni dello stesso salvataggio",
+      "text": "{title} è stato salvato su due dispositivi dopo l’ultima sincronizzazione. Scegli quale usare: l’altra resta tra i backup.",
+      "saved": "Salvato",
+      "playTime": "Tempo di gioco",
+      "size": "Dimensione",
+      "newest": "Più recente",
+      "keepThis": "Tieni questa",
+      "keepBoth": "Tienile entrambe",
+      "later": "Decidi dopo, apro la versione di questo dispositivo"
+    }
   }
 }

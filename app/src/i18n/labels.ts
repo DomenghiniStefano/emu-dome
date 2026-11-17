@@ -66,3 +66,40 @@ export function lastPlayedLabel(ms: number, now = Date.now()): string {
     sameYear ? { month: 'long' } : { month: 'long', year: 'numeric' },
   ).format(then)
 }
+
+/** A file size for the Saves section: "8 KB", "1.8 MB" / "1,8 MB" in the UI language. */
+export function sizeLabel(bytes: number): string {
+  const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte'] as const
+  let value = bytes
+  let i = 0
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024
+    i++
+  }
+  return new Intl.NumberFormat(i18n.global.locale.value, {
+    style: 'unit',
+    unit: units[i],
+    unitDisplay: 'short',
+    maximumFractionDigits: value < 10 && i > 0 ? 1 : 0,
+  }).format(value)
+}
+
+/** When a save was written, as the Saves boards write it: "today at 08:12", "yesterday at
+ * 22:41", "12 Nov at 19:02" (with the year when it is not this one). */
+export function saveWhenLabel(ms: number, now = Date.now()): string {
+  const locale = i18n.global.locale.value
+  const then = new Date(ms)
+  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(then)
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const days = Math.round((day(new Date(now)) - day(then)) / 86_400_000)
+  if (days === 0) return t('saves.when.today', { time })
+  if (days === 1) return t('saves.when.yesterday', { time })
+  const sameYear = then.getFullYear() === new Date(now).getFullYear()
+  const date = new Intl.DateTimeFormat(
+    locale,
+    sameYear
+      ? { day: 'numeric', month: 'short' }
+      : { day: 'numeric', month: 'short', year: 'numeric' },
+  ).format(then)
+  return t('saves.when.date', { date, time })
+}
