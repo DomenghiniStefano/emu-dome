@@ -4,8 +4,8 @@
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
 //!
-//! Slider ranges and steps are not in the design, which gives only the default: the ranges below
-//! are a sensible guess that contains the default on the step grid, and Cowork confirms them in 2b.
+//! Slider ranges and steps, the chips' defaults and the per-option platforms are Cowork's
+//! (design review of 2026-11-17, Trello #26).
 
 use super::schema::{
     ActionStyle, BindingTable, ChoiceStyle, DefaultValue, Entry, Kind, Levels, PageGroup, Platform,
@@ -75,6 +75,7 @@ const fn choice(
             style,
             options,
             more_at_runtime: false,
+            option_platforms: &[],
         },
         DefaultValue::Text(default),
         levels,
@@ -124,19 +125,29 @@ const fn sel_more(
         style: ChoiceStyle::List,
         options,
         more_at_runtime: true,
+        option_platforms: &[],
     };
     entry
 }
 
-/// Multiple choice (`chips`). The design gives no default: every option is on.
-// TODO(2b): the default selection from Cowork.
-const fn chips(key: &'static str, options: &'static [&'static str], levels: Levels) -> Entry {
+/// Multiple choice (`chips`) with the options on by default, in order.
+const fn chips(
+    key: &'static str,
+    options: &'static [&'static str],
+    default: &'static [&'static str],
+    levels: Levels,
+) -> Entry {
     e(
         key,
         Kind::Multi { options },
-        DefaultValue::List(options),
+        DefaultValue::List(default),
         levels,
     )
+}
+
+/// Cards that each apply a bundle of settings (`presets.preset`): no stored value.
+const fn apply(key: &'static str, options: &'static [&'static str], levels: Levels) -> Entry {
+    e(key, Kind::Apply { options }, DefaultValue::None, levels)
 }
 
 const fn slider(
@@ -223,6 +234,29 @@ impl Entry {
         }
     }
 
+    /// Options of a choice that exist only on some devices.
+    const fn options_on(self, option_platforms: &'static [(&'static str, Platform)]) -> Self {
+        if let Kind::Choice {
+            style,
+            options,
+            more_at_runtime,
+            ..
+        } = self.kind
+        {
+            Self {
+                kind: Kind::Choice {
+                    style,
+                    options,
+                    more_at_runtime,
+                    option_platforms,
+                },
+                ..self
+            }
+        } else {
+            self
+        }
+    }
+
     /// Ships in a later roadmap phase.
     const fn phase(self, phase: u8) -> Self {
         Self { phase, ..self }
@@ -247,13 +281,13 @@ pub static ENTRIES: &[Entry] = &[
         ALL,
     ),
     seg("video.filter", &["none", "light", "soft"], "light", ALL),
-    // `blurred_game` is PC only in the design: per-option platforms come with 2b.
     cards(
         "video.surround",
         &["black", "cover", "blur", "builtin", "image"],
         "black",
         ALL,
-    ),
+    )
+    .options_on(&[("blur", Platform::Desktop)]),
     cards(
         "video.surroundSet",
         &["aurora", "sunset", "night", "forest", "graphite", "grid"],
@@ -261,7 +295,7 @@ pub static ENTRIES: &[Entry] = &[
         ALL,
     ),
     file("video.surroundImg", ALL),
-    pct("video.surroundDim", 40, ALL),
+    slider("video.surroundDim", 40, (0, 80, 5), Unit::Percent, ALL),
     sw("video.surroundAnim", false, G),
     sw("video.fps", false, G),
     seg(
@@ -324,18 +358,20 @@ pub static ENTRIES: &[Entry] = &[
         ALL,
     ),
     pct("fx.fxint", 60, ALL),
-    slider("fx.fxbright", 110, (50, 150, 5), Unit::Percent, ALL),
+    slider("fx.fxbright", 110, (80, 150, 5), Unit::Percent, ALL),
     act("fx.fxfile", G),
     // ---- Schermi di DS e 3DS (screens) ----
     chips(
         "screens.cycle",
+        &["vertical", "side", "big_small", "top_only"],
         &["vertical", "side", "big_small", "top_only"],
         CG,
     )
     .phase(2),
     link("screens.custom", GM).phase(2),
     slider("screens.ratio", 70, (50, 90, 5), Unit::Percent, CG).phase(2),
-    slider("screens.gap", 0, (0, 100, 1), Unit::Px, CG).phase(2),
+    // Its «Come sul DS» button sets 90 px (the real gap at 1×).
+    slider("screens.gap", 0, (0, 120, 1), Unit::Px, CG).phase(2),
     seg(
         "screens.rot",
         &["none", "left", "right", "flip"],
@@ -365,13 +401,14 @@ pub static ENTRIES: &[Entry] = &[
     chips(
         "speed.splist",
         &["0.5", "1", "1.5", "2", "3", "4", "max"],
+        &["0.5", "1", "2", "4", "max"],
         G,
     ),
     seg("speed.ffmode", &["hold", "toggle"], "hold", G),
     seg("speed.ffval", &["2", "3", "4", "max"], "4", GG),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
     sw("speed.rew", true, ALL),
-    slider("speed.rewlen", 30, (10, 120, 5), Unit::Seconds, ALL).device(),
+    slider("speed.rewlen", 30, (10, 120, 10), Unit::Seconds, ALL).device(),
     sel("speed.runahead", &["off", "1", "2", "3"], "off", GM).phase(5),
     // ---- Salvataggi (saves) ----
     seg("saves.slots", &["3", "5", "10"], "10", G),
@@ -379,7 +416,7 @@ pub static ENTRIES: &[Entry] = &[
     sw("saves.autoexit", true, ALL),
     seg("saves.resume", &["ask", "always", "ingame"], "always", ALL),
     sw("saves.undo", true, G),
-    slider("saves.backups", 5, (1, 20, 1), Unit::Copies, G),
+    slider("saves.backups", 5, (0, 10, 1), Unit::Copies, G),
     seg("saves.rtc", &["real", "offset", "fixed"], "real", GM),
     act("saves.import", GM),
     act("saves.savedir", G).device(),
@@ -392,16 +429,17 @@ pub static ENTRIES: &[Entry] = &[
     sel("pad.mod", &["l3", "r3", "select"], "l3", G),
     bindings("pad.combos", BindingTable::Combos, ALL),
     sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC).phase(2),
-    pct("pad.dead", 15, G),
-    pct("pad.stickdpad", 50, GC),
-    pct("pad.trig", 50, G),
-    pct("pad.rumble", 70, GG).phase(2),
+    slider("pad.dead", 15, (0, 50, 1), Unit::Percent, G),
+    slider("pad.stickdpad", 50, (20, 90, 5), Unit::Percent, GC),
+    slider("pad.trig", 50, (10, 90, 5), Unit::Percent, G),
+    slider("pad.rumble", 70, (0, 100, 10), Unit::Percent, GG).phase(2),
     sel(
         "pad.gyro",
         &["controller", "phone", "mouse", "right_stick", "off"],
         "controller",
         CG,
     )
+    .options_on(&[("phone", Platform::Phone)])
     .phase(3),
     sel(
         "pad.pointer",
@@ -409,6 +447,7 @@ pub static ENTRIES: &[Entry] = &[
         "mouse",
         CG,
     )
+    .options_on(&[("touch", Platform::Touch)])
     .phase(2),
     seg("pad.confirm", &["right", "bottom"], "right", G),
     sel("pad.repeat", &["slow", "normal", "fast"], "normal", G),
@@ -421,8 +460,13 @@ pub static ENTRIES: &[Entry] = &[
         .phone()
         .phase(4),
     link("touch.tskin", G).phone().phase(4),
-    pct("touch.topac", 60, ALL).phone().phase(4),
-    pct("touch.thapt", 40, G).device().phone().phase(4),
+    slider("touch.topac", 60, (10, 100, 5), Unit::Percent, ALL)
+        .phone()
+        .phase(4),
+    slider("touch.thapt", 40, (0, 100, 10), Unit::Percent, G)
+        .device()
+        .phone()
+        .phase(4),
     seg("touch.thide", &["never", "5s", "10s"], "never", G)
         .phone()
         .phase(4),
@@ -480,7 +524,7 @@ pub static ENTRIES: &[Entry] = &[
     seg("cloud.sauto", &["game", "manual"], "game", G),
     sw("cloud.swifi", true, G).device().phone(),
     // ---- Accessibilità (a11y) ----
-    slider("a11y.textsize", 100, (80, 200, 10), Unit::Percent, G).device(),
+    slider("a11y.textsize", 100, (80, 150, 10), Unit::Percent, G).device(),
     seg("a11y.motion", &["system", "on", "off"], "system", G),
     seg("a11y.transp", &["system", "on", "off"], "system", G),
     sw("a11y.toggle", false, G),
@@ -491,11 +535,11 @@ pub static ENTRIES: &[Entry] = &[
         GG,
     ),
     // ---- Preimpostazioni (presets) ----
-    // TODO(2b): the design gives no default preset; the first one stands in.
-    cards(
+    // An action, not a value: applying one changes the settings it bundles.
+    // TODO(presets): the bundles, and the confirmation that lists their changes.
+    apply(
         "presets.preset",
         &["faithful", "performance", "quality", "battery"],
-        "faithful",
         G,
     ),
     act("presets.export", G),
@@ -570,7 +614,7 @@ pub static ENTRIES: &[Entry] = &[
     .device(),
     sw("perf.jit", true, CG).phase(2),
     sw("perf.shcache", true, C).device().phase(3),
-    slider("perf.cpuclock", 100, (50, 200, 10), Unit::Percent, GM).phase(3),
+    slider("perf.cpuclock", 100, (50, 400, 25), Unit::Percent, GM).phase(3),
     // ---- Online e integrazioni (online) ----
     // Empty = none («Nessuno»).
     e("online.wfc", Kind::Text, DefaultValue::Text(""), G).phase(2),
@@ -591,6 +635,61 @@ pub static ENTRIES: &[Entry] = &[
     info("about.emaz", G).phase(3),
     link("about.lic", G),
     act("about.log", G),
+];
+
+/// Extra words the settings search matches, in every language, beside the entry's name and
+/// description: `(key, words)`, where a key `<page>.*` covers every entry of the page
+/// (Cowork, Trello #41). Matched without case and accents, like the names.
+pub static SYNONYMS: &[(&str, &[&str])] = &[
+    ("video.vsync", &["tearing", "strappo"]),
+    (
+        "video.scale",
+        &["zoom", "pixel perfect", "integer", "intero"],
+    ),
+    ("video.filter", &["bilineare", "bilinear", "smooth", "blur"]),
+    (
+        "fx.fxpick",
+        &["shader", "filtro", "filter", "crt", "scanline", "lcd"],
+    ),
+    (
+        "video.path",
+        &[
+            "schermo nero",
+            "black screen",
+            "nativo",
+            "native",
+            "webview",
+        ],
+    ),
+    ("video.api", &["vulkan", "directx", "d3d", "opengl"]),
+    ("general.theme", &["dark mode", "modalità scura", "oled"]),
+    (
+        "a11y.textsize",
+        &["font", "carattere", "testo grande", "large text"],
+    ),
+    ("audio.vol", &["suono", "sound"]),
+    ("speed.ffval", &["turbo", "avanti veloce", "fast forward"]),
+    ("speed.rew", &["rewind", "indietro"]),
+    (
+        "perf.frameskip",
+        &["lag", "scatti", "stutter", "lento", "slow"],
+    ),
+    ("speed.runahead", &["input lag", "ritardo", "latency"]),
+    ("perf.jit", &["dynarec", "recompiler"]),
+    ("pad.mod", &["hotkey", "scorciatoie", "shortcuts"]),
+    ("pad.dead", &["deadzone", "drift"]),
+    ("saves.slots", &["save state", "stati", "slot"]),
+    ("saves.autoq", &["autosave"]),
+    ("cloud.ssaves", &["sync", "sincronizzazione", "drive"]),
+    (
+        "video.surround",
+        &["bordi", "borders", "wallpaper", "sfondo"],
+    ),
+    ("bios.*", &["bios", "firmware"]),
+    (
+        "general.lang",
+        &["lingua", "language", "italiano", "english"],
+    ),
 ];
 
 /// The sections of each page, in display order, with their entries in order: the headings the

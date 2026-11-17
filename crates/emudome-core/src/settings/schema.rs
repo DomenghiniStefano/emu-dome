@@ -80,6 +80,8 @@ pub enum Platform {
     Desktop,
     /// «solo telefono».
     Phone,
+    /// Only where there is a touch screen. For now that means the phone.
+    Touch,
 }
 
 /// What this device is, from `emudome_platform`. Mirror: `SettingDevice` in app/src/emu.ts.
@@ -95,8 +97,9 @@ impl Platform {
         match (self, device) {
             (Platform::All, Device::Desktop | Device::Phone)
             | (Platform::Desktop, Device::Desktop)
-            | (Platform::Phone, Device::Phone) => true,
-            (Platform::Desktop, Device::Phone) | (Platform::Phone, Device::Desktop) => false,
+            | (Platform::Phone | Platform::Touch, Device::Phone) => true,
+            (Platform::Desktop, Device::Phone)
+            | (Platform::Phone | Platform::Touch, Device::Desktop) => false,
         }
     }
 }
@@ -149,10 +152,14 @@ pub enum Kind {
     Toggle,
     /// One of `options` (stable ids, snake_case English). Value: the option id.
     /// `more_at_runtime`: the device adds options after these (audio outputs, saved layouts).
+    /// `option_platforms`: options that exist only on some devices (the others are everywhere);
+    /// not serialized: the interface gets the result for its device as `hiddenOptions`.
     Choice {
         style: ChoiceStyle,
         options: &'static [&'static str],
         more_at_runtime: bool,
+        #[serde(skip)]
+        option_platforms: &'static [(&'static str, Platform)],
     },
     /// Any subset of `options` (`chips`). Value: list of option ids.
     Multi { options: &'static [&'static str] },
@@ -173,6 +180,9 @@ pub enum Kind {
     Text,
     /// No value: a button, a link to another screen, information.
     Action { style: ActionStyle },
+    /// No value: cards that each apply a bundle of other settings, after a confirmation that
+    /// lists the changes (`presets.preset`). Nothing is ever «selected».
+    Apply { options: &'static [&'static str] },
     /// A binding list edited in the Controls section, shown as a link in the settings pages
     /// (`pad.remap`, `pad.combos`). Value: list of overrides, shapes in `crate::bindings`.
     Bindings { table: BindingTable },
@@ -232,9 +242,63 @@ impl Entry {
         self.key.split_once('.').map_or(self.key, |(page, _)| page)
     }
 
-    /// Whether the entry holds a value (actions do not).
+    /// Whether the entry holds a value (actions and presets do not).
     pub fn has_value(&self) -> bool {
-        !matches!(self.kind, Kind::Action { .. })
+        !matches!(self.kind, Kind::Action { .. } | Kind::Apply { .. })
+    }
+
+    /// Whether option `id` of a choice is offered on `device` (options without a platform of
+    /// their own are offered wherever the entry is).
+    pub fn offers(&self, id: &str, device: Device) -> bool {
+        match self.kind {
+            Kind::Choice {
+                option_platforms, ..
+            } => option_platforms
+                .iter()
+                .find(|(option, _)| *option == id)
+                .is_none_or(|(_, platform)| platform.includes(device)),
+            Kind::Toggle
+            | Kind::Multi { .. }
+            | Kind::Slider { .. }
+            | Kind::File
+            | Kind::Folders
+            | Kind::Colour { .. }
+            | Kind::Text
+            | Kind::Action { .. }
+            | Kind::Apply { .. }
+            | Kind::Bindings { .. } => true,
+        }
+    }
+
+    /// The options of a choice that `device` does not offer, in catalogue order.
+    pub fn hidden_options(&self, device: Device) -> Vec<&'static str> {
+        match self.kind {
+            Kind::Choice { options, .. } => options
+                .iter()
+                .copied()
+                .filter(|id| !self.offers(id, device))
+                .collect(),
+            Kind::Toggle
+            | Kind::Multi { .. }
+            | Kind::Slider { .. }
+            | Kind::File
+            | Kind::Folders
+            | Kind::Colour { .. }
+            | Kind::Text
+            | Kind::Action { .. }
+            | Kind::Apply { .. }
+            | Kind::Bindings { .. } => Vec::new(),
+        }
+    }
+
+    /// Whether `value` is valid and, for a choice, offered on `device`. A stored value that
+    /// another device offers (synced files) is skipped here, never rewritten.
+    pub fn accepts_value_on(&self, value: &Value, device: Device) -> bool {
+        self.accepts_value(value)
+            && match value {
+                Value::Text(id) => self.offers(id, device),
+                Value::Bool(_) | Value::Int(_) | Value::List(_) => true,
+            }
     }
 
     pub fn default_value(&self) -> Option<Value> {
@@ -268,6 +332,7 @@ impl Entry {
                 | Kind::Colour { .. }
                 | Kind::Text
                 | Kind::Action { .. }
+                | Kind::Apply { .. }
                 | Kind::Bindings { .. },
                 Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_),
             ) => false,
@@ -339,6 +404,24 @@ pub struct EntryDto {
     pub per_device: bool,
     pub platform: Platform,
     pub phase: u8,
+    /// Options of a choice this device does not offer: the interface does not show them.
+    pub hidden_options: Vec<&'static str>,
+    /// Extra words the search matches, in any language (`catalog::SYNONYMS`).
+    pub synonyms: Vec<&'static str>,
+}
+
+/// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
+pub fn synonyms(key: &str) -> Vec<&'static str> {
+    super::catalog::SYNONYMS
+        .iter()
+        .filter(|(pattern, _)| {
+            *pattern == key
+                || pattern
+                    .strip_suffix('*')
+                    .is_some_and(|prefix| key.starts_with(prefix))
+        })
+        .flat_map(|(_, words)| words.iter().copied())
+        .collect()
 }
 
 /// The whole schema for this device.
@@ -360,6 +443,8 @@ pub fn schema(device: Device) -> SchemaDto {
                 per_device: e.per_device,
                 platform: e.platform,
                 phase: e.phase,
+                hidden_options: e.hidden_options(device),
+                synonyms: synonyms(e.key),
             })
             .collect(),
     }

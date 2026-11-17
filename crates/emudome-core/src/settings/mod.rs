@@ -24,8 +24,8 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 pub use schema::{
-    entry, page_entries, schema, ActionStyle, ChoiceStyle, DefaultValue, Device, Entry, Kind,
-    Level, Levels, Platform, SchemaDto, Unit, Value,
+    entry, page_entries, schema, synonyms, ActionStyle, ChoiceStyle, DefaultValue, Device, Entry,
+    Kind, Level, Levels, Platform, SchemaDto, Unit, Value,
 };
 pub(crate) use store::write_atomic;
 use store::{Change, FileId, Store};
@@ -227,7 +227,7 @@ impl Settings {
     pub fn set(&mut self, key: &str, scope: &Scope, value: Value) -> Result<Level, ErrorCode> {
         let entry = known(key)?;
         let level = accepted_level(entry, scope)?;
-        if !entry.has_value() || !entry.accepts_value(&value) {
+        if !entry.has_value() || !entry.accepts_value_on(&value, self.device) {
             return Err(ErrorCode::SettingInvalidValue { key: key.into() });
         }
         match file_of(scope) {
@@ -314,10 +314,7 @@ impl Settings {
             .map(|(key, value)| {
                 let entry = known(key)?;
                 if !entry.levels.accepts(level) {
-                    return Err(ErrorCode::SettingLevelRefused {
-                        key: entry.key.into(),
-                        level,
-                    });
+                    return Err(level_refused(entry, level));
                 }
                 let json =
                     serde_json::to_value(value).map_err(|e| ErrorCode::SettingsWriteFailed {
@@ -402,7 +399,17 @@ impl Settings {
         };
         let json = self.store.get(file, entry.per_device, entry.key)?;
         match serde_json::from_value::<Value>(json.clone()) {
-            Ok(value) if entry.accepts_value(&value) => Some(value),
+            Ok(value) if entry.accepts_value_on(&value, self.device) => Some(value),
+            // Valid, but an option of another device (the synced files are shared): kept in the
+            // file, skipped here.
+            Ok(value) if entry.accepts_value(&value) => {
+                log::debug!(
+                    "{} = {json} at {level:?} is not offered on {:?}: using the weaker levels",
+                    entry.key,
+                    self.device
+                );
+                None
+            }
             Ok(_) | Err(_) => {
                 log::warn!(
                     "settingInvalidValue: {} = {json} at {level:?} ({file:?}): ignored, using the weaker levels",
@@ -424,10 +431,21 @@ fn accepted_level(entry: &Entry, scope: &Scope) -> Result<Level, ErrorCode> {
     if entry.levels.accepts(level) {
         Ok(level)
     } else {
-        Err(ErrorCode::SettingLevelRefused {
-            key: entry.key.into(),
-            level,
-        })
+        Err(level_refused(entry, level))
+    }
+}
+
+/// `entry` cannot be stored at `level`: the error names the levels it can be stored at.
+fn level_refused(entry: &Entry, level: Level) -> ErrorCode {
+    ErrorCode::SettingLevelRefused {
+        key: entry.key.into(),
+        level,
+        levels: entry
+            .levels
+            .list()
+            .into_iter()
+            .filter(|l| *l != Level::Session)
+            .collect(),
     }
 }
 

@@ -37,8 +37,13 @@ pub enum ErrorCode {
     StateInvalid { slot: u8 },
     /// No setting has this key.
     SettingUnknown { key: String },
-    /// The setting cannot be stored at this level (e.g. a global-only one for a single game).
-    SettingLevelRefused { key: String, level: Level },
+    /// The setting cannot be stored at `level` (e.g. a global-only one for a single game);
+    /// `levels` are the ones it can be stored at, weakest first.
+    SettingLevelRefused {
+        key: String,
+        level: Level,
+        levels: Vec<Level>,
+    },
     /// The value does not fit the setting (wrong type, unknown option, out of range), or the
     /// setting holds no value (an action).
     SettingInvalidValue { key: String },
