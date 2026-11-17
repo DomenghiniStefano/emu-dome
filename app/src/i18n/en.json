@@ -9,14 +9,86 @@
   },
   "library": {
     "emptyTitle": "Add your games",
-    "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games.",
+    "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, or drag them here.",
     "chooseFolder": "Choose a folder…",
     "openFile": "Open a file…",
-    "dialogFilter": "GBA games"
+    "dialogFilter": "GBA games",
+    "addGames": "Add games",
+    "yourGames": "Your games",
+    "filterConsole": "Filter by console",
+    "all": "All",
+    "open": "Open {title}",
+    "neverPlayed": "Never played",
+    "meta": "{time} · {when}",
+    "noneShown": "No games match these filters.",
+    "drop": "Drop games or folders to add them",
+    "time": {
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min",
+      "minutes": "{m} min"
+    },
+    "hero": {
+      "label": "LAST PLAYED",
+      "meta": "{console} · {time} played · {when}",
+      "resume": "Resume",
+      "play": "Play",
+      "chooseSave": "Choose a save",
+      "details": "Game details",
+      "autoSave": "Auto quick save"
+    },
+    "sortButton": {
+      "last_played": "Sort by: last played",
+      "name": "Sort by: name",
+      "play_time": "Sort by: play time",
+      "date_added": "Sort by: date added"
+    },
+    "sort": {
+      "last_played": "Last played",
+      "name": "Name",
+      "play_time": "Play time",
+      "date_added": "Date added"
+    },
+    "filters": {
+      "label": "Filter and sort",
+      "sortBy": "SORT BY",
+      "show": "SHOW",
+      "reset": "Reset"
+    },
+    "show": {
+      "favourites": "Favourites only",
+      "unplayed": "Only games never played",
+      "here": "Only those on this device",
+      "hidden": "Hidden games too"
+    },
+    "scan": {
+      "title": "Searching for games",
+      "found": "No games found yet | 1 game found | {found} games found"
+    },
+    "added": {
+      "title": "No games added | 1 game added | {n} games added",
+      "gbAndColor": "Game Boy and Color",
+      "close": "Close the notice"
+    },
+    "unreachable": {
+      "text": "The folder {path} can't be reached: maybe the drive is disconnected. | The folder {path} can't be reached: maybe the drive is disconnected. The game it holds stays in the library, but it won't start. | The folder {path} can't be reached: maybe the drive is disconnected. The {count} games it holds stay in the library, but they won't start.",
+      "choose": "Choose another folder",
+      "hint": "Reconnect the drive and the library updates by itself."
+    },
+    "cover": {
+      "choose": "Choose the cover for {title}",
+      "title": "Choose the cover for {title}",
+      "generated": "Generated",
+      "generatedDesc": "Title and colour from the game's icon",
+      "icon": "Game icon",
+      "iconDesc": "The one inside the game file",
+      "user": "Your image",
+      "userDesc": "Choose an image file",
+      "cancel": "Cancel",
+      "use": "Use this cover"
+    }
   },
   "placeholder": {
-    "line": "This section arrives in a future update.",
-    "chooseFolder": "For now, open one game at a time with “Open a file…”. Choosing a folder arrives in a future update."
+    "line": "This section arrives in a future update."
   },
   "hud": {
     "fps": "{fps} FPS",
@@ -70,6 +142,9 @@
     "slot": "Slot {slot}"
   },
   "console": {
+    "gb": "Game Boy",
+    "gbc": "Game Boy Color",
+    "gba": "Game Boy Advance",
     "nds": "Nintendo DS",
     "3ds": "Nintendo 3DS"
   },
@@ -89,6 +164,18 @@
     "settingLevelRefused": "The setting {key} can't be saved here. Choose another level in the bar at the top.",
     "settingInvalidValue": "That value doesn't fit the setting {key}. Choose one of the values offered.",
     "settingsWriteFailed": "Couldn't save the settings: {detail}. Check that the data folder is writable and try again.",
+    "libraryFolderUnreachable": "The folder {path} can't be reached. Reconnect the drive or choose another folder.",
+    "libraryGameUnknown": "This game is no longer in the library. Search for games again from the library.",
+    "libraryGameUnavailable": "This game's file can't be reached right now. Reconnect the drive that holds it, or choose another folder.",
+    "libraryWriteFailed": "Couldn't save the library: {detail}. Check that the data folder is writable and try again.",
+    "coverInvalid": "That image can't be used as a cover: {detail}. Choose a PNG, JPEG or WebP image.",
     "unexpected": "Something went wrong: {detail}"
+  },
+  "consoleShort": {
+    "gb": "GB",
+    "gbc": "GBC",
+    "gba": "GBA",
+    "nds": "DS",
+    "3ds": "3DS"
   }
 }

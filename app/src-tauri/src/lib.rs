@@ -10,6 +10,7 @@ mod audio;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
 mod gamepad;
+mod library;
 mod settings;
 mod theme;
 mod video;
@@ -90,8 +91,8 @@ fn core_for(path: &Path) -> Result<(&'static str, &'static str, ConsoleId), Erro
         .unwrap_or_default();
     match ext.as_str() {
         "gba" => Ok(("mgba", "GBA", ConsoleId::Gba)),
-        "gb" => Ok(("mgba", "GBA", ConsoleId::Gb)),
-        "gbc" => Ok(("mgba", "GBA", ConsoleId::Gbc)),
+        "gb" => Ok(("mgba", "GB", ConsoleId::Gb)),
+        "gbc" => Ok(("mgba", "GBC", ConsoleId::Gbc)),
         "nds" => Err(ErrorCode::ConsoleNotYet {
             console: "nds".into(),
             phase: 2,
@@ -104,24 +105,59 @@ fn core_for(path: &Path) -> Result<(&'static str, &'static str, ConsoleId), Erro
     }
 }
 
+/// Opens a game file. A file that is in the library opens as that library game (its
+/// identity, title and play time); any other file is identified by its path for now.
 #[tauri::command]
 fn open_game(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     path: String,
 ) -> Result<GameInfo, ErrorCode> {
+    if let Some((id, title, console)) = library::game_at(&app, &path) {
+        return open_library_game(&app, &state, &id, PathBuf::from(path), title, console);
+    }
     let game_path = PathBuf::from(&path);
-    let (core_name, console, console_id) = core_for(&game_path)?;
+    let game = GameId::from_rom_path(&game_path);
+    open_path(&app, &state, game_path, game, None, None)
+}
+
+/// Opens a library game: its settings are those of its content identity, and its play time
+/// counts until it closes.
+fn open_library_game(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    id: &str,
+    game_path: PathBuf,
+    title: String,
+    console: ConsoleId,
+) -> Result<GameInfo, ErrorCode> {
+    // TODO(game identity, Trello #21): settings files saved under the path hash before the
+    // library existed are not moved to the content identity.
+    let game = emudome_core::library::settings_game_id(id)
+        .unwrap_or_else(|| GameId::from_rom_path(&game_path));
+    let info = open_path(app, state, game_path, game, Some(title), Some(console))?;
+    library::begin_play(app, id);
+    Ok(info)
+}
+
+/// Closes the open game, then opens `game_path` with `game` as its settings identity.
+/// `title` and `console` come from the library when known (else the file name and the extension).
+fn open_path(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    game_path: PathBuf,
+    game: GameId,
+    title: Option<String>,
+    console: Option<ConsoleId>,
+) -> Result<GameInfo, ErrorCode> {
+    let (core_name, console_label, ext_console) = core_for(&game_path)?;
     let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref())
         .ok_or_else(|| ErrorCode::CoreNotFound {
             file: emudome_platform::core_file_name(core_name),
         })?;
 
     // Close the previous game before opening another one.
-    settings::end_session(&app);
-    state.native_source(None);
-    *state.current.lock() = None;
-    state.session.lock().take();
+    close_current(app, state);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(
@@ -149,24 +185,32 @@ fn open_game(
     *state.current.lock() = Some(shared.clone());
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
-    settings::begin_session(&app, console_id, GameId::from_rom_path(&game_path));
+    settings::begin_session(app, console.unwrap_or(ext_console), game);
 
     Ok(GameInfo {
-        title: game_path
-            .file_stem()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_default(),
-        console: console.into(),
+        title: title.unwrap_or_else(|| {
+            game_path
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        }),
+        console: console_label.into(),
         core: core_name.into(),
     })
 }
 
-#[tauri::command]
-fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
-    settings::end_session(&app);
+/// Ends the open game: play time, the settings session, video, the emulation thread.
+fn close_current(app: &tauri::AppHandle, state: &AppState) {
+    library::end_play(app);
+    settings::end_session(app);
     state.native_source(None);
     *state.current.lock() = None;
     state.session.lock().take();
+}
+
+#[tauri::command]
+fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+    close_current(&app, &state);
 }
 
 impl AppState {
@@ -368,7 +412,13 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .register_uri_scheme_protocol("emu", |ctx, req| frame_protocol(ctx.app_handle(), &req))
+        .register_uri_scheme_protocol("emu", |ctx, req| {
+            // `emu://cover/<id>`: covers; anything else: the frame.
+            match req.uri().path().strip_prefix("/cover/") {
+                Some(id) => library::cover_response(ctx.app_handle(), id),
+                None => frame_protocol(ctx.app_handle(), &req),
+            }
+        })
         .setup(|app| {
             let (window, ui) = window::create(app)?;
             let size = window.inner_size()?;
@@ -418,6 +468,7 @@ pub fn run() {
             }
 
             app.manage(settings::open(app)?);
+            app.manage(library::open(app)?);
             let data_dir = app.path().app_data_dir()?;
             log::info!("data in {}", data_dir.display());
             app.manage(AppState {
@@ -430,6 +481,7 @@ pub fn run() {
                 resource_dir: app.path().resource_dir().ok(),
                 _audio: audio,
             });
+            library::startup(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -454,7 +506,21 @@ pub fn run() {
             settings::settings_reset,
             settings::settings_session_commit,
             settings::settings_session_discard,
+            library::library_get,
+            library::library_choose_folder,
+            library::library_remove_folder,
+            library::library_add_paths,
+            library::library_scan,
+            library::library_open,
+            library::library_set_cover,
+            library::library_set_flags,
         ])
-        .run(tauri::generate_context!())
-        .expect("EmuDome failed to start");
+        .build(tauri::generate_context!())
+        .expect("EmuDome failed to start")
+        .run(|app, event| {
+            // Quitting with a game open: its play time still counts.
+            if let tauri::RunEvent::Exit = event {
+                library::end_play(app);
+            }
+        });
 }

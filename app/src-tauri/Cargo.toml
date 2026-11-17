@@ -31,6 +31,8 @@ wgpu = "30"
 pollster = "0.4"
 bytemuck = { version = "1", features = ["derive"] }
 cpal = "0.18"
+# Library folder watching (`library.watch`, desktop only at run time: `emudome_platform::PHONE`).
+notify = "8"
 
 # SDL3 is built for the desktop only (Android has no CMake toolchain set up for it and
 # needs SDL's Java side for controllers): Android controllers come later.

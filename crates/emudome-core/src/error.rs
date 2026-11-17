@@ -44,6 +44,16 @@ pub enum ErrorCode {
     SettingInvalidValue { key: String },
     /// A settings file could not be written.
     SettingsWriteFailed { detail: String },
+    /// A library folder cannot be read now (missing, disconnected drive, no permission).
+    LibraryFolderUnreachable { path: String },
+    /// No game in the library has this id.
+    LibraryGameUnknown { id: String },
+    /// The game is in the library but its file cannot be reached now.
+    LibraryGameUnavailable { id: String },
+    /// The library database could not be written.
+    LibraryWriteFailed { detail: String },
+    /// The chosen cover cannot be used (not an image, too large, or no icon in the ROM).
+    CoverInvalid { detail: String },
 }
 
 #[cfg(test)]

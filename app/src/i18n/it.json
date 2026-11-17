@@ -9,14 +9,86 @@
   },
   "library": {
     "emptyTitle": "Aggiungi i tuoi giochi",
-    "emptyLead": "Scegli la cartella dove tieni i tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS.",
+    "emptyLead": "Scegli la cartella dove tieni i tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS, oppure trascinali qui.",
     "chooseFolder": "Scegli una cartella…",
     "openFile": "Apri un file…",
-    "dialogFilter": "Giochi GBA"
+    "dialogFilter": "Giochi GBA",
+    "addGames": "Aggiungi giochi",
+    "yourGames": "I tuoi giochi",
+    "filterConsole": "Filtra per console",
+    "all": "Tutti",
+    "open": "Apri {title}",
+    "neverPlayed": "Mai giocato",
+    "meta": "{time} · {when}",
+    "noneShown": "Nessun gioco corrisponde a questi filtri.",
+    "drop": "Rilascia giochi o cartelle per aggiungerli",
+    "time": {
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min",
+      "minutes": "{m} min"
+    },
+    "hero": {
+      "label": "ULTIMO GIOCO",
+      "meta": "{console} · {time} di gioco · {when}",
+      "resume": "Riprendi",
+      "play": "Gioca",
+      "chooseSave": "Scegli un salvataggio",
+      "details": "Dettagli del gioco",
+      "autoSave": "Salvataggio rapido automatico"
+    },
+    "sortButton": {
+      "last_played": "Ordina per: ultima partita",
+      "name": "Ordina per: nome",
+      "play_time": "Ordina per: tempo di gioco",
+      "date_added": "Ordina per: data di aggiunta"
+    },
+    "sort": {
+      "last_played": "Ultima partita",
+      "name": "Nome",
+      "play_time": "Tempo di gioco",
+      "date_added": "Data di aggiunta"
+    },
+    "filters": {
+      "label": "Filtra e ordina",
+      "sortBy": "ORDINA PER",
+      "show": "MOSTRA",
+      "reset": "Ripristina"
+    },
+    "show": {
+      "favourites": "Solo i preferiti",
+      "unplayed": "Solo i giochi mai giocati",
+      "here": "Solo quelli su questo dispositivo",
+      "hidden": "Anche i giochi nascosti"
+    },
+    "scan": {
+      "title": "Ricerca dei giochi in corso",
+      "found": "Ancora nessun gioco trovato | 1 gioco trovato | {found} giochi trovati"
+    },
+    "added": {
+      "title": "Nessun gioco aggiunto | 1 gioco aggiunto | {n} giochi aggiunti",
+      "gbAndColor": "Game Boy e Color",
+      "close": "Chiudi l’avviso"
+    },
+    "unreachable": {
+      "text": "La cartella {path} non è raggiungibile: forse il disco è scollegato. | La cartella {path} non è raggiungibile: forse il disco è scollegato. Il gioco che contiene resta in libreria, ma non si avvia. | La cartella {path} non è raggiungibile: forse il disco è scollegato. I {count} giochi che contiene restano in libreria, ma non si avviano.",
+      "choose": "Scegli un’altra cartella",
+      "hint": "Ricollega il disco e la libreria si aggiorna da sola."
+    },
+    "cover": {
+      "choose": "Scegli la copertina di {title}",
+      "title": "Scegli la copertina di {title}",
+      "generated": "Generata",
+      "generatedDesc": "Titolo e colore dall’icona del gioco",
+      "icon": "Icona del gioco",
+      "iconDesc": "Quella contenuta nel file del gioco",
+      "user": "Immagine tua",
+      "userDesc": "Scegli un file immagine",
+      "cancel": "Annulla",
+      "use": "Usa questa copertina"
+    }
   },
   "placeholder": {
-    "line": "Questa sezione arriva con un prossimo aggiornamento.",
-    "chooseFolder": "Per ora apri un gioco alla volta con «Apri un file…». La scelta della cartella arriva con un prossimo aggiornamento."
+    "line": "Questa sezione arriva con un prossimo aggiornamento."
   },
   "hud": {
     "fps": "{fps} FPS",
@@ -70,6 +142,9 @@
     "slot": "Slot {slot}"
   },
   "console": {
+    "gb": "Game Boy",
+    "gbc": "Game Boy Color",
+    "gba": "Game Boy Advance",
     "nds": "Nintendo DS",
     "3ds": "Nintendo 3DS"
   },
@@ -89,6 +164,18 @@
     "settingLevelRefused": "L'impostazione {key} non si può salvare qui. Scegli un altro livello nella barra in alto.",
     "settingInvalidValue": "Questo valore non va bene per l'impostazione {key}. Scegli uno dei valori proposti.",
     "settingsWriteFailed": "Non è stato possibile salvare le impostazioni: {detail}. Controlla che la cartella dei dati sia scrivibile e riprova.",
+    "libraryFolderUnreachable": "La cartella {path} non è raggiungibile. Ricollega il disco o scegli un’altra cartella.",
+    "libraryGameUnknown": "Questo gioco non è più nella libreria. Cerca di nuovo i giochi dalla libreria.",
+    "libraryGameUnavailable": "Il file di questo gioco ora non è raggiungibile. Ricollega il disco che lo contiene o scegli un’altra cartella.",
+    "libraryWriteFailed": "Non è stato possibile salvare la libreria: {detail}. Controlla che la cartella dei dati sia scrivibile e riprova.",
+    "coverInvalid": "Questa immagine non si può usare come copertina: {detail}. Scegli un’immagine PNG, JPEG o WebP.",
     "unexpected": "Qualcosa è andato storto: {detail}"
+  },
+  "consoleShort": {
+    "gb": "GB",
+    "gbc": "GBC",
+    "gba": "GBA",
+    "nds": "DS",
+    "3ds": "3DS"
   }
 }

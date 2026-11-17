@@ -206,7 +206,7 @@ fn write_failed(e: impl std::fmt::Display) -> ErrorCode {
 
 /// Writes a temporary file next to `path`, flushes it to disk, then renames it over `path`
 /// (a replace on every OS): a crash leaves either the old file or the new one, never half.
-pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
