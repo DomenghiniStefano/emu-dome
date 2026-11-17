@@ -75,14 +75,16 @@ pub fn config_generation() -> u64 {
 /// «Tutti i giochi» without a game. `None` while the settings are not open yet.
 pub fn current_config(app: &AppHandle) -> Option<PadConfig> {
     let state = app.try_state::<SettingsState>()?;
-    let mut settings = state.0.lock();
-    let scope = if settings.session_scope().is_some() {
+    // `resolve` needs `&mut` and `from_settings` takes an `Fn`: borrow the lock per call.
+    let settings = std::cell::RefCell::new(state.0.lock());
+    let scope = if settings.borrow().session_scope().is_some() {
         Scope::Session
     } else {
         Scope::Global
     };
     Some(PadConfig::from_settings(|key| {
-        match settings.resolve(key, &scope) {
+        let resolved = settings.borrow_mut().resolve(key, &scope);
+        match resolved {
             Ok(r) => r.value,
             Err(e) => {
                 log::warn!("{key} unavailable: {e:?}");

@@ -561,7 +561,8 @@ fn choices_have_unique_well_formed_options() {
             | Kind::Folders
             | Kind::Colour { .. }
             | Kind::Text
-            | Kind::Action { .. } => continue,
+            | Kind::Action { .. }
+            | Kind::Bindings { .. } => continue,
         };
         assert!(!options.is_empty(), "{}: no options", e.key);
         let unique: HashSet<_> = options.iter().collect();
