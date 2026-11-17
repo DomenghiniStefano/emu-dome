@@ -6,6 +6,7 @@
 //! Commands (called through `app/src/emu.ts` only): `gamepad_list`, `gamepad_watch`,
 //! `gamepad_capture`, `controls_bindings`.
 //! Events: `emu://gamepad-connected` / `emu://gamepad-disconnected` (a [`PadInfo`]),
+//! `emu://gamepad-changed` (a [`PadInfo`] whose battery changed),
 //! `emu://pad-state` (a [`PadStates`], only while the interface watches).
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -20,7 +21,7 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::settings::SettingsState;
 
-/// A connected controller. Payload of `emu://gamepad-connected|disconnected`.
+/// A connected controller. Payload of `emu://gamepad-connected|disconnected|changed`.
 /// Mirror: `PadInfo` in app/src/emu.ts. `name` is `None` when SDL knows none.
 #[derive(Clone, Debug, Serialize)]
 pub struct PadInfo {
@@ -29,6 +30,9 @@ pub struct PadInfo {
     pub family: Family,
     pub vendor: u16,
     pub product: u16,
+    /// Battery charge left, 0..=100 (SDL's estimate); `None` when the controller has no battery
+    /// (wired) or does not say.
+    pub battery: Option<u8>,
 }
 
 /// One pad's live state for the tester and the capture field. Mirror: `PadState`.

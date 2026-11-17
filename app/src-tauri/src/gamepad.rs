@@ -18,12 +18,13 @@
 //!
 //! Events to the interface:
 //! - `emu://gamepad-connected`, `emu://gamepad-disconnected`: a [`PadInfo`];
+//! - `emu://gamepad-changed`: a [`PadInfo`] whose battery charge changed;
 //! - `emu://menu`: open/close the quick menu (Guide, or L3 + Start);
 //! - `emu://nav`: a [`NavEvent`], one focus step in the interface;
 //! - `emu://hotkey`: a [`HotkeyEvent`], what a combo changed that the interface shows;
 //! - `emu://pad-state`: a [`PadStates`], while the interface watches (`gamepad_watch`).
 
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, c_int, CStr};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -35,12 +36,13 @@ use emudome_core::{Command, Speed};
 use sdl3_sys::error::SDL_GetError;
 use sdl3_sys::events::{
     SDL_Event, SDL_PollEvent, SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMOVED,
+    SDL_EVENT_JOYSTICK_BATTERY_UPDATED,
 };
 use sdl3_sys::gamepad::{
     SDL_CloseGamepad, SDL_Gamepad, SDL_GamepadAxis, SDL_GamepadButton, SDL_GamepadType,
-    SDL_GetGamepadAxis, SDL_GetGamepadButton, SDL_GetGamepadName, SDL_GetGamepadProduct,
-    SDL_GetGamepadStringForType, SDL_GetGamepadType, SDL_GetGamepadVendor, SDL_OpenGamepad,
-    SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY, SDL_GAMEPAD_AXIS_LEFT_TRIGGER,
+    SDL_GetGamepadAxis, SDL_GetGamepadButton, SDL_GetGamepadName, SDL_GetGamepadPowerInfo,
+    SDL_GetGamepadProduct, SDL_GetGamepadStringForType, SDL_GetGamepadType, SDL_GetGamepadVendor,
+    SDL_OpenGamepad, SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY, SDL_GAMEPAD_AXIS_LEFT_TRIGGER,
     SDL_GAMEPAD_AXIS_RIGHTX, SDL_GAMEPAD_AXIS_RIGHTY, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER,
     SDL_GAMEPAD_BUTTON_BACK, SDL_GAMEPAD_BUTTON_DPAD_DOWN, SDL_GAMEPAD_BUTTON_DPAD_LEFT,
     SDL_GAMEPAD_BUTTON_DPAD_RIGHT, SDL_GAMEPAD_BUTTON_DPAD_UP, SDL_GAMEPAD_BUTTON_EAST,
@@ -57,6 +59,9 @@ use sdl3_sys::hints::{
 };
 use sdl3_sys::init::{SDL_Init, SDL_INIT_GAMEPAD};
 use sdl3_sys::joystick::SDL_JoystickID;
+use sdl3_sys::power::{
+    SDL_PowerState, SDL_POWERSTATE_CHARGED, SDL_POWERSTATE_CHARGING, SDL_POWERSTATE_ON_BATTERY,
+};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -245,6 +250,26 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
                     hotkeys.emit("emu://gamepad-connected", pad.info.clone());
                     shared_pads.list.lock().push(pad.info.clone());
                     pads.push(pad);
+                }
+            } else if kind == SDL_EVENT_JOYSTICK_BATTERY_UPDATED {
+                let (id, state, percent) = unsafe {
+                    (
+                        event.jbattery.which,
+                        event.jbattery.state,
+                        event.jbattery.percent,
+                    )
+                };
+                if let Some(pad) = pads.iter_mut().find(|p| p.id == id) {
+                    let battery = battery(state, percent);
+                    if pad.info.battery != battery {
+                        pad.info.battery = battery;
+                        for listed in shared_pads.list.lock().iter_mut() {
+                            if listed.id == pad.info.id {
+                                listed.battery = battery;
+                            }
+                        }
+                        hotkeys.emit("emu://gamepad-changed", pad.info.clone());
+                    }
                 }
             } else if kind == SDL_EVENT_GAMEPAD_REMOVED {
                 let id = unsafe { event.gdevice.which };
@@ -464,6 +489,19 @@ fn family(kind: SDL_GamepadType) -> Family {
     }
 }
 
+/// The charge to show from SDL's power info: a percentage while on battery (charging or not),
+/// `None` for wired controllers and when SDL cannot tell.
+fn battery(state: SDL_PowerState, percent: c_int) -> Option<u8> {
+    let on_battery = state == SDL_POWERSTATE_ON_BATTERY
+        || state == SDL_POWERSTATE_CHARGING
+        || state == SDL_POWERSTATE_CHARGED;
+    if on_battery {
+        u8::try_from(percent).ok().filter(|p| *p <= 100)
+    } else {
+        None
+    }
+}
+
 /// Opens the controller and logs its name, type and USB ids, so whoever tests
 /// can tell exactly which model is connected.
 fn open(id: SDL_JoystickID, config: &PadConfig) -> Option<Pad> {
@@ -482,12 +520,15 @@ fn open(id: SDL_JoystickID, config: &PadConfig) -> Option<Pad> {
         let sdl_type = SDL_GetGamepadType(raw);
         let kind = text(SDL_GetGamepadStringForType(sdl_type));
         let family = family(sdl_type);
+        let mut percent: c_int = -1;
+        let power = SDL_GetGamepadPowerInfo(raw, &mut percent);
         let info = PadInfo {
             id: id.0,
             name,
             family,
             vendor: SDL_GetGamepadVendor(raw),
             product: SDL_GetGamepadProduct(raw),
+            battery: battery(power, percent),
         };
         let pad = Pad {
             map: config.pad_map(family),
@@ -496,11 +537,12 @@ fn open(id: SDL_JoystickID, config: &PadConfig) -> Option<Pad> {
             raw,
         };
         log::info!(
-            "controller connected: {} (type {kind}, family {}, vid {:04x}, pid {:04x})",
+            "controller connected: {} (type {kind}, family {}, vid {:04x}, pid {:04x}, battery {:?})",
             pad.log_name(),
             family.id(),
             pad.info.vendor,
             pad.info.product,
+            pad.info.battery,
         );
         Some(pad)
     }

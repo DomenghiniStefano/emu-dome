@@ -138,6 +138,8 @@ export interface PadInfo {
   family: Exclude<PadFamily, 'keyboard'>
   vendor: number
   product: number
+  /** Battery charge left, 0..100; null when wired or unknown (`emu://gamepad-changed` updates it). */
+  battery: number | null
 }
 /** Kept for the toasts, which only need the name. */
 export type GamepadEvent = Pick<PadInfo, 'name'>
@@ -262,6 +264,8 @@ export interface SettingEntry {
   hiddenOptions: string[]
   /** Extra words the search matches, in any language. */
   synonyms: string[]
+  /** Listed in «Usate più spesso» (T01), at the Global level. */
+  mostUsed: boolean
 }
 
 /** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */
@@ -297,6 +301,18 @@ export interface SettingRow {
   source: SettingLevel
   /** Differs from the default. */
   changed: boolean
+}
+
+/** A value changed recently at one level («Modificate di recente», T01). Mirror: `RecentChange`. */
+export interface SettingRecent {
+  key: string
+  level: 'global' | 'console' | 'game'
+  /** The console of a `console` level. */
+  console: ConsoleId | null
+  /** The game of a `game` level (settings identity, not the library's). */
+  game: string | null
+  /** Unix ms. */
+  at: number
 }
 
 /** Payload of `settings://changed`. */
@@ -458,6 +474,8 @@ export const emu = {
     schema: () => invoke<SettingsSchema>('settings_schema'),
     page: (page: string, scope: SettingsScope) =>
       invoke<SettingRow[]>('settings_page', { page, scope }),
+    /** The `limit` values changed most recently, at any level, newest first. */
+    recent: (limit: number) => invoke<SettingRecent[]>('settings_recent', { limit }),
     /** The open game's scope (null without one). */
     gameScope: () => invoke<SettingsScope | null>('settings_game_scope'),
     set: (key: string, scope: SettingsScope, value: SettingValue) =>
@@ -529,6 +547,9 @@ export const emu = {
     listen<PadInfo>('emu://gamepad-connected', e => cb(e.payload)),
   onGamepadDisconnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
     listen<PadInfo>('emu://gamepad-disconnected', e => cb(e.payload)),
+  /** A connected controller's battery charge changed. */
+  onGamepadChanged: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
+    listen<PadInfo>('emu://gamepad-changed', e => cb(e.payload)),
   controls: {
     /** The connected controllers. */
     pads: () => invoke<PadInfo[]>('gamepad_list'),

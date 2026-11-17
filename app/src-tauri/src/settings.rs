@@ -3,7 +3,8 @@
 //! event, `{ key, level }`, sent after every change so any screen showing the value refreshes.
 
 use emudome_core::settings::{
-    CommitTarget, ConsoleId, Device, GameId, Level, PageValue, SchemaDto, Scope, Settings, Value,
+    CommitTarget, ConsoleId, Device, GameId, Level, PageValue, RecentChange, SchemaDto, Scope,
+    Settings, Value,
 };
 use emudome_core::ErrorCode;
 use parking_lot::Mutex;
@@ -153,6 +154,13 @@ pub fn settings_page(
     scope: Scope,
 ) -> Result<Vec<PageValue>, ErrorCode> {
     state.0.lock().page(&page, &scope)
+}
+
+/// The `limit` values changed most recently, at any level, newest first («Modificate di
+/// recente», T01).
+#[tauri::command]
+pub fn settings_recent(state: State<'_, SettingsState>, limit: usize) -> Vec<RecentChange> {
+    state.0.lock().recent(limit)
 }
 
 /// The scope of the open game (`null` without one), for «Solo questo gioco».
