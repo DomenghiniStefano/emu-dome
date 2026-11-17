@@ -6,7 +6,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { flow } from '../gameFlow'
-import { saveWhenLabel } from '../i18n/labels'
+import { dateTimeLabel } from '../i18n/labels'
 import FlowDialog from './FlowDialog.vue'
 
 const emit = defineEmits<{
@@ -17,6 +17,7 @@ const emit = defineEmits<{
   crashResume: []
   slowClose: []
   brokenUse: []
+  brokenPlay: []
   brokenClose: []
 }>()
 
@@ -90,23 +91,28 @@ const savedWhen = computed(() => {
     tone="warning"
     @back="emit('brokenClose')"
   >
-    <template v-if="flow.saveBroken.backupAt !== null">
-      <p class="p">{{ t('flow.brokenText') }}</p>
-      <div class="backup-row num">
-        {{ t('flow.brokenBackup', { when: saveWhenLabel(flow.saveBroken.backupAt) }) }}
-      </div>
-    </template>
-    <p v-else class="p">{{ t('flow.brokenNoBackup') }}</p>
+    <p v-if="flow.saveBroken.backupAt !== null" class="p">
+      {{
+        t('flow.brokenText', {
+          game: flow.saveBroken.title,
+          date: dateTimeLabel(flow.saveBroken.backupAt),
+        })
+      }}
+    </p>
+    <p v-else class="p">{{ t('flow.brokenNoBackup', { game: flow.saveBroken.title }) }}</p>
     <template #actions>
       <template v-if="flow.saveBroken.backupAt !== null">
-        <button class="btn" @click="emit('brokenClose')">{{ t('flow.notNow') }}</button>
+        <button class="btn" @click="emit('brokenPlay')">{{ t('flow.brokenPlay') }}</button>
         <button class="btn btn-primary" data-nav-initial @click="emit('brokenUse')">
-          {{ t('flow.brokenUse', { when: saveWhenLabel(flow.saveBroken.backupAt) }) }}
+          {{ t('flow.brokenUse') }}
         </button>
       </template>
-      <button v-else class="btn btn-primary" data-nav-initial @click="emit('brokenClose')">
-        {{ t('flow.gotIt') }}
-      </button>
+      <template v-else>
+        <button class="btn" @click="emit('brokenClose')">{{ t('flow.close') }}</button>
+        <button class="btn btn-primary" data-nav-initial @click="emit('brokenPlay')">
+          {{ t('flow.brokenPlay') }}
+        </button>
+      </template>
     </template>
   </FlowDialog>
 
@@ -257,14 +263,6 @@ kbd {
   margin: 0;
 }
 /* E04: the backup offered, as a row (board E04). */
-.backup-row {
-  margin-top: 6px;
-  padding: 10px 12px;
-  border-radius: var(--radius-10);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--ink);
-}
 @media (prefers-reduced-motion: reduce) {
   .bar span {
     animation: none;

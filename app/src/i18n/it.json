@@ -85,7 +85,8 @@
       "userDesc": "Scegli un file immagine",
       "cancel": "Annulla",
       "use": "Usa questa copertina"
-    }
+    },
+    "clearFilters": "Togli i filtri"
   },
   "placeholder": {
     "line": "Questa sezione arriva con un prossimo aggiornamento."
@@ -119,7 +120,7 @@
     "gamepadDisconnected": "Controller scollegato: {name}",
     "gamepadUnnamed": "Controller",
     "slot": "Slot {slot}",
-    "loadUndone": "Caricamento annullato"
+    "loadUndone": "Caricamento annullato: sei tornato a dove eri"
   },
   "console": {
     "gb": "Game Boy",
@@ -140,15 +141,15 @@
     "stateSaveFailed": "Non riesco a scrivere lo slot {slot}: {detail}. Controlla che la cartella dei salvataggi sia scrivibile.",
     "stateLoadFailed": "Non riesco a leggere lo slot {slot}: {detail}. Riprova o usa un altro slot.",
     "stateInvalid": "Lo stato nello slot {slot} non è valido per questo gioco o questa versione del core. Salvalo di nuovo.",
-    "settingUnknown": "Questa versione di EmuDome non conosce l'impostazione {key}. Aggiorna l'app.",
-    "settingLevelRefused": "L'impostazione {key} non si può salvare qui. Scegli un altro livello nella barra in alto.",
-    "settingInvalidValue": "Questo valore non va bene per l'impostazione {key}. Scegli uno dei valori proposti.",
-    "settingsWriteFailed": "Non è stato possibile salvare le impostazioni: {detail}. Controlla che la cartella dei dati sia scrivibile e riprova.",
-    "libraryFolderUnreachable": "La cartella {path} non è raggiungibile. Ricollega il disco o scegli un’altra cartella.",
+    "settingUnknown": "Impostazione sconosciuta: viene ignorata. Se succede ancora, esporta il registro da Impostazioni › Informazioni.",
+    "settingLevelRefused": "Questa impostazione vale solo per {levels}: cambiala da lì.",
+    "settingInvalidValue": "Valore non valido per «{name}»: torno al valore predefinito.",
+    "settingsWriteFailed": "Impossibile salvare le impostazioni: controlla lo spazio libero sul disco e riprova.",
+    "libraryFolderUnreachable": "La cartella {path} non è raggiungibile: forse il disco è scollegato. Ricollegalo o scegli un’altra cartella.",
     "libraryGameUnknown": "Questo gioco non è più nella libreria. Cerca di nuovo i giochi dalla libreria.",
-    "libraryGameUnavailable": "Il file di questo gioco ora non è raggiungibile. Ricollega il disco che lo contiene o scegli un’altra cartella.",
-    "libraryWriteFailed": "Non è stato possibile salvare la libreria: {detail}. Controlla che la cartella dei dati sia scrivibile e riprova.",
-    "coverInvalid": "Questa immagine non si può usare come copertina: {detail}. Scegli un’immagine PNG, JPEG o WebP.",
+    "libraryGameUnavailable": "Il file del gioco non si trova più. Ricollega il disco o aggiungi di nuovo la sua cartella.",
+    "libraryWriteFailed": "Impossibile salvare la libreria: controlla lo spazio libero sul disco e riprova.",
+    "coverInvalid": "Questa immagine non si apre. Scegli un file JPG o PNG.",
     "unexpected": "Qualcosa è andato storto: {detail}",
     "nothingToUndo": "Non c’è un caricamento da annullare.",
     "undoFailed": "Non riesco a tornare a prima del caricamento: {detail}. Carica un altro salvataggio rapido.",
@@ -1551,7 +1552,8 @@
       "console": "Giochi {console}",
       "consoleSub": "Solo i giochi {short}. Vince su «Tutti i giochi»",
       "globalLine": "Cambi il valore di partenza. Le console e i giochi che hanno un valore proprio lo tengono: lo vedi dalla scritta sotto la voce.",
-      "consoleLine": "Cambi solo i giochi {console}. Le voci con il pallino sono diverse da «Tutti i giochi»; le altre lo seguono."
+      "consoleLine": "Cambi solo i giochi {console}. Le voci con il pallino sono diverse da «Tutti i giochi»; le altre lo seguono.",
+      "consolePick": "Scegli la console"
     },
     "appWide": "Queste impostazioni valgono per tutta l’app, non per un singolo gioco.",
     "changed": "Modificato",
@@ -1565,8 +1567,8 @@
     },
     "lockedGlobal": "Vale sempre per tutti i giochi. Per cambiarla scegli «Tutti i giochi» in alto.",
     "lockedScoped": "Si imposta per una console o per un gioco: scegli un livello in alto.",
-    "lockedPhone": "Si imposta sul telefono.",
-    "lockedDesktop": "Si imposta sul computer.",
+    "lockedPhone": "Solo su questo telefono.",
+    "lockedDesktop": "Solo su questo computer.",
     "notYet": "Arriva con un prossimo aggiornamento.",
     "emptyOnly": "Nessuna impostazione modificata qui. Tutti i valori sono ereditati.",
     "noResults": "Nessuna impostazione per «{query}»",
@@ -1585,7 +1587,13 @@
     "choose": "Scegli",
     "none": "Nessuno",
     "done": "Fatto",
-    "openControls": "Apri Controlli"
+    "openControls": "Apri Controlli",
+    "levelWord": {
+      "global": "«Tutti i giochi»",
+      "console": "«Giochi di una console»",
+      "game": "«Solo questo gioco»",
+      "session": "le modifiche in prova"
+    }
   },
   "flow": {
     "starting": "Avvio in corso",
@@ -1613,10 +1621,11 @@
     "slowText": "Questo dispositivo fatica a tenere il gioco alla velocità giusta. Prova la preimpostazione «Prestazioni massime» nelle Impostazioni.",
     "notNow": "Non ora",
     "brokenTitle": "Il salvataggio di {title} non si legge",
-    "brokenText": "Il file è rovinato, forse per una copia interrotta. Puoi usare il backup più recente; il file rovinato resta da parte, nel caso.",
-    "brokenNoBackup": "Il file è rovinato, forse per una copia interrotta, e non c’è un backup da usare. Il file rovinato resta da parte; se apri di nuovo il gioco, riparte senza salvataggio.",
-    "brokenBackup": "Backup di {when}",
-    "brokenUse": "Usa il backup di {when}"
+    "brokenText": "Non riusciamo a leggere il salvataggio di {game}. L’abbiamo messo da parte: puoi ripartire dall’ultimo backup, del {date}.",
+    "brokenNoBackup": "Non riusciamo a leggere il salvataggio di {game}. L’abbiamo messo da parte.",
+    "brokenUse": "Usa il backup",
+    "brokenPlay": "Gioca senza salvataggio",
+    "close": "Chiudi"
   },
   "qm": {
     "label": "Menu rapido",
@@ -1696,7 +1705,7 @@
     "pressButton": "Premi un pulsante… {n}",
     "pressKey": "Premi un tasto… {n}",
     "usedTwice": "Usato anche da un altro",
-    "conflict": "{source} è già {button}. Scambiali?",
+    "conflict": "{source} è già usato per {button}. Vuoi scambiarli?",
     "swap": "Scambia",
     "cancel": "Annulla",
     "tester": "PROVA I PULSANTI",
@@ -1822,7 +1831,7 @@
     "menuCombo": "Home, oppure {combo}",
     "changeShortcut": "Cambia la scorciatoia: {action}",
     "change": "Cambia",
-    "comboConflict": "{source} è già «{action}». Scambiali?",
+    "comboConflict": "{source} è già usato per «{action}». Vuoi scambiarli?",
     "later": {
       "rewind": "Riavvolgi finché tieni premuto",
       "screenshot": "Cattura schermata",
@@ -1854,7 +1863,7 @@
     "metaInGame": "Solo salvataggio del gioco · {size}",
     "gameMeta": "{console} · {meta}",
     "details": "Dettagli del gioco",
-    "brokenBadge": "Salvataggio rovinato",
+    "brokenBadge": "Salvataggio illeggibile",
     "noneShown": "Nessun gioco corrisponde alla ricerca.",
     "inGameTitle": "SALVATAGGIO DEL GIOCO",
     "inGameLine": "Salvato {when} · {size}",
@@ -1882,7 +1891,7 @@
       "date": "{date} alle {time}"
     },
     "quick": {
-      "load": "Apri il gioco e carica",
+      "load": "Gioca da qui",
       "overwriteHint": "Per sovrascriverlo, apri il gioco e salva dal menu rapido.",
       "delete": "Elimina",
       "close": "Chiudi",

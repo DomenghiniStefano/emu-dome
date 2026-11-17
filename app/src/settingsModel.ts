@@ -1,7 +1,14 @@
 // What the settings pages (T01–T20) need beyond the bridge: the schema loaded once, the i18n
 // keys of an entry, which rows are shown and why a row cannot be changed at a level.
 // Everything comes from the Rust schema (`emu.settings.schema`): nothing here lists settings.
-import { emu, type SettingEntry, type SettingLevel, type SettingsSchema } from './emu'
+import {
+  emu,
+  type SettingDevice,
+  type SettingEntry,
+  type SettingLevel,
+  type SettingPlatform,
+  type SettingsSchema,
+} from './emu'
 
 let schemaPromise: Promise<SettingsSchema> | null = null
 
@@ -31,6 +38,19 @@ export function isShown(entry: SettingEntry, schema: SettingsSchema): boolean {
   return entry.phase <= schema.currentPhase
 }
 
+/** Whether an entry of `platform` exists on `device` (mirror of `Platform::includes`). */
+export function platformIncludes(platform: SettingPlatform, device: SettingDevice): boolean {
+  switch (platform) {
+    case 'all':
+      return true
+    case 'desktop':
+      return device === 'desktop'
+    case 'phone':
+    case 'touch':
+      return device === 'phone'
+  }
+}
+
 /** Levels the page's shown entries accept, among Global and Console. */
 export function pageLevels(entries: SettingEntry[]): Set<SettingLevel> {
   const out = new Set<SettingLevel>()
@@ -45,9 +65,9 @@ export function lockReason(
   schema: SettingsSchema,
   level: SettingLevel,
 ): string | null {
-  if (entry.platform !== 'all' && entry.platform !== schema.device)
-    return entry.platform === 'phone' ? 'settingsUi.lockedPhone' : 'settingsUi.lockedDesktop'
-  if (entry.kind.type === 'action') return null
+  if (!platformIncludes(entry.platform, schema.device))
+    return entry.platform === 'desktop' ? 'settingsUi.lockedDesktop' : 'settingsUi.lockedPhone'
+  if (entry.kind.type === 'action' || entry.kind.type === 'apply') return null
   // Session («in prova», quick menu): open to what can be saved per console or per game.
   if (level === 'session')
     return entry.levels.includes('console') || entry.levels.includes('game')
@@ -61,8 +81,10 @@ export function lockReason(
 /** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */
 export function notYetWired(entry: SettingEntry): boolean {
   switch (entry.kind.type) {
+    // `apply` (presets): the bundles and their confirmation are not defined yet.
     case 'action':
     case 'file':
+    case 'apply':
       return true
     case 'toggle':
     case 'choice':

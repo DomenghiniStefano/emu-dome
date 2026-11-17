@@ -185,14 +185,16 @@ fn a_level_the_entry_does_not_accept_is_refused() {
         s.set("video.fps", &game_scope(), Value::Bool(true)),
         Err(ErrorCode::SettingLevelRefused {
             key: "video.fps".into(),
-            level: Level::Game
+            level: Level::Game,
+            levels: vec![Level::Global],
         })
     );
     assert_eq!(
         s.set("video.fps", &Scope::Session, Value::Bool(true)),
         Err(ErrorCode::SettingLevelRefused {
             key: "video.fps".into(),
-            level: Level::Session
+            level: Level::Session,
+            levels: vec![Level::Global],
         })
     );
     // Console and game only.
@@ -200,7 +202,8 @@ fn a_level_the_entry_does_not_accept_is_refused() {
         s.reset("video.orient", &Scope::Global),
         Err(ErrorCode::SettingLevelRefused {
             key: "video.orient".into(),
-            level: Level::Global
+            level: Level::Global,
+            levels: vec![Level::Console, Level::Game],
         })
     );
     assert!(!dir.path("synced").exists(), "nothing written");
@@ -371,7 +374,8 @@ fn a_commit_is_all_or_nothing() {
         s.commit_session(CommitTarget::Console),
         Err(ErrorCode::SettingLevelRefused {
             key: "audio.vol".into(),
-            level: Level::Console
+            level: Level::Console,
+            levels: vec![Level::Global, Level::Game],
         })
     );
     assert!(!dir.path("synced").exists());
@@ -490,10 +494,12 @@ fn scopes_and_errors_have_the_interface_shape() {
     assert_eq!(
         serde_json::to_value(ErrorCode::SettingLevelRefused {
             key: "video.fps".into(),
-            level: Level::Game
+            level: Level::Game,
+            levels: vec![Level::Global],
         })
         .unwrap(),
-        json!({ "code": "settingLevelRefused", "params": { "key": "video.fps", "level": "game" } })
+        json!({ "code": "settingLevelRefused",
+            "params": { "key": "video.fps", "level": "game", "levels": ["global"] } })
     );
 }
 
@@ -563,6 +569,7 @@ fn choices_have_unique_well_formed_options() {
             | Kind::Text
             | Kind::Action { .. }
             | Kind::Bindings { .. } => continue,
+            Kind::Apply { options } => options,
         };
         assert!(!options.is_empty(), "{}: no options", e.key);
         let unique: HashSet<_> = options.iter().collect();
@@ -629,4 +636,150 @@ fn the_theme_entry_matches_the_interface() {
     ));
     assert_eq!(theme.default_value(), Some(Value::Text("system".into())));
     assert!(theme.levels.accepts(Level::Global) && !theme.levels.accepts(Level::Game));
+}
+
+// ---- Options offered per device, presets, search synonyms ----
+
+fn phone_settings(dir: &TestDir) -> Settings {
+    Settings::open(
+        dir.path("synced"),
+        dir.path("local/device.json"),
+        Device::Phone,
+    )
+}
+
+#[test]
+fn option_platforms_name_real_options_and_spare_the_default() {
+    for e in ENTRIES {
+        let Kind::Choice {
+            options,
+            option_platforms,
+            ..
+        } = e.kind
+        else {
+            continue;
+        };
+        for (id, _) in option_platforms {
+            assert!(options.contains(id), "{}: unknown option {id:?}", e.key);
+        }
+        for device in [Device::Desktop, Device::Phone] {
+            if !e.platform.includes(device) {
+                continue;
+            }
+            let Some(Value::Text(default)) = e.default_value() else {
+                panic!("{}: a choice without a text default", e.key)
+            };
+            assert!(
+                e.offers(&default, device),
+                "{}: default {default:?} not offered on {device:?}",
+                e.key
+            );
+        }
+    }
+}
+
+#[test]
+fn options_of_another_device_are_hidden_refused_and_skipped() {
+    let surround = entry("video.surround").unwrap();
+    assert_eq!(surround.hidden_options(Device::Phone), vec!["blur"]);
+    assert!(surround.hidden_options(Device::Desktop).is_empty());
+    assert_eq!(
+        entry("pad.gyro").unwrap().hidden_options(Device::Desktop),
+        vec!["phone"]
+    );
+    assert_eq!(
+        entry("pad.pointer")
+            .unwrap()
+            .hidden_options(Device::Desktop),
+        vec!["touch"]
+    );
+    assert!(entry("pad.pointer")
+        .unwrap()
+        .hidden_options(Device::Phone)
+        .is_empty());
+    let schema = super::schema(Device::Phone);
+    let dto = schema.entries.iter().find(|e| e.key == "video.surround");
+    assert_eq!(dto.map(|e| e.hidden_options.clone()), Some(vec!["blur"]));
+
+    // The desktop stores «blur» in the synced global file; the phone reads the same files.
+    let dir = TestDir::new("option-platform");
+    let blur = Value::Text("blur".into());
+    let mut desktop = settings(&dir);
+    desktop
+        .set("video.surround", &Scope::Global, blur.clone())
+        .unwrap();
+    assert_eq!(
+        value_of(&mut desktop, "video.surround", &Scope::Global),
+        (Some(blur.clone()), Level::Global)
+    );
+    let mut phone = phone_settings(&dir);
+    assert_eq!(
+        value_of(&mut phone, "video.surround", &Scope::Global),
+        (Some(Value::Text("black".into())), Level::Default)
+    );
+    // A weaker level that the phone can use shows through.
+    phone
+        .set(
+            "video.surround",
+            &Scope::Global,
+            Value::Text("cover".into()),
+        )
+        .unwrap();
+    desktop
+        .set("video.surround", &console_scope(), blur.clone())
+        .unwrap();
+    assert_eq!(
+        value_of(&mut phone, "video.surround", &console_scope()),
+        (Some(Value::Text("cover".into())), Level::Global)
+    );
+    assert_eq!(
+        phone.set("video.surround", &Scope::Global, blur),
+        Err(ErrorCode::SettingInvalidValue {
+            key: "video.surround".into()
+        })
+    );
+}
+
+#[test]
+fn presets_are_actions_without_a_value() {
+    let preset = entry("presets.preset").unwrap();
+    assert!(matches!(preset.kind, Kind::Apply { options } if !options.is_empty()));
+    assert!(!preset.has_value());
+    assert_eq!(preset.default_value(), None);
+    let dir = TestDir::new("presets");
+    let mut s = settings(&dir);
+    assert_eq!(
+        s.set(
+            "presets.preset",
+            &Scope::Global,
+            Value::Text("faithful".into())
+        ),
+        Err(ErrorCode::SettingInvalidValue {
+            key: "presets.preset".into()
+        })
+    );
+    assert_eq!(
+        value_of(&mut s, "presets.preset", &Scope::Global),
+        (None, Level::Default)
+    );
+}
+
+#[test]
+fn synonyms_point_at_entries_and_reach_the_schema() {
+    for (pattern, words) in super::catalog::SYNONYMS {
+        match pattern.strip_suffix(".*") {
+            Some(page) => assert!(PAGES.contains(&page), "{pattern}: unknown page"),
+            None => assert!(entry(pattern).is_some(), "{pattern}: unknown entry"),
+        }
+        assert!(!words.is_empty(), "{pattern}: no words");
+        for w in *words {
+            assert_eq!(w.to_lowercase(), *w, "{pattern}: {w:?} is not lower case");
+        }
+    }
+    assert!(super::synonyms("bios.bds7").contains(&"firmware"));
+    assert!(super::synonyms("video.vsync").contains(&"tearing"));
+    assert!(super::synonyms("video.fps").is_empty());
+    let schema = super::schema(Device::Desktop);
+    let vsync = schema.entries.iter().find(|e| e.key == "video.vsync");
+    assert!(vsync.is_some_and(|e| e.synonyms.contains(&"strappo")));
 }

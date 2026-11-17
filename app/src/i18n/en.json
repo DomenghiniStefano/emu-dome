@@ -66,7 +66,7 @@
     },
     "added": {
       "title": "No games added | 1 game added | {n} games added",
-      "gbAndColor": "Game Boy and Color",
+      "gbAndColor": "Game Boy and Game Boy Color",
       "close": "Close the notice"
     },
     "unreachable": {
@@ -85,7 +85,8 @@
       "userDesc": "Choose an image file",
       "cancel": "Cancel",
       "use": "Use this cover"
-    }
+    },
+    "clearFilters": "Clear filters"
   },
   "placeholder": {
     "line": "This section arrives in a future update."
@@ -119,7 +120,7 @@
     "gamepadDisconnected": "Controller disconnected: {name}",
     "gamepadUnnamed": "Controller",
     "slot": "Slot {slot}",
-    "loadUndone": "Load undone"
+    "loadUndone": "Load undone: you’re back where you were"
   },
   "console": {
     "gb": "Game Boy",
@@ -140,15 +141,15 @@
     "stateSaveFailed": "Couldn't save to slot {slot}: {detail}. Check that the save folder is writable.",
     "stateLoadFailed": "Couldn't read slot {slot}: {detail}. Try again or use another slot.",
     "stateInvalid": "The state in slot {slot} doesn't fit this game or this core version. Save it again.",
-    "settingUnknown": "This version of EmuDome doesn't know the setting {key}. Update the app.",
-    "settingLevelRefused": "The setting {key} can't be saved here. Choose another level in the bar at the top.",
-    "settingInvalidValue": "That value doesn't fit the setting {key}. Choose one of the values offered.",
-    "settingsWriteFailed": "Couldn't save the settings: {detail}. Check that the data folder is writable and try again.",
-    "libraryFolderUnreachable": "The folder {path} can't be reached. Reconnect the drive or choose another folder.",
+    "settingUnknown": "Unknown setting: it is ignored. If it keeps happening, export the log from Settings › About.",
+    "settingLevelRefused": "This setting only applies to {levels}: change it there.",
+    "settingInvalidValue": "Invalid value for “{name}”: back to the default.",
+    "settingsWriteFailed": "Couldn’t save the settings: check the free disk space and try again.",
+    "libraryFolderUnreachable": "The folder {path} can’t be reached: the drive may be disconnected. Reconnect it or choose another folder.",
     "libraryGameUnknown": "This game is no longer in the library. Search for games again from the library.",
-    "libraryGameUnavailable": "This game's file can't be reached right now. Reconnect the drive that holds it, or choose another folder.",
-    "libraryWriteFailed": "Couldn't save the library: {detail}. Check that the data folder is writable and try again.",
-    "coverInvalid": "That image can't be used as a cover: {detail}. Choose a PNG, JPEG or WebP image.",
+    "libraryGameUnavailable": "The game file can’t be found any more. Reconnect the drive or add its folder again.",
+    "libraryWriteFailed": "Couldn’t save the library: check the free disk space and try again.",
+    "coverInvalid": "This image can’t be opened. Choose a JPG or PNG file.",
     "unexpected": "Something went wrong: {detail}",
     "nothingToUndo": "There's no load to undo.",
     "undoFailed": "Couldn't go back to before the load: {detail}. Load another quick save.",
@@ -1551,7 +1552,8 @@
       "console": "{console} games",
       "consoleSub": "Only {short} games. Wins over “All games”",
       "globalLine": "You change the starting value. Consoles and games with a value of their own keep it: the line under the setting tells you.",
-      "consoleLine": "You change only {console} games. Settings with a dot differ from “All games”; the others follow it."
+      "consoleLine": "You change only {console} games. Settings with a dot differ from “All games”; the others follow it.",
+      "consolePick": "Choose the console"
     },
     "appWide": "These settings apply to the whole app, not to a single game.",
     "changed": "Changed",
@@ -1565,8 +1567,8 @@
     },
     "lockedGlobal": "It always applies to all games. To change it, choose “All games” at the top.",
     "lockedScoped": "It is set per console or per game: choose a level at the top.",
-    "lockedPhone": "It is set on the phone.",
-    "lockedDesktop": "It is set on the computer.",
+    "lockedPhone": "Only on this phone.",
+    "lockedDesktop": "Only on this computer.",
     "notYet": "This arrives in a future update.",
     "emptyOnly": "No settings changed here. Every value is inherited.",
     "noResults": "No settings for “{query}”",
@@ -1585,7 +1587,13 @@
     "choose": "Choose",
     "none": "None",
     "done": "Done",
-    "openControls": "Open Controls"
+    "openControls": "Open Controls",
+    "levelWord": {
+      "global": "“All games”",
+      "console": "“Games of one console”",
+      "game": "“This game only”",
+      "session": "the changes on trial"
+    }
   },
   "flow": {
     "starting": "Starting",
@@ -1613,10 +1621,11 @@
     "slowText": "This device struggles to keep the game at the right speed. Try the “Maximum performance” preset in Settings.",
     "notNow": "Not now",
     "brokenTitle": "{title}'s save can't be read",
-    "brokenText": "The file is damaged, perhaps by an interrupted copy. You can use the most recent backup; the damaged file stays aside, just in case.",
-    "brokenNoBackup": "The file is damaged, perhaps by an interrupted copy, and there's no backup to use. The damaged file stays aside; if you open the game again, it starts without a save.",
-    "brokenBackup": "Backup from {when}",
-    "brokenUse": "Use the backup from {when}"
+    "brokenText": "We can’t read the save of {game}. We set it aside: you can start again from the latest backup, from {date}.",
+    "brokenNoBackup": "We can’t read the save of {game}. We set it aside.",
+    "brokenUse": "Use the backup",
+    "brokenPlay": "Play without a save",
+    "close": "Close"
   },
   "qm": {
     "label": "Quick menu",
@@ -1696,7 +1705,7 @@
     "pressButton": "Press a button… {n}",
     "pressKey": "Press a key… {n}",
     "usedTwice": "Also used by another",
-    "conflict": "{source} is already {button}. Swap them?",
+    "conflict": "{source} is already used for {button}. Swap them?",
     "swap": "Swap",
     "cancel": "Cancel",
     "tester": "TRY THE BUTTONS",
@@ -1822,7 +1831,7 @@
     "menuCombo": "Home, or {combo}",
     "changeShortcut": "Change the shortcut: {action}",
     "change": "Change",
-    "comboConflict": "{source} is already “{action}”. Swap them?",
+    "comboConflict": "{source} is already used for “{action}”. Swap them?",
     "later": {
       "rewind": "Rewind while you hold it",
       "screenshot": "Take a screenshot",
@@ -1831,7 +1840,7 @@
       "lid": "Close and open the lid (also from the quick menu)"
     },
     "badge": {
-      "soon": "Coming",
+      "soon": "In a future update",
       "nds": "With Nintendo DS"
     },
     "keys": {
@@ -1854,7 +1863,7 @@
     "metaInGame": "In-game save only · {size}",
     "gameMeta": "{console} · {meta}",
     "details": "Game details",
-    "brokenBadge": "Damaged save",
+    "brokenBadge": "Unreadable save",
     "noneShown": "No game matches the search.",
     "inGameTitle": "IN-GAME SAVE",
     "inGameLine": "Saved {when} · {size}",
@@ -1882,7 +1891,7 @@
       "date": "{date} at {time}"
     },
     "quick": {
-      "load": "Open the game and load",
+      "load": "Play from here",
       "overwriteHint": "To overwrite it, open the game and save from the quick menu.",
       "delete": "Delete",
       "close": "Close",

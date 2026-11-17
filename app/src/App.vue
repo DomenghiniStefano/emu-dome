@@ -147,6 +147,14 @@ async function useLatestBackup() {
   }
   await start(b.opened, b.title, b.colour)
 }
+/** E04 «Gioca senza salvataggio»: the unreadable save is already set aside, so the game opens
+ * without one. */
+async function playWithoutSave() {
+  const b = brokenOpened
+  flow.saveBroken = null
+  brokenOpened = null
+  if (b) await start(b.opened, b.title, b.colour)
+}
 function closeBroken() {
   flow.saveBroken = null
   brokenOpened = null
@@ -468,6 +476,7 @@ onUnmounted(() => {
     @crash-resume="crashResume"
     @slow-close="flow.slow = null"
     @broken-use="useLatestBackup"
+    @broken-play="playWithoutSave"
     @broken-close="closeBroken"
   />
 

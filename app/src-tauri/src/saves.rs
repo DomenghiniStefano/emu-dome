@@ -27,7 +27,7 @@ fn file_failed(e: impl std::fmt::Display) -> ErrorCode {
     }
 }
 
-/// `saves.backups`: how many backups of each in-game save to keep.
+/// `saves.backups`: how many backups of each in-game save to keep (0 = none).
 fn keep_backups(app: &AppHandle) -> usize {
     let value = app.try_state::<SettingsState>().and_then(|state| {
         let resolved = state.0.lock().resolve("saves.backups", &Scope::Global);
@@ -37,7 +37,7 @@ fn keep_backups(app: &AppHandle) -> usize {
             .value
     });
     match value {
-        Some(Value::Int(n)) => usize::try_from(n).unwrap_or(1).max(1),
+        Some(Value::Int(n)) => usize::try_from(n).unwrap_or(0),
         Some(Value::Bool(_) | Value::Text(_) | Value::List(_)) | None => 5,
     }
 }

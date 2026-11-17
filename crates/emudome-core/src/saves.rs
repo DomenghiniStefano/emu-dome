@@ -213,7 +213,8 @@ pub fn write_atomic(path: &Path, data: &[u8]) -> io::Result<()> {
 }
 
 /// Copies the in-game save into the backups (when there is one and it differs from the newest
-/// backup), then keeps only the `keep` newest. `None` when nothing was copied.
+/// backup), then keeps only the `keep` newest. `None` when nothing was copied; `keep` = 0
+/// (`saves.backups` «0 = none») copies nothing and removes the old ones.
 pub fn backup(
     save_dir: &Path,
     game: &Path,
@@ -221,6 +222,10 @@ pub fn backup(
     now_ms: u64,
     keep: usize,
 ) -> io::Result<Option<Backup>> {
+    if keep == 0 {
+        rotate(save_dir, game, 0);
+        return Ok(None);
+    }
     let files = GameFiles::new(save_dir, game);
     let data = match std::fs::read(&files.sram) {
         Ok(d) => d,
@@ -257,11 +262,11 @@ pub fn backup(
     Ok(made)
 }
 
-/// Removes the backups past the `keep` newest (`saves.backups`; at least one is kept).
+/// Removes the backups past the `keep` newest (`saves.backups`; 0 removes them all).
 pub fn rotate(save_dir: &Path, game: &Path, keep: usize) {
     let files = GameFiles::new(save_dir, game);
     let dir = backups_dir(&files);
-    for old in backups(save_dir, game).iter().skip(keep.max(1)) {
+    for old in backups(save_dir, game).iter().skip(keep) {
         if let Err(e) = std::fs::remove_file(dir.join(&old.name)) {
             log::warn!("old backup {} not removed: {e}", old.name);
         }
@@ -551,6 +556,12 @@ mod tests {
         let list = backups(&save_dir, game);
         let times: Vec<u64> = list.iter().map(|b| b.at_ms).collect();
         assert_eq!(times, vec![32, 31, 30]);
+        // `saves.backups` = 0: no new backup, and the old ones go.
+        write(&dir, "saves/Lanterna.sav", b"v5");
+        assert!(backup(&save_dir, game, BackupReason::Launch, 40, 0)
+            .unwrap()
+            .is_none());
+        assert!(backups(&save_dir, game).is_empty());
     }
 
     #[test]

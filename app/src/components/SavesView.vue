@@ -488,7 +488,10 @@ onUnmounted(() => unlistenSettings?.())
                   <img v-if="q.thumbUrl" :src="q.thumbUrl" alt="" />
                 </span>
                 <span class="strong">{{ slotName(q.slot) }}</span>
-                <span class="muted small num">{{ saveWhenLabel(q.savedAt ?? 0) }}</span>
+                <!-- The date only: a quick save has no play time of its own (Cowork, #37). -->
+                <span v-if="q.savedAt !== null" class="muted small num">
+                  {{ saveWhenLabel(q.savedAt) }}
+                </span>
               </button>
             </div>
             <p v-else class="muted">{{ t('saves.noQuick') }}</p>
@@ -526,10 +529,12 @@ onUnmounted(() => unlistenSettings?.())
       </span>
       <p class="p num">
         {{
-          t('saves.inGameLine', {
-            when: saveWhenLabel(quick.savedAt ?? 0),
-            size: sizeLabel(quick.size),
-          })
+          quick.savedAt !== null
+            ? t('saves.inGameLine', {
+                when: saveWhenLabel(quick.savedAt),
+                size: sizeLabel(quick.size),
+              })
+            : sizeLabel(quick.size)
         }}
       </p>
       <p class="p small">{{ t('saves.quick.overwriteHint') }}</p>

@@ -18,10 +18,23 @@ export function errorText(e: unknown): string {
       const name = `console.${e.params.console}`
       params.console = known(name) ? t(name) : e.params.console
     }
+    if (e.code === 'settingInvalidValue') params.name = settingName(e.params.key)
+    if (e.code === 'settingLevelRefused') {
+      const words = e.params.levels.map(l => t(`settingsUi.levelWord.${l}`))
+      params.levels = new Intl.ListFormat(i18n.global.locale.value, {
+        type: 'disjunction',
+      }).format(words)
+    }
     return t(`errors.${e.code}`, params)
   }
   const detail = isErrorCode(e) ? e.code : e instanceof Error ? e.message : String(e)
   return t('errors.unexpected', { detail })
+}
+
+/** A setting's name from its key (`settings.<key>.name`), or the key when it has none. */
+function settingName(key: string): string {
+  const name = `settings.${key}.name`
+  return known(name) ? t(name, { controllerName: '' }).trim() : key
 }
 
 /** "1×", "0.5×" / "0,5×" in the UI language, or "Max". Empty with no speed. */
@@ -82,6 +95,14 @@ export function sizeLabel(bytes: number): string {
     unitDisplay: 'short',
     maximumFractionDigits: value < 10 && i > 0 ? 1 : 0,
   }).format(value)
+}
+
+/** A full date and time in the UI language ("17 November 2026 at 08:12"), for sentences. */
+export function dateTimeLabel(ms: number): string {
+  return new Intl.DateTimeFormat(i18n.global.locale.value, {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(new Date(ms))
 }
 
 /** When a save was written, as the Saves boards write it: "today at 08:12", "yesterday at
