@@ -1,12 +1,11 @@
 <script setup lang="ts">
-// Library with no games (design L02, Stati board). Choosing a folder needs the library
-// scanner (handoff step 3): until then that button is disabled with the reason, and
-// "Open a file…" opens a single game, the Phase 0 way.
+// Library with no games (design L02, Stati board): choose a folder (the backend adds and scans
+// it), drag games or folders onto the window (App.vue), or open a single file the Phase 0 way.
 import { useI18n } from 'vue-i18n'
 import { Library } from '@lucide/vue'
 
 defineProps<{ error: string | null }>()
-const emit = defineEmits<{ openFile: [] }>()
+const emit = defineEmits<{ chooseFolder: []; openFile: [] }>()
 
 const { t } = useI18n()
 </script>
@@ -18,14 +17,13 @@ const { t } = useI18n()
       <h1 class="title">{{ t('library.emptyTitle') }}</h1>
       <p class="lead">{{ t('library.emptyLead') }}</p>
       <div class="actions">
-        <button class="btn btn-primary" disabled :title="t('placeholder.chooseFolder')">
+        <button class="btn btn-primary" data-nav-initial @click="emit('chooseFolder')">
           {{ t('library.chooseFolder') }}
         </button>
-        <button class="btn" data-nav-initial @click="emit('openFile')">
+        <button class="btn" @click="emit('openFile')">
           {{ t('library.openFile') }}
         </button>
       </div>
-      <p class="reason">{{ t('placeholder.chooseFolder') }}</p>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </section>
   </div>
@@ -58,7 +56,6 @@ const { t } = useI18n()
   font-weight: 600;
 }
 .lead,
-.reason,
 .error {
   margin: 0;
 }
@@ -76,15 +73,6 @@ const { t } = useI18n()
 .actions .btn-primary {
   padding: 0 16px;
   font-size: 13px;
-}
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.reason {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-muted);
 }
 .error {
   color: var(--danger);
