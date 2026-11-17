@@ -30,6 +30,8 @@ const props = defineProps<{
   scoped: boolean
   /** Quick menu: no per-row reset or «Come in …» (the bar at the bottom handles the changes). */
   compact?: boolean
+  /** Shown instead of the description (T01 «Usate più spesso»: the page the setting is on). */
+  sub?: string
 }>()
 const emit = defineEmits<{
   set: [SettingValue]
@@ -199,7 +201,9 @@ function swatchName(hex: string): string {
             {{ t(`settingsUi.onlyHere.${schema.device}`) }}
           </span>
         </div>
-        <div class="desc">{{ notYet && !reason ? `${desc} ${t('settingsUi.notYet')}` : desc }}</div>
+        <div class="desc">
+          {{ sub ?? (notYet && !reason ? `${desc} ${t('settingsUi.notYet')}` : desc) }}
+        </div>
       </div>
 
       <div class="control">

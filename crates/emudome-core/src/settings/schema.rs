@@ -234,6 +234,9 @@ pub struct Entry {
     pub platform: Platform,
     /// The roadmap phase the entry ships in (1 = now); hidden by the interface until then.
     pub phase: u8,
+    /// One of the options people change most often: listed in «Usate più spesso» (T01) at the
+    /// Global level. Chosen in the catalogue, never in the interface.
+    pub most_used: bool,
 }
 
 impl Entry {
@@ -408,6 +411,8 @@ pub struct EntryDto {
     pub hidden_options: Vec<&'static str>,
     /// Extra words the search matches, in any language (`catalog::SYNONYMS`).
     pub synonyms: Vec<&'static str>,
+    /// Listed in «Usate più spesso» (T01).
+    pub most_used: bool,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -445,6 +450,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 phase: e.phase,
                 hidden_options: e.hidden_options(device),
                 synonyms: synonyms(e.key),
+                most_used: e.most_used,
             })
             .collect(),
     }

@@ -1,18 +1,20 @@
 <script setup lang="ts">
-// The Controls section (boards «Controlli» C01–C04, «Errori» E05): the devices on the left
-// (connected controllers, live, and the keyboard, always available), the chosen device on the
-// right with three tabs: button remapping (C02), shortcuts (C03), sticks and triggers (C04).
-// With no controller connected the section shows E05 until the keyboard is chosen.
+// The Controls section (boards «Controlli» C01–C04, «Errori» E05). It opens on C01
+// (ControlsOverview: device cards, shortcuts, tester, rows down); one step below, the devices on
+// the left (connected controllers, live, and the keyboard, always available) and the chosen
+// device on the right with three tabs: button remapping (C02), shortcuts (C03), sticks and
+// triggers (C04). With no controller connected the section shows E05 until the keyboard is chosen.
 //
-// Controller: the shell's nav scope; L1 / R1 change tab (exposed `tab`, called by AppShell).
+// Controller: the shell's nav scope; L1 / R1 change tab one step below C01 (exposed `tab`), back
+// goes from there to C01 (exposed `back`, true when it did), both called by AppShell.
 // The tester and the capture field read `emu://pad-state`, watched while this section is open.
 //
 // TODO(E06, Trello): unknown controller banner and guided setup (14 buttons, saved as an SDL
 // mapping). SDL opens as gamepads only the controllers it has a mapping for, so an unknown one
 // never reaches this list: detecting it needs the joystick events, not done yet.
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Gamepad2 } from '@lucide/vue'
+import { ChevronLeft, Gamepad2 } from '@lucide/vue'
 import {
   emu,
   type PadFamily,
@@ -25,12 +27,17 @@ import {
 import { errorText, gamepadName } from '../i18n/labels'
 import { loadSchema } from '../settingsModel'
 import type { CaptureDevice } from '../controls'
+import ControlsOverview from './ControlsOverview.vue'
 import ControlsRemap from './ControlsRemap.vue'
 import ControlsShortcuts from './ControlsShortcuts.vue'
 import ControlsSticks from './ControlsSticks.vue'
 
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
+
+/** C01, or one step below it (C02–C04). */
+const view = ref<'overview' | 'device'>('overview')
+const root = ref<HTMLElement | null>(null)
 
 const pads = ref<PadInfo[]>([])
 /** The chosen device: a controller id or the keyboard; null = the first controller. */
@@ -87,11 +94,30 @@ watch(tabs, list => {
 })
 /** L1 / R1: the previous / next tab. */
 function stepTab(dir: -1 | 1) {
-  if (empty.value) return
+  if (empty.value || view.value !== 'device') return
   const list = tabs.value
   tab.value = list[(list.indexOf(tab.value) + dir + list.length) % list.length]!
 }
-defineExpose({ tab: stepTab })
+
+/** The focus goes to the first control of the view just shown. */
+async function focusView() {
+  await nextTick()
+  root.value?.querySelector<HTMLElement>('[data-nav-initial]:not(:disabled)')?.focus()
+}
+/** C01 → C02 / C03 / C04 on the device in use. */
+function openTab(to: Tab) {
+  tab.value = tabs.value.includes(to) ? to : 'remap'
+  view.value = 'device'
+  void focusView()
+}
+/** Back from C02–C04 to C01; false when already there (the shell then goes to the rail). */
+function back(): boolean {
+  if (empty.value || view.value === 'overview') return false
+  view.value = 'overview'
+  void focusView()
+  return true
+}
+defineExpose({ tab: stepTab, back })
 
 function pick(d: number | 'keyboard') {
   chosen.value = d
@@ -114,6 +140,9 @@ onMounted(async () => {
       pads.value = pads.value.filter(x => x.id !== p.id)
       if (chosen.value === p.id) chosen.value = null
     }),
+    await emu.onGamepadChanged(p => {
+      pads.value = pads.value.map(x => (x.id === p.id ? p : x))
+    }),
     await emu.controls.onPadState(s => (states.value = s)),
     await emu.settings.onChanged(e => {
       if (e.key.startsWith('pad.')) void loadGlobal()
@@ -128,7 +157,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="controls">
+  <div ref="root" class="controls">
     <!-- E05: no controller connected -->
     <section v-if="empty" class="empty">
       <h1 class="section-title">{{ t('shell.controls') }}</h1>
@@ -144,9 +173,23 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <ControlsOverview
+      v-else-if="view === 'overview' && device"
+      :pads="pads"
+      :device="device"
+      :states="states"
+      :global-rows="globalRows"
+      @pick="pick"
+      @open="openTab"
+      @error="text => emit('error', text)"
+    />
+
     <template v-else>
       <nav class="devices" :aria-label="t('controls.devices')">
-        <h1 class="section-title">{{ t('shell.controls') }}</h1>
+        <button class="back" @click="back">
+          <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
+          <span class="section-title">{{ t('shell.controls') }}</span>
+        </button>
         <div class="overline">{{ t('controls.devicesHeading') }}</div>
         <div class="list">
           <button
@@ -288,7 +331,23 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-/* C01: devices */
+/* C02–C04: back to C01 */
+.back {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -6px;
+  padding: 2px 8px 2px 4px;
+  border: 0;
+  border-radius: var(--radius-6);
+  background: none;
+}
+.back:hover {
+  background: var(--surface-hover);
+}
+
+/* C02–C04: devices */
 .devices {
   flex: 0 0 300px;
   min-height: 0;

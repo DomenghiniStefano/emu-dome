@@ -3,6 +3,9 @@
 // category list with search and changed counters on the left, the page on the right with the
 // scope bar «Stai cambiando le impostazioni di:» fixed at the top while scrolling.
 // Every page is built from the Rust schema (`settings_schema`): groups, sections, entries.
+// The section opens on T01 «In primo piano» (board Settings2, 17/11), first in the category list:
+// the search, «Usate più spesso» (the entries flagged `mostUsed` in the schema, inline at
+// «Tutti i giochi») and «Modificate di recente» (`settings_recent`, newest first).
 //
 // Levels: «Tutti i giochi», and «Giochi <console> ▾», a small menu of the consoles that have games
 // in the library, starting on the open game's console, else the last one played (Cowork, #41).
@@ -11,18 +14,19 @@
 // Controller: the shell's nav scope; L1 / R1 change level (exposed `tab`, called by AppShell).
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Gamepad2, Info, Layers, Search } from '@lucide/vue'
+import { ChevronRight, Gamepad2, Info, Layers, Search } from '@lucide/vue'
 import {
   emu,
   type ConsoleId,
   type SettingEntry,
+  type SettingRecent,
   type SettingLevel,
   type SettingRow,
   type SettingsSchema,
   type SettingsScope,
   type SettingValue,
 } from '../emu'
-import { errorText } from '../i18n/labels'
+import { changedWhenLabel, errorText } from '../i18n/labels'
 import { library } from '../library'
 import { fold, isShown, loadSchema, msg, pageLevels } from '../settingsModel'
 import SettingRowView from './SettingRow.vue'
@@ -32,7 +36,9 @@ const emit = defineEmits<{ error: [string]; openControls: [] }>()
 const { t } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
-const page = ref('video')
+/** T01 «In primo piano»: not a page of the schema, the section's first screen. */
+const OVERVIEW = 'overview'
+const page = ref(OVERVIEW)
 const level = ref<'global' | 'console'>('global')
 const onlyChanged = ref(false)
 const query = ref('')
@@ -191,6 +197,57 @@ function pick(p: string) {
   onlyChanged.value = false
 }
 
+// ---- T01 «In primo piano» ----
+const mostUsed = computed(() =>
+  (schema.value?.entries ?? []).filter(e => e.mostUsed && isShown(e, schema.value!)),
+)
+/** The current option of a cards entry («Effetto schermo»), shown as a link to its page. */
+function optionText(e: SettingEntry): string {
+  const v = values[e.page]?.[e.key]?.value ?? e.default
+  return typeof v === 'string' ? t(msg.option(e.key, v)) : ''
+}
+
+const RECENT = 5
+const recent = ref<SettingRecent[]>([])
+async function loadRecent() {
+  try {
+    recent.value = (await emu.settings.recent(RECENT)).filter(r => {
+      const e = byKey.value.get(r.key)
+      return !!e && !!schema.value && isShown(e, schema.value)
+    })
+  } catch (e) {
+    emit('error', errorText(e))
+  }
+}
+/** «Controller e tastiera · Come stampata sul controller · ieri»: page, then the value set at
+ * «Tutti i giochi» or the level it was set at, then when. */
+function recentLine(r: SettingRecent): string {
+  const e = byKey.value.get(r.key)
+  if (!e) return ''
+  const parts = [t(msg.page(e.page))]
+  if (r.level === 'console' && r.console)
+    parts.push(t('settingsUi.scope.console', { console: t(`console.${r.console}`) }))
+  else if (r.level === 'game') parts.push(t('controls.levelGame'))
+  else {
+    const v = values[e.page]?.[e.key]?.value
+    if (e.kind.type === 'choice' && typeof v === 'string') parts.push(t(msg.option(e.key, v)))
+    else if (e.kind.type === 'slider' && typeof v === 'number')
+      parts.push(t(`settingsUi.unit.${e.kind.unit}`, { v }))
+  }
+  parts.push(changedWhenLabel(r.at))
+  return parts.join(' · ')
+}
+/** A recent change opens its page, at the level it was made when the page has it. */
+function openRecent(r: SettingRecent) {
+  const e = byKey.value.get(r.key)
+  if (!e) return
+  pick(e.page)
+  if (r.level === 'console' && r.console && consoles.value.includes(r.console)) {
+    contextConsole.value = r.console
+    level.value = 'console'
+  } else level.value = 'global'
+}
+
 /** L1 / R1: the previous / next level of the scope bar. */
 function tab(dir: -1 | 1) {
   if (levels.value.length < 2) return
@@ -205,9 +262,11 @@ onMounted(async () => {
   schema.value = await loadSchema()
   await findContextConsole()
   await loadAll()
+  await loadRecent()
   unlisten = await emu.settings.onChanged(e => {
     const p = e.key.split('.')[0]
     if (p) void loadPage(p)
+    void loadRecent()
   })
 })
 onBeforeUnmount(() => unlisten?.())
@@ -218,12 +277,15 @@ const INTROS = new Set(['bios', 'cores'])
 <template>
   <div v-if="schema" class="settings">
     <nav class="cats" :aria-label="t('settingsUi.categories')">
-      <h1 class="cats-title">{{ t('settingsUi.title') }}</h1>
-      <label class="search">
-        <Search :size="14" :stroke-width="1.75" aria-hidden="true" />
-        <span class="sr">{{ t('settingsUi.search') }}</span>
-        <input v-model="query" type="search" :placeholder="t('settingsUi.searchPlaceholder')" />
-      </label>
+      <button
+        class="cat overview"
+        :class="{ on: page === OVERVIEW && !query }"
+        :aria-current="page === OVERVIEW && !query ? 'page' : undefined"
+        :data-nav-initial="page === OVERVIEW ? '' : undefined"
+        @click="pick(OVERVIEW)"
+      >
+        <span class="cat-name">{{ t('settingsUi.overview.name') }}</span>
+      </button>
       <div v-for="g in schema.groups" :key="g.id" class="group">
         <div class="overline">{{ t(msg.group(g.id)) }}</div>
         <button
@@ -242,7 +304,75 @@ const INTROS = new Set(['bios', 'cores'])
     </nav>
 
     <main class="page">
-      <template v-if="!query.trim()">
+      <!-- T01: the title and the search; the search stays on top while showing results -->
+      <template v-if="page === OVERVIEW || query.trim()">
+        <h1 class="page-title">{{ t('settingsUi.title') }}</h1>
+        <label class="search">
+          <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
+          <span class="sr">{{ t('settingsUi.search') }}</span>
+          <input v-model="query" type="search" :placeholder="t('settingsUi.overview.search')" />
+        </label>
+      </template>
+
+      <template v-if="page === OVERVIEW && !query.trim()">
+        <section class="section">
+          <div class="section-head">
+            <h3 class="overline">{{ t('settingsUi.overview.mostUsed') }}</h3>
+            <span class="note">{{ t('settingsUi.overview.mostUsedNote') }}</span>
+          </div>
+          <div class="rows">
+            <template v-for="e in mostUsed" :key="e.key">
+              <!-- Cards do not fit a row: the current choice, as a link to its page -->
+              <button
+                v-if="e.kind.type === 'choice' && e.kind.style === 'cards'"
+                class="link-row"
+                @click="pick(e.page)"
+              >
+                <span class="link-text">
+                  <span class="link-name">{{ t(msg.name(e.key)) }}</span>
+                  <span class="link-sub">{{ t(msg.page(e.page)) }}</span>
+                </span>
+                <span class="link-value">{{ optionText(e) }}</span>
+                <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
+              </button>
+              <SettingRowView
+                v-else
+                :entry="e"
+                :row="values[e.page]?.[e.key]"
+                :schema="schema"
+                level="global"
+                :level-name="levelName"
+                :scoped="false"
+                compact
+                :sub="t(msg.page(e.page))"
+                @set="v => set(e.key, v)"
+                @reset="reset(e.key)"
+                @error="text => emit('error', text)"
+              />
+            </template>
+          </div>
+        </section>
+
+        <section v-if="recent.length" class="section">
+          <h3 class="overline">{{ t('settingsUi.overview.recent') }}</h3>
+          <div class="rows">
+            <button
+              v-for="r in recent"
+              :key="`${r.key}.${r.level}.${r.console ?? ''}.${r.game ?? ''}`"
+              class="link-row"
+              @click="openRecent(r)"
+            >
+              <span class="link-text">
+                <span class="link-name">{{ t(msg.name(r.key)) }}</span>
+                <span class="link-sub">{{ recentLine(r) }}</span>
+              </span>
+              <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+      </template>
+
+      <template v-else-if="!query.trim()">
         <div class="page-head">
           <h2 class="page-title">{{ t(msg.page(page)) }}</h2>
           <div class="muted">{{ t(msg.summary(page)) }}</div>
@@ -328,7 +458,7 @@ const INTROS = new Set(['bios', 'cores'])
         <div v-else class="muted">{{ t('settingsUi.appWide') }}</div>
       </template>
       <div v-else class="page-head">
-        <h2 class="page-title">{{ t('settingsUi.resultsTitle', { query: query.trim() }) }}</h2>
+        <h2 class="results-title">{{ t('settingsUi.resultsTitle', { query: query.trim() }) }}</h2>
       </div>
 
       <section v-for="sec in sections" :key="`${sec.page}.${sec.id}`" class="section">
@@ -360,7 +490,7 @@ const INTROS = new Set(['bios', 'cores'])
         {{ t('settingsUi.emptyOnly') }}
       </div>
 
-      <div class="hint">{{ t('settingsUi.hint') }}</div>
+      <div v-if="page !== OVERVIEW || query.trim()" class="hint">{{ t('settingsUi.hint') }}</div>
     </main>
   </div>
 </template>
@@ -380,24 +510,15 @@ const INTROS = new Set(['bios', 'cores'])
   border-right: 1px solid var(--line);
   overflow-y: auto;
 }
-.cats-title {
-  margin: 0;
-  padding: 0 8px;
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
 .search {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 32px;
-  margin: 0 4px;
-  padding: 0 10px;
+  height: 40px;
+  padding: 0 12px;
   background: var(--surface-raised);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-6);
+  border-radius: 8px;
   color: var(--ink-muted);
 }
 .search input {
@@ -445,6 +566,9 @@ const INTROS = new Set(['bios', 'cores'])
 .cat-name {
   flex: 1;
   text-align: left;
+}
+.cat.overview {
+  font-weight: 600;
 }
 .count {
   font-size: 12px;
@@ -593,6 +717,58 @@ const INTROS = new Set(['bios', 'cores'])
 .section .overline {
   margin: 0;
   padding: 0 4px;
+}
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.note {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-muted);
+}
+.results-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+/* T01: a row that opens a page (a cards choice, a recent change) */
+.link-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  color: var(--ink-muted);
+}
+.link-row:first-child {
+  border-top: 0;
+}
+.link-row:hover {
+  background: var(--surface-hover);
+}
+.link-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.link-name {
+  font-weight: 500;
+  color: var(--ink);
+}
+.link-sub {
+  font-size: 12px;
+  line-height: 16px;
 }
 .rows {
   display: flex;

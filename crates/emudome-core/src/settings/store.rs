@@ -12,6 +12,12 @@
 //! device) survive. Writes are atomic: a temporary file next to the target, flushed, then renamed
 //! over it. A file that cannot be parsed is moved aside to `<name>.unreadable` and the level
 //! starts empty, so the next write does not destroy what was there.
+//!
+//! When each value was last changed («Modificate di recente», T01) lives in the same layer as the
+//! value, under the reserved key [`CHANGED_KEY`]: `"$changed": { "<key>": <Unix ms> }`. So the
+//! time travels with the value: synced with the synced files, kept on this device for the
+//! per-device entries. A reset records its time too (the value went back to the weaker level).
+//! Older versions see `$changed` as an unknown key and keep it.
 
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
@@ -26,6 +32,9 @@ use crate::ErrorCode;
 
 /// One level's values as stored: `key → JSON value`, unknown keys included.
 pub type Layer = Map<String, Json>;
+
+/// The reserved key of a layer that holds `key → Unix ms of its last change`.
+pub const CHANGED_KEY: &str = "$changed";
 
 /// Which file (or which part of the device file) a level lives in.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -67,11 +76,13 @@ impl DeviceLayers {
     }
 }
 
-/// A change to apply: `value: None` removes the key.
+/// A change to apply: `value: None` removes the key. `at` (Unix ms) records when, for
+/// «Modificate di recente»; `None` leaves the record as it is.
 pub struct Change<'a> {
     pub key: &'a str,
     pub per_device: bool,
     pub value: Option<Json>,
+    pub at: Option<u64>,
 }
 
 /// The settings files, loaded on first use and kept in memory.
@@ -135,6 +146,46 @@ impl Store {
         Ok(())
     }
 
+    /// When each key of `file` was last changed (synced and per-device values together).
+    pub fn changed_in(&mut self, file: &FileId) -> Vec<(String, u64)> {
+        let mut out = changed_of(self.synced_layer(file));
+        if let Some(layer) = self.device_layers().layer(file) {
+            out.extend(changed_of(layer));
+        }
+        out
+    }
+
+    /// The games that have a settings file, or per-device values on this device.
+    pub fn game_ids(&mut self) -> Vec<GameId> {
+        let mut ids: Vec<GameId> = Vec::new();
+        let dir = self.synced_dir.join("game");
+        match fs::read_dir(&dir) {
+            Ok(entries) => {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.extension().is_some_and(|e| e == "json") {
+                        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+                            if let Ok(id) = GameId::try_from(stem.to_owned()) {
+                                ids.push(id);
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => log::warn!("settingsReadFailed: {}: {e}", dir.display()),
+        }
+        for key in self.device_layers().game.keys() {
+            if let Ok(id) = GameId::try_from(key.clone()) {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+        }
+        ids.sort();
+        ids
+    }
+
     fn synced_layer(&mut self, file: &FileId) -> &Layer {
         if !self.synced.contains_key(file) {
             let layer = read_json::<Layer>(&self.synced_path(file)).unwrap_or_default();
@@ -161,6 +212,29 @@ fn apply_to(layer: &mut Layer, changes: &[&Change<'_>]) {
                 layer.remove(change.key);
             }
         }
+        if let Some(at) = change.at {
+            let times = layer
+                .entry(CHANGED_KEY.to_owned())
+                .or_insert_with(|| Json::Object(Map::new()));
+            if !times.is_object() {
+                // Something else under the reserved key: replaced, it can only be ours.
+                *times = Json::Object(Map::new());
+            }
+            if let Json::Object(map) = times {
+                map.insert(change.key.to_owned(), Json::from(at));
+            }
+        }
+    }
+}
+
+/// The `$changed` record of a layer; malformed items are skipped.
+fn changed_of(layer: &Layer) -> Vec<(String, u64)> {
+    match layer.get(CHANGED_KEY) {
+        Some(Json::Object(map)) => map
+            .iter()
+            .filter_map(|(key, at)| at.as_u64().map(|at| (key.clone(), at)))
+            .collect(),
+        Some(_) | None => Vec::new(),
     }
 }
 
@@ -236,6 +310,7 @@ mod tests {
             key,
             per_device,
             value: Some(value),
+            at: None,
         }
     }
 
@@ -308,6 +383,7 @@ mod tests {
                 key: "video.scale",
                 per_device: false,
                 value: None,
+                at: None,
             }],
         )
         .unwrap();

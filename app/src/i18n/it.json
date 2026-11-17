@@ -86,7 +86,15 @@
       "cancel": "Annulla",
       "use": "Usa questa copertina"
     },
-    "clearFilters": "Togli i filtri"
+    "clearFilters": "Togli i filtri",
+    "continue": {
+      "title": "Continua a giocare",
+      "lead": "«Riprendi» riparte dal punto esatto in cui hai lasciato",
+      "meta": "{console} · {time} · {when}",
+      "fromAuto": "Riparte da: Automatico",
+      "fromSlot": "Riparte da: Slot {slot}",
+      "fromInGame": "Riparte da: Salvataggio del gioco"
+    }
   },
   "placeholder": {
     "line": "Questa sezione arriva con un prossimo aggiornamento."
@@ -1593,6 +1601,13 @@
       "console": "«Giochi di una console»",
       "game": "«Solo questo gioco»",
       "session": "le modifiche in prova"
+    },
+    "overview": {
+      "name": "In primo piano",
+      "search": "Cerca un’impostazione, es. V-Sync",
+      "mostUsed": "USATE PIÙ SPESSO",
+      "mostUsedNote": "Valgono per tutti i giochi · per un solo gioco usa il menu rapido",
+      "recent": "MODIFICATE DI RECENTE"
     }
   },
   "flow": {
@@ -1881,7 +1896,26 @@
     },
     "keyboardOnly": "Tastiera: {key}",
     "stickLabel": "Posizione attuale dello stick sinistro",
-    "stickHint": "Muovi lo stick: il cerchio tratteggiato è la zona morta, il punto viola la posizione attuale."
+    "stickHint": "Muovi lo stick: il cerchio tratteggiato è la zona morta, il punto viola la posizione attuale.",
+    "overview": {
+      "inUse": "In uso",
+      "battery": "batteria {percent} %",
+      "layoutNintendo": "disposizione come su Nintendo",
+      "layoutPrinted": "disposizione come stampata sul controller",
+      "shortcuts": "SCORCIATOIE DA RICORDARE",
+      "shortcutsHint": "Tieni premuto {modifier} e premi un pulsante",
+      "editShortcuts": "Modifica le scorciatoie",
+      "press": "Premi un pulsante",
+      "lastPressed": "Ultimo pulsante premuto: {source} · nel gioco: {button}",
+      "lastUnused": "Ultimo pulsante premuto: {source} · non usato nel gioco",
+      "outline": "Sagoma del controller",
+      "remap": "Rimappa i pulsanti",
+      "remapSub": "Per tutti i giochi, per console o per un gioco",
+      "sticks": "Stick, grilletti e vibrazione",
+      "sticksSub": "Zona morta {dead} % · grilletti {trig} %",
+      "touch": "Controlli touch",
+      "touchSub": "Si personalizzano dal telefono"
+    }
   },
   "saves": {
     "import": "Importa…",

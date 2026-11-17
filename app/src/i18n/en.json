@@ -86,7 +86,15 @@
       "cancel": "Cancel",
       "use": "Use this cover"
     },
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "continue": {
+      "title": "Continue playing",
+      "lead": "“Resume” picks up exactly where you left off",
+      "meta": "{console} · {time} · {when}",
+      "fromAuto": "Picks up from: Automatic",
+      "fromSlot": "Picks up from: Slot {slot}",
+      "fromInGame": "Picks up from: In-game save"
+    }
   },
   "placeholder": {
     "line": "This section arrives in a future update."
@@ -1593,6 +1601,13 @@
       "console": "“Games of one console”",
       "game": "“This game only”",
       "session": "the changes on trial"
+    },
+    "overview": {
+      "name": "Overview",
+      "search": "Search for a setting, e.g. V-Sync",
+      "mostUsed": "MOST USED",
+      "mostUsedNote": "These apply to all games · for one game only, use the quick menu",
+      "recent": "RECENTLY CHANGED"
     }
   },
   "flow": {
@@ -1881,7 +1896,26 @@
     },
     "keyboardOnly": "Keyboard: {key}",
     "stickLabel": "Current position of the left stick",
-    "stickHint": "Move the stick: the dashed circle is the dead zone, the purple dot its current position."
+    "stickHint": "Move the stick: the dashed circle is the dead zone, the purple dot its current position.",
+    "overview": {
+      "inUse": "In use",
+      "battery": "battery {percent}%",
+      "layoutNintendo": "Nintendo layout",
+      "layoutPrinted": "layout as printed on the controller",
+      "shortcuts": "SHORTCUTS TO REMEMBER",
+      "shortcutsHint": "Hold {modifier} and press a button",
+      "editShortcuts": "Edit shortcuts",
+      "press": "Press a button",
+      "lastPressed": "Last button pressed: {source} · in the game: {button}",
+      "lastUnused": "Last button pressed: {source} · not used in the game",
+      "outline": "Controller outline",
+      "remap": "Remap buttons",
+      "remapSub": "For all games, per console or for one game",
+      "sticks": "Sticks, triggers and vibration",
+      "sticksSub": "Dead zone {dead}% · triggers {trig}%",
+      "touch": "Touch controls",
+      "touchSub": "You customise them on your phone"
+    }
   },
   "saves": {
     "import": "Import…",

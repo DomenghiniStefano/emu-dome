@@ -26,6 +26,7 @@ import { errorText, saveWhenLabel, sizeLabel } from '../i18n/labels'
 import { library } from '../library'
 import FlowDialog from './FlowDialog.vue'
 import GameCover from './GameCover.vue'
+import { savesFocus } from '../savesFocus'
 
 const emit = defineEmits<{
   openGame: [game: LibraryGame, slot: number]
@@ -103,7 +104,9 @@ function meta(g: LibraryGame): string {
 // ---- V02: one game ----
 
 const mode = ref<'game' | 'import'>('game')
-const selectedPath = ref<string | null>(null)
+// «Salvataggi» in «Continua a giocare» (L01) opens this section on that game.
+const selectedPath = ref<string | null>(savesFocus.value)
+savesFocus.value = null
 const selected = computed(
   () => withSaves.value.find(g => g.path === selectedPath.value) ?? withSaves.value[0] ?? null,
 )

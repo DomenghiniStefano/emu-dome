@@ -676,6 +676,7 @@ pub fn run() {
             theme::theme,
             settings::settings_schema,
             settings::settings_page,
+            settings::settings_recent,
             settings::settings_game_scope,
             settings::settings_set,
             settings::settings_reset,

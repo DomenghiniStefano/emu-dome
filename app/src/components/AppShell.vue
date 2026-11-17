@@ -11,6 +11,7 @@ import { Cloud, Gamepad2, Library, Save, Settings2 } from '@lucide/vue'
 import { useNavScope } from '../nav'
 import { SECTIONS, type Section } from '../sections'
 import type { LibraryGame } from '../emu'
+import { savesFocus } from '../savesFocus'
 import ControlsView from './ControlsView.vue'
 import LibraryView from './LibraryView.vue'
 import SavesView from './SavesView.vue'
@@ -47,12 +48,21 @@ const settingsView = ref<InstanceType<typeof SettingsView> | null>(null)
 const controlsView = ref<InstanceType<typeof ControlsView> | null>(null)
 useNavScope(root, {
   autofocus: true,
-  back: focusRail,
+  // A section one step down (Controls C02–C04) goes back up first.
+  back: () => {
+    if (!controlsView.value?.back()) focusRail()
+  },
   tab: dir => {
     settingsView.value?.tab(dir)
     controlsView.value?.tab(dir)
   },
 })
+
+/** L01 «Salvataggi» on a game: the Saves section, on that game. */
+function openSaves(g: LibraryGame) {
+  savesFocus.value = g.path
+  section.value = 'saves'
+}
 
 // The section's own first control takes the initial focus; a section without one
 // (the placeholders) leaves it on its rail item.
@@ -94,7 +104,8 @@ function initialOn(s: Section) {
         <LibraryView
           v-if="section === 'library'"
           :error="error"
-          @open="g => emit('openGame', g)"
+          @open="(g, slot) => emit('openGame', g, slot)"
+          @open-saves="openSaves"
           @open-file="emit('openFile')"
           @error="text => emit('error', text)"
         />
