@@ -40,13 +40,13 @@
       "last_played": "Ordina per: ultima partita",
       "name": "Ordina per: nome",
       "play_time": "Ordina per: tempo di gioco",
-      "date_added": "Ordina per: data di aggiunta"
+      "added": "Ordina per: data di aggiunta"
     },
     "sort": {
       "last_played": "Ultima partita",
       "name": "Nome",
       "play_time": "Tempo di gioco",
-      "date_added": "Data di aggiunta"
+      "added": "Data di aggiunta"
     },
     "filters": {
       "label": "Filtra e ordina",

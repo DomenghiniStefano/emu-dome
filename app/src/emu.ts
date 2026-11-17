@@ -110,8 +110,8 @@ export type SettingKind =
       type: 'choice'
       style: 'segments' | 'list' | 'cards'
       options: string[]
-      /** The design has not listed the options yet (completed in 2b). */
-      placeholder: boolean
+      /** The device adds options after these (audio outputs, saved touch layouts). */
+      moreAtRuntime: boolean
     }
   | { type: 'multi'; options: string[] }
   | {
@@ -141,11 +141,20 @@ export interface SettingEntry {
   phase: number
 }
 
+/** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */
+export interface SettingSection {
+  page: string
+  id: string
+  keys: string[]
+}
+
 export interface SettingsSchema {
   device: SettingDevice
   /** Entries with a later `phase`, or whose `platform` excludes `device`, are not shown. */
   currentPhase: number
   pages: string[]
+  /** Every page's headings in order, each with its entries. */
+  sections: SettingSection[]
   entries: SettingEntry[]
 }
 

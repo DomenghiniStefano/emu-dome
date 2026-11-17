@@ -40,13 +40,13 @@
       "last_played": "Sort by: last played",
       "name": "Sort by: name",
       "play_time": "Sort by: play time",
-      "date_added": "Sort by: date added"
+      "added": "Sort by: date added"
     },
     "sort": {
       "last_played": "Last played",
       "name": "Name",
       "play_time": "Play time",
-      "date_added": "Date added"
+      "added": "Date added"
     },
     "filters": {
       "label": "Filter and sort",
