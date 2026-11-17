@@ -26,7 +26,12 @@ export type Button =
 export interface GameInfo {
   title: string
   console: string
+  consoleId: ConsoleId
   core: string
+  /** `saves.resume` is «ask» and an auto quick save exists: ask whether to resume. */
+  resumable: boolean
+  /** `saves.autoexit`: closing writes the auto quick save. */
+  autosaveOnExit: boolean
 }
 export interface Stats {
   running: boolean
@@ -34,7 +39,14 @@ export interface Stats {
   targetFps: number
   speed: Speed | null
   paused: boolean
+  /** Frames emulated since the start (hang watchdog, E11). */
+  frames: number
+  /** Unix ms of the last auto quick save in this session. */
+  autoSavedAt: number | null
 }
+
+/** Slot 0: the auto quick save («Salvataggio rapido automatico»). */
+export const AUTO_SLOT = 0
 
 /**
  * Mirror of `emudome_core::ErrorCode` (crates/emudome-core/src/error.rs): what every
@@ -252,6 +264,8 @@ export const emu = {
   setVideoMode: (mode: VideoMode) => invoke<void>('set_video_mode', { mode }),
   openGame: (path: string) => invoke<GameInfo>('open_game', { path }),
   closeGame: () => invoke<void>('close_game'),
+  /** E11: let go of a core that stopped answering (does not wait for it). */
+  abandonGame: () => invoke<void>('abandon_game'),
   setSpeed: (speed: Speed) => invoke<void>('set_speed', { speed }),
   setPaused: (paused: boolean) => invoke<void>('set_paused', { paused }),
   /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing. */

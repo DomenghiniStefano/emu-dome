@@ -70,7 +70,12 @@ struct AppState {
 struct GameInfo {
     title: String,
     console: String,
+    console_id: ConsoleId,
     core: String,
+    /// `saves.resume` is «ask» and an auto quick save exists: the interface asks.
+    resumable: bool,
+    /// `saves.autoexit`: closing writes the auto quick save (G14 lists the step).
+    autosave_on_exit: bool,
 }
 
 #[derive(Serialize)]
@@ -81,6 +86,10 @@ struct StatsDto {
     target_fps: f64,
     speed: Option<Speed>,
     paused: bool,
+    /// Frames emulated since the game started (the interface's hang watchdog, E11).
+    frames: u64,
+    /// Unix ms of the last auto quick save in this session.
+    auto_saved_at: Option<u64>,
 }
 
 /// Which core to use for a file, by its extension, the console shown and its settings level.
@@ -159,13 +168,21 @@ fn open_path(
     // Close the previous game before opening another one.
     close_current(app, state);
 
+    let console_id = console.unwrap_or(ext_console);
+    let flow = settings::game_flow(app, console_id, &game);
+    let save_dir = state.data_dir.join("saves");
+    let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game_path);
+
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(
         SessionOptions {
             core_path,
             game_path: game_path.clone(),
             system_dir: state.data_dir.join("system"),
-            save_dir: state.data_dir.join("saves"),
+            save_dir,
+            autosave_every: flow.autosave_every,
+            autosave_on_exit: flow.autosave_on_exit,
+            resume_auto: flow.resume == "always",
         },
         tx,
     )
@@ -185,7 +202,7 @@ fn open_path(
     *state.current.lock() = Some(shared.clone());
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
-    settings::begin_session(app, console.unwrap_or(ext_console), game);
+    settings::begin_session(app, console_id, game);
 
     Ok(GameInfo {
         title: title.unwrap_or_else(|| {
@@ -195,7 +212,10 @@ fn open_path(
                 .unwrap_or_default()
         }),
         console: console_label.into(),
+        console_id,
         core: core_name.into(),
+        resumable,
+        autosave_on_exit: flow.autosave_on_exit,
     })
 }
 
@@ -211,6 +231,20 @@ fn close_current(app: &tauri::AppHandle, state: &AppState) {
 #[tauri::command]
 fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
     close_current(&app, &state);
+}
+
+/// E11: the core stopped answering. Lets go of its thread without waiting for it (joining a
+/// core stuck in `retro_run` never returns); the interface then offers to reopen the game.
+#[tauri::command]
+fn abandon_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
+    library::end_play(&app);
+    settings::end_session(&app);
+    state.native_source(None);
+    *state.current.lock() = None;
+    let session = state.session.lock().take();
+    if let Some(session) = session {
+        session.abandon();
+    }
 }
 
 impl AppState {
@@ -381,6 +415,12 @@ fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
                 target_fps: s.av_info.timing.fps,
                 speed: s.speed,
                 paused: s.paused,
+                frames: s.frames,
+                auto_saved_at: s.auto_saved_at.and_then(|t| {
+                    t.duration_since(std::time::UNIX_EPOCH)
+                        .ok()
+                        .and_then(|d| u64::try_from(d.as_millis()).ok())
+                }),
             }
         }
         None => StatsDto {
@@ -389,6 +429,8 @@ fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
             target_fps: 0.0,
             speed: None,
             paused: false,
+            frames: 0,
+            auto_saved_at: None,
         },
     }
 }
@@ -487,6 +529,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_game,
             close_game,
+            abandon_game,
             set_speed,
             set_paused,
             save_state,
