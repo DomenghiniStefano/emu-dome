@@ -18,6 +18,7 @@
     "filterConsole": "Filtra per console",
     "all": "Tutti",
     "open": "Apri {title}",
+    "openDetails": "Apri i dettagli di {title}",
     "neverPlayed": "Mai giocato",
     "meta": "{time} · {when}",
     "noneShown": "Nessun gioco corrisponde a questi filtri.",
@@ -98,6 +99,93 @@
       "unfavourite": "Togli dai preferiti",
       "hide": "Nascondi dalla libreria",
       "unhide": "Mostra nella libreria"
+    }
+  },
+  "details": {
+    "back": "Torna alla libreria",
+    "tabsLabel": "Sezioni dei dettagli del gioco",
+    "meta": "{time} di gioco · ultima partita {when}",
+    "metaShort": "{time} · {when}",
+    "notYet": "Questa sezione arriva con un prossimo aggiornamento.",
+    "tabs": {
+      "saves": "Salvataggi",
+      "settings": "Impostazioni del gioco",
+      "settingsShort": "Impostazioni",
+      "controls": "Controlli",
+      "cheats": "Codici trucco",
+      "patches": "Patch e traduzioni",
+      "files": "File e informazioni"
+    },
+    "cheats": {
+      "lead": "I codici trucco cambiano il gioco mentre gira. Alcuni possono bloccarlo: fai un salvataggio rapido prima di provarli."
+    },
+    "patches": {
+      "lead": "Una patch (IPS, UPS o BPS) modifica il gioco, ad esempio per tradurlo. EmuDome la applica senza toccare il tuo file originale."
+    },
+    "saves": {
+      "quickHint": "Un salvataggio rapido è una foto esatta della partita",
+      "inGameLead": "Quello che il gioco scrive da solo quando salvi dal suo menu.",
+      "lastChange": "Ultima modifica",
+      "lastChangeLine": "Ultima modifica {when}",
+      "backups": "Backup",
+      "backupsLine": "Nessuna copia | 1 copia: {when} | {n} copie, la più vecchia: {when}",
+      "showBackups": "Mostra i backup"
+    },
+    "settings": {
+      "lead": "Solo le impostazioni che per questo gioco sono diverse da quelle di tutti i giochi {console}.",
+      "noIdentity": "Le impostazioni solo per questo gioco non sono disponibili per questo file.",
+      "openAll": "Apri tutte le impostazioni di questo gioco",
+      "base": "{page} · per tutti i giochi {console}: {value}",
+      "baseShort": "Per tutti i giochi {console}: {value}",
+      "none": "Questo gioco usa le stesse impostazioni di tutti i giochi {console}.",
+      "on": "Attivo",
+      "off": "Disattivo"
+    },
+    "controls": {
+      "padTitle": "CONTROLLER E TASTIERA",
+      "remapInherited": "Rimappatura: come per tutti i giochi {console}",
+      "remapOwn": "Rimappatura: solo per questo gioco",
+      "remapLead": "Puoi cambiare i pulsanti solo per questo gioco senza toccare gli altri.",
+      "remap": "Rimappa i pulsanti per questo gioco",
+      "turboTitle": "PRESSIONE RIPETUTA (TURBO)",
+      "touchTitle": "CONTROLLI TOUCH (TELEFONO)",
+      "touchLead": "Si personalizzano dal telefono, sopra il gioco in pausa.",
+      "pointerTitle": "TOCCO SULLO SCHERMO INFERIORE",
+      "pointerLead": "Con il controller: stick destro come cursore, R3 per toccare."
+    },
+    "files": {
+      "looksTitle": "COME APPARE",
+      "name": "Nome mostrato",
+      "cover": "Copertina",
+      "coverChange": "Cambia…",
+      "fileTitle": "FILE DEL GIOCO",
+      "onComputer": "Su questo computer",
+      "onPhone": "Su questo telefono",
+      "region": "Regione",
+      "version": "Versione",
+      "code": "Codice del gioco",
+      "hash": "Impronta (SHA-1)",
+      "titleId": "ID del titolo",
+      "engine": "Motore di emulazione",
+      "core": {
+        "mgba": "mGBA",
+        "melondsds": "melonDS DS",
+        "azahar": "Azahar"
+      }
+    },
+    "region": {
+      "japan": "Giappone",
+      "usa": "Stati Uniti",
+      "europe": "Europa",
+      "germany": "Germania",
+      "france": "Francia",
+      "italy": "Italia",
+      "spain": "Spagna",
+      "netherlands": "Paesi Bassi",
+      "australia": "Australia",
+      "korea": "Corea",
+      "china": "Cina",
+      "world": "Tutto il mondo"
     }
   },
   "placeholder": {
@@ -1537,6 +1625,7 @@
       "consoleSub": "Solo i giochi {short}. Vince su «Tutti i giochi»",
       "globalLine": "Cambi il valore di partenza. Le console e i giochi che hanno un valore proprio lo tengono: lo vedi dalla scritta sotto la voce.",
       "consoleLine": "Cambi solo i giochi {console}. Le voci con il pallino sono diverse da «Tutti i giochi»; le altre lo seguono.",
+      "gameLine": "Cambi solo {title}. Le voci con il pallino sono diverse dai giochi della sua console; le altre li seguono.",
       "consolePick": "Scegli la console"
     },
     "appWide": "Queste impostazioni valgono per tutta l’app, non per un singolo gioco.",

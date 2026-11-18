@@ -14,13 +14,7 @@
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown, Ellipsis, FolderX, Play, Plus, TriangleAlert, X } from '@lucide/vue'
-import {
-  AUTO_SLOT,
-  emu,
-  type ConsoleId,
-  type LibraryGame,
-  type SettingsScope,
-} from '../emu'
+import { AUTO_SLOT, emu, type ConsoleId, type LibraryGame, type SettingsScope } from '../emu'
 import { detailsReturn, resumePoint, type ResumePoint } from '../gameDetails'
 import { errorText, lastPlayedLabel, playTimeLabel } from '../i18n/labels'
 import { chooseFolder, library, replaceFolder } from '../library'

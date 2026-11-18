@@ -75,7 +75,10 @@ async function loadResume() {
     resume.value = null
   }
 }
-watch(() => `${game.value?.path}:${game.value?.lastPlayed}`, () => void loadResume())
+watch(
+  () => `${game.value?.path}:${game.value?.lastPlayed}`,
+  () => void loadResume(),
+)
 
 function play() {
   const g = game.value
@@ -171,13 +174,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-if="game"
-    ref="root"
-    class="details"
-    :class="{ phone }"
-    :style="{ '--tint': game.colour }"
-  >
+  <div v-if="game" ref="root" class="details" :class="{ phone }" :style="{ '--tint': game.colour }">
     <!-- L04 -->
     <section class="hero" :aria-label="game.title">
       <div v-if="phone" class="phone-bar">
@@ -324,13 +321,14 @@ onBeforeUnmount(() => {
         v-else-if="current === 'files'"
         :game="game"
         :phone="phone"
+        :device="schema?.device ?? null"
         @cover="picking = true"
         @error="text => emit('error', text)"
       />
       <!-- L08, L09: not built yet (X05, the reason). -->
       <div v-else class="not-yet">
         <p class="lead">{{ t(`details.${current}.lead`) }}</p>
-        <p class="muted">{{ t(`details.${current}.notYet`) }}</p>
+        <p class="muted">{{ t('details.notYet') }}</p>
       </div>
     </div>
 

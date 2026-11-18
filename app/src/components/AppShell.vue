@@ -5,14 +5,23 @@
 //
 // Controller / keyboard: one nav scope over the whole shell. Moving onto a rail item does not
 // switch section, confirming it does; back from the content returns the focus to the rail.
+//
+// Game details (L04–L10, #34) live in the Library section: shown instead of the grid while
+// `detailsOf` names a game (a cover's click, right click or X; «Dettagli del gioco» in Saves).
+// Back (B, Esc, «‹ Libreria», the rail's Library) returns to the grid on that game's cover.
+// From there a game opens, and closing it comes back to the details; «Mostra i backup» /
+// «Importa…» (L05), «Apri tutte le impostazioni…» (L06) and «Rimappa…» (L07) jump to the
+// Saves, Settings and Controls sections for that one game.
 import { computed, ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Cloud, Gamepad2, Library, Save, Settings2 } from '@lucide/vue'
 import { useNavScope } from '../nav'
 import { SECTIONS, type Section } from '../sections'
 import type { LibraryGame } from '../emu'
-import { savesFocus } from '../savesFocus'
+import { controlsFocus, detailsOf, detailsReturn, gameScopeOf, settingsFocus } from '../gameDetails'
+import { savesFocus, savesImportFor } from '../savesFocus'
 import ControlsView from './ControlsView.vue'
+import GameDetails from './GameDetails.vue'
 import LibraryView from './LibraryView.vue'
 import SavesView from './SavesView.vue'
 import SettingsView from './SettingsView.vue'
@@ -46,17 +55,55 @@ function focusRail() {
 // L1 / R1 go to the section that has tabs or levels (the settings scope bar, the controls tabs).
 const settingsView = ref<InstanceType<typeof SettingsView> | null>(null)
 const controlsView = ref<InstanceType<typeof ControlsView> | null>(null)
+const gameDetails = ref<InstanceType<typeof GameDetails> | null>(null)
 useNavScope(root, {
   autofocus: true,
-  // A section one step down (Controls C02–C04) goes back up first.
+  // A section one step down (Controls C02–C04, a game's details) goes back up first.
   back: () => {
+    if (showingDetails.value) return closeDetails()
     if (!controlsView.value?.back()) focusRail()
   },
   tab: dir => {
     settingsView.value?.tab(dir)
     controlsView.value?.tab(dir)
+    gameDetails.value?.tab(dir)
   },
 })
+
+// ---- Game details (L04–L10) ----
+const showingDetails = computed(() => section.value === 'library' && detailsOf.value !== null)
+function openDetails(g: LibraryGame) {
+  detailsOf.value = g.id
+  section.value = 'library'
+}
+/** Back to the grid, on the game's cover. */
+function closeDetails() {
+  detailsReturn.value = detailsOf.value
+  detailsOf.value = null
+}
+function pickSection(s: Section) {
+  // The rail's Library while the details are shown: back to the grid.
+  if (s === 'library' && showingDetails.value) return closeDetails()
+  section.value = s
+}
+/** L05 «Importa…»: the Saves section's import (V05), for this game. */
+function importFor(g: LibraryGame) {
+  savesFocus.value = g.path
+  savesImportFor.value = g.path
+  section.value = 'saves'
+}
+/** L06: the Settings section at «Solo questo gioco». */
+function settingsFor(g: LibraryGame) {
+  const scope = gameScopeOf(g)
+  settingsFocus.value = scope ? { scope, title: g.title } : null
+  section.value = 'settings'
+}
+/** L07: button remapping (C02) at «Solo questo gioco». */
+function remapFor(g: LibraryGame) {
+  const scope = gameScopeOf(g)
+  controlsFocus.value = scope ? { scope, title: g.title } : null
+  section.value = 'controls'
+}
 
 /** L01 «Salvataggi» on a game: the Saves section, on that game. */
 function openSaves(g: LibraryGame) {
@@ -89,7 +136,7 @@ function initialOn(s: Section) {
             :class="{ on: s === section }"
             :aria-current="s === section ? 'page' : undefined"
             :data-nav-initial="initialOn(s)"
-            @click="section = s"
+            @click="pickSection(s)"
           >
             <component :is="ICONS[s]" :size="20" :stroke-width="1.75" aria-hidden="true" />
             <span class="rail-name">{{ t(`shell.${s}`) }}</span>
@@ -98,19 +145,41 @@ function initialOn(s: Section) {
       </nav>
       <main
         class="content"
-        :class="{ flush: section === 'settings' || section === 'controls' || section === 'saves' }"
+        :class="{
+          flush:
+            section === 'settings' ||
+            section === 'controls' ||
+            section === 'saves' ||
+            showingDetails,
+        }"
       >
+        <GameDetails
+          v-if="showingDetails && detailsOf"
+          :id="detailsOf"
+          ref="gameDetails"
+          :key="detailsOf"
+          @back="closeDetails"
+          @play="(g, slot) => emit('openGame', g, slot)"
+          @backups="openSaves"
+          @import="importFor"
+          @settings="settingsFor"
+          @remap="remapFor"
+          @error="text => emit('error', text)"
+          @notice="text => emit('notice', text)"
+        />
         <LibraryView
-          v-if="section === 'library'"
+          v-else-if="section === 'library'"
           :error="error"
           @open="(g, slot) => emit('openGame', g, slot)"
           @open-saves="openSaves"
+          @details="openDetails"
           @open-file="emit('openFile')"
           @error="text => emit('error', text)"
         />
         <SavesView
           v-else-if="section === 'saves'"
           @open-game="(g, slot) => emit('openGame', g, slot)"
+          @open-details="openDetails"
           @open-library="section = 'library'"
           @error="text => emit('error', text)"
           @notice="text => emit('notice', text)"

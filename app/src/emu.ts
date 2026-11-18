@@ -212,15 +212,7 @@ export type Theme = 'dark' | 'black' | 'light'
 /** `prev` / `next` are L1 / R1: tabs or levels of the screen. */
 /** `more` is X: the focused item's other actions (as a right click). */
 export type NavAction =
-  | 'up'
-  | 'down'
-  | 'left'
-  | 'right'
-  | 'confirm'
-  | 'back'
-  | 'prev'
-  | 'next'
-  | 'more'
+  'up' | 'down' | 'left' | 'right' | 'confirm' | 'back' | 'prev' | 'next' | 'more'
 
 /**
  * Payload of `emu://hotkey` (mirror of `HotkeyEvent` in src-tauri/src/gamepad.rs): what a
