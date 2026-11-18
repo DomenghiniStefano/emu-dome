@@ -31,8 +31,10 @@
 //                     primitives and the Kit page have none either.
 //   utility-collision a class name a LEGACY screen uses for its scoped CSS that Tailwind also
 //                     generates as a utility (because the word appears in the sources Tailwind
-//                     reads, src/components/ui and src/kit): the utility would apply to the
-//                     screen's element too. Neutral only when the screen's scoped rule sets the
+//                     reads: the `@source` paths of src/assets/main.css, the design system's code
+//                     and every migrated screen): the utility would apply to the screen's element
+//                     too. Understands a `@source` folder and a file list in braces, not other
+//                     globs. Neutral only when the screen's scoped rule sets the
 //                     same property; those are listed in NEUTRAL with the reason. Reads the words
 //                     of the source files, a superset of what Tailwind takes as candidates, so it
 //                     can report a word Tailwind would not use; it cannot see a class a screen adds
@@ -49,7 +51,6 @@ const FIXTURES = join(ROOT, 'scripts', 'scan-conventions')
 // The screens as they were when cycle 1 landed (paths under app/src/). Cycle 2 shrinks this list.
 const LEGACY = new Set([
   'App.vue',
-  'components/AppShell.vue',
   'components/ButtonTester.vue',
   'components/ConflictTwoUp.vue',
   'components/ControlsOverview.vue',
@@ -57,8 +58,6 @@ const LEGACY = new Set([
   'components/ControlsShortcuts.vue',
   'components/ControlsSticks.vue',
   'components/ControlsView.vue',
-  'components/CoverMenu.vue',
-  'components/CoverPicker.vue',
   'components/DetailsControls.vue',
   'components/DetailsFiles.vue',
   'components/DetailsSaves.vue',
@@ -66,13 +65,9 @@ const LEGACY = new Set([
   'components/FirstRun.vue',
   'components/FlowDialog.vue',
   'components/GameCanvas.vue',
-  'components/GameCover.vue',
   'components/GameDetails.vue',
   'components/GameFlowOverlays.vue',
   'components/GameSurround.vue',
-  'components/LibraryEmpty.vue',
-  'components/LibraryFilters.vue',
-  'components/LibraryView.vue',
   'components/QuickMenu.vue',
   'components/QuickSaveDialog.vue',
   'components/SavesView.vue',
@@ -165,6 +160,24 @@ function classNames(source) {
   return names
 }
 
+/**
+ * Whether a file (relative to app/src, forward slashes) is one Tailwind reads, from the `@source`
+ * lines of main.css (paths relative to src/assets): a folder takes everything under it, a
+ * `{a,b}` list in the file name takes those files.
+ */
+export function sourceMatcher(mainCss) {
+  const tests = [...mainCss.matchAll(/^@source\s+'([^']+)'/gm)].map(([, p]) => {
+    const path = p.replace(/^\.\.\//, '')
+    const brace = path.match(/^(.*)\{([^}]*)\}(.*)$/)
+    if (brace) {
+      const names = new Set(brace[2].split(',').map(n => `${brace[1]}${n.trim()}${brace[3]}`))
+      return file => names.has(file)
+    }
+    return file => file === path || file.startsWith(`${path.replace(/\/$/, '')}/`)
+  })
+  return file => tests.some(test => test(file))
+}
+
 /** Tailwind's compiler for app/src/assets/main.css, or null without app/node_modules. */
 async function tailwind() {
   const pkg = join(ROOT, 'app', 'node_modules', '@tailwindcss', 'vite', 'package.json')
@@ -219,7 +232,8 @@ async function scanRepo() {
       }
     }
     const words = new Set()
-    for (const file of files.filter(f => f.startsWith('components/ui/') || f.startsWith('kit/'))) {
+    const read = sourceMatcher(readFileSync(join(SRC, 'assets', 'main.css'), 'utf8'))
+    for (const file of files.filter(read)) {
       for (const w of readFileSync(join(SRC, file), 'utf8').match(/[A-Za-z][\w-]*/g) ?? []) {
         words.add(w)
       }
@@ -272,6 +286,11 @@ async function selfTest() {
     }
     if (collisions(compiler, legacy, new Set(['tabular'])).length !== 0) {
       failures.push('utility-collision: fired on a word the sources do not hold')
+    }
+    const read = sourceMatcher("@source '../components/ui';\n@source '../components/{A,B}.vue';")
+    const expected = { 'components/ui/x.ts': true, 'components/A.vue': true, 'components/C.vue': false }
+    for (const [file, want] of Object.entries(expected)) {
+      if (read(file) !== want) failures.push(`utility-collision: @source read wrong for ${file}`)
     }
   } else {
     console.log('utility-collision self-test skipped: no app/node_modules')

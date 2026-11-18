@@ -30,3 +30,85 @@
 @utility bg-accent-track {
   background: linear-gradient(var(--accent-crown), var(--accent-deep));
 }
+
+/* Glass (README «Vetro»: the medium one), a panel over the ambient haze: fill, edge, the lit top
+   edge, no float shadow (LibraryView L11). */
+@utility glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-16);
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+}
+
+/* The glass's blur alone, for a bar whose fill and edge are its own (the shell's top bar). */
+@utility backdrop-glass {
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+}
+
+/* The ambient haze behind the shell (design L01): the cover colours (--cover-1/2/3, ambient.ts)
+   as three spots, fading over duration-ambient when they change. Decoration only, under
+   everything; off in Nero and with «Riduci la trasparenza» (--haze-opacity 0, opacity.css). */
+@utility ambient-haze {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--haze-opacity);
+  background:
+    radial-gradient(60% 50% at 18% 0%, var(--cover-1) 0%, transparent 70%),
+    radial-gradient(40% 40% at 80% 10%, var(--cover-2) 0%, transparent 70%),
+    radial-gradient(50% 50% at 60% 100%, var(--cover-3) 0%, transparent 70%);
+  transition:
+    --cover-1 var(--duration-ambient) var(--ease-out),
+    --cover-2 var(--duration-ambient) var(--ease-out),
+    --cover-3 var(--duration-ambient) var(--ease-out);
+}
+
+/* The accent's glow around an icon (the current section on the rail): 60% of the accent. */
+@utility glow-icon {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--violet) 60%, transparent));
+}
+
+/* Pixel art scaled up crisp: ROM icons, quick save thumbnails. */
+@utility pixelated {
+  image-rendering: pixelated;
+}
+
+/* Focus inside a frame that draws the ring itself (a cover of the library): the focused control
+   drops the global outline (focus-ring-none), or draws a tight 2px ring of its own
+   (focus-ring-tight). !important because the global ring (styles.css, `data-nav`) is unlayered,
+   and an unlayered rule beats every utility whatever its specificity. */
+@utility focus-ring-none {
+  :root[data-nav] &:focus,
+  :root[data-nav] &[data-nav-focus] {
+    outline: none !important;
+  }
+}
+@utility focus-ring-tight {
+  :root[data-nav] &:focus,
+  :root[data-nav] &[data-nav-focus] {
+    outline: none !important;
+    box-shadow: 0 0 0 2px var(--focus-ring) !important;
+  }
+}
+
+/* An indeterminate progress bar's fill sweeping across its track (the library scan). With
+   «Riduci le animazioni» it stands still, full and faded. The 1.4s loop is not a design system
+   duration yet (`duration-loop`, Cowork). */
+@keyframes progress-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@utility progress-sweep {
+  animation: progress-sweep 1.4s var(--ease-out) infinite;
+  :root[data-motion='reduce'] & {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

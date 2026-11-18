@@ -43,13 +43,30 @@
     core: "mgba",
     settingsGame: id,
   }));
+  // `unreachableFolder`: the last game lives in a folder that is gone (E01).
+  if (scenario.unreachableFolder) {
+    const last = games[games.length - 1];
+    last.folder = "D:/Old games";
+    last.path = `D:/Old games/${last.title}.${last.console}`;
+    last.available = false;
+  }
+  // `withheld`: the last N games arrive with a scan; a step puts them back with
+  // `__mockLibrary.games = __mockAllGames` between the scan's `started` and `done` events.
+  const listed = games.slice(0, games.length - (scenario.withheld ?? 0));
   const library = {
-    games: scenario.emptyLibrary ? [] : games,
+    games: scenario.emptyLibrary ? [] : listed,
     folders: scenario.emptyLibrary
       ? []
-      : [{ path: "C:/Games", reachable: true }],
-    scanning: false,
+      : [
+          { path: "C:/Games", reachable: true },
+          ...(scenario.unreachableFolder
+            ? [{ path: "D:/Old games", reachable: false }]
+            : []),
+        ],
+    scanning: !!scenario.scanning,
   };
+  window.__mockLibrary = library;
+  window.__mockAllGames = games;
   const entry = (key, page, kind, def, extra = {}) => ({
     key,
     page,
@@ -234,6 +251,14 @@
   const callbacks = new Map();
   let next = 1;
   window.__mockCalls = [];
+  // Events: `window.__mockEmit(name, payload)` calls the handlers the app listens with.
+  const listeners = [];
+  window.__mockEmit = (event, payload) => {
+    for (const l of listeners) {
+      if (l.event === event)
+        callbacks.get(l.handler)?.({ event, id: 0, payload });
+    }
+  };
   window.__TAURI_INTERNALS__ = {
     metadata: {
       currentWindow: { label: "main" },
@@ -252,7 +277,10 @@
     },
     async invoke(cmd, args) {
       window.__mockCalls.push(cmd);
-      if (cmd === "plugin:event|listen") return next++;
+      if (cmd === "plugin:event|listen") {
+        listeners.push({ event: args.event, handler: args.handler });
+        return next++;
+      }
       if (cmd === "plugin:event|unlisten") return null;
       if (cmd === "settings_page") return rows(args.page);
       if (cmd === "library_scan") return null;
