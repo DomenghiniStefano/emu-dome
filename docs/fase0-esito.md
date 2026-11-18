@@ -150,3 +150,21 @@ Errors and fixes:
 
 Proposed next step: step 1, `SET_HW_RENDER` with OpenGL and readback, since Azahar's software renderer is at a quarter of full
 speed on the PC.
+
+## 2026-11-18 · Hardware rendering spike, step 1: Azahar on Vulkan through wgpu (headless, Windows)
+Spike binary `crates/hw-render-spike`; full write-up in `docs/feasibility.md`, section "Hardware rendering
+(`SET_HW_RENDER`)". Ryzen 7 9700X, RTX 3060 (NVIDIA 617.42), Azahar 2127.0-rc4 and melonDS DS 1.4.0 nightlies of
+2026-11-18, Craftus Reloaded title screen and Breaking Bad DS (homebrew only).
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless; the core's Vulkan image is drawn by a wgpu render pass into an offscreen target and read back: correct picture |
+| 2. FPS at 1× | not measured at 1×; unthrottled 1590-2823 fps with the wgpu draw, 28.4 fps with Software | Azahar Vulkan on the device it created through `create_device`, wrapped by wgpu; title screen only, so the render path is measured, not real-scene emulation |
+| 3. Audio | not tested | headless |
+| 4. Controller | not tested | headless |
+| 5. Native vs webview | not tested | readback for the webview path costs 0.05-0.2 ms per 400x480 frame on top of the draw |
+
+Errors and fixes: `crates/hw-render-spike/src/present.rs`, wgpu panicked "Mixing the wgpu encoding API with the raw
+encoding API is not permitted" when the raw image barrier and the wgpu render pass shared one encoder; the barrier now
+has its own encoder, submitted first in the same `submit`.
+Proposed next step: the same spike on the A71 (Azahar Android core, Vulkan) and one PC run under the Khronos validation layer.
