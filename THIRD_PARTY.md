@@ -52,8 +52,15 @@ License 1.1: list it here and ship its `OFL.txt` next to the font files.
 
 ### Icons and images
 
-`app/src-tauri/icons/` (app icon, a placeholder) was made for EmuDome in the first commit and is part
-of EmuDome under GPL-3.0-or-later.
+- **App icon** (`app/src-tauri/icons/`, every size and `icon.ico`): a neutral placeholder made for
+  EmuDome in the first commit, a rounded square in the accent colour with a light rounded rectangle.
+  It is not the Tauri logo and is not taken from anywhere else (checked 2026-11-18). Part of EmuDome
+  under GPL-3.0-or-later. The real icon comes later (Trello #54).
+- **Interface icons**: all from Lucide (`@lucide/vue`, ISC, see above), imported as components. The
+  only icon drawn by hand is the three-line menu glyph in `app/src/components/TouchControls.vue`
+  (three straight lines), part of EmuDome.
+- No other image is shipped. Game covers are generated, read from the user's games or chosen by the
+  user on their device, and never included.
 
 ### Test ROM
 
