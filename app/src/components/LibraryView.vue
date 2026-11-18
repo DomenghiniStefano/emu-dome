@@ -4,12 +4,15 @@
 // «Salvataggi» shows its saves), then «I tuoi giochi»: the console chips, the order
 // (`library.sort`, Global) and the L03 panel, the cover grid. Around it: E01 banners for folders that are not reachable (their games stay, faded),
 // the scan progress, L11 «N giochi aggiunti» after a scan, L12 to choose a cover.
+// A cover (#59 item 2): with the pointer over it or the focus in it, a ring, «Gioca» and «…»
+// (CoverMenu: L12, favourite, hide). Game details (L04, #34) does not exist yet, so a click on
+// the cover still opens the game, like «Gioca»; it becomes «open the details» with L04.
 // No games at all: L02 (LibraryEmpty).
 //
 // Controller / keyboard: the shell's nav scope covers this view; L03 and L12 open their own.
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown, FolderX, ImageIcon, Plus, TriangleAlert, X } from '@lucide/vue'
+import { ChevronDown, Ellipsis, FolderX, Play, Plus, TriangleAlert, X } from '@lucide/vue'
 import {
   AUTO_SLOT,
   emu,
@@ -30,6 +33,7 @@ import {
   type ShowKey,
   type Sort,
 } from '../librarySort'
+import CoverMenu from './CoverMenu.vue'
 import CoverPicker from './CoverPicker.vue'
 import GameCover from './GameCover.vue'
 import LibraryEmpty from './LibraryEmpty.vue'
@@ -255,13 +259,36 @@ const summaryCards = computed(() => {
 const coverFor = ref<LibraryGame | null>(null)
 let coverReturn: HTMLElement | null = null
 
-function pickCover(g: LibraryGame, e: Event) {
-  coverReturn = e.currentTarget instanceof HTMLElement ? e.currentTarget : null
-  coverFor.value = g
-}
 function closeCover() {
   coverFor.value = null
   void nextTick(() => coverReturn?.focus())
+}
+
+// ---- «…» on a cover ----
+
+const menuFor = ref<string | null>(null)
+let menuButton: HTMLElement | null = null
+
+function toggleMenu(g: LibraryGame, e: Event) {
+  menuButton = e.currentTarget instanceof HTMLElement ? e.currentTarget : null
+  menuFor.value = menuFor.value === g.id ? null : g.id
+}
+function closeMenu() {
+  menuFor.value = null
+  void nextTick(() => menuButton?.focus())
+}
+function menuCover(g: LibraryGame) {
+  menuFor.value = null
+  coverReturn = menuButton
+  coverFor.value = g
+}
+async function menuFlags(g: LibraryGame, flags: { favourite?: boolean; hidden?: boolean }) {
+  closeMenu()
+  try {
+    await emu.library.setFlags(g.id, flags)
+  } catch (e) {
+    emit('error', errorText(e))
+  }
 }
 
 // ---- Initial focus ----
@@ -442,26 +469,44 @@ onUnmounted(() => unlistenSettings?.())
 
       <div class="grid">
         <div v-for="g in games" :key="g.id" class="card" :class="{ off: !g.available }">
-          <button
-            class="cover-btn"
-            :aria-label="t('library.open', { title: g.title })"
-            :aria-disabled="!g.available || undefined"
-            @click="open(g)"
-          >
+          <div class="frame" :class="{ open: menuFor === g.id }">
             <GameCover :game="g" />
-          </button>
-          <div class="info">
-            <div class="name-row">
-              <div class="name">{{ g.title }}</div>
-              <button
-                class="icon-btn pick"
-                :aria-label="t('library.cover.choose', { title: g.title })"
-                :title="t('library.cover.choose', { title: g.title })"
-                @click="pickCover(g, $event)"
-              >
-                <ImageIcon :size="14" :stroke-width="1.75" aria-hidden="true" />
+            <!-- The cover's click area stops above the action strip, so the controller reaches
+                 «Gioca» and «…» by moving down from it (nav.ts moves by rects). -->
+            <button
+              class="cover-btn"
+              :aria-label="t('library.open', { title: g.title })"
+              :aria-disabled="!g.available || undefined"
+              @click="open(g)"
+            ></button>
+            <div class="cover-actions">
+              <button class="play" :aria-disabled="!g.available || undefined" @click="open(g)">
+                <Play :size="14" fill="currentColor" :stroke-width="0" aria-hidden="true" />
+                {{ t('library.hero.play') }}
               </button>
+              <div class="more-wrap">
+                <button
+                  class="more"
+                  :aria-label="t('library.moreFor', { title: g.title })"
+                  :title="t('library.more')"
+                  aria-haspopup="menu"
+                  :aria-expanded="menuFor === g.id"
+                  @click="toggleMenu(g, $event)"
+                >
+                  <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+                </button>
+                <CoverMenu
+                  v-if="menuFor === g.id"
+                  :game="g"
+                  @cover="menuCover(g)"
+                  @flags="f => menuFlags(g, f)"
+                  @close="closeMenu"
+                />
+              </div>
             </div>
+          </div>
+          <div class="info">
+            <div class="name">{{ g.title }}</div>
             <div class="muted small num">{{ meta(g) }}</div>
           </div>
         </div>
@@ -766,34 +811,82 @@ onUnmounted(() => unlistenSettings?.())
   gap: 8px;
   min-width: 0;
 }
+.frame {
+  position: relative;
+  border-radius: var(--radius-10);
+  box-shadow: 0 1px 2px #00000052;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 150ms;
+}
+/* The cover's click area; it stops above the action strip (see the template). */
 .cover-btn {
-  display: block;
+  position: absolute;
+  inset: 0 0 52px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-10);
+  border-radius: var(--radius-10) var(--radius-10) 0 0;
   background: none;
-  box-shadow: 0 1px 2px #00000052;
-  transition:
-    transform 150ms var(--ease-out),
-    box-shadow 150ms;
 }
-/* Lift on hover and on focus (board L01). */
-.cover-btn:hover,
-.cover-btn:focus-visible,
-:root[data-nav] .cover-btn:focus,
-.cover-btn[data-nav-focus] {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px #00000073;
+/* Pointer over the cover or focus in it (board L01, second cover): the ring, then «Gioca» and «…».
+   The ring is the frame's, so the buttons inside draw none of their own. */
+.frame:hover,
+.frame:focus-within,
+.frame.open {
+  outline-color: var(--focus-ring);
 }
-:root[data-nav] .cover-btn:focus,
-:root[data-nav] .cover-btn[data-nav-focus] {
-  box-shadow:
-    0 10px 24px #00000073,
-    0 0 0 4px var(--accent-soft);
+:root[data-nav] .frame :focus,
+:root[data-nav] .frame [data-nav-focus] {
+  outline: none;
+}
+:root[data-nav] .frame .cover-actions button:focus,
+:root[data-nav] .frame .cover-actions button[data-nav-focus] {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+.cover-actions {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.frame:hover .cover-actions,
+.frame:focus-within .cover-actions,
+.frame.open .cover-actions {
+  opacity: 1;
+}
+.cover-actions button {
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+/* «Gioca»: the light button (board L01). */
+.play {
+  flex: 1;
+  min-width: 0;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 600;
+}
+.more-wrap {
+  position: relative;
+}
+.more {
+  width: 36px;
+  background: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+  color: var(--ink);
 }
 /* E01: not reachable, shown faded and not launchable. */
-/* (On the cover, not the button: the button keeps the focus ring.) */
-.card.off .cover-btn {
+/* (On the cover, not the frame: the frame keeps the focus ring.) */
+.card.off .cover-btn,
+.card.off .play {
   cursor: not-allowed;
 }
 .card.off .cover {
@@ -809,28 +902,9 @@ onUnmounted(() => unlistenSettings?.())
   flex-direction: column;
   gap: 2px;
 }
-.name-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-}
 .name {
-  flex: 1;
   min-width: 0;
   font-weight: 500;
   overflow-wrap: anywhere;
-}
-/* «Scegli la copertina» shows with the pointer over the card or the focus in it. */
-.pick {
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  margin: -3px -4px 0 0;
-  opacity: 0;
-  transition: opacity 150ms;
-}
-.card:hover .pick,
-.card:focus-within .pick {
-  opacity: 1;
 }
 </style>

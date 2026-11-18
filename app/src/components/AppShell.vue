@@ -87,13 +87,12 @@ function initialOn(s: Section) {
           <button
             class="rail-item"
             :class="{ on: s === section }"
-            :aria-label="t(`shell.${s}`)"
-            :title="t(`shell.${s}`)"
             :aria-current="s === section ? 'page' : undefined"
             :data-nav-initial="initialOn(s)"
             @click="section = s"
           >
             <component :is="ICONS[s]" :size="20" :stroke-width="1.75" aria-hidden="true" />
+            <span class="rail-name">{{ t(`shell.${s}`) }}</span>
           </button>
         </template>
       </nav>
@@ -177,8 +176,9 @@ function initialOn(s: Section) {
   min-height: 0;
   display: flex;
 }
+/* Rail (#59 item 1): 76 px, every item icon + name under it. */
 .rail {
-  flex: 0 0 56px;
+  flex: 0 0 76px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -191,15 +191,25 @@ function initialOn(s: Section) {
   flex: 1;
 }
 .rail-item {
-  width: 40px;
-  height: 40px;
+  width: 64px;
+  height: 52px;
   border: 0;
-  border-radius: var(--radius-6);
+  border-radius: 8px;
   background: none;
   color: var(--ink-muted);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
   transition: background 150ms;
+}
+.rail-name {
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 .rail-item:hover {
   background: var(--surface-hover);
