@@ -76,7 +76,7 @@ function current(root: HTMLElement): HTMLElement | null {
   return active instanceof HTMLElement && root.contains(active) && active !== root ? active : null
 }
 
-type Direction = 'up' | 'down' | 'left' | 'right'
+export type Direction = 'up' | 'down' | 'left' | 'right'
 
 /** Gap between two ranges on one axis, 0 when they overlap. */
 const gap = (a0: number, a1: number, b0: number, b1: number) => Math.max(0, b0 - a1, a0 - b1)
@@ -151,17 +151,84 @@ export function dispatchNav(action: NavAction) {
       return
     case 'confirm': {
       const el = current(root)
-      if (el) el.click()
-      else focusInitial(root)
+      if (!el) return focusInitial(root)
+      if (ownsEnter(el)) sendKey(el, 'Enter')
+      else el.click()
       return
     }
     case 'up':
     case 'down':
     case 'left':
-    case 'right':
-      if (stepSlider(current(root), action)) return
+    case 'right': {
+      const el = current(root)
+      if (el && ownsArrow(el, action)) return sendKey(el, ARROW_KEY[action])
+      if (stepSlider(el, action)) return
       move(root, action)
+    }
   }
+}
+
+// ---- Elements that handle keys themselves (the design system's Reka UI primitives)
+//
+// Some Reka components move the focus or act on a key of their own: a tab list or a segmented
+// group moves along itself on the arrows (roving focus), a slider thumb steps on them, an open
+// select list moves among its options, and a tab, an option, a select field or a switch acts on
+// Enter. If nav.ts moved too, one key would act twice. So, by the attributes Reka renders (never
+// by component name; none of them is on the screens written before the design system):
+// - along its axis, the key belongs to the element: `keyToNav` lets the keyboard's key through
+//   untouched, and a controller step is sent to the element as that same key (`sendKey`), which
+//   App.vue's listener then ignores by this same rule;
+// - at the ends of a roving group (the primitives turn Reka's looping off) and on the other axis,
+//   nav.ts moves spatially as everywhere else; a slider and an open list have no ends;
+// - Enter on a tab, an option, a select field or a switch is the element's: `confirm` sends it
+//   Enter instead of a click.
+// docs/specs/2026-11-18-design-system-foundations.md, Decision 6.
+
+/** An item of a Reka roving group or a slider thumb: owns the arrows of its `data-orientation`. */
+const ROVING_ITEM = '[data-reka-collection-item][data-orientation]'
+/** An open Reka listbox (a Select's options): owns every arrow. */
+const OPEN_LIST = '[role="listbox"][data-dismissable-layer]'
+/** Reka elements that act on Enter themselves (`data-state` is Reka's). */
+const ENTER_OWNER = ['tab', 'option', 'combobox', 'switch']
+  .map(role => `[role="${role}"][data-state]`)
+  .join(', ')
+
+const ARROW_KEY: Record<Direction, string> = {
+  up: 'ArrowUp',
+  down: 'ArrowDown',
+  left: 'ArrowLeft',
+  right: 'ArrowRight',
+}
+
+/** Whether `el` handles the arrow of `dir` itself, so nav.ts must not move the focus. */
+export function ownsArrow(el: Element, dir: Direction): boolean {
+  if (el.closest(OPEN_LIST)) return true
+  if (!(el instanceof HTMLElement) || !el.matches(ROVING_ITEM)) return false
+  const horizontal = dir === 'left' || dir === 'right'
+  if ((el.dataset.orientation === 'horizontal') !== horizontal) return false
+  if (el.getAttribute('role') === 'slider') return true
+  // A roving group: the item's nearest ancestor with an orientation that is not an item itself.
+  const group = el.parentElement?.closest('[data-orientation]:not([data-reka-collection-item])')
+  if (!group) return true
+  const items = [...group.querySelectorAll<HTMLElement>('[data-reka-collection-item]')].filter(
+    item =>
+      !item.matches(':disabled, [data-disabled]') &&
+      item.closest('[data-orientation]:not([data-reka-collection-item])') === group,
+  )
+  const at = items.indexOf(el)
+  const forward = dir === 'right' || dir === 'down'
+  return forward ? at < items.length - 1 : at > 0
+}
+
+/** Whether `el` acts on Enter itself. */
+export function ownsEnter(el: Element): boolean {
+  return el.matches(ENTER_OWNER)
+}
+
+function sendKey(el: HTMLElement, key: string) {
+  el.dispatchEvent(
+    new KeyboardEvent('keydown', { key, code: key, bubbles: true, cancelable: true }),
+  )
 }
 
 /** A focused slider takes left / right as its own steps (the focus stays on it). */
@@ -175,6 +242,13 @@ function stepSlider(el: HTMLElement | null, dir: Direction): boolean {
   return true
 }
 
+const KEY_DIRECTION: Record<string, Direction | undefined> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+}
+
 /** Keyboard → step: arrows and Enter. Null for any other key (Esc stays with each screen). */
 export function keyToNav(e: KeyboardEvent): NavAction | null {
   // A text field keeps left / right for its caret.
@@ -183,6 +257,12 @@ export function keyToNav(e: KeyboardEvent): NavAction | null {
     t instanceof HTMLTextAreaElement ||
     (t instanceof HTMLInputElement && !['range', 'checkbox', 'radio', 'button'].includes(t.type))
   if (typing && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return null
+  // A key the focused element handles itself (the rule above).
+  if (t instanceof Element) {
+    const dir = KEY_DIRECTION[e.code]
+    if (dir && ownsArrow(t, dir)) return null
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && ownsEnter(t)) return null
+  }
   switch (e.code) {
     case 'ArrowUp':
       return 'up'
