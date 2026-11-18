@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // The Settings section's left column: the title, the search, «In primo piano» (T01) and the
 // schema's pages by group, each with how many of its settings are changed at the level edited.
-// The page shown is marked (`aria-current`) only while no search is typed.
+// The page shown is marked (`aria-current`) only while no search is typed. In a short window the
+// entries give up height before the column scrolls (`shrink`, as the list always did: Cowork to
+// decide whether it should scroll instead).
 import { useI18n } from 'vue-i18n'
 import { Search } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -48,7 +50,7 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
     <Button
       :variant="ButtonVariant.NavItem"
       :size="ButtonSize.NavItem"
-      class="font-semibold"
+      class="shrink font-semibold"
       :aria-current="current(OVERVIEW)"
       :data-nav-initial="page === OVERVIEW ? '' : undefined"
       @click="emit('pick', OVERVIEW)"
@@ -62,6 +64,7 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
         :key="p"
         :variant="ButtonVariant.NavItem"
         :size="ButtonSize.NavItem"
+        class="shrink"
         :aria-current="current(p)"
         :data-nav-initial="p === page ? '' : undefined"
         @click="emit('pick', p)"
