@@ -1,8 +1,10 @@
 //! The settings schema: the one description of every setting, from which the interface builds
 //! its pages. The entries themselves are in `catalog.rs`.
 //!
-//! Every entry has a stable key `<page>.<key>` (e.g. `video.scale`), and its texts live in the
-//! interface under `settings.<page>.<key>.name|desc` and `settings.<page>.<key>.option.<id>`.
+//! Every entry has a stable key `<prefix>.<key>` (e.g. `video.scale`), and its texts live in the
+//! interface under `settings.<key>.name|desc` and `settings.<key>.option.<id>`. The page it is
+//! shown on is its own field: usually the key's prefix, but not always (the «Avanzate» page holds
+//! the `perf.*`, `cores.*` and `adv.*` keys, which never change).
 
 use serde::{Deserialize, Serialize};
 
@@ -221,11 +223,34 @@ impl DefaultValue {
     }
 }
 
+/// When a row is shown: the value of another entry of the same page, resolved at the level being
+/// edited, is (or with `not`, is not) one of `values`. Mirror: `SettingShowIf` in app/src/emu.ts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub struct ShowIf {
+    pub key: &'static str,
+    pub values: &'static [&'static str],
+    pub not: bool,
+}
+
+impl ShowIf {
+    /// Whether the row is shown when the other entry's value is `value` (`None`: no value, which
+    /// is one of no `values`).
+    pub fn holds(&self, value: Option<&Value>) -> bool {
+        let listed = match value {
+            Some(Value::Text(id)) => self.values.contains(&id.as_str()),
+            Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => false,
+        };
+        listed != self.not
+    }
+}
+
 /// One setting.
 #[derive(Clone, Copy, Debug)]
 pub struct Entry {
-    /// `<page>.<key>`, stable: it is the key in the files and in i18n.
+    /// `<prefix>.<key>`, stable: it is the key in the files and in i18n.
     pub key: &'static str,
+    /// The page it is shown on (one of `catalog::PAGES`), set in the catalogue.
+    pub page: &'static str,
     pub kind: Kind,
     pub default: DefaultValue,
     pub levels: Levels,
@@ -237,12 +262,14 @@ pub struct Entry {
     /// One of the options people change most often: listed in «Usate più spesso» (T01) at the
     /// Global level. Chosen in the catalogue, never in the interface.
     pub most_used: bool,
+    /// Shown only when another entry has (or has not) some values; `None`: always shown.
+    pub show_if: Option<ShowIf>,
 }
 
 impl Entry {
-    /// The page, the part of the key before the dot.
+    /// The page the entry is shown on.
     pub fn page(&self) -> &'static str {
-        self.key.split_once('.').map_or(self.key, |(page, _)| page)
+        self.page
     }
 
     /// Whether the entry holds a value (actions and presets do not).
@@ -413,6 +440,9 @@ pub struct EntryDto {
     pub synonyms: Vec<&'static str>,
     /// Listed in «Usate più spesso» (T01).
     pub most_used: bool,
+    /// When the row is shown; absent: always.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_if: Option<ShowIf>,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -451,6 +481,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 hidden_options: e.hidden_options(device),
                 synonyms: synonyms(e.key),
                 most_used: e.most_used,
+                show_if: e.show_if,
             })
             .collect(),
     }

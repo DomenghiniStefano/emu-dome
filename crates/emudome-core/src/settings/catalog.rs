@@ -9,7 +9,7 @@
 
 use super::schema::{
     ActionStyle, BindingTable, ChoiceStyle, DefaultValue, Entry, Kind, Levels, PageGroup, Platform,
-    Section, Unit,
+    Section, ShowIf, Unit,
 };
 
 /// Phase the app is in: entries of later phases stay hidden.
@@ -31,23 +31,33 @@ pub static GROUPS: &[PageGroup] = &[
     },
     PageGroup {
         id: "system",
-        pages: &[
-            "bios", "consoles", "cores", "perf", "online", "adv", "about",
-        ],
+        pages: &["bios", "consoles", "advanced", "online", "about"],
     },
 ];
 
-/// Page ids in display order.
+/// Page ids in display order (T02–T19 and Cloud; T01 «In primo piano» is the interface's own
+/// first screen, not a page of entries).
 pub static PAGES: &[&str] = &[
     "video", "fx", "screens", "audio", "speed", "saves", "pad", "touch", "general", "library",
-    "cloud", "a11y", "presets", "bios", "consoles", "cores", "perf", "online", "adv", "about",
+    "cloud", "a11y", "presets", "bios", "consoles", "advanced", "online", "about",
 ];
+
+/// The page of a key, by default: the part before the first dot.
+const fn key_page(key: &'static str) -> &'static str {
+    let bytes = key.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() && bytes[i] != b'.' {
+        i += 1;
+    }
+    key.split_at(i).0
+}
 
 // ---- Builders: an entry is phase 1, on every device, not per device, unless a modifier says so ----
 
 const fn e(key: &'static str, kind: Kind, default: DefaultValue, levels: Levels) -> Entry {
     Entry {
         key,
+        page: key_page(key),
         kind,
         default,
         levels,
@@ -55,6 +65,7 @@ const fn e(key: &'static str, kind: Kind, default: DefaultValue, levels: Levels)
         platform: Platform::All,
         phase: 1,
         most_used: false,
+        show_if: None,
     }
 }
 
@@ -258,6 +269,35 @@ impl Entry {
         }
     }
 
+    /// Shown on `page` instead of its key's prefix (the keys never change).
+    const fn on_page(self, page: &'static str) -> Self {
+        Self { page, ..self }
+    }
+
+    /// Shown only while `key` is one of `values` (at the level being edited).
+    const fn show_if(self, key: &'static str, values: &'static [&'static str]) -> Self {
+        Self {
+            show_if: Some(ShowIf {
+                key,
+                values,
+                not: false,
+            }),
+            ..self
+        }
+    }
+
+    /// Shown only while `key` is none of `values`.
+    const fn show_unless(self, key: &'static str, values: &'static [&'static str]) -> Self {
+        Self {
+            show_if: Some(ShowIf {
+                key,
+                values,
+                not: true,
+            }),
+            ..self
+        }
+    }
+
     /// Ships in a later roadmap phase.
     const fn phase(self, phase: u8) -> Self {
         Self { phase, ..self }
@@ -281,6 +321,9 @@ const GG: Levels = Levels::GLOBAL_GAME;
 const CG: Levels = Levels::CONSOLE_GAME;
 const ALL: Levels = Levels::ALL;
 
+/// The «Avanzate» page (T14).
+const ADV: &str = "advanced";
+
 pub static ENTRIES: &[Entry] = &[
     // ---- Video (video) ----
     seg("video.scale", &["fit", "integer", "fill"], "fit", ALL).most_used(),
@@ -303,10 +346,12 @@ pub static ENTRIES: &[Entry] = &[
         &["aurora", "sunset", "night", "forest", "graphite", "grid"],
         "aurora",
         ALL,
-    ),
-    file("video.surroundImg", ALL),
-    slider("video.surroundDim", 40, (0, 80, 5), Unit::Percent, ALL),
-    sw("video.surroundAnim", false, G),
+    )
+    .show_if("video.surround", &["builtin"]),
+    file("video.surroundImg", ALL).show_if("video.surround", &["image"]),
+    slider("video.surroundDim", 40, (0, 80, 5), Unit::Percent, ALL)
+        .show_unless("video.surround", &["black"]),
+    sw("video.surroundAnim", false, G).show_if("video.surround", &["builtin"]),
     sw("video.fps", false, G),
     seg(
         "video.window",
@@ -598,40 +643,48 @@ pub static ENTRIES: &[Entry] = &[
         CG,
     )
     .phase(3),
-    // ---- Opzioni avanzate dell'emulatore (cores) ----
-    sw("cores.mgbabios", true, CG),
-    sw("cores.mgbaskip", false, CG),
-    sw("cores.mgbalp", false, CG),
-    sw("cores.mgbaopp", false, CG),
-    link("cores.mgbaall", CG),
-    sel("cores.mdsrender", &["software", "opengl"], "software", CG).phase(2),
-    seg("cores.mdsboot", &["direct", "menu"], "direct", CG).phase(2),
-    link("cores.mdsall", CG).phase(2),
-    seg("cores.azaudio", &["hle", "lle"], "hle", CG).phase(3),
-    link("cores.azall", CG).phase(3),
-    // ---- Prestazioni (perf) ----
+    // ---- Avanzate (advanced, T14): Prestazioni, motori, Strumenti avanzati ----
+    // The keys keep their `perf.` / `cores.` / `adv.` prefix (files, i18n); the page is `advanced`.
     seg(
         "perf.frameskip",
         &["auto", "never", "1", "2", "3", "4"],
         "auto",
         ALL,
     )
-    .device(),
-    sw("perf.jit", true, CG).phase(2),
-    sw("perf.shcache", true, C).device().phase(3),
-    slider("perf.cpuclock", 100, (50, 400, 25), Unit::Percent, GM).phase(3),
+    .device()
+    .on_page(ADV),
+    sw("perf.jit", true, CG).phase(2).on_page(ADV),
+    sw("perf.shcache", true, C).device().phase(3).on_page(ADV),
+    slider("perf.cpuclock", 100, (50, 400, 25), Unit::Percent, GM)
+        .phase(3)
+        .on_page(ADV),
+    sw("cores.mgbabios", true, CG).on_page(ADV),
+    sw("cores.mgbaskip", false, CG).on_page(ADV),
+    sw("cores.mgbalp", false, CG).on_page(ADV),
+    sw("cores.mgbaopp", false, CG).on_page(ADV),
+    link("cores.mgbaall", CG).on_page(ADV),
+    sel("cores.mdsrender", &["software", "opengl"], "software", CG)
+        .phase(2)
+        .on_page(ADV),
+    seg("cores.mdsboot", &["direct", "menu"], "direct", CG)
+        .phase(2)
+        .on_page(ADV),
+    link("cores.mdsall", CG).phase(2).on_page(ADV),
+    seg("cores.azaudio", &["hle", "lle"], "hle", CG)
+        .phase(3)
+        .on_page(ADV),
+    link("cores.azall", CG).phase(3).on_page(ADV),
+    sw("adv.advon", false, G).phase(5).on_page(ADV),
+    sw("adv.inputs", false, G).phase(5).on_page(ADV),
+    sw("adv.framecnt", false, G).phase(5).on_page(ADV),
+    link("adv.movies", G).phase(5).on_page(ADV),
+    link("adv.cheatsearch", G).phase(5).on_page(ADV),
+    link("adv.devtools", G).pc().phase(5).on_page(ADV),
     // ---- Online e integrazioni (online) ----
     // Empty = none («Nessuno»).
     e("online.wfc", Kind::Text, DefaultValue::Text(""), G).phase(2),
     act("online.ra", G).device().phase(5),
     sw("online.discord", false, G).device().pc().phase(5),
-    // ---- Strumenti avanzati (adv) ----
-    sw("adv.advon", false, G).phase(5),
-    sw("adv.inputs", false, G).phase(5),
-    sw("adv.framecnt", false, G).phase(5),
-    link("adv.movies", G).phase(5),
-    link("adv.cheatsearch", G).phase(5),
-    link("adv.devtools", G).pc().phase(5),
     // ---- Informazioni (about) ----
     info("about.ver", G),
     act("about.upd", G),
@@ -967,7 +1020,17 @@ pub static SECTIONS: &[Section] = &[
         keys: &["consoles.n3dsmodel", "consoles.n3dsreg"],
     },
     Section {
-        page: "cores",
+        page: "advanced",
+        id: "perf",
+        keys: &[
+            "perf.frameskip",
+            "perf.jit",
+            "perf.shcache",
+            "perf.cpuclock",
+        ],
+    },
+    Section {
+        page: "advanced",
         id: "mgba",
         keys: &[
             "cores.mgbabios",
@@ -978,33 +1041,18 @@ pub static SECTIONS: &[Section] = &[
         ],
     },
     Section {
-        page: "cores",
+        page: "advanced",
         id: "melonds",
         keys: &["cores.mdsrender", "cores.mdsboot", "cores.mdsall"],
     },
     Section {
-        page: "cores",
+        page: "advanced",
         id: "azahar",
         keys: &["cores.azaudio", "cores.azall"],
     },
     Section {
-        page: "perf",
-        id: "perf",
-        keys: &[
-            "perf.frameskip",
-            "perf.jit",
-            "perf.shcache",
-            "perf.cpuclock",
-        ],
-    },
-    Section {
-        page: "online",
-        id: "online",
-        keys: &["online.wfc", "online.ra", "online.discord"],
-    },
-    Section {
-        page: "adv",
-        id: "adv",
+        page: "advanced",
+        id: "tools",
         keys: &[
             "adv.advon",
             "adv.inputs",
@@ -1013,6 +1061,11 @@ pub static SECTIONS: &[Section] = &[
             "adv.cheatsearch",
             "adv.devtools",
         ],
+    },
+    Section {
+        page: "online",
+        id: "online",
+        keys: &["online.wfc", "online.ra", "online.discord"],
     },
     Section {
         page: "about",

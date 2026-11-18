@@ -525,8 +525,11 @@ fn keys_are_unique_and_belong_to_a_page() {
     let mut seen = HashSet::new();
     for e in ENTRIES {
         assert!(seen.insert(e.key), "duplicate key {}", e.key);
-        let (page, key) = e.key.split_once('.').expect("key is <page>.<key>");
-        assert!(PAGES.contains(&page), "{}: unknown page", e.key);
+        let (prefix, key) = e.key.split_once('.').expect("key is <prefix>.<key>");
+        assert!(PAGES.contains(&e.page()), "{}: unknown page", e.key);
+        // The key's prefix is its page, but on «Avanzate», which kept the old keys.
+        let kept = e.page() == "advanced" && ["perf", "cores", "adv"].contains(&prefix);
+        assert!(prefix == e.page() || kept, "{}: page {}", e.key, e.page());
         assert!(
             !key.is_empty() && key.chars().all(|c| c.is_ascii_alphanumeric()),
             "{}: key part",
@@ -783,6 +786,117 @@ fn synonyms_point_at_entries_and_reach_the_schema() {
     let schema = super::schema(Device::Desktop);
     let vsync = schema.entries.iter().find(|e| e.key == "video.vsync");
     assert!(vsync.is_some_and(|e| e.synonyms.contains(&"strappo")));
+}
+
+#[test]
+fn avanzate_holds_performance_engines_and_tools_with_their_keys() {
+    // T14 (#59 item 10): «Prestazioni», «Opzioni avanzate dell'emulatore» and «Strumenti
+    // avanzati» are one page, between «Opzioni per console» and «Online e integrazioni».
+    let keys: Vec<&str> = ENTRIES
+        .iter()
+        .filter(|e| e.page() == "advanced")
+        .map(|e| e.key)
+        .collect();
+    let count = |prefix: &str| keys.iter().filter(|k| k.starts_with(prefix)).count();
+    assert_eq!(keys.len(), 20);
+    assert_eq!((count("perf."), count("cores."), count("adv.")), (4, 10, 6));
+    let sections: Vec<&str> = SECTIONS
+        .iter()
+        .filter(|s| s.page == "advanced")
+        .map(|s| s.id)
+        .collect();
+    assert_eq!(sections, ["perf", "mgba", "melonds", "azahar", "tools"]);
+    let system = GROUPS.iter().find(|g| g.id == "system").map(|g| g.pages);
+    assert_eq!(
+        system,
+        Some(&["bios", "consoles", "advanced", "online", "about"][..])
+    );
+    // 17 numbered pages (T02–T19 without T15, T20) and Cloud; T01 is the interface's own.
+    assert_eq!(PAGES.len(), 18);
+    for gone in ["cores", "perf", "adv"] {
+        assert!(!PAGES.contains(&gone), "{gone} is still a page");
+    }
+    // Not a «Tutti i giochi» only page: the scope bar shows there.
+    assert!(ENTRIES
+        .iter()
+        .any(|e| e.page() == "advanced" && e.levels.console));
+}
+
+#[test]
+fn show_if_names_a_choice_of_the_same_page_and_its_options() {
+    let mut conditional = Vec::new();
+    for e in ENTRIES {
+        let Some(cond) = e.show_if else { continue };
+        conditional.push(e.key);
+        let other = entry(cond.key).expect("show_if names an entry");
+        assert_eq!(other.page(), e.page(), "{}", e.key);
+        assert!(!cond.values.is_empty(), "{}", e.key);
+        let Kind::Choice { options, .. } = other.kind else {
+            panic!("{}: show_if on a {:?}", e.key, other.kind);
+        };
+        for v in cond.values {
+            assert!(
+                options.contains(v),
+                "{}: {v} is no option of {}",
+                e.key,
+                cond.key
+            );
+        }
+    }
+    assert_eq!(
+        conditional,
+        [
+            "video.surroundSet",
+            "video.surroundImg",
+            "video.surroundDim",
+            "video.surroundAnim"
+        ]
+    );
+}
+
+#[test]
+fn rows_show_by_the_value_of_another_row() {
+    let shown = |key: &str, surround: Option<&str>| {
+        let cond = entry(key).and_then(|e| e.show_if).expect("conditional row");
+        cond.holds(surround.map(|s| Value::Text(s.into())).as_ref())
+    };
+    // «Sfondo pronto» and «Sfondo animato» only with the built-in backgrounds.
+    for key in ["video.surroundSet", "video.surroundAnim"] {
+        assert!(shown(key, Some("builtin")), "{key}");
+        assert!(!shown(key, Some("image")), "{key}");
+        assert!(!shown(key, Some("black")), "{key}");
+    }
+    // «Immagine di sfondo» only with your own image.
+    assert!(shown("video.surroundImg", Some("image")));
+    assert!(!shown("video.surroundImg", Some("cover")));
+    // «Oscura lo sfondo» with anything but black.
+    assert!(!shown("video.surroundDim", Some("black")));
+    assert!(shown("video.surroundDim", Some("blur")));
+    assert!(shown("video.surroundDim", Some("image")));
+    // A value of the wrong shape, or none, is none of the listed ones.
+    assert!(!shown("video.surroundImg", None));
+    assert!(shown("video.surroundDim", None));
+    let cond = entry("video.surroundSet").and_then(|e| e.show_if);
+    assert_eq!(cond.map(|c| c.holds(Some(&Value::Bool(true)))), Some(false));
+}
+
+#[test]
+fn show_if_reaches_the_schema_only_where_set() {
+    let json = serde_json::to_value(super::schema(Device::Desktop)).expect("schema serializes");
+    let rows = json["entries"].as_array().expect("entries");
+    let row = |key: &str| rows.iter().find(|r| r["key"] == key).cloned();
+    assert_eq!(
+        row("video.surroundDim").map(|r| r["showIf"].clone()),
+        Some(json!({ "key": "video.surround", "values": ["black"], "not": true }))
+    );
+    assert_eq!(
+        row("video.scale").map(|r| r.get("showIf").is_none()),
+        Some(true)
+    );
+    assert_eq!(
+        row("perf.frameskip").map(|r| r["page"].clone()),
+        Some(json!("advanced"))
+    );
 }
 
 // ---- Recent changes («Modificate di recente», T01) ----

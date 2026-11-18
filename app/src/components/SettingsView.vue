@@ -1,8 +1,10 @@
 <script setup lang="ts">
-// The Settings section (boards «T01–T20 · Desktop · Impostazioni», ScopeSelector, InheritedRow):
+// The Settings section (boards «T01–T19 · Desktop · Impostazioni», ScopeSelector, InheritedRow):
 // category list with the title, the search and changed counters on the left, the page on the right with the
 // scope bar «Stai cambiando le impostazioni di:» fixed at the top while scrolling.
-// Every page is built from the Rust schema (`settings_schema`): groups, sections, entries.
+// Every page is built from the Rust schema (`settings_schema`): groups, sections, entries, and
+// which rows show (`showIf`, against the values at the level being edited). Rows that only
+// «Tutti i giochi» can change are greyed at other levels, with one note after the scope sentence.
 // The section opens on T01 «In primo piano» (board Settings2, 17/11), first in the category list:
 // «Usate più spesso» (the entries flagged `mostUsed` in the schema, inline at
 // «Tutti i giochi») and «Modificate di recente» (`settings_recent`, newest first).
@@ -28,7 +30,15 @@ import {
 } from '../emu'
 import { changedWhenLabel, errorText } from '../i18n/labels'
 import { library } from '../library'
-import { fold, isShown, loadSchema, msg, pageLevels } from '../settingsModel'
+import {
+  fold,
+  isShown,
+  loadSchema,
+  lockReason,
+  msg,
+  pageLevels,
+  showIfHolds,
+} from '../settingsModel'
 import SettingRowView from './SettingRow.vue'
 import SettingSelect from './SettingSelect.vue'
 
@@ -150,6 +160,11 @@ function changedCount(p: string): number {
   return shownOn(p).filter(e => rows[e.key]?.source === effective.value).length
 }
 
+/** A row's `showIf` holds with the values of its page at the current scope. */
+function visible(e: SettingEntry): boolean {
+  return showIfHolds(e, key => values[e.page]?.[key]?.value ?? byKey.value.get(key)?.default)
+}
+
 // ---- Page content ----
 interface ShownSection {
   id: string
@@ -168,7 +183,7 @@ const sections = computed<ShownSection[]>(() => {
       page: sec.page,
       entries: sec.keys
         .map(k => byKey.value.get(k))
-        .filter((e): e is SettingEntry => !!e && isShown(e, s))
+        .filter((e): e is SettingEntry => !!e && isShown(e, s) && visible(e))
         .filter(e => !onlyChanged.value || rows[e.key]?.source === effective.value),
     }))
     .filter(sec => sec.entries.length > 0)
@@ -181,14 +196,26 @@ const searchResults = computed<ShownSection[]>(() => {
   if (!s || !q) return []
   const out: ShownSection[] = []
   for (const p of s.pages) {
-    const hits = shownOn(p).filter(e =>
-      fold(`${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${e.key} ${e.synonyms.join(' ')}`).includes(
-        q,
-      ),
+    const hits = shownOn(p).filter(
+      e =>
+        visible(e) &&
+        fold(
+          `${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${e.key} ${e.synonyms.join(' ')}`,
+        ).includes(q),
     )
     if (hits.length) out.push({ id: 'results', page: p, entries: hits })
   }
   return out
+})
+
+/** Rows of the page that only «Tutti i giochi» changes, greyed here: the note says it once. */
+const lockedNote = computed(() => {
+  const s = schema.value
+  if (!s || effective.value === 'global') return ''
+  const any = sections.value.some(sec =>
+    sec.entries.some(e => lockReason(e, s, effective.value) === 'settingsUi.lockedGlobal'),
+  )
+  return any ? t('settingsUi.lockedNote') : ''
 })
 
 function pick(p: string) {
@@ -264,14 +291,15 @@ onMounted(async () => {
   await loadAll()
   await loadRecent()
   unlisten = await emu.settings.onChanged(e => {
-    const p = e.key.split('.')[0]
+    // The page from the schema: a key's prefix is not always its page («Avanzate»).
+    const p = byKey.value.get(e.key)?.page
     if (p) void loadPage(p)
     void loadRecent()
   })
 })
 onBeforeUnmount(() => unlisten?.())
 
-const INTROS = new Set(['bios', 'cores'])
+const INTROS = new Set(['bios', 'advanced'])
 </script>
 
 <template>
@@ -453,6 +481,7 @@ const INTROS = new Set(['bios', 'cores'])
                 ? t('settingsUi.scope.consoleLine', { console: t(`console.${contextConsole}`) })
                 : t('settingsUi.scope.globalLine')
             }}
+            {{ lockedNote }}
           </div>
         </div>
         <div v-else class="muted">{{ t('settingsUi.appWide') }}</div>
@@ -475,6 +504,7 @@ const INTROS = new Set(['bios', 'cores'])
             :level="effective"
             :level-name="levelName"
             :scoped="scoped"
+            lock-note
             @set="v => set(e.key, v)"
             @reset="reset(e.key)"
             @error="text => emit('error', text)"

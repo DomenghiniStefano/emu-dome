@@ -161,8 +161,9 @@ app/src                  Vue interface: App.vue, AppShell (rail + sections, outs
   and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
   move the focus spatially (nearest element in that direction), confirm clicks, back calls `back`.
   The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 155 entries: key
-  `<page>.<key>`, kind, default, accepted levels, per-device flag, platform, phase); the interface builds its
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 155 entries on 18 pages: key
+  `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default,
+  accepted levels, per-device flag, platform, phase, `show_if` on another row's value); the interface builds its
   pages from `settings_schema` and never lists settings by hand. Levels Default → Global → Console → Game →
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
   (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<id>}.json` (synced later),

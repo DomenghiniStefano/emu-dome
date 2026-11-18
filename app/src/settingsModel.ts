@@ -1,4 +1,4 @@
-// What the settings pages (T01–T20) need beyond the bridge: the schema loaded once, the i18n
+// What the settings pages (T01–T19) need beyond the bridge: the schema loaded once, the i18n
 // keys of an entry, which rows are shown and why a row cannot be changed at a level.
 // Everything comes from the Rust schema (`emu.settings.schema`): nothing here lists settings.
 import {
@@ -8,6 +8,7 @@ import {
   type SettingLevel,
   type SettingPlatform,
   type SettingsSchema,
+  type SettingValue,
 } from './emu'
 
 let schemaPromise: Promise<SettingsSchema> | null = null
@@ -36,6 +37,21 @@ export const msg = {
 /** Shown at all: entries of a later roadmap phase stay hidden until then. */
 export function isShown(entry: SettingEntry, schema: SettingsSchema): boolean {
   return entry.phase <= schema.currentPhase
+}
+
+/**
+ * Whether a row is shown with the values of its page (`show_if`, mirror of `ShowIf::holds`):
+ * `value(key)` is the other row's value resolved at the level being edited.
+ */
+export function showIfHolds(
+  entry: SettingEntry,
+  value: (key: string) => SettingValue | null | undefined,
+): boolean {
+  const cond = entry.showIf
+  if (!cond) return true
+  const v = value(cond.key)
+  const listed = typeof v === 'string' && cond.values.includes(v)
+  return listed !== cond.not
 }
 
 /** Whether an entry of `platform` exists on `device` (mirror of `Platform::includes`). */
