@@ -68,6 +68,63 @@ pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY: c_uint = 55;
 pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2: c_uint = 67;
 pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL: c_uint = 68;
 
+// Hardware rendering (`SET_HW_RENDER` and its interfaces). The experimental ones carry the flag,
+// like `GET_INPUT_BITMASKS`; a host that masks the flag off compares against `x & !EXPERIMENTAL`.
+pub const RETRO_ENVIRONMENT_SET_HW_RENDER: c_uint = 14;
+pub const RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE: c_uint = 41 | RETRO_ENVIRONMENT_EXPERIMENTAL;
+pub const RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE: c_uint =
+    43 | RETRO_ENVIRONMENT_EXPERIMENTAL;
+pub const RETRO_ENVIRONMENT_SET_HW_SHARED_CONTEXT: c_uint = 44 | RETRO_ENVIRONMENT_EXPERIMENTAL;
+pub const RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER: c_uint = 56;
+pub const RETRO_ENVIRONMENT_GET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_SUPPORT: c_uint =
+    73 | RETRO_ENVIRONMENT_EXPERIMENTAL;
+
+/// `retro_hw_context_type`.
+pub const RETRO_HW_CONTEXT_NONE: c_uint = 0;
+pub const RETRO_HW_CONTEXT_OPENGL: c_uint = 1;
+pub const RETRO_HW_CONTEXT_OPENGLES2: c_uint = 2;
+pub const RETRO_HW_CONTEXT_OPENGL_CORE: c_uint = 3;
+pub const RETRO_HW_CONTEXT_OPENGLES3: c_uint = 4;
+pub const RETRO_HW_CONTEXT_OPENGLES_VERSION: c_uint = 5;
+pub const RETRO_HW_CONTEXT_VULKAN: c_uint = 6;
+pub const RETRO_HW_CONTEXT_D3D11: c_uint = 7;
+pub const RETRO_HW_CONTEXT_D3D10: c_uint = 8;
+pub const RETRO_HW_CONTEXT_D3D12: c_uint = 9;
+pub const RETRO_HW_CONTEXT_D3D9: c_uint = 10;
+
+/// `retro_hw_render_interface_type` / `retro_hw_render_context_negotiation_interface_type`.
+pub const RETRO_HW_RENDER_INTERFACE_VULKAN: c_uint = 0;
+pub const RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN: c_uint = 0;
+
+/// The `data` a hardware-rendering core passes to `video_refresh` when its frame is in the
+/// render target (the GL framebuffer, or the Vulkan image given to `set_image`).
+pub const RETRO_HW_FRAME_BUFFER_VALID: *const c_void = usize::MAX as *const c_void;
+
+pub type retro_hw_context_reset_t = unsafe extern "C" fn();
+pub type retro_hw_get_current_framebuffer_t = unsafe extern "C" fn() -> usize;
+pub type retro_proc_address_t = unsafe extern "C" fn();
+pub type retro_hw_get_proc_address_t =
+    unsafe extern "C" fn(sym: *const c_char) -> Option<retro_proc_address_t>;
+
+/// `SET_HW_RENDER`: filled by the core (type, version, callbacks), completed by the frontend
+/// (`get_current_framebuffer`, `get_proc_address`).
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_hw_render_callback {
+    pub context_type: c_uint,
+    pub context_reset: Option<retro_hw_context_reset_t>,
+    pub get_current_framebuffer: Option<retro_hw_get_current_framebuffer_t>,
+    pub get_proc_address: Option<retro_hw_get_proc_address_t>,
+    pub depth: bool,
+    pub stencil: bool,
+    pub bottom_left_origin: bool,
+    pub version_major: c_uint,
+    pub version_minor: c_uint,
+    pub cache_context: bool,
+    pub context_destroy: Option<retro_hw_context_reset_t>,
+    pub debug_context: bool,
+}
+
 /// Size of the fixed `values` array of a core option definition (v1 and v2).
 pub const RETRO_NUM_CORE_OPTION_VALUES_MAX: usize = 128;
 
