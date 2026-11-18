@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use emudome_core::saves::{self, BackupReason, ImportFormat, SaveHealth};
+use emudome_core::saves::{self, BackupReason, FolderImport, ImportFormat, SaveHealth};
 use emudome_core::settings::{Scope, Value};
 use emudome_core::ErrorCode;
 use serde::{Deserialize, Serialize};
@@ -370,25 +370,82 @@ pub fn saves_import(
     file: String,
     game: String,
 ) -> Result<(), ErrorCode> {
-    let game = PathBuf::from(game);
-    ensure_closed(&state, &game)?;
-    let file_name = Path::new(&file)
+    import_one(&app, &state, Path::new(&file), &PathBuf::from(game))
+}
+
+fn import_one(
+    app: &AppHandle,
+    state: &AppState,
+    file: &Path,
+    game: &Path,
+) -> Result<(), ErrorCode> {
+    ensure_closed(state, game)?;
+    let file_name = file
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let bytes = std::fs::read(&file).map_err(file_failed)?;
+    let bytes = std::fs::read(file).map_err(file_failed)?;
     let (_, data) =
         saves::parse_import(&bytes, &file_name).map_err(|e| ErrorCode::SaveImportInvalid {
             detail: e.to_string(),
         })?;
-    saves::import(
-        &state.save_dir(),
-        &game,
-        &data,
-        now_ms(),
-        keep_backups(&app),
-    )
-    .map_err(file_failed)
+    saves::import(&state.save_dir(), game, &data, now_ms(), keep_backups(app)).map_err(file_failed)
+}
+
+/// A found save paired with its game. Mirror: `SaveMatch` in app/src/emu.ts.
+#[derive(Serialize, Deserialize)]
+pub struct MatchDto {
+    file: String,
+    game: String,
+}
+
+/// What a chosen folder offers. Mirror: `FolderSaves` in app/src/emu.ts.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderSavesDto {
+    folder: String,
+    /// Saves found that can be imported.
+    found: usize,
+    /// The ones that belong to a game of `games`, one per game.
+    matches: Vec<MatchDto>,
+}
+
+/// First run S06 (DeSmuME, «Un’altra cartella o un altro emulatore»): picks a folder and pairs
+/// the saves in it with `games` (ROM paths) by file name. `None` = cancelled.
+#[tauri::command]
+pub async fn saves_import_folder(
+    app: AppHandle,
+    what: FolderImport,
+    games: Vec<String>,
+) -> Option<FolderSavesDto> {
+    let folder = crate::library::pick_folder(&app)?;
+    let found = saves::find_saves(&folder, what);
+    let games: Vec<PathBuf> = games.into_iter().map(PathBuf::from).collect();
+    let matches = saves::match_saves(&found, &games)
+        .into_iter()
+        .map(|m| MatchDto {
+            file: m.file.to_string_lossy().into_owned(),
+            game: m.game.to_string_lossy().into_owned(),
+        })
+        .collect();
+    Some(FolderSavesDto {
+        folder: folder.to_string_lossy().into_owned(),
+        found: found.len(),
+        matches,
+    })
+}
+
+/// Imports every pair (each current in-game save becomes a backup first). Answers how many
+/// were imported; the first failure stops and is the error.
+#[tauri::command]
+pub fn saves_import_many(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    matches: Vec<MatchDto>,
+) -> Result<usize, ErrorCode> {
+    matches.iter().try_fold(0, |done, m| {
+        import_one(&app, &state, Path::new(&m.file), Path::new(&m.game)).map(|()| done + 1)
+    })
 }
 
 // ---- Native pickers (desktop; Android has no file-path pickers: TODO with the SAF) ----

@@ -610,15 +610,119 @@ fn strip_dsv(bytes: &[u8]) -> Option<&[u8]> {
     (footer.starts_with(DSV_TEXT) && footer.ends_with(DSV_COOKIE)).then_some(&bytes[..data_len])
 }
 
+// ---- Import from a folder (first run S06: DeSmuME, another folder or emulator) ----
+
+/// Which files a folder import reads.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FolderImport {
+    /// DeSmuME's `.dsv` files only.
+    Desmume,
+    /// Any save EmuDome imports: `.sav`, `.srm`, `.dsv`, `.duc`.
+    Any,
+}
+
+impl FolderImport {
+    fn takes(self, ext: &str) -> bool {
+        match self {
+            Self::Desmume => ext == "dsv",
+            Self::Any => matches!(ext, "sav" | "srm" | "dsv" | "duc"),
+        }
+    }
+}
+
+/// A save file found in a folder that [`parse_import`] accepts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FoundSave {
+    pub path: PathBuf,
+    pub modified: Option<SystemTime>,
+}
+
+/// A found save and the game (ROM path) it belongs to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaveMatch {
+    pub file: PathBuf,
+    pub game: PathBuf,
+}
+
+fn lower_ext(path: &Path) -> String {
+    path.extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default()
+}
+
+fn lower_stem(path: &Path) -> String {
+    path.file_stem()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default()
+}
+
+/// The saves directly inside `dir` (not in subfolders) that `what` reads and that can be
+/// imported, sorted by path. A folder that cannot be read gives none.
+pub fn find_saves(dir: &Path, what: FolderImport) -> Vec<FoundSave> {
+    let mut found: Vec<FoundSave> = std::fs::read_dir(dir)
+        .inspect_err(|e| log::warn!("save folder {}: {e}", dir.display()))
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.is_file() && what.takes(&lower_ext(path)))
+        .filter(|path| {
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            std::fs::read(path)
+                .ok()
+                .is_some_and(|bytes| parse_import(&bytes, &name).is_ok())
+        })
+        .map(|path| FoundSave {
+            modified: std::fs::metadata(&path).and_then(|m| m.modified()).ok(),
+            path,
+        })
+        .collect();
+    found.sort_by(|a, b| a.path.cmp(&b.path));
+    found
+}
+
+/// Pairs found saves with games by file name, as emulators name them (`Gioco.nds` ↔
+/// `Gioco.dsv`), ignoring case. `.dsv` and `.duc` are Nintendo DS formats: only `.nds` games
+/// take them. A game gets one save: the newest one when several match. Ordered by game.
+pub fn match_saves(found: &[FoundSave], games: &[PathBuf]) -> Vec<SaveMatch> {
+    let mut matches: Vec<SaveMatch> = games
+        .iter()
+        .filter_map(|game| {
+            let stem = lower_stem(game);
+            let nds = lower_ext(game) == "nds";
+            found
+                .iter()
+                .filter(|f| lower_stem(&f.path) == stem)
+                .filter(|f| nds || !matches!(lower_ext(&f.path).as_str(), "dsv" | "duc"))
+                .fold(None::<&FoundSave>, |best, f| match best {
+                    Some(b) if b.modified >= f.modified => Some(b),
+                    Some(_) | None => Some(f),
+                })
+                .map(|f| SaveMatch {
+                    file: f.path.clone(),
+                    game: game.clone(),
+                })
+        })
+        .collect();
+    matches.sort_by(|a, b| a.game.cmp(&b.game));
+    matches.dedup_by(|a, b| a.game == b.game);
+    matches
+}
+
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     use super::{
-        backup, backups, check_in_game, core_versions, delete_quick, game_saves, import,
-        is_outdated, note_core_version, parse_backup, parse_import, restore, set_aside, slot_meta,
-        with_core_version, write_slot_meta, BackupReason, CoreVersions, ImportError, ImportFormat,
-        SaveHealth, SlotContent, SlotMeta, DSV_COOKIE, DSV_FOOTER, DSV_TEXT, DUC_HEADER, DUC_ID,
+        backup, backups, check_in_game, core_versions, delete_quick, find_saves, game_saves,
+        import, is_outdated, match_saves, note_core_version, parse_backup, parse_import, restore,
+        set_aside, slot_meta, with_core_version, write_slot_meta, BackupReason, CoreVersions,
+        FolderImport, FoundSave, ImportError, ImportFormat, SaveHealth, SaveMatch, SlotContent,
+        SlotMeta, DSV_COOKIE, DSV_FOOTER, DSV_TEXT, DUC_HEADER, DUC_ID,
     };
     use crate::core::GameFiles;
     use crate::settings::test_dir::TestDir;
@@ -942,5 +1046,79 @@ mod tests {
             parse_import(&save, "game.zip"),
             Err(ImportError::UnknownExtension(_))
         ));
+    }
+
+    fn found(path: &str, secs: u64) -> FoundSave {
+        FoundSave {
+            path: PathBuf::from(path),
+            modified: Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs)),
+        }
+    }
+
+    #[test]
+    fn saves_match_games_by_file_name() {
+        let found = [
+            found("/d/Battery/Lanterna.dsv", 10),
+            found("/d/Battery/ALTRO GIOCO.dsv", 10),
+            found("/d/Battery/Nessuno.dsv", 10),
+        ];
+        let games = [
+            PathBuf::from("/g/lanterna.nds"),
+            PathBuf::from("/g/Altro gioco.nds"),
+            PathBuf::from("/g/Senza.nds"),
+        ];
+        assert_eq!(
+            match_saves(&found, &games),
+            vec![
+                SaveMatch {
+                    file: PathBuf::from("/d/Battery/ALTRO GIOCO.dsv"),
+                    game: PathBuf::from("/g/Altro gioco.nds"),
+                },
+                SaveMatch {
+                    file: PathBuf::from("/d/Battery/Lanterna.dsv"),
+                    game: PathBuf::from("/g/lanterna.nds"),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn ds_formats_go_to_ds_games_only_and_the_newest_wins() {
+        let found = [
+            found("/d/Lanterna.dsv", 10),
+            found("/d/Lanterna.sav", 20),
+            found("/d/Volo.dsv", 30),
+        ];
+        let games = [
+            PathBuf::from("/g/Lanterna.nds"),
+            PathBuf::from("/g/Volo.gba"),
+        ];
+        assert_eq!(
+            match_saves(&found, &games),
+            vec![SaveMatch {
+                file: PathBuf::from("/d/Lanterna.sav"),
+                game: PathBuf::from("/g/Lanterna.nds"),
+            }]
+        );
+    }
+
+    #[test]
+    fn a_folder_offers_only_the_saves_it_can_import() {
+        let dir = TestDir::new("find-saves");
+        let save = vec![0xAB; 512];
+        write(&dir, "Battery/Lanterna.dsv", &dsv(&save));
+        write(&dir, "Battery/Rotto.dsv", &save);
+        write(&dir, "Battery/Volo.sav", &save);
+        write(&dir, "Battery/note.txt", b"hello");
+        write(&dir, "Battery/sub/Dentro.dsv", &dsv(&save));
+        let names = |what| -> Vec<String> {
+            find_saves(&dir.path("Battery"), what)
+                .iter()
+                .filter_map(|f| f.path.file_name().map(|n| n.to_string_lossy().into_owned()))
+                .collect()
+        };
+        assert_eq!(names(FolderImport::Desmume), ["Lanterna.dsv"]);
+        assert_eq!(names(FolderImport::Any), ["Lanterna.dsv", "Volo.sav"]);
+        assert!(find_saves(&dir.path("missing"), FolderImport::Any).is_empty());
     }
 }

@@ -55,6 +55,14 @@ pub fn open(app: &tauri::App) -> tauri::Result<LibraryState> {
     })
 }
 
+/// Whether the library is set up: folders chosen or games in it (first run).
+pub fn is_set_up(app: &AppHandle) -> bool {
+    !folders(app).is_empty()
+        || app
+            .try_state::<LibraryState>()
+            .is_some_and(|state| state.lib.lock().games().next().is_some())
+}
+
 /// At startup: a scan if `library.scanstart`, and the folder watcher if `library.watch`.
 pub fn startup(app: &AppHandle) {
     if setting_bool(app, "library.scanstart") {
@@ -436,7 +444,7 @@ fn import_cover(covers: &Path, id: &str, rev: u32, source: &Path) -> Result<Stri
 // ---- Native pickers (desktop; Android has no file-path pickers: TODO with the SAF) ----
 
 #[cfg(desktop)]
-fn pick_folder(app: &AppHandle) -> Option<PathBuf> {
+pub(crate) fn pick_folder(app: &AppHandle) -> Option<PathBuf> {
     use tauri_plugin_dialog::DialogExt;
     let picked = app.dialog().file().blocking_pick_folder()?;
     picked
@@ -460,7 +468,7 @@ fn pick_image(app: &AppHandle) -> Option<PathBuf> {
 }
 
 #[cfg(mobile)]
-fn pick_folder(_app: &AppHandle) -> Option<PathBuf> {
+pub(crate) fn pick_folder(_app: &AppHandle) -> Option<PathBuf> {
     log::warn!("folder picker not available on this platform yet");
     None
 }

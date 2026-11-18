@@ -8,6 +8,7 @@
 
 mod audio;
 mod bench;
+mod first_run;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
 mod gamepad;
@@ -792,6 +793,11 @@ pub fn run() {
             saves::saves_export,
             saves::saves_import_pick,
             saves::saves_import,
+            saves::saves_import_folder,
+            saves::saves_import_many,
+            first_run::first_run_show,
+            first_run::first_run_steps,
+            first_run::first_run_done,
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")
