@@ -13,6 +13,9 @@ export const ButtonVariant = {
   GhostAccent: 'ghostAccent',
   // An action that throws something away (QuickSaveDialog `.btn.danger`): Soft in danger ink.
   Danger: 'danger',
+  // The way back to the page above, over a page's title (ControlsView «‹ Controlli»): Ghost whose
+  // text turns ink when hovered.
+  Back: 'back',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -26,6 +29,8 @@ export const ButtonSize = {
   // Squares for an icon alone, at the two control heights.
   Icon: 'icon',
   IconSmall: 'iconSmall',
+  // As tall as its line of text, an icon leading (ControlsView «‹ Controlli»).
+  TextLine: 'textLine',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -46,6 +51,8 @@ export const buttonVariants = cva(
         [ButtonVariant.GhostAccent]:
           'border-0 bg-transparent text-accent-text hover:bg-surface-hover disabled:hover:bg-transparent',
         [ButtonVariant.Danger]: 'border-line bg-surface-raised text-danger hover:bg-surface-hover',
+        [ButtonVariant.Back]:
+          'border-0 bg-transparent text-ink-muted hover:bg-surface-hover hover:text-ink',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8',
@@ -53,6 +60,7 @@ export const buttonVariants = cva(
         [ButtonSize.Large]: 'h-control-lg px-18 text-cta',
         [ButtonSize.Icon]: 'size-control p-0',
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
+        [ButtonSize.TextLine]: 'gap-2 py-2 pr-8 pl-4',
       },
     },
     defaultVariants: {

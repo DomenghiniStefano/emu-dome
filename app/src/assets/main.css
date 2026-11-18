@@ -18,6 +18,14 @@
    src/. */
 @source '../components/ui';
 @source '../kit';
+/* Migrated in cycle 2 (#62). */
+@source '../components/ButtonTester.vue';
+@source '../components/ControlsOverview.vue';
+@source '../components/ControlsRemap.vue';
+@source '../components/ControlsShortcuts.vue';
+@source '../components/ControlsSticks.vue';
+@source '../components/ControlsView.vue';
+@source '../components/controls';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

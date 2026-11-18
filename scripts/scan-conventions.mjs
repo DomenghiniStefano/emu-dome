@@ -50,13 +50,7 @@ const FIXTURES = join(ROOT, 'scripts', 'scan-conventions')
 const LEGACY = new Set([
   'App.vue',
   'components/AppShell.vue',
-  'components/ButtonTester.vue',
   'components/ConflictTwoUp.vue',
-  'components/ControlsOverview.vue',
-  'components/ControlsRemap.vue',
-  'components/ControlsShortcuts.vue',
-  'components/ControlsSticks.vue',
-  'components/ControlsView.vue',
   'components/CoverMenu.vue',
   'components/CoverPicker.vue',
   'components/DetailsControls.vue',
@@ -87,8 +81,8 @@ const LEGACY = new Set([
 
 // utility-collision: legacy class names whose utility is harmless, each checked by hand.
 const NEUTRAL = new Map([
-  ['block', 'the scoped `.block` sets `display: flex` (ControlsOverview, QuickMenu, SavesView)'],
-  ['grid', 'the scoped `.grid` sets `display: grid` (ControlsRemap, LibraryView)'],
+  ['block', 'the scoped `.block` sets `display: flex` (QuickMenu, SavesView)'],
+  ['grid', 'the scoped `.grid` sets `display: grid` (LibraryView)'],
   ['underline', 'QuickMenu `.link.underline` sets `text-decoration: underline` itself'],
   ['glass-thick', 'utilities.css `glass-thick` is styles.css `.glass-thick`, same values'],
 ])

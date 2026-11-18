@@ -4,13 +4,22 @@
 // has a value, so a click on the chosen segment, which Reka reports as no value, is ignored.
 import type { ToggleGroupRootProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
+import { provide, toRef } from 'vue'
 import { ToggleGroupRoot } from 'reka-ui'
 import { cn } from '@/lib/cn'
+import { SegmentedVariant, SegmentedVariantKey } from './variants'
 
-const props = defineProps<
-  Pick<ToggleGroupRootProps, 'disabled'> & { class?: HTMLAttributes['class'] }
->()
+const props = withDefaults(
+  defineProps<
+    Pick<ToggleGroupRootProps, 'disabled'> & {
+      variant?: SegmentedVariant
+      class?: HTMLAttributes['class']
+    }
+  >(),
+  { variant: SegmentedVariant.Default },
+)
 const model = defineModel<string>({ required: true })
+provide(SegmentedVariantKey, toRef(props, 'variant'))
 
 function choose(value: unknown) {
   if (typeof value === 'string' && value !== '') model.value = value

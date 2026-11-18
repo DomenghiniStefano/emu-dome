@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Play, Settings, Trash2, Undo2 } from '@lucide/vue'
+import { ChevronLeft, Play, Settings, Trash2, Undo2 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
@@ -41,6 +41,12 @@ import KitState from '../KitState.vue'
       <Button :variant="ButtonVariant.Danger">
         <Trash2 :size="16" :stroke-width="1.75" aria-hidden="true" />
         Delete the save
+      </Button>
+    </KitState>
+    <KitState label="Back · TextLine">
+      <Button :variant="ButtonVariant.Back" :size="ButtonSize.TextLine">
+        <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
+        Controls
       </Button>
     </KitState>
     <KitState label="Icon · IconSmall">

@@ -2,6 +2,14 @@
 (() => {
   const scenario = __SCENARIO__;
   const FIXED = 1795000000000;
+  // `lang: "en"`: the interface in English whatever the machine's locale, for steps that find
+  // elements by their text.
+  if (scenario.lang) {
+    Object.defineProperty(navigator, "language", { get: () => scenario.lang });
+    Object.defineProperty(navigator, "languages", {
+      get: () => [scenario.lang],
+    });
+  }
   Date.now = () => FIXED;
   const day = 86400000;
   const games = [
@@ -125,6 +133,41 @@
       ["deutan"],
     ),
   ];
+  // Controls (C01–C04): the `pad` page, only in the scenarios with a controller connected.
+  if (scenario.pads) {
+    const pct = (min, max, step) => ({
+      type: "slider",
+      min,
+      max,
+      step,
+      unit: "percent",
+    });
+    entries.push(
+      entry(
+        "pad.ab",
+        "pad",
+        choice("segments", ["nintendo", "printed"]),
+        "nintendo",
+      ),
+      entry("pad.mod", "pad", choice("list", ["l3", "r3", "select"]), "l3"),
+      entry("pad.dead", "pad", pct(0, 50, 1), 15),
+      entry("pad.stickdpad", "pad", pct(20, 90, 5), 50),
+      entry("pad.trig", "pad", pct(10, 90, 5), 50),
+      entry("pad.rumble", "pad", pct(0, 100, 10), 70, { phase: 2 }),
+      entry(
+        "pad.confirm",
+        "pad",
+        choice("segments", ["right", "bottom"]),
+        "right",
+      ),
+      entry(
+        "pad.repeat",
+        "pad",
+        choice("list", ["slow", "normal", "fast"]),
+        "normal",
+      ),
+    );
+  }
   const schema = {
     device: "desktop",
     currentPhase: 1,
@@ -225,15 +268,48 @@
     settings_game_overrides: [],
     settings_game_scope: null,
     saves_summary: [],
-    gamepad_list: [],
+    gamepad_list: scenario.pads
+      ? [
+          {
+            id: 1,
+            name: "Xbox Wireless Controller",
+            family: "xbox",
+            vendor: 1118,
+            product: 2835,
+            battery: 80,
+          },
+        ]
+      : [],
     controls_bindings: bindings,
     theme: scenario.theme ?? "dark",
     bench_active: false,
     "plugin:app|version": "0.0.1",
   };
   const callbacks = new Map();
+  /** event name -> the callback ids listening to it, for `__mockEmit`. */
+  const listeners = new Map();
   let next = 1;
   window.__mockCalls = [];
+  // A scenario step fires a backend event (`emu://pad-state`, …) to the page's listeners.
+  window.__mockEmit = (event, payload) => {
+    for (const id of listeners.get(event) ?? [])
+      callbacks.get(id)?.({ event, id: 0, payload });
+  };
+  // A pointer press as a user makes it (Reka's tabs act on mousedown, not on click).
+  window.__press = (el) => {
+    const opts = {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      pointerType: "mouse",
+    };
+    el.dispatchEvent(new PointerEvent("pointerdown", opts));
+    el.dispatchEvent(new MouseEvent("mousedown", opts));
+    el.focus();
+    el.dispatchEvent(new PointerEvent("pointerup", opts));
+    el.dispatchEvent(new MouseEvent("mouseup", opts));
+    el.dispatchEvent(new MouseEvent("click", opts));
+  };
   window.__TAURI_INTERNALS__ = {
     metadata: {
       currentWindow: { label: "main" },
@@ -252,7 +328,11 @@
     },
     async invoke(cmd, args) {
       window.__mockCalls.push(cmd);
-      if (cmd === "plugin:event|listen") return next++;
+      if (cmd === "plugin:event|listen") {
+        const ids = listeners.get(args.event) ?? [];
+        listeners.set(args.event, [...ids, args.handler]);
+        return next++;
+      }
       if (cmd === "plugin:event|unlisten") return null;
       if (cmd === "settings_page") return rows(args.page);
       if (cmd === "library_scan") return null;

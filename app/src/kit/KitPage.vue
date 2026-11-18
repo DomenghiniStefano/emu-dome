@@ -9,6 +9,7 @@ import { accentTokens } from '@/accent'
 import { Segmented, SegmentedItem } from '@/components/ui/segmented'
 import { dispatchNav, keyToNav, useNavScope } from '@/nav'
 import ButtonSection from './sections/ButtonSection.vue'
+import CaptureFieldSection from './sections/CaptureFieldSection.vue'
 import CardSection from './sections/CardSection.vue'
 import ChipSection from './sections/ChipSection.vue'
 import DialogSection from './sections/DialogSection.vue'
@@ -82,6 +83,7 @@ useNavScope(root, { autofocus: true })
       <SliderSection />
       <SelectSection />
       <DialogSection />
+      <CaptureFieldSection />
     </div>
   </main>
 </template>
