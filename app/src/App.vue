@@ -28,10 +28,13 @@ import QuickMenu from './components/QuickMenu.vue'
 import ToastStack from './components/ToastStack.vue'
 import GameFlowOverlays from './components/GameFlowOverlays.vue'
 import TouchControls from './components/TouchControls.vue'
+import FirstRun from './components/FirstRun.vue'
 
 const { t, n } = useI18n()
 
 const game = ref<GameInfo | null>(null)
+// First run (#35): null until Rust answered whether this device still needs it.
+const firstRun = ref<boolean | null>(null)
 // The shell's section: kept while a game is open, so closing it comes back here.
 const section = ref<Section>('library')
 const menuOpen = ref(false)
@@ -457,7 +460,17 @@ function onKey(e: KeyboardEvent, pressed: boolean) {
 const down = (e: KeyboardEvent) => onKey(e, true)
 const up = (e: KeyboardEvent) => onKey(e, false)
 
+async function decideFirstRun() {
+  try {
+    firstRun.value = await emu.firstRun.show()
+  } catch (e) {
+    firstRun.value = false
+    toasts.value?.push(errorText(e), 'error')
+  }
+}
+
 onMounted(async () => {
+  void decideFirstRun()
   ;[videoMode.value, nativeAvailable.value] = await emu.videoMode()
   applyBackground()
   window.addEventListener('keydown', down)
@@ -541,9 +554,16 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- No game, first start on this device: the first run. -->
+  <FirstRun
+    v-if="!game && firstRun"
+    @done="firstRun = false"
+    @error="text => toasts?.push(text, 'error')"
+  />
+
   <!-- No game: the shell (rail, sections). -->
   <AppShell
-    v-if="!game"
+    v-else-if="!game && firstRun === false"
     v-model="section"
     :error="error"
     @open-file="openGame()"
@@ -553,7 +573,7 @@ onUnmounted(() => {
   />
 
   <!-- In game: no interface, except discreet indicators and the quick menu. -->
-  <template v-else>
+  <template v-else-if="game">
     <GameCanvas v-if="videoMode === 'webview'" :inset-bottom="menuInset" />
     <div class="hud">
       <div

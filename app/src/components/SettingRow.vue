@@ -17,6 +17,7 @@ import {
   type SettingsSchema,
   type SettingValue,
 } from '../emu'
+import { LOCALE } from '../i18n'
 import { errorText } from '../i18n/labels'
 import { lockReason, msg, notYetWired } from '../settingsModel'
 import SettingSelect from './SettingSelect.vue'
@@ -122,7 +123,8 @@ const options = computed(() => {
     .filter(id => !hidden.includes(id))
     .map(id => ({
       id,
-      text: t(msg.option(key.value, id)),
+      // `{language}`: «Come il sistema (Italiano)» of `general.lang`; other options ignore it.
+      text: t(msg.option(key.value, id), { language: t(`settings.general.lang.option.${LOCALE}`) }),
       desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
     }))
 })

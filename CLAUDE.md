@@ -120,6 +120,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
+                         first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
 crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS;
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
                          jniLibs from cores/android/<abi>/)
@@ -128,7 +129,9 @@ app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), 
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
-app/src                  Vue interface: App.vue, AppShell (rail + sections, outside the game), LibraryEmpty,
+app/src                  Vue interface: App.vue, FirstRun (4 steps, once per device: marker
+                         `<app local data>/first-run/done`, src-tauri/src/first_run.rs),
+                         AppShell (rail + sections, outside the game), LibraryEmpty,
                          QuickMenu, GameCanvas (webview mode), ToastStack, TouchControls (Android overlay),
                          emu.ts (typed bridge),
                          theme.ts (data-theme on <html>), sections.ts,
