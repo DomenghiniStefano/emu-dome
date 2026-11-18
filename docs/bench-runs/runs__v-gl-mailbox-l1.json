@@ -1,0 +1,64 @@
+{
+  "build": "release",
+  "gpu": {
+    "adapter": "NVIDIA GeForce RTX 3060/PCIe/SSE2",
+    "alpha_mode": "Opaque",
+    "backend": "Gl",
+    "device_type": "Other",
+    "driver": "",
+    "driver_info": "4.6.0 NVIDIA 617.42",
+    "format": "Rgba8UnormSrgb",
+    "frame_latency": 1,
+    "present_mode_requested": "Mailbox",
+    "present_mode_used": "AutoVsync",
+    "present_modes_supported": [
+      "Fifo",
+      "Immediate"
+    ]
+  },
+  "logical_cpus": 8,
+  "main_unix_ms": 1794868827415.1743,
+  "native_error": null,
+  "os": "Windows",
+  "reason": "present mode Mailbox not supported by this surface (supported: Fifo, Immediate)",
+  "schema": 1,
+  "status": "unsupported",
+  "tuning": {
+    "audio": {
+      "buffer": "default",
+      "channels": null,
+      "device": null,
+      "rate": null,
+      "target_ms": 60
+    },
+    "bench": {
+      "open_menu_after": null,
+      "out": "<bench-dir>\\runs\\v-gl-mailbox-l1.json",
+      "seconds": 30,
+      "tone": null,
+      "warmup_seconds": 2
+    },
+    "data_dir": "<bench-dir>\\data",
+    "video": {
+      "dx12_presentation": null,
+      "frame_latency": 1,
+      "path": null,
+      "present_mode": "mailbox",
+      "wgpu_backend": "gl"
+    },
+    "warnings": []
+  },
+  "video_mode": "native",
+  "launcher": {
+    "name": "v-gl-mailbox-l1",
+    "pid": 2376,
+    "exit_code": 3,
+    "still_running": false,
+    "focus_taken": false,
+    "foreground_pid_before": 21840,
+    "process_start_unix_ms": 1794868827406,
+    "screenshot": null,
+    "tree_pids": 1,
+    "tree_cpu_pct_of_one_core": null
+  }
+}
