@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// «…» on a cover (board L01, «Altre azioni»; #59 item 2): the game's actions that have a backend
-// today. «Scegli la copertina…» opens L12 (it moves to Game details, L04, when that exists:
-// Cowork, #40), then favourite and hide (`library.setFlags`).
+// «…» of a game (board L01 «Altre azioni» on a cover, #59 item 2; L04 in the game details): the
+// game's actions that have a backend today, those listed in `items`. «Scegli la copertina…»
+// opens L12 and is offered from the game details only (Cowork, #40); favourite and hide go
+// through `library.setFlags`.
 // Controller / keyboard: its own nav scope while open; B / Esc / a click outside close it.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -9,7 +10,7 @@ import { EyeOff, Eye, ImageIcon, Star, StarOff } from '@lucide/vue'
 import { useNavScope } from '../nav'
 import type { LibraryGame } from '../emu'
 
-const props = defineProps<{ game: LibraryGame }>()
+const props = defineProps<{ game: LibraryGame; items: Array<'cover' | 'favourite' | 'hide'> }>()
 const emit = defineEmits<{
   cover: []
   flags: [{ favourite?: boolean; hidden?: boolean }]
@@ -46,11 +47,18 @@ onBeforeUnmount(() => {
     role="menu"
     :aria-label="t('library.moreFor', { title: props.game.title })"
   >
-    <button class="item" role="menuitem" data-nav-initial @click="emit('cover')">
+    <button
+      v-if="props.items.includes('cover')"
+      class="item"
+      role="menuitem"
+      data-nav-initial
+      @click="emit('cover')"
+    >
       <ImageIcon :size="16" :stroke-width="1.75" aria-hidden="true" />
       {{ t('library.menu.cover') }}
     </button>
     <button
+      v-if="props.items.includes('favourite')"
       class="item"
       role="menuitem"
       @click="emit('flags', { favourite: !props.game.favourite })"
@@ -63,7 +71,12 @@ onBeforeUnmount(() => {
       />
       {{ t(props.game.favourite ? 'library.menu.unfavourite' : 'library.menu.favourite') }}
     </button>
-    <button class="item" role="menuitem" @click="emit('flags', { hidden: !props.game.hidden })">
+    <button
+      v-if="props.items.includes('hide')"
+      class="item"
+      role="menuitem"
+      @click="emit('flags', { hidden: !props.game.hidden })"
+    >
       <component
         :is="props.game.hidden ? Eye : EyeOff"
         :size="16"

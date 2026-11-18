@@ -3,17 +3,23 @@
 //! - `identity.rs`: console, identity from the content (`<console>:<hex>`), title and icon of a
 //!   ROM file (docs/feasibility.md, "Game identity").
 //! - `scan.rs`: walks the library folders, identifying files (cached by path + size + mtime).
-//! - `store.rs`: the database (`library.json`), the merge of a scan, flags, covers, play time.
+//! - `store.rs`: the database (`library.json`), the merge of a scan, flags, covers, play time,
+//!   the user's name for a game.
+//! - `details.rs`: what Game details › File e informazioni (L10) derives: region, core.
 //!
 //! Pure logic and file I/O only: the Tauri commands are in `app/src-tauri/src/library.rs`.
 
+mod details;
 pub mod identity;
 pub mod scan;
 mod store;
 
+pub use details::{core_of, region, Region};
 pub use identity::{identify, read_icon, Icon, Identity, NotAGame, EXTENSIONS};
 pub use scan::{scan, Found, ScanInput, ScanOutcome};
-pub use store::{cover_colour, CacheEntry, CoverKind, GameRecord, HashCache, Library, ScanReport};
+pub use store::{
+    cover_colour, CacheEntry, CoverKind, GameRecord, HashCache, Library, ScanReport, NAME_MAX,
+};
 
 use crate::settings::GameId;
 

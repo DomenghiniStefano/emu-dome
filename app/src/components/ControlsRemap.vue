@@ -20,6 +20,7 @@ import {
   type SettingsScope,
 } from '../emu'
 import { errorText } from '../i18n/labels'
+import type { GameFocus } from '../gameDetails'
 import { library } from '../library'
 import ButtonTester from './ButtonTester.vue'
 import {
@@ -38,6 +39,8 @@ const props = defineProps<{
   device: CaptureDevice
   states: PadState[]
   globalRows: Record<string, SettingRow>
+  /** Opened from a game's details (L07): its «Solo questo gioco», chosen on arrival. */
+  game?: GameFocus | null
 }>()
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
@@ -48,6 +51,12 @@ const level = ref<Level>('global')
 const contextConsole = ref<ConsoleId | null>(null)
 const gameScope = ref<SettingsScope | null>(null)
 async function findContext() {
+  if (props.game) {
+    gameScope.value = props.game.scope
+    contextConsole.value = props.game.scope.console
+    level.value = 'game'
+    return
+  }
   gameScope.value = await emu.settings.gameScope().catch(() => null)
   const open = gameScope.value
   if (open && open.level === 'game') return (contextConsole.value = open.console)

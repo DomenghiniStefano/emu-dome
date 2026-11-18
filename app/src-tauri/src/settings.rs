@@ -3,8 +3,8 @@
 //! event, `{ key, level }`, sent after every change so any screen showing the value refreshes.
 
 use emudome_core::settings::{
-    CommitTarget, ConsoleId, Device, GameId, Level, PageValue, RecentChange, SchemaDto, Scope,
-    Settings, Value,
+    CommitTarget, ConsoleId, Device, GameId, GameOverride, Level, PageValue, RecentChange,
+    SchemaDto, Scope, Settings, Value,
 };
 use emudome_core::ErrorCode;
 use parking_lot::Mutex;
@@ -167,6 +167,16 @@ pub fn settings_recent(state: State<'_, SettingsState>, limit: usize) -> Vec<Rec
 #[tauri::command]
 pub fn settings_game_scope(state: State<'_, SettingsState>) -> Option<Scope> {
     state.0.lock().session_scope()
+}
+
+/// Game details › «Impostazioni del gioco» (L06): the values stored for one game, each with
+/// the value of its console's games. Any other scope has none.
+#[tauri::command]
+pub fn settings_game_overrides(state: State<'_, SettingsState>, scope: Scope) -> Vec<GameOverride> {
+    match scope {
+        Scope::Game { console, game } => state.0.lock().game_overrides(console, &game),
+        Scope::Global | Scope::Console { .. } | Scope::Session => Vec::new(),
+    }
 }
 
 /// Stores a value at the scope's level (`{ level: 'session' }`: «in prova», in memory).

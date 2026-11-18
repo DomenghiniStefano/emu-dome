@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 use sha1::{Digest, Sha1};
 
 use super::{
-    cover_colour, identify, read_icon, scan, settings_game_id, CoverKind, Library, ScanInput,
+    core_of, cover_colour, identify, read_icon, region, scan, settings_game_id, CoverKind, Library,
+    Region, ScanInput,
 };
 use crate::settings::test_dir::TestDir;
 use crate::settings::ConsoleId;
@@ -558,4 +559,68 @@ fn library_errors_serialize_as_the_contract() {
     .unwrap();
     assert_eq!(json["code"], "libraryFolderUnreachable");
     assert_eq!(json["params"]["path"], "D:/x");
+}
+
+#[test]
+fn the_shown_name_survives_rescans_and_blank_goes_back_to_the_rom_title() {
+    let dir = TestDir::new("lib-name");
+    write(&dir, "roms/a.gba", &gba_rom("ONE", 0));
+    let roms = dir.path("roms");
+    let mut lib = Library::open(&dir.path("db"));
+    run(&mut lib, &[&roms], 0);
+    let id = lib.games().next().unwrap().id.clone();
+    let rom_title = lib.game(&id).unwrap().title.clone();
+
+    lib.set_name(&id, "  Cronache di Brina  ").unwrap();
+    assert_eq!(lib.game(&id).unwrap().shown_title(), "Cronache di Brina");
+    run(&mut lib, &[&roms], 0);
+    assert_eq!(lib.game(&id).unwrap().shown_title(), "Cronache di Brina");
+    assert_eq!(lib.game(&id).unwrap().title, rom_title);
+    // Kept in the file.
+    let reopened = Library::open(&dir.path("db"));
+    assert_eq!(
+        reopened.game(&id).unwrap().shown_title(),
+        "Cronache di Brina"
+    );
+
+    // The ROM's own title, or nothing, is no name of the user's.
+    lib.set_name(&id, &rom_title).unwrap();
+    assert_eq!(lib.game(&id).unwrap().name, None);
+    lib.set_name(&id, "x").unwrap();
+    lib.set_name(&id, "   ").unwrap();
+    assert_eq!(lib.game(&id).unwrap().name, None);
+    assert_eq!(lib.game(&id).unwrap().shown_title(), rom_title);
+
+    // Too long: cut.
+    lib.set_name(&id, &"a".repeat(200)).unwrap();
+    assert_eq!(
+        lib.game(&id).unwrap().shown_title().chars().count(),
+        super::NAME_MAX
+    );
+    assert!(matches!(
+        lib.set_name("gba:none", "x"),
+        Err(ErrorCode::LibraryGameUnknown { .. })
+    ));
+}
+
+#[test]
+fn the_region_is_the_last_letter_of_the_game_code() {
+    assert_eq!(region(Some("AXVE")), Some(Region::Usa));
+    assert_eq!(region(Some("ABCP")), Some(Region::Europe));
+    assert_eq!(region(Some("ABCJ")), Some(Region::Japan));
+    assert_eq!(region(Some("ABCI")), Some(Region::Italy));
+    assert_eq!(region(Some("CTR-P-ABCD")), Some(Region::Germany));
+    assert_eq!(region(Some("abcf")), Some(Region::France));
+    assert_eq!(region(Some("0000")), None);
+    assert_eq!(region(Some("")), None);
+    assert_eq!(region(None), None);
+}
+
+#[test]
+fn each_console_names_its_core() {
+    assert_eq!(core_of(ConsoleId::Gb), "mgba");
+    assert_eq!(core_of(ConsoleId::Gbc), "mgba");
+    assert_eq!(core_of(ConsoleId::Gba), "mgba");
+    assert_eq!(core_of(ConsoleId::Nds), "melondsds");
+    assert_eq!(core_of(ConsoleId::N3ds), "azahar");
 }
