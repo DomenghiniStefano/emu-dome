@@ -290,7 +290,8 @@ review-only list above. A rule in neither place is the thing this section exists
   entries are not mapped to them yet.
 - Audio is muted in fast forward and slow motion.
 - The cores are not included in the build; the package takes them from `cores/` as a resource.
-- No game library, no button remapping, no rewind: they are Phase 1.
+- Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
+  Cheats (L08) and patches (L09) have no backend yet. Screen effects (librashader) are not wired.
 
 ## Handoff with Cowork
 
