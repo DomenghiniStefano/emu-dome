@@ -212,6 +212,56 @@
     ],
     modifier: "l3",
   };
+  // Saves (scenario.saves): three games with saves, one with quick saves, backups and a broken
+  // in-game save (V01–V05). The thumbnails are inline SVG, so no request leaves the page.
+  const thumb = (a, b) =>
+    "data:image/svg+xml," +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="16" shape-rendering="crispEdges"><rect width="24" height="16" fill="${a}"/><rect x="4" y="9" width="16" height="4" fill="${b}"/><rect x="10" y="3" width="4" height="4" fill="${b}"/></svg>`,
+    );
+  const savesOf = {
+    "Pocket Quest Advance": {
+      summary: { inGame: true, quickCount: 3, bytes: 1310720, lastChange: FIXED - 3600000, broken: true },
+      game: {
+        inGame: { size: 131072, modified: FIXED - 3600000 },
+        quick: [
+          { slot: 0, size: 393216, savedAt: FIXED - 3600000, thumbUrl: thumb("#2f5d8a", "#f5a524"), outdated: false },
+          { slot: 1, size: 393216, savedAt: FIXED - 2 * day, thumbUrl: thumb("#1f6f78", "#eceef3"), outdated: true },
+          { slot: 3, size: 393216, savedAt: null, thumbUrl: null, outdated: false },
+        ],
+        backups: [
+          { name: "b2", at: FIXED - day, reason: "launch", size: 131072 },
+          { name: "b1", at: FIXED - 5 * day, reason: "import", size: 131072 },
+        ],
+        broken: ["Pocket Quest Advance.sav.broken"],
+      },
+    },
+    "Dual Screen Tales": {
+      summary: { inGame: true, quickCount: 0, bytes: 524288, lastChange: FIXED - 3 * day, broken: false },
+      game: { inGame: { size: 524288, modified: FIXED - 3 * day }, quick: [], backups: [], broken: [] },
+    },
+    "Star Pilot": {
+      summary: { inGame: false, quickCount: 1, bytes: 393216, lastChange: FIXED - 10 * day, broken: false },
+      game: {
+        inGame: null,
+        quick: [{ slot: 2, size: 393216, savedAt: FIXED - 10 * day, thumbUrl: thumb("#2b3a8c", "#3ed68e"), outdated: false }],
+        backups: [],
+        broken: [],
+      },
+    },
+  };
+  const titleOf = (path) => path.replace(/^.*\//, "").replace(/\.[^.]+$/, "");
+  const savesAnswer = (cmd, args) => {
+    if (cmd === "saves_summary")
+      return args.paths
+        .filter((p) => savesOf[titleOf(p)])
+        .map((p) => ({ path: p, ...savesOf[titleOf(p)].summary }));
+    if (cmd === "saves_game")
+      return savesOf[titleOf(args.path)]?.game ?? { inGame: null, quick: [], backups: [], broken: [] };
+    if (cmd === "saves_import_pick")
+      return { path: "C:/Saves/Pocket Quest Advance.dsv", fileName: "Pocket Quest Advance.dsv", format: "desmume", size: 131072 };
+    return undefined;
+  };
   const answers = {
     startup_game: null,
     video_mode: ["webview", false],
@@ -256,6 +306,10 @@
       if (cmd === "plugin:event|unlisten") return null;
       if (cmd === "settings_page") return rows(args.page);
       if (cmd === "library_scan") return null;
+      if (scenario.saves && cmd.startsWith("saves_")) {
+        const a = savesAnswer(cmd, args);
+        if (a !== undefined) return JSON.parse(JSON.stringify(a));
+      }
       if (cmd in answers) return JSON.parse(JSON.stringify(answers[cmd]));
       return null;
     },

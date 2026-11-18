@@ -5,11 +5,14 @@
 // confirmation (a deleted quick save cannot be recovered).
 //
 // Controller / keyboard: each dialog (FlowDialog) opens its own nav scope.
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AUTO_SLOT, emu, type LibraryGame, type QuickSave } from '../emu'
 import { errorText, saveWhenLabel, sizeLabel } from '../i18n/labels'
+import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import FlowDialog from './FlowDialog.vue'
+import SaveThumb from './saves/SaveThumb.vue'
+import { useSlotName } from './saves/useSlotName'
 
 const props = defineProps<{ game: LibraryGame; quick: QuickSave }>()
 const emit = defineEmits<{
@@ -23,9 +26,18 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const slotName = useSlotName()
 const confirmDelete = ref(false)
 
-const slotName = (slot: number) => (slot === AUTO_SLOT ? t('qm.auto') : t('qm.slot', { slot }))
+/** When it was saved and how big it is; the size alone when the date is unknown. */
+const savedLine = computed(() =>
+  props.quick.savedAt !== null
+    ? t('saves.inGameLine', {
+        when: saveWhenLabel(props.quick.savedAt),
+        size: sizeLabel(props.quick.size),
+      })
+    : sizeLabel(props.quick.size),
+)
 
 async function exportIt() {
   try {
@@ -51,30 +63,30 @@ async function deleteIt() {
 
 <template>
   <FlowDialog v-if="!confirmDelete" :title="slotName(quick.slot)" @back="emit('close')">
-    <span class="big-thumb" aria-hidden="true">
-      <img v-if="quick.thumbUrl" :src="quick.thumbUrl" alt="" />
-    </span>
-    <p class="p num">
-      {{
-        quick.savedAt !== null
-          ? t('saves.inGameLine', {
-              when: saveWhenLabel(quick.savedAt),
-              size: sizeLabel(quick.size),
-            })
-          : sizeLabel(quick.size)
-      }}
-    </p>
-    <p class="p small">{{ t('saves.quick.overwriteHint') }}</p>
+    <SaveThumb :src="quick.thumbUrl" class="aspect-4/3 rounded-10" />
+    <p class="m-0 tabular-nums">{{ savedLine }}</p>
+    <p class="m-0 text-caption">{{ t('saves.quick.overwriteHint') }}</p>
     <template #actions>
       <!-- The Automatico slot cannot be deleted (#59 item 3): EmuDome fills it by itself. -->
-      <button v-if="quick.slot !== AUTO_SLOT" class="btn" @click="confirmDelete = true">
+      <Button
+        v-if="quick.slot !== AUTO_SLOT"
+        :size="ButtonSize.Medium"
+        @click="confirmDelete = true"
+      >
         {{ t('saves.quick.delete') }}
-      </button>
-      <button class="btn" @click="exportIt">{{ t('saves.export') }}</button>
-      <button class="btn" @click="emit('close')">{{ t('saves.quick.close') }}</button>
-      <button class="btn btn-primary" data-nav-initial @click="emit('play', quick.slot)">
+      </Button>
+      <Button :size="ButtonSize.Medium" @click="exportIt">{{ t('saves.export') }}</Button>
+      <Button :size="ButtonSize.Medium" @click="emit('close')">
+        {{ t('saves.quick.close') }}
+      </Button>
+      <Button
+        :variant="ButtonVariant.Primary"
+        :size="ButtonSize.Medium"
+        data-nav-initial
+        @click="emit('play', quick.slot)"
+      >
         {{ t('saves.quick.load') }}
-      </button>
+      </Button>
     </template>
   </FlowDialog>
 
@@ -84,41 +96,14 @@ async function deleteIt() {
     tone="danger"
     @back="confirmDelete = false"
   >
-    <p class="p">{{ t('saves.quick.deleteText') }}</p>
+    <p class="m-0">{{ t('saves.quick.deleteText') }}</p>
     <template #actions>
-      <button class="btn" data-nav-initial @click="confirmDelete = false">
+      <Button :size="ButtonSize.Medium" data-nav-initial @click="confirmDelete = false">
         {{ t('saves.quick.cancel') }}
-      </button>
-      <button class="btn danger" @click="deleteIt">
+      </Button>
+      <Button :variant="ButtonVariant.Danger" :size="ButtonSize.Medium" @click="deleteIt">
         {{ t('saves.quick.deleteConfirm', { slot: quick.slot }) }}
-      </button>
+      </Button>
     </template>
   </FlowDialog>
 </template>
-
-<style scoped>
-.p {
-  margin: 0;
-}
-.small {
-  font-size: 12px;
-  line-height: 16px;
-}
-.btn.danger {
-  color: var(--danger);
-}
-.big-thumb {
-  display: block;
-  aspect-ratio: 4 / 3;
-  border-radius: var(--radius-10);
-  background: #000;
-  overflow: hidden;
-}
-.big-thumb img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-</style>

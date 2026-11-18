@@ -50,6 +50,13 @@
        recomputed when appearance.ts changes `--violet`. */
   --knob: #ffffff;
   --accent-edge: color-mix(in srgb, var(--violet) 40%, transparent);
+  /* New in cycle 2 (Saves), each again a value the screens wrote by hand:
+     - letterbox: the black around a game's picture (save thumbnails), the same in every theme;
+     - warning-soft, success-soft: the design system's soft state fills, 14% of the state's
+       colour, recomputed with the theme's own warning / success. */
+  --letterbox: #000000;
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
+  --success-soft: color-mix(in srgb, var(--success) 14%, transparent);
 }
 
 /* Nero: true black for OLED screens. */
@@ -151,8 +158,12 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
+  --color-warning-soft: var(--warning-soft);
+  --color-success-soft: var(--success-soft);
   /* Controls */
   --color-knob: var(--knob);
+  /* Pictures of a game */
+  --color-letterbox: var(--letterbox);
   /* The cover colours of the ambient haze (ambient.ts writes them) */
   --color-cover-1: var(--cover-1);
   --color-cover-2: var(--cover-2);

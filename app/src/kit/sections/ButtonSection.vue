@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Play, Settings, Trash2, Undo2 } from '@lucide/vue'
+import { Ellipsis, Play, Settings, Trash2, Undo2 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
@@ -41,6 +41,34 @@ import KitState from '../KitState.vue'
       <Button :variant="ButtonVariant.Danger">
         <Trash2 :size="16" :stroke-width="1.75" aria-hidden="true" />
         Delete the save
+      </Button>
+    </KitState>
+    <KitState label="Soft · Medium (a dialog's actions)">
+      <Button :size="ButtonSize.Medium">Export…</Button>
+    </KitState>
+    <KitState label="Primary · Medium">
+      <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Play from here</Button>
+    </KitState>
+    <KitState label="Danger · Medium">
+      <Button :variant="ButtonVariant.Danger" :size="ButtonSize.Medium">Delete slot 1</Button>
+    </KitState>
+    <KitState label="SoftAccent · Compact, Soft · Compact (a tile's actions)">
+      <div class="flex w-field gap-6">
+        <Button
+          :variant="ButtonVariant.SoftAccent"
+          :size="ButtonSize.Compact"
+          class="min-w-0 flex-1"
+        >
+          Play from here
+        </Button>
+        <Button :size="ButtonSize.Compact" aria-label="More">
+          <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="SoftAccent · Compact · disabled">
+      <Button :variant="ButtonVariant.SoftAccent" :size="ButtonSize.Compact" disabled>
+        Play from here
       </Button>
     </KitState>
     <KitState label="Icon · IconSmall">

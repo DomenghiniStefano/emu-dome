@@ -9,6 +9,10 @@ export const CardVariant = {
   Raised: 'raised',
   // A glass panel over the ambient haze (README «Vetro»: thick glass for menus and panels).
   Glass: 'glass',
+  // One row of a list the user picks from, rendered `as="button"` (Saves: the games): cover,
+  // text and badge in a row, no fill until hovered, `selected` on accent-soft. Its 8px radius is
+  // off the scale, kept until Cowork decides (spec Decision 5: 8 → 6).
+  ListItem: 'listItem',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
 
@@ -20,6 +24,8 @@ export const cardVariants = cva('flex flex-col text-left', {
       [CardVariant.Raised]:
         'rounded-10 border border-line bg-surface-raised p-10 data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.Glass]: 'glass-thick p-24',
+      [CardVariant.ListItem]:
+        'flex-row items-center gap-10 rounded-[8px] border-0 bg-transparent p-8 hover:not-data-selected:bg-surface-hover data-selected:bg-accent-soft',
     },
   },
   defaultVariants: { variant: CardVariant.Surface },

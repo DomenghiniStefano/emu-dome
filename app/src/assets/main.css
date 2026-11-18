@@ -18,6 +18,12 @@
    src/. */
 @source '../components/ui';
 @source '../kit';
+/* Migrated screens (cycle 2). */
+@source '../components/saves';
+@source '../components/SavesView.vue';
+@source '../components/SlotTile.vue';
+@source '../components/QuickSaveDialog.vue';
+@source '../components/ConflictTwoUp.vue';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

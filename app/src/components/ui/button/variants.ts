@@ -13,6 +13,9 @@ export const ButtonVariant = {
   GhostAccent: 'ghostAccent',
   // An action that throws something away (QuickSaveDialog `.btn.danger`): Soft in danger ink.
   Danger: 'danger',
+  // A second action in accent ink on the accent's soft fill, quieter than Primary (SlotTile
+  // «Gioca da qui»).
+  SoftAccent: 'softAccent',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -26,6 +29,13 @@ export const ButtonSize = {
   // Squares for an icon alone, at the two control heights.
   Icon: 'icon',
   IconSmall: 'iconSmall',
+  // 36px: a dialog's actions (FlowDialog) and a page's pair of actions (Saves E03). Off the control
+  // scale: Cowork decides whether it folds into 32 or 40 or becomes a step (spec Decision 5);
+  // until then this is the one place it is written. Primary is 16px wide on each side here.
+  Medium: 'medium',
+  // 28px with a 12px label on the document's 18px line, wrapping when the room is short: the
+  // actions inside a tile (SlotTile).
+  Compact: 'compact',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -46,6 +56,8 @@ export const buttonVariants = cva(
         [ButtonVariant.GhostAccent]:
           'border-0 bg-transparent text-accent-text hover:bg-surface-hover disabled:hover:bg-transparent',
         [ButtonVariant.Danger]: 'border-line bg-surface-raised text-danger hover:bg-surface-hover',
+        [ButtonVariant.SoftAccent]:
+          'border-0 bg-accent-soft text-accent-text hover:bg-surface-hover',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8',
@@ -53,8 +65,12 @@ export const buttonVariants = cva(
         [ButtonSize.Large]: 'h-control-lg px-18 text-cta',
         [ButtonSize.Icon]: 'size-control p-0',
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
+        [ButtonSize.Medium]: 'h-[36px] px-12',
+        [ButtonSize.Compact]:
+          'h-control-sm px-10 text-caption leading-[18px] font-medium whitespace-normal',
       },
     },
+    compoundVariants: [{ variant: ButtonVariant.Primary, size: ButtonSize.Medium, class: 'px-16' }],
     defaultVariants: {
       variant: ButtonVariant.Soft,
       size: ButtonSize.Default,
