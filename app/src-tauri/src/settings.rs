@@ -98,6 +98,8 @@ pub struct GameFlow {
     pub resume: String,
     /// `speed.rew` / `speed.rewlen`: the seconds of rewind to keep, `None` = off.
     pub rewind_seconds: Option<u32>,
+    /// The core options the console options ask for (`settings::core_values`).
+    pub core_options: Vec<(String, String)>,
 }
 
 const REWIND_KEYS: [&str; 2] = ["speed.rew", "speed.rewlen"];
@@ -148,6 +150,7 @@ pub fn game_flow(app: &AppHandle, console: ConsoleId, game: &GameId) -> GameFlow
         autosave_on_exit: !matches!(read("saves.autoexit"), Some(Value::Bool(false))),
         resume: text("saves.resume").unwrap_or_else(|| "always".into()),
         rewind_seconds: rewind_seconds(app, &scope),
+        core_options: emudome_core::settings::core_values::core_options(console, read),
     }
 }
 
