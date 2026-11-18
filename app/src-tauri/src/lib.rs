@@ -385,6 +385,15 @@ fn set_video_mode(
     Ok(())
 }
 
+/// Quick menu G09: the bottom `fraction` of the window is the menu's bar, so the native game
+/// shrinks above it (0 = the whole window again). The webview canvas does the same by itself.
+#[tauri::command]
+fn set_video_inset(state: tauri::State<'_, AppState>, fraction: f32) {
+    if let Some(r) = &state.renderer {
+        r.set_inset(fraction);
+    }
+}
+
 /// `emu://` protocol: the latest frame as raw RGBA, for the webview's canvas.
 /// `?since=N` answers 204 when there is no frame newer than N.
 fn frame_protocol(
@@ -460,19 +469,31 @@ fn send_command(app: &tauri::AppHandle, cmd: Command) -> bool {
         .is_some_and(|state| state.send(cmd).is_ok())
 }
 
-/// The interface tells when the quick menu opens and closes, so the controllers
-/// navigate it instead of reaching the game.
-/// F11: fullscreen on / off. Keyboard only: no controller shortcut (docs/combo-tasti.md).
+/// F11 and the quick menu's «A schermo intero»: fullscreen on / off. Answers whether the
+/// window is now fullscreen. No controller shortcut (docs/combo-tasti.md).
 #[tauri::command]
-fn toggle_fullscreen(app: tauri::AppHandle) {
+fn toggle_fullscreen(app: tauri::AppHandle) -> bool {
     let Some(window) = app.get_window("main") else {
-        return;
+        return false;
     };
     let on = window.is_fullscreen().unwrap_or(false);
     if let Err(e) = window.set_fullscreen(!on) {
         log::warn!("fullscreen {}: {e}", !on);
+        return on;
     }
+    !on
 }
+
+/// Whether the window is fullscreen (the quick menu's tile shows it pressed).
+#[tauri::command]
+fn is_fullscreen(app: tauri::AppHandle) -> bool {
+    app.get_window("main")
+        .and_then(|w| w.is_fullscreen().ok())
+        .unwrap_or(false)
+}
+
+/// The interface tells when the quick menu opens and closes, so the controllers
+/// navigate it instead of reaching the game.
 
 #[tauri::command]
 fn set_menu_open(state: tauri::State<'_, AppState>, open: bool) {
@@ -503,6 +524,21 @@ fn load_state(state: tauri::State<'_, AppState>, slot: u8) -> Result<(), ErrorCo
 #[tauri::command]
 fn undo_load(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
     send(&state, Command::UndoLoad)
+}
+
+/// «Salvato nello slot N · Annulla»: the slot of the last save gets back what it held.
+#[tauri::command]
+fn undo_save(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
+    send(&state, Command::UndoSave)
+}
+
+/// «Muto» (quick menu): silence for the open game only; the next game starts with sound.
+#[tauri::command]
+fn set_muted(state: tauri::State<'_, AppState>, muted: bool) -> Result<(), ErrorCode> {
+    let current = state.current.lock().clone();
+    let shared = current.ok_or(ErrorCode::NoGame)?;
+    shared.muted.store(muted, Ordering::Relaxed);
+    Ok(())
 }
 
 #[tauri::command]
@@ -665,14 +701,18 @@ pub fn run() {
             save_state,
             load_state,
             undo_load,
+            undo_save,
+            set_muted,
             reset_game,
             input,
             stats,
             video_mode,
             set_video_mode,
+            set_video_inset,
             startup_game,
             set_menu_open,
             toggle_fullscreen,
+            is_fullscreen,
             theme::theme,
             settings::settings_schema,
             settings::settings_page,

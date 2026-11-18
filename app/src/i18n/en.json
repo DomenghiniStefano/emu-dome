@@ -128,7 +128,10 @@
     "gamepadDisconnected": "Controller disconnected: {name}",
     "gamepadUnnamed": "Controller",
     "slot": "Slot {slot}",
-    "loadUndone": "Load undone: you’re back where you were"
+    "loadUndone": "Load undone: you’re back where you were",
+    "autoLoaded": "Loaded the automatic slot",
+    "undo": "Undo",
+    "undoFromMenu": "Undo from the quick menu"
   },
   "console": {
     "gb": "Game Boy",
@@ -660,20 +663,6 @@
           "2": "2×"
         }
       },
-      "splist": {
-        "name": "Speeds in the quick menu",
-        "desc": "The speeds you can pick while playing.",
-        "button": "Edit the list",
-        "option": {
-          "0_5": "0.5×",
-          "1": "1×",
-          "1_5": "1.5×",
-          "2": "2×",
-          "3": "3×",
-          "4": "4×",
-          "max": "Maximum"
-        }
-      },
       "ffmode": {
         "name": "Fast forward on the keyboard",
         "desc": "How the Tab key works. On the controller: hold L3 + R2, or L3 + up to turn it on and off.",
@@ -1010,14 +999,6 @@
       "confirmdel": {
         "name": "Ask before deleting",
         "desc": "For saves, slots and games on Google Drive."
-      },
-      "qmorder": {
-        "name": "Quick menu order",
-        "desc": "Which tabs you see in the quick menu and in what order.",
-        "value": {
-          "default": "Default",
-          "custom": "Custom"
-        }
       },
       "updates": {
         "name": "EmuDome updates",
@@ -1604,7 +1585,6 @@
     },
     "overview": {
       "name": "Overview",
-      "search": "Search for a setting, e.g. V-Sync",
       "mostUsed": "MOST USED",
       "mostUsedNote": "These apply to all games · for one game only, use the quick menu",
       "recent": "RECENTLY CHANGED"
@@ -1644,35 +1624,29 @@
   },
   "qm": {
     "label": "Quick menu",
-    "playing": "{console} · playing for {time}",
     "auto": "Automatic",
     "slot": "Slot {slot}",
     "empty": "Empty",
     "loadAuto": "Load from the auto slot",
     "loadSlot": "Load from slot {slot}",
     "saveSlot": "Save to slot {slot}",
-    "autoEvery": "Auto quick save: {every}",
-    "keys": "{save} saves · {load} loads slot 1",
     "speedTitle": "SPEED",
-    "speedNote": "Audio is muted when not at 1×",
     "noNative": "The Accelerated method is not available on this system.",
     "controller": "Controller in use",
     "noController": "No controller connected: use the keyboard.",
     "shortcuts": "Controller shortcuts",
     "shortcutsHint": "Hold {modifier} and press a button",
     "remap": "Remap the buttons for this game",
-    "screenshot": "Take a screenshot",
-    "reset": "Restart the game",
-    "resetHint": "Back to the start, your saves stay",
-    "close": "Close the game",
-    "closeHint": "Saves automatically before closing",
+    "screenshot": "Take screenshot",
+    "reset": "Restart game",
+    "close": "Close game",
     "trial": "{n} changes on trial: {names}",
     "trialOne": "1 change on trial: {names}",
     "trialHint": "You already see them in the game. If you close the game without saving them, they go back to how they were.",
     "undo": "Undo changes",
     "saveGame": "Save for this game",
     "saveConsole": "Save for all {console} games instead",
-    "resume": "Resume the game",
+    "resume": "Resume game",
     "notYet": "This arrives in a future update",
     "undoLoad": "Undo load",
     "savesTitle": "QUICK SAVES",
@@ -1680,26 +1654,9 @@
     "more": "More slots and saves",
     "moreShort": "More slots",
     "moreLabel": "More",
-    "saveAuto": "Save to the auto slot",
     "emptySlot": "Slot {slot} is empty",
-    "emptyAuto": "The auto slot is empty",
-    "speedNormal": "Normal speed",
     "ff": "Fast forward",
     "slow": "Slow motion",
-    "hint": {
-      "save": "save",
-      "load": "load",
-      "slot": "change slot",
-      "ffHold": "fast forward while held",
-      "slow": "slow motion"
-    },
-    "hintPair": "{a} {b}",
-    "dir": {
-      "up": "up",
-      "down": "down",
-      "left": "←",
-      "right": "→"
-    },
     "row": {
       "screens": {
         "name": "Screens and picture",
@@ -1707,16 +1664,36 @@
       },
       "controls": {
         "name": "Controls",
-        "sub": "Remap for this game, shortcuts",
-        "subTouch": "Touch controls opacity, remap"
-      },
-      "tools": {
-        "name": "Tools",
-        "sub": "Screenshot, restart, close the game"
+        "sub": "Remap for this game, shortcuts"
       }
     },
     "resumeShort": "Resume",
-    "resumeKeys": "{esc} · {back}"
+    "normal": "Normal",
+    "speedPage": "Speed",
+    "setSpeeds": "Set speeds",
+    "speedsAlsoIn": "You can also find them in Settings › Speed and time.",
+    "toolsTitle": "TOOLS",
+    "toolsNotYet": "{names}: arrives in a future update.",
+    "mute": "Mute",
+    "fullscreen": "Full screen",
+    "swapScreens": "Swap screens",
+    "closeLid": "Close the lid",
+    "restartTitle": "Restart the game?",
+    "restartText": "The game starts over. Your saves stay, progress since your last save is lost.",
+    "restartConfirm": "Restart",
+    "cancel": "Cancel",
+    "autoUpdates": "The automatic slot updates by itself",
+    "saved": "Saved to slot {slot}",
+    "undoSave": "Undo",
+    "backup": "Game save backup",
+    "backupNotHere": "You can find it in Saves, with the game closed.",
+    "liveNote": "Changes show on the game right away",
+    "prev": "{name}: previous",
+    "next": "{name}: next",
+    "source": {
+      "session": "On trial · this game only",
+      "game": "This game only"
+    }
   },
   "controls": {
     "keyboard": "Keyboard",
@@ -1751,7 +1728,7 @@
     "conflict": "{source} is already used for {button}. Swap them?",
     "swap": "Swap",
     "cancel": "Cancel",
-    "tester": "TRY THE BUTTONS",
+    "tester": "TEST YOUR BUTTONS",
     "testerHint": "Press a button to see what it does in the game. Click a row to change it.",
     "captureHintPad": "Press the button to use for “{button}”. Hold {back} for a second to cancel.",
     "captureHintKey": "Press the key to use for “{button}”. Hold {back} for a second to cancel.",
@@ -1900,8 +1877,6 @@
     "overview": {
       "inUse": "In use",
       "battery": "battery {percent}%",
-      "layoutNintendo": "Nintendo layout",
-      "layoutPrinted": "layout as printed on the controller",
       "shortcuts": "SHORTCUTS TO REMEMBER",
       "shortcutsHint": "Hold {modifier} and press a button",
       "editShortcuts": "Edit shortcuts",

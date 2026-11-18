@@ -17,6 +17,8 @@ import { startLibrary } from './library'
 import { flow, gameStarted as flowStarted, sample } from './gameFlow'
 import { errorText, gamepadName, isErrorCode, speedLabel } from './i18n/labels'
 import { dispatchNav, keyToNav, showFocusRing } from './nav'
+import { inputMode, usedController, watchInput } from './inputMode'
+import { FF_DEFAULT, speedFromOption } from './speeds'
 import { keymap, loadKeymap } from './keymap'
 import type { Section } from './sections'
 import AppShell from './components/AppShell.vue'
@@ -78,24 +80,49 @@ type Opened = { kind: 'path'; path: string } | { kind: 'library'; game: LibraryG
 let lastOpened: Opened | null = null
 // True while closing on purpose: the core's `stopped` event is then expected.
 let closingNow = false
-// When the open game started («stai giocando da …») and the controller in use (quick menu).
-const startedAt = ref(Date.now())
+// The controller in use (quick menu).
 const controller = ref<string | null>(null)
 // The slot the controller shortcuts use (L3 + ← →): the quick menu opens on it.
 const comboSlot = ref(1)
-// A load happened in this game: the quick menu offers «Annulla il caricamento» (`saves.undo`).
-const canUndoLoad = ref(false)
+// The slot of the last load, until the next save or load: «Annulla il caricamento» (`saves.undo`).
+const undoLoadSlot = ref<number | null>(null)
+// A load asked from the quick menu: its `stateLoaded` shows G17.
+let menuLoad: number | null = null
+// «Muto» and «A schermo intero» (quick menu tools).
+const muted = ref(false)
+const fullscreen = ref(false)
+// G09: px at the bottom the quick menu's bar covers; the game shrinks above it.
+const menuInset = ref(0)
+// The open game's `speed.ffval` (Tab, the HUD) and `saves.undo`, with its changes «in prova».
+const ffSpeed = ref<Speed>(FF_DEFAULT)
+const undoAllowed = ref(true)
+async function loadGameSettings() {
+  if (!game.value) return
+  try {
+    const rows = (
+      await Promise.all(['speed', 'saves'].map(p => emu.settings.page(p, { level: 'session' })))
+    ).flat()
+    const of = (key: string) => rows.find(r => r.key === key)?.value
+    ffSpeed.value = speedFromOption(of('speed.ffval')) ?? FF_DEFAULT
+    undoAllowed.value = of('saves.undo') !== false
+  } catch (e) {
+    toasts.value?.push(errorText(e), 'error')
+  }
+}
 // E04: the game whose in-game save was set aside, to open again after restoring a backup.
 let brokenOpened: { opened: Opened; title: string; colour: string | null } | null = null
 
 async function gameStarted(info: GameInfo, resumeAuto = false) {
   game.value = info
-  startedAt.value = Date.now()
   speed.value = { kind: 'factor', value: 1 }
   menuOpen.value = false
   paused.value = false
-  canUndoLoad.value = false
+  undoLoadSlot.value = null
+  menuLoad = null
+  muted.value = false
+  menuInset.value = 0
   flowStarted()
+  void loadGameSettings()
   if (resumeAuto) {
     await emu.loadState(AUTO_SLOT)
   } else if (info.resumable) {
@@ -278,6 +305,64 @@ async function setSpeed(s: Speed) {
   await emu.setSpeed(s)
 }
 
+/** Carica in the quick menu: loads the slot and resumes at once; `stateLoaded` shows G17. */
+async function loadFromMenu(slot: number) {
+  menuLoad = slot
+  try {
+    await emu.loadState(slot)
+  } catch (e) {
+    menuLoad = null
+    toasts.value?.push(errorText(e), 'error')
+    return
+  }
+  await setMenu(false)
+}
+
+/** G17: «Caricato lo slot N» with «Annulla» for about 5 s; with a controller the undo is in
+ * the quick menu instead (board TV-MenuRapido3-Annulla). */
+function loadedToast(slot: number) {
+  const text = slot === AUTO_SLOT ? t('toast.autoLoaded') : t('toast.stateLoaded', { slot })
+  if (!undoAllowed.value) return toasts.value?.push(text)
+  if (inputMode.value === 'controller')
+    return toasts.value?.push(text, 'info', { note: t('toast.undoFromMenu'), ms: 5000 })
+  toasts.value?.push(text, 'info', {
+    ms: 5000,
+    action: { label: t('toast.undo'), run: () => void undoLoad() },
+  })
+}
+async function undoLoad() {
+  try {
+    await emu.undoLoad()
+  } catch (e) {
+    toasts.value?.push(errorText(e), 'error')
+  }
+}
+
+/** G11 «Riavvia»: the game starts over and resumes. */
+async function restartGame() {
+  await emu.reset()
+  await setMenu(false)
+}
+
+async function setMuted(on: boolean) {
+  try {
+    await emu.setMuted(on)
+    muted.value = on
+  } catch (e) {
+    toasts.value?.push(errorText(e), 'error')
+  }
+}
+
+async function toggleFullscreen() {
+  fullscreen.value = await emu.toggleFullscreen()
+}
+
+/** G09's bar: the canvas keeps clear of it by itself, the native video is told the share. */
+function setInset(px: number) {
+  menuInset.value = px
+  void emu.setVideoInset(px > 0 ? Math.min(0.9, px / window.innerHeight) : 0)
+}
+
 /** What a controller combo changed (the combo itself already ran in Rust). */
 function onHotkey(h: HotkeyEvent) {
   switch (h.kind) {
@@ -308,7 +393,7 @@ function onKey(e: KeyboardEvent, pressed: boolean) {
   }
   if (e.code === 'F11') {
     e.preventDefault()
-    if (pressed && !e.repeat) void emu.toggleFullscreen()
+    if (pressed && !e.repeat) void toggleFullscreen()
     return
   }
   // Menu or shell: arrows move the focus, Enter confirms.
@@ -330,7 +415,7 @@ function onKey(e: KeyboardEvent, pressed: boolean) {
     e.preventDefault()
     if (e.repeat || pressed === turboHeld.value) return
     turboHeld.value = pressed
-    void emu.setSpeed(pressed ? { kind: 'max' } : speed.value)
+    void emu.setSpeed(pressed ? ffSpeed.value : speed.value)
     return
   }
   const button = keymap.value[e.code]
@@ -348,16 +433,23 @@ onMounted(async () => {
   applyBackground()
   window.addEventListener('keydown', down)
   window.addEventListener('keyup', up)
+  watchInput()
   void loadKeymap(false)
+  fullscreen.value = await emu.isFullscreen()
   unlisten.push(
     await emu.settings.onChanged(e => {
       if (e.key === 'pad.remap') void loadKeymap(game.value !== null)
+      if (e.key.startsWith('speed.') || e.key.startsWith('saves.')) void loadGameSettings()
     }),
     await emu.onMenu(() => {
+      usedController()
       showFocusRing()
       void setMenu(!menuOpen.value)
     }),
-    await emu.onNav(dispatchNav),
+    await emu.onNav(action => {
+      usedController()
+      dispatchNav(action)
+    }),
     await emu.onHotkey(onHotkey),
     await emu.onGamepadConnected(p => {
       controller.value = gamepadName(p)
@@ -374,16 +466,24 @@ onMounted(async () => {
     }),
     ...(await startLibrary()),
     await emu.onEvent(ev => {
-      // Slot 0 is the auto quick save: it works silently.
-      if (ev.type === 'stateSaved' && ev.slot !== AUTO_SLOT)
-        toasts.value?.push(t('toast.stateSaved', { slot: ev.slot }))
-      if (ev.type === 'stateLoaded') canUndoLoad.value = true
-      if (ev.type === 'stateLoaded' && ev.slot !== AUTO_SLOT)
-        toasts.value?.push(t('toast.stateLoaded', { slot: ev.slot }))
+      // Slot 0 is the auto quick save: it works silently. In the menu a save shows its own
+      // line «Salvato nello slot N · Annulla» instead of a toast.
+      if (ev.type === 'stateSaved' && ev.slot !== AUTO_SLOT) {
+        undoLoadSlot.value = null
+        if (!menuOpen.value) toasts.value?.push(t('toast.stateSaved', { slot: ev.slot }))
+      }
+      if (ev.type === 'stateLoaded') {
+        undoLoadSlot.value = ev.slot
+        if (menuLoad === ev.slot) loadedToast(ev.slot)
+        else if (ev.slot !== AUTO_SLOT)
+          toasts.value?.push(t('toast.stateLoaded', { slot: ev.slot }))
+        menuLoad = null
+      }
       if (ev.type === 'loadUndone') {
-        canUndoLoad.value = false
+        undoLoadSlot.value = null
         toasts.value?.push(t('toast.loadUndone'))
       }
+      if (ev.type === 'error') menuLoad = null
       if (ev.type === 'error') toasts.value?.push(errorText(ev.error), 'error')
       if (ev.type === 'stopped' && !closingNow) crashed()
     }),
@@ -424,13 +524,13 @@ onUnmounted(() => {
 
   <!-- In game: no interface, except discreet indicators and the quick menu. -->
   <template v-else>
-    <GameCanvas v-if="videoMode === 'webview'" />
+    <GameCanvas v-if="videoMode === 'webview'" :inset-bottom="menuInset" />
     <div class="hud">
       <div
         v-if="turboHeld || speed.kind === 'max' || (speed.kind === 'factor' && speed.value !== 1)"
         class="chip num"
       >
-        {{ speedLabel(turboHeld ? { kind: 'max' } : speed) }}
+        {{ speedLabel(turboHeld ? ffSpeed : speed) }}
       </div>
       <div v-if="paused && !menuOpen" class="chip">{{ t('hud.paused') }}</div>
       <div v-if="showFps && stats" class="chip num">
@@ -452,18 +552,22 @@ onUnmounted(() => {
       :speed="speed"
       :video-mode="videoMode"
       :native-available="nativeAvailable"
-      :started-at="startedAt"
       :controller="controller"
       :current-slot="comboSlot"
-      :can-undo-load="canUndoLoad"
+      :undo-load-slot="undoAllowed ? undoLoadSlot : null"
+      :muted="muted"
+      :fullscreen="fullscreen"
       @video-mode="setVideoMode"
       @resume="setMenu(false)"
       @speed="setSpeed"
       @save="(slot: number) => emu.saveState(slot)"
-      @load="(slot: number) => emu.loadState(slot)"
-      @undo-load="emu.undoLoad()"
-      @reset="emu.reset()"
+      @load="loadFromMenu"
+      @undo-load="undoLoad"
+      @reset="restartGame"
       @close="closeGame"
+      @mute="setMuted"
+      @fullscreen="toggleFullscreen"
+      @inset="setInset"
       @error="text => toasts?.push(text, 'error')"
     />
   </template>

@@ -30,6 +30,18 @@ pub enum Speed {
 }
 
 impl Speed {
+    /// A speed option of the settings (`speed.ffval`, `speed.slow`, `speed.spstart`): `max`, or
+    /// a positive factor such as `0.5` or `4`. `None` for anything else.
+    pub fn from_option(id: &str) -> Option<Self> {
+        if id == "max" {
+            return Some(Speed::Max);
+        }
+        id.parse::<f32>()
+            .ok()
+            .filter(|f| f.is_finite() && *f > 0.0)
+            .map(Speed::Factor)
+    }
+
     fn is_normal(self) -> bool {
         matches!(self, Speed::Factor(f) if (f - 1.0).abs() < f32::EPSILON)
     }
@@ -43,6 +55,8 @@ pub enum Command {
     LoadState(u8),
     /// «Annulla il caricamento» (`saves.undo`): back to the state from before the last load.
     UndoLoad,
+    /// «Salvato nello slot N · Annulla»: the slot of the last save gets back what it held.
+    UndoSave,
     /// Changes a core option (`GET_VARIABLE` key and value) while the game runs.
     SetCoreOption {
         key: String,
@@ -71,6 +85,10 @@ pub enum Event {
     },
     /// The last load was undone.
     LoadUndone,
+    /// The last save was undone: `slot` holds what it held before.
+    SaveUndone {
+        slot: u8,
+    },
     Error {
         error: ErrorCode,
     },
@@ -102,6 +120,8 @@ pub struct Shared {
     pub audio: Mutex<AudioQueue>,
     pub input: InputState,
     pub stats: Mutex<Stats>,
+    /// «Muto» in the quick menu: the audio output plays silence for this game.
+    pub muted: std::sync::atomic::AtomicBool,
 }
 
 pub struct SessionOptions {
@@ -327,17 +347,16 @@ fn emu_thread(
         }
     };
 
-    // The state from before the last load, for «Annulla il caricamento». Always kept (one
-    // state in memory); the interface offers it only when `saves.undo` is on.
-    let mut before_load: Option<Vec<u8>> = None;
+    // What the last save or load can go back to («Annulla»): only the newest one, until the
+    // next save or load. Always kept; the interface offers the load's only when `saves.undo`
+    // is on.
+    let mut undo: Option<Undo> = None;
 
     if opts.resume_auto && files.slot(AUTO_SLOT).is_file() {
-        let _ = events.send(
-            match load_undoable(&core, &files, AUTO_SLOT, &mut before_load) {
-                Ok(()) => Event::StateLoaded { slot: AUTO_SLOT },
-                Err(error) => Event::Error { error },
-            },
-        );
+        let _ = events.send(match load_undoable(&core, &files, AUTO_SLOT, &mut undo) {
+            Ok(()) => Event::StateLoaded { slot: AUTO_SLOT },
+            Err(error) => Event::Error { error },
+        });
     }
 
     let write_sram = |core: &LoadedCore| {
@@ -381,11 +400,15 @@ fn emu_thread(
                     next_frame = Instant::now();
                 }
                 Command::SaveState(slot) => {
+                    let before = crate::saves::SlotContent::read(&files, slot)
+                        .inspect_err(|e| log::warn!("slot {slot} not set aside for undo: {e}"))
+                        .ok();
                     let res = core.save_state().and_then(|data| {
                         std::fs::write(files.slot(slot), data).context("cannot write the slot")
                     });
                     if res.is_ok() {
                         write_thumb(&files, slot, &shared);
+                        undo = before.map(|before| Undo::Save { slot, before });
                     }
                     let _ = events.send(match res {
                         Ok(()) => Event::StateSaved { slot },
@@ -398,15 +421,14 @@ fn emu_thread(
                     });
                 }
                 Command::LoadState(slot) => {
-                    let _ =
-                        events.send(match load_undoable(&core, &files, slot, &mut before_load) {
-                            Ok(()) => Event::StateLoaded { slot },
-                            Err(error) => Event::Error { error },
-                        });
+                    let _ = events.send(match load_undoable(&core, &files, slot, &mut undo) {
+                        Ok(()) => Event::StateLoaded { slot },
+                        Err(error) => Event::Error { error },
+                    });
                 }
                 Command::UndoLoad => {
-                    let _ = events.send(match before_load.take() {
-                        Some(data) => match core.load_state(&data) {
+                    let _ = events.send(match undo.take() {
+                        Some(Undo::Load(data)) => match core.load_state(&data) {
                             Ok(()) => Event::LoadUndone,
                             Err(e) => Event::Error {
                                 error: ErrorCode::UndoFailed {
@@ -414,9 +436,30 @@ fn emu_thread(
                                 },
                             },
                         },
-                        None => Event::Error {
-                            error: ErrorCode::NothingToUndo,
+                        kept @ (Some(Undo::Save { .. }) | None) => {
+                            undo = kept;
+                            Event::Error {
+                                error: ErrorCode::NothingToUndo,
+                            }
+                        }
+                    });
+                }
+                Command::UndoSave => {
+                    let _ = events.send(match undo.take() {
+                        Some(Undo::Save { slot, before }) => match before.restore(&files, slot) {
+                            Ok(()) => Event::SaveUndone { slot },
+                            Err(e) => Event::Error {
+                                error: ErrorCode::UndoFailed {
+                                    detail: e.to_string(),
+                                },
+                            },
                         },
+                        kept @ (Some(Undo::Load(_)) | None) => {
+                            undo = kept;
+                            Event::Error {
+                                error: ErrorCode::NothingToUndo,
+                            }
+                        }
                     });
                 }
                 Command::SetCoreOption { key, value } => callbacks::set_core_option(key, value),
@@ -490,16 +533,27 @@ fn emu_thread(
     let _ = events.send(Event::Stopped);
 }
 
-/// [`load_slot`], keeping the state from before it in `before` when it succeeds.
+/// What «Annulla» goes back to: the newest save or load only.
+enum Undo {
+    /// The game's state from before the last load.
+    Load(Vec<u8>),
+    /// What the slot of the last save held before it.
+    Save {
+        slot: u8,
+        before: crate::saves::SlotContent,
+    },
+}
+
+/// [`load_slot`], keeping the state from before it in `undo` when it succeeds.
 fn load_undoable(
     core: &LoadedCore,
     files: &GameFiles,
     slot: u8,
-    before: &mut Option<Vec<u8>>,
+    undo: &mut Option<Undo>,
 ) -> Result<(), ErrorCode> {
     let state = core.save_state().ok();
     load_slot(core, files, slot)?;
-    *before = state;
+    *undo = state.map(Undo::Load);
     Ok(())
 }
 

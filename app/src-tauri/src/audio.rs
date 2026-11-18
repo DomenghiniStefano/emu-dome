@@ -75,6 +75,12 @@ fn build_stream(current: CurrentShared) -> anyhow::Result<cpal::Stream> {
             return;
         };
         let mut q = shared.audio.lock();
+        if shared.muted.load(std::sync::atomic::Ordering::Relaxed) {
+            // «Muto»: the samples are dropped, so unmuting does not play stale sound.
+            q.samples.clear();
+            out.fill(0.0);
+            return;
+        }
         // Base ratio plus a correction proportional to the queue's fill level (±0.5%).
         let target = q.sample_rate * 0.06 * 2.0;
         let fill_err = ((q.samples.len() as f64 - target) / target).clamp(-1.0, 1.0);

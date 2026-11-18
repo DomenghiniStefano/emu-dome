@@ -91,7 +91,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          Command/Event, Shared (RGBA frame, audio queue, input, stats), speed, states, .sav,
                          ErrorCode (errors for the UI as code + params),
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 157 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 155 entries,
                          mod.rs levels / resolve / session, store.rs files; pure, unit-tested)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
@@ -137,7 +137,7 @@ app/src                  Vue interface: App.vue, AppShell (rail + sections, outs
   and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
   move the focus spatially (nearest element in that direction), confirm clicks, back calls `back`.
   The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 157 entries: key
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 155 entries: key
   `<page>.<key>`, kind, default, accepted levels, per-device flag, platform, phase); the interface builds its
   pages from `settings_schema` and never lists settings by hand. Levels Default → Global → Console → Game →
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused

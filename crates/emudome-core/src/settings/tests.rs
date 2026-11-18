@@ -515,8 +515,9 @@ fn is_option_id(id: &str) -> bool {
 }
 
 #[test]
-fn the_catalogue_has_the_157_entries_of_the_design() {
-    assert_eq!(ENTRIES.len(), 157);
+fn the_catalogue_has_the_155_entries_of_the_design() {
+    // 157 of the design, less `speed.splist` and `general.qmorder` (owner, 18/11).
+    assert_eq!(ENTRIES.len(), 155);
 }
 
 #[test]
@@ -939,6 +940,23 @@ fn unknown_or_malformed_change_records_are_skipped() {
     s.set("audio.vol", &Scope::Global, Value::Int(20)).unwrap();
     let synced: serde_json::Value = serde_json::from_str(&dir.read("synced/global.json")).unwrap();
     assert_eq!(synced["$changed"]["future.thing"], json!(9000));
+}
+
+#[test]
+fn values_of_removed_entries_are_kept_but_never_listed() {
+    // `speed.splist` and `general.qmorder` left the catalogue on 18/11: a stored value stays
+    // in the file (unknown keys are kept) and «Modificate di recente» skips it.
+    let dir = TestDir::new("recent-removed");
+    dir.write(
+        "synced/global.json",
+        r#"{ "speed.splist": ["1", "2"], "general.qmorder": "x", "$changed": { "speed.splist": 30, "general.qmorder": 40, "audio.vol": 10 } }"#,
+    );
+    let mut s = settings(&dir);
+    assert_eq!(recent_keys(&mut s), [("audio.vol", Level::Global, 10)]);
+    s.set("audio.vol", &Scope::Global, Value::Int(20)).unwrap();
+    let synced: serde_json::Value = serde_json::from_str(&dir.read("synced/global.json")).unwrap();
+    assert_eq!(synced["speed.splist"], json!(["1", "2"]));
+    assert_eq!(synced["$changed"]["general.qmorder"], json!(40));
 }
 
 #[test]

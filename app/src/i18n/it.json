@@ -128,7 +128,10 @@
     "gamepadDisconnected": "Controller scollegato: {name}",
     "gamepadUnnamed": "Controller",
     "slot": "Slot {slot}",
-    "loadUndone": "Caricamento annullato: sei tornato a dove eri"
+    "loadUndone": "Caricamento annullato: sei tornato a dove eri",
+    "autoLoaded": "Caricato lo slot automatico",
+    "undo": "Annulla",
+    "undoFromMenu": "Annulla dal menu rapido"
   },
   "console": {
     "gb": "Game Boy",
@@ -660,20 +663,6 @@
           "2": "2×"
         }
       },
-      "splist": {
-        "name": "Velocità disponibili nel menu rapido",
-        "desc": "Le velocità che puoi scegliere mentre giochi.",
-        "button": "Modifica l’elenco",
-        "option": {
-          "0_5": "0,5×",
-          "1": "1×",
-          "1_5": "1,5×",
-          "2": "2×",
-          "3": "3×",
-          "4": "4×",
-          "max": "Massima"
-        }
-      },
       "ffmode": {
         "name": "Avanti veloce con la tastiera",
         "desc": "Come funziona il tasto Tab. Sul controller: tieni premuto L3 + R2, oppure L3 + su per attivarlo e disattivarlo.",
@@ -1010,14 +999,6 @@
       "confirmdel": {
         "name": "Chiedi conferma prima di eliminare",
         "desc": "Per salvataggi, slot e giochi su Google Drive."
-      },
-      "qmorder": {
-        "name": "Ordine del menu rapido",
-        "desc": "Quali schede vedi nel menu rapido e in che ordine.",
-        "value": {
-          "default": "Predefinito",
-          "custom": "Personalizzato"
-        }
       },
       "updates": {
         "name": "Aggiornamenti di EmuDome",
@@ -1604,7 +1585,6 @@
     },
     "overview": {
       "name": "In primo piano",
-      "search": "Cerca un’impostazione, es. V-Sync",
       "mostUsed": "USATE PIÙ SPESSO",
       "mostUsedNote": "Valgono per tutti i giochi · per un solo gioco usa il menu rapido",
       "recent": "MODIFICATE DI RECENTE"
@@ -1644,17 +1624,13 @@
   },
   "qm": {
     "label": "Menu rapido",
-    "playing": "{console} · stai giocando da {time}",
     "auto": "Automatico",
     "slot": "Slot {slot}",
     "empty": "Vuoto",
     "loadAuto": "Carica dallo slot automatico",
     "loadSlot": "Carica dallo slot {slot}",
     "saveSlot": "Salva nello slot {slot}",
-    "autoEvery": "Salvataggio rapido automatico: {every}",
-    "keys": "{save} salva · {load} carica lo slot 1",
     "speedTitle": "VELOCITÀ",
-    "speedNote": "Audio muto fuori da 1×",
     "noNative": "Su questo sistema il metodo Accelerato non è disponibile.",
     "controller": "Controller in uso",
     "noController": "Nessun controller collegato: usa la tastiera.",
@@ -1663,9 +1639,7 @@
     "remap": "Rimappa i pulsanti per questo gioco",
     "screenshot": "Cattura schermata",
     "reset": "Riavvia il gioco",
-    "resetHint": "Torna all’inizio, i salvataggi restano",
     "close": "Chiudi il gioco",
-    "closeHint": "Salva in automatico prima di chiudere",
     "trial": "{n} modifiche in prova: {names}",
     "trialOne": "1 modifica in prova: {names}",
     "trialHint": "Le vedi già nel gioco. Se chiudi il gioco senza salvarle, tornano come prima.",
@@ -1680,26 +1654,9 @@
     "more": "Altri slot e salvataggi",
     "moreShort": "Altri slot",
     "moreLabel": "Altro",
-    "saveAuto": "Salva nello slot automatico",
     "emptySlot": "Slot {slot} vuoto",
-    "emptyAuto": "Slot automatico vuoto",
-    "speedNormal": "Velocità normale",
     "ff": "Avanti veloce",
     "slow": "Rallentatore",
-    "hint": {
-      "save": "salva",
-      "load": "carica",
-      "slot": "cambia slot",
-      "ffHold": "avanti veloce tenendo premuto",
-      "slow": "rallentatore"
-    },
-    "hintPair": "{a} {b}",
-    "dir": {
-      "up": "su",
-      "down": "giù",
-      "left": "←",
-      "right": "→"
-    },
     "row": {
       "screens": {
         "name": "Schermi e immagine",
@@ -1707,16 +1664,36 @@
       },
       "controls": {
         "name": "Controlli",
-        "sub": "Rimappa per questo gioco, scorciatoie",
-        "subTouch": "Opacità dei controlli touch, rimappa"
-      },
-      "tools": {
-        "name": "Strumenti",
-        "sub": "Schermata, riavvia, chiudi il gioco"
+        "sub": "Rimappa per questo gioco, scorciatoie"
       }
     },
     "resumeShort": "Riprendi",
-    "resumeKeys": "{esc} · {back}"
+    "normal": "Normale",
+    "speedPage": "Velocità",
+    "setSpeeds": "Imposta le velocità",
+    "speedsAlsoIn": "Le trovi anche in Impostazioni › Velocità e tempo.",
+    "toolsTitle": "STRUMENTI",
+    "toolsNotYet": "{names}: arriva con un prossimo aggiornamento.",
+    "mute": "Muto",
+    "fullscreen": "A schermo intero",
+    "swapScreens": "Scambia gli schermi",
+    "closeLid": "Chiudi il coperchio",
+    "restartTitle": "Riavviare il gioco?",
+    "restartText": "Il gioco riparte dall’inizio. I salvataggi restano, i progressi dall’ultimo salvataggio si perdono.",
+    "restartConfirm": "Riavvia",
+    "cancel": "Annulla",
+    "autoUpdates": "Lo slot automatico si aggiorna da solo",
+    "saved": "Salvato nello slot {slot}",
+    "undoSave": "Annulla",
+    "backup": "Backup del salvataggio del gioco",
+    "backupNotHere": "Lo trovi in Salvataggi, a gioco chiuso.",
+    "liveNote": "Le modifiche si vedono subito sul gioco",
+    "prev": "{name}: precedente",
+    "next": "{name}: successivo",
+    "source": {
+      "session": "In prova · solo questo gioco",
+      "game": "Solo questo gioco"
+    }
   },
   "controls": {
     "keyboard": "Tastiera",
@@ -1900,8 +1877,6 @@
     "overview": {
       "inUse": "In uso",
       "battery": "batteria {percent} %",
-      "layoutNintendo": "disposizione come su Nintendo",
-      "layoutPrinted": "disposizione come stampata sul controller",
       "shortcuts": "SCORCIATOIE DA RICORDARE",
       "shortcutsHint": "Tieni premuto {modifier} e premi un pulsante",
       "editShortcuts": "Modifica le scorciatoie",

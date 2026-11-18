@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // The Settings section (boards «T01–T20 · Desktop · Impostazioni», ScopeSelector, InheritedRow):
-// category list with search and changed counters on the left, the page on the right with the
+// category list with the title, the search and changed counters on the left, the page on the right with the
 // scope bar «Stai cambiando le impostazioni di:» fixed at the top while scrolling.
 // Every page is built from the Rust schema (`settings_schema`): groups, sections, entries.
 // The section opens on T01 «In primo piano» (board Settings2, 17/11), first in the category list:
-// the search, «Usate più spesso» (the entries flagged `mostUsed` in the schema, inline at
+// «Usate più spesso» (the entries flagged `mostUsed` in the schema, inline at
 // «Tutti i giochi») and «Modificate di recente» (`settings_recent`, newest first).
 //
 // Levels: «Tutti i giochi», and «Giochi <console> ▾», a small menu of the consoles that have games
@@ -277,6 +277,15 @@ const INTROS = new Set(['bios', 'cores'])
 <template>
   <div v-if="schema" class="settings">
     <nav class="cats" :aria-label="t('settingsUi.categories')">
+      <!-- Every page (T01–T19): the title and the search on top of the category column. -->
+      <div class="cats-head">
+        <h1 class="page-title cats-title">{{ t('settingsUi.title') }}</h1>
+        <label class="search">
+          <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
+          <span class="sr">{{ t('settingsUi.search') }}</span>
+          <input v-model="query" type="search" :placeholder="t('settingsUi.searchPlaceholder')" />
+        </label>
+      </div>
       <button
         class="cat overview"
         :class="{ on: page === OVERVIEW && !query }"
@@ -304,17 +313,8 @@ const INTROS = new Set(['bios', 'cores'])
     </nav>
 
     <main class="page">
-      <!-- T01: the title and the search; the search stays on top while showing results -->
-      <template v-if="page === OVERVIEW || query.trim()">
-        <h1 class="page-title">{{ t('settingsUi.title') }}</h1>
-        <label class="search">
-          <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
-          <span class="sr">{{ t('settingsUi.search') }}</span>
-          <input v-model="query" type="search" :placeholder="t('settingsUi.overview.search')" />
-        </label>
-      </template>
-
       <template v-if="page === OVERVIEW && !query.trim()">
+        <h2 class="page-title">{{ t('settingsUi.overview.name') }}</h2>
         <section class="section">
           <div class="section-head">
             <h3 class="overline">{{ t('settingsUi.overview.mostUsed') }}</h3>
@@ -509,6 +509,14 @@ const INTROS = new Set(['bios', 'cores'])
   gap: 16px;
   border-right: 1px solid var(--line);
   overflow-y: auto;
+}
+.cats-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cats-title {
+  padding: 0 8px;
 }
 .search {
   display: flex;

@@ -272,9 +272,9 @@ the Phase 1 settings engine will build other `Bindings` from it. The actions run
 | L3 + R1 | Quick save to the current slot | done |
 | L3 + L1 | Quick load from the current slot | done |
 | L3 + d-pad right / left | Next / previous slot, 1 to 9, wrapping; toast "Slot N" | done |
-| L3 + R2 (held) | Fast forward while held, then back to the previous speed | done |
-| L3 + d-pad up | Fast forward on/off (Max ↔ 1×) | done |
-| L3 + d-pad down | Slow motion on/off (0.5× ↔ 1×) | done |
+| L3 + R2 (held) | Fast forward (`speed.ffval`) while held, then back to the previous speed | done |
+| L3 + d-pad up | Fast forward on/off (`speed.ffval` ↔ 1×) | done |
+| L3 + d-pad down | Slow motion on/off (`speed.slow` ↔ 1×) | done |
 | L3 + X | FPS indicator on/off | done |
 | L3 + A | Pause on/off without the menu ("Paused" chip) | done |
 | L3 + L2 (held) | Rewind | TODO, Phase 1 (rewind does not exist yet) |
