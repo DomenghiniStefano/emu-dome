@@ -9,6 +9,9 @@ export const CardVariant = {
   Raised: 'raised',
   // A glass panel over the ambient haze (README «Vetro»: thick glass for menus and panels).
   Glass: 'glass',
+  // Raised, and the chosen one's text turns accent too (Settings scope bar: «Tutti i giochi»,
+  // «Giochi <console>», «Solo questo gioco»).
+  RaisedAccent: 'raisedAccent',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
 
@@ -20,6 +23,8 @@ export const cardVariants = cva('flex flex-col text-left', {
       [CardVariant.Raised]:
         'rounded-10 border border-line bg-surface-raised p-10 data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.Glass]: 'glass-thick p-24',
+      [CardVariant.RaisedAccent]:
+        'rounded-10 border border-line bg-surface-raised p-10 data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text',
     },
   },
   defaultVariants: { variant: CardVariant.Surface },

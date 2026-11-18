@@ -7,6 +7,8 @@ import type { HTMLAttributes } from 'vue'
 import { computed } from 'vue'
 import { SliderRange, SliderRoot, SliderThumb, SliderTrack } from 'reka-ui'
 import { cn } from '@/lib/cn'
+import type { SliderVariant } from './variants'
+import { sliderRangeVariants, sliderTrackVariants } from './variants'
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +20,7 @@ const props = withDefaults(
     label?: string
     /** The value as words, for assistive technology («70%»). */
     valueText?: string
+    variant?: SliderVariant
     class?: HTMLAttributes['class']
   }>(),
   { min: 0, max: 100, step: 1 },
@@ -34,7 +37,8 @@ const values = computed({
 </script>
 
 <template>
-  <!-- 200px wide, a 4px track edged in `line` and filled in accent-text, a 16px knob. -->
+  <!-- 200px wide, a 4px track edged in `line` and filled in accent-text (variants.ts), a 16px
+       knob. -->
   <SliderRoot
     v-model="values"
     data-slot="slider"
@@ -50,11 +54,8 @@ const values = computed({
     "
     @value-commit="(v: number[]) => v[0] !== undefined && emit('commit', v[0])"
   >
-    <SliderTrack
-      data-slot="slider-track"
-      class="relative h-4 flex-1 rounded-full border border-line bg-surface-raised"
-    >
-      <SliderRange data-slot="slider-range" class="absolute h-full rounded-full bg-accent-text" />
+    <SliderTrack data-slot="slider-track" :class="sliderTrackVariants({ variant })">
+      <SliderRange data-slot="slider-range" :class="sliderRangeVariants({ variant })" />
     </SliderTrack>
     <SliderThumb
       data-slot="slider-thumb"

@@ -1,17 +1,20 @@
 <script setup lang="ts">
-// The field showing the chosen option (SettingSelect `.field`): 200px at least, 32px high, a
-// chevron at the end.
+// The field showing the chosen option, a chevron at the end; its looks are in variants.ts.
 import type { SelectTriggerProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import { computed } from 'vue'
 import { ChevronDown } from '@lucide/vue'
 import { SelectIcon, SelectTrigger } from 'reka-ui'
 import { cn } from '@/lib/cn'
+import type { SelectTriggerVariant } from './variants'
+import { selectTriggerVariants } from './variants'
 
-const props = defineProps<SelectTriggerProps & { class?: HTMLAttributes['class'] }>()
+const props = defineProps<
+  SelectTriggerProps & { variant?: SelectTriggerVariant; class?: HTMLAttributes['class'] }
+>()
 
 const delegated = computed(() => {
-  const { class: _class, ...rest } = props
+  const { class: _class, variant: _variant, ...rest } = props
   return rest
 })
 </script>
@@ -20,12 +23,7 @@ const delegated = computed(() => {
   <SelectTrigger
     data-slot="select-trigger"
     v-bind="delegated"
-    :class="
-      cn(
-        'flex h-control min-w-field cursor-pointer items-center gap-8 rounded-6 border border-line bg-surface-raised px-10 text-left font-sans text-label text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed',
-        props.class,
-      )
-    "
+    :class="cn(selectTriggerVariants({ variant }), props.class)"
   >
     <span class="flex-1"><slot /></span>
     <SelectIcon as-child>

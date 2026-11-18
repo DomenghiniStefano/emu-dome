@@ -4,9 +4,16 @@
 import type { SelectContentEmits, SelectContentProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import { computed } from 'vue'
-import { SelectContent, SelectPortal, SelectViewport, useForwardPropsEmits } from 'reka-ui'
+import {
+  injectSelectRootContext,
+  SelectContent,
+  SelectPortal,
+  SelectViewport,
+  useForwardPropsEmits,
+} from 'reka-ui'
 import { cn } from '@/lib/cn'
 import SelectNavScope from './SelectNavScope.vue'
+import { zoomedReference } from './zoomedReference'
 
 const props = withDefaults(
   defineProps<SelectContentProps & { class?: HTMLAttributes['class'] }>(),
@@ -19,6 +26,12 @@ const delegated = computed(() => {
   return rest
 })
 const forwarded = useForwardPropsEmits(delegated, emits)
+
+// The trigger in CSS px, so the list lands under it at any interface scale (zoomedReference.ts).
+const select = injectSelectRootContext()
+const reference = computed(() =>
+  select.triggerElement.value ? zoomedReference(select.triggerElement.value) : undefined,
+)
 </script>
 
 <template>
@@ -26,6 +39,7 @@ const forwarded = useForwardPropsEmits(delegated, emits)
     <SelectContent
       data-slot="select-content"
       v-bind="forwarded"
+      :reference="reference"
       :class="
         cn(
           'glass-thick z-menu max-h-menu min-w-(--reka-select-trigger-width) overflow-hidden',

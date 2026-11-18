@@ -12,6 +12,7 @@ import ButtonSection from './sections/ButtonSection.vue'
 import CardSection from './sections/CardSection.vue'
 import ChipSection from './sections/ChipSection.vue'
 import DialogSection from './sections/DialogSection.vue'
+import InputSection from './sections/InputSection.vue'
 import SegmentedSection from './sections/SegmentedSection.vue'
 import SelectSection from './sections/SelectSection.vue'
 import SliderSection from './sections/SliderSection.vue'
@@ -81,6 +82,7 @@ useNavScope(root, { autofocus: true })
       <SegmentedSection />
       <SliderSection />
       <SelectSection />
+      <InputSection />
       <DialogSection />
     </div>
   </main>

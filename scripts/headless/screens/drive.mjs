@@ -72,6 +72,96 @@ const SCENARIOS = {
   },
 };
 
+// Settings (T01-T19, SettingRow, SettingSelect), on the rich mock schema (every kind of row), in
+// the three themes at the smallest and the largest window. Names are the Italian ones: headless
+// Chrome on the owner's machine reports an Italian locale. The helpers work on the old and the
+// new markup alike: they find things by text, aria and role, never by a screen's class names.
+const SETTINGS_HELPERS = `(() => {
+  const byText = (sel, text) =>
+    [...document.querySelectorAll(sel)].find((b) => b.textContent.trim().startsWith(text));
+  window.__clickText = (sel, text) => { const b = byText(sel, text); b && b.click(); return !!b };
+  // A select field by its accessible name: Reka's trigger opens on pointerdown, the old one on click.
+  window.__openSelect = (label) => {
+    const f = document.querySelector('[aria-label="' + label + '"][aria-expanded]');
+    if (!f) return false;
+    if (f.dataset.slot === 'select-trigger')
+      f.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }));
+    else f.click();
+    return true;
+  };
+  window.__search = (q) => {
+    const i = document.querySelector('input[type=search]');
+    i.value = q;
+    i.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  };
+  // The row's own button with no text and no role (a multi row's «edit the list»).
+  window.__rowBareButton = (name) => {
+    let el = [...document.querySelectorAll('main span, main div')].find((e) => e.textContent.trim() === name);
+    while (el) {
+      const b = [...el.querySelectorAll('button')].find(
+        (x) => !x.textContent.trim() && !x.getAttribute('role') && !x.getAttribute('aria-label'),
+      );
+      if (b) { b.click(); return true }
+      el = el.parentElement;
+    }
+    return false;
+  };
+  return true;
+})()`;
+const page_ = (name) => `__clickText('nav button', ${JSON.stringify(name)})`;
+const consoleLevel = `(() => { const r = document.querySelectorAll('[role=region] [role=radio]')[1]; r && r.click(); return !!r })()`;
+const SETTINGS_SCENES = {
+  overview: [],
+  general: [page_("Generale")],
+  video: [page_("Video")],
+  "video-console": [page_("Video"), consoleLevel],
+  "video-select-open": [page_("Video"), `__openSelect("Proporzioni")`],
+  "scope-select-open": [
+    page_("Video"),
+    consoleLevel,
+    `__openSelect("Scegli la console")`,
+  ],
+  "only-changed": [
+    page_("Video"),
+    `document.querySelector('[role=region] [role=switch]').click()`,
+  ],
+  fx: [page_("Effetti schermo")],
+  "fx-console": [page_("Effetti schermo"), consoleLevel],
+  a11y: [page_("Accessibilità")],
+  "a11y-chips-edit": [
+    page_("Accessibilità"),
+    `__rowBareButton("Filtro per il daltonismo sul gioco")`,
+  ],
+  library: [page_("Libreria")],
+  presets: [page_("Preimpostazioni")],
+  pad: [page_("Controller e tastiera")],
+  bios: [page_("BIOS e firmware")],
+  online: [page_("Online e integrazioni")],
+  "search-hits": [`__search("sync")`],
+  "search-none": [`__search("zzzz")`],
+};
+// The same at 110% interface scale (CSS zoom): the select lists are placed through Floating UI.
+for (const scene of ["video-select-open", "scope-select-open", "a11y"])
+  SCENARIOS[`set-${scene}-zoom110`] = {
+    mock: { richSettings: true, textsize: 110 },
+    steps: [SETTINGS_HELPERS, rail(4), ...SETTINGS_SCENES[scene]],
+    width: 1280,
+    height: 800,
+    stepMs: 600,
+  };
+const SIZES = { s: [1024, 640], l: [1920, 1080] };
+for (const theme of ["dark", "black", "light"])
+  for (const [size, [width, height]] of Object.entries(SIZES))
+    for (const [scene, steps] of Object.entries(SETTINGS_SCENES))
+      SCENARIOS[`set-${scene}-${theme}-${size}`] = {
+        mock: { theme, richSettings: true },
+        steps: [SETTINGS_HELPERS, rail(4), ...steps],
+        width,
+        height,
+        stepMs: 600,
+      };
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function page() {
@@ -107,11 +197,14 @@ async function page() {
 }
 
 for (const [name, s] of Object.entries(SCENARIOS)) {
-  if (only.length && !only.includes(name)) continue;
+  // A name ending in `*` selects every scenario starting with it (`set-*`).
+  const picked = (o) =>
+    o.endsWith("*") ? name.startsWith(o.slice(0, -1)) : o === name;
+  if (only.length && !only.some(picked)) continue;
   const p = await page();
   await p.send("Page.enable");
   await p.send("Emulation.setDeviceMetricsOverride", {
-    width: 1280,
+    width: s.width ?? 1280,
     height: s.height ?? 800,
     deviceScaleFactor: 1,
     mobile: false,
@@ -129,8 +222,9 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
       expression: step,
       returnByValue: true,
     });
-    if (r.result?.exceptionDetails) console.log(name, "step failed", step);
-    await sleep(1500);
+    if (r.result?.exceptionDetails || r.result?.result?.value === false)
+      console.log(name, "step failed", step.slice(0, 80));
+    await sleep(s.stepMs ?? 1500);
   }
   await sleep(1500);
   const shot = await p.send("Page.captureScreenshot", { format: "png" });

@@ -33,6 +33,24 @@ const chosen = ref('normal')
         </Card>
       </div>
     </KitState>
+    <KitState label="RaisedAccent · the chosen one's text in accent too (scope levels)">
+      <div class="flex gap-10">
+        <Card
+          v-for="id in ['normal', 'wide']"
+          :key="id"
+          as="button"
+          :variant="CardVariant.RaisedAccent"
+          :selected="chosen === id"
+          role="radio"
+          :aria-checked="chosen === id"
+          class="w-field cursor-pointer gap-2"
+          @click="chosen = id"
+        >
+          <span class="font-semibold">{{ id }}</span>
+          <CardDescription>One level among a few.</CardDescription>
+        </Card>
+      </div>
+    </KitState>
     <KitState label="Glass">
       <Card :variant="CardVariant.Glass" class="w-field gap-10">
         <CardTitle>Quick menu</CardTitle>

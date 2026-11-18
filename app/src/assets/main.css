@@ -18,6 +18,11 @@
    src/. */
 @source '../components/ui';
 @source '../kit';
+/* Settings (#62) */
+@source '../components/SettingsView.vue';
+@source '../components/SettingRow.vue';
+@source '../components/SettingSelect.vue';
+@source '../components/settings';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

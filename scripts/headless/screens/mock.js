@@ -159,6 +159,233 @@
         source: e.key === "general.bgpause" ? "global" : "default",
         changed: e.key === "general.bgpause",
       }));
+  // `richSettings`: every kind of setting row on a few pages (the Settings stream's scenarios),
+  // with values set per level so changed, inherited and locked rows show. Off by default, so the
+  // other scenarios keep the small schema above.
+  const rich = scenario.richSettings ? richSettings() : null;
+  function richSettings() {
+    const G = ["default", "global"];
+    const ALL = ["default", "global", "console", "game", "session"];
+    const more = [
+      entry(
+        "video.scale",
+        "video",
+        choice("segments", ["fit", "integer", "fill"]),
+        "fit",
+      ),
+      entry(
+        "video.aspect",
+        "video",
+        choice("list", ["original", "4_3", "16_9"]),
+        "original",
+        { mostUsed: false },
+      ),
+      entry(
+        "video.surround",
+        "video",
+        choice("cards", ["black", "cover", "blur", "builtin", "image"]),
+        "black",
+        { mostUsed: false },
+      ),
+      entry("video.surroundImg", "video", { type: "file" }, "", {
+        mostUsed: false,
+        showIf: { key: "video.surround", values: ["image"], not: false },
+      }),
+      entry(
+        "video.surroundDim",
+        "video",
+        { type: "slider", min: 0, max: 80, step: 5, unit: "percent" },
+        40,
+        {
+          mostUsed: false,
+          showIf: { key: "video.surround", values: ["black"], not: true },
+        },
+      ),
+      entry("video.fps", "video", { type: "toggle" }, false, {
+        levels: G,
+        mostUsed: false,
+      }),
+      entry(
+        "video.window",
+        "video",
+        choice("segments", ["windowed", "fullscreen", "borderless"]),
+        "windowed",
+        { levels: G, perDevice: true, platform: "desktop", mostUsed: false },
+      ),
+      entry("video.vsync", "video", { type: "toggle" }, true, {
+        perDevice: true,
+        mostUsed: false,
+      }),
+      entry(
+        "fx.fxpick",
+        "fx",
+        choice("cards", [
+          "none",
+          "lcd",
+          "lcd_grid",
+          "crt",
+          "crt_curved",
+          "soft_pixels",
+        ]),
+        "lcd",
+      ),
+      entry(
+        "fx.fxint",
+        "fx",
+        { type: "slider", min: 0, max: 100, step: 5, unit: "percent" },
+        60,
+        { mostUsed: false },
+      ),
+      entry("fx.fxfile", "fx", { type: "action", style: "button" }, null, {
+        levels: G,
+        mostUsed: false,
+      }),
+      entry(
+        "presets.preset",
+        "presets",
+        {
+          type: "apply",
+          options: ["faithful", "performance", "quality", "battery"],
+        },
+        null,
+        { levels: G, mostUsed: false },
+      ),
+      entry(
+        "presets.export",
+        "presets",
+        { type: "action", style: "button" },
+        null,
+        { levels: G, mostUsed: false },
+      ),
+      entry("library.folders", "library", { type: "folders" }, [], {
+        levels: G,
+        perDevice: true,
+        mostUsed: false,
+      }),
+      entry("pad.remap", "pad", { type: "bindings", table: "remap" }, null, {
+        mostUsed: false,
+      }),
+      entry("online.wfc", "online", { type: "text" }, "", {
+        levels: G,
+        mostUsed: false,
+      }),
+      entry("bios.bgba", "bios", { type: "file" }, "", {
+        levels: G,
+        perDevice: true,
+        mostUsed: false,
+      }),
+    ];
+    const all = [...entries, ...more];
+    const pages = [
+      "video",
+      "fx",
+      "pad",
+      "general",
+      "library",
+      "a11y",
+      "presets",
+      "bios",
+      "online",
+    ];
+    const s = {
+      device: "desktop",
+      currentPhase: 1,
+      pages,
+      groups: [
+        { id: "game", pages: ["video", "fx"] },
+        { id: "controls", pages: ["pad"] },
+        { id: "app", pages: ["general", "library", "a11y", "presets"] },
+        { id: "system", pages: ["bios", "online"] },
+      ],
+      sections: [
+        ...schema.sections,
+        {
+          page: "video",
+          id: "image",
+          keys: [
+            "video.scale",
+            "video.aspect",
+            "video.surround",
+            "video.surroundImg",
+            "video.surroundDim",
+          ],
+        },
+        {
+          page: "video",
+          id: "window",
+          keys: ["video.fps", "video.window", "video.vsync"],
+        },
+        { page: "fx", id: "effect", keys: ["fx.fxpick", "fx.fxfile"] },
+        { page: "fx", id: "adjust", keys: ["fx.fxint"] },
+        { page: "pad", id: "buttons", keys: ["pad.remap"] },
+        { page: "library", id: "folders", keys: ["library.folders"] },
+        { page: "presets", id: "ready", keys: ["presets.preset"] },
+        { page: "presets", id: "file", keys: ["presets.export"] },
+        { page: "bios", id: "gba", keys: ["bios.bgba"] },
+        { page: "online", id: "online", keys: ["online.wfc"] },
+      ],
+      entries: all,
+    };
+    const vals = {
+      ...values,
+      "video.surround": "image",
+      "video.scale": "integer",
+      "fx.fxint": 75,
+      "library.folders": ["C:/Games", "D:/Emulation/Handhelds"],
+      // The interface scale (CSS zoom on <html>): 100% unless the scenario asks for another.
+      "a11y.textsize": scenario.textsize ?? 100,
+      "a11y.cblind": ["deutan", "protan"],
+    };
+    // Where each value comes from, per level edited: changed here, inherited from another level.
+    const sources = {
+      global: {
+        "general.bgpause": "global",
+        "video.fps": "global",
+        "fx.fxint": "global",
+      },
+      console: {
+        "video.scale": "console",
+        "video.fps": "global",
+        "fx.fxint": "global",
+        "general.bgpause": "global",
+      },
+    };
+    const recent = [
+      {
+        key: "video.scale",
+        level: "console",
+        console: "gba",
+        game: null,
+        at: FIXED - 3600000,
+      },
+      {
+        key: "fx.fxint",
+        level: "global",
+        console: null,
+        game: null,
+        at: FIXED - day,
+      },
+      {
+        key: "general.theme",
+        level: "global",
+        console: null,
+        game: null,
+        at: FIXED - 4 * day,
+      },
+    ];
+    const rowsAt = (page, scope) => {
+      const src = sources[scope?.level] ?? {};
+      return all
+        .filter((e) => e.page === page)
+        .map((e) => ({
+          key: e.key,
+          value: e.key in vals ? vals[e.key] : e.default,
+          source: src[e.key] ?? "default",
+          changed: !!src[e.key],
+        }));
+    };
+    return { schema: s, recent, rowsAt };
+  }
   const remapButtons = [
     "a",
     "b",
@@ -220,8 +447,8 @@
     first_run_show: !!scenario.firstRun,
     first_run_steps: ["welcome", "games", "controller", "ready"],
     library_get: library,
-    settings_schema: schema,
-    settings_recent: [],
+    settings_schema: rich ? rich.schema : schema,
+    settings_recent: rich ? rich.recent : [],
     settings_game_overrides: [],
     settings_game_scope: null,
     saves_summary: [],
@@ -254,7 +481,8 @@
       window.__mockCalls.push(cmd);
       if (cmd === "plugin:event|listen") return next++;
       if (cmd === "plugin:event|unlisten") return null;
-      if (cmd === "settings_page") return rows(args.page);
+      if (cmd === "settings_page")
+        return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);
       if (cmd === "library_scan") return null;
       if (cmd in answers) return JSON.parse(JSON.stringify(answers[cmd]));
       return null;
