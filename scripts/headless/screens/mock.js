@@ -125,8 +125,35 @@
       ["deutan"],
     ),
   ];
+  // In game (quick menu scenarios, quick-menu.mjs): the rows the quick menu reads.
+  if (scenario.game) {
+    entries.push(
+      entry("video.scale", "video", choice("segments", ["fit", "integer", "fill"]), "fit"),
+      entry("video.filter", "video", choice("segments", ["none", "light", "soft"]), "light"),
+      entry(
+        "fx.fxpick",
+        "fx",
+        choice("cards", ["none", "lcd", "lcd_grid", "crt", "crt_curved", "soft_pixels"]),
+        "none",
+      ),
+      entry("audio.ff", "audio", choice("segments", ["mute", "pitch_up", "same_pitch"]), "mute"),
+      entry("speed.ffval", "speed", choice("segments", ["2", "3", "4", "max"]), "4"),
+      entry("speed.slow", "speed", choice("segments", ["0.25", "0.5", "0.75"]), "0.5"),
+      entry("saves.slots", "saves", choice("segments", ["3", "5", "10"]), "10"),
+      entry("saves.undo", "saves", { type: "toggle" }, true),
+      entry(
+        "touch.topac",
+        "touch",
+        { type: "slider", min: 10, max: 100, step: 5, unit: "percent" },
+        60,
+        { phase: 4 },
+      ),
+    );
+  }
+  // Changes «in prova» (Session level) in the quick menu.
+  const trial = scenario.trial ? { "video.filter": "soft", "speed.ffval": "2" } : {};
   const schema = {
-    device: "desktop",
+    device: scenario.phone ? "phone" : "desktop",
     currentPhase: 1,
     pages: ["general", "a11y"],
     groups: [{ id: "app", pages: ["general", "a11y"] }],
@@ -155,9 +182,19 @@
       .filter((e) => e.page === page)
       .map((e) => ({
         key: e.key,
-        value: e.key in values ? values[e.key] : e.default,
-        source: e.key === "general.bgpause" ? "global" : "default",
-        changed: e.key === "general.bgpause",
+        value:
+          e.key in trial
+            ? trial[e.key]
+            : e.key in values
+              ? values[e.key]
+              : e.default,
+        source:
+          e.key in trial
+            ? "session"
+            : e.key === "general.bgpause"
+              ? "global"
+              : "default",
+        changed: e.key === "general.bgpause" || e.key in trial,
       }));
   const remapButtons = [
     "a",
@@ -212,8 +249,31 @@
     ],
     modifier: "l3",
   };
+  const hour = 3600000;
+  const thumb = (colour) =>
+    `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='4'><rect width='6' height='4' fill='%23${colour}'/><rect width='3' height='2' fill='%23ffffff'/></svg>`;
+  const slotColours = ["2f5d8a", "7a3b8c", "2b7a4b", "a0522d", "1f6f78"];
+  const listSlots = (count) =>
+    Array.from({ length: count + 1 }, (_, slot) => {
+      const full =
+        scenario.slots === "full" ? slot < 6 : scenario.slots === "some" && slot === 0;
+      return {
+        slot,
+        savedAt: full ? FIXED - (slot + 1) * 5 * hour : null,
+        thumbUrl: full ? thumb(slotColours[slot % slotColours.length]) : null,
+      };
+    });
+  const gameInfo = {
+    title: scenario.game === "nds" ? "Dual Screen Tales" : "Pocket Quest Advance",
+    console: scenario.game === "nds" ? "NDS" : "GBA",
+    consoleId: scenario.game === "nds" ? "nds" : "gba",
+    core: scenario.game === "nds" ? "melondsds" : "mgba",
+    resumable: false,
+    autosaveOnExit: true,
+  };
   const answers = {
-    startup_game: null,
+    startup_game: scenario.game ? `C:/Games/${gameInfo.title}.${gameInfo.consoleId}` : null,
+    open_game: gameInfo,
     video_mode: ["webview", false],
     is_fullscreen: false,
     current_slot: 1,
@@ -232,7 +292,13 @@
     "plugin:app|version": "0.0.1",
   };
   const callbacks = new Map();
+  const listeners = new Map();
   let next = 1;
+  // A scenario step can send a backend event: `__emit('emu://menu')`.
+  window.__emit = (event, payload = null) => {
+    for (const id of listeners.get(event) ?? [])
+      callbacks.get(id)?.({ event, id: 0, payload });
+  };
   window.__mockCalls = [];
   window.__TAURI_INTERNALS__ = {
     metadata: {
@@ -252,7 +318,13 @@
     },
     async invoke(cmd, args) {
       window.__mockCalls.push(cmd);
-      if (cmd === "plugin:event|listen") return next++;
+      if (cmd === "plugin:event|listen") {
+        listeners.set(args.event, [...(listeners.get(args.event) ?? []), args.handler]);
+        return next++;
+      }
+      if (cmd === "list_slots") return listSlots(args.count);
+      if (cmd === "save_state")
+        setTimeout(() => window.__emit("emu://event", { type: "stateSaved", slot: args.slot }), 50);
       if (cmd === "plugin:event|unlisten") return null;
       if (cmd === "settings_page") return rows(args.page);
       if (cmd === "library_scan") return null;

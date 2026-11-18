@@ -3,6 +3,7 @@
 // Chrome must already run headless with --remote-debugging-port=<cdpPort>.
 import fs from "node:fs";
 import path from "node:path";
+import { quickMenuScenarios } from "./quick-menu.mjs";
 
 const [cdpPort, baseUrl, outDir, ...only] = process.argv.slice(2);
 const here = path.dirname(
@@ -70,6 +71,7 @@ const SCENARIOS = {
     hash: "#kit",
     height: 1500,
   },
+  ...quickMenuScenarios,
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -107,11 +109,15 @@ async function page() {
 }
 
 for (const [name, s] of Object.entries(SCENARIOS)) {
-  if (only.length && !only.includes(name)) continue;
+  // A name ending in `*` selects every scenario with that prefix (`qm-*`).
+  const picked = only.some((o) =>
+    o.endsWith("*") ? name.startsWith(o.slice(0, -1)) : o === name,
+  );
+  if (only.length && !picked) continue;
   const p = await page();
   await p.send("Page.enable");
   await p.send("Emulation.setDeviceMetricsOverride", {
-    width: 1280,
+    width: s.width ?? 1280,
     height: s.height ?? 800,
     deviceScaleFactor: 1,
     mobile: false,

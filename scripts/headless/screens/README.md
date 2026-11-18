@@ -13,5 +13,9 @@ prove that a refactor changes nothing on screen (Trello #62).
 
 - `mock.js` answers every `invoke` with fixed data (games, saves, settings) and fixes the clock, so
   two runs are identical. A scenario sets its options (`theme`, `emptyLibrary`, `firstRun`, …).
-- `drive.mjs` lists the scenarios; a stream that migrates a screen adds the scenarios it needs.
+- `drive.mjs` lists the scenarios; a stream that migrates a screen adds the scenarios it needs. A
+  name ending in `*` picks every scenario with that prefix (`qm-*`: the quick menu's, from
+  `quick-menu.mjs`, each state in the three themes at 1024 × 640 and 1920 × 1080, plus the phone).
+- In-game scenarios set `game` in the mock: the game opens at startup, and a step can send a
+  backend event with `window.__emit(event, payload)` (`emu://menu` opens the menu as a controller).
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.

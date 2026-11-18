@@ -18,6 +18,8 @@
    src/. */
 @source '../components/ui';
 @source '../kit';
+@source '../components/QuickMenu.vue';
+@source '../components/quick-menu';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

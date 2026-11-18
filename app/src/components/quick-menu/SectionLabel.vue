@@ -1,0 +1,18 @@
+<script setup lang="ts">
+// A section's label (SALVATAGGI RAPIDI, VELOCITÀ, STRUMENTI): the overline, one step larger on
+// the phone's sheet.
+defineProps<{ touch?: boolean }>()
+</script>
+
+<template>
+  <span
+    class="text-ink-muted"
+    :class="
+      touch
+        ? 'text-caption/[14px] font-semibold tracking-(--text-overline--letter-spacing)'
+        : 'text-overline'
+    "
+  >
+    <slot />
+  </span>
+</template>
