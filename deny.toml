@@ -8,6 +8,9 @@
 # the FSF lists it as GPL-3.0-compatible (https://www.gnu.org/licenses/license-list.html) and
 # add the crate to THIRD_PARTY.md.
 #
+# Proved failing: with "MPL-2.0" commented out, `cargo deny check licenses` (cargo-deny 0.21.0)
+# rejected cssparser, selectors, dtoa-short and option-ext and exited non-zero (2026-11-18).
+#
 # Blind spots: cargo-deny trusts the `license` field each crate declares (and the licence
 # files it scans when the field is missing); it does not read the crate's sources. Native
 # libraries a build script compiles (SDL3 through sdl3-src) are covered only by the crate's
