@@ -254,8 +254,10 @@ Notes on the table:
   the game sees a released pad. A button pressed with L3 stays away from the game until it is released,
   even if L3 is released first.
 - Each combo fires **once per press** of the second button. A button already held when L3 goes down does not fire.
-- L3 + R2 is the only hold combo in use: fast forward lasts until R2 is released (with or without L3).
-  L3 + L2 (rewind, reserved) will be the second.
+- Two hold combos: L3 + R2 (fast forward) and L3 + L2 (rewind) last until R2 / L2 is released
+  (with or without L3). With `a11y.toggle` («Attiva e disattiva invece di tenere premuto») rewind
+  goes on at one press and off at the next; the router still sends press and release, `Hotkeys`
+  (`gamepad.rs`) decides.
 - A reserved combo (feature still to come) does nothing; its button stays away from the game like any
   button pressed with L3.
 - While the quick menu is open only the menu combo (L3 + Start) and Guide work; the d-pad / left stick,
@@ -282,9 +284,9 @@ the G12 overlay will read it the same way.
 | L3 + R2 (held) | Fast forward (`speed.ffval`) while held, then back to the previous speed | done |
 | L3 + d-pad up | Fast forward on/off (`speed.ffval` ↔ 1×) | done |
 | L3 + d-pad down | Slow motion on/off (`speed.slow` ↔ 1×) | done |
-| L3 + L2 (held) | Rewind | reserved (`later`): rewind does not exist yet |
+| L3 + L2 (held) | Rewind (`speed.rew`, `speed.rewlen`; toggled with `a11y.toggle`) | done (Trello #42) |
 | L3 + A | Pause on/off without the menu ("Paused" chip) | done |
-| L3 + B | Screenshot | reserved (`later`): screenshots do not exist yet |
+| L3 + B | Screenshot: PNG at the core's resolution in `<saves>/screenshots/`, toast G13 | done (Trello #42) |
 | L3 + X | FPS indicator on/off | done |
 | L3 + Y | Swap screens (NDS/3DS) | reserved (`dualScreen`), Phase 2 |
 | L3 + R3 | Next screen layout (NDS/3DS); not in C01's list, only in C03 | reserved (`dualScreen`), Phase 2 |
@@ -305,10 +307,10 @@ controller hotkey with the same id does.
 | F4 | Quick load from the current slot | done |
 | F2 / F3 | Previous / next slot (the same current slot as L3 + d-pad left / right) | done |
 | Tab (held) | Fast forward (`speed.ffval`) while held | done |
-| Backspace (held) | Rewind | reserved: rewind does not exist yet; Backspace is Select's default key until then |
+| Backspace (held) | Rewind (toggled with `a11y.toggle`) | done (Trello #42); Select's default key moved to the right Shift |
 | F9 | FPS indicator on/off | done |
 | F11 | Fullscreen on/off | done |
-| F12 | Screenshot | reserved: screenshots do not exist yet |
+| F12 | Screenshot | done (Trello #42) |
 
 The current slot lives in Rust (`Pads::slot`, `app/src-tauri/src/pads.rs`): the controller thread and
 the keyboard's F1–F4 (commands `current_slot`, `step_slot`) use the same one, and the quick menu opens on it.
@@ -316,8 +318,9 @@ the keyboard's F1–F4 (commands `current_slot`, `step_slot`) use the same one, 
 Known limits of this version:
 
 - The current slot starts at 1 at every launch of the app; it is not remembered per game.
-- Backspace: when rewind arrives it collides with Select's default key (`KEYBOARD_DEFAULTS`,
-  `bindings.rs`); one of the two has to move then.
+- Backspace was Select's default key (`KEYBOARD_DEFAULTS`, `bindings.rs`) until rewind took it
+  (Trello #42): Select's default is now the right Shift, RetroArch's. A keyboard remap saved
+  with Backspace on Select is kept, and then the rewind key wins (it is checked first).
 - Not verified yet on hardware: whether Guide reaches the app with Steam or the Game Bar open (section 3).
 
 ## Sources

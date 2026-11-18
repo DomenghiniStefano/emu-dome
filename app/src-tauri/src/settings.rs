@@ -55,6 +55,11 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
     if !keys.is_empty() {
         crate::pads::settings_changed();
     }
+    if keys.iter().any(|k| REWIND_KEYS.contains(k)) {
+        // The open game follows at once (no game: nothing to tell).
+        let seconds = rewind_seconds(app, &Scope::Session);
+        crate::send_command(app, emudome_core::Command::SetRewindLength(seconds));
+    }
     for key in keys {
         if let Err(e) = app.emit("settings://changed", Changed { key, level }) {
             log::warn!("settings://changed {key}: {e}");
@@ -93,6 +98,27 @@ pub struct GameFlow {
     pub autosave_on_exit: bool,
     /// `ask`, `always` or `ingame`.
     pub resume: String,
+    /// `speed.rew` / `speed.rewlen`: the seconds of rewind to keep, `None` = off.
+    pub rewind_seconds: Option<u32>,
+}
+
+const REWIND_KEYS: [&str; 2] = ["speed.rew", "speed.rewlen"];
+
+/// `speed.rew` and `speed.rewlen` seen from `scope` (the open game's session, or the game
+/// being opened); `None` = rewind off.
+fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
+    let read = |key: &str| -> Option<Value> {
+        let state = app.try_state::<SettingsState>()?;
+        let resolved = state.0.lock().resolve(key, scope);
+        match resolved {
+            Ok(r) => r.value,
+            Err(e) => {
+                log::warn!("{key} unavailable: {e:?}");
+                None
+            }
+        }
+    };
+    emudome_core::rewind::seconds_from_settings(read(REWIND_KEYS[0]), read(REWIND_KEYS[1]))
 }
 
 pub fn game_flow(app: &AppHandle, console: ConsoleId, game: &GameId) -> GameFlow {
@@ -123,6 +149,7 @@ pub fn game_flow(app: &AppHandle, console: ConsoleId, game: &GameId) -> GameFlow
         },
         autosave_on_exit: !matches!(read("saves.autoexit"), Some(Value::Bool(false))),
         resume: text("saves.resume").unwrap_or_else(|| "always".into()),
+        rewind_seconds: rewind_seconds(app, &scope),
     }
 }
 

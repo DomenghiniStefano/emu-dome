@@ -135,7 +135,8 @@
     "loadUndone": "Caricamento annullato: sei tornato a dove eri",
     "autoLoaded": "Caricato lo slot automatico",
     "undo": "Annulla",
-    "undoFromMenu": "Annulla dal menu rapido"
+    "undoFromMenu": "Annulla dal menu rapido",
+    "screenshotSaved": "Schermata salvata"
   },
   "console": {
     "gb": "Game Boy",
@@ -171,7 +172,8 @@
     "saveUnreadable": "Il salvataggio del gioco non si legge, quindi EmuDome l’ha messo da parte. Ripristina un backup da Salvataggi.",
     "saveGameOpen": "Questo gioco è aperto. Chiudilo e riprova.",
     "saveImportInvalid": "Questo file non è un salvataggio che EmuDome sa importare ({detail}). Scegli un file .sav, .dsv o .duc.",
-    "saveFileFailed": "Non riesco a usare il file del salvataggio: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova."
+    "saveFileFailed": "Non riesco a usare il file del salvataggio: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
+    "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova."
   },
   "consoleShort": {
     "gb": "GB",

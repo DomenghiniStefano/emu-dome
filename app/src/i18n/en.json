@@ -135,7 +135,8 @@
     "loadUndone": "Load undone: you’re back where you were",
     "autoLoaded": "Loaded the automatic slot",
     "undo": "Undo",
-    "undoFromMenu": "Undo from the quick menu"
+    "undoFromMenu": "Undo from the quick menu",
+    "screenshotSaved": "Screenshot saved"
   },
   "console": {
     "gb": "Game Boy",
@@ -171,7 +172,8 @@
     "saveUnreadable": "The in-game save can’t be read, so EmuDome set it aside. Restore a backup from Saves.",
     "saveGameOpen": "This game is open. Close it and try again.",
     "saveImportInvalid": "This file isn’t a save EmuDome can import ({detail}). Choose a .sav, .dsv or .duc file.",
-    "saveFileFailed": "Couldn’t use the save file: {detail}. Check that the saves folder is writable and try again."
+    "saveFileFailed": "Couldn’t use the save file: {detail}. Check that the saves folder is writable and try again.",
+    "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again."
   },
   "consoleShort": {
     "gb": "GB",

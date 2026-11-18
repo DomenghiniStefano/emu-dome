@@ -221,6 +221,7 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
         turbo_restore: None,
         fast_forward: config.fast_forward,
         slow_motion: config.slow_motion,
+        rewind_toggle: config.hold_toggle,
     };
     let mut last_state: Option<PadStates> = None;
     let mut last_state_at = Instant::now();
@@ -234,6 +235,7 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
                 router.set_bindings(config.bindings());
                 hotkeys.fast_forward = config.fast_forward;
                 hotkeys.slow_motion = config.slow_motion;
+                hotkeys.rewind_toggle = config.hold_toggle;
                 for pad in &mut pads {
                     pad.map = config.pad_map(pad.info.family);
                 }
@@ -352,6 +354,8 @@ struct Hotkeys {
     /// `speed.ffval` and `speed.slow` of the open game (or «Tutti i giochi»).
     fast_forward: Speed,
     slow_motion: Speed,
+    /// `a11y.toggle`: L3 + L2 turns rewind on and the next press off, instead of holding.
+    rewind_toggle: bool,
 }
 
 impl Hotkeys {
@@ -394,12 +398,15 @@ impl Hotkeys {
                     self.emit("emu://hotkey", HotkeyEvent::Paused { paused });
                 }
             }
+            Hotkey::Rewind => {
+                let on = !(self.rewind_toggle && self.rewinding());
+                self.send(Command::Rewind(on));
+            }
+            Hotkey::Screenshot => {
+                self.send(Command::Screenshot);
+            }
             // Reserved rows (`Hotkey::status`): the router never fires them.
-            Hotkey::Rewind
-            | Hotkey::Screenshot
-            | Hotkey::SwapScreens
-            | Hotkey::NextLayout
-            | Hotkey::Lid => {}
+            Hotkey::SwapScreens | Hotkey::NextLayout | Hotkey::Lid => {}
         }
     }
 
@@ -409,6 +416,11 @@ impl Hotkeys {
                 if let Some(before) = self.turbo_restore.take() {
                     self.send(Command::SetSpeed(before));
                     self.emit("emu://hotkey", HotkeyEvent::Turbo { held: false });
+                }
+            }
+            Hotkey::Rewind => {
+                if !self.rewind_toggle {
+                    self.send(Command::Rewind(false));
                 }
             }
             // Press-only hotkeys have nothing to undo.
@@ -421,7 +433,6 @@ impl Hotkeys {
             | Hotkey::SlowMotionToggle
             | Hotkey::FpsOverlay
             | Hotkey::Pause
-            | Hotkey::Rewind
             | Hotkey::Screenshot
             | Hotkey::SwapScreens
             | Hotkey::NextLayout
@@ -447,6 +458,13 @@ impl Hotkeys {
             .as_ref()
             .and_then(|s| s.stats.lock().speed)
             .unwrap_or(NORMAL)
+    }
+
+    fn rewinding(&self) -> bool {
+        self.current
+            .lock()
+            .as_ref()
+            .is_some_and(|s| s.stats.lock().rewinding)
     }
 
     fn paused(&self) -> bool {

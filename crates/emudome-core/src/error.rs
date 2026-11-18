@@ -76,6 +76,8 @@ pub enum ErrorCode {
     SaveImportInvalid { detail: String },
     /// A save file could not be read, written, copied or deleted.
     SaveFileFailed { detail: String },
+    /// The screenshot could not be encoded or written (no frame yet, folder not writable).
+    ScreenshotFailed { detail: String },
 }
 
 #[cfg(test)]

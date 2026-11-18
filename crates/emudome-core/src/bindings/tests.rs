@@ -241,3 +241,18 @@ fn a_speed_value_out_of_place_falls_back_to_the_default() {
     assert_eq!(Speed::from_option("-2"), None);
     assert_eq!(Speed::from_option("NaN"), None);
 }
+
+#[test]
+fn rewind_toggles_only_with_the_accessibility_setting() {
+    assert!(!config(&[]).hold_toggle);
+    assert!(config(&[("a11y.toggle", Value::Bool(true))]).hold_toggle);
+    assert!(!config(&[("a11y.toggle", Value::Text("yes".into()))]).hold_toggle);
+}
+
+#[test]
+fn backspace_is_rewind_and_select_moved_to_the_right_shift() {
+    assert_eq!(super::default_key(Button::Select), Some("ShiftRight"));
+    assert!(super::KEYBOARD_DEFAULTS
+        .iter()
+        .all(|(_, key)| *key != "Backspace"));
+}

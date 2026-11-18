@@ -83,11 +83,12 @@ pub enum Hotkey {
     FastForwardToggle,
     /// Slow motion (`speed.slow`) on/off.
     SlowMotionToggle,
-    /// Rewind while the button stays held ([`Status::Later`]: rewind does not exist yet).
+    /// Rewind while the button stays held (with `a11y.toggle`, on at one press and off at the
+    /// next: the shell decides, the router always sends press and release).
     Rewind,
     /// Pause on/off, without opening the menu.
     Pause,
-    /// Take a screenshot ([`Status::Later`]).
+    /// Take a screenshot (PNG next to the saves).
     Screenshot,
     /// FPS overlay on/off.
     FpsOverlay,
@@ -168,8 +169,9 @@ impl Hotkey {
             | Hotkey::FastForwardToggle
             | Hotkey::SlowMotionToggle
             | Hotkey::Pause
-            | Hotkey::FpsOverlay => Status::Active,
-            Hotkey::Rewind | Hotkey::Screenshot => Status::Later,
+            | Hotkey::FpsOverlay
+            | Hotkey::Rewind
+            | Hotkey::Screenshot => Status::Active,
             Hotkey::SwapScreens | Hotkey::NextLayout | Hotkey::Lid => Status::DualScreen,
         }
     }
@@ -799,8 +801,6 @@ mod tests {
     #[test]
     fn the_reserved_rows_are_the_features_still_to_come() {
         let reserved = [
-            (Button::L2, Hotkey::Rewind, Status::Later),
-            (Button::B, Hotkey::Screenshot, Status::Later),
             (Button::Y, Hotkey::SwapScreens, Status::DualScreen),
             (Button::R3, Hotkey::NextLayout, Status::DualScreen),
             (Button::Select, Hotkey::Lid, Status::DualScreen),
@@ -813,12 +813,41 @@ mod tests {
             .iter()
             .filter(|h| h.status() == Status::Active)
             .count();
-        assert_eq!(active, 10);
+        assert_eq!(active, 12);
+        assert!(Hotkey::ALL.iter().all(|h| h.status() != Status::Later));
+    }
+
+    #[test]
+    fn rewind_lasts_while_l2_is_held_and_the_screenshot_fires_once() {
+        let mut r = router();
+        let t = Instant::now();
+        r.step(pad(&[Button::L3]), false, t);
+        let out = r.step(pad(&[Button::L3, Button::L2]), false, t);
+        assert_eq!(out.actions, vec![Action::Press(Hotkey::Rewind)]);
+        assert_eq!(out.game_mask, 0);
+        // L3 let go first: still rewinding, L2 still away from the game.
+        let out = r.step(pad(&[Button::L2]), false, t);
+        assert!(out.actions.is_empty());
+        assert_eq!(out.game_mask, 0);
+        let out = r.step(pad(&[]), false, t);
+        assert_eq!(out.actions, vec![Action::Release(Hotkey::Rewind)]);
+
+        r.step(pad(&[Button::L3]), false, t);
+        let out = r.step(pad(&[Button::L3, Button::B]), false, t);
+        assert_eq!(out.actions, vec![Action::Press(Hotkey::Screenshot)]);
+        assert!(r
+            .step(pad(&[Button::L3, Button::B]), false, t)
+            .actions
+            .is_empty());
+        assert!(r.step(pad(&[Button::L3]), false, t).actions.is_empty());
+        // Not from the menu: only the menu combo works there.
+        let out = r.step(pad(&[Button::L3, Button::B]), true, t);
+        assert!(out.actions.is_empty());
     }
 
     #[test]
     fn a_reserved_combo_does_nothing_and_keeps_its_button_from_the_game() {
-        for button in [Button::L2, Button::B, Button::Y, Button::R3, Button::Select] {
+        for button in [Button::Y, Button::R3, Button::Select] {
             let mut r = router();
             let t = Instant::now();
             r.step(pad(&[Button::L3]), false, t);

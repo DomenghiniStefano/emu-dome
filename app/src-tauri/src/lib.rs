@@ -285,6 +285,7 @@ fn open_path(
             resume_auto: flow.resume == "always",
             app_version: app.package_info().version.to_string(),
             core_options: forced_core_options(core_name),
+            rewind_seconds: flow.rewind_seconds,
         },
         tx,
     )
@@ -553,6 +554,19 @@ fn set_muted(state: tauri::State<'_, AppState>, muted: bool) -> Result<(), Error
     Ok(())
 }
 
+/// Backspace (held, or toggled with `a11y.toggle`): rewind on / off.
+#[tauri::command]
+fn rewind(state: tauri::State<'_, AppState>, on: bool) -> Result<(), ErrorCode> {
+    send(&state, Command::Rewind(on))
+}
+
+/// F12, L3 + B, quick menu › Strumenti: a PNG of the game next to the saves
+/// (`screenshotSaved` event, or `screenshotFailed`).
+#[tauri::command]
+fn screenshot(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
+    send(&state, Command::Screenshot)
+}
+
 #[tauri::command]
 fn reset_game(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
     send(&state, Command::Reset)
@@ -751,6 +765,8 @@ pub fn run() {
             undo_save,
             set_muted,
             reset_game,
+            rewind,
+            screenshot,
             input,
             stats,
             video_mode,
