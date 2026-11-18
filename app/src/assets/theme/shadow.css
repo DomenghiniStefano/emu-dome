@@ -24,6 +24,8 @@
   --shadow-glass: inset 0 1px 0 var(--glass-edge), var(--shadow-float);
   /* glow-sm: the main action and a switch that is on. */
   --shadow-glow-sm: 0 0 12px color-mix(in srgb, var(--violet) 45%, transparent);
+  /* glow-lg: the focus moments' mark (the first run's logo). */
+  --shadow-glow-lg: 0 0 60px color-mix(in srgb, var(--violet) 35%, transparent);
   /* The active tab's underline, drawn inside so it takes no room. */
   --shadow-tab: inset 0 -2px 0 var(--accent-text);
   /* A slider's thumb lifted off its track (not in the design system yet: Cowork). */

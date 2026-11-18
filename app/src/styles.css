@@ -57,6 +57,16 @@ body,
     color: inherit;
     cursor: pointer;
   }
+  /* A key named in a line of text. In the base layer too, so a component's utilities can dress
+     it (game/KeyCap.vue); the screens' scoped rules still win, as before. */
+  kbd {
+    font: inherit;
+    font-size: 11px;
+    padding: 0 5px;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    color: var(--ink-muted);
+  }
 }
 /* Focus ring for controller and keyboard navigation (src/nav.ts sets data-nav on <html>
    while the user moves without the mouse): accent outline with a soft glow. */
@@ -72,24 +82,8 @@ body,
 :root:not([data-nav]) :focus {
   outline: none;
 }
-kbd {
-  font: inherit;
-  font-size: 11px;
-  padding: 0 5px;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  color: var(--ink-muted);
-}
-
-.glass-thick {
-  background: var(--glass-thick);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-16);
-  box-shadow:
-    inset 0 1px 0 var(--glass-edge),
-    var(--shadow-float);
-  backdrop-filter: blur(24px) saturate(140%);
-}
+/* `.glass-thick` is the design system's utility now (assets/utilities.css, same values): the
+   screens that still write the class get it from there. */
 
 .btn {
   height: 32px;

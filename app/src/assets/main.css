@@ -18,6 +18,19 @@
    src/. */
 @source '../components/ui';
 @source '../kit';
+/* Cycle 2, the shell (Trello #62): the root, the first run, the game flow's overlays and dialogs,
+   the toasts, the game's own layers. */
+@source '../App.vue';
+@source '../components/FirstRun.vue';
+@source '../components/first-run';
+@source '../components/FlowDialog.vue';
+@source '../components/GameFlowOverlays.vue';
+@source '../components/game';
+@source '../components/ToastStack.vue';
+@source '../components/TouchControls.vue';
+@source '../components/GameCanvas.vue';
+@source '../components/GameSurround.vue';
+@source '../components/LibraryDropTarget.vue';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

@@ -5,6 +5,7 @@ import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
 
 const chosen = ref('normal')
+const choice = ref('nintendo')
 </script>
 
 <template>
@@ -27,6 +28,24 @@ const chosen = ref('normal')
           :aria-checked="chosen === id"
           class="w-field cursor-pointer gap-6"
           @click="chosen = id"
+        >
+          <CardTitle>{{ id }}</CardTitle>
+          <CardDescription>One of a choice of cards.</CardDescription>
+        </Card>
+      </div>
+    </KitState>
+    <KitState label="Choice · on a page (first run A/B), selected and not">
+      <div class="flex gap-10">
+        <Card
+          v-for="id in ['nintendo', 'printed']"
+          :key="id"
+          as="button"
+          :variant="CardVariant.Choice"
+          :selected="choice === id"
+          role="radio"
+          :aria-checked="choice === id"
+          class="w-field gap-6"
+          @click="choice = id"
         >
           <CardTitle>{{ id }}</CardTitle>
           <CardDescription>One of a choice of cards.</CardDescription>

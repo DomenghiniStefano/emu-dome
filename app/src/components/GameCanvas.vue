@@ -100,37 +100,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="stage" :class="{ surround }" :style="{ bottom: `${(insetBottom ?? 0) / uiZoom}px` }">
-    <svg v-if="filter" class="defs" aria-hidden="true">
+  <div
+    class="fixed inset-0 grid place-items-center"
+    :class="surround ? 'bg-transparent' : 'bg-letterbox'"
+    :style="{ bottom: `${(insetBottom ?? 0) / uiZoom}px` }"
+  >
+    <svg v-if="filter" class="absolute size-0" aria-hidden="true">
       <filter :id="filter.id" color-interpolation-filters="sRGB">
         <feColorMatrix type="matrix" :values="filter.values" />
       </filter>
     </svg>
     <canvas
       ref="canvas"
+      class="[image-rendering:pixelated]"
       :style="{ ...style, filter: filter ? `url(#${filter.id})` : undefined }"
       :aria-label="t('canvas.label')"
     />
   </div>
 </template>
-
-<style scoped>
-.stage {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  display: grid;
-  place-items: center;
-}
-.stage.surround {
-  background: transparent;
-}
-canvas {
-  image-rendering: pixelated;
-}
-.defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-}
-</style>

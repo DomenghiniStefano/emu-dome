@@ -30,3 +30,88 @@
 @utility bg-accent-track {
   background: linear-gradient(var(--accent-crown), var(--accent-deep));
 }
+
+/* The scene behind a game starting or closing (G01, G14): the cover's colour, which the element
+   sets as `--cover`, glowing from the top third over the ground. */
+@utility bg-cover-glow {
+  background: radial-gradient(60% 50% at 50% 30%, var(--cover) 0%, transparent 75%), var(--bg);
+}
+
+/* An indeterminate progress bar's band (G01, G14): it slides across its track, 1.2 s a pass.
+   «Riduci le animazioni» stops it, full width. */
+@keyframes progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@utility animate-progress-slide {
+  animation: progress-slide 1.2s ease-in-out infinite;
+  :root[data-motion='reduce'] & {
+    animation: none;
+    width: 100%;
+  }
+}
+
+/* «Sfondo animato» (GameSurround): the side background drifts slowly. Only a transform moves,
+   which the compositor handles without repainting; the layer is larger than the window so its
+   edges never show. */
+@keyframes surround-drift {
+  from {
+    transform: translate(-6%, -4%) rotate(0deg);
+  }
+  to {
+    transform: translate(6%, 4%) rotate(8deg);
+  }
+}
+@utility animate-surround-drift {
+  animation: surround-drift 40s ease-in-out infinite alternate;
+}
+
+/* The first run's ground (FirstRun): the accent's light from the top centre over the ground; on
+   the phone a taller, wider glow (Tel-PrimoAvvio). */
+@utility bg-welcome-glow {
+  background:
+    radial-gradient(
+      60% 50% at 50% 0%,
+      color-mix(in srgb, var(--violet) 25%, transparent) 0%,
+      transparent 70%
+    ),
+    var(--bg);
+}
+@utility bg-welcome-glow-phone {
+  background:
+    radial-gradient(
+      90% 40% at 50% 0%,
+      color-mix(in srgb, var(--violet) 25%, transparent) 0%,
+      transparent 70%
+    ),
+    var(--bg);
+}
+
+/* EmuDome's mark (the first run's welcome): its own two violets, the same in every theme and
+   whatever the accent. */
+@utility bg-logo {
+  background: radial-gradient(circle at 50% 30%, #a996ff, #664bd1);
+}
+
+/* The library scan's band (first run S02): no total is known while walking the folders, so a
+   band sweeps the track, 1.4 s a pass. «Riduci le animazioni» shows it full and half faded. */
+@keyframes scan-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@utility animate-scan-sweep {
+  animation: scan-sweep 1.4s var(--ease-out) infinite;
+  :root[data-motion='reduce'] & {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

@@ -126,7 +126,7 @@
     ),
   ];
   const schema = {
-    device: "desktop",
+    device: scenario.device ?? "desktop",
     currentPhase: 1,
     pages: ["general", "a11y"],
     groups: [{ id: "app", pages: ["general", "a11y"] }],
@@ -218,14 +218,48 @@
     is_fullscreen: false,
     current_slot: 1,
     first_run_show: !!scenario.firstRun,
-    first_run_steps: ["welcome", "games", "controller", "ready"],
+    // `game`: a game opens at startup (the in-game screens).
+    ...(scenario.game
+      ? {
+          startup_game: "C:/Games/Pocket Quest Advance.gba",
+          open_game: {
+            title: "Pocket Quest Advance",
+            console: "Game Boy Advance",
+            consoleId: "gba",
+            core: "mgba",
+            resumable: false,
+            autosaveOnExit: true,
+          },
+          stats: {
+            running: false,
+            emuFps: 59.7,
+            targetFps: 59.7,
+            speed: { kind: "factor", value: 1 },
+            paused: false,
+            frames: 600,
+            autoSavedAt: null,
+          },
+        }
+      : {}),
     library_get: library,
     settings_schema: schema,
     settings_recent: [],
     settings_game_overrides: [],
     settings_game_scope: null,
     saves_summary: [],
-    gamepad_list: [],
+    // `pad`: one controller connected (first run S04).
+    gamepad_list: scenario.pad
+      ? [
+          {
+            id: 1,
+            name: "Xbox Wireless Controller",
+            family: "xbox",
+            vendor: 1118,
+            product: 2835,
+            battery: null,
+          },
+        ]
+      : [],
     controls_bindings: bindings,
     theme: scenario.theme ?? "dark",
     bench_active: false,
@@ -234,6 +268,17 @@
   const callbacks = new Map();
   let next = 1;
   window.__mockCalls = [];
+  // The G06 hint shows on the first few games only (a count in localStorage): off, so two runs
+  // in the same Chrome profile draw the same thing. A scenario shows it on purpose.
+  try {
+    localStorage.setItem("emudome.menuHintShown", "99");
+  } catch {}
+  // Listeners by event name, so a scenario can play a backend event: __emit(name, payload).
+  const listeners = new Map();
+  window.__emit = (event, payload) => {
+    for (const id of listeners.get(event) ?? [])
+      callbacks.get(id)?.({ event, id, payload });
+  };
   window.__TAURI_INTERNALS__ = {
     metadata: {
       currentWindow: { label: "main" },
@@ -252,10 +297,20 @@
     },
     async invoke(cmd, args) {
       window.__mockCalls.push(cmd);
-      if (cmd === "plugin:event|listen") return next++;
+      if (cmd === "plugin:event|listen") {
+        const ids = listeners.get(args.event) ?? [];
+        ids.push(args.handler);
+        listeners.set(args.event, ids);
+        return next++;
+      }
       if (cmd === "plugin:event|unlisten") return null;
       if (cmd === "settings_page") return rows(args.page);
       if (cmd === "library_scan") return null;
+      // S04 is a step only while a controller is connected, as in Rust.
+      if (cmd === "first_run_steps")
+        return args.controller
+          ? ["welcome", "games", "controller", "ready"]
+          : ["welcome", "games", "ready"];
       if (cmd in answers) return JSON.parse(JSON.stringify(answers[cmd]));
       return null;
     },

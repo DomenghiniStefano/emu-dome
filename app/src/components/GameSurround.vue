@@ -12,6 +12,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { coverColours, type CoverColours } from '../ambient'
 import { reducedMotion, uiZoom } from '../appearance'
 import { shiftLightness } from '../colour'
+import { insetShare } from '../lib/shell/session'
 import { backgroundUrl, emu, type LibraryGame, type SettingValue, type VideoMode } from '../emu'
 import {
   BUILTIN_BACKGROUNDS,
@@ -106,7 +107,7 @@ const animated = computed(
 const clip = computed(() => {
   if (props.mode !== 'native' || !props.gameSize) return undefined
   const { w, h, dpr } = win.value
-  const inset = props.insetBottom > 0 ? Math.min(0.9, props.insetBottom / h) : 0
+  const inset = insetShare(props.insetBottom, h)
   const r = nativeGameRect(
     { w: Math.round(w * dpr), h: Math.round(h * dpr) },
     props.gameSize,
@@ -122,40 +123,17 @@ const shown = computed(
 </script>
 
 <template>
-  <div v-if="shown" class="surround" aria-hidden="true" :style="{ clipPath: clip }">
-    <div class="bg" :class="{ animated }" :style="{ background: background ?? undefined }"></div>
-    <div class="dim" :style="{ opacity: dim }"></div>
+  <div
+    v-if="shown"
+    class="pointer-events-none fixed inset-0 overflow-hidden bg-letterbox"
+    aria-hidden="true"
+    :style="{ clipPath: clip }"
+  >
+    <div
+      class="absolute"
+      :class="animated ? '-inset-1/5 animate-surround-drift' : 'inset-0'"
+      :style="{ background: background ?? undefined }"
+    ></div>
+    <div class="absolute inset-0 bg-letterbox" :style="{ opacity: dim }"></div>
   </div>
 </template>
-
-<style scoped>
-.surround {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  background: #000;
-}
-.bg,
-.dim {
-  position: absolute;
-  inset: 0;
-}
-/* «Sfondo animato»: the gradient drifts slowly. The layer is larger than the window so its edges
-   never show; only a transform moves, which the compositor handles without repainting. */
-.bg.animated {
-  inset: -20%;
-  animation: drift 40s ease-in-out infinite alternate;
-}
-@keyframes drift {
-  from {
-    transform: translate(-6%, -4%) rotate(0deg);
-  }
-  to {
-    transform: translate(6%, 4%) rotate(8deg);
-  }
-}
-.dim {
-  background: #000;
-}
-</style>
