@@ -467,6 +467,27 @@ export interface ImportCandidate {
   size: number
 }
 
+/** First run S06: which files a folder import reads. Mirror: `FolderImport` (emudome_core::saves). */
+export type FolderImport = 'desmume' | 'any'
+
+/** A found save paired with its game (ROM paths). Mirror: `MatchDto` in src-tauri/src/saves.rs. */
+export interface SaveMatch {
+  file: string
+  game: string
+}
+
+/** What a chosen folder offers. Mirror: `FolderSavesDto`. */
+export interface FolderSaves {
+  folder: string
+  /** Saves found that can be imported. */
+  found: number
+  /** The ones that belong to a library game, one per game. */
+  matches: SaveMatch[]
+}
+
+/** A step of the first run (mirror of `emudome_core::first_run::Step`): S01, S02, S04, S06. */
+export type FirstRunStep = 'welcome' | 'games' | 'controller' | 'ready'
+
 export type SaveExport = { kind: 'inGame' } | { kind: 'quick'; slot: number }
 
 /**
@@ -582,6 +603,19 @@ export const emu = {
     importPick: () => invoke<ImportCandidate | null>('saves_import_pick'),
     /** `file` becomes the in-game save of `game`; the current one becomes a backup first. */
     import: (file: string, game: string) => invoke<void>('saves_import', { file, game }),
+    /** Picks a folder and pairs its saves with `games` (ROM paths) by file name; null = cancelled. */
+    importFolder: (what: FolderImport, games: string[]) =>
+      invoke<FolderSaves | null>('saves_import_folder', { what, games }),
+    /** Imports every pair; resolves how many were imported. */
+    importMany: (matches: SaveMatch[]) => invoke<number>('saves_import_many', { matches }),
+  },
+  firstRun: {
+    /** Whether to start with the first run (not done on this device, library not set up). */
+    show: () => invoke<boolean>('first_run_show'),
+    /** The steps, given whether a controller is connected now. */
+    steps: (controller: boolean) => invoke<FirstRunStep[]>('first_run_steps', { controller }),
+    /** «Vai alla libreria»: never again on this device. */
+    done: () => invoke<void>('first_run_done'),
   },
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://event', e => cb(e.payload)),

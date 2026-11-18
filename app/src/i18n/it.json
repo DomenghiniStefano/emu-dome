@@ -1990,5 +1990,67 @@
       "later": "Decidi dopo, apro la versione di questo dispositivo"
     },
     "slotMore": "Altre azioni per lo slot"
+  },
+  "firstRun": {
+    "steps": "Passi del primo avvio",
+    "step": {
+      "welcome": "Benvenuto",
+      "games": "Aggiungi i tuoi giochi",
+      "controller": "Configura il controller",
+      "ready": "Tutto pronto"
+    },
+    "back": "Indietro",
+    "start": "Inizia",
+    "next": "Continua",
+    "skip": "Salta",
+    "finish": "Vai alla libreria",
+    "welcome": {
+      "title": "Benvenuto in EmuDome",
+      "lead": "I tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS, in un’unica app, su computer e telefono.",
+      "language": "Lingua:"
+    },
+    "games": {
+      "title": "Dove tieni i tuoi giochi?",
+      "lead": "Scegli una o più cartelle. EmuDome legge i giochi da lì, senza spostarli né copiarli.",
+      "folders": "Cartelle dei giochi",
+      "remove": "Rimuovi",
+      "removeFolder": "Rimuovi {path}",
+      "add": "Aggiungi una cartella…",
+      "progress": "Ricerca dei giochi",
+      "background": "Puoi andare avanti: la ricerca continua in background."
+    },
+    "controller": {
+      "title": "Configura il controller",
+      "lead": "{name} collegato. Come vuoi i pulsanti A e B?",
+      "nintendo": "A è il pulsante a destra, come sulle console originali. Consigliato.",
+      "printed": "A è il pulsante con la lettera A, in basso.",
+      "press": "Premi un pulsante per provarlo.",
+      "pressed": "Premi un pulsante per provarlo: hai premuto {which}, nel gioco è {button}.",
+      "unused": "Premi un pulsante per provarlo: hai premuto {which}, nel gioco non si usa.",
+      "which": {
+        "south": "quello in basso",
+        "east": "quello a destra",
+        "west": "quello a sinistra",
+        "north": "quello in alto"
+      }
+    },
+    "ready": {
+      "title": "Tutto pronto",
+      "count": "Nessun gioco nella libreria | 1 gioco nella libreria | {n} giochi nella libreria",
+      "optional": "FACOLTATIVO, ANCHE PIÙ TARDI",
+      "desmume": "DeSmuME",
+      "desmumeHint": "Scegli la cartella dei salvataggi di DeSmuME (di solito Battery).",
+      "found": "Nessun salvataggio in {folder} | Trovato 1 salvataggio in {folder} | Trovati {n} salvataggi in {folder}",
+      "matched": "nessuno abbinato a un gioco | 1 abbinato a un gioco | {n} abbinati a un gioco",
+      "import": "Importa il salvataggio | Importa il salvataggio | Importa i {n} salvataggi",
+      "imported": "Nessun salvataggio importato | 1 salvataggio importato | {n} salvataggi importati",
+      "drive": "Google Drive",
+      "driveDesc": "Copia salvataggi e impostazioni su ogni tuo dispositivo",
+      "driveSignIn": "Accedi con Google",
+      "other": "Un’altra cartella o un altro emulatore",
+      "otherDesc": "File .sav, .dsv o backup Action Replay (.duc)",
+      "hintDesktop": "In gioco premi Esc o il pulsante Home del controller per il menu rapido.",
+      "hintPhone": "In gioco premi il pulsante menu in basso a destra per il menu rapido."
+    }
   }
 }

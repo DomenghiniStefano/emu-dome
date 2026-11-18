@@ -1990,5 +1990,67 @@
       "later": "Decide later, open this device’s version"
     },
     "slotMore": "More actions for the slot"
+  },
+  "firstRun": {
+    "steps": "First run steps",
+    "step": {
+      "welcome": "Welcome",
+      "games": "Add your games",
+      "controller": "Set up the controller",
+      "ready": "All set"
+    },
+    "back": "Back",
+    "start": "Start",
+    "next": "Continue",
+    "skip": "Skip",
+    "finish": "Go to the library",
+    "welcome": {
+      "title": "Welcome to EmuDome",
+      "lead": "Your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, in one app, on computer and phone.",
+      "language": "Language:"
+    },
+    "games": {
+      "title": "Where do you keep your games?",
+      "lead": "Choose one or more folders. EmuDome reads the games from there, without moving or copying them.",
+      "folders": "Game folders",
+      "remove": "Remove",
+      "removeFolder": "Remove {path}",
+      "add": "Add a folder…",
+      "progress": "Searching for games",
+      "background": "You can go ahead: the search goes on in the background."
+    },
+    "controller": {
+      "title": "Set up the controller",
+      "lead": "{name} connected. How do you want the A and B buttons?",
+      "nintendo": "A is the right button, as on the original consoles. Recommended.",
+      "printed": "A is the button with the letter A, at the bottom.",
+      "press": "Press a button to try it.",
+      "pressed": "Press a button to try it: you pressed {which}, in the game it is {button}.",
+      "unused": "Press a button to try it: you pressed {which}, the game does not use it.",
+      "which": {
+        "south": "the bottom one",
+        "east": "the right one",
+        "west": "the left one",
+        "north": "the top one"
+      }
+    },
+    "ready": {
+      "title": "All set",
+      "count": "No games in the library | 1 game in the library | {n} games in the library",
+      "optional": "OPTIONAL, ALSO LATER",
+      "desmume": "DeSmuME",
+      "desmumeHint": "Choose DeSmuME's save folder (usually Battery).",
+      "found": "No saves in {folder} | Found 1 save in {folder} | Found {n} saves in {folder}",
+      "matched": "none matched to a game | 1 matched to a game | {n} matched to a game",
+      "import": "Import the save | Import the save | Import the {n} saves",
+      "imported": "No saves imported | 1 save imported | {n} saves imported",
+      "drive": "Google Drive",
+      "driveDesc": "Copy saves and settings to all your devices",
+      "driveSignIn": "Sign in with Google",
+      "other": "Another folder or another emulator",
+      "otherDesc": ".sav, .dsv files or Action Replay backups (.duc)",
+      "hintDesktop": "In game, press Esc or the controller's Home button for the quick menu.",
+      "hintPhone": "In game, press the menu button at the bottom right for the quick menu."
+    }
   }
 }
