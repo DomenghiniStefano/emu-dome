@@ -72,7 +72,11 @@ function back() {
 }
 
 const nextLabel = computed(() =>
-  index.value === 0 ? t('firstRun.start') : isLast.value ? t('firstRun.finish') : t('firstRun.next'),
+  index.value === 0
+    ? t('firstRun.start')
+    : isLast.value
+      ? t('firstRun.finish')
+      : t('firstRun.next'),
 )
 
 // ---- Layout: phone portrait (Tel-PrimoAvvio), like the quick menu decides it ----
@@ -355,7 +359,13 @@ onBeforeUnmount(() => {
             <span></span>
           </div>
           <p v-if="library.scanning" class="muted num">
-            {{ t('library.scan.found', { found: library.progress?.found ?? 0 }, library.progress?.found ?? 0) }}
+            {{
+              t(
+                'library.scan.found',
+                { found: library.progress?.found ?? 0 },
+                library.progress?.found ?? 0,
+              )
+            }}
           </p>
           <div class="tiles">
             <div v-for="tile in tiles" :key="tile.id" class="tile">
@@ -435,12 +445,7 @@ onBeforeUnmount(() => {
                 )
               }}
             </button>
-            <button
-              v-else
-              class="btn"
-              :disabled="busy"
-              @click="pickFolder('desmume')"
-            >
+            <button v-else class="btn" :disabled="busy" @click="pickFolder('desmume')">
               {{ t('library.chooseFolder') }}
             </button>
           </div>
@@ -459,12 +464,7 @@ onBeforeUnmount(() => {
               <div class="row-name">{{ t('firstRun.ready.other') }}</div>
               <div class="row-desc">{{ importLine('any', t('firstRun.ready.otherDesc')) }}</div>
             </div>
-            <button
-              v-if="canImport('any')"
-              class="btn"
-              :disabled="busy"
-              @click="importAll('any')"
-            >
+            <button v-if="canImport('any')" class="btn" :disabled="busy" @click="importAll('any')">
               {{
                 t(
                   'firstRun.ready.import',
@@ -485,7 +485,9 @@ onBeforeUnmount(() => {
     </main>
 
     <footer class="foot">
-      <button v-if="phone" class="btn btn-primary main" data-nav-initial @click="next">{{ nextLabel }}</button>
+      <button v-if="phone" class="btn btn-primary main" data-nav-initial @click="next">
+        {{ nextLabel }}
+      </button>
       <div class="side">
         <button v-if="index > 0" class="btn big" @click="back">{{ t('firstRun.back') }}</button>
         <span v-else-if="!phone"></span>
@@ -493,7 +495,9 @@ onBeforeUnmount(() => {
           <button v-if="step === 'controller'" class="btn big" @click="next">
             {{ t('firstRun.skip') }}
           </button>
-          <button v-if="!phone" class="btn btn-primary" data-nav-initial @click="next">{{ nextLabel }}</button>
+          <button v-if="!phone" class="btn btn-primary" data-nav-initial @click="next">
+            {{ nextLabel }}
+          </button>
         </div>
       </div>
     </footer>
@@ -508,14 +512,10 @@ onBeforeUnmount(() => {
   flex-direction: column;
   overflow: hidden;
   color: var(--ink);
-  background:
-    radial-gradient(60% 50% at 50% 0%, #7c5cff40 0%, transparent 70%),
-    var(--bg);
+  background: radial-gradient(60% 50% at 50% 0%, #7c5cff40 0%, transparent 70%), var(--bg);
 }
 .first-run.phone {
-  background:
-    radial-gradient(90% 40% at 50% 0%, #7c5cff40 0%, transparent 70%),
-    var(--bg);
+  background: radial-gradient(90% 40% at 50% 0%, #7c5cff40 0%, transparent 70%), var(--bg);
   font-size: 15px;
   line-height: 22px;
 }
