@@ -254,16 +254,23 @@ Notes on the table:
   the game sees a released pad. A button pressed with L3 stays away from the game until it is released,
   even if L3 is released first.
 - Each combo fires **once per press** of the second button. A button already held when L3 goes down does not fire.
-- L3 + R2 is the only hold combo: fast forward lasts until R2 is released (with or without L3).
+- L3 + R2 is the only hold combo in use: fast forward lasts until R2 is released (with or without L3).
+  L3 + L2 (rewind, reserved) will be the second.
+- A reserved combo (feature still to come) does nothing; its button stays away from the game like any
+  button pressed with L3.
 - While the quick menu is open only the menu combo (L3 + Start) and Guide work; the d-pad / left stick,
   A and B navigate the menu (see `app/src/nav.ts`).
 - The left stick past half travel is the d-pad; the triggers past half travel are L2/R2.
 
 ### Implemented table
 
-The table is `DEFAULT_COMBOS` in `crates/emudome-core/src/hotkeys.rs`, with `DEFAULT_MODIFIER = L3`;
-the Phase 1 settings engine will build other `Bindings` from it. The actions run in
-`app/src-tauri/src/gamepad.rs` (`Hotkeys`).
+The table is `DEFAULT_COMBOS` in `crates/emudome-core/src/hotkeys.rs`, with `DEFAULT_MODIFIER = L3`,
+in the order of the shortcut lists (`Hotkey::ALL`). Every row is there, also those whose feature does
+not exist yet: their `Hotkey::status` is `later` or `dualScreen`, the router never fires them (tested)
+and the screens list them with a badge. `pad.combos` and `pad.mod` build other `Bindings` from it
+(`crates/emudome-core/src/bindings.rs`). The actions run in `app/src-tauri/src/gamepad.rs` (`Hotkeys`).
+C01 «Scorciatoie da ricordare», C03 and the quick menu's G10 read it through `controls_bindings`;
+the G12 overlay will read it the same way.
 
 | Combo | Action | Status |
 |---|---|---|
@@ -275,19 +282,42 @@ the Phase 1 settings engine will build other `Bindings` from it. The actions run
 | L3 + R2 (held) | Fast forward (`speed.ffval`) while held, then back to the previous speed | done |
 | L3 + d-pad up | Fast forward on/off (`speed.ffval` ↔ 1×) | done |
 | L3 + d-pad down | Slow motion on/off (`speed.slow` ↔ 1×) | done |
-| L3 + X | FPS indicator on/off | done |
+| L3 + L2 (held) | Rewind | reserved (`later`): rewind does not exist yet |
 | L3 + A | Pause on/off without the menu ("Paused" chip) | done |
-| L3 + L2 (held) | Rewind | TODO, Phase 1 (rewind does not exist yet) |
-| L3 + B | Screenshot | TODO (screenshots do not exist yet) |
-| L3 + Y | Swap screens | TODO, Phase 2 (NDS/3DS) |
-| L3 + R3 | Next screen layout | TODO, Phase 2 (NDS/3DS) |
-| L3 + Select | Close/open the lid (NDS/3DS), also from the quick menu | TODO, Phase 2 (decided 2026-11-17) |
-| (none) | Fullscreen on/off: keyboard F11 only, no controller combo | TODO (decided 2026-11-17) |
+| L3 + B | Screenshot | reserved (`later`): screenshots do not exist yet |
+| L3 + X | FPS indicator on/off | done |
+| L3 + Y | Swap screens (NDS/3DS) | reserved (`dualScreen`), Phase 2 |
+| L3 + R3 | Next screen layout (NDS/3DS); not in C01's list, only in C03 | reserved (`dualScreen`), Phase 2 |
+| L3 + Select | Close/open the lid (NDS/3DS), also from the quick menu | reserved (`dualScreen`), Phase 2 (decided 2026-11-17) |
+| (none) | Fullscreen on/off: keyboard F11 and the quick menu only, no controller combo | done (decided 2026-11-17) |
 
-Known limits of this first version:
+### Keyboard table
 
-- The current slot lives in the controller thread and starts at 1 at every launch; the quick menu still
-  lists slots 1 to 3 and the keyboard's F1 / F4 still use slot 1.
+The keyboard's fixed keys in game are one table too: `KEYBOARD_SHORTCUTS` in `app/src/keyboard.ts`
+(the keyboard goes through the webview). `App.vue` carries them out; C01 lists them under «Tasti della
+tastiera», C03 on the keyboard's tab; the G12 overlay will read them from there. A key does what the
+controller hotkey with the same id does.
+
+| Key | Action | Status |
+|---|---|---|
+| Esc | Open the quick menu; in the menu, back | done |
+| F1 | Quick save to the current slot | done |
+| F4 | Quick load from the current slot | done |
+| F2 / F3 | Previous / next slot (the same current slot as L3 + d-pad left / right) | done |
+| Tab (held) | Fast forward (`speed.ffval`) while held | done |
+| Backspace (held) | Rewind | reserved: rewind does not exist yet; Backspace is Select's default key until then |
+| F9 | FPS indicator on/off | done |
+| F11 | Fullscreen on/off | done |
+| F12 | Screenshot | reserved: screenshots do not exist yet |
+
+The current slot lives in Rust (`Pads::slot`, `app/src-tauri/src/pads.rs`): the controller thread and
+the keyboard's F1–F4 (commands `current_slot`, `step_slot`) use the same one, and the quick menu opens on it.
+
+Known limits of this version:
+
+- The current slot starts at 1 at every launch of the app; it is not remembered per game.
+- Backspace: when rewind arrives it collides with Select's default key (`KEYBOARD_DEFAULTS`,
+  `bindings.rs`); one of the two has to move then.
 - Not verified yet on hardware: whether Guide reaches the app with Steam or the Game Bar open (section 3).
 
 ## Sources

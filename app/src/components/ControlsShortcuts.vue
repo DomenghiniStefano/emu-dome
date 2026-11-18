@@ -2,14 +2,16 @@
 // C03 «Scorciatoie» (board «Controlli»): the shortcut button (`pad.mod`, as a settings row) and
 // the shortcuts held with it (`pad.combos`, «Tutti i giochi»). «Cambia» captures the button to
 // press with the shortcut button, like the remap rows; a button another shortcut uses asks to
-// swap them. Rows of features that do not exist yet are listed with their planned button.
-// On the keyboard the shortcuts are fixed keys, listed read-only.
+// swap them. The rows come from `DEFAULT_COMBOS` (Rust): the reserved ones, whose feature does
+// not exist yet, show their button with a badge and cannot be changed.
+// On the keyboard the shortcuts are the fixed keys of keyboard.ts, listed read-only.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   emu,
   type ComboRow,
   type HotkeyId,
+  type HotkeyStatus,
   type PadFamily,
   type PadState,
   type Pos,
@@ -19,8 +21,9 @@ import {
   type SettingValue,
 } from '../emu'
 import { errorText } from '../i18n/labels'
-import { combosList, comboText, hotkeyName, posName, useCapture } from '../controls'
+import { combosList, comboText, hotkeyName, keyName, posName, useCapture } from '../controls'
 import type { CaptureDevice } from '../controls'
+import { KEYBOARD_SHORTCUTS } from '../keyboard'
 import SettingRowView from './SettingRow.vue'
 
 const props = defineProps<{
@@ -120,24 +123,10 @@ async function swap() {
   await write({ [c.hotkey]: c.pos, [c.other]: mine })
 }
 
-/** Shortcuts of features still to come: their planned button (docs/combo-tasti.md, section 5). */
-const LATER: { id: string; pos: Pos; badge: string }[] = [
-  { id: 'rewind', pos: 'l2', badge: 'soon' },
-  { id: 'screenshot', pos: 'south', badge: 'soon' },
-  { id: 'swap', pos: 'west', badge: 'nds' },
-  { id: 'layout', pos: 'r3', badge: 'nds' },
-  { id: 'lid', pos: 'back', badge: 'nds' },
-]
-
-/** The keyboard's fixed keys (App.vue): key, action. */
-const KEYS: { key: string; id: string }[] = [
-  { key: 'Esc', id: 'menu' },
-  { key: 'F1', id: 'save1' },
-  { key: 'F4', id: 'load1' },
-  { key: 'Tab', id: 'ffHold' },
-  { key: 'F3', id: 'fps' },
-  { key: 'F11', id: 'fullscreen' },
-]
+/** The badge of a reserved row: «In arrivo», or «Con Nintendo DS». */
+const badge = (status: HotkeyStatus) => (status === 'later' ? 'soon' : 'nds')
+/** Fullscreen has no controller shortcut: its key, from the keyboard table. */
+const fullscreenKey = keyName(KEYBOARD_SHORTCUTS.find(k => k.action === 'fullscreen')?.code ?? '')
 
 let unlisten: (() => void) | null = null
 onMounted(async () => {
@@ -169,9 +158,12 @@ onBeforeUnmount(() => unlisten?.())
 
       <div class="card list">
         <template v-for="(r, i) in rows" :key="r.hotkey">
-          <div class="tr">
+          <div class="tr" :class="{ later: r.status !== 'active' }">
             <span class="action">{{ hotkeyName(r.hotkey) }}</span>
             <span class="combo num">
+              <span v-if="r.status !== 'active'" class="badge">
+                {{ t(`controls.badge.${badge(r.status)}`) }}
+              </span>
               <template v-if="capture.target.value === r.hotkey">
                 {{ t('controls.pressButton', { n: capture.left.value }) }}
               </template>
@@ -180,7 +172,9 @@ onBeforeUnmount(() => unlisten?.())
               </template>
               <template v-else>{{ comboText(padFamily, modifier, r.pos) }}</template>
             </span>
+            <span v-if="r.status !== 'active'"></span>
             <button
+              v-else
               class="ghost"
               :class="{ listening: capture.target.value === r.hotkey }"
               :data-nav-initial="i === 0 ? '' : undefined"
@@ -203,27 +197,25 @@ onBeforeUnmount(() => unlisten?.())
             <button class="btn" @click="conflict = null">{{ t('controls.cancel') }}</button>
           </div>
         </template>
-        <div v-for="l in LATER" :key="l.id" class="tr later">
-          <span class="action">{{ t(`controls.later.${l.id}`) }}</span>
-          <span class="combo num">
-            <span class="badge">{{ t(`controls.badge.${l.badge}`) }}</span>
-            {{ comboText(padFamily, modifier, l.pos) }}
-          </span>
-          <span></span>
-        </div>
         <div class="tr later">
           <span class="action">{{ t('controls.keys.fullscreen') }}</span>
-          <span class="combo num">{{ t('controls.keyboardOnly', { key: 'F11' }) }}</span>
+          <span class="combo num">{{ t('controls.keyboardOnly', { key: fullscreenKey }) }}</span>
           <span></span>
         </div>
       </div>
     </template>
 
     <div v-else class="card list">
-      <div v-for="k in KEYS" :key="k.id" class="tr">
-        <span class="action">{{ t(`controls.keys.${k.id}`) }}</span>
+      <div
+        v-for="k in KEYBOARD_SHORTCUTS"
+        :key="k.code"
+        class="tr"
+        :class="{ later: k.status !== 'active' }"
+      >
+        <span class="action">{{ hotkeyName(k.action) }}</span>
         <span class="combo num">
-          <kbd>{{ k.key }}</kbd>
+          <span v-if="k.status !== 'active'" class="badge">{{ t('controls.badge.soon') }}</span>
+          <kbd>{{ keyName(k.code) }}</kbd>
         </span>
         <span></span>
       </div>

@@ -242,21 +242,13 @@
         "name": "Console options",
         "summary": "Models, colours, DS user"
       },
-      "cores": {
-        "name": "Advanced emulator options",
-        "summary": "The options of mGBA, melonDS DS and Azahar"
-      },
-      "perf": {
-        "name": "Performance",
-        "summary": "Frame skip, compilation, processor"
+      "advanced": {
+        "name": "Advanced",
+        "summary": "Performance, emulation engines, speedruns"
       },
       "online": {
         "name": "Online and integrations",
         "summary": "DS Wi-Fi, RetroAchievements, Discord"
-      },
-      "adv": {
-        "name": "Advanced tools",
-        "summary": "For speedruns, videos and homebrew development"
       },
       "about": {
         "name": "About",
@@ -335,19 +327,15 @@
         "nds": "NINTENDO DS",
         "3ds": "NINTENDO 3DS"
       },
-      "cores": {
+      "advanced": {
+        "perf": "PERFORMANCE",
         "mgba": "MGBA · GAME BOY AND GAME BOY ADVANCE",
         "melonds": "MELONDS DS · NINTENDO DS",
-        "azahar": "AZAHAR · NINTENDO 3DS"
-      },
-      "perf": {
-        "perf": "PERFORMANCE"
+        "azahar": "AZAHAR · NINTENDO 3DS",
+        "tools": "ADVANCED TOOLS"
       },
       "online": {
         "online": "ONLINE"
-      },
-      "adv": {
-        "adv": "ADVANCED TOOLS"
       },
       "about": {
         "app": "EMUDOME",
@@ -403,7 +391,7 @@
       },
       "surroundSet": {
         "name": "Built-in background",
-        "desc": "Shown when you choose “Built-in background”. Moves slowly with “Animated background”.",
+        "desc": "Moves slowly with “Animated background”.",
         "option": {
           "aurora": "Aurora",
           "sunset": "Sunset",
@@ -423,8 +411,11 @@
       },
       "surroundImg": {
         "name": "Background image",
-        "desc": "Shown when you choose “Your image”. JPG or PNG; fits the screen.",
-        "button": "Choose an image…"
+        "desc": "JPG or PNG; fits the screen.",
+        "button": "Choose an image…",
+        "value": {
+          "none": "No image chosen"
+        }
       },
       "surroundDim": {
         "name": "Darken the background",
@@ -436,7 +427,7 @@
       },
       "fps": {
         "name": "Show frames per second (FPS)",
-        "desc": "A counter in a corner of the screen. Shortcuts: F3 on the keyboard, L3 + X on the controller."
+        "desc": "A counter in a corner of the screen. Shortcuts: F9 on the keyboard, L3 + X on the controller."
       },
       "window": {
         "name": "Window mode",
@@ -1465,7 +1456,7 @@
     "adv": {
       "advon": {
         "name": "Show advanced tools",
-        "desc": "Adds the Advanced tools tab to the quick menu."
+        "desc": "Adds the advanced tools to the Tools row of the quick menu."
       },
       "inputs": {
         "name": "Show pressed buttons",
@@ -1560,6 +1551,7 @@
     },
     "lockedGlobal": "It always applies to all games. To change it, choose “All games” at the top.",
     "lockedScoped": "It is set per console or per game: choose a level at the top.",
+    "lockedNote": "Greyed-out items apply to all games: to change them, choose “All games”.",
     "lockedPhone": "Only on this phone.",
     "lockedDesktop": "Only on this computer.",
     "notYet": "This arrives in a future update.",
@@ -1569,7 +1561,7 @@
     "hint": "With keyboard and controller: arrows or D-pad to move, A to confirm, B to go back, L1 and R1 to change level.",
     "intro": {
       "bios": "EmuDome works without these files thanks to free replacements already built in. If you copied the files from your console, you can use them for the best compatibility.",
-      "cores": "These are the options of the emulation engines. Change them only if you know what they do: those marked “from the next start” apply when you reopen the game."
+      "advanced": "For those who want to go further. Change the engine options only if you know what they do: the ones marked “at the next start” apply when you reopen the game."
     },
     "unit": {
       "percent": "{v}%",
@@ -1704,7 +1696,6 @@
     "keyboardDetail": "Always available",
     "connected": "Connected",
     "devices": "Devices",
-    "devicesHeading": "DEVICES",
     "tabsLabel": "Device sections",
     "tab": {
       "remap": "Button remapping",
@@ -1747,6 +1738,7 @@
     "none": "None",
     "withSide": "{name} ({side})",
     "combo": "{modifier} + {button}",
+    "comboArrows": "{modifier} + ← →",
     "side": {
       "south": "bottom",
       "east": "right",
@@ -1849,31 +1841,40 @@
       "ff_toggle": "Fast forward: on and off",
       "slow": "Slow motion: on and off",
       "fps": "Show frames per second",
-      "pause": "Pause without the menu"
+      "pause": "Pause without the menu",
+      "rewind": "Rewind while you hold it",
+      "screenshot": "Take screenshot",
+      "swap": "Swap the screens",
+      "layout": "Next screen layout",
+      "lid": "Close and open the lid (also from the quick menu)"
+    },
+    "short": {
+      "menu": "Open the quick menu",
+      "save": "Quick save",
+      "load": "Load the quick save",
+      "slot": "Change slot",
+      "ff_hold": "Fast forward (hold)",
+      "ff_toggle": "Fast forward on/off",
+      "slow": "Slow motion",
+      "rewind": "Rewind (hold)",
+      "pause": "Pause",
+      "screenshot": "Take screenshot",
+      "fps": "Show FPS",
+      "swap": "Swap screens (Nintendo DS and 3DS)",
+      "lid": "Close the lid (Nintendo DS and 3DS)",
+      "fullscreen": "Full screen"
     },
     "modNote": "No GBA, DS or 3DS game uses L3, so it never gets in the way. The Home button always opens the quick menu.",
     "menuCombo": "Home, or {combo}",
     "changeShortcut": "Change the shortcut: {action}",
     "change": "Change",
     "comboConflict": "{source} is already used for “{action}”. Swap them?",
-    "later": {
-      "rewind": "Rewind while you hold it",
-      "screenshot": "Take a screenshot",
-      "swap": "Swap the screens",
-      "layout": "Next screen layout",
-      "lid": "Close and open the lid (also from the quick menu)"
-    },
     "badge": {
       "soon": "In a future update",
       "nds": "With Nintendo DS"
     },
     "keys": {
-      "fullscreen": "Fullscreen",
-      "menu": "Open or close the quick menu",
-      "save1": "Save to slot 1",
-      "load1": "Load from slot 1",
-      "ffHold": "Fast forward while you hold it",
-      "fps": "Show frames per second"
+      "fullscreen": "Full screen"
     },
     "keyboardOnly": "Keyboard: {key}",
     "stickLabel": "Current position of the left stick",
@@ -1883,11 +1884,12 @@
       "battery": "battery {percent}%",
       "shortcuts": "SHORTCUTS TO REMEMBER",
       "shortcutsHint": "Hold {modifier} and press a button",
+      "keyboardKeys": "Keyboard keys",
       "editShortcuts": "Edit shortcuts",
       "press": "Press a button",
       "lastPressed": "Last button pressed: {source} · in the game: {button}",
       "lastUnused": "Last button pressed: {source} · not used in the game",
-      "outline": "Controller outline",
+      "outline": "Controller buttons",
       "remap": "Remap buttons",
       "remapSub": "For all games, per console or for one game",
       "sticks": "Sticks, triggers and vibration",

@@ -3,7 +3,9 @@
 // the control for its kind, and its state at the page's level:
 // - changed here: dot + «Modificato» + «Ripristina» (Tutti i giochi) or «Usa il valore di …»;
 // - inherited: «Come in «…»» under the control, which stays usable (changing it sets this level);
-// - locked (level not accepted, other device, no backend yet): faded, the description says why.
+// - locked (level not accepted, other device, no backend yet): faded, the description says why;
+//   with `lockNote` a row only «Tutti i giochi» changes keeps its own description (the page's
+//   note after the scope sentence says it once).
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Folder, Undo2 } from '@lucide/vue'
@@ -32,6 +34,8 @@ const props = defineProps<{
   compact?: boolean
   /** Shown instead of the description (T01 «Usate più spesso»: the page the setting is on). */
   sub?: string
+  /** The page says once why its «Tutti i giochi» rows are grey (settings pages, not the menu). */
+  lockNote?: boolean
 }>()
 const emit = defineEmits<{
   set: [SettingValue]
@@ -74,9 +78,16 @@ const name = computed(() => {
   return t(msg.name(key.value))
 })
 const desc = computed(() => {
-  if (reason.value) return `${t(reason.value)} ${baseDesc.value}`.trim()
-  return baseDesc.value
+  const r = reason.value
+  if (!r || (props.lockNote && r === 'settingsUi.lockedGlobal')) return baseDesc.value
+  return `${t(r)} ${baseDesc.value}`.trim()
 })
+/** A file row with no file chosen says so beside its button («Nessuna immagine scelta»). */
+const noFile = computed(() =>
+  kind.value.type === 'file' && !value.value && te(`settings.${key.value}.value.none`)
+    ? t(`settings.${key.value}.value.none`)
+    : '',
+)
 // Rows whose description shows live data the app does not have yet get their neutral form.
 const baseDesc = computed(() => {
   const k = key.value
@@ -300,6 +311,7 @@ function swatchName(hex: string): string {
 
         <!-- file, action -->
         <template v-else-if="kind.type === 'file' || kind.type === 'action'">
+          <span v-if="noFile" class="file-state">{{ noFile }}</span>
           <button v-if="buttonText" class="btn" disabled :title="t('settingsUi.notYet')">
             {{ buttonText }}
           </button>
@@ -407,6 +419,15 @@ function swatchName(hex: string): string {
 </template>
 
 <style scoped>
+.file-state {
+  font-size: 12px;
+  line-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
 .row {
   display: flex;
   flex-direction: column;

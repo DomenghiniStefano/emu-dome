@@ -9,10 +9,11 @@
 //! `emu://gamepad-changed` (a [`PadInfo`] whose battery changed),
 //! `emu://pad-state` (a [`PadStates`], only while the interface watches).
 
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
 
 use emudome_core::bindings::{default_combo, Family, PadConfig, Pos};
+use emudome_core::hotkeys::{self, Hotkey, Status};
 use emudome_core::settings::{Scope, Value};
 use emudome_core::ErrorCode;
 use parking_lot::Mutex;
@@ -60,6 +61,28 @@ pub struct Pads {
     pub watch: AtomicBool,
     /// The interface is capturing a button: the router acts on nothing (no game, no menu).
     pub capture: AtomicBool,
+    /// The current quick save slot: L3 + R1 / L3 + L1 and F1 / F4 save to and load from it,
+    /// L3 + d-pad left / right and F2 / F3 move it (0 until first moved: slot 1).
+    slot: AtomicU8,
+}
+
+impl Pads {
+    /// The current quick save slot.
+    pub fn slot(&self) -> u8 {
+        let slot = self.slot.load(Ordering::Relaxed);
+        if (hotkeys::FIRST_SLOT..=hotkeys::LAST_SLOT).contains(&slot) {
+            slot
+        } else {
+            hotkeys::FIRST_SLOT
+        }
+    }
+
+    /// Moves the current slot one step (`forward`: next), wrapping; answers the new slot.
+    pub fn step_slot(&self, forward: bool) -> u8 {
+        let slot = hotkeys::step_slot(self.slot(), forward);
+        self.slot.store(slot, Ordering::Relaxed);
+        slot
+    }
 }
 
 pub type PadsState = Arc<Pads>;
@@ -110,6 +133,19 @@ pub fn gamepad_watch(pads: State<'_, PadsState>, on: bool) {
     pads.watch.store(on, Ordering::Relaxed);
 }
 
+/// The current quick save slot (the quick menu opens on it, F1 / F4 use it).
+#[tauri::command]
+pub fn current_slot(pads: State<'_, PadsState>) -> u8 {
+    pads.slot()
+}
+
+/// Keyboard F2 / F3: the previous / next slot, the same one L3 + d-pad left / right moves.
+/// Answers the new slot (the interface shows «Slot N»).
+#[tauri::command]
+pub fn step_slot(pads: State<'_, PadsState>, forward: bool) -> u8 {
+    pads.step_slot(forward)
+}
+
 /// While on, the controllers neither play nor navigate: the Controls section is waiting for
 /// the button to assign. The button held when it ends does nothing until released.
 #[tauri::command]
@@ -127,13 +163,18 @@ pub struct RemapRow {
     changed: bool,
 }
 
-/// One shortcut. Mirror: `ComboRow` in app/src/emu.ts.
+/// One shortcut, in [`Hotkey::ALL`] order. Mirror: `ComboRow` in app/src/emu.ts.
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ComboRow {
     hotkey: &'static str,
     /// Position pressed with the shortcut button; `None` = no shortcut.
     pos: Option<Pos>,
     default: Option<Pos>,
+    /// Whether it works yet; reserved rows are listed and do nothing.
+    status: Status,
+    /// Listed among «Scorciatoie da ricordare» (C01).
+    to_remember: bool,
 }
 
 /// Mirror: `ControlsBindings` in app/src/emu.ts.
@@ -194,10 +235,12 @@ pub fn controls_bindings(
     let combos = config
         .combo_table()
         .into_iter()
-        .map(|(hotkey, pos)| ComboRow {
+        .map(|(hotkey, pos): (Hotkey, Option<Pos>)| ComboRow {
             hotkey: hotkey.id(),
             pos,
             default: default_combo(hotkey),
+            status: hotkey.status(),
+            to_remember: hotkey.to_remember(),
         })
         .collect();
     Ok(ControlsBindings {

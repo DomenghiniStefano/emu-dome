@@ -16,11 +16,14 @@ import {
   type Pos,
   type RemapRow,
 } from './emu'
+import type { KeyAction } from './keyboard'
 
 const known = (key: string) => i18n.global.te(key)
 
-/** Every position, in the tester's order. */
-export const POSITIONS: Pos[] = [
+const FACES: Pos[] = ['south', 'east', 'west', 'north']
+
+/** The 12 buttons of the tester (C01, C02): faces, shoulders, triggers, Start / Select, sticks. */
+const TESTER_POSITIONS: Pos[] = [
   'south',
   'east',
   'west',
@@ -29,17 +32,19 @@ export const POSITIONS: Pos[] = [
   'r1',
   'l2',
   'r2',
-  'back',
   'start',
+  'back',
   'l3',
   'r3',
-  'up',
-  'down',
-  'left',
-  'right',
 ]
 
-const FACES: Pos[] = ['south', 'east', 'west', 'north']
+/** The tester's cells: the 12 positions of a controller, or the keys the keyboard uses. */
+export function testerCells(family: PadFamily, remap: RemapRow[]): { id: string; label: string }[] {
+  if (family !== 'keyboard')
+    return TESTER_POSITIONS.map(p => ({ id: p, label: posName(family, p, false) }))
+  const keys = remap.map(r => r.source).filter((s): s is string => !!s)
+  return [...new Set(keys)].map(k => ({ id: k, label: keyName(k) }))
+}
 
 /** The name of a position on a controller of `family` («B (destra)», «LB», «Croce su»). */
 export function posName(family: PadFamily, pos: Pos, withSide = true): string {
@@ -70,7 +75,12 @@ export function sourceName(family: PadFamily, source: string | null): string {
 /** The name of a game button («A», «ZL (solo 3DS)», «Croce su»). */
 export const buttonName = (b: Button) => t(`controls.button.${b}`)
 
-export const hotkeyName = (h: HotkeyId) => t(`controls.hotkey.${h}`)
+/** The long name of a shortcut (C03, G10: «Salvataggio rapido nello slot attuale»). */
+export const hotkeyName = (h: KeyAction) =>
+  h === 'fullscreen' ? t('controls.keys.fullscreen') : t(`controls.hotkey.${h}`)
+
+/** The short name of a line of «Scorciatoie da ricordare» (C01: «Salvataggio rapido»). */
+export const shortName = (a: KeyAction | 'slot') => t(`controls.short.${a}`)
 
 /** «L3 + RB»: a shortcut as the user presses it. */
 export function comboText(family: PadFamily, modifier: Pos, pos: Pos | null): string {
@@ -79,6 +89,21 @@ export function comboText(family: PadFamily, modifier: Pos, pos: Pos | null): st
     modifier: posName(family, modifier, false),
     button: posName(family, pos, false),
   })
+}
+
+/** «L3 + ← →»: the previous / next slot pair on one line (C01); other buttons «L3 + X / L3 + Y». */
+export function slotPairText(
+  family: PadFamily,
+  modifier: Pos,
+  prev: Pos | null,
+  next: Pos | null,
+): string {
+  if (prev === 'left' && next === 'right')
+    return t('controls.comboArrows', { modifier: posName(family, modifier, false) })
+  return [prev, next]
+    .filter((p): p is Pos => p !== null)
+    .map(p => comboText(family, modifier, p))
+    .join(' / ')
 }
 
 /**

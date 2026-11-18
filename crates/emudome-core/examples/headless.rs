@@ -100,6 +100,7 @@ fn main() -> anyhow::Result<()> {
             autosave_every: None,
             autosave_on_exit: false,
             resume_auto: false,
+            app_version: env!("CARGO_PKG_VERSION").into(),
             core_options: args.opts.clone(),
         },
         tx,

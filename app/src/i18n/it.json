@@ -242,21 +242,13 @@
         "name": "Opzioni per console",
         "summary": "Modelli, colori, utente del DS"
       },
-      "cores": {
-        "name": "Opzioni avanzate dell’emulatore",
-        "summary": "Le opzioni di mGBA, melonDS DS e Azahar"
-      },
-      "perf": {
-        "name": "Prestazioni",
-        "summary": "Salta fotogrammi, compilazione, processore"
+      "advanced": {
+        "name": "Avanzate",
+        "summary": "Prestazioni, motori di emulazione, speedrun"
       },
       "online": {
         "name": "Online e integrazioni",
         "summary": "Wi-Fi del DS, RetroAchievements, Discord"
-      },
-      "adv": {
-        "name": "Strumenti avanzati",
-        "summary": "Per speedrun, video e sviluppo homebrew"
       },
       "about": {
         "name": "Informazioni",
@@ -335,19 +327,15 @@
         "nds": "NINTENDO DS",
         "3ds": "NINTENDO 3DS"
       },
-      "cores": {
+      "advanced": {
+        "perf": "PRESTAZIONI",
         "mgba": "MGBA · GAME BOY E GAME BOY ADVANCE",
         "melonds": "MELONDS DS · NINTENDO DS",
-        "azahar": "AZAHAR · NINTENDO 3DS"
-      },
-      "perf": {
-        "perf": "PRESTAZIONI"
+        "azahar": "AZAHAR · NINTENDO 3DS",
+        "tools": "STRUMENTI AVANZATI"
       },
       "online": {
         "online": "ONLINE"
-      },
-      "adv": {
-        "adv": "STRUMENTI AVANZATI"
       },
       "about": {
         "app": "EMUDOME",
@@ -403,7 +391,7 @@
       },
       "surroundSet": {
         "name": "Sfondo pronto",
-        "desc": "Visibile quando scegli «Sfondo pronto». Si muove piano con «Sfondo animato».",
+        "desc": "Si muove piano con «Sfondo animato».",
         "option": {
           "aurora": "Aurora",
           "sunset": "Tramonto",
@@ -423,8 +411,11 @@
       },
       "surroundImg": {
         "name": "Immagine di sfondo",
-        "desc": "Visibile quando scegli «Immagine tua». JPG o PNG; si adatta allo schermo.",
-        "button": "Scegli un’immagine…"
+        "desc": "JPG o PNG; si adatta allo schermo.",
+        "button": "Scegli un’immagine…",
+        "value": {
+          "none": "Nessuna immagine scelta"
+        }
       },
       "surroundDim": {
         "name": "Oscura lo sfondo",
@@ -436,7 +427,7 @@
       },
       "fps": {
         "name": "Mostra i fotogrammi al secondo (FPS)",
-        "desc": "Un contatore in un angolo dello schermo. Scorciatoie: F3 sulla tastiera, L3 + X sul controller."
+        "desc": "Un contatore in un angolo dello schermo. Scorciatoie: F9 sulla tastiera, L3 + X sul controller."
       },
       "window": {
         "name": "Modalità finestra",
@@ -1465,7 +1456,7 @@
     "adv": {
       "advon": {
         "name": "Mostra gli Strumenti avanzati",
-        "desc": "Aggiunge la scheda Strumenti avanzati al menu rapido."
+        "desc": "Aggiunge gli Strumenti avanzati alla riga Strumenti del menu rapido."
       },
       "inputs": {
         "name": "Mostra i pulsanti premuti",
@@ -1560,6 +1551,7 @@
     },
     "lockedGlobal": "Vale sempre per tutti i giochi. Per cambiarla scegli «Tutti i giochi» in alto.",
     "lockedScoped": "Si imposta per una console o per un gioco: scegli un livello in alto.",
+    "lockedNote": "Le voci in grigio valgono per tutti i giochi: per cambiarle scegli «Tutti i giochi».",
     "lockedPhone": "Solo su questo telefono.",
     "lockedDesktop": "Solo su questo computer.",
     "notYet": "Arriva con un prossimo aggiornamento.",
@@ -1569,7 +1561,7 @@
     "hint": "Con tastiera e controller: frecce o croce direzionale per spostarti, A per confermare, B per tornare indietro, L1 e R1 per cambiare livello.",
     "intro": {
       "bios": "EmuDome funziona senza questi file grazie a sostituti liberi già integrati. Se hai copiato i file dalla tua console, puoi usarli per la massima compatibilità.",
-      "cores": "Sono le opzioni dei motori di emulazione. Cambiale solo se sai cosa fanno: quelle con «al prossimo avvio» si applicano quando riapri il gioco."
+      "advanced": "Per chi vuole andare oltre. Le opzioni dei motori cambiale solo se sai cosa fanno: quelle con «al prossimo avvio» si applicano quando riapri il gioco."
     },
     "unit": {
       "percent": "{v} %",
@@ -1704,7 +1696,6 @@
     "keyboardDetail": "Sempre disponibile",
     "connected": "Collegato",
     "devices": "Dispositivi",
-    "devicesHeading": "DISPOSITIVI",
     "tabsLabel": "Sezioni del dispositivo",
     "tab": {
       "remap": "Rimappatura dei pulsanti",
@@ -1747,6 +1738,7 @@
     "none": "Nessuno",
     "withSide": "{name} ({side})",
     "combo": "{modifier} + {button}",
+    "comboArrows": "{modifier} + ← →",
     "side": {
       "south": "basso",
       "east": "destra",
@@ -1849,31 +1841,40 @@
       "ff_toggle": "Avanti veloce: attiva e disattiva",
       "slow": "Rallentatore: attiva e disattiva",
       "fps": "Mostra i fotogrammi al secondo",
-      "pause": "Pausa senza menu"
-    },
-    "modNote": "Nessun gioco GBA, DS o 3DS usa L3, quindi non interferisce. Il pulsante Home apre sempre il menu rapido.",
-    "menuCombo": "Home, oppure {combo}",
-    "changeShortcut": "Cambia la scorciatoia: {action}",
-    "change": "Cambia",
-    "comboConflict": "{source} è già usato per «{action}». Vuoi scambiarli?",
-    "later": {
+      "pause": "Pausa senza menu",
       "rewind": "Riavvolgi finché tieni premuto",
       "screenshot": "Cattura schermata",
       "swap": "Scambia gli schermi",
       "layout": "Disposizione degli schermi successiva",
       "lid": "Chiudi e apri il coperchio (anche dal menu rapido)"
     },
+    "short": {
+      "menu": "Apri il menu rapido",
+      "save": "Salvataggio rapido",
+      "load": "Carica il salvataggio rapido",
+      "slot": "Cambia slot",
+      "ff_hold": "Avanti veloce (tieni premuto)",
+      "ff_toggle": "Avanti veloce sì/no",
+      "slow": "Rallentatore",
+      "rewind": "Riavvolgi (tieni premuto)",
+      "pause": "Pausa",
+      "screenshot": "Cattura schermata",
+      "fps": "Mostra gli FPS",
+      "swap": "Scambia gli schermi (Nintendo DS e 3DS)",
+      "lid": "Chiudi il coperchio (Nintendo DS e 3DS)",
+      "fullscreen": "A schermo intero"
+    },
+    "modNote": "Nessun gioco GBA, DS o 3DS usa L3, quindi non interferisce. Il pulsante Home apre sempre il menu rapido.",
+    "menuCombo": "Home, oppure {combo}",
+    "changeShortcut": "Cambia la scorciatoia: {action}",
+    "change": "Cambia",
+    "comboConflict": "{source} è già usato per «{action}». Vuoi scambiarli?",
     "badge": {
       "soon": "In arrivo",
       "nds": "Con Nintendo DS"
     },
     "keys": {
-      "fullscreen": "Schermo intero",
-      "menu": "Apri o chiudi il menu rapido",
-      "save1": "Salva nello slot 1",
-      "load1": "Carica dallo slot 1",
-      "ffHold": "Avanti veloce finché tieni premuto",
-      "fps": "Mostra i fotogrammi al secondo"
+      "fullscreen": "A schermo intero"
     },
     "keyboardOnly": "Tastiera: {key}",
     "stickLabel": "Posizione attuale dello stick sinistro",
@@ -1883,11 +1884,12 @@
       "battery": "batteria {percent} %",
       "shortcuts": "SCORCIATOIE DA RICORDARE",
       "shortcutsHint": "Tieni premuto {modifier} e premi un pulsante",
+      "keyboardKeys": "Tasti della tastiera",
       "editShortcuts": "Modifica le scorciatoie",
       "press": "Premi un pulsante",
       "lastPressed": "Ultimo pulsante premuto: {source} · nel gioco: {button}",
       "lastUnused": "Ultimo pulsante premuto: {source} · non usato nel gioco",
-      "outline": "Sagoma del controller",
+      "outline": "Pulsanti del controller",
       "remap": "Rimappa i pulsanti",
       "remapSub": "Per tutti i giochi, per console o per un gioco",
       "sticks": "Stick, grilletti e vibrazione",
