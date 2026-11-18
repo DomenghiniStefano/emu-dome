@@ -28,6 +28,9 @@ const ALLOWED = new Set([
   'BSD-2-Clause',
   'BSD-3-Clause',
   'MPL-2.0',
+  // No conditions at all (ISC without the notice): nothing to conflict with. tslib, via reka-ui;
+  // allowed by the owner 2026-11-18.
+  '0BSD',
 ])
 
 // Permissive, but with no FSF verdict on GPL compatibility: accepted only for dev tools.
