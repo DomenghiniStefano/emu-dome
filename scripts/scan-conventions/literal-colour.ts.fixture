@@ -1,0 +1,2 @@
+// Fixture of scripts/scan-conventions.mjs: a colour written into a class, in a variants file.
+export const v = 'text-[rgb(255_0_0)] px-8'

@@ -1,0 +1,4 @@
+<!-- Fixture of scripts/scan-conventions.mjs: a colour written into a class. -->
+<template>
+  <div class="bg-[#7c5cff] p-8">x</div>
+</template>

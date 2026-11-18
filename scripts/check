@@ -135,10 +135,20 @@ forbid 'no emoji' 'Use a Lucide icon or plain text.' \
 # "User interface: never hardcoded": text nodes and static placeholder / title / aria-label /
 # alt / label attributes in the .vue templates must go through t(). The rules, the exemptions
 # (<kbd>, <code>, the product and key names) and what it cannot see are in the script.
+# app/src/kit/ is left out, and from this gate only: the Kit page is development-only (main.ts
+# mounts it behind import.meta.env.DEV, the production build drops it) and its labels name the
+# primitives' states for whoever builds them, not for the user.
 printf '\n=== visible text\n'
 # shellcheck disable=SC2046 # one path per word; the repo has no spaces in .vue paths
-node scripts/visible-text.mjs $(git ls-files --cached --others --exclude-standard -- '*.vue') ||
+node scripts/visible-text.mjs $(git ls-files --cached --others --exclude-standard -- '*.vue' ':!app/src/kit/') ||
 	failed="$failed [visible text]"
+
+# The design system's conventions (docs/specs/2026-11-18-design-system-foundations.md): tokens,
+# primitives, variant constants. The rules, the screens they do not fail yet (cycle 2 migrates
+# them) and what each cannot see are in the script. The self-test runs every rule on its fixture
+# first, so a rule that stopped firing fails here too.
+run 'design system: rules fire on their fixtures' node scripts/scan-conventions.mjs --self-test
+run 'design system conventions' node scripts/scan-conventions.mjs
 
 # "Never include Nintendo files (games, BIOS, firmware, keys)".
 forbid 'no nintendo files' 'Remove it: the user adds games; the cores bring open-source BIOS replacements.' \

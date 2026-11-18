@@ -1,0 +1,4 @@
+<!-- Fixture of scripts/scan-conventions.mjs: a variant written as a string. -->
+<template>
+  <Button variant="primary" @click="go">x</Button>
+</template>

@@ -1,0 +1,4 @@
+<!-- Fixture of scripts/scan-conventions.mjs: the OS-following dark variant. -->
+<template>
+  <div class="bg-surface dark:bg-bg">x</div>
+</template>
