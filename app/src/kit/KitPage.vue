@@ -1,0 +1,87 @@
+<script setup lang="ts">
+// The Kit page (development only, `#kit`, main.ts): every primitive of src/components/ui in every
+// state side by side, in each of the three themes. Fully usable with the arrows / Enter (and the
+// controller inside the app): it is a nav scope like any screen, which is how each primitive's
+// navigation is checked by hand. Its labels are plain text, not i18n: the page never ships
+// (scripts/check exempts src/kit/ from the visible-text gate, and from that only).
+import { ref, watch } from 'vue'
+import { accentTokens } from '@/accent'
+import { Segmented, SegmentedItem } from '@/components/ui/segmented'
+import { dispatchNav, keyToNav, useNavScope } from '@/nav'
+import ButtonSection from './sections/ButtonSection.vue'
+import CardSection from './sections/CardSection.vue'
+import ChipSection from './sections/ChipSection.vue'
+import DialogSection from './sections/DialogSection.vue'
+import SegmentedSection from './sections/SegmentedSection.vue'
+import SelectSection from './sections/SelectSection.vue'
+import SliderSection from './sections/SliderSection.vue'
+import SwitchSection from './sections/SwitchSection.vue'
+import TabsSection from './sections/TabsSection.vue'
+
+const theme = ref(document.documentElement.dataset.theme ?? 'dark')
+watch(theme, t => (document.documentElement.dataset.theme = t), { immediate: true })
+
+// The swatches of `general.accent` (settings catalog), written the way appearance.ts writes the
+// user's accent, so every primitive is seen with the run-time accent tokens.
+const SWATCHES = ['#7152f7', '#2f7ae5', '#1f9d8a', '#d9622b', '#c2417a']
+const accent = ref(SWATCHES[0] ?? '')
+watch(accent, swatch => {
+  document.getElementById('kit-accent')?.remove()
+  const tokens = accentTokens(swatch)
+  if (!tokens) return
+  const style = document.createElement('style')
+  style.id = 'kit-accent'
+  const block = (sel: string, t: Record<string, string>) =>
+    `${sel}{${Object.entries(t)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(';')}}`
+  style.textContent = [
+    block(':root', tokens.dark),
+    block(":root[data-theme='dark']", tokens.dark),
+    block(":root[data-theme='black']", tokens.black),
+    block(":root[data-theme='light']", tokens.light),
+  ].join(' ')
+  document.head.appendChild(style)
+})
+
+// The page stands in for App.vue: arrows and Enter become nav steps, exactly as App.vue's own
+// window listener does in the shell.
+window.addEventListener('keydown', e => {
+  const nav = keyToNav(e)
+  if (!nav) return
+  e.preventDefault()
+  dispatchNav(nav)
+})
+
+const root = ref<HTMLElement | null>(null)
+useNavScope(root, { autofocus: true })
+</script>
+
+<template>
+  <main ref="root" class="h-full overflow-y-auto bg-bg font-sans text-body text-ink">
+    <div class="flex flex-col gap-24 p-32">
+      <header class="flex flex-wrap items-center justify-between gap-16">
+        <h1 class="m-0 text-title text-ink">EmuDome · Kit</h1>
+        <div class="flex flex-wrap items-center gap-12">
+          <Segmented v-model="accent" aria-label="Accent">
+            <SegmentedItem v-for="s in SWATCHES" :key="s" :value="s">{{ s }}</SegmentedItem>
+          </Segmented>
+          <Segmented v-model="theme" aria-label="Theme">
+            <SegmentedItem value="dark">Scuro</SegmentedItem>
+            <SegmentedItem value="black">Nero</SegmentedItem>
+            <SegmentedItem value="light">Chiaro</SegmentedItem>
+          </Segmented>
+        </div>
+      </header>
+      <ButtonSection />
+      <CardSection />
+      <ChipSection />
+      <TabsSection />
+      <SwitchSection />
+      <SegmentedSection />
+      <SliderSection />
+      <SelectSection />
+      <DialogSection />
+    </div>
+  </main>
+</template>
