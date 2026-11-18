@@ -1,0 +1,158 @@
+{
+  "audio": {
+    "callback_interval_ms_max": 11.323099999999998,
+    "callbacks": 3000,
+    "device": {
+      "buffer": "default",
+      "channels": 8,
+      "default_channels": 8,
+      "default_rate": 44100,
+      "devices": [
+        "CABLE Input (VB-Audio Virtual Cable)",
+        "Altoparlanti (VB-Audio Virtual Cable)",
+        "Altoparlanti (Logitech G432 Gaming Headset)",
+        "LG ULTRAGEAR+ (NVIDIA High Definition Audio)"
+      ],
+      "name": "Altoparlanti (Logitech G432 Gaming Headset)",
+      "rate": 44100,
+      "sample_format": "F32",
+      "supported": [
+        "8 ch, 8000-8000 Hz, F32, 80..80 frames",
+        "8 ch, 11025-11025 Hz, F32, 110..110 frames",
+        "8 ch, 12000-12000 Hz, F32, 120..120 frames",
+        "8 ch, 16000-16000 Hz, F32, 160..160 frames",
+        "8 ch, 22050-22050 Hz, F32, 221..221 frames",
+        "8 ch, 24000-24000 Hz, F32, 240..240 frames",
+        "8 ch, 32000-32000 Hz, F32, 320..320 frames",
+        "8 ch, 44100-44100 Hz, F32, 441..441 frames",
+        "8 ch, 48000-48000 Hz, F32, 480..480 frames",
+        "8 ch, 64000-64000 Hz, F32, 640..640 frames",
+        "8 ch, 88200-88200 Hz, F32, 882..882 frames",
+        "8 ch, 96000-96000 Hz, F32, 960..960 frames",
+        "8 ch, 176400-176400 Hz, F32, 1764..1764 frames",
+        "8 ch, 192000-192000 Hz, F32, 1920..1920 frames",
+        "8 ch, 352800-352800 Hz, F32, 3528..3528 frames",
+        "8 ch, 384000-384000 Hz, F32, 3840..3840 frames"
+      ]
+    },
+    "device_latency_ms": {
+      "avg": 31.932410724666916,
+      "max": 31.950113
+    },
+    "error": null,
+    "fill_ms": {
+      "avg": 47.79173278808594,
+      "max": 65.36865234375,
+      "min": 19.287109375
+    },
+    "frames_per_callback": [
+      441,
+      441
+    ],
+    "queue_overflow_samples": 0,
+    "ratio": {
+      "avg": 0.9989826443990089,
+      "max": 1.0004473876953126,
+      "min": 0.9966072591145834
+    },
+    "tone_discontinuities": 0,
+    "underrun_callbacks": 0,
+    "underrun_frames": 0,
+    "windows_10s": [
+      {
+        "device_latency_ms_avg": 31.931378819180317,
+        "fill_ms_avg": 37.31151965710071,
+        "underrun_frames": 0
+      },
+      {
+        "device_latency_ms_avg": 31.933666779220268,
+        "fill_ms_avg": 50.36478109293051,
+        "underrun_frames": 0
+      }
+    ]
+  },
+  "build": "release",
+  "core": {
+    "fps": 59.69946270483565,
+    "frames": 1791,
+    "target_fps": 59.727500915527344
+  },
+  "cpu": {
+    "process_pct_of_machine": 1.054678007897929,
+    "process_pct_of_one_core": 8.437424063183432
+  },
+  "logical_cpus": 8,
+  "main_unix_ms": 1794868958448.1772,
+  "native_error": null,
+  "os": "Windows",
+  "schema": 1,
+  "seconds": 30.00027,
+  "startup": {
+    "first_frame_ms_since_main": 291.9228515625
+  },
+  "status": "ok",
+  "tuning": {
+    "audio": {
+      "buffer": "default",
+      "channels": null,
+      "device": null,
+      "rate": null,
+      "target_ms": 60
+    },
+    "bench": {
+      "open_menu_after": null,
+      "out": "<bench-dir>\\runs\\v-webview-1.json",
+      "seconds": 30,
+      "tone": null,
+      "warmup_seconds": 2
+    },
+    "data_dir": "<bench-dir>\\data",
+    "video": {
+      "dx12_presentation": null,
+      "frame_latency": 1,
+      "path": "webview",
+      "present_mode": "autovsync",
+      "wgpu_backend": null
+    },
+    "warnings": []
+  },
+  "video": {
+    "dropped_frames": 0,
+    "duplicated_presents": 5406,
+    "expected_new_frames": 1791.8411538910675,
+    "new_frame_fps": 59.73279573817169,
+    "new_frame_interval_ms": {
+      "count": 1791,
+      "max": 26.599853515625,
+      "mean": 16.740312756272683,
+      "p50": 16.699951171875,
+      "p95": 19.900146484375,
+      "p99": 20.900146484375
+    },
+    "new_frame_intervals_off_by_25pct": 33,
+    "new_frames": 1792,
+    "present_fps": 239.93117395276775,
+    "present_interval_ms": {
+      "count": 7197,
+      "max": 16.300048828125,
+      "mean": 4.167514255614319,
+      "p50": 4.199951171875,
+      "p95": 5.300048828125,
+      "p99": 6.300048828125
+    },
+    "presents": 7198
+  },
+  "video_mode": "webview",
+  "launcher": {
+    "name": "v-webview-1",
+    "pid": 17016,
+    "exit_code": 0,
+    "still_running": false,
+    "focus_taken": false,
+    "foreground_pid_before": 21840,
+    "process_start_unix_ms": 1794868958439,
+    "screenshot": null,
+    "tree_pids": 7,
+    "tree_cpu_pct_of_one_core": 44.09037483189957
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "audio": {
+    "callback_interval_ms_max": 10.783,
+    "callbacks": 600,
+    "device": {
+      "buffer": "default",
+      "channels": 8,
+      "default_channels": 8,
+      "default_rate": 44100,
+      "devices": [
+        "CABLE Input (VB-Audio Virtual Cable)",
+        "Altoparlanti (VB-Audio Virtual Cable)",
+        "Altoparlanti (Logitech G432 Gaming Headset)",
+        "LG ULTRAGEAR+ (NVIDIA High Definition Audio)"
+      ],
+      "name": "Altoparlanti (Logitech G432 Gaming Headset)",
+      "rate": 44100,
+      "sample_format": "F32",
+      "supported": [
+        "8 ch, 8000-8000 Hz, F32, 80..80 frames",
+        "8 ch, 11025-11025 Hz, F32, 110..110 frames",
+        "8 ch, 12000-12000 Hz, F32, 120..120 frames",
+        "8 ch, 16000-16000 Hz, F32, 160..160 frames",
+        "8 ch, 22050-22050 Hz, F32, 221..221 frames",
+        "8 ch, 24000-24000 Hz, F32, 240..240 frames",
+        "8 ch, 32000-32000 Hz, F32, 320..320 frames",
+        "8 ch, 44100-44100 Hz, F32, 441..441 frames",
+        "8 ch, 48000-48000 Hz, F32, 480..480 frames",
+        "8 ch, 64000-64000 Hz, F32, 640..640 frames",
+        "8 ch, 88200-88200 Hz, F32, 882..882 frames",
+        "8 ch, 96000-96000 Hz, F32, 960..960 frames",
+        "8 ch, 176400-176400 Hz, F32, 1764..1764 frames",
+        "8 ch, 192000-192000 Hz, F32, 1920..1920 frames",
+        "8 ch, 352800-352800 Hz, F32, 3528..3528 frames",
+        "8 ch, 384000-384000 Hz, F32, 3840..3840 frames"
+      ]
+    },
+    "device_latency_ms": {
+      "avg": 31.936205125000047,
+      "max": 31.950113
+    },
+    "error": null,
+    "fill_ms": {
+      "avg": 0.0487518310546875,
+      "max": 19.6075439453125,
+      "min": 0
+    },
+    "frames_per_callback": [
+      441,
+      441
+    ],
+    "queue_overflow_samples": 0,
+    "ratio": {
+      "avg": 0.9950040626525917,
+      "max": 0.9966339619954427,
+      "min": 0.995
+    },
+    "tone_discontinuities": 0,
+    "underrun_callbacks": 599,
+    "underrun_frames": 389966,
+    "windows_10s": []
+  },
+  "build": "release",
+  "core": {
+    "fps": 0,
+    "frames": 0,
+    "target_fps": 59.727500915527344
+  },
+  "cpu": {
+    "process_pct_of_machine": 1.2694554635088287,
+    "process_pct_of_one_core": 10.15564370807063
+  },
+  "gpu": {
+    "adapter": "NVIDIA GeForce RTX 3060",
+    "alpha_mode": "Opaque",
+    "backend": "Vulkan",
+    "device_type": "DiscreteGpu",
+    "driver": "NVIDIA",
+    "driver_info": "617.42",
+    "format": "Bgra8UnormSrgb",
+    "frame_latency": 1,
+    "present_mode_requested": "AutoVsync",
+    "present_mode_used": "AutoVsync",
+    "present_modes_supported": [
+      "Fifo",
+      "FifoRelaxed",
+      "Mailbox",
+      "Immediate"
+    ]
+  },
+  "logical_cpus": 8,
+  "main_unix_ms": 1794869025564.0327,
+  "native_error": null,
+  "os": "Windows",
+  "schema": 1,
+  "seconds": 6.0003582,
+  "startup": {
+    "first_frame_ms_since_main": 915.5967
+  },
+  "status": "ok",
+  "surface_errors": {},
+  "tuning": {
+    "audio": {
+      "buffer": "default",
+      "channels": null,
+      "device": null,
+      "rate": null,
+      "target_ms": 60
+    },
+    "bench": {
+      "open_menu_after": 5,
+      "out": "<bench-dir>\\runs\\m-vulkan.json",
+      "seconds": 6,
+      "tone": null,
+      "warmup_seconds": 2
+    },
+    "data_dir": "<bench-dir>\\data",
+    "video": {
+      "dx12_presentation": null,
+      "frame_latency": 1,
+      "path": null,
+      "present_mode": "autovsync",
+      "wgpu_backend": "vulkan"
+    },
+    "warnings": []
+  },
+  "video": {
+    "dropped_frames": 0,
+    "duplicated_presents": 1439,
+    "expected_new_frames": 358.386399883992,
+    "new_frame_fps": 0.1666567172606462,
+    "new_frame_interval_ms": null,
+    "new_frame_intervals_off_by_25pct": 0,
+    "new_frames": 1,
+    "present_fps": 239.98567285533053,
+    "present_interval_ms": {
+      "count": 1439,
+      "max": 8.649199999999837,
+      "mean": 4.165178457261983,
+      "p50": 4.168700000000172,
+      "p95": 5.246200000000044,
+      "p99": 6.611900000000787
+    },
+    "presents": 1440
+  },
+  "video_mode": "native",
+  "launcher": {
+    "name": "m-vulkan",
+    "pid": 27948,
+    "exit_code": 0,
+    "still_running": false,
+    "focus_taken": false,
+    "foreground_pid_before": 21840,
+    "process_start_unix_ms": 1794869025555,
+    "screenshot": "1296x839 centre=#ff00ff",
+    "tree_pids": 7,
+    "tree_cpu_pct_of_one_core": 11.00568483456916
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "audio": {
+    "callback_interval_ms_max": 14.2027,
+    "callbacks": 3000,
+    "device": {
+      "buffer": "default",
+      "channels": 8,
+      "default_channels": 8,
+      "default_rate": 44100,
+      "devices": [
+        "CABLE Input (VB-Audio Virtual Cable)",
+        "Altoparlanti (VB-Audio Virtual Cable)",
+        "Altoparlanti (Logitech G432 Gaming Headset)",
+        "LG ULTRAGEAR+ (NVIDIA High Definition Audio)"
+      ],
+      "name": "Altoparlanti (Logitech G432 Gaming Headset)",
+      "rate": 44100,
+      "sample_format": "F32",
+      "supported": [
+        "8 ch, 8000-8000 Hz, F32, 80..80 frames",
+        "8 ch, 11025-11025 Hz, F32, 110..110 frames",
+        "8 ch, 12000-12000 Hz, F32, 120..120 frames",
+        "8 ch, 16000-16000 Hz, F32, 160..160 frames",
+        "8 ch, 22050-22050 Hz, F32, 221..221 frames",
+        "8 ch, 24000-24000 Hz, F32, 240..240 frames",
+        "8 ch, 32000-32000 Hz, F32, 320..320 frames",
+        "8 ch, 44100-44100 Hz, F32, 441..441 frames",
+        "8 ch, 48000-48000 Hz, F32, 480..480 frames",
+        "8 ch, 64000-64000 Hz, F32, 640..640 frames",
+        "8 ch, 88200-88200 Hz, F32, 882..882 frames",
+        "8 ch, 96000-96000 Hz, F32, 960..960 frames",
+        "8 ch, 176400-176400 Hz, F32, 1764..1764 frames",
+        "8 ch, 192000-192000 Hz, F32, 1920..1920 frames",
+        "8 ch, 352800-352800 Hz, F32, 3528..3528 frames",
+        "8 ch, 384000-384000 Hz, F32, 3840..3840 frames"
+      ]
+    },
+    "device_latency_ms": {
+      "avg": 31.916651146333752,
+      "max": 31.950113
+    },
+    "error": null,
+    "fill_ms": {
+      "avg": 46.81513468424479,
+      "max": 65.49072265625,
+      "min": 16.815185546875
+    },
+    "frames_per_callback": [
+      441,
+      441
+    ],
+    "queue_overflow_samples": 0,
+    "ratio": {
+      "avg": 0.9989012612236922,
+      "max": 1.0004575602213541,
+      "min": 0.9964012654622396
+    },
+    "tone_discontinuities": 0,
+    "underrun_callbacks": 0,
+    "underrun_frames": 0,
+    "windows_10s": [
+      {
+        "device_latency_ms_avg": 31.91302987912037,
+        "fill_ms_avg": 35.64457698063655,
+        "underrun_frames": 0
+      },
+      {
+        "device_latency_ms_avg": 31.91776437262687,
+        "fill_ms_avg": 49.40811141983017,
+        "underrun_frames": 0
+      }
+    ]
+  },
+  "build": "release",
+  "core": {
+    "fps": 59.73307966685501,
+    "frames": 1792,
+    "target_fps": 59.727500915527344
+  },
+  "cpu": {
+    "process_pct_of_machine": 10.17573803703247,
+    "process_pct_of_one_core": 81.40590429625976
+  },
+  "gpu": {
+    "adapter": "NVIDIA GeForce RTX 3060",
+    "alpha_mode": "Auto",
+    "backend": "Dx12",
+    "device_type": "DiscreteGpu",
+    "driver": "32.0.16.1742",
+    "driver_info": "",
+    "format": "Bgra8UnormSrgb",
+    "frame_latency": 2,
+    "present_mode_requested": "Mailbox",
+    "present_mode_used": "Mailbox",
+    "present_modes_supported": [
+      "Mailbox",
+      "Fifo",
+      "Immediate"
+    ]
+  },
+  "logical_cpus": 8,
+  "main_unix_ms": 1794868596394.433,
+  "native_error": null,
+  "os": "Windows",
+  "schema": 1,
+  "seconds": 30.0001274,
+  "startup": {
+    "first_frame_ms_since_main": 762.8817
+  },
+  "status": "ok",
+  "surface_errors": {},
+  "tuning": {
+    "audio": {
+      "buffer": "default",
+      "channels": null,
+      "device": null,
+      "rate": null,
+      "target_ms": 60
+    },
+    "bench": {
+      "open_menu_after": null,
+      "out": "<bench-dir>\\runs\\v-dx12visual-mailbox-l2.json",
+      "seconds": 30,
+      "tone": null,
+      "warmup_seconds": 2
+    },
+    "data_dir": "<bench-dir>\\data",
+    "video": {
+      "dx12_presentation": "Visual",
+      "frame_latency": 2,
+      "path": null,
+      "present_mode": "mailbox",
+      "wgpu_backend": "dx12"
+    },
+    "warnings": []
+  },
+  "video": {
+    "dropped_frames": 0,
+    "duplicated_presents": 250665,
+    "expected_new_frames": 1791.832636749437,
+    "new_frame_fps": 59.766412858633394,
+    "new_frame_interval_ms": {
+      "count": 1792,
+      "max": 21.128600000000006,
+      "mean": 16.738805301339276,
+      "p50": 16.712500000001455,
+      "p95": 17.351400000000012,
+      "p99": 17.850800000000163
+    },
+    "new_frame_intervals_off_by_25pct": 3,
+    "new_frames": 1793,
+    "present_fps": 8415.230929985984,
+    "present_interval_ms": {
+      "count": 252457,
+      "max": 4.712300000001051,
+      "mean": 0.1188324926621131,
+      "p50": 0.08120000000053551,
+      "p95": 0.20859999999811407,
+      "p99": 0.7747999999955937
+    },
+    "presents": 252458
+  },
+  "video_mode": "native",
+  "launcher": {
+    "name": "v-dx12visual-mailbox-l2",
+    "pid": 33464,
+    "exit_code": 0,
+    "still_running": false,
+    "focus_taken": false,
+    "foreground_pid_before": 21840,
+    "process_start_unix_ms": 1794868596365,
+    "screenshot": null,
+    "tree_pids": 7,
+    "tree_cpu_pct_of_one_core": 81.52605338438268
+  }
+}

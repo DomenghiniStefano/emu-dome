@@ -4,12 +4,87 @@
 //! The surface is either Tauri's window (desktop) or one the system hands over later
 //! and may take back (Android's `SurfaceView`): [`Renderer::attach`] / [`Renderer::detach`].
 
+use std::collections::BTreeMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
+use emudome_core::tuning::{PresentMode, VideoTuning};
 use emudome_core::Shared;
+use parking_lot::Mutex;
+use serde::Serialize;
+
+/// How the surface presents, from the tuning knobs.
+#[derive(Debug, Clone, Copy)]
+pub struct SurfaceSettings {
+    pub present_mode: wgpu::PresentMode,
+    /// `desired_maximum_frame_latency`.
+    pub frame_latency: u32,
+}
+
+impl SurfaceSettings {
+    pub fn from_tuning(t: &VideoTuning) -> Self {
+        Self {
+            present_mode: match t.present_mode {
+                PresentMode::Fifo => wgpu::PresentMode::Fifo,
+                PresentMode::FifoRelaxed => wgpu::PresentMode::FifoRelaxed,
+                PresentMode::Mailbox => wgpu::PresentMode::Mailbox,
+                PresentMode::Immediate => wgpu::PresentMode::Immediate,
+                PresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
+                PresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
+            },
+            frame_latency: t.frame_latency,
+        }
+    }
+}
+
+/// What the GPU and the surface actually are, for logs and bench reports.
+#[derive(Debug, Clone, Serialize)]
+pub struct GpuInfo {
+    pub adapter: String,
+    pub backend: String,
+    pub device_type: String,
+    pub driver: String,
+    pub driver_info: String,
+    pub present_mode_requested: String,
+    /// Differs from the requested one when the surface does not support it (`AutoVsync` then).
+    pub present_mode_used: String,
+    pub present_modes_supported: Vec<String>,
+    pub frame_latency: u32,
+    pub format: String,
+    pub alpha_mode: String,
+}
+
+impl GpuInfo {
+    pub fn present_mode_supported(&self) -> bool {
+        self.present_mode_requested == self.present_mode_used
+    }
+}
+
+/// One frame presented on the surface.
+#[derive(Debug, Clone, Copy)]
+pub struct Present {
+    pub at: Instant,
+    /// The game frame it showed (`Frame::seq`).
+    pub seq: u64,
+}
+
+/// What the video thread measures. Presents are kept only while `presents` is `Some`
+/// (bench mode), so a normal session does not grow it.
+#[derive(Debug, Default)]
+pub struct VideoMetrics {
+    pub gpu: Option<GpuInfo>,
+    /// Why the last surface handed over could not be used.
+    pub surface_error: Option<String>,
+    /// `get_current_texture` failures, by kind.
+    pub surface_errors: BTreeMap<&'static str, u64>,
+    /// First present that showed a game frame.
+    pub first_game_present: Option<Instant>,
+    pub presents: Option<Vec<Present>>,
+}
+
+pub type SharedVideoMetrics = Arc<Mutex<VideoMetrics>>;
 
 enum Msg {
     Resize(u32, u32),
@@ -23,28 +98,42 @@ enum Msg {
 #[derive(Clone)]
 pub struct Renderer {
     tx: Sender<Msg>,
+    metrics: SharedVideoMetrics,
 }
 
 impl Renderer {
     /// Draws on Tauri's window. Must be called on the main thread: on Windows and Linux
     /// the window's native handle is only available there (from another thread Tauri
     /// blocks waiting for it). Drawing then continues on a dedicated thread.
-    pub fn spawn(window: tauri::Window, width: u32, height: u32) -> Result<Self> {
-        let gpu = Gpu::new(window.into(), width, height)?;
-        Self::start(Some(gpu))
+    pub fn spawn(
+        window: tauri::Window,
+        width: u32,
+        height: u32,
+        settings: SurfaceSettings,
+    ) -> Result<Self> {
+        let gpu = Gpu::new(window.into(), width, height, settings)?;
+        Self::start(Some(gpu), settings)
     }
 
     /// Starts with no surface: it arrives with [`Self::attach`].
-    pub fn spawn_detached() -> Result<Self> {
-        Self::start(None)
+    pub fn spawn_detached(settings: SurfaceSettings) -> Result<Self> {
+        Self::start(None, settings)
     }
 
-    fn start(gpu: Option<Gpu>) -> Result<Self> {
+    fn start(gpu: Option<Gpu>, settings: SurfaceSettings) -> Result<Self> {
+        let metrics = SharedVideoMetrics::default();
+        metrics.lock().gpu = gpu.as_ref().map(|g| g.info.clone());
         let (tx, rx) = mpsc::channel();
+        let video = Video::new(gpu, settings, metrics.clone());
         std::thread::Builder::new()
             .name("emudome-video".into())
-            .spawn(move || Video::new(gpu).run(rx))?;
-        Ok(Self { tx })
+            .spawn(move || video.run(rx))?;
+        Ok(Self { tx, metrics })
+    }
+
+    /// What the video thread measures (GPU in use, surface errors, presents in bench mode).
+    pub fn metrics(&self) -> &SharedVideoMetrics {
+        &self.metrics
     }
 
     pub fn resize(&self, width: u32, height: u32) {
@@ -81,6 +170,8 @@ const FPS_LOG_EVERY: Duration = Duration::from_secs(10);
 /// The video thread: the GPU (while there is a surface) and the game it shows.
 struct Video {
     gpu: Option<Gpu>,
+    settings: SurfaceSettings,
+    metrics: SharedVideoMetrics,
     source: Option<Arc<Shared>>,
     presented: u32,
     since: Instant,
@@ -89,9 +180,11 @@ struct Video {
 }
 
 impl Video {
-    fn new(gpu: Option<Gpu>) -> Self {
+    fn new(gpu: Option<Gpu>, settings: SurfaceSettings, metrics: SharedVideoMetrics) -> Self {
         Self {
             gpu,
+            settings,
+            metrics,
             source: None,
             presented: 0,
             since: Instant::now(),
@@ -125,9 +218,17 @@ impl Video {
                     }
                     Msg::Attach(target, w, h) => {
                         self.gpu = None;
-                        match Gpu::new(target, w, h) {
-                            Ok(gpu) => self.gpu = Some(gpu),
-                            Err(e) => log::error!("native video: surface not usable: {e:#}"),
+                        match Gpu::new(target, w, h, self.settings) {
+                            Ok(gpu) => {
+                                let mut m = self.metrics.lock();
+                                m.gpu = Some(gpu.info.clone());
+                                m.surface_error = None;
+                                self.gpu = Some(gpu);
+                            }
+                            Err(e) => {
+                                log::error!("native video: surface not usable: {e:#}");
+                                self.metrics.lock().surface_error = Some(format!("{e:#}"));
+                            }
                         }
                     }
                     Msg::Detach(ack) => {
@@ -139,8 +240,22 @@ impl Video {
             }
             if let Some(gpu) = &mut self.gpu {
                 gpu.upload_frame(self.source.as_deref());
-                if gpu.draw(self.inset) {
-                    self.presented += 1;
+                match gpu.draw(self.inset) {
+                    Ok(()) => {
+                        self.presented += 1;
+                        let at = Instant::now();
+                        let mut m = self.metrics.lock();
+                        if gpu.game.is_some() && m.first_game_present.is_none() {
+                            m.first_game_present = Some(at);
+                        }
+                        if let Some(presents) = &mut m.presents {
+                            presents.push(Present {
+                                at,
+                                seq: gpu.last_seq,
+                            });
+                        }
+                    }
+                    Err(kind) => *self.metrics.lock().surface_errors.entry(kind).or_default() += 1,
                 }
             }
             self.log_fps();
@@ -213,12 +328,19 @@ struct Gpu {
     sampler: wgpu::Sampler,
     game: Option<GameTexture>,
     last_seq: u64,
+    info: GpuInfo,
 }
 
 impl Gpu {
-    fn new(target: wgpu::SurfaceTarget<'static>, width: u32, height: u32) -> Result<Self> {
+    fn new(
+        target: wgpu::SurfaceTarget<'static>,
+        width: u32,
+        height: u32,
+        settings: SurfaceSettings,
+    ) -> Result<Self> {
         // No display handle: Windows and Android do not need it, and on Linux Tauri's
         // one does not match the surface's (MismatchingDisplayHandle).
+        // The environment (WGPU_BACKEND, WGPU_DX12_PRESENTATION_SYSTEM...) picks the backend.
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let surface = instance
@@ -231,7 +353,8 @@ impl Gpu {
             apply_limit_buckets: false,
         }))
         .context("no compatible GPU")?;
-        log::info!("GPU: {:?}", adapter.get_info());
+        let adapter_info = adapter.get_info();
+        log::info!("GPU: {adapter_info:?}");
         let (device, queue) =
             pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
                 label: Some("emudome"),
@@ -248,18 +371,55 @@ impl Gpu {
             .copied()
             .find(|f| f.is_srgb())
             .unwrap_or(caps.formats[0]);
+        // The Auto modes always resolve; an explicit one the surface lacks would be a
+        // validation error (a panic in wgpu): fall back to AutoVsync and say so.
+        let requested = settings.present_mode;
+        let present_mode = if matches!(
+            requested,
+            wgpu::PresentMode::AutoVsync | wgpu::PresentMode::AutoNoVsync
+        ) || caps.present_modes.contains(&requested)
+        {
+            requested
+        } else {
+            log::warn!(
+                "present mode {requested:?} not supported (supported: {:?}), using AutoVsync",
+                caps.present_modes
+            );
+            wgpu::PresentMode::AutoVsync
+        };
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
             width: width.max(1),
             height: height.max(1),
-            present_mode: wgpu::PresentMode::AutoVsync,
-            desired_maximum_frame_latency: 1,
+            present_mode,
+            desired_maximum_frame_latency: settings.frame_latency,
             alpha_mode: caps.alpha_modes[0],
             color_space: wgpu::SurfaceColorSpace::Auto,
             view_formats: vec![],
         };
         surface.configure(&device, &config);
+        let info = GpuInfo {
+            adapter: adapter_info.name.clone(),
+            backend: format!("{:?}", adapter_info.backend),
+            device_type: format!("{:?}", adapter_info.device_type),
+            driver: adapter_info.driver.clone(),
+            driver_info: adapter_info.driver_info.clone(),
+            present_mode_requested: format!("{:?}", settings.present_mode),
+            present_mode_used: format!("{present_mode:?}"),
+            present_modes_supported: caps
+                .present_modes
+                .iter()
+                .map(|m| format!("{m:?}"))
+                .collect(),
+            frame_latency: settings.frame_latency,
+            format: format!("{format:?}"),
+            alpha_mode: format!("{:?}", config.alpha_mode),
+        };
+        log::info!(
+            "surface: {format:?}, {present_mode:?}, frame latency {}",
+            settings.frame_latency
+        );
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("game"),
@@ -334,6 +494,7 @@ impl Gpu {
             sampler,
             game: None,
             last_seq: u64::MAX,
+            info,
         })
     }
 
@@ -432,22 +593,27 @@ impl Gpu {
         )
     }
 
-    /// Draws and presents; false when no frame was presented.
-    fn draw(&mut self, inset: f32) -> bool {
+    /// Draws and presents; when no frame was presented, the kind of surface error.
+    fn draw(&mut self, inset: f32) -> Result<(), &'static str> {
+        let skipped = |kind: &'static str| {
+            log::debug!("frame skipped: {kind}");
+            std::thread::sleep(Duration::from_millis(8));
+            Err(kind)
+        };
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t)
             | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+            wgpu::CurrentSurfaceTexture::Outdated => {
                 self.surface.configure(&self.device, &self.config);
-                return false;
+                return Err("outdated");
             }
-            other @ (wgpu::CurrentSurfaceTexture::Timeout
-            | wgpu::CurrentSurfaceTexture::Occluded
-            | wgpu::CurrentSurfaceTexture::Validation) => {
-                log::debug!("frame skipped: {other:?}");
-                std::thread::sleep(Duration::from_millis(8));
-                return false;
+            wgpu::CurrentSurfaceTexture::Lost => {
+                self.surface.configure(&self.device, &self.config);
+                return Err("lost");
             }
+            wgpu::CurrentSurfaceTexture::Timeout => return skipped("timeout"),
+            wgpu::CurrentSurfaceTexture::Occluded => return skipped("occluded"),
+            wgpu::CurrentSurfaceTexture::Validation => return skipped("validation"),
         };
         let view = output.texture.create_view(&Default::default());
         let mut encoder = self.device.create_command_encoder(&Default::default());
@@ -480,7 +646,7 @@ impl Gpu {
         }
         self.queue.submit([encoder.finish()]);
         self.queue.present(output);
-        true
+        Ok(())
     }
 }
 
