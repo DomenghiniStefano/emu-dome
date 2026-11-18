@@ -28,13 +28,8 @@
       "minutes": "{m} min"
     },
     "hero": {
-      "label": "ULTIMO GIOCO",
-      "meta": "{console} · {time} di gioco · {when}",
       "resume": "Riprendi",
-      "play": "Gioca",
-      "chooseSave": "Scegli un salvataggio",
-      "details": "Dettagli del gioco",
-      "autoSave": "Salvataggio rapido automatico"
+      "play": "Gioca"
     },
     "sortButton": {
       "last_played": "Ordina per: ultima partita",
@@ -94,6 +89,15 @@
       "fromAuto": "Riparte da: Automatico",
       "fromSlot": "Riparte da: Slot {slot}",
       "fromInGame": "Riparte da: Salvataggio del gioco"
+    },
+    "more": "Altre azioni",
+    "moreFor": "Altre azioni per {title}",
+    "menu": {
+      "cover": "Scegli la copertina…",
+      "favourite": "Aggiungi ai preferiti",
+      "unfavourite": "Togli dai preferiti",
+      "hide": "Nascondi dalla libreria",
+      "unhide": "Mostra nella libreria"
     }
   },
   "placeholder": {
@@ -144,7 +148,7 @@
     "openFailed": "Non riesco ad aprire il gioco. Controlla che il file sia un gioco GBA funzionante. Dettagli: {detail}",
     "noGame": "Nessun gioco aperto",
     "nativeVideoUnavailable": "Il video nativo non è disponibile su questo sistema.",
-    "webviewBackgroundFailed": "Non riesco a cambiare il fondo dell'interfaccia: {detail}",
+    "webviewBackgroundFailed": "Non riesco a cambiare il fondo dell’interfaccia: {detail}",
     "slotEmpty": "Lo slot {slot} è vuoto. Salva prima di caricarlo.",
     "stateSaveFailed": "Non riesco a scrivere lo slot {slot}: {detail}. Controlla che la cartella dei salvataggi sia scrivibile.",
     "stateLoadFailed": "Non riesco a leggere lo slot {slot}: {detail}. Riprova o usa un altro slot.",
@@ -1957,16 +1961,17 @@
       "overwriteHint": "Per sovrascriverlo, apri il gioco e salva dal menu rapido.",
       "delete": "Elimina",
       "close": "Chiudi",
-      "deleteTitle": "Vuoi eliminare il salvataggio rapido in {slot}?",
-      "deleteText": "Non si può annullare.",
-      "deleteConfirm": "Elimina {slot}",
-      "cancel": "Annulla"
+      "deleteTitle": "Eliminare il salvataggio rapido nello slot {slot}?",
+      "deleteText": "Non si può recuperare; il salvataggio del gioco resta.",
+      "deleteConfirm": "Elimina lo slot {slot}",
+      "cancel": "Annulla",
+      "mightNotLoad": "Potrebbe non caricarsi"
     },
     "empty": {
       "title": "Ancora nessun salvataggio",
-      "text1min": "Quando giochi, EmuDome salva in automatico ogni minuto e quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con L3 + R1.",
-      "text5min": "Quando giochi, EmuDome salva in automatico ogni 5 minuti e quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con L3 + R1.",
-      "textNever": "Quando giochi, EmuDome salva in automatico quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con L3 + R1.",
+      "text1min": "Quando giochi, EmuDome salva in automatico ogni minuto e quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con {combo}.",
+      "text5min": "Quando giochi, EmuDome salva in automatico ogni 5 minuti e quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con {combo}.",
+      "textNever": "Quando giochi, EmuDome salva in automatico quando chiudi il gioco. I salvataggi rapidi li fai dal menu rapido o con {combo}.",
       "openLibrary": "Apri la libreria",
       "import": "Importa salvataggi…",
       "formats": "Anche da DeSmuME e da altri emulatori: .sav, .dsv, .duc"

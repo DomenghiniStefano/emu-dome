@@ -28,13 +28,8 @@
       "minutes": "{m} min"
     },
     "hero": {
-      "label": "LAST PLAYED",
-      "meta": "{console} · {time} played · {when}",
       "resume": "Resume",
-      "play": "Play",
-      "chooseSave": "Choose a save",
-      "details": "Game details",
-      "autoSave": "Auto quick save"
+      "play": "Play"
     },
     "sortButton": {
       "last_played": "Sort by: last played",
@@ -94,6 +89,15 @@
       "fromAuto": "Picks up from: Automatic",
       "fromSlot": "Picks up from: Slot {slot}",
       "fromInGame": "Picks up from: In-game save"
+    },
+    "more": "More actions",
+    "moreFor": "More actions for {title}",
+    "menu": {
+      "cover": "Choose the cover…",
+      "favourite": "Add to favourites",
+      "unfavourite": "Remove from favourites",
+      "hide": "Hide from the library",
+      "unhide": "Show in the library"
     }
   },
   "placeholder": {
@@ -146,9 +150,9 @@
     "nativeVideoUnavailable": "Native video isn't available on this system. Keep using “In the webview”.",
     "webviewBackgroundFailed": "Couldn't change the interface background: {detail}. Try again.",
     "slotEmpty": "Slot {slot} is empty. Save to it first.",
-    "stateSaveFailed": "Couldn't save to slot {slot}: {detail}. Check that the save folder is writable.",
-    "stateLoadFailed": "Couldn't read slot {slot}: {detail}. Try again or use another slot.",
-    "stateInvalid": "The state in slot {slot} doesn't fit this game or this core version. Save it again.",
+    "stateSaveFailed": "Couldn’t save to slot {slot}: {detail}. Check that the save folder is writable.",
+    "stateLoadFailed": "Couldn’t read slot {slot}: {detail}. Try again or use another slot.",
+    "stateInvalid": "The state in slot {slot} doesn’t fit this game or this core version. Save it again.",
     "settingUnknown": "Unknown setting: it is ignored. If it keeps happening, export the log from Settings › About.",
     "settingLevelRefused": "This setting only applies to {levels}: change it there.",
     "settingInvalidValue": "Invalid value for “{name}”: back to the default.",
@@ -159,12 +163,12 @@
     "libraryWriteFailed": "Couldn’t save the library: check the free disk space and try again.",
     "coverInvalid": "This image can’t be opened. Choose a JPG or PNG file.",
     "unexpected": "Something went wrong: {detail}",
-    "nothingToUndo": "There's no load to undo.",
-    "undoFailed": "Couldn't go back to before the load: {detail}. Load another quick save.",
-    "saveUnreadable": "The in-game save can't be read, so EmuDome set it aside. Restore a backup from Saves.",
+    "nothingToUndo": "There’s no load to undo.",
+    "undoFailed": "Couldn’t go back to before the load: {detail}. Load another quick save.",
+    "saveUnreadable": "The in-game save can’t be read, so EmuDome set it aside. Restore a backup from Saves.",
     "saveGameOpen": "This game is open. Close it and try again.",
-    "saveImportInvalid": "This file isn't a save EmuDome can import ({detail}). Choose a .sav, .dsv or .duc file.",
-    "saveFileFailed": "Couldn't use the save file: {detail}. Check that the saves folder is writable and try again."
+    "saveImportInvalid": "This file isn’t a save EmuDome can import ({detail}). Choose a .sav, .dsv or .duc file.",
+    "saveFileFailed": "Couldn’t use the save file: {detail}. Check that the saves folder is writable and try again."
   },
   "consoleShort": {
     "gb": "GB",
@@ -731,7 +735,7 @@
         }
       },
       "autoq": {
-        "name": "Automatic quick save",
+        "name": "Auto quick save",
         "desc": "A slot EmuDome updates by itself while you play.",
         "option": {
           "1min": "Every minute",
@@ -740,7 +744,7 @@
         }
       },
       "autoexit": {
-        "name": "Automatic quick save on close",
+        "name": "Auto quick save on close",
         "desc": "So you can pick up exactly where you left off."
       },
       "resume": {
@@ -1635,7 +1639,7 @@
     "slowTitle": "The game runs slower than normal ({fps} FPS of {target})",
     "slowText": "This device struggles to keep the game at the right speed. Try the “Maximum performance” preset in Settings.",
     "notNow": "Not now",
-    "brokenTitle": "{title}'s save can't be read",
+    "brokenTitle": "{title}’s save can’t be read",
     "brokenText": "We can’t read the save of {game}. We set it aside: you can start again from the latest backup, from {date}.",
     "brokenNoBackup": "We can’t read the save of {game}. We set it aside.",
     "brokenUse": "Use the backup",
@@ -1929,7 +1933,7 @@
     "noneShown": "No game matches the search.",
     "inGameTitle": "IN-GAME SAVE",
     "inGameLine": "Saved {when} · {size}",
-    "noInGame": "This game hasn't written a save yet.",
+    "noInGame": "This game hasn’t written a save yet.",
     "export": "Export…",
     "quickTitle": "QUICK SAVES",
     "noQuick": "No quick saves. Save from the quick menu while you play.",
@@ -1942,7 +1946,7 @@
       "restore": "Before a restore"
     },
     "backupNote": "A backup is made every time the game starts and before every import. Restoring makes a backup too.",
-    "brokenNote": "The in-game save couldn't be read and was set aside ({file}). Restore a backup below.",
+    "brokenNote": "The in-game save couldn’t be read and was set aside ({file}). Restore a backup below.",
     "exported": "Save exported",
     "restored": "Backup restored",
     "deleted": "Quick save deleted",
@@ -1957,16 +1961,17 @@
       "overwriteHint": "To overwrite it, open the game and save from the quick menu.",
       "delete": "Delete",
       "close": "Close",
-      "deleteTitle": "Delete the quick save in {slot}?",
-      "deleteText": "This can't be undone.",
-      "deleteConfirm": "Delete {slot}",
-      "cancel": "Cancel"
+      "deleteTitle": "Delete the quick save in slot {slot}?",
+      "deleteText": "It can’t be recovered; the game save stays.",
+      "deleteConfirm": "Delete slot {slot}",
+      "cancel": "Cancel",
+      "mightNotLoad": "Might not load"
     },
     "empty": {
       "title": "No saves yet",
-      "text1min": "When you play, EmuDome saves automatically every minute and when you close the game. You make quick saves from the quick menu or with L3 + R1.",
-      "text5min": "When you play, EmuDome saves automatically every 5 minutes and when you close the game. You make quick saves from the quick menu or with L3 + R1.",
-      "textNever": "When you play, EmuDome saves automatically when you close the game. You make quick saves from the quick menu or with L3 + R1.",
+      "text1min": "When you play, EmuDome saves automatically every minute and when you close the game. You make quick saves from the quick menu or with {combo}.",
+      "text5min": "When you play, EmuDome saves automatically every 5 minutes and when you close the game. You make quick saves from the quick menu or with {combo}.",
+      "textNever": "When you play, EmuDome saves automatically when you close the game. You make quick saves from the quick menu or with {combo}.",
       "openLibrary": "Open the library",
       "import": "Import saves…",
       "formats": "Also from DeSmuME and other emulators: .sav, .dsv, .duc"
@@ -2005,7 +2010,7 @@
       "newest": "Newest",
       "keepThis": "Keep this one",
       "keepBoth": "Keep both",
-      "later": "Decide later, open this device's version"
+      "later": "Decide later, open this device’s version"
     },
     "slotMore": "More actions for the slot"
   }

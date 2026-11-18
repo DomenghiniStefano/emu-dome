@@ -11,8 +11,9 @@
 // Controller / keyboard: the shell's nav scope covers this view; the dialogs open their own.
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Ellipsis, Save, Search, TriangleAlert } from '@lucide/vue'
+import { Save, Search, TriangleAlert } from '@lucide/vue'
 import {
+  AUTO_SLOT,
   emu,
   type GameSaves,
   type ImportCandidate,
@@ -22,10 +23,12 @@ import {
   type SavesSummary,
   type SettingsScope,
 } from '../emu'
+import { comboText } from '../controls'
 import { errorText, saveWhenLabel, sizeLabel } from '../i18n/labels'
 import { library } from '../library'
 import FlowDialog from './FlowDialog.vue'
 import GameCover from './GameCover.vue'
+import SlotTile from './SlotTile.vue'
 import { savesFocus } from '../savesFocus'
 
 const emit = defineEmits<{
@@ -271,13 +274,26 @@ const sortedGames = computed(() =>
 
 // ---- E03 ----
 
-const emptyText = computed(() =>
-  autoq.value === '1min'
-    ? t('saves.empty.text1min')
+/** The quick-save shortcut as C01 shows it (bindings at «Tutti i giochi», generic pad names). */
+const saveCombo = ref('')
+async function loadCombo() {
+  try {
+    const b = await emu.controls.bindings('generic', GLOBAL)
+    const row = b.combos.find(c => c.hotkey === 'save')
+    saveCombo.value = comboText('generic', b.modifier, row?.pos ?? row?.default ?? null)
+  } catch (e) {
+    fail(e)
+  }
+}
+
+const emptyText = computed(() => {
+  const combo = saveCombo.value
+  return autoq.value === '1min'
+    ? t('saves.empty.text1min', { combo })
     : autoq.value === 'never'
-      ? t('saves.empty.textNever')
-      : t('saves.empty.text5min'),
-)
+      ? t('saves.empty.textNever', { combo })
+      : t('saves.empty.text5min', { combo })
+})
 
 // ---- Loading and the initial focus ----
 // The shell autofocuses on mount, before the saves are known: the focus then sits on the rail's
@@ -304,9 +320,11 @@ let unlistenSettings: (() => void) | null = null
 onMounted(async () => {
   await loadSettings()
   await refresh()
+  void loadCombo()
   unlistenSettings = await emu.settings.onChanged(c => {
     if (c.key === 'saves.slots' || c.key === 'saves.autoq')
       void loadSettings().then(() => refresh())
+    if (c.key === 'pad.combos' || c.key === 'pad.mod') void loadCombo()
   })
 })
 onUnmounted(() => unlistenSettings?.())
@@ -480,31 +498,20 @@ onUnmounted(() => unlistenSettings?.())
 
           <section class="block">
             <h3 class="overline">{{ t('saves.quickTitle') }}</h3>
-            <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03). -->
+            <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03).
+                 The date only: a quick save has no play time of its own (Cowork, #37).
+                 TODO(#59 item 3): `outdated` («Potrebbe non caricarsi») needs the version a state
+                 was made with; the saves do not record it yet. -->
             <div v-if="details.quick.length" class="slots">
-              <div v-for="q in details.quick" :key="q.slot" class="slot">
-                <span class="thumb" aria-hidden="true">
-                  <img v-if="q.thumbUrl" :src="q.thumbUrl" alt="" />
-                </span>
-                <span class="strong">{{ slotName(q.slot) }}</span>
-                <!-- The date only: a quick save has no play time of its own (Cowork, #37). -->
-                <span v-if="q.savedAt !== null" class="muted small num">
-                  {{ saveWhenLabel(q.savedAt) }}
-                </span>
-                <span class="slot-actions">
-                  <button class="play-here" @click="emit('openGame', selected, q.slot)">
-                    {{ t('saves.quick.load') }}
-                  </button>
-                  <button
-                    class="slot-more"
-                    :aria-label="t('saves.slotMore')"
-                    :title="t('saves.slotMore')"
-                    @click="openQuick(q, $event)"
-                  >
-                    <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
-                  </button>
-                </span>
-              </div>
+              <SlotTile
+                v-for="q in details.quick"
+                :key="q.slot"
+                :name="slotName(q.slot)"
+                :when="q.savedAt !== null ? saveWhenLabel(q.savedAt) : null"
+                :thumb-url="q.thumbUrl"
+                @play="emit('openGame', selected, q.slot)"
+                @more="e => openQuick(q, e)"
+              />
             </div>
             <p v-else class="muted">{{ t('saves.noQuick') }}</p>
           </section>
@@ -551,7 +558,10 @@ onUnmounted(() => unlistenSettings?.())
       </p>
       <p class="p small">{{ t('saves.quick.overwriteHint') }}</p>
       <template #actions>
-        <button class="btn" @click="confirmDelete = true">{{ t('saves.quick.delete') }}</button>
+        <!-- The Automatico slot cannot be deleted (#59 item 3): EmuDome fills it by itself. -->
+        <button v-if="quick.slot !== AUTO_SLOT" class="btn" @click="confirmDelete = true">
+          {{ t('saves.quick.delete') }}
+        </button>
         <button class="btn" @click="exportSave(selected, { kind: 'quick', slot: quick.slot })">
           {{ t('saves.export') }}
         </button>
@@ -564,7 +574,7 @@ onUnmounted(() => unlistenSettings?.())
 
     <FlowDialog
       v-if="quick && confirmDelete"
-      :title="t('saves.quick.deleteTitle', { slot: slotName(quick.slot) })"
+      :title="t('saves.quick.deleteTitle', { slot: quick.slot })"
       tone="danger"
       @back="confirmDelete = false"
     >
@@ -574,7 +584,7 @@ onUnmounted(() => unlistenSettings?.())
           {{ t('saves.quick.cancel') }}
         </button>
         <button class="btn danger" @click="deleteQuick">
-          {{ t('saves.quick.deleteConfirm', { slot: slotName(quick.slot) }) }}
+          {{ t('saves.quick.deleteConfirm', { slot: quick.slot }) }}
         </button>
       </template>
     </FlowDialog>
@@ -853,64 +863,19 @@ onUnmounted(() => unlistenSettings?.())
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
-.slot {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border-radius: var(--radius-10);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  text-align: left;
-}
-.slot-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 2px;
-}
-.slot-actions button {
-  height: 28px;
-  padding: 0 10px;
-  border-radius: var(--radius-6);
-  font-weight: 500;
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.play-here {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-}
-.slot-more {
-  flex: 0 0 auto;
-  border: 1px solid var(--line);
-  background: var(--surface-raised);
-}
-.slot-actions button:hover {
-  background: var(--surface-hover);
-}
-.thumb,
 .big-thumb {
   display: block;
-  aspect-ratio: 3 / 2;
-  border-radius: 4px;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-10);
   background: #000;
   overflow: hidden;
 }
-.thumb img,
 .big-thumb img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
   image-rendering: pixelated;
-}
-.big-thumb {
-  border-radius: var(--radius-10);
 }
 
 /* V05 */
