@@ -43,13 +43,13 @@ const LIBRARY = {
     mock: {},
     steps: [{ key: "ArrowLeft" }, { key: "ArrowDown" }],
   },
-  "lib-reduced-motion": { mock: {}, reducedMotion: true, steps: [] },
   "lib-unreachable": { mock: { unreachableFolder: true }, steps: [] },
+  // The sweep is paused at a fixed point, so two runs draw the same frame.
   "lib-scanning": {
     mock: { scanning: true },
-    reducedMotion: true,
     steps: [
       `__mockEmit('library://scan', { phase: 'progress', checked: 40, found: 12 })`,
+      `document.getAnimations().forEach((a) => { a.pause(); a.currentTime = 700 })`,
     ],
   },
   "lib-added": {
@@ -216,12 +216,7 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
     mobile: false,
   });
   await p.send("Emulation.setEmulatedMedia", {
-    features: [
-      {
-        name: "prefers-reduced-motion",
-        value: s.reducedMotion ? "reduce" : "no-preference",
-      },
-    ],
+    features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
   });
   await p.send("Page.addScriptToEvaluateOnNewDocument", {
     source: mockSource.replace("__SCENARIO__", JSON.stringify(s.mock)),

@@ -5,6 +5,7 @@ import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
 
 const chosen = ref('normal')
+const picture = ref('generated')
 </script>
 
 <template>
@@ -38,6 +39,25 @@ const chosen = ref('normal')
         <CardTitle>Quick menu</CardTitle>
         <CardDescription>Thick glass over the haze.</CardDescription>
       </Card>
+    </KitState>
+    <KitState label="Choice · selected, not, empty (data-empty)">
+      <div class="flex gap-10">
+        <Card
+          v-for="id in ['generated', 'icon', 'user']"
+          :key="id"
+          as="button"
+          :variant="CardVariant.Choice"
+          :selected="picture === id"
+          :data-empty="id === 'user' ? '' : undefined"
+          role="radio"
+          :aria-checked="picture === id"
+          class="w-[120px] cursor-pointer gap-8"
+          @click="picture = id"
+        >
+          <CardTitle>{{ id }}</CardTitle>
+          <CardDescription>One picture of a choice.</CardDescription>
+        </Card>
+      </div>
     </KitState>
   </KitSection>
 </template>
