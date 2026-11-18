@@ -512,10 +512,22 @@ onBeforeUnmount(() => {
   flex-direction: column;
   overflow: hidden;
   color: var(--ink);
-  background: radial-gradient(60% 50% at 50% 0%, #7c5cff40 0%, transparent 70%), var(--bg);
+  background:
+    radial-gradient(
+      60% 50% at 50% 0%,
+      color-mix(in srgb, var(--violet) 25%, transparent) 0%,
+      transparent 70%
+    ),
+    var(--bg);
 }
 .first-run.phone {
-  background: radial-gradient(90% 40% at 50% 0%, #7c5cff40 0%, transparent 70%), var(--bg);
+  background:
+    radial-gradient(
+      90% 40% at 50% 0%,
+      color-mix(in srgb, var(--violet) 25%, transparent) 0%,
+      transparent 70%
+    ),
+    var(--bg);
   font-size: 15px;
   line-height: 22px;
 }
@@ -544,7 +556,7 @@ onBeforeUnmount(() => {
   background: #ffffff33;
 }
 .dot.past {
-  background: #a593ff88;
+  background: color-mix(in srgb, var(--accent-text) 53%, transparent);
 }
 .dot.current {
   width: 24px;
@@ -587,7 +599,7 @@ onBeforeUnmount(() => {
   height: 72px;
   border-radius: 20px;
   background: radial-gradient(circle at 50% 30%, #a996ff, #664bd1);
-  box-shadow: 0 0 60px #7c5cff59;
+  box-shadow: 0 0 60px color-mix(in srgb, var(--violet) 35%, transparent);
 }
 .title {
   margin: 0;
@@ -698,12 +710,10 @@ onBeforeUnmount(() => {
     transform: translateX(340%);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .bar.running span {
-    animation: none;
-    width: 100%;
-    opacity: 0.5;
-  }
+:root[data-motion='reduce'] .bar.running span {
+  animation: none;
+  width: 100%;
+  opacity: 0.5;
 }
 .tiles {
   display: grid;

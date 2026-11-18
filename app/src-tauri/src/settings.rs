@@ -255,3 +255,121 @@ pub fn settings_session_discard(
     emit_changed(&app, &keys, Level::Session);
     Ok(())
 }
+
+// ---- «Immagine tua» (`video.surroundImg`): the user's own background around the game ----
+
+/// The one setting that holds a background image.
+const BACKGROUND_KEY: &str = "video.surroundImg";
+
+/// Where the chosen images are copied: `<app data>/backgrounds`, beside the synced settings, so
+/// the setting (a file name there) keeps working when the original file moves.
+fn backgrounds_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
+    crate::dirs::data(app)
+        .inspect_err(|e| log::warn!("app data dir: {e}"))
+        .ok()
+        .map(|d| d.join("backgrounds"))
+}
+
+/// A file name of the backgrounds folder: no separators, no parent, not empty.
+fn background_name_ok(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('.')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+}
+
+/// The name an image is stored under: its content's hash, so choosing the same image twice keeps
+/// one copy.
+fn background_name(bytes: &[u8], ext: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    bytes.hash(&mut h);
+    format!("{:016x}.{ext}", h.finish())
+}
+
+/// «Scegli un’immagine…»: opens an image picker, copies the image into the backgrounds folder and
+/// stores its name in `video.surroundImg` at `scope`. `false` if the picker was cancelled.
+#[tauri::command]
+pub async fn settings_choose_background(app: AppHandle, scope: Scope) -> Result<bool, ErrorCode> {
+    let Some(source) = crate::library::pick_image(&app) else {
+        return Ok(false);
+    };
+    let invalid = |detail: String| ErrorCode::CoverInvalid { detail };
+    let size = std::fs::metadata(&source)
+        .map_err(|e| invalid(e.to_string()))?
+        .len();
+    if size > crate::library::MAX_COVER_BYTES {
+        return Err(invalid(format!(
+            "{size} bytes, limit {}",
+            crate::library::MAX_COVER_BYTES
+        )));
+    }
+    let bytes = std::fs::read(&source).map_err(|e| invalid(e.to_string()))?;
+    let ext = crate::library::image_ext(&bytes)
+        .ok_or_else(|| invalid("not a PNG, JPEG or WebP image".into()))?;
+    let name = background_name(&bytes, ext);
+    let dir = backgrounds_dir(&app).ok_or_else(|| ErrorCode::SettingsWriteFailed {
+        detail: "no app data folder".into(),
+    })?;
+    std::fs::create_dir_all(&dir)
+        .and_then(|()| std::fs::write(dir.join(&name), &bytes))
+        .map_err(|e| ErrorCode::SettingsWriteFailed {
+            detail: e.to_string(),
+        })?;
+    let state = app.state::<SettingsState>();
+    let level = state
+        .0
+        .lock()
+        .set(BACKGROUND_KEY, &scope, Value::Text(name))?;
+    emit_changed(&app, &[BACKGROUND_KEY], level);
+    Ok(true)
+}
+
+/// `emu://background/<name>`: an image of the backgrounds folder (only names it can hold).
+pub fn background_response(app: &AppHandle, name: &str) -> tauri::http::Response<Vec<u8>> {
+    use tauri::http::{header, Response, StatusCode};
+    let found = background_name_ok(name)
+        .then(|| backgrounds_dir(app))
+        .flatten()
+        .map(|dir| dir.join(name))
+        .and_then(|file| {
+            std::fs::read(&file)
+                .inspect_err(|e| log::warn!("background {}: {e}", file.display()))
+                .ok()
+                .map(|bytes| (bytes, crate::library::image_type(&file)))
+        });
+    let builder = Response::builder().header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    let response = match found {
+        // The name is the content's hash: it never changes.
+        Some((bytes, mime)) => builder
+            .header(header::CONTENT_TYPE, mime)
+            .header(header::CACHE_CONTROL, "max-age=31536000, immutable")
+            .body(bytes),
+        None => builder.status(StatusCode::NOT_FOUND).body(Vec::new()),
+    };
+    response.unwrap_or_else(crate::response_error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{background_name, background_name_ok};
+
+    #[test]
+    fn background_names_stay_inside_the_folder() {
+        assert!(background_name_ok("0123abcd.png"));
+        assert!(!background_name_ok(""));
+        assert!(!background_name_ok("../settings/global.json"));
+        assert!(!background_name_ok("a/b.png"));
+        assert!(!background_name_ok(r"a\b.png"));
+        assert!(!background_name_ok(".hidden"));
+    }
+
+    #[test]
+    fn the_same_image_gets_the_same_name() {
+        let a = background_name(b"abc", "png");
+        assert_eq!(a, background_name(b"abc", "png"));
+        assert_ne!(a, background_name(b"abd", "png"));
+        assert!(background_name_ok(&a));
+    }
+}

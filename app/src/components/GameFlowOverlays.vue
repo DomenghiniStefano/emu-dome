@@ -263,10 +263,8 @@ kbd {
   margin: 0;
 }
 /* E04: the backup offered, as a row (board E04). */
-@media (prefers-reduced-motion: reduce) {
-  .bar span {
-    animation: none;
-    width: 100%;
-  }
+:root[data-motion='reduce'] .bar span {
+  animation: none;
+  width: 100%;
 }
 </style>
