@@ -35,6 +35,8 @@
   --spacing-control-sm: 28px;
   --spacing-control: 32px;
   --spacing-control-lg: 40px;
+  /* The phone's touch minimum (README: 44px): its buttons and fields (board «Tel-Dettagli»). */
+  --spacing-touch: 44px;
   /* A tab of a section (Controls: 40) and of the game details (44). */
   --spacing-tab: 40px;
   --spacing-tab-lg: 44px;

@@ -5,6 +5,10 @@ export const TabsSize = {
   Default: 'default',
   // The game details' tabs (GameDetails: 44px).
   Large: 'large',
+  // Pills that scroll sideways (the game details on the phone, board «Tel-Dettagli»): 36px, a
+  // 14px label, raised and edged; the active one on accent-soft in accent text, no underline.
+  // 36 and 14 are off the scale (spec Decision 5, Cowork). The label's line is the caller's.
+  Pill: 'pill',
 } as const
 export type TabsSize = (typeof TabsSize)[keyof typeof TabsSize]
 
@@ -17,6 +21,8 @@ export const tabsTriggerVariants = cva(
       size: {
         [TabsSize.Default]: 'h-tab',
         [TabsSize.Large]: 'h-tab-lg',
+        [TabsSize.Pill]:
+          'h-[36px] rounded-full border border-line bg-surface-raised px-14 text-[14px] font-medium text-ink data-[state=active]:border-accent-edge data-[state=active]:bg-accent-soft data-[state=active]:text-accent-text data-[state=active]:shadow-none',
       },
     },
     defaultVariants: { size: TabsSize.Default },

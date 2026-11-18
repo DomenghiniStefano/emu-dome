@@ -6,6 +6,7 @@ import KitState from '../KitState.vue'
 
 const tab = ref('overview')
 const large = ref('saves')
+const pill = ref('saves')
 </script>
 
 <template>
@@ -24,6 +25,15 @@ const large = ref('saves')
     <KitState label="Large (44)">
       <Tabs v-model="large" :size="TabsSize.Large">
         <TabsList>
+          <TabsTrigger value="saves">Saves</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    </KitState>
+    <KitState label="Pill (phone, 36)">
+      <Tabs v-model="pill" :size="TabsSize.Pill">
+        <TabsList class="gap-8 border-b-0">
           <TabsTrigger value="saves">Saves</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="files">Files</TabsTrigger>

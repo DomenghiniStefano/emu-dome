@@ -13,6 +13,15 @@ export const ButtonVariant = {
   GhostAccent: 'ghostAccent',
   // An action that throws something away (QuickSaveDialog `.btn.danger`): Soft in danger ink.
   Danger: 'danger',
+  // An icon alone on a page's bar, in ink with no fill until hovered (the game details' ‹ and «…»
+  // on the phone, GameDetails `.icon-btn`).
+  Plain: 'plain',
+  // Words that act, muted until hovered: the way back above a page («‹ Libreria», GameDetails
+  // `.back-link`).
+  Text: 'text',
+  // Words that act in accent text, underlined on hover; a disabled one is faint (DetailsSettings
+  // `.link`, «Apri tutte le impostazioni di questo gioco»).
+  Link: 'link',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -26,6 +35,19 @@ export const ButtonSize = {
   // Squares for an icon alone, at the two control heights.
   Icon: 'icon',
   IconSmall: 'iconSmall',
+  // 40px with the standard label: an action beside the main one (GameDetails `.btn.tall`).
+  Tall: 'tall',
+  // The phone's touch minimum (README: 44px), radius 10 (board «Tel-Dettagli» `.phone .btn`).
+  // Its label takes the size and line of the text around it (the phone's type is larger), in the
+  // medium weight.
+  Touch: 'touch',
+  // A 44px square for an icon alone on the phone (GameDetails `.icon-btn`).
+  IconTouch: 'iconTouch',
+  // The phone's full-width main action (GameDetails `.play.wide`): 52px, a 16px label on a 22px
+  // line, radius 10. Off the scale (spec Decision 5, Cowork).
+  Hero: 'hero',
+  // No box at all, for Text and Link: the words alone, wrapping like text.
+  Bare: 'bare',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -46,6 +68,10 @@ export const buttonVariants = cva(
         [ButtonVariant.GhostAccent]:
           'border-0 bg-transparent text-accent-text hover:bg-surface-hover disabled:hover:bg-transparent',
         [ButtonVariant.Danger]: 'border-line bg-surface-raised text-danger hover:bg-surface-hover',
+        [ButtonVariant.Plain]: 'border-0 bg-transparent text-ink hover:bg-surface-hover',
+        [ButtonVariant.Text]: 'border-0 bg-transparent text-ink-muted hover:text-ink',
+        [ButtonVariant.Link]:
+          'border-0 bg-transparent text-accent-text enabled:hover:underline disabled:text-ink-faint disabled:opacity-100',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8',
@@ -53,6 +79,12 @@ export const buttonVariants = cva(
         [ButtonSize.Large]: 'h-control-lg px-18 text-cta',
         [ButtonSize.Icon]: 'size-control p-0',
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
+        [ButtonSize.Tall]: 'h-control-lg px-12',
+        [ButtonSize.Touch]:
+          'h-touch rounded-10 px-14 text-[length:inherit] leading-[inherit] font-medium',
+        [ButtonSize.IconTouch]: 'size-touch rounded-10 p-0',
+        [ButtonSize.Hero]: 'h-[52px] gap-8 rounded-10 px-18 text-[16px]/[22px]',
+        [ButtonSize.Bare]: 'h-auto gap-4 rounded-none p-0 whitespace-normal',
       },
     },
     defaultVariants: {

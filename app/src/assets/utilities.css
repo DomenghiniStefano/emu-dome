@@ -30,3 +30,25 @@
 @utility bg-accent-track {
   background: linear-gradient(var(--accent-crown), var(--accent-deep));
 }
+
+/* A game's own colour behind its details (GameDetails, board «Dettagli»): `--cover-tint` is the
+   game's colour, set on the page. The header fades from a third of it to nothing, and the cover
+   glows in two thirds of it. The glow's names and the fixed drop shadow under it are spec
+   Decision 5's `glow-cover`, still for Cowork: the values are the screen's own. */
+@utility bg-cover-fade {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--cover-tint) 33%, transparent) 0%,
+    transparent 100%
+  );
+}
+/* The big cover (desktop): the glow, then the drop shadow of the dark theme in every theme. */
+@utility shadow-cover-hero {
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--cover-tint) 66%, transparent),
+    0 24px 64px #0000008c;
+}
+/* The small cover (phone): the glow alone. */
+@utility shadow-cover-glow {
+  box-shadow: 0 0 40px color-mix(in srgb, var(--cover-tint) 66%, transparent);
+}

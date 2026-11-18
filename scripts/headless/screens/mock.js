@@ -126,7 +126,7 @@
     ),
   ];
   const schema = {
-    device: "desktop",
+    device: scenario.device ?? "desktop",
     currentPhase: 1,
     pages: ["general", "a11y"],
     groups: [{ id: "app", pages: ["general", "a11y"] }],
@@ -231,6 +231,47 @@
     bench_active: false,
     "plugin:app|version": "0.0.1",
   };
+  // Game details (L05, L06) with something in them: quick saves, an in-game save with backups
+  // and a set-aside broken one, settings of the game's own.
+  if (scenario.gameSaves) {
+    answers.saves_game = {
+      inGame: { size: 65536, modified: FIXED - 2 * 3600000 },
+      quick: [
+        {
+          slot: 0,
+          size: 1024,
+          savedAt: FIXED - 3600000,
+          thumbUrl: null,
+          outdated: false,
+        },
+        {
+          slot: 1,
+          size: 1024,
+          savedAt: FIXED - day,
+          thumbUrl: null,
+          outdated: false,
+        },
+        {
+          slot: 2,
+          size: 1024,
+          savedAt: FIXED - 5 * day,
+          thumbUrl: null,
+          outdated: true,
+        },
+      ],
+      backups: [
+        { name: "b2", at: FIXED - day, reason: "launch", size: 65536 },
+        { name: "b1", at: FIXED - 4 * day, reason: "import", size: 65536 },
+      ],
+      broken: ["Pocket Quest Advance.sav.broken"],
+    };
+  }
+  if (scenario.gameOverrides) {
+    answers.settings_game_overrides = [
+      { key: "general.bgpause", page: "general", value: false, base: true },
+      { key: "a11y.textsize", page: "a11y", value: 120, base: null },
+    ];
+  }
   const callbacks = new Map();
   let next = 1;
   window.__mockCalls = [];
