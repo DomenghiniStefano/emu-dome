@@ -246,7 +246,7 @@ const facts = computed<Fact[]>(() => {
   justify-content: flex-end;
   border: 0;
   background: linear-gradient(var(--accent-crown), var(--accent-deep));
-  box-shadow: 0 0 12px #7c5cff73;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--violet) 45%, transparent);
 }
 .knob {
   width: 16px;

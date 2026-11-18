@@ -1,6 +1,7 @@
 // What the settings pages (T01–T19) need beyond the bridge: the schema loaded once, the i18n
 // keys of an entry, which rows are shown and why a row cannot be changed at a level.
 // Everything comes from the Rust schema (`emu.settings.schema`): nothing here lists settings.
+import { ref } from 'vue'
 import {
   emu,
   type SettingDevice,
@@ -9,7 +10,11 @@ import {
   type SettingPlatform,
   type SettingsSchema,
   type SettingValue,
+  type VideoMode,
 } from './emu'
+
+/** The video path in use (App.vue keeps it current): some game effects exist on one path only. */
+export const liveVideoMode = ref<VideoMode>('native')
 
 let schemaPromise: Promise<SettingsSchema> | null = null
 
@@ -96,10 +101,15 @@ export function lockReason(
 
 /** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */
 export function notYetWired(entry: SettingEntry): boolean {
+  // The colour-blind filter is drawn on the webview's canvas; the native video has no filter
+  // pass yet (it belongs in video.rs).
+  if (entry.key === 'a11y.cblind') return liveVideoMode.value === 'native'
   switch (entry.kind.type) {
+    // The one file row with a backend: the background image (`settings_choose_background`).
+    case 'file':
+      return entry.key !== 'video.surroundImg'
     // `apply` (presets): the bundles and their confirmation are not defined yet.
     case 'action':
-    case 'file':
     case 'apply':
       return true
     case 'toggle':
@@ -112,6 +122,15 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'bindings':
       return false
   }
+}
+
+/**
+ * Options of a choice that are shown but cannot be picked yet (X05: disabled, with «Arriva con un
+ * prossimo aggiornamento»). «Gioco sfocato» needs the game's frames blurred behind it, which the
+ * native video does not draw yet.
+ */
+export function optionNotYet(entry: SettingEntry, id: string): boolean {
+  return entry.key === 'video.surround' && id === 'blur'
 }
 
 /** Plain text for search: lower case, accents removed. */

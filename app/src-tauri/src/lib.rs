@@ -638,11 +638,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| {
-            // `emu://cover/<id>`: covers; `emu://slot/<n>`: slot thumbnails of the open game;
+            // `emu://cover/<id>`: covers; `emu://background/<name>`: the user's background
+            // (video.surroundImg); `emu://slot/<n>`: slot thumbnails of the open game;
             // `emu://savethumb/<game>/<n>`: those of any game (Saves section); else the frame.
             let path = req.uri().path();
             if let Some(id) = path.strip_prefix("/cover/") {
                 library::cover_response(ctx.app_handle(), id)
+            } else if let Some(name) = path.strip_prefix("/background/") {
+                settings::background_response(ctx.app_handle(), name)
             } else if let Some(rest) = path.strip_prefix("/savethumb/") {
                 saves::thumb_response(ctx.app_handle(), rest)
             } else if let Some(slot) = path.strip_prefix("/slot/") {
@@ -788,6 +791,7 @@ pub fn run() {
             settings::settings_reset,
             settings::settings_session_commit,
             settings::settings_session_discard,
+            settings::settings_choose_background,
             pads::gamepad_list,
             pads::gamepad_watch,
             pads::gamepad_capture,

@@ -168,6 +168,14 @@ async function set(key: string, value: SettingValue) {
     emit('error', errorText(e))
   }
 }
+/** «Scegli un’immagine…» (`video.surroundImg`): the picker, then the value at this scope. */
+async function chooseBackground() {
+  try {
+    await emu.settings.chooseBackground(scope.value)
+  } catch (e) {
+    emit('error', errorText(e))
+  }
+}
 async function reset(key: string) {
   try {
     await emu.settings.reset(key, scope.value)
@@ -549,6 +557,7 @@ const INTROS = new Set(['bios', 'advanced'])
             @reset="reset(e.key)"
             @error="text => emit('error', text)"
             @open="emit('openControls')"
+            @choose="chooseBackground"
           />
         </div>
       </section>

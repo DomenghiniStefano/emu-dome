@@ -31,6 +31,7 @@
   --shadow-float: 0 24px 64px #0000008c, 0 2px 8px #00000059;
   /* Ambient haze behind the shell (ambient-strength); Nero switches it off. */
   --haze-opacity: 0.5;
+  --duration-ambient: 1200ms;
   --radius-6: 6px;
   --radius-10: 10px;
   --radius-16: 16px;
@@ -80,6 +81,51 @@
   --shadow-float: 0 24px 64px #1a1b202e, 0 2px 8px #1a1b2014;
   --haze-opacity: 0.35;
   color-scheme: light;
+}
+
+/* The cover colours of the haze (ambient.ts), defaulting to the L01 board's spots: registered,
+   so a change fades over duration-ambient instead of jumping. */
+@property --cover-1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2f5d8a;
+}
+@property --cover-2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1f6f78;
+}
+@property --cover-3 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2b3a8c;
+}
+
+/* «Riduci la trasparenza» (a11y.transp, appearance.ts): glass becomes solid surface, the haze
+   goes off, nothing is blurred behind a panel. */
+:root[data-transp='reduce'] {
+  --glass-thin: var(--surface);
+  --glass: var(--surface);
+  --glass-thick: var(--surface);
+  --haze-opacity: 0;
+}
+:root[data-transp='reduce'] *,
+:root[data-transp='reduce'] *::before,
+:root[data-transp='reduce'] *::after {
+  backdrop-filter: none !important;
+}
+
+/* «Riduci le animazioni» (a11y.motion, appearance.ts): movement is replaced by short fades.
+   Only opacity and colours still change gradually (150 ms at most); animations stop at their
+   first frame. */
+:root[data-motion='reduce'] *,
+:root[data-motion='reduce'] *::before,
+:root[data-motion='reduce'] *::after {
+  transition-property: opacity, color, background-color, border-color !important;
+  transition-duration: 150ms !important;
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
 }
 
 /* The webview is transparent: the natively drawn game is underneath. */
@@ -161,7 +207,8 @@ kbd {
     var(--accent) 60%,
     var(--accent-deep) 100%
   );
-  box-shadow: 0 0 12px #7c5cff73;
+  /* glow-sm, in the accent the user chose (general.accent). */
+  box-shadow: 0 0 12px color-mix(in srgb, var(--violet) 45%, transparent);
 }
 .btn-primary:hover {
   background: var(--accent-hover);
