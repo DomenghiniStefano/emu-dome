@@ -1,0 +1,11 @@
+<!-- Fixture of scripts/scan-conventions.mjs: written the way the design system asks; no rule fires. -->
+<script setup lang="ts">
+import { Button, ButtonVariant } from '@/components/ui/button'
+const dark = { light: 'x' }
+</script>
+
+<template>
+  <div class="flex gap-8 bg-surface text-ink opacity-disabled">
+    <Button :variant="ButtonVariant.Primary" :size="size">{{ dark.light }}</Button>
+  </div>
+</template>

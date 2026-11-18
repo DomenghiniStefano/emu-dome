@@ -1,0 +1,4 @@
+<!-- Fixture of scripts/scan-conventions.mjs: an opacity on a colour token. -->
+<template>
+  <div class="bg-ink/50">x</div>
+</template>

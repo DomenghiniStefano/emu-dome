@@ -1,0 +1,160 @@
+/* Colour tokens: the EmuDome Design System's (tokens.json), three themes.
+
+   Two layers, because the values change at run time:
+   - the VALUES live on :root (Scuro, the default and what the page shows before theme.ts sets
+     data-theme) and on :root[data-theme=…] (Nero and Chiaro override only what differs), under
+     their historical names (`--bg`, `--ink`, `--accent`…). The scoped CSS of the screens reads
+     them by these names, and two things write them at run time: appearance.ts puts the user's
+     accent (`general.accent`, accent.ts) in a <style> after this file, and «Riduci la
+     trasparenza» swaps the glass for solid surfaces below;
+   - Tailwind's `--color-*` names map onto them with `@theme inline`: a class like `bg-surface`
+     compiles to `background-color: var(--surface)`, so it follows the theme, the accent and the
+     transparency setting exactly as the scoped CSS does. `reference`: Tailwind emits no
+     `--color-*` variable of its own, so there is one place a value lives.
+
+   This is the bridge of cycle 1 (docs/specs/2026-11-18-design-system-foundations.md, Decision 2):
+   the old names stay valid until the last screen is migrated (cycle 3). Moved here from
+   styles.css with the same values, in the same order. */
+:root {
+  --bg: #0e0f13;
+  --surface: #16181e;
+  --surface-raised: #1e2129;
+  --surface-hover: #262a33;
+  --glass-thin: #0e0f1399;
+  --glass: #16181ea3;
+  --glass-thick: #1a1c23e6;
+  --glass-edge: #ffffff17;
+  --line: #ffffff12;
+  --line-strong: #717684;
+  --scrim: #07080a99;
+  --ink: #eceef3;
+  --ink-muted: #a4a8b5;
+  --ink-faint: #6b6f7b;
+  --violet: #7c5cff;
+  --accent: #7152f7;
+  --accent-hover: #6544ee;
+  --accent-deep: #5a3fdc;
+  --accent-crown: #8a70ff;
+  --on-accent: #ffffff;
+  --accent-text: #a593ff;
+  --accent-soft: #7c5cff2e;
+  --focus-ring: #a593ff;
+  --success: #3ed68e;
+  --warning: #f5a524;
+  --danger: #ff7a7a;
+  /* New in cycle 1, each the value a screen already writes by hand today, so the primitives can
+     name it (the screens keep their literal until cycle 2 migrates them):
+     - knob: the white thumb of a switch and of a slider (SettingRow, DetailsFiles), the same in
+       every theme;
+     - accent-edge: the edge of a selected filter chip (LibraryView), 40% of the accent's colour,
+       recomputed when appearance.ts changes `--violet`. */
+  --knob: #ffffff;
+  --accent-edge: color-mix(in srgb, var(--violet) 40%, transparent);
+}
+
+/* Nero: true black for OLED screens. */
+:root[data-theme='black'] {
+  --bg: #000000;
+  --surface: #0b0c0f;
+  --surface-raised: #15161b;
+  --surface-hover: #1d1f25;
+  --glass-thin: #000000b3;
+  --glass: #0b0c0fb3;
+  --glass-thick: #0b0c0fe6;
+  --line: #ffffff14;
+}
+
+/* Chiaro. */
+:root[data-theme='light'] {
+  --bg: #f4f3f0;
+  --surface: #ffffff;
+  --surface-raised: #f7f6f3;
+  --surface-hover: #efeee9;
+  --glass-thin: #f4f3f0a6;
+  --glass: #ffffff9e;
+  --glass-thick: #ffffffe0;
+  --glass-edge: #ffffffb3;
+  --line: #00000012;
+  --line-strong: #80838c;
+  --scrim: #1a1b2059;
+  --ink: #17181c;
+  --ink-muted: #5d606a;
+  --ink-faint: #9a9ca3;
+  --accent-text: #5a3ce6;
+  --accent-soft: #7c5cff1f;
+  --focus-ring: #6a48ff;
+  --success: #0f7a54;
+  --warning: #9a5800;
+  --danger: #c42b3a;
+}
+
+/* «Riduci la trasparenza» (a11y.transp, appearance.ts): glass becomes solid surface. After the
+   theme blocks, which have the same specificity. */
+:root[data-transp='reduce'] {
+  --glass-thin: var(--surface);
+  --glass: var(--surface);
+  --glass-thick: var(--surface);
+}
+
+/* The cover colours of the haze (ambient.ts), defaulting to the L01 board's spots: registered,
+   so a change fades over duration-ambient instead of jumping. */
+@property --cover-1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2f5d8a;
+}
+@property --cover-2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #1f6f78;
+}
+@property --cover-3 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #2b3a8c;
+}
+
+@theme inline reference {
+  /* Tailwind's palette goes: bg-red-500 and text-white generate nothing. */
+  --color-*: initial;
+
+  /* Ground and surfaces */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  /* Glass: the panels' fills (blur and edge are in shadow.css and utilities.css) */
+  --color-glass-thin: var(--glass-thin);
+  --color-glass: var(--glass);
+  --color-glass-thick: var(--glass-thick);
+  --color-glass-edge: var(--glass-edge);
+  /* Lines and veils */
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-scrim: var(--scrim);
+  /* Text */
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  /* Accent: written at run time by appearance.ts (general.accent) */
+  --color-violet: var(--violet);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-crown: var(--accent-crown);
+  --color-on-accent: var(--on-accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-edge: var(--accent-edge);
+  --color-focus-ring: var(--focus-ring);
+  /* States: always with an icon or a word */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  /* Controls */
+  --color-knob: var(--knob);
+  /* The cover colours of the ambient haze (ambient.ts writes them) */
+  --color-cover-1: var(--cover-1);
+  --color-cover-2: var(--cover-2);
+  --color-cover-3: var(--cover-3);
+}

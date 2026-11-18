@@ -41,6 +41,10 @@ MPL-2.0 section 3.2). Changes to a core are kept as recognisable patches or mark
 | libloading | loading the cores | ISC | |
 | Vue 3, vue-i18n | interface | MIT | |
 | Lucide icons (`@lucide/vue`) | interface icons | ISC | Lucide includes icons derived from Feather (MIT); both notices are in the package. |
+| Reka UI (`reka-ui`) | design system primitives | MIT | Ships `tslib` (0BSD) through `aria-hidden`: see the note under the generated tables. |
+| `class-variance-authority`, `clsx`, `tailwind-merge` | primitives' variants and `cn()` | Apache-2.0, MIT, MIT | |
+| Tailwind CSS (`tailwindcss`, `@tailwindcss/vite`) | the design system's utilities, at build time | MIT | Dev tool: only the CSS it generates ships. |
+| Vitest, `@vue/test-utils`, happy-dom | frontend tests | MIT | Dev tools, never shipped. |
 | librashader | shaders | MPL-2.0 OR GPL-3.0 | **Not used yet** (planned, Phase 1); not in the dependency graph. |
 
 ### Fonts
@@ -84,6 +88,10 @@ Licences found, all compatible with GPL-3.0-or-later: MIT, Apache-2.0, Apache-2.
 LLVM-exception, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, MPL-2.0, Unicode-3.0, CC0-1.0, Unlicense (often
 offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`minimatch`,
 `@isaacs/nonrecursive-glob-match`, used by ESLint; permissive, no FSF verdict, never shipped).
+
+`tslib` 2.9.1 (**0BSD**) ships in the app through `reka-ui` → `aria-hidden`. 0BSD grants every
+permission with no condition at all (ISC without the notice requirement); the owner allowed it on
+2026-11-18, and `scripts/npm-licenses.mjs` lists it.
 
 ### Rust crates (516)
 
@@ -606,7 +614,7 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | zlib-rs | 0.6.8 | Zlib |
 | zmij | 1.0.23 | MIT |
 
-### npm packages (178, 32 shipped)
+### npm packages (249, 53 shipped)
 
 | Package | Version | Licence | Ships in the app |
 | --- | --- | --- | --- |
@@ -624,34 +632,58 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | @eslint/js | 10.0.1 | MIT | no (dev tool) |
 | @eslint/object-schema | 3.0.5 | Apache-2.0 | no (dev tool) |
 | @eslint/plugin-kit | 0.7.3 | Apache-2.0 | no (dev tool) |
+| @floating-ui/core | 1.8.0 | MIT | yes |
+| @floating-ui/dom | 1.8.0 | MIT | yes |
+| @floating-ui/utils | 0.2.12 | MIT | yes |
+| @floating-ui/vue | 2.0.1 | MIT | yes |
 | @humanfs/core | 0.19.2 | Apache-2.0 | no (dev tool) |
 | @humanfs/node | 0.16.8 | Apache-2.0 | no (dev tool) |
 | @humanfs/types | 0.15.0 | Apache-2.0 | no (dev tool) |
 | @humanwhocodes/module-importer | 1.0.1 | Apache-2.0 | no (dev tool) |
 | @humanwhocodes/retry | 0.4.3 | Apache-2.0 | no (dev tool) |
+| @internationalized/date | 3.12.4 | Apache-2.0 | yes |
+| @internationalized/number | 3.6.9 | Apache-2.0 | yes |
 | @intlify/core-base | 11.4.20 | MIT | yes |
 | @intlify/devtools-types | 11.4.20 | MIT | yes |
 | @intlify/message-compiler | 11.4.20 | MIT | yes |
 | @intlify/shared | 11.4.20 | MIT | yes |
 | @isaacs/nonrecursive-glob-match | 1.1.0 | BlueOak-1.0.0 | no (dev tool) |
+| @jridgewell/gen-mapping | 0.3.13 | MIT | no (dev tool) |
+| @jridgewell/remapping | 2.3.5 | MIT | no (dev tool) |
+| @jridgewell/resolve-uri | 3.1.3 | MIT | no (dev tool) |
 | @jridgewell/sourcemap-codec | 1.6.0 | MIT | yes |
+| @jridgewell/trace-mapping | 0.3.31 | MIT | no (dev tool) |
 | @keyv/bigmap | 1.3.1 | MIT | no (dev tool) |
 | @keyv/serialize | 1.1.1 | MIT | no (dev tool) |
 | @lucide/vue | 1.73.0 | ISC | yes |
 | @nodelib/fs.scandir | 2.1.5 | MIT | no (dev tool) |
 | @nodelib/fs.stat | 2.0.5 | MIT | no (dev tool) |
 | @nodelib/fs.walk | 1.2.8 | MIT | no (dev tool) |
+| @one-ini/wasm | 0.2.1 | MIT | no (dev tool) |
 | @oxc-project/types | 0.156.0 | MIT | no (dev tool) |
 | @rolldown/binding-win32-x64-msvc | 1.2.19 | MIT | no (dev tool) |
 | @rolldown/pluginutils | 1.1.1 | MIT | no (dev tool) |
+| @swc/helpers | 0.5.24 | Apache-2.0 | yes |
+| @tailwindcss/node | 4.3.5 | MIT | no (dev tool) |
+| @tailwindcss/oxide | 4.3.5 | MIT | no (dev tool) |
+| @tailwindcss/oxide-wasm32-wasi | 4.3.5 | MIT | no (dev tool) |
+| @tailwindcss/oxide-win32-x64-msvc | 4.3.5 | MIT | no (dev tool) |
+| @tailwindcss/vite | 4.3.5 | MIT | no (dev tool) |
+| @tanstack/virtual-core | 3.19.11 | MIT | yes |
+| @tanstack/vue-virtual | 3.13.52 | MIT | yes |
 | @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT | yes |
 | @tauri-apps/cli | 2.12.4 | Apache-2.0 OR MIT | no (dev tool) |
 | @tauri-apps/cli-win32-x64-msvc | 2.12.4 | Apache-2.0 OR MIT | no (dev tool) |
 | @tauri-apps/plugin-dialog | 2.8.4 | MIT OR Apache-2.0 | yes |
+| @types/chai | 5.2.3 | MIT | no (dev tool) |
+| @types/deep-eql | 4.0.2 | MIT | no (dev tool) |
 | @types/esrecurse | 4.3.1 | MIT | no (dev tool) |
 | @types/estree | 1.0.10 | MIT | no (dev tool) |
 | @types/json-schema | 7.0.15 | MIT | no (dev tool) |
 | @types/node | 22.20.5 | MIT | no (dev tool) |
+| @types/web-bluetooth | 0.0.21 | MIT | yes |
+| @types/whatwg-mimetype | 3.0.2 | MIT | no (dev tool) |
+| @types/ws | 8.18.2 | MIT | no (dev tool) |
 | @typescript-eslint/eslint-plugin | 8.72.2 | MIT | no (dev tool) |
 | @typescript-eslint/parser | 8.72.2 | MIT | no (dev tool) |
 | @typescript-eslint/project-service | 8.72.2 | MIT | no (dev tool) |
@@ -663,6 +695,8 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | @typescript-eslint/utils | 8.72.2 | MIT | no (dev tool) |
 | @typescript-eslint/visitor-keys | 8.72.2 | MIT | no (dev tool) |
 | @vitejs/plugin-vue | 6.0.11 | MIT | no (dev tool) |
+| @vitest/mocker | 5.1.0 | MIT | no (dev tool) |
+| @vitest/spy | 5.1.0 | MIT | no (dev tool) |
 | @volar/language-core | 2.4.30 | MIT | no (dev tool) |
 | @volar/language-service | 2.4.30 | MIT | no (dev tool) |
 | @volar/source-map | 2.4.30 | MIT | no (dev tool) |
@@ -679,21 +713,38 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | @vue/runtime-dom | 3.5.45 | MIT | yes |
 | @vue/server-renderer | 3.5.45 | MIT | yes |
 | @vue/shared | 3.5.45 | MIT | yes |
+| @vue/test-utils | 2.6.0 | MIT | no (dev tool) |
+| @vueuse/core | 14.4.0 | MIT | yes |
+| @vueuse/metadata | 14.4.0 | MIT | yes |
+| @vueuse/shared | 14.4.0 | MIT | yes |
+| abbrev | 5.0.0 | ISC | no (dev tool) |
 | acorn | 8.19.0 | MIT | no (dev tool) |
 | acorn-jsx | 5.3.2 | MIT | no (dev tool) |
 | ajv | 6.15.0 | MIT | no (dev tool) |
 | alien-signals | 3.2.1 | MIT | no (dev tool) |
+| aria-hidden | 1.2.6 | MIT | yes |
+| assertion-error | 2.0.1 | MIT | no (dev tool) |
 | balanced-match | 4.0.4 | MIT | no (dev tool) |
 | boolbase | 1.0.0 | ISC | no (dev tool) |
 | brace-expansion | 5.0.13 | MIT | no (dev tool) |
 | braces | 3.0.3 | MIT | no (dev tool) |
+| buffer-image-size | 0.6.4 | MIT | no (dev tool) |
 | cacheable | 2.5.0 | MIT | no (dev tool) |
+| chai | 6.3.0 | MIT | no (dev tool) |
+| class-variance-authority | 0.7.1 | Apache-2.0 | yes |
+| clsx | 2.1.1 | MIT | yes |
+| commander | 14.0.3 | MIT | no (dev tool) |
+| config-chain | 1.1.13 | MIT | no (dev tool) |
 | cross-spawn | 7.0.6 | MIT | no (dev tool) |
 | csstype | 3.2.3 | MIT | yes |
 | debug | 4.4.3 | MIT | no (dev tool) |
 | deep-is | 0.1.4 | MIT | no (dev tool) |
+| defu | 6.1.7 | MIT | yes |
 | detect-libc | 2.1.2 | Apache-2.0 | no (dev tool) |
+| editorconfig | 3.0.2 | MIT | no (dev tool) |
+| enhanced-resolve | 5.27.0 | MIT | no (dev tool) |
 | entities | 7.0.1 | BSD-2-Clause | yes |
+| es-module-lexer | 2.3.2 | MIT | no (dev tool) |
 | escape-string-regexp | 4.0.0 | MIT | no (dev tool) |
 | eslint | 10.15.0 | MIT | no (dev tool) |
 | eslint-config-prettier | 10.1.8 | MIT | no (dev tool) |
@@ -704,8 +755,9 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | esquery | 1.7.0 | BSD-3-Clause | no (dev tool) |
 | esrecurse | 4.3.0 | BSD-2-Clause | no (dev tool) |
 | estraverse | 5.3.0 | BSD-2-Clause | no (dev tool) |
-| estree-walker | 2.0.2 | MIT | yes |
+| estree-walker | 2.0.2, 3.0.3 | MIT | yes |
 | esutils | 2.0.3 | BSD-2-Clause | no (dev tool) |
+| expect-type | 1.4.0 | Apache-2.0 | no (dev tool) |
 | fast-deep-equal | 3.1.3 | MIT | no (dev tool) |
 | fast-glob | 3.3.3 | MIT | no (dev tool) |
 | fast-json-stable-stringify | 2.1.0 | MIT | no (dev tool) |
@@ -717,16 +769,23 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | find-up | 5.0.0 | MIT | no (dev tool) |
 | flat-cache | 6.1.23 | MIT | no (dev tool) |
 | flatted | 3.4.4 | ISC | no (dev tool) |
+| glob | 13.0.7 | BlueOak-1.0.0 | no (dev tool) |
 | glob-parent | 5.1.2, 6.0.2 | ISC | no (dev tool) |
 | globals | 17.14.0 | MIT | no (dev tool) |
+| graceful-fs | 4.2.12 | BlueOak-1.0.0 | no (dev tool) |
+| happy-dom | 21.0.4 | MIT | no (dev tool) |
 | hashery | 1.5.1 | MIT | no (dev tool) |
 | hookified | 1.15.1, 2.2.0 | MIT | no (dev tool) |
 | ignore | 5.3.2, 7.0.14 | MIT | no (dev tool) |
 | imurmurhash | 0.1.4 | MIT | no (dev tool) |
+| ini | 1.3.8 | ISC | no (dev tool) |
 | is-extglob | 2.1.1 | MIT | no (dev tool) |
 | is-glob | 4.0.3 | MIT | no (dev tool) |
 | is-number | 7.0.0 | MIT | no (dev tool) |
 | isexe | 2.0.0 | ISC | no (dev tool) |
+| jiti | 2.7.0 | MIT | no (dev tool) |
+| js-beautify | 2.0.3 | MIT | no (dev tool) |
+| js-cookie | 3.0.8 | MIT | no (dev tool) |
 | json-schema-traverse | 0.4.1 | MIT | no (dev tool) |
 | json-stable-stringify-without-jsonify | 1.0.1 | MIT | no (dev tool) |
 | keyv | 5.6.0 | MIT | no (dev tool) |
@@ -734,30 +793,38 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | lightningcss | 1.33.0 | MPL-2.0 | no (dev tool) |
 | lightningcss-win32-x64-msvc | 1.33.0 | MPL-2.0 | no (dev tool) |
 | locate-path | 6.0.0 | MIT | no (dev tool) |
-| magic-string | 0.30.21 | MIT | yes |
+| lru-cache | 11.5.3 | BlueOak-1.0.0 | no (dev tool) |
+| magic-string | 0.30.21, 1.4.5 | MIT | yes |
 | merge2 | 1.4.1 | MIT | no (dev tool) |
 | micromatch | 4.0.8 | MIT | no (dev tool) |
 | minimatch | 10.2.6, 11.0.8 | BlueOak-1.0.0 | no (dev tool) |
+| minipass | 7.1.3 | BlueOak-1.0.0 | no (dev tool) |
 | ms | 2.1.3 | MIT | no (dev tool) |
 | muggle-string | 0.4.1 | MIT | no (dev tool) |
 | nanoid | 3.3.20 | MIT | yes |
 | natural-compare | 1.4.0 | MIT | no (dev tool) |
+| nopt | 10.0.1 | ISC | no (dev tool) |
 | nth-check | 2.1.1 | BSD-2-Clause | no (dev tool) |
+| obug | 3.0.0 | MIT | no (dev tool) |
+| ohash | 2.0.12 | MIT | yes |
 | optionator | 0.9.4 | MIT | no (dev tool) |
 | p-limit | 3.1.0 | MIT | no (dev tool) |
 | p-locate | 5.0.0 | MIT | no (dev tool) |
 | path-browserify | 1.0.1 | MIT | no (dev tool) |
 | path-exists | 4.0.0 | MIT | no (dev tool) |
 | path-key | 3.1.1 | MIT | no (dev tool) |
+| path-scurry | 2.0.2 | BlueOak-1.0.0 | no (dev tool) |
 | picocolors | 1.1.1 | ISC | yes |
 | picomatch | 2.3.2, 4.0.7 | MIT | no (dev tool) |
 | postcss | 8.5.33 | MIT | yes |
 | postcss-selector-parser | 7.2.1 | MIT | no (dev tool) |
 | prelude-ls | 1.2.1 | MIT | no (dev tool) |
 | prettier | 3.10.1 | MIT | no (dev tool) |
+| proto-list | 1.2.4 | ISC | no (dev tool) |
 | punycode | 2.3.1 | MIT | no (dev tool) |
 | qified | 0.10.1 | MIT | no (dev tool) |
 | queue-microtask | 1.2.3 | MIT | no (dev tool) |
+| reka-ui | 2.11.0 | MIT | yes |
 | reusify | 1.1.0 | MIT | no (dev tool) |
 | rolldown | 1.2.19 | MIT | no (dev tool) |
 | run-parallel | 1.2.0 | MIT | no (dev tool) |
@@ -765,9 +832,16 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | shebang-command | 2.0.0 | MIT | no (dev tool) |
 | shebang-regex | 3.0.0 | MIT | no (dev tool) |
 | source-map-js | 1.2.2 | BSD-3-Clause | yes |
+| std-env | 4.3.0 | MIT | no (dev tool) |
+| tailwind-merge | 3.7.0 | MIT | yes |
+| tailwindcss | 4.3.5 | MIT | no (dev tool) |
+| tapable | 2.3.4 | MIT | no (dev tool) |
+| tinybench | 6.2.3 | MIT | no (dev tool) |
+| tinyexec | 1.3.1 | MIT | no (dev tool) |
 | tinyglobby | 0.2.17 | MIT | no (dev tool) |
 | to-regex-range | 5.0.1 | MIT | no (dev tool) |
 | ts-api-utils | 2.5.0 | MIT | no (dev tool) |
+| tslib | 2.9.1 | 0BSD | yes |
 | type-check | 0.4.0 | MIT | no (dev tool) |
 | typescript | 5.9.3 | Apache-2.0 | no (dev tool) |
 | typescript-eslint | 8.72.2 | MIT | no (dev tool) |
@@ -775,16 +849,21 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 | uri-js | 4.4.1 | BSD-2-Clause | no (dev tool) |
 | util-deprecate | 1.0.2 | MIT | no (dev tool) |
 | vite | 8.3.8 | MIT | no (dev tool) |
+| vitest | 5.1.0 | MIT | no (dev tool) |
 | vscode-jsonrpc | 10.0.0 | MIT | no (dev tool) |
 | vscode-languageserver-protocol | 3.18.5 | MIT | no (dev tool) |
 | vscode-languageserver-textdocument | 1.0.16 | MIT | no (dev tool) |
 | vscode-languageserver-types | 3.18.5 | MIT | no (dev tool) |
 | vscode-uri | 3.2.0 | MIT | no (dev tool) |
 | vue | 3.5.45 | MIT | yes |
+| vue-component-type-helpers | 3.3.14 | MIT | no (dev tool) |
 | vue-eslint-parser | 10.4.2 | MIT | no (dev tool) |
 | vue-i18n | 11.4.20 | MIT | yes |
 | vue-tsc | 3.3.14 | MIT | no (dev tool) |
+| whatwg-mimetype | 3.0.0 | MIT | no (dev tool) |
 | which | 2.0.2 | ISC | no (dev tool) |
+| why-is-node-running | 3.2.1 | MIT | no (dev tool) |
 | word-wrap | 1.2.5 | MIT | no (dev tool) |
+| ws | 8.23.0 | MIT | no (dev tool) |
 | xml-name-validator | 5.0.0 | Apache-2.0 | no (dev tool) |
 | yocto-queue | 0.1.0 | MIT | no (dev tool) |

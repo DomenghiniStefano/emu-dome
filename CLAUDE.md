@@ -82,6 +82,9 @@ pnpm tauri dev                                # app in development (from app/)
 pnpm lint                                     # ESLint (app/eslint.config.js)
 pnpm format                                   # Prettier writes; format:check only checks
 pnpm typecheck                                # vue-tsc
+pnpm test                                     # Vitest (pure functions, primitives, the nav.ts rule)
+pnpm dev, then http://localhost:<port>/#kit   # Kit page: every primitive in every state (development only)
+node scripts/scan-conventions.mjs             # design system conventions (--self-test: each rule on its fixture)
 cargo test --workspace
 cargo test -p emudome-core settings::         # one module (settings tests live in settings/tests.rs)
 cargo test -p emudome-core hotkeys::<name>    # one test
@@ -137,7 +140,9 @@ app/src                  Vue interface: App.vue, FirstRun (4 steps, once per dev
                          emu.ts (typed bridge),
                          theme.ts (data-theme on <html>), sections.ts,
                          nav.ts (controller/keyboard focus navigation for every screen),
-                         i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text)
+                         i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text),
+                         assets/theme/ (design tokens, one file per family), components/ui/ (the primitives),
+                         lib/ (cn, design helpers), kit/ (Kit page, development only): see «Interface structure»
 ```
 
 - The interface never touches the core: it calls the Tauri commands, which send `Command` to the `Session`.
@@ -229,7 +234,10 @@ instead of repeating commands. No CI, by choice. It runs everything and summariz
 
 **Checked**: `cargo fmt`, clippy with the workspace lints (no `unwrap`, no `_ =>` on enums, no glob imports),
 `cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
-`vue-tsc`, ESLint, Prettier (`format:check`), and the gates: no merge conflict marker,
+`vue-tsc`, ESLint, Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
+(`scripts/scan-conventions.mjs`: no literal colour, alpha modifier or `dark:` in classes, no string variant, no raw
+`<button>` / `<input>` or `<style>` outside `components/ui`; screens not migrated yet are on its `LEGACY` list and only
+counted), and the gates: no merge conflict marker,
 no `#[cfg(target_os)]` outside `crates/emudome-platform`, `invoke` only in `app/src/emu.ts`, no emoji,
 no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`).
 Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,
@@ -246,6 +254,8 @@ Prettier on the staged frontend files).
   and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
+- Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
+  tested pure functions, nothing duplicated across screens, names that say what a thing is for.
 
 **A rule arrives with its check, in the same commit**: a rule added here either comes with its lint / test / gate
 (seen failing once on a real violation or a fixture, its blind spots written next to it), or is added to the
@@ -254,7 +264,7 @@ review-only list above. A rule in neither place is the thing this section exists
 ## Interface and tone
 
 - Design system: **EmuDome Design System** (a copy of GameDome's that evolves on its own),
-  https://claude.ai/artifact/TEz4yQgd1w27HRQLt4beAy. The main tokens are already in `app/src/styles.css`.
+  https://claude.ai/artifact/TEz4yQgd1w27HRQLt4beAy. Its tokens live in `app/src/assets/theme/` (see below).
 - Modern console style, dark theme:
   - neutral graphite, the colour comes from the covers;
   - purple (`accent`) only on the main action;
@@ -265,6 +275,40 @@ review-only list above. A rule in neither place is the thing this section exists
   No screen may require mouse or keyboard.
 - Texts (in every language): address the user directly ("tu" in Italian), short sentences, verb first on buttons,
   no exclamation marks. Errors say what is happening and what to do.
+
+## Interface structure (design system)
+
+Owner, 2026-11-18: cleanliness, components and tokens, so that changing anything later happens **in one place**,
+written as clean code. The full rules and their reasons: `docs/specs/2026-11-18-design-system-foundations.md`.
+Migration: Trello #61 (foundations, done) → #62 (every screen moved, no visual change) → #63 (rules blocking
+everywhere). Until #63 no new screen or graphic work starts.
+
+- **Tokens** in `app/src/assets/theme/`, one file per family: `colors.css`, `typography.css`, `spacing.css`,
+  `radius.css`, `shadow.css`, `opacity.css`, `motion.css`, `layers.css`; imported by `assets/main.css`.
+  - Tailwind v4 reads them in `@theme`, with its default scales **reset**: a colour, size, radius, shadow or
+    duration that is not a token generates no class at all. Preflight is off.
+  - Names come from the design system (`title`, `heading`, `body`, `space-*`, `control`, `radius-*`, `glow-*`…).
+    One value per step: a new value is a design-system change (Cowork), never a literal in a screen.
+  - Themes (Scuro / Nero / Chiaro) and the runtime accent (`appearance.ts`, `accent.ts`) are CSS variables on
+    `:root` / `[data-theme]`; Tailwind points at them (`@theme inline`), so a theme or accent change needs no class.
+  - Glass, glow and other compound looks are named utilities (`assets/utilities.css`), not long class strings.
+- **Primitives** in `app/src/components/ui/<name>/`, all on **Reka UI** (one standard, no hand-made ones):
+  `index.ts` re-exports, `variants.ts` holds the variants as `as const` constants (`ButtonVariant.Primary`, never
+  `variant="primary"`), the parts are `.vue` files. Today: Button, Card, Chip, Tabs, Segmented, Slider, Select,
+  Switch, Dialog. A screen never restyles a primitive; a missing look is a new variant.
+- **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
+- **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
+  by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its
+  ends nav.ts moves spatially. Select and Dialog take B while open and give the focus back on close. Tested in
+  Vitest (`components/ui/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
+- **Kit page** (`app/src/kit/`, `#kit`, development only, not in the build): every primitive in every state, the
+  three themes, the five accents. A new primitive or variant is added there first.
+- **Clean code**: small components with one job (a screen composes panels, a panel composes primitives); logic in
+  composables (`useX`) and pure functions with tests, the template only composes; nothing duplicated across screens
+  (one slot tile, one button tester, one combo table, one confirm dialog); names that say what a thing is for.
+- **Checked** by `scripts/scan-conventions.mjs` (in `scripts/check`, each rule self-tested on its fixture): no literal
+  colour, alpha modifier or `dark:` in classes, no string variant, no raw `<button>` / `<input>` or `<style>` outside
+  `components/ui`. Screens written before the design system are on its `LEGACY` list until #62 migrates them.
 
 ## References
 

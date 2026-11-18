@@ -1,0 +1,28 @@
+/* Motion tokens (README «Movimento», tokens.json `duration` and `easing`).
+
+   `duration-fast` hover and presses; `duration-panel` the quick menu and menus; `duration-scene`
+   the focus moments; `duration-ambient` the haze changing colour. «Riduci le animazioni»
+   (`data-motion="reduce"`, styles.css) keeps only short fades whatever a class says. */
+@theme static {
+  /* A bare `transition-*` class: what `.btn` does today (150 ms, the CSS default curve). */
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: ease;
+
+  --transition-duration-fast: 150ms;
+  --transition-duration-panel: 250ms;
+  --transition-duration-scene: 500ms;
+  --transition-duration-ambient: 1200ms;
+
+  --ease-*: initial;
+  /* Everything that enters. `--ease-out` is also the name the screens' scoped CSS reads. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Panels, a capsule flying into the game card: a light spring, never a visible bounce. */
+  --ease-spring: cubic-bezier(0.34, 1.28, 0.64, 1);
+
+  --animate-*: initial;
+}
+
+/* The name AppShell's haze transition reads (`var(--duration-ambient)`). */
+:root {
+  --duration-ambient: var(--transition-duration-ambient);
+}

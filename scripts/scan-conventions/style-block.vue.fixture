@@ -1,0 +1,10 @@
+<!-- Fixture of scripts/scan-conventions.mjs: a scoped style block. -->
+<template>
+  <div class="x">x</div>
+</template>
+
+<style scoped>
+.x {
+  color: red;
+}
+</style>
