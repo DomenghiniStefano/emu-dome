@@ -39,7 +39,7 @@ export const ButtonSize = {
   Tall: 'tall',
   // The phone's touch minimum (README: 44px), radius 10 (board «Tel-Dettagli» `.phone .btn`).
   // Its label takes the size and line of the text around it (the phone's type is larger), in the
-  // medium weight.
+  // medium weight, wrapping onto a second line when it is long.
   Touch: 'touch',
   // A 44px square for an icon alone on the phone (GameDetails `.icon-btn`).
   IconTouch: 'iconTouch',
@@ -81,7 +81,7 @@ export const buttonVariants = cva(
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
         [ButtonSize.Tall]: 'h-control-lg px-12',
         [ButtonSize.Touch]:
-          'h-touch rounded-10 px-14 text-[length:inherit] leading-[inherit] font-medium',
+          'h-touch rounded-10 px-14 text-[length:inherit] leading-[inherit] font-medium whitespace-normal',
         [ButtonSize.IconTouch]: 'size-touch rounded-10 p-0',
         [ButtonSize.Hero]: 'h-[52px] gap-8 rounded-10 px-18 text-[16px]/[22px]',
         [ButtonSize.Bare]: 'h-auto gap-4 rounded-none p-0 whitespace-normal',
