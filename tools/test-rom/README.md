@@ -5,3 +5,5 @@ it fills the screen with magenta and turns green while A is held.
 It tests core, video and input without using commercial games.
 
 Rebuilding it needs `binutils-arm-none-eabi`: `python3 build.py`.
+
+Licence: GPL-3.0-or-later, like the rest of EmuDome (`LICENSE` in this folder).
