@@ -649,7 +649,7 @@ onUnmounted(() => {
     </div>
     <TouchControls
       v-if="touch && !menuOpen"
-      :shoulders="game.console !== 'GB' && game.console !== 'GBC'"
+      :shoulders="game.consoleId !== 'gb' && game.consoleId !== 'gbc'"
       @menu="setMenu(true)"
     />
     <QuickMenu

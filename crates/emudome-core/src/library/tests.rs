@@ -217,6 +217,23 @@ fn gb_and_gbc_identity() {
 }
 
 #[test]
+fn a_dual_gb_cartridge_follows_its_extension() {
+    // CGB flag 0x80: runs on both. As .gb it is a Game Boy game, as .gbc a Game Boy Color one;
+    // the identity is the same content hash under the console's prefix.
+    let dir = TestDir::new("lib-gb-dual");
+    let rom = gb_rom("DUALMODEGAME", 0x80);
+    let gb = identify(&write(&dir, "dual.gb", &rom)).unwrap();
+    let gbc = identify(&write(&dir, "dual.gbc", &rom)).unwrap();
+    assert_eq!(gb.console, ConsoleId::Gb);
+    assert_eq!(gbc.console, ConsoleId::Gbc);
+    assert_eq!(gb.id, format!("gb:{}", sha1_hex(&rom)));
+    assert_eq!(gbc.id, format!("gbc:{}", sha1_hex(&rom)));
+    // A CGB-only cartridge named .gbc is GBC too.
+    let only = identify(&write(&dir, "only.gbc", &gb_rom("COLOUR", 0xC0))).unwrap();
+    assert_eq!(only.console, ConsoleId::Gbc);
+}
+
+#[test]
 fn nds_trimmed_and_untrimmed_dumps_are_the_same_game() {
     let dir = TestDir::new("lib-nds");
     let trimmed = nds_rom();

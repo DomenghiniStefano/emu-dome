@@ -1150,3 +1150,88 @@ fn game_overrides_list_the_game_values_with_the_console_value_beside() {
         .collect();
     assert_eq!(keys, vec![vol]);
 }
+
+// ---- Game Boy / Game Boy Color core options (core_values.rs) ----
+
+/// The core options a game of `console` gets from these settings.
+fn gb_options(s: Settings, console: ConsoleId) -> Vec<(String, String)> {
+    let s = std::cell::RefCell::new(s);
+    let scope = Scope::Game {
+        console,
+        game: GameId::from_rom_path("C:/games/test.gb".as_ref()),
+    };
+    super::core_values::core_options(console, |key| {
+        s.borrow_mut()
+            .resolve(key, &scope)
+            .ok()
+            .and_then(|r| r.value)
+    })
+}
+
+fn pairs(list: &[(&str, &str)]) -> Vec<(String, String)> {
+    list.iter()
+        .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+        .collect()
+}
+
+#[test]
+fn gb_defaults_become_mgba_options() {
+    let dir = TestDir::new("gb-core-defaults");
+    assert_eq!(
+        gb_options(settings(&dir), ConsoleId::Gb),
+        pairs(&[
+            ("mgba_gb_model", "Autodetect"),
+            ("mgba_gb_colors", "DMG Green"),
+            ("mgba_gb_colors_preset", "0"),
+            ("mgba_sgb_borders", "ON"),
+        ])
+    );
+}
+
+#[test]
+fn gbc_console_level_changes_reach_the_core_and_not_gb() {
+    let dir = TestDir::new("gb-core-console");
+    let mut s = settings(&dir);
+    let gbc = Scope::Console {
+        console: ConsoleId::Gbc,
+    };
+    s.set("consoles.gbmodel", &gbc, Value::Text("gbc".into()))
+        .unwrap();
+    s.set("consoles.gbpal", &gbc, Value::Text("gbc".into()))
+        .unwrap();
+    s.set("consoles.sgb", &gbc, Value::Bool(false)).unwrap();
+    assert_eq!(
+        gb_options(s, ConsoleId::Gbc),
+        pairs(&[
+            ("mgba_gb_model", "Game Boy Color"),
+            ("mgba_gb_colors_preset", "1"),
+            ("mgba_sgb_borders", "OFF"),
+        ])
+    );
+    // The Game Boy console keeps its own values.
+    let s = settings(&dir);
+    assert!(gb_options(s, ConsoleId::Gb).contains(&("mgba_gb_model".into(), "Autodetect".into())));
+}
+
+#[test]
+fn every_gb_choice_maps_to_an_mgba_value() {
+    // Every option id of the catalogue's GB entries has a core value: a new id without one
+    // would silently leave the core on its default.
+    for key in ["consoles.gbmodel", "consoles.gbpal"] {
+        let Some(Kind::Choice { options, .. }) = entry(key).map(|e| e.kind) else {
+            panic!("{key} is not a choice");
+        };
+        for id in options {
+            let out = super::core_values::core_options(ConsoleId::Gb, |k| {
+                (k == key).then(|| Value::Text((*id).to_owned()))
+            });
+            assert!(!out.is_empty(), "{key}={id} has no mGBA value");
+        }
+    }
+}
+
+#[test]
+fn other_consoles_get_no_gb_options() {
+    let dir = TestDir::new("gb-core-gba");
+    assert!(gb_options(settings(&dir), ConsoleId::Gba).is_empty());
+}

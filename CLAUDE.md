@@ -26,11 +26,11 @@ date, no decryption code, no secrets, no paid features) is held by review.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**EmuDome**: one emulator for **Game Boy Advance, Nintendo DS and Nintendo 3DS**, on **Windows, Linux and Android**
-(GB/GBC are also planned as first-class consoles, `docs/decisions.md`).
+**EmuDome**: one emulator for **Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS and Nintendo 3DS**, on
+**Windows, Linux and Android** (GB/GBC are first-class consoles, `docs/decisions.md`).
 Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interchangeable libretro libraries:
 
-- GBA: mGBA
+- GB, GBC and GBA: mGBA
 - NDS: melonDS DS
 - 3DS: Azahar
 
@@ -116,7 +116,8 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          ErrorCode (errors for the UI as code + params),
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          settings/ (settings engine: schema.rs types, catalog.rs the 155 entries,
-                         mod.rs levels / resolve / session, store.rs files; pure, unit-tested)
+                         mod.rs levels / resolve / session, store.rs files,
+                         core_values.rs settings → core options; pure, unit-tested)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
@@ -210,7 +211,7 @@ app/src                  Vue interface: App.vue, FirstRun (4 steps, once per dev
   Syncing the user's own games to the user's own Google Drive (planned, `docs/decisions.md`) is not EmuDome
   distributing them: it is allowed.
 - License GPL-3.0-or-later; the cores are separate projects with their own licenses.
-- Features live in the shell, not in the cores: same interface for GBA, NDS and 3DS.
+- Features live in the shell, not in the cores: same interface for GB, GBC, GBA, NDS and 3DS.
   Where a core cannot support a feature, the interface shows it disabled with the reason.
 - **No `unwrap()` outside tests, no `_ =>` on an enum, no glob imports** (`use x::*`): declared in
   `[workspace.lints.clippy]` of the root `Cargo.toml`, every crate opts in with `[lints] workspace = true`.
@@ -286,8 +287,8 @@ review-only list above. A rule in neither place is the thing this section exists
 ## Known gaps of the prototype (intentional, for later)
 
 - Core options are answered (`core_options.rs`), but the only values the shell sets are the forced ones in
-  `FORCED_CORE_OPTIONS` (`app/src-tauri/src/lib.rs`: Azahar's software renderer); the settings engine's `cores.*`
-  entries are not mapped to them yet.
+  `FORCED_CORE_OPTIONS` (`app/src-tauri/src/lib.rs`: Azahar's software renderer) and the Game Boy console options
+  (`settings/core_values.rs`); the other `consoles.*` and the `cores.*` entries are not mapped to them yet.
 - Audio is muted in fast forward and slow motion.
 - The cores are not included in the build; the package takes them from `cores/` as a resource.
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
