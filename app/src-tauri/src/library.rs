@@ -42,7 +42,7 @@ pub struct LibraryState {
 
 /// Opens the library database and the covers folder.
 pub fn open(app: &tauri::App) -> tauri::Result<LibraryState> {
-    let local = app.path().app_local_data_dir()?;
+    let local = crate::dirs::local(app)?;
     let dir = local.join("library");
     log::info!("library in {}", dir.display());
     Ok(LibraryState {
