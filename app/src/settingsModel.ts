@@ -108,9 +108,14 @@ export const FILE_PICKERS: Partial<Record<string, () => Promise<string | null>>>
 
 /** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */
 export function notYetWired(entry: SettingEntry): boolean {
+  // The colour-blind filter is drawn on the webview's canvas; the native video has no filter
+  // pass yet (it belongs in video.rs).
+  if (entry.key === 'a11y.cblind') return videoMode.value === 'native'
   switch (entry.kind.type) {
+    // File rows with a backend: their own picker (FILE_PICKERS), or the background image,
+    // whose picker the page opens at its scope (`settings_choose_background`).
     case 'file':
-      return !FILE_PICKERS[entry.key]
+      return !FILE_PICKERS[entry.key] && entry.key !== 'video.surroundImg'
     // `apply` (presets): the bundles and their confirmation are not defined yet.
     case 'action':
     case 'apply':
@@ -125,6 +130,15 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'bindings':
       return false
   }
+}
+
+/**
+ * Options of a choice that are shown but cannot be picked yet (X05: disabled, with «Arriva con un
+ * prossimo aggiornamento»). «Gioco sfocato» needs the game's frames blurred behind it, which the
+ * native video does not draw yet.
+ */
+export function optionNotYet(entry: SettingEntry, id: string): boolean {
+  return entry.key === 'video.surround' && id === 'blur'
 }
 
 /** Plain text for search: lower case, accents removed. */

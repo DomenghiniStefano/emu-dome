@@ -12,9 +12,10 @@
 // From there a game opens, and closing it comes back to the details; «Mostra i backup» /
 // «Importa…» (L05), «Apri tutte le impostazioni…» (L06) and «Rimappa…» (L07) jump to the
 // Saves, Settings and Controls sections for that one game.
-import { computed, ref, type Component } from 'vue'
+import { computed, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Cloud, Gamepad2, Library, Save, Settings2 } from '@lucide/vue'
+import { ambientGame, coverColours, type CoverColours } from '../ambient'
 import { useNavScope } from '../nav'
 import { SECTIONS, type Section } from '../sections'
 import type { LibraryGame } from '../emu'
@@ -37,6 +38,23 @@ const emit = defineEmits<{
 const section = defineModel<Section>({ required: true })
 
 const { t } = useI18n()
+
+// The haze takes the colours of the cover in the foreground of the library (ambient.ts); elsewhere,
+// and until a cover is known, the design's fallback spots (styles.css @property initial values).
+const coverSpots = ref<CoverColours | null>(null)
+watch(
+  () => (section.value === 'library' ? ambientGame.value : null),
+  async game => {
+    const colours = game ? await coverColours(game) : null
+    if ((section.value === 'library' ? ambientGame.value : null) === game)
+      coverSpots.value = colours
+  },
+  { immediate: true },
+)
+const hazeStyle = computed(() => {
+  const c = coverSpots.value
+  return c ? { '--cover-1': c[0], '--cover-2': c[1], '--cover-3': c[2] } : {}
+})
 
 const ICONS: Record<Section, Component> = {
   library: Library,
@@ -123,7 +141,7 @@ function initialOn(s: Section) {
 
 <template>
   <div ref="root" class="shell">
-    <div class="haze" aria-hidden="true"></div>
+    <div class="haze" aria-hidden="true" :style="hazeStyle"></div>
     <header class="topbar">
       <div class="wordmark">EmuDome</div>
     </header>
@@ -214,7 +232,8 @@ function initialOn(s: Section) {
   background: var(--bg);
   overflow: hidden;
 }
-/* Ambient haze (design L01): decoration only, off in Nero (--haze-opacity 0). */
+/* Ambient haze (design L01): decoration only, off in Nero and with «Riduci la trasparenza»
+   (--haze-opacity 0). Its spots are the cover colours (--cover-1/2/3), fading on a change. */
 .haze {
   position: absolute;
   inset: 0;
@@ -222,9 +241,13 @@ function initialOn(s: Section) {
   pointer-events: none;
   opacity: var(--haze-opacity);
   background:
-    radial-gradient(60% 50% at 18% 0%, #2f5d8a 0%, transparent 70%),
-    radial-gradient(40% 40% at 80% 10%, #1f6f78 0%, transparent 70%),
-    radial-gradient(50% 50% at 60% 100%, #2b3a8c 0%, transparent 70%);
+    radial-gradient(60% 50% at 18% 0%, var(--cover-1) 0%, transparent 70%),
+    radial-gradient(40% 40% at 80% 10%, var(--cover-2) 0%, transparent 70%),
+    radial-gradient(50% 50% at 60% 100%, var(--cover-3) 0%, transparent 70%);
+  transition:
+    --cover-1 var(--duration-ambient) var(--ease-out),
+    --cover-2 var(--duration-ambient) var(--ease-out),
+    --cover-3 var(--duration-ambient) var(--ease-out);
 }
 .topbar {
   flex: 0 0 40px;

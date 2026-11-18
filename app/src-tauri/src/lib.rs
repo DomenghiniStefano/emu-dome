@@ -8,6 +8,7 @@
 
 mod audio;
 mod bench;
+mod dirs;
 mod effects;
 mod first_run;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
@@ -631,6 +632,7 @@ pub fn run() {
     emudome_platform::init_logging();
     log::info!("EmuDome on {}", emudome_platform::OS_NAME);
     let tuning = Tuning::from_env();
+    dirs::set_override(tuning.data_dir.clone());
     for ignored in &tuning.warnings {
         log::warn!("ignored, the default stays: {ignored}");
     }
@@ -639,11 +641,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| {
-            // `emu://cover/<id>`: covers; `emu://slot/<n>`: slot thumbnails of the open game;
+            // `emu://cover/<id>`: covers; `emu://background/<name>`: the user's background
+            // (video.surroundImg); `emu://slot/<n>`: slot thumbnails of the open game;
             // `emu://savethumb/<game>/<n>`: those of any game (Saves section); else the frame.
             let path = req.uri().path();
             if let Some(id) = path.strip_prefix("/cover/") {
                 library::cover_response(ctx.app_handle(), id)
+            } else if let Some(name) = path.strip_prefix("/background/") {
+                settings::background_response(ctx.app_handle(), name)
             } else if let Some(rest) = path.strip_prefix("/savethumb/") {
                 saves::thumb_response(ctx.app_handle(), rest)
             } else if let Some(slot) = path.strip_prefix("/slot/") {
@@ -653,10 +658,7 @@ pub fn run() {
             }
         })
         .setup(move |app| {
-            let data_dir = match &tuning.data_dir {
-                Some(dir) => dir.clone(),
-                None => app.path().app_data_dir()?,
-            };
+            let data_dir = dirs::data(app)?;
             log::info!("data in {}", data_dir.display());
             let (window, ui) = window::create(
                 app,
@@ -792,6 +794,7 @@ pub fn run() {
             settings::settings_session_commit,
             settings::settings_session_discard,
             effects::effects_choose_file,
+            settings::settings_choose_background,
             pads::gamepad_list,
             pads::gamepad_watch,
             pads::gamepad_capture,

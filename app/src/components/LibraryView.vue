@@ -15,6 +15,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from
 import { useI18n } from 'vue-i18n'
 import { ChevronDown, Ellipsis, FolderX, Play, Plus, TriangleAlert, X } from '@lucide/vue'
 import { AUTO_SLOT, emu, type ConsoleId, type LibraryGame, type SettingsScope } from '../emu'
+import { ambientGame } from '../ambient'
 import { detailsReturn, resumePoint, type ResumePoint } from '../gameDetails'
 import { errorText, lastPlayedLabel, playTimeLabel } from '../i18n/labels'
 import { chooseFolder, library, replaceFolder } from '../library'
@@ -134,6 +135,22 @@ const recent = computed(() =>
     .filter(g => !g.hidden && g.lastPlayed !== null)
     .sort((a, b) => (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0))
     .slice(0, CONTINUE),
+)
+
+// ---- The cover in the foreground: its colours tint the shell's haze (ambient.ts) ----
+
+/** The game under the pointer or the focus; until one, the first «Continua a giocare». */
+function foreground(g: LibraryGame) {
+  ambientGame.value = g
+}
+// The library changed (a scan, a new cover): keep the same game with its fresh record.
+watch(
+  [() => recent.value[0] ?? games.value[0] ?? null, () => library.games],
+  ([first]) => {
+    const current = ambientGame.value
+    ambientGame.value = (current && library.games.find(g => g.id === current.id)) || first
+  },
+  { immediate: true },
 )
 
 /** Where «Riprendi» picks up: the newest quick save (auto or a slot), else the in-game save. */
@@ -358,6 +375,8 @@ onUnmounted(() => unlistenSettings?.())
             v-for="(g, i) in recent"
             :key="g.id"
             class="continue-card"
+            @mouseenter="foreground(g)"
+            @focusin="foreground(g)"
             :class="{ off: !g.available }"
           >
             <span class="shot" aria-hidden="true" :style="{ background: g.colour }">
@@ -445,6 +464,8 @@ onUnmounted(() => unlistenSettings?.())
           v-for="g in games"
           :key="g.id"
           class="card"
+          @mouseenter="foreground(g)"
+          @focusin="foreground(g)"
           :class="{ off: !g.available }"
           :data-game="g.id"
         >
@@ -624,12 +645,10 @@ onUnmounted(() => unlistenSettings?.())
     transform: translateX(340%);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .bar span {
-    animation: none;
-    width: 100%;
-    opacity: 0.5;
-  }
+:root[data-motion='reduce'] .bar span {
+  animation: none;
+  width: 100%;
+  opacity: 0.5;
 }
 
 /* L11 */

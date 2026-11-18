@@ -19,7 +19,8 @@ import {
 } from '../emu'
 import { LOCALE } from '../i18n'
 import { errorText } from '../i18n/labels'
-import { FILE_PICKERS, lockReason, msg, notYetWired } from '../settingsModel'
+import { FILE_PICKERS, lockReason, msg, notYetWired, optionNotYet } from '../settingsModel'
+import { BUILTIN_BACKGROUNDS, SURROUND_CARDS } from '../surround'
 import SettingSelect from './SettingSelect.vue'
 
 const props = defineProps<{
@@ -44,6 +45,8 @@ const emit = defineEmits<{
   error: [string]
   /** A binding list (`pad.remap`, `pad.combos`): open the Controls section, where it is edited. */
   open: []
+  /** A file row with a backend (`video.surroundImg`): open its picker at the page's scope. */
+  choose: []
 }>()
 
 const { t, te } = useI18n()
@@ -142,6 +145,8 @@ const options = computed(() => {
       // `{language}`: «Come il sistema (Italiano)» of `general.lang`; other options ignore it.
       text: t(msg.option(key.value, id), { language: t(`settings.general.lang.option.${LOCALE}`) }),
       desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
+      /** Shown, not pickable yet (X05). */
+      notYet: optionNotYet(props.entry, id),
     }))
 })
 
@@ -187,21 +192,14 @@ async function addFolder() {
   }
 }
 
-// ---- Cards: preview swatches from the board
+// ---- Cards: preview swatches from the board (surround.ts holds the background ones)
 const CARD_BG: Record<string, string> = {
-  'video.surround.black': '#000',
-  'video.surround.cover': 'radial-gradient(70% 90% at 30% 20%, #2f5d8a 0%, #12202e 70%)',
-  'video.surround.blur':
-    'radial-gradient(60% 80% at 50% 40%, #5f8fc4 0%, #3d6b3a 60%, #1e2129 100%)',
-  'video.surround.builtin': 'linear-gradient(135deg, #5b3f8c 0%, #245f7a 100%)',
-  'video.surround.image': 'repeating-linear-gradient(45deg, #1e2129 0 8px, #262a33 8px 16px)',
-  'video.surroundSet.aurora': 'linear-gradient(135deg, #5b3f8c 0%, #245f7a 100%)',
-  'video.surroundSet.sunset': 'linear-gradient(135deg, #8a3b2f 0%, #7a2f5a 100%)',
-  'video.surroundSet.night': 'linear-gradient(135deg, #0f1a33 0%, #1f3f6b 100%)',
-  'video.surroundSet.forest': 'linear-gradient(135deg, #1c3324 0%, #3d6b3a 100%)',
-  'video.surroundSet.graphite': 'linear-gradient(135deg, #16181e 0%, #2b2f38 100%)',
-  'video.surroundSet.grid':
-    'repeating-linear-gradient(0deg, #ffffff0d 0 1px, transparent 1px 16px), repeating-linear-gradient(90deg, #ffffff0d 0 1px, transparent 1px 16px), #16181e',
+  ...Object.fromEntries(
+    Object.entries(SURROUND_CARDS).map(([id, bg]) => [`video.surround.${id}`, bg]),
+  ),
+  ...Object.fromEntries(
+    Object.entries(BUILTIN_BACKGROUNDS).map(([id, bg]) => [`video.surroundSet.${id}`, bg]),
+  ),
 }
 const HUES = ['#2f5d8a', '#4f6b2e', '#3d6b3a', '#8a3b2f', '#5b3f8c', '#245f7a']
 function cardBg(id: string, i: number): string {
@@ -329,9 +327,17 @@ function swatchName(hex: string): string {
 
         <!-- file, action -->
         <template v-else-if="kind.type === 'file' || kind.type === 'action'">
-          <span v-if="fileName" class="file-state">{{ fileName }}</span>
+          <span v-if="fileName && picker" class="file-state">{{ fileName }}</span>
           <span v-else-if="noFile" class="file-state">{{ noFile }}</span>
           <button v-if="buttonText && picker" class="btn" :disabled="disabled" @click="pickFile">
+            {{ buttonText }}
+          </button>
+          <button
+            v-else-if="buttonText && !notYet"
+            class="btn"
+            :disabled="disabled"
+            @click="emit('choose')"
+          >
             {{ buttonText }}
           </button>
           <button v-else-if="buttonText" class="btn" disabled :title="t('settingsUi.notYet')">
@@ -411,15 +417,18 @@ function swatchName(hex: string): string {
         v-for="(o, i) in options"
         :key="o.id"
         class="card"
-        :class="{ on: o.id === value }"
+        :class="{ on: o.id === value, 'not-yet': o.notYet }"
         role="radio"
         :aria-checked="o.id === value"
-        :disabled="disabled"
+        :disabled="disabled || o.notYet"
+        :title="o.notYet ? t('settingsUi.notYet') : undefined"
         @click="set(o.id)"
       >
         <span class="thumb" aria-hidden="true" :style="{ background: cardBg(o.id, i) }"></span>
         <span class="card-title">{{ o.text }}</span>
-        <span v-if="o.desc" class="card-desc">{{ o.desc }}</span>
+        <span v-if="o.desc || o.notYet" class="card-desc">
+          {{ o.notYet ? `${o.desc} ${t('settingsUi.notYet')}`.trim() : o.desc }}
+        </span>
       </button>
     </div>
 
@@ -463,7 +472,8 @@ function swatchName(hex: string): string {
 .row.locked .text,
 .row.locked .chips,
 .row.locked .cards,
-.row.locked .swatches {
+.row.locked .swatches,
+.card.not-yet {
   opacity: 0.55;
 }
 .head {
@@ -568,7 +578,7 @@ function swatchName(hex: string): string {
   justify-content: flex-end;
   border: 0;
   background: linear-gradient(var(--accent-crown), var(--accent-deep));
-  box-shadow: 0 0 12px #7c5cff73;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--violet) 45%, transparent);
 }
 .knob {
   width: 16px;

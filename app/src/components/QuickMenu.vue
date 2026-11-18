@@ -1513,7 +1513,7 @@ button.line:hover:not(:disabled) {
 }
 .card.trial {
   border-color: var(--accent-text);
-  background: #7c5cff1a;
+  background: color-mix(in srgb, var(--violet) 10%, transparent);
 }
 .card-name,
 .card-sub {

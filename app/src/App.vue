@@ -25,6 +25,7 @@ import { nativeAvailable, videoMode } from './videoMode'
 import type { Section } from './sections'
 import AppShell from './components/AppShell.vue'
 import GameCanvas from './components/GameCanvas.vue'
+import GameSurround from './components/GameSurround.vue'
 import QuickMenu from './components/QuickMenu.vue'
 import ToastStack from './components/ToastStack.vue'
 import GameFlowOverlays from './components/GameFlowOverlays.vue'
@@ -46,6 +47,11 @@ const stats = ref<Stats | null>(null)
 const speed = ref<Speed>({ kind: 'factor', value: 1 })
 const error = ref<string | null>(null)
 const toasts = ref<InstanceType<typeof ToastStack> | null>(null)
+// The game's frame size (the core's `started` event): where the native video draws it, so the
+// side background (GameSurround) leaves that rectangle clear.
+const gameSize = ref<{ w: number; h: number } | null>(null)
+// The library game being played («Colore della copertina»); null for a file.
+const playingGame = ref<LibraryGame | null>(null)
 // Touch screen (Android): on-screen buttons while playing.
 const touch = window.matchMedia('(pointer: coarse)').matches
 
@@ -103,6 +109,8 @@ const undoAllowed = ref(true)
 // `a11y.toggle`: Backspace turns rewind on and the next press off instead of holding.
 const rewindToggle = ref(false)
 const rewinding = ref(false)
+// `a11y.cblind`: the colour correction on the game (webview canvas only, see settingsModel).
+const colourBlind = ref('none')
 async function loadGameSettings() {
   if (!game.value) return
   try {
@@ -115,6 +123,7 @@ async function loadGameSettings() {
     ffSpeed.value = speedFromOption(of('speed.ffval')) ?? FF_DEFAULT
     undoAllowed.value = of('saves.undo') !== false
     rewindToggle.value = of('a11y.toggle') === true
+    colourBlind.value = String(of('a11y.cblind') ?? 'none')
   } catch (e) {
     toasts.value?.push(errorText(e), 'error')
   }
@@ -158,6 +167,7 @@ async function start(
         ? await emu.openGame(opened.path)
         : await emu.library.open(opened.game.id)
     lastOpened = opened
+    playingGame.value = opened.kind === 'library' ? opened.game : null
     await gameStarted(info, resumeAuto)
     return true
   } catch (e) {
@@ -512,7 +522,7 @@ onMounted(async () => {
   unlisten.push(
     await emu.settings.onChanged(e => {
       if (e.key === 'pad.remap') void loadKeymap(game.value !== null)
-      if (e.key.startsWith('speed.') || e.key.startsWith('saves.')) void loadGameSettings()
+      if (['speed.', 'saves.', 'a11y.'].some(p => e.key.startsWith(p))) void loadGameSettings()
     }),
     await emu.onMenu(() => {
       usedController()
@@ -560,6 +570,7 @@ onMounted(async () => {
       }
       if (ev.type === 'error') menuLoad = null
       if (ev.type === 'error') toasts.value?.push(errorText(ev.error), 'error')
+      if (ev.type === 'started') gameSize.value = { w: ev.width, h: ev.height }
       if (ev.type === 'stopped' && !closingNow) crashed()
     }),
   )
@@ -606,7 +617,18 @@ onUnmounted(() => {
 
   <!-- In game: no interface, except discreet indicators and the quick menu. -->
   <template v-else-if="game">
-    <GameCanvas v-if="videoMode === 'webview'" :inset-bottom="menuInset" />
+    <GameSurround
+      :mode="videoMode"
+      :game-size="gameSize"
+      :inset-bottom="menuInset"
+      :game="playingGame"
+    />
+    <GameCanvas
+      v-if="videoMode === 'webview'"
+      :inset-bottom="menuInset"
+      :colour-blind="colourBlind"
+      surround
+    />
     <div class="hud">
       <div
         v-if="turboHeld || speed.kind === 'max' || (speed.kind === 'factor' && speed.value !== 1)"

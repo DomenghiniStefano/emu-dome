@@ -11,14 +11,10 @@ use std::path::PathBuf;
 
 use emudome_core::first_run::{self, Step};
 use emudome_core::ErrorCode;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 fn marker(app: &AppHandle) -> Option<PathBuf> {
-    app.path()
-        .app_local_data_dir()
-        .inspect_err(|e| log::warn!("first run marker: {e}"))
-        .ok()
-        .map(|dir| dir.join("first-run").join("done"))
+    crate::dirs::local_or_log(app, "first run marker").map(|dir| dir.join("first-run").join("done"))
 }
 
 fn write_marker(app: &AppHandle) -> Result<(), ErrorCode> {

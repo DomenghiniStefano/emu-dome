@@ -548,6 +548,9 @@ export interface BenchFrame {
 
 /** URL of the `emu://` protocol (on Windows it becomes http://emu.localhost/...). */
 export const frameUrl = convertFileSrc('frame', 'emu')
+/** URL of an image the user chose as background (`video.surroundImg` holds its file name). */
+export const backgroundUrl = (name: string) =>
+  `${convertFileSrc('background', 'emu')}/${encodeURIComponent(name)}`
 
 export const emu = {
   startupGame: () => invoke<string | null>('startup_game'),
@@ -606,6 +609,10 @@ export const emu = {
     commitSession: (target: 'game' | 'console') =>
       invoke<void>('settings_session_commit', { target }),
     discardSession: () => invoke<void>('settings_session_discard'),
+    /** «Scegli un’immagine…» of `video.surroundImg`: an image picker, the image copied into the
+     * app's backgrounds and stored at `scope`. Resolves false if the picker was cancelled. */
+    chooseBackground: (scope: SettingsScope) =>
+      invoke<boolean>('settings_choose_background', { scope }),
     onChanged: (cb: (e: SettingsChanged) => void): Promise<UnlistenFn> =>
       listen<SettingsChanged>('settings://changed', e => cb(e.payload)),
   },

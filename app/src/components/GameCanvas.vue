@@ -1,14 +1,27 @@
 <script setup lang="ts">
 // "webview" mode: the game drawn in a canvas inside the interface.
 // Used where native video cannot sit under the webview (Linux) and to compare the two paths.
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { uiZoom } from '../appearance'
+import { feColorMatrix, isColourBlindMode } from '../colourBlind'
 import { emu, frameUrl, type BenchFrame } from '../emu'
 
 const props = defineProps<{
   /** Quick menu G09: px at the bottom kept clear for the menu's bar; the game shrinks above. */
   insetBottom?: number
+  /** `a11y.cblind`: the colour correction drawn on the game (`none` or absent: none). */
+  colourBlind?: string
+  /** A side background (GameSurround) is painted under the stage: no black of its own. */
+  surround?: boolean
 }>()
+
+// The filter's id and matrix; none for `none`.
+const filter = computed(() =>
+  isColourBlindMode(props.colourBlind)
+    ? { id: `emudome-cblind-${props.colourBlind}`, values: feColorMatrix(props.colourBlind) }
+    : null,
+)
 
 const { t } = useI18n()
 
@@ -31,11 +44,13 @@ function benchFlush() {
   benchFrames = []
 }
 
+// Sizes come from the window, in screen px; the interface may be scaled (`a11y.textsize`, CSS
+// zoom on <html>), the game is not: px written in styles are divided by the zoom.
 function layout() {
   if (!size.w) return
   const height = Math.max(1, window.innerHeight - (props.insetBottom ?? 0))
   const fit = Math.min(window.innerWidth / size.w, height / size.h)
-  const scale = fit >= 1 ? Math.floor(fit) : fit
+  const scale = (fit >= 1 ? Math.floor(fit) : fit) / uiZoom.value
   style.value = { width: `${size.w * scale}px`, height: `${size.h * scale}px` }
 }
 
@@ -67,6 +82,7 @@ async function tick() {
 }
 
 watch(() => props.insetBottom, layout)
+watch(uiZoom, layout)
 
 onMounted(async () => {
   window.addEventListener('resize', layout)
@@ -84,8 +100,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="stage" :style="{ bottom: `${insetBottom ?? 0}px` }">
-    <canvas ref="canvas" :style="style" :aria-label="t('canvas.label')" />
+  <div class="stage" :class="{ surround }" :style="{ bottom: `${(insetBottom ?? 0) / uiZoom}px` }">
+    <svg v-if="filter" class="defs" aria-hidden="true">
+      <filter :id="filter.id" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix" :values="filter.values" />
+      </filter>
+    </svg>
+    <canvas
+      ref="canvas"
+      :style="{ ...style, filter: filter ? `url(#${filter.id})` : undefined }"
+      :aria-label="t('canvas.label')"
+    />
   </div>
 </template>
 
@@ -97,7 +122,15 @@ onUnmounted(() => {
   display: grid;
   place-items: center;
 }
+.stage.surround {
+  background: transparent;
+}
 canvas {
   image-rendering: pixelated;
+}
+.defs {
+  position: absolute;
+  width: 0;
+  height: 0;
 }
 </style>

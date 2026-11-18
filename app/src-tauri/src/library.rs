@@ -25,7 +25,7 @@ use crate::settings::{self as app_settings, SettingsState};
 use crate::{AppState, GameInfo};
 
 /// Largest image accepted as a cover.
-const MAX_COVER_BYTES: u64 = 16 * 1024 * 1024;
+pub(crate) const MAX_COVER_BYTES: u64 = 16 * 1024 * 1024;
 
 pub struct LibraryState {
     lib: Mutex<Library>,
@@ -42,7 +42,7 @@ pub struct LibraryState {
 
 /// Opens the library database and the covers folder.
 pub fn open(app: &tauri::App) -> tauri::Result<LibraryState> {
-    let local = app.path().app_local_data_dir()?;
+    let local = crate::dirs::local(app)?;
     let dir = local.join("library");
     log::info!("library in {}", dir.display());
     Ok(LibraryState {
@@ -417,7 +417,7 @@ pub fn cover_response(app: &AppHandle, path: &str) -> tauri::http::Response<Vec<
     response.unwrap_or_else(crate::response_error)
 }
 
-fn image_type(file: &Path) -> &'static str {
+pub(crate) fn image_type(file: &Path) -> &'static str {
     let ext = file
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
@@ -430,7 +430,7 @@ fn image_type(file: &Path) -> &'static str {
 }
 
 /// The image format of `bytes` from its signature, as a file extension.
-fn image_ext(bytes: &[u8]) -> Option<&'static str> {
+pub(crate) fn image_ext(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         Some("png")
     } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
@@ -475,7 +475,7 @@ pub(crate) fn pick_folder(app: &AppHandle) -> Option<PathBuf> {
 }
 
 #[cfg(desktop)]
-fn pick_image(app: &AppHandle) -> Option<PathBuf> {
+pub(crate) fn pick_image(app: &AppHandle) -> Option<PathBuf> {
     use tauri_plugin_dialog::DialogExt;
     let picked = app
         .dialog()
@@ -495,7 +495,7 @@ pub(crate) fn pick_folder(_app: &AppHandle) -> Option<PathBuf> {
 }
 
 #[cfg(mobile)]
-fn pick_image(_app: &AppHandle) -> Option<PathBuf> {
+pub(crate) fn pick_image(_app: &AppHandle) -> Option<PathBuf> {
     log::warn!("image picker not available on this platform yet");
     None
 }
