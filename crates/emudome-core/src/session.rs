@@ -366,7 +366,7 @@ fn emu_thread(
     let mut rewind = Rewind::new(opts.rewind_seconds, base_fps);
     let mut rewinding = false;
     let mut next_frame = Instant::now();
-    let mut fps_window = (Instant::now(), 0u32);
+    let mut fps = FpsMeter::new(Instant::now());
     let mut last_sram_flush = Instant::now();
     let mut last_autosave = Instant::now();
     // Pacing diagnostics (Trello #57): frames run, sleeps and resets per 10 s window, logged.
@@ -435,12 +435,20 @@ fn emu_thread(
                     }
                     shared.stats.lock().speed = Some(s);
                     next_frame = Instant::now();
-                    fps_window = (Instant::now(), 0);
+                    fps.restart(next_frame);
+                    pace = (next_frame, 0, 0, 0);
                 }
                 Command::SetPaused(p) => {
                     paused = p;
-                    shared.stats.lock().paused = p;
+                    {
+                        // Paused, nothing runs: 0 frames/s, not the last second before it.
+                        let mut stats = shared.stats.lock();
+                        stats.paused = p;
+                        stats.emu_fps = 0.0;
+                    }
                     next_frame = Instant::now();
+                    fps.restart(next_frame);
+                    pace = (next_frame, 0, 0, 0);
                 }
                 Command::SaveState(slot) => {
                     let before = crate::saves::SlotContent::read(&files, slot)
@@ -574,11 +582,8 @@ fn emu_thread(
         }
 
         // Emulation FPS.
-        fps_window.1 += 1;
-        let elapsed = fps_window.0.elapsed();
-        if elapsed >= Duration::from_secs(1) {
-            shared.stats.lock().emu_fps = fps_window.1 as f64 / elapsed.as_secs_f64();
-            fps_window = (Instant::now(), 0);
+        if let Some(rate) = fps.frame(Instant::now()) {
+            shared.stats.lock().emu_fps = rate;
         }
 
         // Game save every 30 s, and on exit.
@@ -605,7 +610,7 @@ fn emu_thread(
         let window = pace.0.elapsed();
         if window >= Duration::from_secs(10) {
             log::info!(
-                "pacing: {:.2} frames/s over {:.1} s (speed {speed:?}, base {base_fps:.4},                  {} sleeps, {} resets)",
+                "pacing: {:.2} frames/s over {:.1} s (speed {speed:?}, base {base_fps:.4}, {} sleeps, {} resets)",
                 f64::from(pace.1) / window.as_secs_f64(),
                 window.as_secs_f64(),
                 pace.2,
@@ -622,6 +627,45 @@ fn emu_thread(
     drop(core);
     callbacks::clear();
     let _ = events.send(Event::Stopped);
+}
+
+/// Emulated frames per second, measured over windows of at least one second of running game.
+///
+/// Paused time is not running time: the window restarts on pause and on resume, otherwise
+/// the last value before a pause would stay on show for as long as the game is paused
+/// (Trello #57: a frozen `core 60.66` read as a game running 1.5 % fast) and the first
+/// window after it would count the pause.
+struct FpsMeter {
+    since: Instant,
+    frames: u32,
+}
+
+impl FpsMeter {
+    const WINDOW: Duration = Duration::from_secs(1);
+
+    fn new(now: Instant) -> Self {
+        Self {
+            since: now,
+            frames: 0,
+        }
+    }
+
+    /// Starts a new window with no frames (a pause, a resume, a speed change).
+    fn restart(&mut self, now: Instant) {
+        *self = Self::new(now);
+    }
+
+    /// One frame run at `now`: the rate when a window just closed.
+    fn frame(&mut self, now: Instant) -> Option<f64> {
+        self.frames += 1;
+        let elapsed = now.saturating_duration_since(self.since);
+        if elapsed < Self::WINDOW {
+            return None;
+        }
+        let fps = f64::from(self.frames) / elapsed.as_secs_f64();
+        self.restart(now);
+        Some(fps)
+    }
 }
 
 /// What «Annulla» goes back to: the newest save or load only.
@@ -669,8 +713,52 @@ fn load_slot(core: &LoadedCore, files: &GameFiles, slot: u8) -> Result<(), Error
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+    use std::time::{Duration, Instant};
 
-    use super::{has_auto_save, slot_infos, GameFiles, AUTO_SLOT};
+    use super::{has_auto_save, slot_infos, FpsMeter, GameFiles, AUTO_SLOT};
+
+    /// Runs `n` frames `period` apart from `start`, returning the rates the meter gave.
+    fn run(meter: &mut FpsMeter, start: Instant, n: u32, period: Duration) -> Vec<f64> {
+        (1..=n)
+            .filter_map(|i| meter.frame(start + period * i))
+            .collect()
+    }
+
+    #[test]
+    fn the_fps_meter_gives_the_rate_once_a_second() {
+        let period = Duration::from_secs_f64(1.0 / 59.7275);
+        let t0 = Instant::now();
+        let mut meter = FpsMeter::new(t0);
+        let rates = run(&mut meter, t0, 600, period);
+        assert_eq!(rates.len(), 10);
+        assert!(
+            rates.iter().all(|r| (r - 59.7275).abs() < 0.01),
+            "{rates:?}"
+        );
+    }
+
+    #[test]
+    fn a_pause_neither_freezes_nor_dilutes_the_rate() {
+        let period = Duration::from_secs_f64(1.0 / 59.7275);
+        let t0 = Instant::now();
+        // Half a window, then a 30 s pause; the session restarts the meter on resume.
+        let resumed = t0 + period * 30 + Duration::from_secs(30);
+        let mut meter = FpsMeter::new(t0);
+        run(&mut meter, t0, 30, period);
+        meter.restart(resumed);
+        let rates = run(&mut meter, resumed, 120, period);
+        assert_eq!(rates.len(), 2);
+        assert!(
+            rates.iter().all(|r| (r - 59.7275).abs() < 0.01),
+            "{rates:?}"
+        );
+
+        // Without the restart, the first window after the pause would count the pause.
+        let mut stale = FpsMeter::new(t0);
+        run(&mut stale, t0, 30, period);
+        let after = run(&mut stale, resumed, 1, period);
+        assert!(after.len() == 1 && after[0] < 2.0, "{after:?}");
+    }
 
     #[test]
     fn the_auto_quick_save_has_its_own_file() {
