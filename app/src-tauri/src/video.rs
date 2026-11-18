@@ -269,9 +269,11 @@ impl Video {
         }
         if let Some(source) = &self.source {
             let stats = source.stats.lock();
+            // `core` is the rate of the last whole second of running game; paused, it is 0.
             log::info!(
-                "fps: core {:.2}, presented {:.2} (target {:.2})",
+                "fps: core {:.2}{}, presented {:.2} (target {:.2})",
                 stats.emu_fps,
+                if stats.paused { " (paused)" } else { "" },
                 f64::from(self.presented) / elapsed.as_secs_f64(),
                 stats.av_info.timing.fps,
             );
