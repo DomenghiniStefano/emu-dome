@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // C01 «Controlli» (board «C01 · Desktop · Controlli», Controlli2, 17/11): what you use most
-// first. The devices as cards (connected, battery, A/B layout; «In uso» on the chosen one), the
+// first. The devices as cards (connected, battery; «In uso» on the chosen one), the
 // shortcuts to remember read from the bindings in force (never a list here), the live button
 // tester, then the rows down to C02 «Rimappa i pulsanti», C04 «Stick, grilletti e vibrazione»
 // and the touch controls (customised on the phone).
@@ -86,10 +86,6 @@ const isOn = (d: PadInfo | 'keyboard') =>
 function padDetail(p: PadInfo): string {
   const parts = [t('controls.connected')]
   if (p.battery !== null) parts.push(t('controls.overview.battery', { percent: p.battery }))
-  const ab = props.globalRows['pad.ab']?.value ?? 'nintendo'
-  parts.push(
-    t(ab === 'printed' ? 'controls.overview.layoutPrinted' : 'controls.overview.layoutNintendo'),
-  )
   return parts.join(' · ')
 }
 

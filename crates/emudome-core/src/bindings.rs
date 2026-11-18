@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::hotkeys::{Bindings, Hotkey, DEFAULT_COMBOS, DEFAULT_MODIFIER};
 use crate::input::Button;
+use crate::session::Speed;
 use crate::settings::Value;
 
 /// A place on the controller, by position (SDL's names): the same position is the same
@@ -373,7 +374,7 @@ fn repeat_times(id: &str) -> (Duration, Duration) {
 }
 
 /// Everything the controller thread reads from the settings, already validated.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PadConfig {
     /// `pad.dead`, percent of the stick's travel ignored around the centre.
     pub dead_zone: u8,
@@ -392,6 +393,10 @@ pub struct PadConfig {
     pub combos: Vec<(Hotkey, Option<Pos>)>,
     /// `pad.remap` items (valid ones only).
     pub remap: Vec<String>,
+    /// `speed.ffval`: where fast forward goes (L3 + R2 held, L3 + up, Tab).
+    pub fast_forward: Speed,
+    /// `speed.slow`: where slow motion goes (L3 + down).
+    pub slow_motion: Speed,
 }
 
 impl Default for PadConfig {
@@ -441,6 +446,12 @@ impl PadConfig {
                 .into_iter()
                 .filter(|i| parse_remap(i).is_some())
                 .collect(),
+            fast_forward: text("speed.ffval")
+                .and_then(|id| Speed::from_option(&id))
+                .unwrap_or(Speed::Factor(4.0)),
+            slow_motion: text("speed.slow")
+                .and_then(|id| Speed::from_option(&id))
+                .unwrap_or(Speed::Factor(0.5)),
         }
     }
 

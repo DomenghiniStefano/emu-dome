@@ -1,6 +1,7 @@
 use super::{valid_list, AbLayout, Family, PadConfig, Pos, Table, REMAPPABLE};
 use crate::hotkeys::Hotkey;
 use crate::input::Button;
+use crate::session::Speed;
 use crate::settings::Value;
 
 fn config(values: &[(&str, Value)]) -> PadConfig {
@@ -207,4 +208,34 @@ fn the_trigger_threshold_is_a_share_of_the_travel() {
     assert_eq!(c.trigger_threshold(), 16383);
     let wrong = config(&[("pad.trig", Value::Text("x".into()))]);
     assert_eq!(wrong.trigger, 50);
+}
+
+#[test]
+fn fast_forward_and_slow_motion_follow_the_speed_settings() {
+    // Defaults of `speed.ffval` (4×) and `speed.slow` (0.5×).
+    let default = config(&[]);
+    assert_eq!(default.fast_forward, Speed::Factor(4.0));
+    assert_eq!(default.slow_motion, Speed::Factor(0.5));
+    let set = config(&[
+        ("speed.ffval", Value::Text("max".into())),
+        ("speed.slow", Value::Text("0.25".into())),
+    ]);
+    assert_eq!(set.fast_forward, Speed::Max);
+    assert_eq!(set.slow_motion, Speed::Factor(0.25));
+    let three = config(&[("speed.ffval", Value::Text("3".into()))]);
+    assert_eq!(three.fast_forward, Speed::Factor(3.0));
+}
+
+#[test]
+fn a_speed_value_out_of_place_falls_back_to_the_default() {
+    let odd = config(&[
+        ("speed.ffval", Value::Text("fast".into())),
+        ("speed.slow", Value::Text("0".into())),
+    ]);
+    assert_eq!(odd.fast_forward, Speed::Factor(4.0));
+    assert_eq!(odd.slow_motion, Speed::Factor(0.5));
+    assert_eq!(Speed::from_option("max"), Some(Speed::Max));
+    assert_eq!(Speed::from_option("0.75"), Some(Speed::Factor(0.75)));
+    assert_eq!(Speed::from_option("-2"), None);
+    assert_eq!(Speed::from_option("NaN"), None);
 }

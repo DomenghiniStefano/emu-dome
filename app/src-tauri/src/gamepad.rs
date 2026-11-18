@@ -106,8 +106,8 @@ const STATE_EVERY: Duration = Duration::from_millis(16);
 const FIRST_SLOT: u8 = 1;
 const LAST_SLOT: u8 = 9;
 
-/// Slow motion speed for L3 + d-pad down, and the speed toggles go back to.
-const SLOW_MOTION: Speed = Speed::Factor(0.5);
+/// The speed the toggles go back to. Fast forward and slow motion come from the settings
+/// (`speed.ffval`, `speed.slow`, read into [`PadConfig`]).
 const NORMAL: Speed = Speed::Factor(1.0);
 
 /// Payload of `emu://nav`: `{ action: "up" | "down" | "left" | "right" | "confirm" | "back" }`.
@@ -223,6 +223,8 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
         current: current.clone(),
         slot: FIRST_SLOT,
         turbo_restore: None,
+        fast_forward: config.fast_forward,
+        slow_motion: config.slow_motion,
     };
     let mut last_state: Option<PadStates> = None;
     let mut last_state_at = Instant::now();
@@ -234,6 +236,8 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
                 config = fresh;
                 config_at = Some(generation);
                 router.set_bindings(config.bindings());
+                hotkeys.fast_forward = config.fast_forward;
+                hotkeys.slow_motion = config.slow_motion;
                 for pad in &mut pads {
                     pad.map = config.pad_map(pad.info.family);
                 }
@@ -349,6 +353,9 @@ struct Hotkeys {
     slot: u8,
     /// While fast forward is held, the speed to go back to.
     turbo_restore: Option<Speed>,
+    /// `speed.ffval` and `speed.slow` of the open game (or «Tutti i giochi»).
+    fast_forward: Speed,
+    slow_motion: Speed,
 }
 
 impl Hotkeys {
@@ -388,14 +395,14 @@ impl Hotkeys {
             Hotkey::FastForwardHold => {
                 if self.turbo_restore.is_none() {
                     let before = self.speed();
-                    if self.send(Command::SetSpeed(Speed::Max)) {
+                    if self.send(Command::SetSpeed(self.fast_forward)) {
                         self.turbo_restore = Some(before);
                         self.emit("emu://hotkey", HotkeyEvent::Turbo { held: true });
                     }
                 }
             }
-            Hotkey::FastForwardToggle => self.toggle_speed(Speed::Max),
-            Hotkey::SlowMotionToggle => self.toggle_speed(SLOW_MOTION),
+            Hotkey::FastForwardToggle => self.toggle_speed(self.fast_forward),
+            Hotkey::SlowMotionToggle => self.toggle_speed(self.slow_motion),
             Hotkey::FpsOverlay => self.emit("emu://hotkey", HotkeyEvent::Fps),
             Hotkey::Pause => {
                 let paused = !self.paused();

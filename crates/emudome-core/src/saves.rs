@@ -212,6 +212,51 @@ pub fn write_atomic(path: &Path, data: &[u8]) -> io::Result<()> {
     })
 }
 
+/// What a quick save slot held before a save replaced it, so «Salvato nello slot N · Annulla»
+/// can put it back: its state and its thumbnail, `None` where the file did not exist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlotContent {
+    pub state: Option<Vec<u8>>,
+    pub thumb: Option<Vec<u8>>,
+}
+
+/// A file's bytes, `None` when it does not exist.
+fn read_if_any(path: &Path) -> io::Result<Option<Vec<u8>>> {
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
+/// Writes `bytes` to `path`, or removes the file when there are none.
+fn put_back(path: &Path, bytes: Option<&[u8]>) -> io::Result<()> {
+    match bytes {
+        Some(b) => write_atomic(path, b),
+        None => match std::fs::remove_file(path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e),
+        },
+    }
+}
+
+impl SlotContent {
+    /// What slot `slot` holds now.
+    pub fn read(files: &GameFiles, slot: u8) -> io::Result<Self> {
+        Ok(Self {
+            state: read_if_any(&files.slot(slot))?,
+            thumb: read_if_any(&files.thumb(slot))?,
+        })
+    }
+
+    /// Puts this content back into slot `slot`: a file that did not exist is removed.
+    pub fn restore(&self, files: &GameFiles, slot: u8) -> io::Result<()> {
+        put_back(&files.slot(slot), self.state.as_deref())?;
+        put_back(&files.thumb(slot), self.thumb.as_deref())
+    }
+}
+
 /// Copies the in-game save into the backups (when there is one and it differs from the newest
 /// backup), then keeps only the `keep` newest. `None` when nothing was copied; `keep` = 0
 /// (`saves.backups` «0 = none») copies nothing and removes the old ones.
@@ -479,8 +524,9 @@ mod tests {
     use super::{
         backup, backups, check_in_game, delete_quick, game_saves, import, parse_backup,
         parse_import, restore, set_aside, BackupReason, ImportError, ImportFormat, SaveHealth,
-        DSV_COOKIE, DSV_FOOTER, DSV_TEXT, DUC_HEADER, DUC_ID,
+        SlotContent, DSV_COOKIE, DSV_FOOTER, DSV_TEXT, DUC_HEADER, DUC_ID,
     };
+    use crate::core::GameFiles;
     use crate::settings::test_dir::TestDir;
 
     const GAME: &str = "games/Lanterna.gba";
@@ -606,6 +652,42 @@ mod tests {
             std::fs::read(dir.path("saves/Lanterna.sav")).unwrap(),
             b"second"
         );
+    }
+
+    #[test]
+    fn a_slot_put_back_after_a_save_is_as_it_was() {
+        let dir = TestDir::new("saves-slot-undo");
+        let files = GameFiles::new(&dir.path("saves"), Path::new(GAME));
+        write(&dir, "saves/Lanterna.slot2.state", b"old state");
+        write(&dir, "saves/Lanterna.slot2.png", b"old thumb");
+        let before = SlotContent::read(&files, 2).unwrap();
+        // A save replaces both files...
+        write(&dir, "saves/Lanterna.slot2.state", b"new state");
+        write(&dir, "saves/Lanterna.slot2.png", b"new thumb");
+        before.restore(&files, 2).unwrap();
+        assert_eq!(std::fs::read(files.slot(2)).unwrap(), b"old state");
+        assert_eq!(std::fs::read(files.thumb(2)).unwrap(), b"old thumb");
+    }
+
+    #[test]
+    fn a_slot_that_was_empty_is_emptied_again() {
+        let dir = TestDir::new("saves-slot-undo-empty");
+        let files = GameFiles::new(&dir.path("saves"), Path::new(GAME));
+        let before = SlotContent::read(&files, 3).unwrap();
+        assert_eq!(
+            before,
+            SlotContent {
+                state: None,
+                thumb: None
+            }
+        );
+        write(&dir, "saves/Lanterna.slot3.state", b"new state");
+        write(&dir, "saves/Lanterna.slot3.png", b"new thumb");
+        before.restore(&files, 3).unwrap();
+        assert!(!files.slot(3).exists());
+        assert!(!files.thumb(3).exists());
+        // Putting back an empty slot twice is fine.
+        before.restore(&files, 3).unwrap();
     }
 
     #[test]

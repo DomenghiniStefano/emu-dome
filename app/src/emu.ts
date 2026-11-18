@@ -98,6 +98,8 @@ export type EmuEvent =
   | { type: 'stateSaved'; slot: number }
   | { type: 'stateLoaded'; slot: number }
   | { type: 'loadUndone' }
+  /** «Salvato nello slot N · Annulla»: `slot` holds what it held before the last save. */
+  | { type: 'saveUndone'; slot: number }
   | { type: 'error'; error: ErrorCode }
   | { type: 'stopped' }
 
@@ -459,13 +461,20 @@ export const emu = {
   setPaused: (paused: boolean) => invoke<void>('set_paused', { paused }),
   /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing. */
   setMenuOpen: (open: boolean) => invoke<void>('set_menu_open', { open }),
-  /** F11: fullscreen on / off (keyboard only). */
-  toggleFullscreen: () => invoke<void>('toggle_fullscreen'),
+  /** F11 and «A schermo intero»: fullscreen on / off; resolves whether it is now on. */
+  toggleFullscreen: () => invoke<boolean>('toggle_fullscreen'),
+  isFullscreen: () => invoke<boolean>('is_fullscreen'),
+  /** G09: the bottom `fraction` of the window is the menu's bar; the native game shrinks above it. */
+  setVideoInset: (fraction: number) => invoke<void>('set_video_inset', { fraction }),
+  /** «Muto» in the quick menu: silence for the open game only. */
+  setMuted: (muted: boolean) => invoke<void>('set_muted', { muted }),
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
   loadState: (slot: number) => invoke<void>('load_state', { slot }),
   reset: () => invoke<void>('reset_game'),
   /** «Annulla il caricamento» (`saves.undo`): back to before the last load (`loadUndone`). */
   undoLoad: () => invoke<void>('undo_load'),
+  /** «Salvato nello slot N · Annulla»: the slot gets back what it held (`saveUndone`). */
+  undoSave: () => invoke<void>('undo_save'),
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
   stats: () => invoke<Stats>('stats'),
   /** The theme to show: `EMUDOME_THEME` if set, else `general.theme`, else the system's. */

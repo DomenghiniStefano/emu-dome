@@ -1,5 +1,5 @@
 //! The static catalogue: every setting of the app, page by page, in the design's order
-//! (Cowork's settings catalogue, 157 entries, Trello comment of 2026-11-17).
+//! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17).
 //!
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
@@ -409,12 +409,6 @@ pub static ENTRIES: &[Entry] = &[
     seg("audio.lat", &["low", "balanced", "safe"], "balanced", G).device(),
     // ---- Velocità di gioco (speed) ----
     seg("speed.spstart", &["0.5", "1", "2"], "1", GG),
-    chips(
-        "speed.splist",
-        &["0.5", "1", "1.5", "2", "3", "4", "max"],
-        &["0.5", "1", "2", "4", "max"],
-        G,
-    ),
     seg("speed.ffmode", &["hold", "toggle"], "hold", G),
     seg("speed.ffval", &["2", "3", "4", "max"], "4", GG).most_used(),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
@@ -505,7 +499,6 @@ pub static ENTRIES: &[Entry] = &[
     seg("general.start", &["library", "last_game"], "library", G),
     sw("general.bgpause", true, G).device(),
     sw("general.confirmdel", true, G),
-    link("general.qmorder", G),
     seg("general.updates", &["auto", "ask", "off"], "ask", G).device(),
     // ---- Libreria (library) ----
     e("library.folders", Kind::Folders, DefaultValue::List(&[]), G).device(),
@@ -782,7 +775,7 @@ pub static SECTIONS: &[Section] = &[
     Section {
         page: "speed",
         id: "speed",
-        keys: &["speed.spstart", "speed.splist"],
+        keys: &["speed.spstart"],
     },
     Section {
         page: "speed",
@@ -874,7 +867,6 @@ pub static SECTIONS: &[Section] = &[
             "general.start",
             "general.bgpause",
             "general.confirmdel",
-            "general.qmorder",
             "general.updates",
         ],
     },
@@ -1045,8 +1037,8 @@ mod tests {
     use crate::settings::schema::{DefaultValue, Kind, Platform};
 
     #[test]
-    fn has_the_designs_157_entries_with_unique_keys_on_known_pages() {
-        assert_eq!(ENTRIES.len(), 157);
+    fn has_the_designs_155_entries_with_unique_keys_on_known_pages() {
+        assert_eq!(ENTRIES.len(), 155);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),

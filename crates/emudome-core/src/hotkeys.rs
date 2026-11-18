@@ -81,7 +81,7 @@ pub enum Hotkey {
     /// Fast forward while the button stays held: a [`Action::Release`] follows.
     FastForwardHold,
     FastForwardToggle,
-    /// Slow motion (0.5×) on/off.
+    /// Slow motion (`speed.slow`) on/off.
     SlowMotionToggle,
     /// FPS overlay on/off.
     FpsOverlay,

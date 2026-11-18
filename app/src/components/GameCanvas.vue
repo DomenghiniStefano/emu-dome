@@ -1,9 +1,14 @@
 <script setup lang="ts">
 // "webview" mode: the game drawn in a canvas inside the interface.
 // Used where native video cannot sit under the webview (Linux) and to compare the two paths.
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { frameUrl } from '../emu'
+
+const props = defineProps<{
+  /** Quick menu G09: px at the bottom kept clear for the menu's bar; the game shrinks above. */
+  insetBottom?: number
+}>()
 
 const { t } = useI18n()
 
@@ -15,7 +20,8 @@ let size = { w: 0, h: 0 }
 
 function layout() {
   if (!size.w) return
-  const fit = Math.min(window.innerWidth / size.w, window.innerHeight / size.h)
+  const height = Math.max(1, window.innerHeight - (props.insetBottom ?? 0))
+  const fit = Math.min(window.innerWidth / size.w, height / size.h)
   const scale = fit >= 1 ? Math.floor(fit) : fit
   style.value = { width: `${size.w * scale}px`, height: `${size.h * scale}px` }
 }
@@ -44,6 +50,8 @@ async function tick() {
   requestAnimationFrame(tick)
 }
 
+watch(() => props.insetBottom, layout)
+
 onMounted(() => {
   window.addEventListener('resize', layout)
   requestAnimationFrame(tick)
@@ -55,7 +63,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="stage">
+  <div class="stage" :style="{ bottom: `${insetBottom ?? 0}px` }">
     <canvas ref="canvas" :style="style" :aria-label="t('canvas.label')" />
   </div>
 </template>

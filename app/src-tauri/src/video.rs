@@ -16,6 +16,8 @@ enum Msg {
     Source(Option<Arc<Shared>>),
     Attach(wgpu::SurfaceTarget<'static>, u32, u32),
     Detach(Sender<()>),
+    /// Share of the surface's height, at the bottom, the game keeps clear of (G09's bar).
+    Inset(f32),
 }
 
 #[derive(Clone)]
@@ -58,6 +60,12 @@ impl Renderer {
         let _ = self.tx.send(Msg::Attach(target, width, height));
     }
 
+    /// Keeps the bottom `fraction` of the surface clear: the game shrinks into the rest
+    /// (quick menu G09, whose bar sits at the bottom). 0 = the whole surface.
+    pub fn set_inset(&self, fraction: f32) {
+        let _ = self.tx.send(Msg::Inset(fraction));
+    }
+
     /// Lets go of the surface; returns once it is no longer used.
     pub fn detach(&self) {
         let (ack_tx, ack_rx) = mpsc::channel();
@@ -76,6 +84,8 @@ struct Video {
     source: Option<Arc<Shared>>,
     presented: u32,
     since: Instant,
+    /// See [`Renderer::set_inset`]; kept across surfaces.
+    inset: f32,
 }
 
 impl Video {
@@ -85,6 +95,7 @@ impl Video {
             source: None,
             presented: 0,
             since: Instant::now(),
+            inset: 0.0,
         }
     }
 
@@ -123,11 +134,12 @@ impl Video {
                         self.gpu = None;
                         let _ = ack.send(());
                     }
+                    Msg::Inset(fraction) => self.inset = fraction,
                 }
             }
             if let Some(gpu) = &mut self.gpu {
                 gpu.upload_frame(self.source.as_deref());
-                if gpu.draw() {
+                if gpu.draw(self.inset) {
                     self.presented += 1;
                 }
             }
@@ -412,17 +424,16 @@ impl Gpu {
         }
     }
 
-    /// The game's rectangle: integer scale when it fits, otherwise the largest that keeps the aspect ratio.
-    fn viewport(&self, w: u32, h: u32) -> (f32, f32, f32, f32) {
-        let (sw, sh) = (self.config.width as f32, self.config.height as f32);
-        let fit = (sw / w as f32).min(sh / h as f32);
-        let scale = if fit >= 1.0 { fit.floor() } else { fit };
-        let (vw, vh) = (w as f32 * scale, h as f32 * scale);
-        (((sw - vw) / 2.0).floor(), ((sh - vh) / 2.0).floor(), vw, vh)
+    fn viewport(&self, w: u32, h: u32, inset: f32) -> (f32, f32, f32, f32) {
+        viewport(
+            (self.config.width as f32, self.config.height as f32),
+            (w as f32, h as f32),
+            inset,
+        )
     }
 
     /// Draws and presents; false when no frame was presented.
-    fn draw(&mut self) -> bool {
+    fn draw(&mut self, inset: f32) -> bool {
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(t)
             | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
@@ -460,7 +471,7 @@ impl Gpu {
                 ..Default::default()
             });
             if let Some(game) = &self.game {
-                let (x, y, w, h) = self.viewport(game.width, game.height);
+                let (x, y, w, h) = self.viewport(game.width, game.height, inset);
                 pass.set_viewport(x, y, w, h, 0.0, 1.0);
                 pass.set_pipeline(&self.pipeline);
                 pass.set_bind_group(0, &game.bind_group, &[]);
@@ -470,5 +481,43 @@ impl Gpu {
         self.queue.submit([encoder.finish()]);
         self.queue.present(output);
         true
+    }
+}
+
+/// The game's rectangle `(x, y, w, h)` on a `surface` of `(width, height)`: integer scale when it
+/// fits, otherwise the largest that keeps the aspect ratio, centred in the part of the surface
+/// above the bottom `inset` share (0..0.9) that the quick menu's bar keeps clear.
+fn viewport(surface: (f32, f32), game: (f32, f32), inset: f32) -> (f32, f32, f32, f32) {
+    let (sw, full_h) = surface;
+    let (w, h) = game;
+    let sh = full_h * (1.0 - inset.clamp(0.0, 0.9));
+    let fit = (sw / w).min(sh / h);
+    let scale = if fit >= 1.0 { fit.floor() } else { fit };
+    let (vw, vh) = (w * scale, h * scale);
+    (((sw - vw) / 2.0).floor(), ((sh - vh) / 2.0).floor(), vw, vh)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::viewport;
+
+    #[test]
+    fn the_game_is_centred_at_an_integer_scale() {
+        // GBA 240x160 on 1440x900: 5x = 1200x800.
+        assert_eq!(
+            viewport((1440.0, 900.0), (240.0, 160.0), 0.0),
+            (120.0, 50.0, 1200.0, 800.0)
+        );
+    }
+
+    #[test]
+    fn an_inset_keeps_the_bottom_clear() {
+        // A bar over the bottom 30 %: 630 px left, 3x = 720x480 centred in them.
+        let (x, y, w, h) = viewport((1440.0, 900.0), (240.0, 160.0), 0.3);
+        assert_eq!((x, y, w, h), (360.0, 75.0, 720.0, 480.0));
+        assert!(y + h <= 900.0 * 0.7);
+        // Out-of-range insets are clamped, never a negative height.
+        let (_, _, _, h) = viewport((1440.0, 900.0), (240.0, 160.0), 5.0);
+        assert!(h > 0.0);
     }
 }
