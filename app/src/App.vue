@@ -101,15 +101,21 @@ const menuInset = ref(0)
 // The open game's `speed.ffval` (Tab, the HUD) and `saves.undo`, with its changes «in prova».
 const ffSpeed = ref<Speed>(FF_DEFAULT)
 const undoAllowed = ref(true)
+// `a11y.toggle`: Backspace turns rewind on and the next press off instead of holding.
+const rewindToggle = ref(false)
+const rewinding = ref(false)
 async function loadGameSettings() {
   if (!game.value) return
   try {
     const rows = (
-      await Promise.all(['speed', 'saves'].map(p => emu.settings.page(p, { level: 'session' })))
+      await Promise.all(
+        ['speed', 'saves', 'a11y'].map(p => emu.settings.page(p, { level: 'session' })),
+      )
     ).flat()
     const of = (key: string) => rows.find(r => r.key === key)?.value
     ffSpeed.value = speedFromOption(of('speed.ffval')) ?? FF_DEFAULT
     undoAllowed.value = of('saves.undo') !== false
+    rewindToggle.value = of('a11y.toggle') === true
   } catch (e) {
     toasts.value?.push(errorText(e), 'error')
   }
@@ -122,6 +128,7 @@ async function gameStarted(info: GameInfo, resumeAuto = false) {
   speed.value = { kind: 'factor', value: 1 }
   menuOpen.value = false
   paused.value = false
+  rewinding.value = false
   undoLoadSlot.value = null
   menuLoad = null
   muted.value = false
@@ -398,8 +405,27 @@ async function stepSlot(forward: boolean) {
   }
 }
 
-/** A key of the keyboard table (keyboard.ts) in game, menu closed. Tab lasts while held. */
+/** F12, L3 + B (in Rust) and quick menu › Strumenti: G13 «Schermata salvata» on `screenshotSaved`. */
+async function screenshot() {
+  try {
+    await emu.screenshot()
+  } catch (e) {
+    toasts.value?.push(errorText(e), 'error')
+  }
+}
+
+/** Backspace: rewind while held, or on / off at each press with `a11y.toggle`. */
+function rewindKey(pressed: boolean, repeat: boolean) {
+  if (repeat) return
+  const on = rewindToggle.value ? (pressed ? !rewinding.value : rewinding.value) : pressed
+  if (on === rewinding.value) return
+  rewinding.value = on
+  void emu.rewind(on).catch(e => toasts.value?.push(errorText(e), 'error'))
+}
+
+/** A key of the keyboard table (keyboard.ts) in game, menu closed. Tab and Backspace last while held. */
 function runKey(action: KeyAction, pressed: boolean, repeat: boolean) {
+  if (action === 'rewind') return rewindKey(pressed, repeat)
   if (action === 'ff_hold') {
     if (repeat || pressed === turboHeld.value) return
     turboHeld.value = pressed
@@ -418,6 +444,8 @@ function runKey(action: KeyAction, pressed: boolean, repeat: boolean) {
     case 'fps':
       showFps.value = !showFps.value
       return
+    case 'screenshot':
+      return void screenshot()
     default:
       // Esc and F11 are handled before; reserved keys never reach here (`keyShortcut`).
       return
@@ -427,6 +455,9 @@ function runKey(action: KeyAction, pressed: boolean, repeat: boolean) {
 function onKey(e: KeyboardEvent, pressed: boolean) {
   if (pressed) showFocusRing()
   const shortcut = keyShortcut(e.code)
+  // Backspace let go after the menu opened: the rewind it held still ends.
+  if (shortcut?.action === 'rewind' && !pressed && !rewindToggle.value && rewinding.value)
+    return rewindKey(false, false)
   if (shortcut?.action === 'menu' && pressed) {
     // In the quick menu Esc is «back»: one level up, and from its main screen the game resumes.
     if (menuOpen.value) return dispatchNav('back')
@@ -522,6 +553,7 @@ onMounted(async () => {
           toasts.value?.push(t('toast.stateLoaded', { slot: ev.slot }))
         menuLoad = null
       }
+      if (ev.type === 'screenshotSaved') toasts.value?.push(t('toast.screenshotSaved'))
       if (ev.type === 'loadUndone') {
         undoLoadSlot.value = null
         toasts.value?.push(t('toast.loadUndone'))
@@ -617,6 +649,7 @@ onUnmounted(() => {
       @close="closeGame"
       @mute="setMuted"
       @fullscreen="toggleFullscreen"
+      @screenshot="screenshot"
       @inset="setInset"
       @error="text => toasts?.push(text, 'error')"
     />

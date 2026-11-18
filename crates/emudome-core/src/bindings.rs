@@ -215,7 +215,9 @@ pub const REMAPPABLE: [Button; 14] = [
     Button::Right,
 ];
 
-/// The keyboard's default keys (`KeyboardEvent.code`), from the design (C02 «Tastiera»).
+/// The keyboard's default keys (`KeyboardEvent.code`), from the design (C02 «Tastiera»),
+/// except Select: the design gave it Backspace, which is also rewind's key (Trello #42,
+/// docs/combo-tasti.md section 5), so Select moved to the right Shift, RetroArch's default.
 pub const KEYBOARD_DEFAULTS: [(Button, &str); 14] = [
     (Button::A, "KeyX"),
     (Button::B, "KeyZ"),
@@ -226,7 +228,7 @@ pub const KEYBOARD_DEFAULTS: [(Button, &str); 14] = [
     (Button::L2, "Digit1"),
     (Button::R2, "Digit2"),
     (Button::Start, "Enter"),
-    (Button::Select, "Backspace"),
+    (Button::Select, "ShiftRight"),
     (Button::Up, "ArrowUp"),
     (Button::Down, "ArrowDown"),
     (Button::Left, "ArrowLeft"),
@@ -397,6 +399,9 @@ pub struct PadConfig {
     pub fast_forward: Speed,
     /// `speed.slow`: where slow motion goes (L3 + down).
     pub slow_motion: Speed,
+    /// `a11y.toggle`: rewind (L3 + L2) goes on at one press and off at the next instead of
+    /// lasting while held.
+    pub hold_toggle: bool,
 }
 
 impl Default for PadConfig {
@@ -452,6 +457,7 @@ impl PadConfig {
             slow_motion: text("speed.slow")
                 .and_then(|id| Speed::from_option(&id))
                 .unwrap_or(Speed::Factor(0.5)),
+            hold_toggle: matches!(get("a11y.toggle"), Some(Value::Bool(true))),
         }
     }
 

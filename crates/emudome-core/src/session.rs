@@ -18,6 +18,7 @@ use crate::core_options::CoreOptions;
 use crate::error::ErrorCode;
 use crate::frame::Frame;
 use crate::input::InputState;
+use crate::rewind::Rewind;
 
 /// Emulation speed.
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -63,6 +64,13 @@ pub enum Command {
         value: String,
     },
     Reset,
+    /// Rewind on (held, or toggled with `a11y.toggle`) or off. With `speed.rew` off, or nothing
+    /// recorded yet, the game only stays on its picture until it is released.
+    Rewind(bool),
+    /// `speed.rew` / `speed.rewlen` changed: seconds to keep, `None` = rewind off.
+    SetRewindLength(Option<u32>),
+    /// Saves the frame on screen as a PNG next to the saves ([`crate::screenshot`]).
+    Screenshot,
     Stop,
 }
 
@@ -89,6 +97,10 @@ pub enum Event {
     SaveUndone {
         slot: u8,
     },
+    /// G13 «Schermata salvata»: `path` is the PNG written.
+    ScreenshotSaved {
+        path: String,
+    },
     Error {
         error: ErrorCode,
     },
@@ -111,6 +123,11 @@ pub struct Stats {
     pub frames: u64,
     /// When the auto quick save was last written in this session.
     pub auto_saved_at: Option<std::time::SystemTime>,
+    /// Rewind is playing back.
+    pub rewinding: bool,
+    /// States the rewind buffer holds, and their bytes.
+    pub rewind_states: usize,
+    pub rewind_bytes: usize,
 }
 
 /// State shared by emulation, renderer, audio and interface.
@@ -144,6 +161,8 @@ pub struct SessionOptions {
     /// `citra_graphics_api` = `Software`). A value the core does not accept falls back to
     /// the core's default; a key not listed answers the core's default.
     pub core_options: Vec<(String, String)>,
+    /// Rewind (`speed.rew`): the seconds to keep (`speed.rewlen`), `None` = off.
+    pub rewind_seconds: Option<u32>,
 }
 
 /// One quick save slot of a game, for the quick menu (G07).
@@ -344,6 +363,8 @@ fn emu_thread(
     };
     let mut speed = Speed::Factor(1.0);
     let mut paused = false;
+    let mut rewind = Rewind::new(opts.rewind_seconds, base_fps);
+    let mut rewinding = false;
     let mut next_frame = Instant::now();
     let mut fps_window = (Instant::now(), 0u32);
     let mut last_sram_flush = Instant::now();
@@ -487,6 +508,36 @@ fn emu_thread(
                 }
                 Command::SetCoreOption { key, value } => callbacks::set_core_option(key, value),
                 Command::Reset => unsafe { (core.reset)() },
+                Command::Rewind(on) => {
+                    if on != rewinding {
+                        rewinding = on;
+                        // Silence while going back; the speed decides again afterwards.
+                        callbacks::set_audio_enabled(!on && speed.is_normal());
+                        shared.audio.lock().samples.clear();
+                        shared.stats.lock().rewinding = on;
+                    }
+                }
+                Command::SetRewindLength(seconds) => {
+                    rewind.set_seconds(seconds);
+                    let (states, bytes) = rewind.usage();
+                    let mut stats = shared.stats.lock();
+                    (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
+                }
+                Command::Screenshot => {
+                    let png = shared.frame.lock().to_png();
+                    let res = png.map_err(|e| e.to_string()).and_then(|png| {
+                        crate::screenshot::write(&files, &png, std::time::SystemTime::now())
+                            .map_err(|e| e.to_string())
+                    });
+                    let _ = events.send(match res {
+                        Ok(path) => Event::ScreenshotSaved {
+                            path: path.to_string_lossy().into_owned(),
+                        },
+                        Err(detail) => Event::Error {
+                            error: ErrorCode::ScreenshotFailed { detail },
+                        },
+                    });
+                }
                 Command::Stop => break 'main,
             }
         }
@@ -494,8 +545,25 @@ fn emu_thread(
             continue;
         }
 
-        unsafe { (core.run)() };
-        shared.stats.lock().frames += 1;
+        if rewinding {
+            // One state back, then one frame run to show it. With nothing left the game
+            // stays on its picture (the frame count still moves: the thread is alive).
+            if let Some(state) = rewind.step_back() {
+                match core.load_state(&state) {
+                    Ok(()) => unsafe { (core.run)() },
+                    Err(e) => log::warn!("rewind: state not loaded: {e:#}"),
+                }
+            }
+        } else {
+            unsafe { (core.run)() };
+            rewind.record(|| core.save_state().ok());
+        }
+        {
+            let (states, bytes) = rewind.usage();
+            let mut stats = shared.stats.lock();
+            stats.frames += 1;
+            (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
+        }
 
         // Auto quick save every `saves.autoq`, only while the game runs.
         if let Some(every) = opts.autosave_every {

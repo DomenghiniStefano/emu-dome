@@ -7,7 +7,9 @@
 //!   e.g. `--opt citra_graphics_api=Software` for Azahar;
 //! - `--secs N`: measure the 1x and Max speeds over N seconds each (default 1);
 //! - `--png <file>`: write the last frame before the state tests as a PNG;
-//! - `--press-a N`: before measuring, tap A N times, one tap per second (to leave a title screen).
+//! - `--press-a N`: before measuring, tap A N times, one tap per second (to leave a title screen);
+//! - `--rewind N`: at the end, record N seconds of rewind and report its memory, rewind for a
+//!   second, and take a screenshot (written under the temp folder's `saves/screenshots`).
 
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -36,6 +38,7 @@ struct Args {
     secs: f64,
     png: Option<std::path::PathBuf>,
     press_a: u32,
+    rewind: Option<u32>,
 }
 
 fn parse_args() -> anyhow::Result<Args> {
@@ -45,6 +48,7 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut secs = 1.0;
     let mut png = None;
     let mut press_a = 0;
+    let mut rewind = None;
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -61,6 +65,7 @@ fn parse_args() -> anyhow::Result<Args> {
             "--secs" => secs = value()?.parse()?,
             "--png" => png = Some(value()?.into()),
             "--press-a" => press_a = value()?.parse()?,
+            "--rewind" => rewind = Some(value()?.parse()?),
             _ => positional.push(a),
         }
     }
@@ -74,6 +79,7 @@ fn parse_args() -> anyhow::Result<Args> {
         secs,
         png,
         press_a,
+        rewind,
     })
 }
 
@@ -84,6 +90,76 @@ fn write_png(session: &Session, path: &std::path::Path) -> anyhow::Result<()> {
     enc.set_color(png::ColorType::Rgba);
     enc.set_depth(png::BitDepth::Eight);
     enc.write_header()?.write_image_data(&f.rgba)?;
+    Ok(())
+}
+
+/// `--rewind N`: memory of N seconds of rewind, a second of rewinding, a screenshot.
+fn measure_rewind(
+    session: &Session,
+    rx: &mpsc::Receiver<emudome_core::Event>,
+    tmp: &std::path::Path,
+    rom: &str,
+    secs: u32,
+) -> anyhow::Result<()> {
+    use emudome_core::rewind;
+
+    // The cost of one difference, between two states a frame apart and a second apart.
+    let files = emudome_core::GameFiles::new(&tmp.join("saves"), std::path::Path::new(rom));
+    session.send(Command::SetPaused(false));
+    let mut slots = Vec::new();
+    for (slot, wait) in [(7u8, 0u64), (8, 17), (9, 1000)] {
+        std::thread::sleep(Duration::from_millis(wait));
+        session.send(Command::SaveState(slot));
+        rx.recv_timeout(Duration::from_secs(2))?;
+        slots.push(std::fs::read(files.slot(slot))?);
+    }
+    let state = slots[0].len();
+    let t = Instant::now();
+    let frame_delta = rewind::encode_delta(&slots[0], &slots[1]).len();
+    let encode = t.elapsed();
+    let second_delta = rewind::encode_delta(&slots[0], &slots[2]).len();
+    println!(
+        "rewind: state {state} bytes; difference ~1 frame apart {frame_delta} bytes (encoded in {:.2} ms), 1 s apart {second_delta} bytes",
+        encode.as_secs_f64() * 1000.0
+    );
+
+    let fps = session.shared().stats.lock().av_info.timing.fps;
+    let interval = rewind::interval_for(state);
+    for s in [10, 30, 60, 120] {
+        let cap = rewind::capacity(s, fps, interval);
+        println!(
+            "rewind {s:>3} s: {cap} states; whole states {:.0} MB, measured-size differences {:.1} MB",
+            rewind::estimate_bytes(cap, state, state) as f64 / 1e6,
+            rewind::estimate_bytes(cap, state, frame_delta.max(second_delta)) as f64 / 1e6,
+        );
+    }
+
+    std::thread::sleep(Duration::from_secs(u64::from(secs) + 1));
+    let (states, bytes) = {
+        let s = session.shared().stats.lock();
+        (s.rewind_states, s.rewind_bytes)
+    };
+    println!(
+        "rewind after {} s of play: {states} states, {bytes} bytes ({:.1} MB)",
+        secs + 1,
+        bytes as f64 / 1e6
+    );
+
+    let f0 = session.shared().stats.lock().frames;
+    session.send(Command::Rewind(true));
+    std::thread::sleep(Duration::from_secs(1));
+    session.send(Command::Rewind(false));
+    let s = session.shared().stats.lock().clone();
+    println!(
+        "rewound 1 s: {} ticks, {} states left ({} used)",
+        s.frames - f0,
+        s.rewind_states,
+        states - s.rewind_states
+    );
+
+    session.send(Command::Screenshot);
+    println!("event: {:?}", rx.recv_timeout(Duration::from_secs(2))?);
+    session.send(Command::SetPaused(true));
     Ok(())
 }
 
@@ -102,6 +178,7 @@ fn main() -> anyhow::Result<()> {
             resume_auto: false,
             app_version: env!("CARGO_PKG_VERSION").into(),
             core_options: args.opts.clone(),
+            rewind_seconds: args.rewind,
         },
         tx,
     )?;
@@ -183,6 +260,10 @@ fn main() -> anyhow::Result<()> {
     let s0 = center_pixel(&session).3;
     std::thread::sleep(Duration::from_millis(300));
     println!("paused: new frames {}", center_pixel(&session).3 - s0);
+
+    if let Some(secs) = args.rewind {
+        measure_rewind(&session, &rx, &tmp, &args.rom, secs)?;
+    }
 
     drop(session);
     println!("event: {:?}", rx.recv_timeout(Duration::from_secs(2))?);

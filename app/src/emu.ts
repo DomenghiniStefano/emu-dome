@@ -92,6 +92,7 @@ export type ErrorCode =
   | { code: 'saveGameOpen' }
   | { code: 'saveImportInvalid'; params: { detail: string } }
   | { code: 'saveFileFailed'; params: { detail: string } }
+  | { code: 'screenshotFailed'; params: { detail: string } }
 
 export type EmuEvent =
   | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
@@ -100,6 +101,8 @@ export type EmuEvent =
   | { type: 'loadUndone' }
   /** «Salvato nello slot N · Annulla»: `slot` holds what it held before the last save. */
   | { type: 'saveUndone'; slot: number }
+  /** G13 «Schermata salvata»: `path` is the PNG written next to the saves. */
+  | { type: 'screenshotSaved'; path: string }
   | { type: 'error'; error: ErrorCode }
   | { type: 'stopped' }
 
@@ -527,6 +530,10 @@ export const emu = {
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
   loadState: (slot: number) => invoke<void>('load_state', { slot }),
   reset: () => invoke<void>('reset_game'),
+  /** Backspace / L3 + L2: rewind on (held, or toggled with `a11y.toggle`) or off. */
+  rewind: (on: boolean) => invoke<void>('rewind', { on }),
+  /** F12, L3 + B, quick menu › Strumenti: PNG next to the saves (`screenshotSaved`). */
+  screenshot: () => invoke<void>('screenshot'),
   /** «Annulla il caricamento» (`saves.undo`): back to before the last load (`loadUndone`). */
   undoLoad: () => invoke<void>('undo_load'),
   /** «Salvato nello slot N · Annulla»: the slot gets back what it held (`saveUndone`). */

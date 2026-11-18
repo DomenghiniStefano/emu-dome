@@ -20,7 +20,7 @@ export interface KeyShortcut {
 
 /**
  * Esc menu · F1 save · F4 load · F2 / F3 previous / next slot · Tab fast forward (held) ·
- * Backspace rewind (later) · F9 FPS · F11 full screen · F12 screenshot (later).
+ * Backspace rewind (held; toggled with `a11y.toggle`) · F9 FPS · F11 full screen · F12 screenshot.
  * F1 and F4 act on the current slot, the one F2 / F3 and L3 + ← → move.
  */
 export const KEYBOARD_SHORTCUTS: readonly KeyShortcut[] = [
@@ -30,12 +30,11 @@ export const KEYBOARD_SHORTCUTS: readonly KeyShortcut[] = [
   { code: 'F2', action: 'prev_slot', status: 'active' },
   { code: 'F3', action: 'next_slot', status: 'active' },
   { code: 'Tab', action: 'ff_hold', status: 'active' },
-  // Backspace is also Select's default key (bindings.rs): while rewind does not exist it stays
-  // Select's.
-  { code: 'Backspace', action: 'rewind', status: 'later' },
+  // Select's default key moved from Backspace to the right Shift (bindings.rs, Trello #42).
+  { code: 'Backspace', action: 'rewind', status: 'active' },
   { code: 'F9', action: 'fps', status: 'active' },
   { code: 'F11', action: 'fullscreen', status: 'active' },
-  { code: 'F12', action: 'screenshot', status: 'later' },
+  { code: 'F12', action: 'screenshot', status: 'active' },
 ]
 
 /** The working shortcut of a key, if it has one. */

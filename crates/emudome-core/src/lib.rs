@@ -17,7 +17,9 @@ pub mod first_run;
 pub mod hotkeys;
 pub mod input;
 pub mod library;
+pub mod rewind;
 pub mod saves;
+pub mod screenshot;
 pub mod settings;
 pub mod tuning;
 

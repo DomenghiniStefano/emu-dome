@@ -78,6 +78,7 @@ const emit = defineEmits<{
   close: []
   mute: [boolean]
   fullscreen: []
+  screenshot: []
   /** G09: px at the bottom of the window the bar covers (0 = none); the game shrinks above. */
   inset: [number]
   error: [string]
@@ -341,7 +342,7 @@ interface Tool {
 }
 const tools = computed<Tool[]>(() => {
   const list: Tool[] = [
-    { id: 'shot', icon: Camera, label: t('qm.screenshot'), run: null },
+    { id: 'shot', icon: Camera, label: t('qm.screenshot'), run: () => emit('screenshot') },
     {
       id: 'mute',
       icon: VolumeX,
