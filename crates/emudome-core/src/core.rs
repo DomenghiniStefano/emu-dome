@@ -236,6 +236,11 @@ impl GameFiles {
         self.slot(slot).with_extension("png")
     }
 
+    /// What wrote a slot (core and app versions, [`crate::saves::SlotMeta`]).
+    pub fn meta(&self, slot: u8) -> PathBuf {
+        self.slot(slot).with_extension("json")
+    }
+
     /// The folder of the saves and slots.
     pub fn save_dir(&self) -> &Path {
         &self.save_dir

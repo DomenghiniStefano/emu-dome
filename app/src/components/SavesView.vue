@@ -500,8 +500,7 @@ onUnmounted(() => unlistenSettings?.())
             <h3 class="overline">{{ t('saves.quickTitle') }}</h3>
             <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03).
                  The date only: a quick save has no play time of its own (Cowork, #37).
-                 TODO(#59 item 3): `outdated` («Potrebbe non caricarsi») needs the version a state
-                 was made with; the saves do not record it yet. -->
+                 `outdated`: an older version of its core made it (saves.rs, `is_outdated`). -->
             <div v-if="details.quick.length" class="slots">
               <SlotTile
                 v-for="q in details.quick"
@@ -509,6 +508,7 @@ onUnmounted(() => unlistenSettings?.())
                 :name="slotName(q.slot)"
                 :when="q.savedAt !== null ? saveWhenLabel(q.savedAt) : null"
                 :thumb-url="q.thumbUrl"
+                :outdated="q.outdated"
                 @play="emit('openGame', selected, q.slot)"
                 @more="e => openQuick(q, e)"
               />

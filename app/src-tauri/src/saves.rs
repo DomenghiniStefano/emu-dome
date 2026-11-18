@@ -112,6 +112,8 @@ struct QuickDto {
     size: u64,
     saved_at: Option<u64>,
     thumb_url: Option<String>,
+    /// Made by an older version of its core: «Potrebbe non caricarsi».
+    outdated: bool,
 }
 
 /// Mirror: `SaveBackup`.
@@ -243,6 +245,7 @@ pub fn saves_game(state: State<'_, AppState>, path: String, slots: u8) -> GameSa
                     size: q.file.size,
                     saved_at,
                     thumb_url: q.thumb.map(|_| thumb_url(&path, q.slot, saved_at)),
+                    outdated: q.outdated,
                 }
             })
             .collect(),

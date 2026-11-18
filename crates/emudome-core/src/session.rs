@@ -137,6 +137,9 @@ pub struct SessionOptions {
     pub autosave_on_exit: bool,
     /// Load the auto quick save right after the game starts (`saves.resume` = always).
     pub resume_auto: bool,
+    /// EmuDome's version, recorded beside every quick save with the core's
+    /// ([`crate::saves::SlotMeta`]).
+    pub app_version: String,
     /// Core options the shell chooses (`GET_VARIABLE` key and value, e.g.
     /// `citra_graphics_api` = `Software`). A value the core does not accept falls back to
     /// the core's default; a key not listed answers the core's default.
@@ -297,6 +300,24 @@ fn emu_thread(
         }
     };
 
+    // The core's version: quick saves made by another one might not load (Saves, V02).
+    let slot_meta = crate::saves::SlotMeta {
+        core: core.library_name.clone(),
+        core_version: core.library_version.clone(),
+        app_version: opts.app_version.clone(),
+    };
+    if let Err(e) =
+        crate::saves::note_core_version(&opts.save_dir, &slot_meta.core, &slot_meta.core_version)
+    {
+        log::warn!("core version not recorded: {e}");
+    }
+    // What wrote a slot, beside it (failures only logged: the slot still loads).
+    let write_meta = |slot: u8| {
+        if let Err(e) = crate::saves::write_slot_meta(&files, slot, &slot_meta) {
+            log::warn!("slot {slot} record not written: {e}");
+        }
+    };
+
     let av = core.av_info;
     {
         let mut stats = shared.stats.lock();
@@ -335,6 +356,7 @@ fn emu_thread(
     }) {
         Ok(()) => {
             write_thumb(&files, AUTO_SLOT, &shared);
+            write_meta(AUTO_SLOT);
             shared.stats.lock().auto_saved_at = Some(std::time::SystemTime::now());
         }
         Err(e) => {
@@ -408,6 +430,7 @@ fn emu_thread(
                     });
                     if res.is_ok() {
                         write_thumb(&files, slot, &shared);
+                        write_meta(slot);
                         undo = before.map(|before| Undo::Save { slot, before });
                     }
                     let _ = events.send(match res {

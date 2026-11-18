@@ -5,13 +5,19 @@
 //!
 //! Files, all keyed by the ROM file name (TODO(game identity, Trello #21): by content later):
 //! - `<save_dir>/<stem>.sav`: the in-game save («Salvataggio del gioco»);
-//! - `<save_dir>/<stem>.slotN.state` / `.auto.state` (+ `.png`): quick saves ([`GameFiles`]);
+//! - `<save_dir>/<stem>.slotN.state` / `.auto.state` (+ `.png` thumbnail, + `.json` [`SlotMeta`]):
+//!   quick saves ([`GameFiles`]);
+//! - `<save_dir>/cores.json`: the last version seen of each core ([`CoreVersions`]), to tell
+//!   which quick saves an older core made («Potrebbe non caricarsi»);
 //! - `<save_dir>/backups/<stem>.<unix ms>.<reason>.sav`: backups of the in-game save;
 //! - `<save_dir>/<stem>.broken-<unix ms>.sav`: an unreadable in-game save, set aside (E04).
 
+use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+
+use serde::{Deserialize, Serialize};
 
 use crate::core::GameFiles;
 use crate::session::AUTO_SLOT;
@@ -54,6 +60,78 @@ pub struct QuickSave {
     pub slot: u8,
     pub file: FileStamp,
     pub thumb: Option<PathBuf>,
+    /// Made by another version of its core than the last one seen: it might not load
+    /// ([`is_outdated`]).
+    pub outdated: bool,
+}
+
+// ---- What wrote a quick save («Potrebbe non caricarsi») ----
+
+/// What wrote a quick save, kept beside it (`<stem>.slotN.json`). A core's states often do not
+/// load in another version of the same core.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlotMeta {
+    /// The core's `library_name` («mGBA»).
+    pub core: String,
+    /// The core's `library_version`.
+    pub core_version: String,
+    /// EmuDome's version.
+    pub app_version: String,
+}
+
+/// The last version seen of each core, by `library_name`, written at every game start.
+pub type CoreVersions = BTreeMap<String, String>;
+
+const CORE_VERSIONS: &str = "cores.json";
+
+/// Whether a quick save might not load: its core has been seen since in another version.
+/// No record (a save from before EmuDome kept them) or a core never seen: not outdated, so an
+/// old save never raises a false alarm.
+pub fn is_outdated(meta: Option<&SlotMeta>, seen: &CoreVersions) -> bool {
+    meta.and_then(|m| seen.get(&m.core).map(|v| *v != m.core_version))
+        .unwrap_or(false)
+}
+
+/// `seen` with `core` at `version`; `None` when it already was (nothing to write).
+pub fn with_core_version(seen: &CoreVersions, core: &str, version: &str) -> Option<CoreVersions> {
+    if seen.get(core).is_some_and(|v| v == version) {
+        return None;
+    }
+    let mut next = seen.clone();
+    next.insert(core.to_owned(), version.to_owned());
+    Some(next)
+}
+
+/// The core versions seen so far (empty when none, or unreadable).
+pub fn core_versions(save_dir: &Path) -> CoreVersions {
+    std::fs::read(save_dir.join(CORE_VERSIONS))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default()
+}
+
+/// Records that `core` runs at `version` now (at a game start).
+pub fn note_core_version(save_dir: &Path, core: &str, version: &str) -> io::Result<()> {
+    let Some(next) = with_core_version(&core_versions(save_dir), core, version) else {
+        return Ok(());
+    };
+    let bytes = serde_json::to_vec_pretty(&next).map_err(io::Error::other)?;
+    std::fs::create_dir_all(save_dir)?;
+    write_atomic(&save_dir.join(CORE_VERSIONS), &bytes)
+}
+
+/// What wrote slot `slot`, if recorded.
+pub fn slot_meta(files: &GameFiles, slot: u8) -> Option<SlotMeta> {
+    std::fs::read(files.meta(slot))
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+}
+
+/// Records what wrote slot `slot`.
+pub fn write_slot_meta(files: &GameFiles, slot: u8, meta: &SlotMeta) -> io::Result<()> {
+    let bytes = serde_json::to_vec(meta).map_err(io::Error::other)?;
+    write_atomic(&files.meta(slot), &bytes)
 }
 
 /// One backup of the in-game save.
@@ -179,12 +257,19 @@ pub fn backups(save_dir: &Path, game: &Path) -> Vec<Backup> {
 /// backups, saves set aside.
 pub fn game_saves(save_dir: &Path, game: &Path, slots: u8) -> GameSaves {
     let files = GameFiles::new(save_dir, game);
+    let seen = core_versions(save_dir);
     let quick = std::iter::once(AUTO_SLOT)
         .chain(1..=slots)
         .filter_map(|slot| {
             let file = stamp(&files.slot(slot))?;
             let thumb = Some(files.thumb(slot)).filter(|t| t.is_file());
-            Some(QuickSave { slot, file, thumb })
+            let outdated = is_outdated(slot_meta(&files, slot).as_ref(), &seen);
+            Some(QuickSave {
+                slot,
+                file,
+                thumb,
+                outdated,
+            })
         })
         .collect();
     let mut broken: Vec<(u64, String)> = file_names(save_dir)
@@ -213,11 +298,12 @@ pub fn write_atomic(path: &Path, data: &[u8]) -> io::Result<()> {
 }
 
 /// What a quick save slot held before a save replaced it, so «Salvato nello slot N · Annulla»
-/// can put it back: its state and its thumbnail, `None` where the file did not exist.
+/// can put it back: its state, thumbnail and record, `None` where the file did not exist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SlotContent {
     pub state: Option<Vec<u8>>,
     pub thumb: Option<Vec<u8>>,
+    pub meta: Option<Vec<u8>>,
 }
 
 /// A file's bytes, `None` when it does not exist.
@@ -247,13 +333,15 @@ impl SlotContent {
         Ok(Self {
             state: read_if_any(&files.slot(slot))?,
             thumb: read_if_any(&files.thumb(slot))?,
+            meta: read_if_any(&files.meta(slot))?,
         })
     }
 
     /// Puts this content back into slot `slot`: a file that did not exist is removed.
     pub fn restore(&self, files: &GameFiles, slot: u8) -> io::Result<()> {
         put_back(&files.slot(slot), self.state.as_deref())?;
-        put_back(&files.thumb(slot), self.thumb.as_deref())
+        put_back(&files.thumb(slot), self.thumb.as_deref())?;
+        put_back(&files.meta(slot), self.meta.as_deref())
     }
 }
 
@@ -355,15 +443,20 @@ pub fn import(
     write_atomic(&files.sram, data)
 }
 
-/// Deletes a quick save and its thumbnail.
+/// Deletes a quick save, its thumbnail and its record.
 pub fn delete_quick(save_dir: &Path, game: &Path, slot: u8) -> io::Result<()> {
     let files = GameFiles::new(save_dir, game);
     std::fs::remove_file(files.slot(slot))?;
-    match std::fs::remove_file(files.thumb(slot)) {
-        Err(e) if e.kind() != io::ErrorKind::NotFound => {
-            log::warn!("thumbnail of slot {slot} not removed: {e}")
+    for (what, path) in [
+        ("thumbnail", files.thumb(slot)),
+        ("record", files.meta(slot)),
+    ] {
+        match std::fs::remove_file(path) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => {
+                log::warn!("{what} of slot {slot} not removed: {e}")
+            }
+            Ok(()) | Err(_) => {}
         }
-        Ok(()) | Err(_) => {}
     }
     Ok(())
 }
@@ -522,9 +615,10 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        backup, backups, check_in_game, delete_quick, game_saves, import, parse_backup,
-        parse_import, restore, set_aside, BackupReason, ImportError, ImportFormat, SaveHealth,
-        SlotContent, DSV_COOKIE, DSV_FOOTER, DSV_TEXT, DUC_HEADER, DUC_ID,
+        backup, backups, check_in_game, core_versions, delete_quick, game_saves, import,
+        is_outdated, note_core_version, parse_backup, parse_import, restore, set_aside, slot_meta,
+        with_core_version, write_slot_meta, BackupReason, CoreVersions, ImportError, ImportFormat,
+        SaveHealth, SlotContent, SlotMeta, DSV_COOKIE, DSV_FOOTER, DSV_TEXT, DUC_HEADER, DUC_ID,
     };
     use crate::core::GameFiles;
     use crate::settings::test_dir::TestDir;
@@ -678,7 +772,8 @@ mod tests {
             before,
             SlotContent {
                 state: None,
-                thumb: None
+                thumb: None,
+                meta: None
             }
         );
         write(&dir, "saves/Lanterna.slot3.state", b"new state");
@@ -696,10 +791,90 @@ mod tests {
         let save_dir = dir.path("saves");
         write(&dir, "saves/Lanterna.slot1.state", b"s");
         write(&dir, "saves/Lanterna.slot1.png", b"p");
+        write(&dir, "saves/Lanterna.slot1.json", b"{}");
         delete_quick(&save_dir, Path::new(GAME), 1).unwrap();
         assert!(!dir.path("saves/Lanterna.slot1.state").exists());
         assert!(!dir.path("saves/Lanterna.slot1.png").exists());
+        assert!(!dir.path("saves/Lanterna.slot1.json").exists());
         assert!(delete_quick(&save_dir, Path::new(GAME), 1).is_err());
+    }
+
+    fn meta(core: &str, version: &str) -> SlotMeta {
+        SlotMeta {
+            core: core.into(),
+            core_version: version.into(),
+            app_version: "0.1.0".into(),
+        }
+    }
+
+    #[test]
+    fn a_save_is_outdated_only_when_its_core_was_seen_in_another_version() {
+        let seen: CoreVersions = [("mGBA".to_owned(), "0.11.0".to_owned())].into();
+        assert!(!is_outdated(Some(&meta("mGBA", "0.11.0")), &seen));
+        assert!(is_outdated(Some(&meta("mGBA", "0.10.2")), &seen));
+        // No record (made before EmuDome kept them), or a core never seen: no false alarm.
+        assert!(!is_outdated(None, &seen));
+        assert!(!is_outdated(Some(&meta("melonDS DS", "1.0")), &seen));
+        assert!(!is_outdated(
+            Some(&meta("mGBA", "0.10.2")),
+            &CoreVersions::new()
+        ));
+    }
+
+    #[test]
+    fn a_core_version_is_written_only_when_it_changes() {
+        let seen: CoreVersions = [("mGBA".to_owned(), "0.10.2".to_owned())].into();
+        assert_eq!(with_core_version(&seen, "mGBA", "0.10.2"), None);
+        let next = with_core_version(&seen, "mGBA", "0.11.0");
+        assert_eq!(
+            next.as_ref()
+                .and_then(|n| n.get("mGBA"))
+                .map(String::as_str),
+            Some("0.11.0")
+        );
+        let more = with_core_version(&seen, "Azahar", "2125");
+        assert_eq!(more.map(|m| m.len()), Some(2));
+    }
+
+    #[test]
+    fn the_saves_list_marks_the_slots_an_older_core_made() {
+        let dir = TestDir::new("saves-outdated");
+        let save_dir = dir.path("saves");
+        let files = GameFiles::new(&save_dir, Path::new(GAME));
+        write(&dir, "saves/Lanterna.slot1.state", b"old");
+        write(&dir, "saves/Lanterna.slot2.state", b"new");
+        write(&dir, "saves/Lanterna.slot3.state", b"no record");
+        write_slot_meta(&files, 1, &meta("mGBA", "0.10.2")).unwrap();
+        write_slot_meta(&files, 2, &meta("mGBA", "0.11.0")).unwrap();
+        // Before any core version is known: nothing is outdated.
+        let outdated = |dir: &std::path::Path| -> Vec<(u8, bool)> {
+            game_saves(dir, Path::new(GAME), 5)
+                .quick
+                .iter()
+                .map(|q| (q.slot, q.outdated))
+                .collect()
+        };
+        assert_eq!(outdated(&save_dir), [(1, false), (2, false), (3, false)]);
+        note_core_version(&save_dir, "mGBA", "0.11.0").unwrap();
+        assert_eq!(
+            core_versions(&save_dir).get("mGBA").map(String::as_str),
+            Some("0.11.0")
+        );
+        assert_eq!(outdated(&save_dir), [(1, true), (2, false), (3, false)]);
+        assert_eq!(slot_meta(&files, 2), Some(meta("mGBA", "0.11.0")));
+    }
+
+    #[test]
+    fn undoing_a_save_puts_its_record_back_too() {
+        let dir = TestDir::new("saves-slot-undo-meta");
+        let files = GameFiles::new(&dir.path("saves"), Path::new(GAME));
+        write(&dir, "saves/Lanterna.slot4.state", b"old state");
+        write_slot_meta(&files, 4, &meta("mGBA", "0.10.2")).unwrap();
+        let before = SlotContent::read(&files, 4).unwrap();
+        write(&dir, "saves/Lanterna.slot4.state", b"new state");
+        write_slot_meta(&files, 4, &meta("mGBA", "0.11.0")).unwrap();
+        before.restore(&files, 4).unwrap();
+        assert_eq!(slot_meta(&files, 4), Some(meta("mGBA", "0.10.2")));
     }
 
     #[test]
