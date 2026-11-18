@@ -261,7 +261,8 @@
     "saveGameOpen": "This game is open. Close it and try again.",
     "saveImportInvalid": "This file isn’t a save EmuDome can import ({detail}). Choose a .sav, .dsv or .duc file.",
     "saveFileFailed": "Couldn’t use the save file: {detail}. Check that the saves folder is writable and try again.",
-    "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again."
+    "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again.",
+    "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file."
   },
   "consoleShort": {
     "gb": "GB",
@@ -614,7 +615,8 @@
           "lcd_grid": "LCD grid",
           "crt": "CRT TV",
           "crt_curved": "Curved TV",
-          "soft_pixels": "Soft pixels"
+          "soft_pixels": "Soft pixels",
+          "file": "Effect from a file"
         },
         "optionDesc": {
           "none": "The original image",
@@ -622,7 +624,8 @@
           "lcd_grid": "Every pixel apart, as seen up close",
           "crt": "Scan lines and warm colours",
           "crt_curved": "Tube TV with curved edges",
-          "soft_pixels": "Scaling that rounds the edges"
+          "soft_pixels": "Scaling that rounds the edges",
+          "file": "The .slangp file you chose in “Add an effect from a file”"
         }
       },
       "fxint": {
@@ -636,7 +639,10 @@
       "fxfile": {
         "name": "Add an effect from a file",
         "desc": "Effects in RetroArch format (.slangp) that you downloaded yourself.",
-        "button": "Choose a file…"
+        "button": "Choose a file…",
+        "value": {
+          "none": "No file chosen"
+        }
       }
     },
     "screens": {
@@ -1645,6 +1651,7 @@
     "lockedNote": "Greyed-out items apply to all games: to change them, choose “All games”.",
     "lockedPhone": "Only on this phone.",
     "lockedDesktop": "Only on this computer.",
+    "lockedNeedsNative": "Needs the Accelerated display method: choose it in the quick menu, under “Screens and picture”.",
     "notYet": "This arrives in a future update.",
     "emptyOnly": "No settings changed here. Every value is inherited.",
     "noResults": "No settings for “{query}”",
@@ -1710,6 +1717,13 @@
     "close": "Close"
   },
   "qm": {
+    "picks": {
+      "label": "Quick picks",
+      "sharp": "Sharp pixels",
+      "soft": "Soft",
+      "lcd": "LCD screen",
+      "crt": "CRT TV"
+    },
     "label": "Quick menu",
     "auto": "Automatic",
     "slot": "Slot {slot}",

@@ -10,6 +10,7 @@ import {
   type SettingsSchema,
   type SettingValue,
 } from './emu'
+import { nativeAvailable, videoMode } from './videoMode'
 
 let schemaPromise: Promise<SettingsSchema> | null = null
 
@@ -83,6 +84,9 @@ export function lockReason(
 ): string | null {
   if (!platformIncludes(entry.platform, schema.device))
     return entry.platform === 'desktop' ? 'settingsUi.lockedDesktop' : 'settingsUi.lockedPhone'
+  // X05: the screen effects exist only on the Accelerated method.
+  if (entry.needsNativeVideo && videoMode.value !== 'native')
+    return nativeAvailable.value ? 'settingsUi.lockedNeedsNative' : 'qm.noNative'
   if (entry.kind.type === 'action' || entry.kind.type === 'apply') return null
   // Session («in prova», quick menu): open to what can be saved per console or per game.
   if (level === 'session')
@@ -94,12 +98,21 @@ export function lockReason(
   return null
 }
 
+/**
+ * File rows that work: the picker the row's button opens, which stores the chosen file itself.
+ * Resolves the path, or null when cancelled.
+ */
+export const FILE_PICKERS: Partial<Record<string, () => Promise<string | null>>> = {
+  'fx.fxfile': () => emu.effects.chooseFile(),
+}
+
 /** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */
 export function notYetWired(entry: SettingEntry): boolean {
   switch (entry.kind.type) {
+    case 'file':
+      return !FILE_PICKERS[entry.key]
     // `apply` (presets): the bundles and their confirmation are not defined yet.
     case 'action':
-    case 'file':
     case 'apply':
       return true
     case 'toggle':

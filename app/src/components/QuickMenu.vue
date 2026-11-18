@@ -431,9 +431,15 @@ const cards = computed<Card[]>(() => {
   if (!schema.value) return []
   const out: Card[] = rowsOf('screens').map(e => {
     const k = e.kind
-    const ids = k.type === 'choice' ? k.options.filter(id => !e.hiddenOptions.includes(id)) : []
+    // «Effetto da file» only once a file was chosen in Settings.
+    const noFile = e.key === 'fx.fxpick' && !value('fx.fxfile')
+    const ids =
+      k.type === 'choice'
+        ? k.options.filter(id => !e.hiddenOptions.includes(id) && !(noFile && id === 'file'))
+        : []
     const current = String(value(e.key) ?? '')
-    const locked = !!schema.value && lockReason(e, schema.value, 'session') !== null
+    const reason = schema.value ? lockReason(e, schema.value, 'session') : null
+    const locked = reason !== null
     const steps = locked
       ? { prev: null, next: null }
       : stepper(ids, current, id => void setSession(e.key, id))
@@ -441,7 +447,8 @@ const cards = computed<Card[]>(() => {
       key: e.key,
       name: t(msg.name(e.key)),
       value: current ? t(msg.option(e.key, current)) : '',
-      sub: sourceText(session.value[e.key]),
+      // X05: why it cannot change here (the effects need the Accelerated method).
+      sub: reason ? t(reason) : sourceText(session.value[e.key]),
       trial: session.value[e.key]?.source === 'session',
       ...steps,
     }
@@ -462,6 +469,33 @@ const cards = computed<Card[]>(() => {
   })
   return out
 })
+
+// ---- G09 quick picks (Cowork on #43, from #38): each sets image size, smoothing and the
+// screen effect together, «in prova» like every change here.
+const PICKS: { id: string; values: Record<string, string> }[] = [
+  {
+    id: 'sharp',
+    values: { 'video.scale': 'integer', 'video.filter': 'none', 'fx.fxpick': 'none' },
+  },
+  {
+    id: 'soft',
+    values: { 'video.scale': 'fit', 'video.filter': 'soft', 'fx.fxpick': 'soft_pixels' },
+  },
+  { id: 'lcd', values: { 'video.scale': 'integer', 'video.filter': 'none', 'fx.fxpick': 'lcd' } },
+  { id: 'crt', values: { 'video.scale': 'fit', 'video.filter': 'none', 'fx.fxpick': 'crt' } },
+]
+const picks = computed(() =>
+  PICKS.map(p => ({
+    id: p.id,
+    label: t(`qm.picks.${p.id}`),
+    on: Object.entries(p.values).every(([key, v]) => value(key) === v),
+  })),
+)
+async function applyPick(id: string) {
+  const pick = PICKS.find(p => p.id === id)
+  if (!pick) return
+  for (const [key, v] of Object.entries(pick.values)) await setSession(key, v)
+}
 
 // G09 on desktop: the bar covers the bottom of the window, the game shrinks above it.
 let barObserver: ResizeObserver | null = null
@@ -539,6 +573,18 @@ onBeforeUnmount(() => {
           <span class="bar-title">{{ t('qm.row.screens.name') }}</span>
           <span class="grow"></span>
           <span class="muted small">{{ t('qm.liveNote') }}</span>
+        </div>
+        <div class="picks" role="group" :aria-label="t('qm.picks.label')">
+          <button
+            v-for="p in picks"
+            :key="p.id"
+            class="act slim"
+            :class="{ on: p.on }"
+            :aria-pressed="p.on"
+            @click="applyPick(p.id)"
+          >
+            {{ p.label }}
+          </button>
         </div>
         <div class="cards">
           <div v-for="(c, i) in cards" :key="c.key" class="card" :class="{ trial: c.trial }">
@@ -808,31 +854,45 @@ onBeforeUnmount(() => {
           </template>
 
           <!-- Phone G09: the cards in the sheet, the game at full brightness above. -->
-          <div v-else-if="view === 'screens'" class="cards phone-cards">
-            <div v-for="c in cards" :key="c.key" class="card" :class="{ trial: c.trial }">
-              <span class="card-name">{{ c.name }}</span>
-              <div class="card-value">
-                <button
-                  class="step"
-                  :disabled="!c.prev"
-                  :aria-label="t('qm.prev', { name: c.name })"
-                  @click="c.prev?.()"
-                >
-                  <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
-                </button>
-                <span class="card-current">{{ c.value }}</span>
-                <button
-                  class="step"
-                  :disabled="!c.next"
-                  :aria-label="t('qm.next', { name: c.name })"
-                  @click="c.next?.()"
-                >
-                  <ChevronRight :size="18" :stroke-width="1.75" aria-hidden="true" />
-                </button>
-              </div>
-              <span class="card-sub">{{ c.sub }}</span>
+          <template v-else-if="view === 'screens'">
+            <div class="picks phone-picks" role="group" :aria-label="t('qm.picks.label')">
+              <button
+                v-for="p in picks"
+                :key="p.id"
+                class="act slim"
+                :class="{ on: p.on }"
+                :aria-pressed="p.on"
+                @click="applyPick(p.id)"
+              >
+                {{ p.label }}
+              </button>
             </div>
-          </div>
+            <div class="cards phone-cards">
+              <div v-for="c in cards" :key="c.key" class="card" :class="{ trial: c.trial }">
+                <span class="card-name">{{ c.name }}</span>
+                <div class="card-value">
+                  <button
+                    class="step"
+                    :disabled="!c.prev"
+                    :aria-label="t('qm.prev', { name: c.name })"
+                    @click="c.prev?.()"
+                  >
+                    <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
+                  </button>
+                  <span class="card-current">{{ c.value }}</span>
+                  <button
+                    class="step"
+                    :disabled="!c.next"
+                    :aria-label="t('qm.next', { name: c.name })"
+                    @click="c.next?.()"
+                  >
+                    <ChevronRight :size="18" :stroke-width="1.75" aria-hidden="true" />
+                  </button>
+                </div>
+                <span class="card-sub">{{ c.sub }}</span>
+              </div>
+            </div>
+          </template>
 
           <!-- G10: controls -->
           <div v-else-if="view === 'controls'" class="list">
@@ -1426,6 +1486,15 @@ button.line:hover:not(:disabled) {
 .bar-title {
   font-size: 15px;
   font-weight: 600;
+}
+.picks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.picks .act.on {
+  border-color: var(--accent-text);
+  color: var(--accent-text);
 }
 .cards {
   display: grid;

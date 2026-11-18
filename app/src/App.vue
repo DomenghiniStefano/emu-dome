@@ -21,6 +21,7 @@ import { inputMode, usedController, watchInput } from './inputMode'
 import { FF_DEFAULT, speedFromOption } from './speeds'
 import { keymap, loadKeymap } from './keymap'
 import { keyShortcut, type KeyAction } from './keyboard'
+import { nativeAvailable, videoMode } from './videoMode'
 import type { Section } from './sections'
 import AppShell from './components/AppShell.vue'
 import GameCanvas from './components/GameCanvas.vue'
@@ -45,8 +46,6 @@ const stats = ref<Stats | null>(null)
 const speed = ref<Speed>({ kind: 'factor', value: 1 })
 const error = ref<string | null>(null)
 const toasts = ref<InstanceType<typeof ToastStack> | null>(null)
-const videoMode = ref<VideoMode>('native')
-const nativeAvailable = ref(false)
 // Touch screen (Android): on-screen buttons while playing.
 const touch = window.matchMedia('(pointer: coarse)').matches
 
@@ -525,6 +524,7 @@ onMounted(async () => {
       dispatchNav(action)
     }),
     await emu.onHotkey(onHotkey),
+    await emu.onEffectError(e => toasts.value?.push(errorText(e), 'error')),
     await emu.onGamepadConnected(p => {
       controller.value = gamepadName(p)
       toasts.value?.push(t('toast.gamepadConnected', { name: gamepadName(p) }))

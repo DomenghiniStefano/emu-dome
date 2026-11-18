@@ -78,6 +78,9 @@ pub enum ErrorCode {
     SaveFileFailed { detail: String },
     /// The screenshot could not be encoded or written (no frame yet, folder not writable).
     ScreenshotFailed { detail: String },
+    /// The screen effect `name` (a built-in one or the user's `.slangp` file name) could not
+    /// be loaded or drawn; the game shows without it.
+    EffectNotLoaded { name: String, detail: String },
 }
 
 #[cfg(test)]

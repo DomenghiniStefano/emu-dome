@@ -55,6 +55,9 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
     if !keys.is_empty() {
         crate::pads::settings_changed();
     }
+    if keys.iter().any(|k| crate::effects::is_effect_key(k)) {
+        crate::effects::apply(app);
+    }
     if keys.iter().any(|k| REWIND_KEYS.contains(k)) {
         // The open game follows at once (no game: nothing to tell).
         let seconds = rewind_seconds(app, &Scope::Session);
@@ -76,8 +79,9 @@ pub fn begin_session(app: &AppHandle, console: ConsoleId, game: GameId) {
             settings.begin_session(console, game);
             dropped
         };
-        // The controllers now follow this game's settings.
+        // The controllers and the screen effect now follow this game's settings.
         crate::pads::settings_changed();
+        crate::effects::apply(app);
         emit_changed(app, &dropped, Level::Session);
     }
 }
@@ -87,6 +91,7 @@ pub fn end_session(app: &AppHandle) {
     if let Some(state) = app.try_state::<SettingsState>() {
         let dropped = state.0.lock().end_session();
         crate::pads::settings_changed();
+        crate::effects::apply(app);
         emit_changed(app, &dropped, Level::Session);
     }
 }

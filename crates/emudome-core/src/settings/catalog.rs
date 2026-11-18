@@ -66,6 +66,7 @@ const fn e(key: &'static str, kind: Kind, default: DefaultValue, levels: Levels)
         phase: 1,
         most_used: false,
         show_if: None,
+        needs_native_video: false,
     }
 }
 
@@ -246,6 +247,14 @@ impl Entry {
         }
     }
 
+    /// Works only on the native (Accelerated) video path (the screen effects).
+    const fn native_video(self) -> Self {
+        Self {
+            needs_native_video: true,
+            ..self
+        }
+    }
+
     /// Options of a choice that exist only on some devices.
     const fn options_on(self, option_platforms: &'static [(&'static str, Platform)]) -> Self {
         if let Kind::Choice {
@@ -408,14 +417,18 @@ pub static ENTRIES: &[Entry] = &[
             "crt",
             "crt_curved",
             "soft_pixels",
+            // The user's own `.slangp`, chosen in `fx.fxfile` (none chosen: no effect).
+            "file",
         ],
         "none",
         ALL,
     )
-    .most_used(),
-    pct("fx.fxint", 60, ALL),
-    slider("fx.fxbright", 110, (80, 150, 5), Unit::Percent, ALL),
-    act("fx.fxfile", G),
+    .most_used()
+    .native_video(),
+    pct("fx.fxint", 60, ALL).native_video(),
+    slider("fx.fxbright", 110, (80, 150, 5), Unit::Percent, ALL).native_video(),
+    // The path of the user's `.slangp` (empty: none), used by the «file» option of `fx.fxpick`.
+    file("fx.fxfile", G).native_video(),
     // ---- Schermi di DS e 3DS (screens) ----
     chips(
         "screens.cycle",

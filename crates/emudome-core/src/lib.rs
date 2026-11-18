@@ -13,6 +13,7 @@ mod session;
 
 pub mod audio;
 pub mod bindings;
+pub mod effects;
 pub mod first_run;
 pub mod hotkeys;
 pub mod input;

@@ -19,7 +19,7 @@ import {
 } from '../emu'
 import { LOCALE } from '../i18n'
 import { errorText } from '../i18n/labels'
-import { lockReason, msg, notYetWired } from '../settingsModel'
+import { FILE_PICKERS, lockReason, msg, notYetWired } from '../settingsModel'
 import SettingSelect from './SettingSelect.vue'
 
 const props = defineProps<{
@@ -83,6 +83,22 @@ const desc = computed(() => {
   if (!r || (props.lockNote && r === 'settingsUi.lockedGlobal')) return baseDesc.value
   return `${t(r)} ${baseDesc.value}`.trim()
 })
+/** A file row with a file chosen shows its name; the picker, when the row works. */
+const fileName = computed(() =>
+  kind.value.type === 'file' && typeof value.value === 'string' && value.value
+    ? (value.value.split(/[\\/]/).pop() ?? '')
+    : '',
+)
+const picker = computed(() => FILE_PICKERS[key.value])
+async function pickFile() {
+  const pick = picker.value
+  if (!pick || disabled.value) return
+  try {
+    await pick()
+  } catch (e) {
+    emit('error', errorText(e))
+  }
+}
 /** A file row with no file chosen says so beside its button («Nessuna immagine scelta»). */
 const noFile = computed(() =>
   kind.value.type === 'file' && !value.value && te(`settings.${key.value}.value.none`)
@@ -313,8 +329,12 @@ function swatchName(hex: string): string {
 
         <!-- file, action -->
         <template v-else-if="kind.type === 'file' || kind.type === 'action'">
-          <span v-if="noFile" class="file-state">{{ noFile }}</span>
-          <button v-if="buttonText" class="btn" disabled :title="t('settingsUi.notYet')">
+          <span v-if="fileName" class="file-state">{{ fileName }}</span>
+          <span v-else-if="noFile" class="file-state">{{ noFile }}</span>
+          <button v-if="buttonText && picker" class="btn" :disabled="disabled" @click="pickFile">
+            {{ buttonText }}
+          </button>
+          <button v-else-if="buttonText" class="btn" disabled :title="t('settingsUi.notYet')">
             {{ buttonText }}
           </button>
         </template>

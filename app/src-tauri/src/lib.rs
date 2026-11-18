@@ -8,6 +8,7 @@
 
 mod audio;
 mod bench;
+mod effects;
 mod first_run;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
@@ -746,6 +747,8 @@ pub fn run() {
                 audio,
                 bench: bench.clone(),
             });
+            app.manage(effects::open(app));
+            effects::apply(app.handle());
             library::startup(app.handle());
             if let Some(bench) = bench.clone() {
                 bench::spawn(app.handle().clone(), bench);
@@ -788,6 +791,7 @@ pub fn run() {
             settings::settings_reset,
             settings::settings_session_commit,
             settings::settings_session_discard,
+            effects::effects_choose_file,
             pads::gamepad_list,
             pads::gamepad_watch,
             pads::gamepad_capture,
