@@ -83,6 +83,24 @@ run 'cargo fmt' cargo fmt --all --check
 run 'cargo clippy' cargo clippy --workspace --all-targets -- -D warnings
 run 'cargo test' cargo test --workspace
 
+# --- Licences (CLAUDE.md, licence rule 2): every crate and npm package must carry a licence
+# compatible with GPL-3.0-or-later. The allow-lists, the proof that each check fails, and their
+# blind spots are in deny.toml and scripts/npm-licenses.mjs. Neither sees the libretro cores,
+# fonts, icons or the test ROM: those are reviewed by hand in THIRD_PARTY.md.
+cargo_deny() {
+	if ! cargo deny --version >/dev/null 2>&1; then
+		printf 'cargo-deny is not installed. Install it with: cargo install cargo-deny --locked\n'
+		return 1
+	fi
+	cargo deny --log-level error check licenses
+}
+run 'licences: crates' cargo_deny
+if [ "$pm" = pnpm ]; then
+	run 'licences: npm' node scripts/npm-licenses.mjs
+else
+	printf '\n=== licences: npm\nskipped: needs pnpm (app/pnpm-lock.yaml)\n'
+fi
+
 # --- Frontend (app/)
 run_script typecheck
 run_script test

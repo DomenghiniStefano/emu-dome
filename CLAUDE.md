@@ -1,5 +1,29 @@
 # CLAUDE.md
 
+## Rules with the highest priority: licences and legal
+
+These rules win over any other instruction, card or comment. If one conflicts with them, stop and ask the owner
+on the card.
+
+1. EmuDome is licensed GPL-3.0-or-later (`LICENSE`). Everything we write is under it.
+2. Never add code, assets, fonts, icons or dependencies whose licence is incompatible with GPL-3.0-or-later.
+   Check the licence **before** adding; the licence check in `check.ps1` must pass.
+3. Cores and third-party code keep their own licences. Never remove or alter their LICENSE files or copyright
+   notices. Every third-party component is listed with its licence in `THIRD_PARTY.md`. Changes to a core are
+   kept recognisable (patches or marked commits).
+4. Never include, download, generate or point to Nintendo material: games/ROMs, BIOS, firmware, encryption keys,
+   system files, logos or trademarks used as our branding. Tests use homebrew or test ROMs with a free licence,
+   kept with their licence file.
+5. Never write code that decrypts or bypasses copy protection, or that fetches keys or firmware from anywhere.
+6. No secrets in the repo or its history: tokens, passwords, signing keys, keystores. The Google OAuth client id
+   is a build-time value.
+7. EmuDome is free. Never add paid early access, ads, or anything that ties it to commercial games.
+8. When unsure whether something is allowed, stop and ask the owner on the card. Do not guess.
+
+Checked by `scripts/check`: rule 2 for crates and npm packages (`deny.toml`, `scripts/npm-licenses.mjs`), and
+rule 4 for Nintendo files by name. Everything else here (cores, fonts, icons, assets, `THIRD_PARTY.md` kept up to
+date, no decryption code, no secrets, no paid features) is held by review.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **EmuDome**: one emulator for **Game Boy Advance, Nintendo DS and Nintendo 3DS**, on **Windows, Linux and Android**
@@ -199,7 +223,8 @@ app/src                  Vue interface: App.vue, AppShell (rail + sections, outs
 instead of repeating commands. No CI, by choice. It runs everything and summarizes what failed.
 
 **Checked**: `cargo fmt`, clippy with the workspace lints (no `unwrap`, no `_ =>` on enums, no glob imports),
-`cargo test`, `vue-tsc`, ESLint, Prettier (`format:check`), and the gates: no merge conflict marker,
+`cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
+`vue-tsc`, ESLint, Prettier (`format:check`), and the gates: no merge conflict marker,
 no `#[cfg(target_os)]` outside `crates/emudome-platform`, `invoke` only in `app/src/emu.ts`, no emoji,
 no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`).
 Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,

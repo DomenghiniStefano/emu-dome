@@ -1,7 +1,12 @@
 # EmuDome
 
 One emulator for **Game Boy Advance, Nintendo DS and Nintendo 3DS**, on Windows, Linux and Android.
-Rust shell with Tauri 2 and a Vite + Vue interface; the emulation cores are interchangeable libretro libraries.
+Rust shell with Tauri 2 and a Vite + Vue interface; the emulation cores are interchangeable libretro libraries
+(mGBA, melonDS DS, Azahar). EmuDome is free software (GPL-3.0-or-later) and free of charge.
+
+**No games, BIOS, firmware or keys.** EmuDome ships none and downloads none. You add your own games, dumped
+from cartridges you own; 3DS games must already be decrypted by you. The cores use their built-in open source
+BIOS replacements.
 
 > State: **Phase 0, feasibility prototype.** It is meant to find out whether a game drawn natively
 > under a transparent web interface holds up, before building the rest.
@@ -100,7 +105,17 @@ Planned builds: Windows, Linux, Android. macOS and iOS are not compiled (they ne
 developer license), but the system-dependent code is isolated in `emudome-platform`
 so macOS can be added without rewrites.
 
+## Contributing and security
+
+See `CONTRIBUTING.md` (contributions are under GPL-3.0-or-later, `./scripts/check.ps1` before a pull request)
+and `SECURITY.md` (how to report a security problem privately).
+
 ## License
 
-GPL-3.0-or-later. The libretro cores are separate projects with their own licenses.
-EmuDome does not include or download Nintendo games, BIOS or system files.
+EmuDome is licensed under the GNU General Public License, version 3 **or (at your option) any later version**
+(GPL-3.0-or-later): see `LICENSE`. The libretro cores are separate projects with their own licenses; every
+third-party component and its license is listed in `THIRD_PARTY.md`.
+EmuDome does not include or download Nintendo games, BIOS, firmware or keys.
+
+Nintendo, Game Boy Advance, Nintendo DS and Nintendo 3DS are trademarks of Nintendo. EmuDome is not affiliated
+with or endorsed by Nintendo.
