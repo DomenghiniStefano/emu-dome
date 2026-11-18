@@ -264,8 +264,7 @@ const BACKGROUND_KEY: &str = "video.surroundImg";
 /// Where the chosen images are copied: `<app data>/backgrounds`, beside the synced settings, so
 /// the setting (a file name there) keeps working when the original file moves.
 fn backgrounds_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
-    app.path()
-        .app_data_dir()
+    crate::dirs::data(app)
         .inspect_err(|e| log::warn!("app data dir: {e}"))
         .ok()
         .map(|d| d.join("backgrounds"))
