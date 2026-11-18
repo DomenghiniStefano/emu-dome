@@ -8,6 +8,7 @@
 
 mod audio;
 mod bench;
+mod dirs;
 mod first_run;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
@@ -630,6 +631,7 @@ pub fn run() {
     emudome_platform::init_logging();
     log::info!("EmuDome on {}", emudome_platform::OS_NAME);
     let tuning = Tuning::from_env();
+    dirs::set_override(tuning.data_dir.clone());
     for ignored in &tuning.warnings {
         log::warn!("ignored, the default stays: {ignored}");
     }
@@ -655,10 +657,7 @@ pub fn run() {
             }
         })
         .setup(move |app| {
-            let data_dir = match &tuning.data_dir {
-                Some(dir) => dir.clone(),
-                None => app.path().app_data_dir()?,
-            };
+            let data_dir = dirs::data(app)?;
             log::info!("data in {}", data_dir.display());
             let (window, ui) = window::create(
                 app,

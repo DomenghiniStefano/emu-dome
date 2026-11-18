@@ -33,10 +33,8 @@ fn device() -> Device {
 /// `<app local data>/local-settings/device.json` (a different folder even where the two data
 /// dirs are the same, so syncing `settings/` never carries it).
 pub fn open(app: &tauri::App) -> tauri::Result<SettingsState> {
-    let synced = app.path().app_data_dir()?.join("settings");
-    let device_file = app
-        .path()
-        .app_local_data_dir()?
+    let synced = crate::dirs::data(app)?.join("settings");
+    let device_file = crate::dirs::local(app)?
         .join("local-settings")
         .join("device.json");
     log::info!(

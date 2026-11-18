@@ -33,7 +33,7 @@ JSON report and exits; the window does not take the focus. The knobs are listed 
 ```powershell
 $env:EMUDOME_BENCH = '30'                       # seconds measured
 $env:EMUDOME_BENCH_OUT = "$PWD\bench\v-dx12-fifo-l2.json"
-$env:EMUDOME_DATA_DIR = "$PWD\bench\data"       # keeps saves and the webview profile out of the real ones
+$env:EMUDOME_DATA_DIR = "$PWD\bench\data"       # keeps every data file (saves, settings, library, webview profile) out of the real ones
 $env:WGPU_BACKEND = 'dx12'                      # read by wgpu itself
 $env:EMUDOME_PRESENT_MODE = 'fifo'
 $env:EMUDOME_FRAME_LATENCY = '2'

@@ -150,3 +150,48 @@ Errors and fixes:
 
 Proposed next step: step 1, `SET_HW_RENDER` with OpenGL and readback, since Azahar's software renderer is at a quarter of full
 speed on the PC.
+
+## 2026-11-18 19:55 · GBA pacing on the 240 Hz PC (Trello #57)
+
+Owner's personal PC: Windows 11, NVIDIA GeForce RTX 3060 (Vulkan), 240 Hz monitor, Logitech G432 (44100 Hz, 8 channels).
+App debug build (`pnpm tauri build --debug --no-bundle`, develop cd93712), mGBA core from `cores/`, data folder redirected
+with `EMUDOME_DATA_DIR` to a scratch folder. Content: the homebrew test ROM, and the game of the first report (a copy outside
+the repo, removed afterwards). Measures from the `pacing:` (session, 10 s windows) and `fps:` (video thread) log lines.
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | ok | bench mode with the quick menu opened: presented 233-240 /s with the game paused |
+| 2. FPS at 1× | 59.73 | `pacing:` 59.71-59.75 frames/s every 10 s window, native and webview, test ROM and the game of the report, 0 resets in steady play; the 1 s `core` counter swings 58.93-60.33 around it |
+| 3. Audio | not tested | device opened, nothing listened to |
+| 4. Controller | not tested | |
+| 5. Native vs webview | no difference in pacing | webview: `pacing:` 59.72-59.74 (one 10 s window at 58.58 with 2 resets) |
+
+Errors and fixes:
+- The 60.66 of the report was not the game running fast. The `core` value of the `fps:` line is the last 1 s window of the
+  session, and while the game is paused (quick menu open) the session runs no frames and never updates it: before the fix, with
+  the quick menu open the line kept printing the same `core 59.73` for 40 s, with no `pacing:` line at all, while `presented`
+  stayed at about 240. A 1 s window reads up to 60.33 in normal play, so a frozen 60.66 fits a window taken just before the
+  pause.
+- Fix, `crates/emudome-core/src/session.rs`: the 1 s measure is `FpsMeter`, restarted on pause, resume and speed change; paused,
+  `emu_fps` is 0; the 10 s `pacing:` window restarts there too; stray spaces removed from the `pacing:` line.
+  `app/src-tauri/src/video.rs`: the `fps:` line says `(paused)`. After the fix, quick menu open: `fps: core 0.00 (paused)`.
+
+Proposed next step: none for pacing; listen to the audio at 1× for drift during a long session.
+
+## 2026-11-18 · Hardware rendering spike, step 1: Azahar on Vulkan through wgpu (headless, Windows)
+Spike binary `crates/hw-render-spike`; full write-up in `docs/feasibility.md`, section "Hardware rendering
+(`SET_HW_RENDER`)". Ryzen 7 9700X, RTX 3060 (NVIDIA 617.42), Azahar 2127.0-rc4 and melonDS DS 1.4.0 nightlies of
+2026-11-18, Craftus Reloaded title screen and Breaking Bad DS (homebrew only).
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless; the core's Vulkan image is drawn by a wgpu render pass into an offscreen target and read back: correct picture |
+| 2. FPS at 1× | not measured at 1×; unthrottled 1590-2823 fps with the wgpu draw, 28.4 fps with Software | Azahar Vulkan on the device it created through `create_device`, wrapped by wgpu; title screen only, so the render path is measured, not real-scene emulation |
+| 3. Audio | not tested | headless |
+| 4. Controller | not tested | headless |
+| 5. Native vs webview | not tested | readback for the webview path costs 0.05-0.2 ms per 400x480 frame on top of the draw |
+
+Errors and fixes: `crates/hw-render-spike/src/present.rs`, wgpu panicked "Mixing the wgpu encoding API with the raw
+encoding API is not permitted" when the raw image barrier and the wgpu render pass shared one encoder; the barrier now
+has its own encoder, submitted first in the same `submit`.
+Proposed next step: the same spike on the A71 (Azahar Android core, Vulkan) and one PC run under the Khronos validation layer.

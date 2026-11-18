@@ -14,7 +14,7 @@
 //! | `EMUDOME_AUDIO_RATE` | Hz (`44100`, `48000`...) | the device's | output sample rate requested |
 //! | `EMUDOME_AUDIO_CHANNELS` | `1`..`8` | the device's | output channels requested |
 //! | `EMUDOME_AUDIO_DEVICE` | part of a device name | the system default | output device |
-//! | `EMUDOME_DATA_DIR` | folder | the app data folder | saves, states, system files, webview profile (settings and library keep their own folders) |
+//! | `EMUDOME_DATA_DIR` | folder | the app data folder | everything: saves, states, system files, settings, library, covers, first-run marker (under `local/`), webview profile |
 //! | `EMUDOME_BENCH` | seconds | off | bench mode: measure for N s, write a report, exit |
 //! | `EMUDOME_BENCH_OUT` | file | `emudome-bench.json` | where the bench report goes |
 //! | `EMUDOME_BENCH_WARMUP` | seconds | `2` | time after the first frame before measuring |
