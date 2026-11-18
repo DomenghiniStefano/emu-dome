@@ -21,14 +21,14 @@ import {
 } from '../emu'
 import { errorText } from '../i18n/labels'
 import { library } from '../library'
+import ButtonTester from './ButtonTester.vue'
 import {
   buttonName,
-  keyName,
   posName,
-  POSITIONS,
   remapList,
   remapWithout,
   sourceName,
+  testerCells,
   useCapture,
   type CaptureDevice,
 } from '../controls'
@@ -212,15 +212,8 @@ function key(e: KeyboardEvent, down: boolean) {
 const keydown = (e: KeyboardEvent) => key(e, true)
 const keyup = (e: KeyboardEvent) => key(e, false)
 
-/** The tester's cells: every position, or the keys in use on the keyboard. */
-const cells = computed(() =>
-  props.family === 'keyboard'
-    ? [...new Set(rows.value.map(r => r.source).filter((s): s is string => !!s))].map(s => ({
-        id: s,
-        label: keyName(s),
-      }))
-    : POSITIONS.map(p => ({ id: p as string, label: posName(props.family, p, false) })),
-)
+/** The tester's cells: the 12 buttons of a controller, or the keys in use on the keyboard. */
+const cells = computed(() => testerCells(props.family, rows.value))
 
 const hint = computed(() => {
   const target = capture.target.value
@@ -344,11 +337,7 @@ onBeforeUnmount(() => unlisten?.())
         <div class="card">
           <div class="overline">{{ t('controls.tester') }}</div>
           <div class="muted">{{ hint }}</div>
-          <div class="cells">
-            <span v-for="c in cells" :key="c.id" class="cell" :class="{ lit: held.has(c.id) }">
-              {{ c.label }}
-            </span>
-          </div>
+          <ButtonTester :cells="cells" :held="held" :label="t('controls.overview.outline')" />
           <div class="small muted" aria-live="polite">{{ last || t('controls.noPress') }}</div>
         </div>
         <div class="card">
@@ -497,30 +486,6 @@ onBeforeUnmount(() => unlisten?.())
 }
 .small {
   font-size: 12px;
-}
-.cells {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-.cell {
-  height: 40px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface-raised);
-  font-weight: 600;
-  font-size: 12px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  padding: 0 4px;
-}
-.cell.lit {
-  color: var(--accent-text);
-  border-color: var(--accent-text);
-  background: var(--accent-soft);
 }
 .btn.start {
   align-self: flex-start;

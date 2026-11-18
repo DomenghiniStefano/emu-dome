@@ -245,7 +245,8 @@ const modifier = ref<Pos>('l3')
 async function loadBindings() {
   try {
     const b = await emu.controls.bindings('generic', SESSION)
-    combos.value = b.combos
+    // Reserved shortcuts (features still to come) are listed in Controls (C03), not here.
+    combos.value = b.combos.filter(c => c.status === 'active')
     modifier.value = b.modifier
   } catch (e) {
     emit('error', errorText(e))

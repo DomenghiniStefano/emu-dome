@@ -20,6 +20,7 @@ import { dispatchNav, keyToNav, showFocusRing } from './nav'
 import { inputMode, usedController, watchInput } from './inputMode'
 import { FF_DEFAULT, speedFromOption } from './speeds'
 import { keymap, loadKeymap } from './keymap'
+import { keyShortcut, type KeyAction } from './keyboard'
 import type { Section } from './sections'
 import AppShell from './components/AppShell.vue'
 import GameCanvas from './components/GameCanvas.vue'
@@ -82,7 +83,8 @@ let lastOpened: Opened | null = null
 let closingNow = false
 // The controller in use (quick menu).
 const controller = ref<string | null>(null)
-// The slot the controller shortcuts use (L3 + ← →): the quick menu opens on it.
+// The current slot (L3 + ← →, F2 / F3 move it; L3 + R1 / L1, F1 / F4 use it): the quick menu
+// opens on it. Rust holds it (`current_slot`), shared by the controller and the keyboard.
 const comboSlot = ref(1)
 // The slot of the last load, until the next save or load: «Annulla il caricamento» (`saves.undo`).
 const undoLoadSlot = ref<number | null>(null)
@@ -384,14 +386,50 @@ function onHotkey(h: HotkeyEvent) {
   }
 }
 
+/** F2 / F3: the previous / next slot, the same one L3 + ← → moves. */
+async function stepSlot(forward: boolean) {
+  try {
+    onHotkey({ kind: 'slot', slot: await emu.controls.stepSlot(forward) })
+  } catch (e) {
+    toasts.value?.push(errorText(e), 'error')
+  }
+}
+
+/** A key of the keyboard table (keyboard.ts) in game, menu closed. Tab lasts while held. */
+function runKey(action: KeyAction, pressed: boolean, repeat: boolean) {
+  if (action === 'ff_hold') {
+    if (repeat || pressed === turboHeld.value) return
+    turboHeld.value = pressed
+    void emu.setSpeed(pressed ? ffSpeed.value : speed.value)
+    return
+  }
+  if (!pressed || repeat) return
+  switch (action) {
+    case 'save':
+      return void emu.saveState(comboSlot.value)
+    case 'load':
+      return void emu.loadState(comboSlot.value)
+    case 'prev_slot':
+    case 'next_slot':
+      return void stepSlot(action === 'next_slot')
+    case 'fps':
+      showFps.value = !showFps.value
+      return
+    default:
+      // Esc and F11 are handled before; reserved keys never reach here (`keyShortcut`).
+      return
+  }
+}
+
 function onKey(e: KeyboardEvent, pressed: boolean) {
   if (pressed) showFocusRing()
-  if (e.code === 'Escape' && pressed) {
+  const shortcut = keyShortcut(e.code)
+  if (shortcut?.action === 'menu' && pressed) {
     // In the quick menu Esc is «back»: one level up, and from its main screen the game resumes.
     if (menuOpen.value) return dispatchNav('back')
     return void setMenu(true)
   }
-  if (e.code === 'F11') {
+  if (shortcut?.action === 'fullscreen') {
     e.preventDefault()
     if (pressed && !e.repeat) void toggleFullscreen()
     return
@@ -405,18 +443,9 @@ function onKey(e: KeyboardEvent, pressed: boolean) {
     }
     return
   }
-  if (pressed && !e.repeat) {
-    if (e.code === 'F1') return void (e.preventDefault(), emu.saveState(1))
-    if (e.code === 'F4') return void (e.preventDefault(), emu.loadState(1))
-    if (e.code === 'F3') return void (e.preventDefault(), (showFps.value = !showFps.value))
-  }
-  // Turbo: Tab held down.
-  if (e.code === 'Tab') {
+  if (shortcut && shortcut.action !== 'menu') {
     e.preventDefault()
-    if (e.repeat || pressed === turboHeld.value) return
-    turboHeld.value = pressed
-    void emu.setSpeed(pressed ? ffSpeed.value : speed.value)
-    return
+    return runKey(shortcut.action, pressed, e.repeat)
   }
   const button = keymap.value[e.code]
   if (button) {
@@ -436,6 +465,7 @@ onMounted(async () => {
   watchInput()
   void loadKeymap(false)
   fullscreen.value = await emu.isFullscreen()
+  comboSlot.value = await emu.controls.currentSlot()
   unlisten.push(
     await emu.settings.onChanged(e => {
       if (e.key === 'pad.remap') void loadKeymap(game.value !== null)

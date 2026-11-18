@@ -168,9 +168,13 @@ export interface ComboRow {
   hotkey: HotkeyId
   pos: Pos | null
   default: Pos | null
+  /** Whether it works yet: reserved rows are listed and do nothing. */
+  status: HotkeyStatus
+  /** Listed among «Scorciatoie da ricordare» (C01). */
+  toRemember: boolean
 }
 
-/** Mirror of `Hotkey::id` (crates/emudome-core/src/hotkeys.rs). */
+/** Mirror of `Hotkey::id` (crates/emudome-core/src/hotkeys.rs), in `Hotkey::ALL` order. */
 export type HotkeyId =
   | 'menu'
   | 'save'
@@ -180,8 +184,16 @@ export type HotkeyId =
   | 'ff_hold'
   | 'ff_toggle'
   | 'slow'
-  | 'fps'
+  | 'rewind'
   | 'pause'
+  | 'screenshot'
+  | 'fps'
+  | 'swap'
+  | 'layout'
+  | 'lid'
+
+/** Mirror of `hotkeys::Status`: works, comes later, comes with the Nintendo DS and 3DS. */
+export type HotkeyStatus = 'active' | 'later' | 'dualScreen'
 
 /** The bindings of a family seen from a scope, with the defaults already applied. */
 export interface ControlsBindings {
@@ -250,9 +262,18 @@ export type SettingKind =
   /** A binding list edited in the Controls section (`pad.remap`, `pad.combos`): a link here. */
   | { type: 'bindings'; table: 'remap' | 'combos' }
 
-export interface SettingEntry {
-  /** `<page>.<key>`, stable. */
+/** When a row is shown (mirror of `ShowIf`, schema.rs): entry `key` of the same page, resolved at
+ * the level being edited, is (with `not`: is not) one of `values`. */
+export interface SettingShowIf {
   key: string
+  values: string[]
+  not: boolean
+}
+
+export interface SettingEntry {
+  /** `<prefix>.<key>`, stable. */
+  key: string
+  /** The page it is shown on: usually the key's prefix, not always («Avanzate»). */
   page: string
   kind: SettingKind
   /** null for actions. */
@@ -268,6 +289,8 @@ export interface SettingEntry {
   synonyms: string[]
   /** Listed in «Usate più spesso» (T01), at the Global level. */
   mostUsed: boolean
+  /** Shown only while another row has (or has not) some values; absent: always. */
+  showIf?: SettingShowIf
 }
 
 /** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */
@@ -408,6 +431,8 @@ export interface QuickSave {
   size: number
   savedAt: number | null
   thumbUrl: string | null
+  /** Made by an older version of its core: «Potrebbe non caricarsi». */
+  outdated: boolean
 }
 
 export type BackupReason = 'launch' | 'import' | 'restore'
@@ -566,6 +591,10 @@ export const emu = {
     watch: (on: boolean) => invoke<void>('gamepad_watch', { on }),
     /** While on, the controllers neither play nor navigate (a button is being captured). */
     capture: (on: boolean) => invoke<void>('gamepad_capture', { on }),
+    /** The current quick save slot (L3 + ← →, F2 / F3 move it; F1 / F4 use it). */
+    currentSlot: () => invoke<number>('current_slot'),
+    /** One step of the current slot (`forward`: next); answers the new slot. */
+    stepSlot: (forward: boolean) => invoke<number>('step_slot', { forward }),
     /** Remap table and shortcuts of a family at a scope, defaults applied. */
     bindings: (family: PadFamily, scope: SettingsScope) =>
       invoke<ControlsBindings>('controls_bindings', { family, scope }),

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // The Controls section (boards «Controlli» C01–C04, «Errori» E05). It opens on C01
-// (ControlsOverview: device cards, shortcuts, tester, rows down); one step below, the devices on
-// the left (connected controllers, live, and the keyboard, always available) and the chosen
-// device on the right with three tabs: button remapping (C02), shortcuts (C03), sticks and
-// triggers (C04). With no controller connected the section shows E05 until the keyboard is chosen.
+// (ControlsOverview: device cards, where the device is chosen, shortcuts, tester, rows down); one
+// step below, the chosen device with «‹ Controlli» back to C01 above its name and three tabs:
+// button remapping (C02), shortcuts (C03), sticks and triggers (C04). No device column there
+// (board C02, 18/11): the device is changed on C01. With no controller connected the section
+// shows E05 until the keyboard is chosen.
 //
 // Controller: the shell's nav scope; L1 / R1 change tab one step below C01 (exposed `tab`), back
 // goes from there to C01 (exposed `back`, true when it did), both called by AppShell.
@@ -57,9 +58,14 @@ const empty = computed(() => device.value === null)
 const deviceName = computed(() =>
   device.value === 'keyboard' || !device.value ? t('controls.keyboard') : gamepadName(device.value),
 )
-const deviceDetail = computed(() =>
-  device.value === 'keyboard' ? t('controls.keyboardDetail') : t('controls.connected'),
-)
+/** «Collegato · batteria 80 %», as on the C01 card. */
+const deviceDetail = computed(() => {
+  const d = device.value
+  if (d === 'keyboard' || !d) return t('controls.keyboardDetail')
+  const parts = [t('controls.connected')]
+  if (d.battery !== null) parts.push(t('controls.overview.battery', { percent: d.battery }))
+  return parts.join(' · ')
+})
 
 // ---- Settings shared by the tabs: the schema and the pad page at «Tutti i giochi» ----
 const schema = ref<SettingsSchema | null>(null)
@@ -185,46 +191,12 @@ onBeforeUnmount(() => {
     />
 
     <template v-else>
-      <nav class="devices" :aria-label="t('controls.devices')">
-        <button class="back" @click="back">
-          <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
-          <span class="section-title">{{ t('shell.controls') }}</span>
-        </button>
-        <div class="overline">{{ t('controls.devicesHeading') }}</div>
-        <div class="list">
-          <button
-            v-for="(p, i) in pads"
-            :key="p.id"
-            class="device"
-            :class="{ on: device !== 'keyboard' && device?.id === p.id }"
-            :aria-current="device !== 'keyboard' && device?.id === p.id ? 'page' : undefined"
-            :data-nav-initial="i === 0 ? '' : undefined"
-            @click="pick(p.id)"
-          >
-            <span class="device-text">
-              <span class="device-name">{{ gamepadName(p) }}</span>
-              <span class="device-detail">{{ t('controls.connected') }}</span>
-            </span>
-            <span class="dot on" aria-hidden="true"></span>
-          </button>
-          <button
-            class="device"
-            :class="{ on: device === 'keyboard' }"
-            :aria-current="device === 'keyboard' ? 'page' : undefined"
-            :data-nav-initial="pads.length === 0 ? '' : undefined"
-            @click="pick('keyboard')"
-          >
-            <span class="device-text">
-              <span class="device-name">{{ t('controls.keyboard') }}</span>
-              <span class="device-detail">{{ t('controls.keyboardDetail') }}</span>
-            </span>
-            <span class="dot on" aria-hidden="true"></span>
-          </button>
-        </div>
-      </nav>
-
       <main class="main">
         <div class="head">
+          <button class="back" data-nav-initial @click="back">
+            <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
+            {{ t('shell.controls') }}
+          </button>
           <h2 class="device-title">{{ deviceName }}</h2>
           <div class="muted">{{ deviceDetail }}</div>
         </div>
@@ -331,81 +303,27 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-/* C02–C04: back to C01 */
+/* C02–C04: back to C01, above the device name */
 .back {
   align-self: flex-start;
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-left: -6px;
+  gap: 2px;
+  margin: 0 0 4px -6px;
   padding: 2px 8px 2px 4px;
   border: 0;
   border-radius: var(--radius-6);
   background: none;
+  color: var(--ink-muted);
+  font-weight: 500;
 }
 .back:hover {
   background: var(--surface-hover);
+  color: var(--ink);
 }
-
-/* C02–C04: devices */
-.devices {
-  flex: 0 0 300px;
-  min-height: 0;
-  overflow: auto;
-  padding: 24px 16px;
+.head {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  border-right: 1px solid var(--line);
-}
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.device {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  text-align: left;
-}
-.device:hover {
-  background: var(--surface-hover);
-}
-.device.on {
-  background: var(--accent-soft);
-}
-.device-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.device-name {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.device-detail {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-muted);
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  border: 1px solid var(--line-strong);
-}
-.dot.on {
-  border: 0;
-  background: var(--success);
 }
 
 /* Device page */

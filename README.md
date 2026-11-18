@@ -52,10 +52,14 @@ magenta screen, it turns green while A is held (X key).
 | X / Z | A / B |
 | A / S | L / R |
 | Enter / Right Shift | Start / Select |
-| Tab (held) | Turbo |
-| F1 / F4 | Save / load slot 1 |
-| F3 | Show FPS |
+| Tab (held) | Fast forward |
+| F1 / F4 | Quick save / load in the current slot |
+| F2 / F3 | Previous / next slot |
+| F9 | Show FPS |
+| F11 | Full screen |
 | Esc | Quick menu |
+
+The full list of keys and controller shortcuts: `docs/combo-tasti.md`, section 5.
 
 Controllers: positional mapping (right button = A, bottom = B), Home button = menu.
 
@@ -63,7 +67,7 @@ Controllers: positional mapping (right button = A, bottom = B), Home button = me
 
 1. The game is visible **under** the interface: the quick menu and the toasts are on top, with the game visible around them.
 2. Resizing the window leaves no black areas or flicker.
-3. F3 shows about 59.7 FPS at 1×; 2× shows about 120.
+3. F9 shows about 59.7 FPS at 1×; 2× shows about 120.
 4. The audio does not crackle and does not lag after a few minutes.
 5. Save and load work; closing and reopening the game keeps the `.sav`.
 

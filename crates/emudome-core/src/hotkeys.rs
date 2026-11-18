@@ -83,15 +83,37 @@ pub enum Hotkey {
     FastForwardToggle,
     /// Slow motion (`speed.slow`) on/off.
     SlowMotionToggle,
-    /// FPS overlay on/off.
-    FpsOverlay,
+    /// Rewind while the button stays held ([`Status::Later`]: rewind does not exist yet).
+    Rewind,
     /// Pause on/off, without opening the menu.
     Pause,
+    /// Take a screenshot ([`Status::Later`]).
+    Screenshot,
+    /// FPS overlay on/off.
+    FpsOverlay,
+    /// Swap the two screens ([`Status::DualScreen`]).
+    SwapScreens,
+    /// Next screen layout ([`Status::DualScreen`]).
+    NextLayout,
+    /// Close / open the lid, also from the quick menu ([`Status::DualScreen`]).
+    Lid,
+}
+
+/// Whether a hotkey does something yet. Mirror: `HotkeyStatus` in app/src/emu.ts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Status {
+    /// It works.
+    Active,
+    /// Its feature does not exist yet: the combo is listed and reserved, and does nothing.
+    Later,
+    /// It comes with the Nintendo DS and 3DS (Phase 2): reserved, does nothing for now.
+    DualScreen,
 }
 
 impl Hotkey {
-    /// Every hotkey, in the order of the shortcuts list (C03).
-    pub const ALL: [Hotkey; 10] = [
+    /// Every hotkey, in the order of the shortcut lists (C01, C03; the G12 overlay later).
+    pub const ALL: [Hotkey; 15] = [
         Hotkey::ToggleMenu,
         Hotkey::SaveState,
         Hotkey::LoadState,
@@ -100,8 +122,13 @@ impl Hotkey {
         Hotkey::FastForwardHold,
         Hotkey::FastForwardToggle,
         Hotkey::SlowMotionToggle,
-        Hotkey::FpsOverlay,
+        Hotkey::Rewind,
         Hotkey::Pause,
+        Hotkey::Screenshot,
+        Hotkey::FpsOverlay,
+        Hotkey::SwapScreens,
+        Hotkey::NextLayout,
+        Hotkey::Lid,
     ];
 
     /// The stable id in `pad.combos` values and in the interface (`controls.hotkey.<id>`).
@@ -115,8 +142,13 @@ impl Hotkey {
             Hotkey::FastForwardHold => "ff_hold",
             Hotkey::FastForwardToggle => "ff_toggle",
             Hotkey::SlowMotionToggle => "slow",
-            Hotkey::FpsOverlay => "fps",
+            Hotkey::Rewind => "rewind",
             Hotkey::Pause => "pause",
+            Hotkey::Screenshot => "screenshot",
+            Hotkey::FpsOverlay => "fps",
+            Hotkey::SwapScreens => "swap",
+            Hotkey::NextLayout => "layout",
+            Hotkey::Lid => "lid",
         }
     }
 
@@ -124,10 +156,34 @@ impl Hotkey {
         Hotkey::ALL.into_iter().find(|h| h.id() == id)
     }
 
+    /// Whether the hotkey does something yet. The router never fires the others.
+    pub fn status(self) -> Status {
+        match self {
+            Hotkey::ToggleMenu
+            | Hotkey::SaveState
+            | Hotkey::LoadState
+            | Hotkey::NextSlot
+            | Hotkey::PreviousSlot
+            | Hotkey::FastForwardHold
+            | Hotkey::FastForwardToggle
+            | Hotkey::SlowMotionToggle
+            | Hotkey::Pause
+            | Hotkey::FpsOverlay => Status::Active,
+            Hotkey::Rewind | Hotkey::Screenshot => Status::Later,
+            Hotkey::SwapScreens | Hotkey::NextLayout | Hotkey::Lid => Status::DualScreen,
+        }
+    }
+
+    /// Listed among «Scorciatoie da ricordare» (C01, board Controlli2): every hotkey but the
+    /// screen layout, which only C03 lists. The previous / next slot pair is one line there.
+    pub fn to_remember(self) -> bool {
+        self != Hotkey::NextLayout
+    }
+
     /// Whether the action lasts while the button is held (and then gets a release).
     pub fn is_hold(self) -> bool {
         match self {
-            Hotkey::FastForwardHold => true,
+            Hotkey::FastForwardHold | Hotkey::Rewind => true,
             Hotkey::ToggleMenu
             | Hotkey::SaveState
             | Hotkey::LoadState
@@ -135,8 +191,12 @@ impl Hotkey {
             | Hotkey::PreviousSlot
             | Hotkey::FastForwardToggle
             | Hotkey::SlowMotionToggle
+            | Hotkey::Pause
+            | Hotkey::Screenshot
             | Hotkey::FpsOverlay
-            | Hotkey::Pause => false,
+            | Hotkey::SwapScreens
+            | Hotkey::NextLayout
+            | Hotkey::Lid => false,
         }
     }
 
@@ -151,8 +211,10 @@ impl Hotkey {
 /// L3 because GBA, NDS and 3DS games never use a stick click (docs/combo-tasti.md).
 pub const DEFAULT_MODIFIER: Button = Button::L3;
 
-/// Default combos, modifier + button → action. Each fires once per press of the button.
-/// The Guide button alone also toggles the menu (it is not a RetroPad button, see [`PadInput`]).
+/// Default combos, modifier + button → action, in [`Hotkey::ALL`] order. Each fires once per
+/// press of the button; the rows whose [`Hotkey::status`] is not active are reserved and do
+/// nothing. The Guide button alone also toggles the menu (it is not a RetroPad button, see
+/// [`PadInput`]). Fullscreen has no combo: keyboard F11 and the quick menu only.
 pub const DEFAULT_COMBOS: &[(Button, Hotkey)] = &[
     // Fallback for when Steam or the Xbox Game Bar take the Guide button.
     (Button::Start, Hotkey::ToggleMenu),
@@ -163,14 +225,32 @@ pub const DEFAULT_COMBOS: &[(Button, Hotkey)] = &[
     (Button::R2, Hotkey::FastForwardHold),
     (Button::Up, Hotkey::FastForwardToggle),
     (Button::Down, Hotkey::SlowMotionToggle),
-    (Button::X, Hotkey::FpsOverlay),
+    (Button::L2, Hotkey::Rewind),
     (Button::A, Hotkey::Pause),
-    // TODO(phase 1): (Button::L2, Rewind) held, when rewind exists.
-    // TODO: (Button::B, Screenshot), when screenshots exist.
-    // TODO(phase 2): (Button::Y, SwapScreens) and (Button::R3, NextLayout), NDS/3DS.
-    // TODO: fullscreen on/off: the research had it on L3, which is now the modifier;
-    //       its button is still to choose (Select is free).
+    (Button::B, Hotkey::Screenshot),
+    (Button::X, Hotkey::FpsOverlay),
+    (Button::Y, Hotkey::SwapScreens),
+    (Button::R3, Hotkey::NextLayout),
+    (Button::Select, Hotkey::Lid),
 ];
+
+/// The quick save slots the current slot moves through (L3 + d-pad left / right, keyboard
+/// F2 / F3), wrapping around.
+pub const FIRST_SLOT: u8 = 1;
+pub const LAST_SLOT: u8 = 9;
+
+/// The current slot after one step (`forward`: next, else previous), wrapping between
+/// [`FIRST_SLOT`] and [`LAST_SLOT`]. From a slot out of that range the next is the first and
+/// the previous the last.
+pub fn step_slot(slot: u8, forward: bool) -> u8 {
+    let in_range = (FIRST_SLOT..=LAST_SLOT).contains(&slot);
+    match (forward, in_range) {
+        (true, true) if slot < LAST_SLOT => slot + 1,
+        (false, true) if slot > FIRST_SLOT => slot - 1,
+        (true, true | false) => FIRST_SLOT,
+        (false, true | false) => LAST_SLOT,
+    }
+}
 
 /// The controller bindings the router follows, built from the settings by
 /// [`crate::bindings::PadConfig::bindings`].
@@ -315,7 +395,13 @@ impl Router {
 
         if modifier_held {
             for &(button, hotkey) in &self.bindings.combos {
-                if pressed & button.bit() == 0 || (ui_has_input && !hotkey.works_in_ui()) {
+                // A reserved row (feature still to come) does nothing: its button only stays
+                // away from the game, like any button held with the modifier.
+                let reserved = hotkey.status() != Status::Active;
+                if pressed & button.bit() == 0
+                    || reserved
+                    || (ui_has_input && !hotkey.works_in_ui())
+                {
                     continue;
                 }
                 actions.push(Action::Press(hotkey));
@@ -369,7 +455,10 @@ impl Router {
 
 #[cfg(test)]
 mod tests {
-    use super::{Action, Bindings, Hotkey, Nav, PadInput, Router, REPEAT_DELAY, REPEAT_INTERVAL};
+    use super::{
+        step_slot, Action, Bindings, Hotkey, Nav, PadInput, Router, Status, DEFAULT_COMBOS,
+        FIRST_SLOT, LAST_SLOT, REPEAT_DELAY, REPEAT_INTERVAL,
+    };
     use crate::input::Button;
     use std::time::{Duration, Instant};
 
@@ -460,6 +549,7 @@ mod tests {
             (Button::A, Hotkey::Pause),
         ];
         for (button, hotkey) in expected {
+            assert_eq!(hotkey.status(), Status::Active, "{hotkey:?}");
             let mut r = router();
             let t = Instant::now();
             r.step(pad(&[Button::L3]), false, t);
@@ -692,6 +782,77 @@ mod tests {
             r.step(pad(&[Button::A]), false, t).game_mask,
             Button::A.bit()
         );
+    }
+
+    #[test]
+    fn the_table_lists_every_hotkey_once_in_the_order_of_the_lists() {
+        let order: Vec<Hotkey> = DEFAULT_COMBOS.iter().map(|(_, h)| *h).collect();
+        assert_eq!(order, Hotkey::ALL);
+        for (i, (button, _)) in DEFAULT_COMBOS.iter().enumerate() {
+            assert!(
+                DEFAULT_COMBOS[..i].iter().all(|(b, _)| b != button),
+                "{button:?} twice"
+            );
+        }
+    }
+
+    #[test]
+    fn the_reserved_rows_are_the_features_still_to_come() {
+        let reserved = [
+            (Button::L2, Hotkey::Rewind, Status::Later),
+            (Button::B, Hotkey::Screenshot, Status::Later),
+            (Button::Y, Hotkey::SwapScreens, Status::DualScreen),
+            (Button::R3, Hotkey::NextLayout, Status::DualScreen),
+            (Button::Select, Hotkey::Lid, Status::DualScreen),
+        ];
+        for (button, hotkey, status) in reserved {
+            assert!(DEFAULT_COMBOS.contains(&(button, hotkey)), "{hotkey:?}");
+            assert_eq!(hotkey.status(), status, "{hotkey:?}");
+        }
+        let active = Hotkey::ALL
+            .iter()
+            .filter(|h| h.status() == Status::Active)
+            .count();
+        assert_eq!(active, 10);
+    }
+
+    #[test]
+    fn a_reserved_combo_does_nothing_and_keeps_its_button_from_the_game() {
+        for button in [Button::L2, Button::B, Button::Y, Button::R3, Button::Select] {
+            let mut r = router();
+            let t = Instant::now();
+            r.step(pad(&[Button::L3]), false, t);
+            let out = r.step(pad(&[Button::L3, button]), false, t);
+            assert!(out.actions.is_empty(), "{button:?}");
+            assert_eq!(out.game_mask, 0, "{button:?}");
+            // Released with the modifier gone: no release action, and it reaches the game
+            // only after a new press.
+            let out = r.step(pad(&[button]), false, t);
+            assert!(out.actions.is_empty(), "{button:?}");
+            assert_eq!(out.game_mask, 0, "{button:?}");
+            let out = r.step(pad(&[]), false, t);
+            assert!(out.actions.is_empty(), "{button:?}");
+        }
+    }
+
+    #[test]
+    fn c01_remembers_every_shortcut_but_the_screen_layout() {
+        let listed = Hotkey::ALL.iter().filter(|h| h.to_remember()).count();
+        // 14 hotkeys, the slot pair on one line: the board's 13 rows.
+        assert_eq!(listed, 14);
+        assert!(!Hotkey::NextLayout.to_remember());
+    }
+
+    #[test]
+    fn the_slot_steps_and_wraps() {
+        assert_eq!(step_slot(1, true), 2);
+        assert_eq!(step_slot(2, false), 1);
+        assert_eq!(step_slot(LAST_SLOT, true), FIRST_SLOT);
+        assert_eq!(step_slot(FIRST_SLOT, false), LAST_SLOT);
+        // Out of range (the auto slot, a stale value): the first forward, the last backward.
+        assert_eq!(step_slot(0, true), FIRST_SLOT);
+        assert_eq!(step_slot(0, false), LAST_SLOT);
+        assert_eq!(step_slot(200, true), FIRST_SLOT);
     }
 
     #[test]

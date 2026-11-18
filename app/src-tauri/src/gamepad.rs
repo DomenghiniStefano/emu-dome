@@ -102,10 +102,6 @@ const POLL: Duration = Duration::from_millis(4);
 /// `emu://pad-state` at most this often (a stick moves at every poll).
 const STATE_EVERY: Duration = Duration::from_millis(16);
 
-/// Save state slots reachable with L3 + d-pad left/right.
-const FIRST_SLOT: u8 = 1;
-const LAST_SLOT: u8 = 9;
-
 /// The speed the toggles go back to. Fast forward and slow motion come from the settings
 /// (`speed.ffval`, `speed.slow`, read into [`PadConfig`]).
 const NORMAL: Speed = Speed::Factor(1.0);
@@ -221,7 +217,7 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
     let mut hotkeys = Hotkeys {
         app: app.clone(),
         current: current.clone(),
-        slot: FIRST_SLOT,
+        pads: shared_pads.clone(),
         turbo_restore: None,
         fast_forward: config.fast_forward,
         slow_motion: config.slow_motion,
@@ -349,8 +345,8 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
 struct Hotkeys {
     app: AppHandle,
     current: CurrentShared,
-    /// The slot L3 + R1 / L3 + L1 save to and load from.
-    slot: u8,
+    /// The current slot (L3 + R1 / L3 + L1 save to and load from it), shared with F1–F4.
+    pads: PadsState,
     /// While fast forward is held, the speed to go back to.
     turbo_restore: Option<Speed>,
     /// `speed.ffval` and `speed.slow` of the open game (or «Tutti i giochi»).
@@ -371,26 +367,14 @@ impl Hotkeys {
         match hotkey {
             Hotkey::ToggleMenu => self.emit("emu://menu", ()),
             Hotkey::SaveState => {
-                self.send(Command::SaveState(self.slot));
+                self.send(Command::SaveState(self.pads.slot()));
             }
             Hotkey::LoadState => {
-                self.send(Command::LoadState(self.slot));
+                self.send(Command::LoadState(self.pads.slot()));
             }
-            Hotkey::NextSlot => {
-                self.slot = if self.slot >= LAST_SLOT {
-                    FIRST_SLOT
-                } else {
-                    self.slot + 1
-                };
-                self.emit("emu://hotkey", HotkeyEvent::Slot { slot: self.slot });
-            }
-            Hotkey::PreviousSlot => {
-                self.slot = if self.slot <= FIRST_SLOT {
-                    LAST_SLOT
-                } else {
-                    self.slot - 1
-                };
-                self.emit("emu://hotkey", HotkeyEvent::Slot { slot: self.slot });
+            Hotkey::NextSlot | Hotkey::PreviousSlot => {
+                let slot = self.pads.step_slot(hotkey == Hotkey::NextSlot);
+                self.emit("emu://hotkey", HotkeyEvent::Slot { slot });
             }
             Hotkey::FastForwardHold => {
                 if self.turbo_restore.is_none() {
@@ -410,6 +394,12 @@ impl Hotkeys {
                     self.emit("emu://hotkey", HotkeyEvent::Paused { paused });
                 }
             }
+            // Reserved rows (`Hotkey::status`): the router never fires them.
+            Hotkey::Rewind
+            | Hotkey::Screenshot
+            | Hotkey::SwapScreens
+            | Hotkey::NextLayout
+            | Hotkey::Lid => {}
         }
     }
 
@@ -430,7 +420,12 @@ impl Hotkeys {
             | Hotkey::FastForwardToggle
             | Hotkey::SlowMotionToggle
             | Hotkey::FpsOverlay
-            | Hotkey::Pause => {}
+            | Hotkey::Pause
+            | Hotkey::Rewind
+            | Hotkey::Screenshot
+            | Hotkey::SwapScreens
+            | Hotkey::NextLayout
+            | Hotkey::Lid => {}
         }
     }
 

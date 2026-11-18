@@ -127,7 +127,9 @@ fn invalid_lists_are_refused() {
     );
     assert!(ok(&["save=north", "pause=none"], Table::Combos));
     assert!(!ok(&["save=north", "save=south"], Table::Combos));
-    assert!(!ok(&["rewind=l2"], Table::Combos));
+    // Reserved rows are hotkeys like the others (`rewind`); an unknown id is refused.
+    assert!(ok(&["rewind=l2"], Table::Combos));
+    assert!(!ok(&["turbo=l2"], Table::Combos));
 }
 
 #[test]
