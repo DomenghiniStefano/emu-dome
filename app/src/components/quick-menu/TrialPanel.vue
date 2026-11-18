@@ -17,13 +17,20 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="flex flex-col gap-8 rounded-10 border border-accent-text bg-surface p-12" role="status">
+  <div
+    class="flex flex-col gap-8 rounded-10 border border-accent-text bg-surface p-12"
+    role="status"
+  >
     <div>
       <div class="font-semibold">{{ title }}</div>
       <div class="text-caption text-ink-muted">{{ t('qm.trialHint') }}</div>
     </div>
     <div class="grid grid-cols-[1fr_1fr] gap-8">
-      <TrialActions :touch="touch" @discard="emit('discard')" @commit-game="emit('commit', 'game')" />
+      <TrialActions
+        :touch="touch"
+        @discard="emit('discard')"
+        @commit-game="emit('commit', 'game')"
+      />
     </div>
     <Button
       :variant="ButtonVariant.Link"

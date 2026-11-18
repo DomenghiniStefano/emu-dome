@@ -24,6 +24,11 @@ defineEmits<{ click: [Event] }>()
       <component :is="icon" :size="18" :stroke-width="1.75" />
     </span>
     <span class="min-w-0 flex-1 font-semibold">{{ label }}</span>
-    <ChevronRight :size="16" :stroke-width="1.75" class="shrink-0 text-ink-muted" aria-hidden="true" />
+    <ChevronRight
+      :size="16"
+      :stroke-width="1.75"
+      class="shrink-0 text-ink-muted"
+      aria-hidden="true"
+    />
   </Card>
 </template>

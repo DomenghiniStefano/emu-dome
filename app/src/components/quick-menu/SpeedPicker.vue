@@ -69,7 +69,10 @@ function choose(id: string) {
       @update:model-value="choose"
     >
       <SegmentedItem v-for="c in choices" :key="c.id" :value="c.id">
-        <span class="font-semibold whitespace-nowrap" :class="{ 'text-(length:--text-label)': touch }">
+        <span
+          class="font-semibold whitespace-nowrap"
+          :class="{ 'text-(length:--text-label)': touch }"
+        >
           {{ t(LABEL[c.id]) }}
         </span>
         <span class="text-(length:--text-caption) font-medium tabular-nums opacity-[0.8]">

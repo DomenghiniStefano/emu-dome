@@ -73,7 +73,7 @@ const LEGACY = new Set([
   'components/LibraryEmpty.vue',
   'components/LibraryFilters.vue',
   'components/LibraryView.vue',
-  'components/QuickMenu.vue',
+  'components/quick-menu/PendingValues.vue',
   'components/QuickSaveDialog.vue',
   'components/SavesView.vue',
   'components/SettingRow.vue',

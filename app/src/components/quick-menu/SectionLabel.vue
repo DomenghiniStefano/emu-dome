@@ -9,7 +9,7 @@ defineProps<{ touch?: boolean }>()
     class="text-ink-muted"
     :class="
       touch
-        ? 'text-caption/[14px] font-semibold tracking-(--text-overline--letter-spacing)'
+        ? 'text-(length:--text-caption) leading-[14px] font-semibold tracking-(--text-overline--letter-spacing)'
         : 'text-overline'
     "
   >

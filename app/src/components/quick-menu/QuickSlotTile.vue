@@ -56,12 +56,19 @@ const marks = computed(() =>
         class="block size-full object-cover [image-rendering:pixelated]"
       />
     </span>
-    <span class="truncate font-semibold" :class="touch ? 'text-label/[16px]' : 'text-caption'">
+    <span
+      class="truncate font-semibold"
+      :class="touch ? 'text-(length:--text-label) leading-[16px]' : 'text-caption'"
+    >
       {{ say(slotName(info.slot)) }}
     </span>
     <span
       class="truncate text-ink-muted tabular-nums"
-      :class="touch ? 'text-caption/[14px]' : 'text-overline/[14px]'"
+      :class="
+        touch
+          ? 'text-(length:--text-caption) leading-[14px]'
+          : 'text-(length:--text-overline) leading-[14px]'
+      "
     >
       {{ when }}
     </span>

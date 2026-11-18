@@ -20,7 +20,10 @@ export const QuickMenuView = {
 export type QuickMenuView = (typeof QuickMenuView)[keyof typeof QuickMenuView]
 
 /** A page with a title under the back button. */
-export type SubPage = Exclude<QuickMenuView, typeof QuickMenuView.Home | typeof QuickMenuView.Restart>
+export type SubPage = Exclude<
+  QuickMenuView,
+  typeof QuickMenuView.Home | typeof QuickMenuView.Restart
+>
 
 /** The title (message key) of each page. */
 export const SUB_PAGE_TITLE: Record<SubPage, string> = {

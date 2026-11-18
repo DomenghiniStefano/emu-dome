@@ -16,7 +16,12 @@ defineEmits<{ back: [] }>()
 
 <template>
   <div class="flex gap-8" :class="touch ? 'flex-row items-center' : 'flex-col'">
-    <BackButton :label="backLabel" :hint="touch ? null : hint" :icon-only="touch" @click="$emit('back')" />
+    <BackButton
+      :label="backLabel"
+      :hint="touch ? null : hint"
+      :icon-only="touch"
+      @click="$emit('back')"
+    />
     <PageTitle>{{ title }}</PageTitle>
   </div>
 </template>

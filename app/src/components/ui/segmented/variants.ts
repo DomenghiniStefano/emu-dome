@@ -6,7 +6,7 @@ export const SegmentedVariant = {
   Default: 'default',
   // Equal segments on one row, each two lines high, a name over its value (quick menu speeds,
   // G07). Its 52 height, 8 / 12 radii and 17 line are off the design system's scales: kept until
-  // Cowork decides (spec Decision 5). On the phone the radii grow to 10 / 12.
+  // Cowork decides (spec Decision 5). On the phone the radii are 10 / 12.
   Stacked: 'stacked',
   StackedTouch: 'stackedTouch',
 } as const

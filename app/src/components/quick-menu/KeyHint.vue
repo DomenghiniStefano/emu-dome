@@ -8,7 +8,9 @@ defineProps<{ label: string; onAccent?: boolean }>()
   <span
     class="ml-4 inline-flex h-18 items-center rounded-4 border px-[5px] text-(length:--text-overline) font-semibold"
     :class="
-      onAccent ? 'border-(color:--qm-hint-edge-on-accent) text-on-accent' : 'border-line-strong text-ink'
+      onAccent
+        ? 'border-(color:--qm-hint-edge-on-accent) text-on-accent'
+        : 'border-line-strong text-ink'
     "
   >
     {{ label }}

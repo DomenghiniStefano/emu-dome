@@ -24,6 +24,7 @@ import { lockReason } from '../settingsModel'
 import ControlsPage from './quick-menu/ControlsPage.vue'
 import MenuFooter from './quick-menu/MenuFooter.vue'
 import PageRow from './quick-menu/PageRow.vue'
+import PendingValues from './quick-menu/PendingValues.vue'
 import PhoneGrid from './quick-menu/PhoneGrid.vue'
 import QuickSaves from './quick-menu/QuickSaves.vue'
 import RestartConfirm from './quick-menu/RestartConfirm.vue'
@@ -164,9 +165,7 @@ const showUndoLoad = computed(
 const loadedText = computed(() => say(loadedLine(props.undoLoadSlot ?? 0)))
 
 // ---- Speed (G07, G16) ----
-const modes = computed(() =>
-  modeSpeeds(settingValue('speed.ffval'), settingValue('speed.slow')),
-)
+const modes = computed(() => modeSpeeds(settingValue('speed.ffval'), settingValue('speed.slow')))
 const choices = computed(() => speedChoices(modes.value.ff, modes.value.slow))
 // G16 changed the speed of the mode in use: the game follows at once.
 watch(modes, (now, before) => {
@@ -247,199 +246,181 @@ onBeforeUnmount(() => emit('inset', 0))
 </script>
 
 <template>
-  <div class="quick-menu pointer-events-none fixed inset-0 z-menu *:pointer-events-auto">
-    <!-- The paused game behind the menu: dimmed (blurred where the webview draws it). -->
-    <div
-      v-if="dimmed"
-      class="absolute inset-0 bg-(--qm-scrim) backdrop-blur-[2px]"
-      aria-hidden="true"
-    ></div>
-
-    <section
-      v-if="barShown"
-      ref="root"
-      :class="BAR_PANEL"
-      role="dialog"
-      :aria-label="t('qm.row.screens.name')"
-    >
-      <ScreensBar
-        :cards="cards"
-        :trial-title="trialTitle"
-        :hint="backKey"
-        @back="back"
-        @discard="discard"
-        @commit-game="commit('game')"
-        @inset="px => emit('inset', px)"
-      />
-    </section>
-
-    <section
-      v-else
-      ref="root"
-      :class="panelClass"
-      :role="view === QuickMenuView.Restart ? 'alertdialog' : 'dialog'"
-      :aria-label="view === QuickMenuView.Restart ? t('qm.restartTitle') : t('qm.label')"
-    >
-      <span
-        v-if="sheet"
-        class="h-4 w-[40px] shrink-0 self-center rounded-full bg-(--qm-grip)"
+  <PendingValues>
+    <div class="pointer-events-none fixed inset-0 z-menu *:pointer-events-auto">
+      <!-- The paused game behind the menu: dimmed (blurred where the webview draws it). -->
+      <div
+        v-if="dimmed"
+        class="absolute inset-0 bg-(--qm-scrim) backdrop-blur-[2px]"
         aria-hidden="true"
-      ></span>
+      ></div>
 
-      <RestartConfirm
-        v-if="view === QuickMenuView.Restart"
-        :touch="sheet"
-        @cancel="back"
-        @confirm="restart"
-      />
-
-      <template v-else>
-        <header v-if="!sheet && view === QuickMenuView.Home" class="flex items-baseline gap-8">
-          <span class="text-heading">{{ game.title }}</span>
-          <span class="text-caption text-ink-muted">{{ consoleName }}</span>
-        </header>
-
-        <UndoLoadBanner
-          v-if="showUndoLoad && view === QuickMenuView.Home"
-          :text="loadedText"
-          :touch="sheet"
-          @undo="emit('undoLoad')"
-        />
-
-        <SubPageHeader
-          v-if="view !== QuickMenuView.Home"
-          :title="pageTitle"
-          :back-label="backLabel"
+      <section
+        v-if="barShown"
+        ref="root"
+        :class="BAR_PANEL"
+        role="dialog"
+        :aria-label="t('qm.row.screens.name')"
+      >
+        <ScreensBar
+          :cards="cards"
+          :trial-title="trialTitle"
           :hint="backKey"
-          :touch="sheet"
           @back="back"
+          @discard="discard"
+          @commit-game="commit('game')"
+          @inset="px => emit('inset', px)"
+        />
+      </section>
+
+      <section
+        v-else
+        ref="root"
+        :class="panelClass"
+        :role="view === QuickMenuView.Restart ? 'alertdialog' : 'dialog'"
+        :aria-label="view === QuickMenuView.Restart ? t('qm.restartTitle') : t('qm.label')"
+      >
+        <span
+          v-if="sheet"
+          class="h-4 w-[40px] shrink-0 self-center rounded-full bg-(--qm-grip)"
+          aria-hidden="true"
+        ></span>
+
+        <RestartConfirm
+          v-if="view === QuickMenuView.Restart"
+          :touch="sheet"
+          @cancel="back"
+          @confirm="restart"
         />
 
-        <div
-          class="flex min-h-0 flex-col overflow-y-auto"
-          :class="sheet ? 'flex-1 gap-10' : 'gap-16'"
-        >
-          <QuickSaves
-            v-if="view === QuickMenuView.Home || view === QuickMenuView.Slots"
-            :slots="shownSlots"
-            :chosen="chosen"
-            :chosen-empty="chosenEmpty"
-            :auto-chosen="autoChosen"
-            :saved-slot="savedSlot"
-            :all="view === QuickMenuView.Slots"
+        <template v-else>
+          <header v-if="!sheet && view === QuickMenuView.Home" class="flex items-baseline gap-8">
+            <span class="text-heading">{{ game.title }}</span>
+            <span class="text-caption text-ink-muted">{{ consoleName }}</span>
+          </header>
+
+          <UndoLoadBanner
+            v-if="showUndoLoad && view === QuickMenuView.Home"
+            :text="loadedText"
             :touch="sheet"
-            @pick="pick"
-            @more="e => open(QuickMenuView.Slots, e)"
-            @load="loadChosen"
-            @save="save"
-            @undo-save="undoSave"
+            @undo="emit('undoLoad')"
           />
 
-          <template v-if="view === QuickMenuView.Home">
-            <SpeedPicker
-              :choices="choices"
-              :speed="speed"
-              :ff-option="settingValue('speed.ffval')"
-              :slow-option="settingValue('speed.slow')"
+          <SubPageHeader
+            v-if="view !== QuickMenuView.Home"
+            :title="pageTitle"
+            :back-label="backLabel"
+            :hint="backKey"
+            :touch="sheet"
+            @back="back"
+          />
+
+          <div
+            class="flex min-h-0 flex-col overflow-y-auto"
+            :class="sheet ? 'flex-1 gap-10' : 'gap-16'"
+          >
+            <QuickSaves
+              v-if="view === QuickMenuView.Home || view === QuickMenuView.Slots"
+              :slots="shownSlots"
+              :chosen="chosen"
+              :chosen-empty="chosenEmpty"
+              :auto-chosen="autoChosen"
+              :saved-slot="savedSlot"
+              :all="view === QuickMenuView.Slots"
               :touch="sheet"
-              @speed="s => emit('speed', s)"
-              @set-speeds="e => open(QuickMenuView.Speed, e)"
+              @pick="pick"
+              @more="e => open(QuickMenuView.Slots, e)"
+              @load="loadChosen"
+              @save="save"
+              @undo-save="undoSave"
             />
-            <template v-if="!sheet">
-              <ToolTiles
-                :tools="tools"
-                :three-columns="dualScreen"
-                :not-yet="notYet"
-                @run="runTool"
+
+            <template v-if="view === QuickMenuView.Home">
+              <SpeedPicker
+                :choices="choices"
+                :speed="speed"
+                :ff-option="settingValue('speed.ffval')"
+                :slow-option="settingValue('speed.slow')"
+                :touch="sheet"
+                @speed="s => emit('speed', s)"
+                @set-speeds="e => open(QuickMenuView.Speed, e)"
               />
-              <nav class="grid grid-cols-[1fr_1fr] gap-8" :aria-label="t('qm.moreLabel')">
-                <PageRow
-                  :icon="Rows2"
-                  :label="t('qm.row.screens.name')"
-                  @click="e => open(QuickMenuView.Screens, e)"
+              <template v-if="!sheet">
+                <ToolTiles
+                  :tools="tools"
+                  :three-columns="dualScreen"
+                  :not-yet="notYet"
+                  @run="runTool"
                 />
-                <PageRow
-                  :icon="Gamepad2"
-                  :label="t('qm.row.controls.name')"
-                  @click="e => open(QuickMenuView.Controls, e)"
-                />
-              </nav>
+                <nav class="grid grid-cols-[1fr_1fr] gap-8" :aria-label="t('qm.moreLabel')">
+                  <PageRow
+                    :icon="Rows2"
+                    :label="t('qm.row.screens.name')"
+                    @click="e => open(QuickMenuView.Screens, e)"
+                  />
+                  <PageRow
+                    :icon="Gamepad2"
+                    :label="t('qm.row.controls.name')"
+                    @click="e => open(QuickMenuView.Controls, e)"
+                  />
+                </nav>
+              </template>
+              <PhoneGrid v-else :tools="tools" :not-yet="notYet" @open="open" @run="runTool" />
             </template>
-            <PhoneGrid v-else :tools="tools" :not-yet="notYet" @open="open" @run="runTool" />
-          </template>
 
-          <SpeedPage
-            v-else-if="view === QuickMenuView.Speed"
-            :entries="entriesOf(QuickMenuView.Speed)"
-            :rows="sessionRows"
-            :schema="schema"
-            @set="setSession"
-            @error="reportError"
-          />
+            <SpeedPage
+              v-else-if="view === QuickMenuView.Speed"
+              :entries="entriesOf(QuickMenuView.Speed)"
+              :rows="sessionRows"
+              :schema="schema"
+              @set="setSession"
+              @error="reportError"
+            />
 
-          <!-- Phone G09: the cards in the sheet, the game at full brightness above. -->
-          <div v-else-if="view === QuickMenuView.Screens" class="grid grid-cols-[1fr_1fr] gap-8">
-            <ScreenCardView v-for="c in cards" :key="c.key" :card="c" touch />
+            <!-- Phone G09: the cards in the sheet, the game at full brightness above. -->
+            <div v-else-if="view === QuickMenuView.Screens" class="grid grid-cols-[1fr_1fr] gap-8">
+              <ScreenCardView v-for="c in cards" :key="c.key" :card="c" touch />
+            </div>
+
+            <ControlsPage
+              v-else-if="view === QuickMenuView.Controls"
+              :controller="controller"
+              :entries="entriesOf(QuickMenuView.Controls)"
+              :rows="sessionRows"
+              :schema="schema"
+              :modifier="modifier"
+              :shortcut-count="boundCount"
+              @set="setSession"
+              @error="reportError"
+              @shortcuts="e => open(QuickMenuView.Shortcuts, e)"
+            />
+
+            <ShortcutsPage
+              v-else-if="view === QuickMenuView.Shortcuts"
+              :combos="combos"
+              :modifier="modifier"
+            />
           </div>
 
-          <ControlsPage
-            v-else-if="view === QuickMenuView.Controls"
-            :controller="controller"
-            :entries="entriesOf(QuickMenuView.Controls)"
-            :rows="sessionRows"
-            :schema="schema"
-            :modifier="modifier"
-            :shortcut-count="boundCount"
-            @set="setSession"
-            @error="reportError"
-            @shortcuts="e => open(QuickMenuView.Shortcuts, e)"
+          <!-- Changes «in prova» (G16, G10 and the phone's G09). -->
+          <TrialPanel
+            v-if="trialTitle"
+            :title="trialTitle"
+            :console-name="consoleName"
+            :touch="sheet"
+            @discard="discard"
+            @commit="commit"
           />
 
-          <ShortcutsPage
-            v-else-if="view === QuickMenuView.Shortcuts"
-            :combos="combos"
-            :modifier="modifier"
+          <MenuFooter
+            v-if="view === QuickMenuView.Home"
+            :hint="backKey"
+            :touch="sheet"
+            @close="emit('close')"
+            @resume="emit('resume')"
           />
-        </div>
-
-        <!-- Changes «in prova» (G16, G10 and the phone's G09). -->
-        <TrialPanel
-          v-if="trialTitle"
-          :title="trialTitle"
-          :console-name="consoleName"
-          :touch="sheet"
-          @discard="discard"
-          @commit="commit"
-        />
-
-        <MenuFooter
-          v-if="view === QuickMenuView.Home"
-          :hint="backKey"
-          :touch="sheet"
-          @close="emit('close')"
-          @resume="emit('resume')"
-        />
-      </template>
-    </section>
-  </div>
+        </template>
+      </section>
+    </div>
+  </PendingValues>
 </template>
-
-<style scoped>
-/* The quick menu's values that no design-system token holds yet (literal colours, shadows), named
-   once here and read by its parts through `var()`: awaiting Cowork (spec Decision 5, «Handed back
-   to design»). Nothing else is styled here. */
-.quick-menu {
-  /* The paused game behind the menu. */
-  --qm-scrim: #00000099;
-  /* The panel's lit top edge and its deep shadow (the design system's float shadow is lighter). */
-  --qm-panel-shadow: inset 0 1px 0 var(--glass-edge), 0 32px 96px #000000a6;
-  /* The phone's sheet, lifted off the game above it. */
-  --qm-sheet-shadow: 0 -24px 64px #0000008c;
-  /* The sheet's grip. */
-  --qm-grip: #ffffff33;
-  /* A key hint's edge on the accent fill of the main action. */
-  --qm-hint-edge-on-accent: #ffffff80;
-  /* A G09 card changed «in prova». */
-  --qm-trial-fill: color-mix(in srgb, var(--violet) 10%, transparent);
-}
-</style>
