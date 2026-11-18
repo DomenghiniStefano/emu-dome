@@ -1,0 +1,30 @@
+/* The design system's entry (docs/specs/2026-11-18-design-system-foundations.md).
+
+   Tailwind v4 without its preflight: only the theme and the utilities layers are imported. The
+   preflight would restyle every screen (margins, headings, buttons, images), and cycle 1 changes
+   nothing on screen. The document's own base stays in styles.css, unlayered, loaded after this
+   file (main.ts).
+
+   Layers: every Tailwind class is in `@layer utilities`, and an unlayered rule beats any layered
+   one. So the screens' scoped CSS (unlayered) always wins over a utility on the same element,
+   and a utility can never restyle a screen that does not use it. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+
+/* Where Tailwind looks for classes: the design system's own code only. The screens not migrated
+   yet are not scanned, so a class name they use for their scoped CSS (`table`, `hidden`, `grid`…)
+   never turns into a utility. Cycle 2 adds each screen here as it migrates; cycle 3 scans all of
+   src/. */
+@source '../components/ui';
+@source '../kit';
+
+@import './theme/colors.css';
+@import './theme/typography.css';
+@import './theme/spacing.css';
+@import './theme/radius.css';
+@import './theme/shadow.css';
+@import './theme/opacity.css';
+@import './theme/motion.css';
+@import './theme/layers.css';
+@import './utilities.css';

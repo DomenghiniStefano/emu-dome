@@ -1,0 +1,69 @@
+/* Type tokens: the design system's two scales (README «Tipografia», tokens.json `type`), in px.
+   Each step carries its line height, weight and letter spacing, so `text-label` alone is a
+   complete style. Sizes are px, not rem: the root's font size is 13px (styles.css), so a rem is
+   13px here and every rem step would come out wrong. The interface's scale is `a11y.textsize`,
+   applied as `zoom` on <html> (appearance.ts), which scales px too.
+
+   The document's own font (family, 13px / 18px) stays in styles.css (`:root`), which the screens
+   inherit; no preflight is loaded (main.css). */
+@theme {
+  --font-*: initial;
+  --font-sans: 'Geist', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+
+  --font-weight-*: initial;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --tracking-*: initial;
+  --leading-*: initial;
+
+  --text-*: initial;
+  /* Scena: the focus moments (first run, game card, quick search). */
+  --text-stat: 48px;
+  --text-stat--line-height: 52px;
+  --text-stat--font-weight: 600;
+  --text-stat--letter-spacing: -0.03em;
+  --text-display: 32px;
+  --text-display--line-height: 38px;
+  --text-display--font-weight: 600;
+  --text-display--letter-spacing: -0.02em;
+  --text-lead: 15px;
+  --text-lead--line-height: 22px;
+  --text-lead--font-weight: 400;
+
+  /* Banco: library, settings, saves. */
+  --text-title: 20px;
+  --text-title--line-height: 26px;
+  --text-title--font-weight: 600;
+  --text-title--letter-spacing: -0.01em;
+  --text-heading: 15px;
+  --text-heading--line-height: 20px;
+  --text-heading--font-weight: 600;
+  --text-body: 13px;
+  --text-body--line-height: 18px;
+  --text-body--font-weight: 400;
+  /* Buttons, chips, menu items, game names in lists. */
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+  --text-label--font-weight: 500;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--font-weight: 400;
+  /* Uppercase section labels, two words at most. */
+  --text-overline: 11px;
+  --text-overline--line-height: 14px;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.08em;
+
+  /* Off the design system's scale, in use today and needed by a primitive. Named by role
+     until Cowork places them (spec, «Handed back to design»):
+     - cta: the main action's label (`.btn-primary`, 14px on the inherited 18px line);
+     - dialog: a dialog's title (FlowDialog, 18 / 24). */
+  --text-cta: 14px;
+  --text-cta--line-height: 18px;
+  --text-cta--font-weight: 600;
+  --text-dialog: 18px;
+  --text-dialog--line-height: 24px;
+  --text-dialog--font-weight: 600;
+}

@@ -1,114 +1,21 @@
-/* Tokens from the EmuDome Design System. :root holds Scuro (dark), the default and what the
-   page shows before src/theme.ts sets data-theme; Nero and Chiaro override only what differs.
-   The accent fills (accent, accent-crown, accent-deep, on-accent) are the same in all three. */
+/* The document's base. The design tokens (colours, radii, shadows, motion) and their values per
+   theme moved to src/assets/theme/ (cycle 1 of the design system,
+   docs/specs/2026-11-18-design-system-foundations.md), under the same variable names: every
+   `var(--…)` below and in the screens' scoped CSS still resolves. This file keeps the global rules
+   the screens rely on, unlayered, until cycle 3 removes them. */
 :root {
-  --bg: #0e0f13;
-  --surface: #16181e;
-  --surface-raised: #1e2129;
-  --surface-hover: #262a33;
-  --glass-thin: #0e0f1399;
-  --glass: #16181ea3;
-  --glass-thick: #1a1c23e6;
-  --glass-edge: #ffffff17;
-  --line: #ffffff12;
-  --line-strong: #717684;
-  --scrim: #07080a99;
-  --ink: #eceef3;
-  --ink-muted: #a4a8b5;
-  --ink-faint: #6b6f7b;
-  --violet: #7c5cff;
-  --accent: #7152f7;
-  --accent-hover: #6544ee;
-  --accent-deep: #5a3fdc;
-  --accent-crown: #8a70ff;
-  --on-accent: #ffffff;
-  --accent-text: #a593ff;
-  --accent-soft: #7c5cff2e;
-  --focus-ring: #a593ff;
-  --success: #3ed68e;
-  --warning: #f5a524;
-  --danger: #ff7a7a;
-  --shadow-float: 0 24px 64px #0000008c, 0 2px 8px #00000059;
-  /* Ambient haze behind the shell (ambient-strength); Nero switches it off. */
-  --haze-opacity: 0.5;
-  --duration-ambient: 1200ms;
-  --radius-6: 6px;
-  --radius-10: 10px;
-  --radius-16: 16px;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   font-family: 'Geist', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
   line-height: 18px;
   color: var(--ink);
   color-scheme: dark;
 }
-
-/* Nero: true black for OLED screens, no haze. */
-:root[data-theme='black'] {
-  --bg: #000000;
-  --surface: #0b0c0f;
-  --surface-raised: #15161b;
-  --surface-hover: #1d1f25;
-  --glass-thin: #000000b3;
-  --glass: #0b0c0fb3;
-  --glass-thick: #0b0c0fe6;
-  --line: #ffffff14;
-  --haze-opacity: 0;
-}
-
-/* Chiaro. */
 :root[data-theme='light'] {
-  --bg: #f4f3f0;
-  --surface: #ffffff;
-  --surface-raised: #f7f6f3;
-  --surface-hover: #efeee9;
-  --glass-thin: #f4f3f0a6;
-  --glass: #ffffff9e;
-  --glass-thick: #ffffffe0;
-  --glass-edge: #ffffffb3;
-  --line: #00000012;
-  --line-strong: #80838c;
-  --scrim: #1a1b2059;
-  --ink: #17181c;
-  --ink-muted: #5d606a;
-  --ink-faint: #9a9ca3;
-  --accent-text: #5a3ce6;
-  --accent-soft: #7c5cff1f;
-  --focus-ring: #6a48ff;
-  --success: #0f7a54;
-  --warning: #9a5800;
-  --danger: #c42b3a;
-  --shadow-float: 0 24px 64px #1a1b202e, 0 2px 8px #1a1b2014;
-  --haze-opacity: 0.35;
   color-scheme: light;
 }
 
-/* The cover colours of the haze (ambient.ts), defaulting to the L01 board's spots: registered,
-   so a change fades over duration-ambient instead of jumping. */
-@property --cover-1 {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #2f5d8a;
-}
-@property --cover-2 {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #1f6f78;
-}
-@property --cover-3 {
-  syntax: '<color>';
-  inherits: true;
-  initial-value: #2b3a8c;
-}
-
-/* «Riduci la trasparenza» (a11y.transp, appearance.ts): glass becomes solid surface, the haze
-   goes off, nothing is blurred behind a panel. */
-:root[data-transp='reduce'] {
-  --glass-thin: var(--surface);
-  --glass: var(--surface);
-  --glass-thick: var(--surface);
-  --haze-opacity: 0;
-}
+/* «Riduci la trasparenza» (a11y.transp, appearance.ts): glass becomes solid surface and the haze
+   goes off (src/assets/theme/colors.css, opacity.css); nothing is blurred behind a panel. */
 :root[data-transp='reduce'] *,
 :root[data-transp='reduce'] *::before,
 :root[data-transp='reduce'] *::after {
@@ -140,10 +47,16 @@ body,
 * {
   box-sizing: border-box;
 }
-button {
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
+/* In the base layer (declared in src/assets/main.css), so a primitive's utilities (`text-label`,
+   `text-on-accent`) win over it: an unlayered rule beats every layered one, whatever its
+   specificity. For the screens nothing changes: their scoped rules are unlayered and more specific
+   anyway, and the browser's own button style is still overridden. */
+@layer base {
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
 }
 /* Focus ring for controller and keyboard navigation (src/nav.ts sets data-nav on <html>
    while the user moves without the mouse): accent outline with a soft glow. */

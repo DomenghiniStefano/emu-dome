@@ -1,0 +1,56 @@
+/* Spacing and size tokens, in px.
+
+   Tailwind's 4px multiplier (`--spacing`) is switched off with the rest of the namespace: here
+   `p-12` is 12px, named after the design system's `space-12`, and a step that is not declared
+   (`p-13`) generates nothing. The default multiplier was rem-based, and a rem is 13px in this
+   document (typography.css), so `p-4` would have been 13px.
+
+   Two kinds of name:
+   - numbers: the design system's grid (README «Spazio»: `space-2` … `space-48`), plus the off-grid
+     steps the screens use today (10, 14, 18), marked, until Cowork decides whether they stay;
+   - words: sizes that mean something (a control's height, a dialog's width). */
+@theme {
+  --spacing: initial;
+  --spacing-*: initial;
+
+  /* The grid */
+  --spacing-0: 0px;
+  --spacing-2: 2px;
+  --spacing-4: 4px;
+  --spacing-6: 6px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-48: 48px;
+  /* Off the grid, in use today (padding of chips, segments and select fields: 10; card gaps:
+     14; the main button's side padding: 18). */
+  --spacing-10: 10px;
+  --spacing-14: 14px;
+  --spacing-18: 18px;
+
+  /* Controls (tokens.json `size`) */
+  --spacing-control-sm: 28px;
+  --spacing-control: 32px;
+  --spacing-control-lg: 40px;
+  /* A tab of a section (Controls: 40) and of the game details (44). */
+  --spacing-tab: 40px;
+  --spacing-tab-lg: 44px;
+  /* A switch's track: 36 x 20, its knob 16. */
+  --spacing-switch: 36px;
+  /* A setting's field: select trigger, slider, text field. */
+  --spacing-field: 200px;
+  /* Most a menu grows before it scrolls. */
+  --spacing-menu: 320px;
+  /* A dialog's width (FlowDialog). */
+  --spacing-dialog: 520px;
+  /* A slider's value beside it. */
+  --spacing-value: 64px;
+}
+
+/* Tailwind's container sizes (max-w-md…) and breakpoints are not ours either. */
+@theme {
+  --container-*: initial;
+}

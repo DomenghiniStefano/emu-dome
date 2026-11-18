@@ -1,0 +1,39 @@
+/* Shadow and glow tokens (README «Forme», tokens.json `shadow`), plus the blurs of the glass
+   (tokens.json `blur`).
+
+   `--shadow-float` changes with the theme, so its values live on :root / [data-theme], under the
+   name the scoped CSS already reads, and Tailwind's `shadow-float` points at it (`inline
+   reference`, as colors.css explains). The glows are the accent's colour at a fixed alpha,
+   mixed from `--violet`, so they follow the user's accent like the screens' own glows do. */
+:root {
+  --shadow-float: 0 24px 64px #0000008c, 0 2px 8px #00000059;
+}
+:root[data-theme='light'] {
+  --shadow-float: 0 24px 64px #1a1b202e, 0 2px 8px #1a1b2014;
+}
+
+@theme inline reference {
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
+
+  /* Thick glass: panels, menus, quick search, toasts. */
+  --shadow-float: var(--shadow-float);
+  /* The same, with the glass's lit top edge: what `.glass-thick` draws. */
+  --shadow-glass: inset 0 1px 0 var(--glass-edge), var(--shadow-float);
+  /* glow-sm: the main action and a switch that is on. */
+  --shadow-glow-sm: 0 0 12px color-mix(in srgb, var(--violet) 45%, transparent);
+  /* The active tab's underline, drawn inside so it takes no room. */
+  --shadow-tab: inset 0 -2px 0 var(--accent-text);
+  /* A slider's thumb lifted off its track (not in the design system yet: Cowork). */
+  --shadow-thumb: 0 1px 3px #00000080;
+}
+
+@theme {
+  --blur-*: initial;
+  /* Glass and thick glass (with saturate 140%). Never on things repeated in a grid. */
+  --blur-glass: 24px;
+  /* Behind focus moments and under dialogs. */
+  --blur-scene: 32px;
+}

@@ -1,0 +1,32 @@
+/* The look that is more than one property, as named utilities: the glass panels, the accent's
+   dome gradient, a native range input's dressing. Each copies what styles.css or a screen draws
+   today, with the same values written through the tokens. */
+
+/* Thick glass (README «Vetro»): menus, dialogs, the quick menu. What `.glass-thick` in styles.css
+   draws, which the screens keep using until cycle 2. «Riduci la trasparenza» turns the fill solid
+   (colors.css) and the blur off (styles.css). */
+@utility glass-thick {
+  background: var(--glass-thick);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-16);
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge),
+    var(--shadow-float);
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+}
+
+/* The main action's dome (`.btn-primary`): the crown's light on the top edge only, then the
+   accent, darkening to accent-deep at the bottom. */
+@utility bg-accent-dome {
+  background: linear-gradient(
+    var(--accent-crown) 0,
+    var(--accent) 6px,
+    var(--accent) 60%,
+    var(--accent-deep) 100%
+  );
+}
+
+/* A switch that is on (SettingRow `.switch.on`). */
+@utility bg-accent-track {
+  background: linear-gradient(var(--accent-crown), var(--accent-deep));
+}

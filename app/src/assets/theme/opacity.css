@@ -1,0 +1,25 @@
+/* Opacity tokens. Tailwind's numeric opacities (`opacity-40`) stay; these name the ones that
+   mean something. */
+@theme {
+  /* A control that cannot be used now (LibraryView, DetailsControls `.btn:disabled`). */
+  --opacity-disabled: 0.4;
+  /* A setting that cannot be changed at this level, a choice that is not available yet
+     (SettingRow `.locked`, `.not-yet`). */
+  --opacity-locked: 0.55;
+}
+
+/* The ambient haze's strength behind the shell (`ambient-strength`), per theme; Nero and
+   «Riduci la trasparenza» switch it off. A run-time value, read by AppShell's scoped CSS: it stays
+   a plain variable, in the order it had in styles.css. */
+:root {
+  --haze-opacity: 0.5;
+}
+:root[data-theme='black'] {
+  --haze-opacity: 0;
+}
+:root[data-theme='light'] {
+  --haze-opacity: 0.35;
+}
+:root[data-transp='reduce'] {
+  --haze-opacity: 0;
+}
