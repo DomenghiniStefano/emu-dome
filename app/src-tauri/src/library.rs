@@ -12,7 +12,8 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use emudome_core::library::{
-    self, cover_colour, CoverKind, GameRecord, Library, ScanInput, ScanReport,
+    self, core_of, cover_colour, region, settings_game_id, CoverKind, GameRecord, Library, Region,
+    ScanInput, ScanReport,
 };
 use emudome_core::settings::{ConsoleId, Scope, Value};
 use emudome_core::ErrorCode;
@@ -94,6 +95,19 @@ struct GameDto {
     favourite: bool,
     hidden: bool,
     last_state_thumb_url: Option<String>,
+    /// «Nome mostrato» is the user's (L10).
+    renamed: bool,
+    /// The ROM's own title, what «Nome mostrato» goes back to.
+    rom_title: String,
+    /// Game code from the header (L10 «Codice del gioco»).
+    code: Option<String>,
+    /// ROM version from the header.
+    version: Option<u16>,
+    region: Option<Region>,
+    /// The core that runs it (`mgba`, `melondsds`, `azahar`).
+    core: &'static str,
+    /// Its «Solo questo gioco» settings identity (`settings_game_id`).
+    settings_game: Option<String>,
 }
 
 impl GameDto {
@@ -108,7 +122,7 @@ impl GameDto {
         Self {
             id: g.id.clone(),
             console: g.console,
-            title: g.title.clone(),
+            title: g.shown_title().to_owned(),
             path: g.path.clone(),
             folder: g.folder.clone(),
             size: g.size,
@@ -124,6 +138,13 @@ impl GameDto {
             hidden: g.hidden,
             // TODO(save state thumbnails): states have no thumbnail yet.
             last_state_thumb_url: None,
+            renamed: g.name.is_some(),
+            rom_title: g.title.clone(),
+            code: g.code.clone(),
+            version: g.version,
+            region: region(g.code.as_deref()),
+            core: core_of(g.console),
+            settings_game: settings_game_id(&g.id).map(String::from),
         }
     }
 }
@@ -563,7 +584,7 @@ pub fn game_at(app: &AppHandle, path: &str) -> Option<(String, String, ConsoleId
     let state = app.try_state::<LibraryState>()?;
     let lib = state.lib.lock();
     lib.game_at(path)
-        .map(|g| (g.id.clone(), g.title.clone(), g.console))
+        .map(|g| (g.id.clone(), g.shown_title().to_owned(), g.console))
 }
 
 // ---- Commands ----
@@ -666,7 +687,11 @@ pub fn library_open(
     let (path, title, console) = {
         let lib = state.lib.lock();
         let game = lib.game(&id)?;
-        (game.path.clone(), game.title.clone(), game.console)
+        (
+            game.path.clone(),
+            game.shown_title().to_owned(),
+            game.console,
+        )
     };
     if !Path::new(&path).is_file() {
         state.lib.lock().set_unavailable(&id)?;
@@ -720,6 +745,19 @@ pub fn library_set_flags(
     hidden: Option<bool>,
 ) -> Result<(), ErrorCode> {
     state.lib.lock().set_flags(&id, favourite, hidden)?;
+    emit_changed(&app);
+    Ok(())
+}
+
+/// «Nome mostrato» (L10); blank goes back to the ROM's title.
+#[tauri::command]
+pub fn library_set_name(
+    app: AppHandle,
+    state: State<'_, LibraryState>,
+    id: String,
+    name: String,
+) -> Result<(), ErrorCode> {
+    state.lib.lock().set_name(&id, &name)?;
     emit_changed(&app);
     Ok(())
 }

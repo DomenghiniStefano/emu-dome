@@ -6,6 +6,9 @@
 // (board C02, 18/11): the device is changed on C01. With no controller connected the section
 // shows E05 until the keyboard is chosen.
 //
+// From Game details › Controlli (L07, `controlsFocus`) it opens on C02 at «Solo questo gioco» for
+// that game.
+//
 // Controller: the shell's nav scope; L1 / R1 change tab one step below C01 (exposed `tab`), back
 // goes from there to C01 (exposed `back`, true when it did), both called by AppShell.
 // The tester and the capture field read `emu://pad-state`, watched while this section is open.
@@ -26,6 +29,7 @@ import {
   type SettingsSchema,
 } from '../emu'
 import { errorText, gamepadName } from '../i18n/labels'
+import { controlsFocus } from '../gameDetails'
 import { loadSchema } from '../settingsModel'
 import type { CaptureDevice } from '../controls'
 import ControlsOverview from './ControlsOverview.vue'
@@ -36,8 +40,12 @@ import ControlsSticks from './ControlsSticks.vue'
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
 
-/** C01, or one step below it (C02–C04). */
-const view = ref<'overview' | 'device'>('overview')
+/** L07 «Rimappa i pulsanti per questo gioco»: the game this section opened for. */
+const gameFocus = controlsFocus.value
+controlsFocus.value = null
+
+/** C01, or one step below it (C02–C04): C02 when opened for a game. */
+const view = ref<'overview' | 'device'>(gameFocus ? 'device' : 'overview')
 const root = ref<HTMLElement | null>(null)
 
 const pads = ref<PadInfo[]>([])
@@ -222,6 +230,7 @@ onBeforeUnmount(() => {
             :device="captureDevice"
             :states="states"
             :global-rows="globalRows"
+            :game="gameFocus"
             @error="text => emit('error', text)"
           />
           <ControlsShortcuts

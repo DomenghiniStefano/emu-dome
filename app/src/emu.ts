@@ -213,7 +213,9 @@ export type Theme = 'dark' | 'black' | 'light'
 
 /** One focus step (`emu://nav`, mirror of `emudome_core::hotkeys::Nav`), also produced by the keyboard. */
 /** `prev` / `next` are L1 / R1: tabs or levels of the screen. */
-export type NavAction = 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back' | 'prev' | 'next'
+/** `more` is X: the focused item's other actions (as a right click). */
+export type NavAction =
+  'up' | 'down' | 'left' | 'right' | 'confirm' | 'back' | 'prev' | 'next' | 'more'
 
 /**
  * Payload of `emu://hotkey` (mirror of `HotkeyEvent` in src-tauri/src/gamepad.rs): what a
@@ -343,6 +345,16 @@ export interface SettingRecent {
   at: number
 }
 
+/** A value stored for one game, with what its console's games get (L06). Mirror: `GameOverride`. */
+export interface GameOverride {
+  key: string
+  /** The settings page it is shown on. */
+  page: string
+  value: SettingValue
+  /** «Per tutti i giochi <console>: …». */
+  base: SettingValue | null
+}
+
 /** Payload of `settings://changed`. */
 export interface SettingsChanged {
   key: string
@@ -360,6 +372,21 @@ export type GameId = string
 
 /** Which picture a cover shows (L12): the user's image, the icon inside the ROM, or a generated one. */
 export type CoverKind = 'user' | 'icon' | 'generated'
+
+/** Where a game was sold, from its game code (`details.region.<id>`). Mirror: `Region`. */
+export type GameRegion =
+  | 'japan'
+  | 'usa'
+  | 'europe'
+  | 'germany'
+  | 'france'
+  | 'italy'
+  | 'spain'
+  | 'netherlands'
+  | 'australia'
+  | 'korea'
+  | 'china'
+  | 'world'
 
 export interface LibraryGame {
   id: GameId
@@ -388,6 +415,19 @@ export interface LibraryGame {
   hidden: boolean
   /** Thumbnail of the newest save state for the «Riprendi» hero; null while states have none. */
   lastStateThumbUrl: string | null
+  /** `title` is the user's «Nome mostrato» (L10). */
+  renamed: boolean
+  /** The ROM's own title, what «Nome mostrato» goes back to. */
+  romTitle: string
+  /** Game code from the header (L10). */
+  code: string | null
+  /** ROM version from the header. */
+  version: number | null
+  region: GameRegion | null
+  /** The core that runs it: `mgba`, `melondsds`, `azahar` (`details.files.core.<id>`). */
+  core: string
+  /** Its «Solo questo gioco» settings identity; null when the id cannot name a file. */
+  settingsGame: string | null
 }
 
 export interface LibraryFolder {
@@ -551,6 +591,9 @@ export const emu = {
       invoke<SettingRow[]>('settings_page', { page, scope }),
     /** The `limit` values changed most recently, at any level, newest first. */
     recent: (limit: number) => invoke<SettingRecent[]>('settings_recent', { limit }),
+    /** L06: the values stored for one game (a `game` scope), with the console's. */
+    gameOverrides: (scope: SettingsScope) =>
+      invoke<GameOverride[]>('settings_game_overrides', { scope }),
     /** The open game's scope (null without one). */
     gameScope: () => invoke<SettingsScope | null>('settings_game_scope'),
     set: (key: string, scope: SettingsScope, value: SettingValue) =>
@@ -580,6 +623,8 @@ export const emu = {
     setCover: (id: GameId, kind: CoverKind) => invoke<boolean>('library_set_cover', { id, kind }),
     setFlags: (id: GameId, flags: { favourite?: boolean; hidden?: boolean }) =>
       invoke<void>('library_set_flags', { id, ...flags }),
+    /** «Nome mostrato» (L10); blank goes back to the ROM's title. */
+    setName: (id: GameId, name: string) => invoke<void>('library_set_name', { id, name }),
     onScan: (cb: (e: LibraryScanEvent) => void): Promise<UnlistenFn> =>
       listen<LibraryScanEvent>('library://scan', e => cb(e.payload)),
     /** Something in the library changed (scan, cover, flags, play time): call `get` again. */

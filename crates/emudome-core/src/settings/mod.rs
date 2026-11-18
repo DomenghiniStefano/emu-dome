@@ -167,6 +167,19 @@ pub struct PageValue {
     pub changed: bool,
 }
 
+/// A value stored for one game (Game details L06, «Impostazioni del gioco»), with what every game
+/// of its console gets instead. Mirror: `GameOverride` in app/src/emu.ts.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameOverride {
+    pub key: &'static str,
+    /// The settings page it is shown on.
+    pub page: &'static str,
+    pub value: Value,
+    /// The value resolved at the console's level: «Per tutti i giochi <console>: …».
+    pub base: Option<Value>,
+}
+
 /// The quick menu's changes «in prova» for the open game.
 struct SessionLayer {
     console: ConsoleId,
@@ -412,6 +425,36 @@ impl Settings {
                 .then_with(|| a.level.cmp(&b.level))
         });
         out.truncate(limit);
+        out
+    }
+
+    /// Every value stored at the Game level for `game`, in the catalogue's order, each with the
+    /// value its console's games get (L06). Entries without a value are left out.
+    pub fn game_overrides(&mut self, console: ConsoleId, game: &GameId) -> Vec<GameOverride> {
+        let file = FileId::Game(game.clone());
+        let console_scope = Scope::Console { console };
+        let mut out = Vec::new();
+        for entry in catalog::ENTRIES
+            .iter()
+            .filter(|e| e.has_value() && e.levels.accepts(Level::Game))
+        {
+            let Some(value) = self.stored(entry, Level::Game, Some(&file)) else {
+                continue;
+            };
+            let base = match self.resolve_entry(entry, &console_scope) {
+                Ok(r) => r.value,
+                Err(e) => {
+                    log::warn!("{}: no console value ({e:?})", entry.key);
+                    None
+                }
+            };
+            out.push(GameOverride {
+                key: entry.key,
+                page: entry.page,
+                value,
+                base,
+            });
+        }
         out
     }
 

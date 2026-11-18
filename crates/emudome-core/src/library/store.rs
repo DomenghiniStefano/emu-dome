@@ -63,7 +63,20 @@ pub struct GameRecord {
     pub hidden: bool,
     pub code: Option<String>,
     pub version: Option<u16>,
+    /// «Nome mostrato» (L10): the user's name for the game, over the header's `title`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
+
+impl GameRecord {
+    /// The name the interface shows: the user's, else the one from the ROM.
+    pub fn shown_title(&self) -> &str {
+        self.name.as_deref().unwrap_or(&self.title)
+    }
+}
+
+/// Longest «Nome mostrato», in characters.
+pub const NAME_MAX: usize = 128;
 
 /// A file already identified: reused while its size and modification time do not change.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -238,6 +251,16 @@ impl Library {
         self.save()
     }
 
+    /// «Nome mostrato» (L10). Blank, or the same as the ROM's title, goes back to the ROM's title;
+    /// spaces around are dropped and a name longer than [`NAME_MAX`] is cut.
+    pub fn set_name(&mut self, id: &str, name: &str) -> Result<(), ErrorCode> {
+        let game = self.game_mut(id)?;
+        let name: String = name.trim().chars().take(NAME_MAX).collect();
+        let name = name.trim_end();
+        game.name = (!name.is_empty() && name != game.title).then(|| name.to_owned());
+        self.save()
+    }
+
     /// Changes the cover. `user_file` is the file name in the covers folder, for `User`.
     pub fn set_cover(
         &mut self,
@@ -324,6 +347,7 @@ fn new_record(found: &super::scan::Found, now_ms: u64) -> GameRecord {
         hidden: false,
         code: id.code.clone(),
         version: id.version,
+        name: None,
     }
 }
 

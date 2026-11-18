@@ -1105,3 +1105,48 @@ fn the_most_used_reach_the_schema() {
         .unwrap();
     assert_eq!(scale["mostUsed"], json!(true));
 }
+
+#[test]
+fn game_overrides_list_the_game_values_with_the_console_value_beside() {
+    let dir = TestDir::new("overrides");
+    let mut s = settings(&dir);
+    let scale = "video.scale";
+    let vol = "audio.vol";
+    s.set(scale, &Scope::Global, option(scale, 1)).unwrap();
+    s.set(scale, &console_scope(), option(scale, 2)).unwrap();
+    s.set(scale, &game_scope(), option(scale, 0)).unwrap();
+    // «Tutti i giochi» only: audio.vol has no Console level, its games get the Global value.
+    s.set(vol, &Scope::Global, Value::Int(50)).unwrap();
+    s.set(vol, &game_scope(), Value::Int(30)).unwrap();
+    // Changes «in prova» are not the game's yet.
+    s.begin_session(ConsoleId::Gba, game());
+    s.set("video.filter", &Scope::Session, option("video.filter", 2))
+        .unwrap();
+
+    let list = s.game_overrides(ConsoleId::Gba, &game());
+    let seen: Vec<(&str, Value, Option<Value>)> = list
+        .iter()
+        .map(|o| (o.key, o.value.clone(), o.base.clone()))
+        .collect();
+    assert_eq!(
+        seen,
+        vec![
+            (scale, option(scale, 0), Some(option(scale, 2))),
+            (vol, Value::Int(30), Some(Value::Int(50))),
+        ]
+    );
+    assert_eq!(list[0].page, "video");
+
+    // Another game of the same console has none.
+    let other = GameId::from_rom_path("C:/games/other.gba".as_ref());
+    assert!(s.game_overrides(ConsoleId::Gba, &other).is_empty());
+
+    // Ripristina: once reset, the value leaves the list.
+    s.reset(scale, &game_scope()).unwrap();
+    let keys: Vec<&str> = s
+        .game_overrides(ConsoleId::Gba, &game())
+        .iter()
+        .map(|o| o.key)
+        .collect();
+    assert_eq!(keys, vec![vol]);
+}

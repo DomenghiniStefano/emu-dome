@@ -13,7 +13,6 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Save, Search, TriangleAlert } from '@lucide/vue'
 import {
-  AUTO_SLOT,
   emu,
   type GameSaves,
   type ImportCandidate,
@@ -27,12 +26,15 @@ import { comboText } from '../controls'
 import { errorText, saveWhenLabel, sizeLabel } from '../i18n/labels'
 import { library } from '../library'
 import FlowDialog from './FlowDialog.vue'
+import QuickSaveDialog from './QuickSaveDialog.vue'
 import GameCover from './GameCover.vue'
 import SlotTile from './SlotTile.vue'
-import { savesFocus } from '../savesFocus'
+import { savesFocus, savesImportFor } from '../savesFocus'
 
 const emit = defineEmits<{
   openGame: [game: LibraryGame, slot: number]
+  /** «Dettagli del gioco» (L04). */
+  openDetails: [LibraryGame]
   openLibrary: []
   error: [string]
   notice: [string]
@@ -164,7 +166,6 @@ async function restore(name: string) {
 // ---- V03: a quick save's details ----
 
 const quick = ref<QuickSave | null>(null)
-const confirmDelete = ref(false)
 let quickReturn: HTMLElement | null = null
 
 function openQuick(q: QuickSave, e: Event) {
@@ -173,35 +174,21 @@ function openQuick(q: QuickSave, e: Event) {
 }
 function closeQuick() {
   quick.value = null
-  confirmDelete.value = false
   void nextTick(() => quickReturn?.focus())
 }
-function loadQuick() {
+function loadQuick(slot: number) {
   const g = selected.value
-  const q = quick.value
-  if (!g || !q) return
+  if (!g) return
   quick.value = null
-  emit('openGame', g, q.slot)
-}
-async function deleteQuick() {
-  const g = selected.value
-  const q = quick.value
-  if (!g || !q) return
-  confirmDelete.value = false
-  quick.value = null
-  try {
-    await emu.saves.deleteQuick(g.path, q.slot)
-    emit('notice', t('saves.deleted'))
-  } catch (e) {
-    fail(e)
-  }
-  await refresh()
+  emit('openGame', g, slot)
 }
 
 // ---- V05: import ----
 
 const candidate = ref<ImportCandidate | null>(null)
 const target = ref<LibraryGame | null>(null)
+/** The game was chosen before the file (L05 «Importa…»): the file name does not change it. */
+const targetChosen = ref(false)
 const targetFound = ref(false)
 const targetSaves = ref<GameSaves | null>(null)
 const choosingGame = ref(false)
@@ -214,7 +201,17 @@ function startImport() {
   mode.value = 'import'
   candidate.value = null
   target.value = null
+  targetChosen.value = false
   targetSaves.value = null
+}
+
+/** L05 «Importa…»: the import for that game. */
+async function startImportFor(path: string) {
+  startImport()
+  const g = library.games.find(x => x.path === path)
+  if (!g) return
+  targetChosen.value = true
+  await setTarget(g)
 }
 
 async function pickFile() {
@@ -222,6 +219,7 @@ async function pickFile() {
     const c = await emu.saves.importPick()
     if (!c) return
     candidate.value = c
+    if (targetChosen.value) return
     // The game whose ROM has the same file name, else the same title.
     const stem = stemOf(c.fileName)
     const match =
@@ -247,6 +245,7 @@ async function setTarget(g: LibraryGame) {
 async function chooseTarget(g: LibraryGame) {
   choosingGame.value = false
   targetFound.value = false
+  targetChosen.value = true
   await setTarget(g)
 }
 
@@ -319,6 +318,9 @@ watch(
 let unlistenSettings: (() => void) | null = null
 onMounted(async () => {
   await loadSettings()
+  const importFor = savesImportFor.value
+  savesImportFor.value = null
+  if (importFor) await startImportFor(importFor)
   await refresh()
   void loadCombo()
   unlistenSettings = await emu.settings.onChanged(c => {
@@ -467,8 +469,7 @@ onUnmounted(() => unlistenSettings?.())
                 }}
               </div>
             </div>
-            <!-- The game details page arrives later. -->
-            <button class="btn" disabled :title="t('placeholder.line')">
+            <button class="btn" @click="emit('openDetails', selected)">
               {{ t('saves.details') }}
             </button>
           </div>
@@ -538,56 +539,16 @@ onUnmounted(() => unlistenSettings?.())
     </template>
 
     <!-- V03: a quick save -->
-    <FlowDialog
-      v-if="quick && selected && !confirmDelete"
-      :title="slotName(quick.slot)"
-      @back="closeQuick"
-    >
-      <span class="big-thumb" aria-hidden="true">
-        <img v-if="quick.thumbUrl" :src="quick.thumbUrl" alt="" />
-      </span>
-      <p class="p num">
-        {{
-          quick.savedAt !== null
-            ? t('saves.inGameLine', {
-                when: saveWhenLabel(quick.savedAt),
-                size: sizeLabel(quick.size),
-              })
-            : sizeLabel(quick.size)
-        }}
-      </p>
-      <p class="p small">{{ t('saves.quick.overwriteHint') }}</p>
-      <template #actions>
-        <!-- The Automatico slot cannot be deleted (#59 item 3): EmuDome fills it by itself. -->
-        <button v-if="quick.slot !== AUTO_SLOT" class="btn" @click="confirmDelete = true">
-          {{ t('saves.quick.delete') }}
-        </button>
-        <button class="btn" @click="exportSave(selected, { kind: 'quick', slot: quick.slot })">
-          {{ t('saves.export') }}
-        </button>
-        <button class="btn" @click="closeQuick">{{ t('saves.quick.close') }}</button>
-        <button class="btn btn-primary" data-nav-initial @click="loadQuick">
-          {{ t('saves.quick.load') }}
-        </button>
-      </template>
-    </FlowDialog>
-
-    <FlowDialog
-      v-if="quick && confirmDelete"
-      :title="t('saves.quick.deleteTitle', { slot: quick.slot })"
-      tone="danger"
-      @back="confirmDelete = false"
-    >
-      <p class="p">{{ t('saves.quick.deleteText') }}</p>
-      <template #actions>
-        <button class="btn" data-nav-initial @click="confirmDelete = false">
-          {{ t('saves.quick.cancel') }}
-        </button>
-        <button class="btn danger" @click="deleteQuick">
-          {{ t('saves.quick.deleteConfirm', { slot: quick.slot }) }}
-        </button>
-      </template>
-    </FlowDialog>
+    <QuickSaveDialog
+      v-if="quick && selected"
+      :game="selected"
+      :quick="quick"
+      @close="closeQuick"
+      @play="loadQuick"
+      @changed="refresh"
+      @error="text => emit('error', text)"
+      @notice="text => emit('notice', text)"
+    />
 
     <!-- V05: «Scegli un altro gioco…» -->
     <FlowDialog
@@ -666,9 +627,6 @@ onUnmounted(() => unlistenSettings?.())
 }
 .btn.tall {
   height: 36px;
-}
-.btn.danger {
-  color: var(--danger);
 }
 .warn {
   flex: 0 0 auto;
@@ -863,21 +821,6 @@ onUnmounted(() => unlistenSettings?.())
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
-.big-thumb {
-  display: block;
-  aspect-ratio: 4 / 3;
-  border-radius: var(--radius-10);
-  background: #000;
-  overflow: hidden;
-}
-.big-thumb img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-
 /* V05 */
 .steps {
   padding: 16px;

@@ -3,24 +3,19 @@
 // with up to four games played last («Riprendi» opens one and loads its newest quick save,
 // «Salvataggi» shows its saves), then «I tuoi giochi»: the console chips, the order
 // (`library.sort`, Global) and the L03 panel, the cover grid. Around it: E01 banners for folders that are not reachable (their games stay, faded),
-// the scan progress, L11 «N giochi aggiunti» after a scan, L12 to choose a cover.
-// A cover (#59 item 2): with the pointer over it or the focus in it, a ring, «Gioca» and «…»
-// (CoverMenu: L12, favourite, hide). Game details (L04, #34) does not exist yet, so a click on
-// the cover still opens the game, like «Gioca»; it becomes «open the details» with L04.
+// the scan progress, L11 «N giochi aggiunti» after a scan.
+// A cover (#59 item 2): a click opens its game details (L04, #34), as do a right click and X on
+// the controller; with the pointer over it or the focus in it, a ring, «Gioca» (starts the game)
+// and «…» (CoverMenu: favourite, hide; the cover itself is chosen from L04 only, Cowork #40).
+// Back from the details focuses the cover again (`detailsReturn`).
 // No games at all: L02 (LibraryEmpty).
 //
-// Controller / keyboard: the shell's nav scope covers this view; L03 and L12 open their own.
+// Controller / keyboard: the shell's nav scope covers this view; L03 opens its own.
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown, Ellipsis, FolderX, Play, Plus, TriangleAlert, X } from '@lucide/vue'
-import {
-  AUTO_SLOT,
-  emu,
-  type ConsoleId,
-  type LibraryGame,
-  type QuickSave,
-  type SettingsScope,
-} from '../emu'
+import { AUTO_SLOT, emu, type ConsoleId, type LibraryGame, type SettingsScope } from '../emu'
+import { detailsReturn, resumePoint, type ResumePoint } from '../gameDetails'
 import { errorText, lastPlayedLabel, playTimeLabel } from '../i18n/labels'
 import { chooseFolder, library, replaceFolder } from '../library'
 import {
@@ -34,7 +29,6 @@ import {
   type Sort,
 } from '../librarySort'
 import CoverMenu from './CoverMenu.vue'
-import CoverPicker from './CoverPicker.vue'
 import GameCover from './GameCover.vue'
 import LibraryEmpty from './LibraryEmpty.vue'
 import LibraryFilters from './LibraryFilters.vue'
@@ -45,6 +39,8 @@ const emit = defineEmits<{
   open: [game: LibraryGame, slot?: number]
   /** «Salvataggi» on a «Continua a giocare» card: the Saves section on that game. */
   openSaves: [LibraryGame]
+  /** L04: the game's details. */
+  details: [LibraryGame]
   openFile: []
   error: [string]
 }>()
@@ -141,13 +137,6 @@ const recent = computed(() =>
 )
 
 /** Where «Riprendi» picks up: the newest quick save (auto or a slot), else the in-game save. */
-interface ResumePoint {
-  /** The quick save to load; null = start from the in-game save. */
-  slot: number | null
-  thumbUrl: string | null
-  /** Nothing saved at all: the button says «Gioca». */
-  none: boolean
-}
 const resume = ref<Record<string, ResumePoint>>({})
 
 async function loadResume() {
@@ -163,19 +152,7 @@ async function loadResume() {
   const points = await Promise.all(
     games.map(async (g): Promise<[string, ResumePoint]> => {
       try {
-        const saves = await emu.saves.game(g.path, slots)
-        let newest: QuickSave | null = null
-        for (const q of saves.quick)
-          if (q.savedAt !== null && (newest === null || q.savedAt > (newest.savedAt ?? 0)))
-            newest = q
-        return [
-          g.id,
-          {
-            slot: newest?.slot ?? null,
-            thumbUrl: newest?.thumbUrl ?? null,
-            none: !newest && !saves.inGame,
-          },
-        ]
+        return [g.id, resumePoint(await emu.saves.game(g.path, slots))]
       } catch {
         // Saves unreadable for now: open the game as «Gioca» would.
         return [g.id, { slot: null, thumbUrl: null, none: true }]
@@ -254,16 +231,6 @@ const summaryCards = computed(() => {
   return cards.filter(c => c.count > 0)
 })
 
-// ---- L12 ----
-
-const coverFor = ref<LibraryGame | null>(null)
-let coverReturn: HTMLElement | null = null
-
-function closeCover() {
-  coverFor.value = null
-  void nextTick(() => coverReturn?.focus())
-}
-
 // ---- «…» on a cover ----
 
 const menuFor = ref<string | null>(null)
@@ -276,11 +243,6 @@ function toggleMenu(g: LibraryGame, e: Event) {
 function closeMenu() {
   menuFor.value = null
   void nextTick(() => menuButton?.focus())
-}
-function menuCover(g: LibraryGame) {
-  menuFor.value = null
-  coverReturn = menuButton
-  coverFor.value = g
 }
 async function menuFlags(g: LibraryGame, flags: { favourite?: boolean; hidden?: boolean }) {
   closeMenu()
@@ -301,6 +263,17 @@ async function focusInitial() {
   if (focused || !library.loaded) return
   focused = true
   await nextTick()
+  // Back from a game's details: its cover.
+  const back = detailsReturn.value
+  detailsReturn.value = null
+  const cover = back
+    ? root.value?.querySelector<HTMLElement>(`[data-game="${CSS.escape(back)}"] .cover-btn`)
+    : null
+  if (cover) {
+    cover.focus({ preventScroll: true })
+    cover.scrollIntoView({ block: 'nearest' })
+    return
+  }
   const active = document.activeElement
   const onRail = active instanceof HTMLElement && active.getAttribute('aria-current') === 'page'
   if (active && active !== document.body && !onRail) return
@@ -468,16 +441,25 @@ onUnmounted(() => unlistenSettings?.())
       </div>
 
       <div class="grid">
-        <div v-for="g in games" :key="g.id" class="card" :class="{ off: !g.available }">
-          <div class="frame" :class="{ open: menuFor === g.id }">
+        <div
+          v-for="g in games"
+          :key="g.id"
+          class="card"
+          :class="{ off: !g.available }"
+          :data-game="g.id"
+        >
+          <div
+            class="frame"
+            :class="{ open: menuFor === g.id }"
+            @contextmenu.prevent="emit('details', g)"
+          >
             <GameCover :game="g" />
             <!-- The cover's click area stops above the action strip, so the controller reaches
                  «Gioca» and «…» by moving down from it (nav.ts moves by rects). -->
             <button
               class="cover-btn"
-              :aria-label="t('library.open', { title: g.title })"
-              :aria-disabled="!g.available || undefined"
-              @click="open(g)"
+              :aria-label="t('library.openDetails', { title: g.title })"
+              @click="emit('details', g)"
             ></button>
             <div class="cover-actions">
               <button class="play" :aria-disabled="!g.available || undefined" @click="open(g)">
@@ -498,7 +480,7 @@ onUnmounted(() => unlistenSettings?.())
                 <CoverMenu
                   v-if="menuFor === g.id"
                   :game="g"
-                  @cover="menuCover(g)"
+                  :items="['favourite', 'hide']"
                   @flags="f => menuFlags(g, f)"
                   @close="closeMenu"
                 />
@@ -523,8 +505,6 @@ onUnmounted(() => unlistenSettings?.())
         {{ t('library.unreachable.hint') }}
       </p>
     </template>
-
-    <CoverPicker v-if="coverFor" :game="coverFor" @close="closeCover" />
   </div>
 </template>
 
@@ -885,7 +865,6 @@ onUnmounted(() => unlistenSettings?.())
 }
 /* E01: not reachable, shown faded and not launchable. */
 /* (On the cover, not the frame: the frame keeps the focus ring.) */
-.card.off .cover-btn,
 .card.off .play {
   cursor: not-allowed;
 }

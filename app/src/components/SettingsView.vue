@@ -11,12 +11,13 @@
 //
 // Levels: «Tutti i giochi», and «Giochi <console> ▾», a small menu of the consoles that have games
 // in the library, starting on the open game's console, else the last one played (Cowork, #41).
-// With an empty library only «Tutti i giochi». «Solo questo gioco» belongs to the game details
-// (L04) and the quick menu (Session), not to this section.
+// With an empty library only «Tutti i giochi». «Solo questo gioco» belongs to the game details and
+// the quick menu (Session): this section shows it only when opened from Game details › Impostazioni
+// del gioco (L06, `settingsFocus`), as a third level for that game, chosen on arrival.
 // Controller: the shell's nav scope; L1 / R1 change level (exposed `tab`, called by AppShell).
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Gamepad2, Info, Layers, Search } from '@lucide/vue'
+import { ChevronRight, Disc3, Gamepad2, Info, Layers, Search } from '@lucide/vue'
 import {
   emu,
   type ConsoleId,
@@ -28,6 +29,7 @@ import {
   type SettingsScope,
   type SettingValue,
 } from '../emu'
+import { settingsFocus } from '../gameDetails'
 import { changedWhenLabel, errorText } from '../i18n/labels'
 import { library } from '../library'
 import {
@@ -49,7 +51,11 @@ const schema = ref<SettingsSchema | null>(null)
 /** T01 «In primo piano»: not a page of the schema, the section's first screen. */
 const OVERVIEW = 'overview'
 const page = ref(OVERVIEW)
-const level = ref<'global' | 'console'>('global')
+/** L06 «Apri tutte le impostazioni di questo gioco»: the game this section opened for. */
+const gameFocus = settingsFocus.value
+settingsFocus.value = null
+type Level = 'global' | 'console' | 'game'
+const level = ref<Level>(gameFocus ? 'game' : 'global')
 const onlyChanged = ref(false)
 const query = ref('')
 /** Values of every page at the current scope, by page then key. */
@@ -70,7 +76,12 @@ const contextConsole = ref<ConsoleId | null>(null)
 const openConsole = ref<ConsoleId | null>(null)
 /** The consoles of the scope menu: those with games in the library (and the open game's). */
 const consoles = computed(() =>
-  CONSOLES.filter(c => c === openConsole.value || library.games.some(g => g.console === c)),
+  CONSOLES.filter(
+    c =>
+      c === openConsole.value ||
+      c === gameFocus?.scope.console ||
+      library.games.some(g => g.console === c),
+  ),
 )
 const consoleOptions = computed(() =>
   consoles.value.map(c => ({
@@ -87,7 +98,12 @@ function lastPlayedConsole(): ConsoleId | null {
 async function findContextConsole() {
   const open = await emu.settings.gameScope().catch(() => null)
   openConsole.value = open && open.level === 'game' ? open.console : null
-  contextConsole.value = openConsole.value ?? lastPlayedConsole() ?? consoles.value[0] ?? null
+  contextConsole.value =
+    gameFocus?.scope.console ??
+    openConsole.value ??
+    lastPlayedConsole() ??
+    consoles.value[0] ??
+    null
 }
 // The library may answer after this section opened, or lose the chosen console's last game.
 watch(consoles, list => {
@@ -103,23 +119,30 @@ function pickConsole(id: string) {
 
 const pageEntries = computed(() => shownOn(page.value))
 /** The page has settings per console: the scope bar is shown (only «Tutti i giochi» without games). */
-const scoped = computed(() => pageLevels(pageEntries.value).has('console'))
-const levels = computed<SettingLevel[]>(() => {
-  const out: SettingLevel[] = ['global']
-  if (scoped.value && contextConsole.value) out.push('console')
+/** The page has entries «Solo questo gioco» can change, and the section opened for a game. */
+const gameLevel = computed(
+  () => !!gameFocus && pageEntries.value.some(e => e.levels.includes('game')),
+)
+const scoped = computed(() => pageLevels(pageEntries.value).has('console') || gameLevel.value)
+const levels = computed<Level[]>(() => {
+  const out: Level[] = ['global']
+  if (pageLevels(pageEntries.value).has('console') && contextConsole.value) out.push('console')
+  if (gameLevel.value) out.push('game')
   return out
 })
-const effective = computed<'global' | 'console'>(() =>
-  level.value === 'console' && levels.value.includes('console') ? 'console' : 'global',
+const effective = computed<Level>(() =>
+  levels.value.includes(level.value) ? level.value : 'global',
 )
-const scope = computed<SettingsScope>(() =>
-  effective.value === 'console' && contextConsole.value
-    ? { level: 'console', console: contextConsole.value }
-    : { level: 'global' },
-)
+const scope = computed<SettingsScope>(() => {
+  if (effective.value === 'game' && gameFocus) return gameFocus.scope
+  if (effective.value === 'console' && contextConsole.value)
+    return { level: 'console', console: contextConsole.value }
+  return { level: 'global' }
+})
 function levelName(l: SettingLevel): string {
   if (l === 'console' && contextConsole.value)
     return t('settingsUi.scope.console', { console: t(`console.${contextConsole.value}`) })
+  if (l === 'game') return t('controls.levelGame')
   return t('settingsUi.scope.global')
 }
 
@@ -280,7 +303,7 @@ function tab(dir: -1 | 1) {
   if (levels.value.length < 2) return
   const i = levels.value.indexOf(effective.value)
   const next = levels.value[(i + dir + levels.value.length) % levels.value.length]
-  if (next === 'global' || next === 'console') level.value = next
+  if (next) level.value = next
 }
 defineExpose({ tab })
 
@@ -474,12 +497,29 @@ const INTROS = new Set(['bios', 'advanced'])
                 </span>
               </span>
             </div>
+            <!-- «Solo questo gioco»: only when opened from a game's details (L06) -->
+            <button
+              v-if="levels.includes('game') && gameFocus"
+              class="level"
+              :class="{ on: effective === 'game' }"
+              role="radio"
+              :aria-checked="effective === 'game'"
+              @click="level = 'game'"
+            >
+              <Disc3 :size="20" :stroke-width="1.75" aria-hidden="true" />
+              <span class="level-text">
+                <span class="level-name">{{ levelName('game') }}</span>
+                <span class="level-sub">{{ gameFocus.title }}</span>
+              </span>
+            </button>
           </div>
           <div class="muted">
             {{
-              effective === 'console' && contextConsole
-                ? t('settingsUi.scope.consoleLine', { console: t(`console.${contextConsole}`) })
-                : t('settingsUi.scope.globalLine')
+              effective === 'game' && gameFocus
+                ? t('settingsUi.scope.gameLine', { title: gameFocus.title })
+                : effective === 'console' && contextConsole
+                  ? t('settingsUi.scope.consoleLine', { console: t(`console.${contextConsole}`) })
+                  : t('settingsUi.scope.globalLine')
             }}
             {{ lockedNote }}
           </div>

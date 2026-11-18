@@ -124,6 +124,11 @@ function move(root: HTMLElement, dir: Direction) {
   focus(best)
 }
 
+/** Root of the scope that receives the steps now (the latest mounted one with a root). */
+export function activeScopeRoot(): HTMLElement | null {
+  return [...scopes].reverse().find(s => s.root.value)?.root.value ?? null
+}
+
 /** One step to the active scope (the latest mounted one with its root in the page). */
 export function dispatchNav(action: NavAction) {
   showFocusRing()
@@ -137,6 +142,12 @@ export function dispatchNav(action: NavAction) {
     case 'prev':
     case 'next':
       scope.tab?.(action === 'prev' ? -1 : 1)
+      return
+    // X: the focused item's other actions, as a right click (a cover opens its game details).
+    case 'more':
+      current(root)?.dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true }),
+      )
       return
     case 'confirm': {
       const el = current(root)

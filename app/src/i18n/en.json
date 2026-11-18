@@ -18,6 +18,7 @@
     "filterConsole": "Filter by console",
     "all": "All",
     "open": "Open {title}",
+    "openDetails": "Open the details of {title}",
     "neverPlayed": "Never played",
     "meta": "{time} · {when}",
     "noneShown": "No games match these filters.",
@@ -98,6 +99,93 @@
       "unfavourite": "Remove from favourites",
       "hide": "Hide from the library",
       "unhide": "Show in the library"
+    }
+  },
+  "details": {
+    "back": "Back to the library",
+    "tabsLabel": "Game details sections",
+    "meta": "{time} played · last played {when}",
+    "metaShort": "{time} · {when}",
+    "notYet": "This section arrives in a future update.",
+    "tabs": {
+      "saves": "Saves",
+      "settings": "Game settings",
+      "settingsShort": "Settings",
+      "controls": "Controls",
+      "cheats": "Cheat codes",
+      "patches": "Patches and translations",
+      "files": "Files and information"
+    },
+    "cheats": {
+      "lead": "Cheat codes change the game while it runs. Some can freeze it: make a quick save before you try them."
+    },
+    "patches": {
+      "lead": "A patch (IPS, UPS or BPS) changes the game, for example to translate it. EmuDome applies it without touching your original file."
+    },
+    "saves": {
+      "quickHint": "A quick save is an exact snapshot of the game",
+      "inGameLead": "What the game writes by itself when you save from its menu.",
+      "lastChange": "Last changed",
+      "lastChangeLine": "Last changed {when}",
+      "backups": "Backups",
+      "backupsLine": "No copies | 1 copy: {when} | {n} copies, the oldest: {when}",
+      "showBackups": "Show backups"
+    },
+    "settings": {
+      "lead": "Only the settings that differ for this game from all {console} games.",
+      "noIdentity": "Settings for this game only aren’t available for this file.",
+      "openAll": "Open all the settings of this game",
+      "base": "{page} · for all {console} games: {value}",
+      "baseShort": "For all {console} games: {value}",
+      "none": "This game uses the same settings as all {console} games.",
+      "on": "On",
+      "off": "Off"
+    },
+    "controls": {
+      "padTitle": "CONTROLLER AND KEYBOARD",
+      "remapInherited": "Remapping: same as all {console} games",
+      "remapOwn": "Remapping: this game only",
+      "remapLead": "You can change the buttons for this game only, without touching the others.",
+      "remap": "Remap the buttons for this game",
+      "turboTitle": "RAPID FIRE (TURBO)",
+      "touchTitle": "TOUCH CONTROLS (PHONE)",
+      "touchLead": "You customise them on your phone, over the paused game.",
+      "pointerTitle": "TOUCHING THE BOTTOM SCREEN",
+      "pointerLead": "With the controller: right stick as a cursor, R3 to touch."
+    },
+    "files": {
+      "looksTitle": "HOW IT LOOKS",
+      "name": "Shown name",
+      "cover": "Cover",
+      "coverChange": "Change…",
+      "fileTitle": "GAME FILE",
+      "onComputer": "On this computer",
+      "onPhone": "On this phone",
+      "region": "Region",
+      "version": "Version",
+      "code": "Game code",
+      "hash": "Fingerprint (SHA-1)",
+      "titleId": "Title ID",
+      "engine": "Emulation engine",
+      "core": {
+        "mgba": "mGBA",
+        "melondsds": "melonDS DS",
+        "azahar": "Azahar"
+      }
+    },
+    "region": {
+      "japan": "Japan",
+      "usa": "USA",
+      "europe": "Europe",
+      "germany": "Germany",
+      "france": "France",
+      "italy": "Italy",
+      "spain": "Spain",
+      "netherlands": "Netherlands",
+      "australia": "Australia",
+      "korea": "Korea",
+      "china": "China",
+      "world": "Worldwide"
     }
   },
   "placeholder": {
@@ -1539,6 +1627,7 @@
       "consoleSub": "Only {short} games. Wins over “All games”",
       "globalLine": "You change the starting value. Consoles and games with a value of their own keep it: the line under the setting tells you.",
       "consoleLine": "You change only {console} games. Settings with a dot differ from “All games”; the others follow it.",
+      "gameLine": "You change only {title}. Settings with a dot differ from its console’s games; the others follow them.",
       "consolePick": "Choose the console"
     },
     "appWide": "These settings apply to the whole app, not to a single game.",
