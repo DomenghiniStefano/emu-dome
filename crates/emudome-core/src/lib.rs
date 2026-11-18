@@ -18,6 +18,7 @@ pub mod input;
 pub mod library;
 pub mod saves;
 pub mod settings;
+pub mod tuning;
 
 pub use core::GameFiles;
 pub use error::ErrorCode;
