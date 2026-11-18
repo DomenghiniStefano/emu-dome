@@ -208,6 +208,128 @@ menu needs the touch screen, which the host does not feed, so no in-world scene 
 not a usable 3DS path even on the PC, let alone the A71: step 1 (GL readback) is needed to learn anything about phones.
 melonDS DS in software has ample headroom on the PC. A71 measurements: not done (no phone access in this session).
 
+## Hardware rendering (`SET_HW_RENDER`)
+
+**2026-11-18 · Step 1, done with Vulkan instead of GL (Windows, headless).** Trello #16, for #46.
+
+**Question**: can EmuDome's host give a libretro core a hardware render context and present the core's frames through
+our wgpu renderer?
+
+**Answer: yes for Vulkan, verified on Windows with Azahar.** The core renders on a Vulkan device shared with wgpu, wgpu
+samples the core's image directly (no copy), and the picture is correct. OpenGL was not built: Azahar does not need it
+(Vulkan is its renderer on every platform, Android included) and melonDS DS falls back to software when GL is refused.
+
+**How**: a spike crate, `crates/hw-render-spike` (binary, `publish = false`), with its own minimal libretro host so the
+shell's host is untouched. Run with `cargo run --release -p hw-render-spike -- <core> <content> --opt key=value
+[--frames N] [--png out.png] [--core-log] [--adapter NAME]`. Windowless: no window, no surface. The generic
+`SET_HW_RENDER` types and constants were added to `crates/libretro-sys`; the Vulkan structs of `libretro_vulkan.h`
+are in the spike (`vk_iface.rs`, with ash's handle types). Content: the same homebrew as step 0 (Craftus Reloaded 0.3,
+MIT; Breaking Bad DS 1.0.6, Apache-2.0). No Nintendo files.
+
+The path, as implemented (`present.rs`):
+
+1. Azahar, with `citra_graphics_api=Vulkan`, calls `SET_HW_RENDER` (context type 6 = Vulkan, version 1.1) and
+   `SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE` (version 2, but only `create_device` is set: no `create_instance`, no
+   `create_device2`) inside `retro_load_game`, which returns at once: the game itself loads in `context_reset`.
+2. The host creates a wgpu Vulkan instance and adapter, takes the raw handles with `as_hal::<Vulkan>()`, and calls the
+   core's `create_device` with wgpu's instance and GPU, wgpu's required device extensions
+   (`Adapter::required_device_extensions`) and wgpu's Vulkan 1.0 features (`physical_device_features(..).get_core()`).
+   Azahar creates the `VkDevice` (adding its own extensions) and leaves it to the frontend (`destroy_device` is null).
+3. wgpu wraps that device: `wgpu_hal::vulkan::Adapter::device_from_raw` (ownership to wgpu-hal) then
+   `wgpu::Adapter::create_device_from_hal`. One device, one `VkQueue`, shared.
+4. The host answers `GET_HW_RENDER_INTERFACE` with a `retro_hw_render_interface_vulkan` (v5) built from those handles,
+   then calls `context_reset`.
+5. Every `retro_run`, Azahar submits its own command buffers (under `lock_queue`), calls `set_image` with one output image
+   (400x480, `R8G8B8A8_UNORM`, `SHADER_READ_ONLY_OPTIMAL`, no semaphores, the same `VkImage` every frame) and
+   `video_refresh(RETRO_HW_FRAME_BUFFER_VALID, 400, 480)`.
+6. The host wraps that `VkImage` once as a wgpu texture (`texture_from_raw` with a no-op drop callback and
+   `TextureMemory::External`, then `create_texture_from_hal` with initial state `RESOURCE`), records one raw image barrier
+   (core's colour/transfer writes to our fragment-shader reads: Azahar's render pass has no outgoing dependency and wgpu
+   inserts nothing for a read after a read), and draws it with an ordinary wgpu render pass. The barrier goes in its own
+   encoder: wgpu panics when raw (`as_hal_mut`) and wgpu commands are mixed in one encoder ("Mixing the wgpu encoding API
+   with the raw encoding API is not permitted", seen). wgpu's `queue.submit` is wrapped in the same lock the core takes.
+7. Optionally the result is copied to a buffer and mapped (readback), to check the pixels and measure the cost.
+
+**Measured** (AMD Ryzen 7 9700X, NVIDIA GeForce RTX 3060, driver 617.42, Vulkan 1.4; Azahar 2127.0-rc4 and melonDS DS
+1.4.0 nightlies of 2026-11-18; release build; unthrottled; Craftus title screen, the only 3DS scene reachable without
+touch input):
+
+| Run | Result |
+| --- | --- |
+| Azahar Vulkan: device creation by the core / `context_reset` (game load), 7 runs | 143-204 ms (699 ms on the very first run) / 178-474 ms (441 ms on the first) |
+| Azahar Vulkan, `retro_run` + wgpu draw of the core image + wait for the GPU, each frame (4 runs of 300-600 frames) | 1590-2823 fps (0.35-0.63 ms per frame); the draw + submit + wait part alone 0.12-0.15 ms |
+| Same + readback of the 400x480 frame to the CPU | 1196-2447 fps; draw + readback 0.17-0.34 ms per frame |
+| Read-back picture | correct title screen (PNG checked by eye), 140 colours, 600 distinct frames out of 600 (the picture is live) |
+| Azahar Software, same tool, same scene | 28.4 fps over 300 frames (35 ms per `retro_run`); 36.5 fps over 120 frames |
+| Azahar with `citra_graphics_api=OpenGL`, host refusing GL | `SET_HW_RENDER` type 3 (OpenGL core 4.3) refused, `retro_load_game` fails ("Failed to set HW renderer") |
+| melonDS DS with `melonds_render_mode=opengl`, host refusing GL | asks for type 3 (OpenGL core 3.2), loads anyway in software: 626 fps, same as its default |
+| Teardown | clean: our image wrapper dropped, then `retro_unload_game` / `retro_deinit`, then the device |
+
+"Run only" timings (no frontend wait) swung between 3100 and 11800 fps across runs: Azahar's submissions are
+asynchronous, so they are not a measure of the frame; the rows above with a GPU wait are. The title screen keeps the 3DS
+CPU mostly idle, so these numbers say the **render path and its interop cost** are negligible (well under 1 ms per frame);
+they say nothing about emulation speed in a real scene. The Software figure differs from step 0's 17.4 fps (different
+nightly, rc3 vs rc4, and a different host); the comparison that holds is inside this tool: Vulkan is two orders of
+magnitude faster than Software on this scene.
+
+Also verified: the spike type-checks for `aarch64-linux-android` (`cargo check --target aarch64-linux-android -p
+hw-render-spike`, NDK 27.1): the code has nothing Windows-specific.
+
+**What does not work or is not handled** (each one stops the spike with a message rather than guessing):
+
+- OpenGL / GLES contexts: not built. The host refuses them (Azahar then fails to load, melonDS DS falls back to software).
+- `set_command_buffers`, `set_signal_semaphore`, semaphores passed to `set_image`, an image owned by another queue
+  family, more than one sync index: Azahar uses none of them.
+- Wrapping assumes the image's size equals the size given to `video_refresh` (true for Azahar; the image extent is not
+  in `retro_vulkan_image`).
+- No integrated GPU could be tested: the machine's AMD iGPU is not exposed to Vulkan (wgpu lists only the RTX 3060).
+
+**Recommended architecture for Phase 2/3**:
+
+- **3DS: Vulkan everywhere** (Windows, Linux, Android), never GL. The shell offers Azahar only `Vulkan` or `Software` for
+  `citra_graphics_api` (any other value makes it ask for a context the shell refuses).
+- **The core's device is the compositor's device.** `video.rs` keeps the wgpu instance, adapter and surface; for a
+  hardware session the device comes from the core's `create_device` (as in the spike) and the compositor's pipeline is
+  rebuilt on it; for software cores wgpu's own device stays. The surface works with any device of the same adapter;
+  `VK_KHR_swapchain` is already in the extensions passed to the core (it was in wgpu's list).
+- **Zero copy on the native path**: the compositor samples the wrapped core image in the pass that draws the game today
+  (the barrier from step 6 first). Readback only where the CPU needs pixels: the webview video path (Linux uses it),
+  slot thumbnails, screenshots. Measured cost at 1x is a fraction of a millisecond.
+- **Threading**: the core stays on the emulation thread, the compositor on its render thread; both use one `VkQueue`
+  (Azahar creates exactly one), so every wgpu `submit` **and surface `present`** take the interface's queue lock.
+  Sync: two sync indices with a fence each, `wait_sync_index` waiting on the compositor's fence for that index. Queue order
+  plus the barrier keeps frames whole: the compositor shows whichever finished frame precedes its submission.
+- **In code**: the environment side (`SET_HW_RENDER`, negotiation, `GET_HW_RENDER_INTERFACE`, the interface callbacks) in
+  `emudome-core` as plain FFI with no wgpu dependency; the device creation and wrapping next to `video.rs` in the app.
+  No `#[cfg(target_os)]` is needed (none in the spike).
+- **NDS**: melonDS DS stays software (fast enough on the PC, and its GL renderer has no GLES or Vulkan version). GL
+  upscaling for melonDS DS on desktop would need a GL context of our own (WGL/GLX/EGL in `emudome-platform`) plus readback
+  or GL/Vulkan memory sharing: not built, not measured.
+
+**Open risks** (to verify before Phase 3 relies on this):
+
+1. **Device features**: Azahar's `create_device` (v1) enables only the Vulkan 1.0 features and the extensions it is
+   handed; the feature structs wgpu chains on `pNext` (timeline semaphore, robustness2, image robustness, descriptor
+   indexing...) are not enabled, while wgpu's private capabilities come from what the adapter supports, so wgpu may use
+   timeline semaphores on a device where the feature is off. It ran correctly on NVIDIA, but **no validation layer is
+   installed on this machine**, so the run is not validated. Fixes, in order: run under `VK_LAYER_KHRONOS_validation`;
+   if it complains, ask wgpu for fewer capabilities or create the device in the frontend with
+   `open_with_callback` plus Azahar's extensions and features (bypassing `create_device`), or get `create_device2`
+   into Azahar upstream.
+2. **Robustness**: wgpu's Vulkan 1.0 features include `robustBufferAccess` = 1, and Azahar merges what it is given, so its
+   device runs with robust buffer access (possible cost on the GPU; the libretro header asks frontends not to add
+   robustness features in `create_device2`). Not measured.
+3. **Phones**: not run on the A71. Azahar's Android core asks for Vulkan too, so the same path applies; whether
+   3DS emulation is fast enough on the phone is still the open question of #16.
+4. **Real scenes**: only a title screen; CPU-heavy 3DS scenes, save states with a hardware context, resolution scaling
+   (`citra_resolution_factor`: bigger images, bigger readback) and `context_destroy` / re-creation were not tested.
+5. **Queue sharing under load**: the lock was exercised on one thread only (the spike submits and runs the core on the
+   same thread); contention with a render thread is untested.
+
+**Next step**: run the same spike binary on the A71 (`aarch64-linux-android`, pushed with `adb` to `/data/local/tmp`,
+windowless Vulkan) with Azahar's Android core and Craftus, to get the phone's 3DS numbers; in the same pass, run the PC
+case once under the Khronos validation layer.
+
 ## Sources
 
 - [D1] Google, Choose Google Drive API scopes: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
