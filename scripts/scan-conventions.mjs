@@ -52,7 +52,6 @@ const FIXTURES = join(ROOT, 'scripts', 'scan-conventions')
 const LEGACY = new Set([
   'App.vue',
   'components/ButtonTester.vue',
-  'components/ConflictTwoUp.vue',
   'components/ControlsOverview.vue',
   'components/ControlsRemap.vue',
   'components/ControlsShortcuts.vue',
@@ -69,13 +68,10 @@ const LEGACY = new Set([
   'components/GameFlowOverlays.vue',
   'components/GameSurround.vue',
   'components/QuickMenu.vue',
-  'components/QuickSaveDialog.vue',
-  'components/SavesView.vue',
   'components/SettingRow.vue',
   'components/SettingSelect.vue',
   'components/SettingSelectMenu.vue',
   'components/SettingsView.vue',
-  'components/SlotTile.vue',
   'components/ToastStack.vue',
   'components/TouchControls.vue',
 ])

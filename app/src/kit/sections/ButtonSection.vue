@@ -43,6 +43,34 @@ import KitState from '../KitState.vue'
         Delete the save
       </Button>
     </KitState>
+    <KitState label="Soft · Medium (a dialog's actions)">
+      <Button :size="ButtonSize.Medium">Export…</Button>
+    </KitState>
+    <KitState label="Primary · Medium">
+      <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Play from here</Button>
+    </KitState>
+    <KitState label="Danger · Medium">
+      <Button :variant="ButtonVariant.Danger" :size="ButtonSize.Medium">Delete slot 1</Button>
+    </KitState>
+    <KitState label="SoftAccent · TileAction, Soft · TileAction (a tile's actions)">
+      <div class="flex w-field gap-6">
+        <Button
+          :variant="ButtonVariant.SoftAccent"
+          :size="ButtonSize.TileAction"
+          class="min-w-0 flex-1"
+        >
+          Play from here
+        </Button>
+        <Button :size="ButtonSize.TileAction" aria-label="More">
+          <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="SoftAccent · TileAction · disabled">
+      <Button :variant="ButtonVariant.SoftAccent" :size="ButtonSize.TileAction" disabled>
+        Play from here
+      </Button>
+    </KitState>
     <KitState label="Icon · IconSmall">
       <div class="flex items-center gap-8">
         <Button :size="ButtonSize.Icon" aria-label="Settings">

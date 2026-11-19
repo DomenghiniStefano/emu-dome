@@ -1,5 +1,5 @@
 // Headless screenshots over CDP. Usage:
-//   node drive.mjs <cdpPort> <baseUrl> <outDir> [scenario names...]
+//   node drive.mjs <cdpPort> <baseUrl> <outDir> [scenario names or prefixes ending in *...]
 // Chrome must already run headless with --remote-debugging-port=<cdpPort>.
 import fs from "node:fs";
 import path from "node:path";
@@ -147,6 +147,81 @@ const SCENARIOS = {
   },
 };
 
+// Saves (V01–V06, and the slot tile in Game details): every state in Scuro / Nero / Chiaro, at
+// the smallest (1024×640) and the largest (1920×1080) window. Steps find controls by their text
+// or label in English or Italian (headless Chrome follows the system language), so they work on
+// the code before and after a refactor. `#conflict` needs ConflictTwoUp mounted by hand for the
+// run (no screen shows it yet).
+const T = {
+  more: ["More actions for the slot", "Altre azioni per lo slot"],
+  import: ["Import…", "Importa…"],
+  delete: ["Delete", "Elimina"],
+  pick: ["Choose a file…", "Scegli un file…"],
+  other: ["Choose another game…", "Scegli un altro gioco…"],
+};
+const press = (texts, nth = 0) =>
+  `[...document.querySelectorAll('button')].filter(b => ${JSON.stringify(texts)}.some(t => b.textContent.trim() === t || b.getAttribute('aria-label') === t))[${nth}].click()`;
+const focusOn = (selector) =>
+  `(() => { document.documentElement.setAttribute('data-nav', ''); document.querySelector(${JSON.stringify(selector)}).focus() })()`;
+const slotMore = T.more.map((t) => `[aria-label="${t}"]`).join(", ");
+const SAVES_STATES = {
+  empty: { mock: { saves: false }, steps: [rail(1)] },
+  filled: { steps: [rail(1)] },
+  "search-none": {
+    steps: [
+      rail(1),
+      `(() => { const i = document.querySelector('input[type=search]'); i.value = 'zzz'; i.dispatchEvent(new Event('input')) })()`,
+    ],
+  },
+  "focus-slot": { steps: [rail(1), focusOn(slotMore)], focus: true },
+  "focus-game": {
+    steps: [rail(1), focusOn("aside [aria-current]")],
+    focus: true,
+  },
+  quick: { steps: [rail(1), press(T.more)] },
+  "quick-delete": {
+    // Slot 1: the Automatico slot (the first) cannot be deleted.
+    steps: [rail(1), press(T.more, 1), press(T.delete)],
+  },
+  import: { steps: [rail(1), press(T.import)] },
+  "import-picked": {
+    steps: [rail(1), press(T.import), press(T.pick)],
+  },
+  "import-choose": {
+    steps: [
+      rail(1),
+      press(T.import),
+      press(T.pick),
+      press(T.other),
+    ],
+  },
+  conflict: { steps: [rail(1)], hash: "#conflict" },
+  details: { steps: [`document.querySelector('[data-game] button').click()`] },
+  "details-quick": {
+    steps: [
+      `document.querySelector('[data-game] button').click()`,
+      press(T.more),
+    ],
+  },
+};
+for (const [state, s] of Object.entries(SAVES_STATES)) {
+  for (const theme of ["dark", "black", "light"]) {
+    for (const [size, width, height] of [
+      ["s", 1024, 640],
+      ["l", 1920, 1080],
+    ]) {
+      SCENARIOS[`saves-${state}-${theme}-${size}`] = {
+        mock: { saves: true, ...s.mock, theme },
+        steps: s.steps,
+        hash: s.hash,
+        focus: s.focus,
+        width,
+        height,
+      };
+    }
+  }
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function page() {
@@ -206,7 +281,10 @@ async function act(p, step) {
 }
 
 for (const [name, s] of Object.entries(SCENARIOS)) {
-  if (only.length && !only.includes(name)) continue;
+  // A name ending in `*` takes every scenario that starts with it (`saves-*`).
+  const wanted = (o) =>
+    o.endsWith("*") ? name.startsWith(o.slice(0, -1)) : name === o;
+  if (only.length && !only.some(wanted)) continue;
   const p = await page();
   await p.send("Page.enable");
   await p.send("Emulation.setDeviceMetricsOverride", {
@@ -215,6 +293,10 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
     deviceScaleFactor: 1,
     mobile: false,
   });
+  // A headless page has no focus of its own, so `:focus` (the focus ring) never matches; the
+  // scenarios that show the ring ask for it.
+  if (s.focus)
+    await p.send("Emulation.setFocusEmulationEnabled", { enabled: true });
   await p.send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: "no-preference" }],
   });

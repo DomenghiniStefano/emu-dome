@@ -28,6 +28,9 @@ export const ButtonVariant = {
   Menu: 'menu',
   // No look of its own: a click area over something that draws itself (a cover).
   Bare: 'bare',
+  // A second action in accent ink on the accent's soft fill, quieter than Primary (SlotTile
+  // «Gioca da qui»).
+  SoftAccent: 'softAccent',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -43,7 +46,10 @@ export const ButtonSize = {
   IconSmall: 'iconSmall',
   // 28px with the standard padding (LibraryView «Continua a giocare»: `.btn` at 28).
   Compact: 'compact',
-  // 36px (LibraryEmpty, CoverPicker): a fourth control height awaiting Cowork (spec, Decision 5).
+  // 36px: LibraryEmpty, CoverPicker, a dialog's actions (FlowDialog) and a page's pair of actions
+  // (Saves E03). Off the control scale: Cowork decides whether it folds into 32 or 40 or becomes a
+  // step (spec Decision 5); until then this is the one place it is written. Primary is 16px wide
+  // on each side here.
   Medium: 'medium',
   // A section of the rail: 64 x 52, icon over name (radius 8 and gap 3 await Cowork).
   Rail: 'rail',
@@ -55,6 +61,9 @@ export const ButtonSize = {
   MenuRow: 'menuRow',
   // Sized by its container's layout (an absolute click area).
   Area: 'area',
+  // 28px with a 12px label on the document's 18px line, wrapping when the room is short: the
+  // actions inside a tile (SlotTile).
+  TileAction: 'tileAction',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -84,6 +93,8 @@ export const buttonVariants = cva(
         [ButtonVariant.Menu]:
           'border-0 bg-transparent font-regular text-ink hover:bg-surface-hover data-selected:font-semibold data-selected:text-accent-text [&_svg]:text-ink-muted',
         [ButtonVariant.Bare]: 'border-0 bg-transparent',
+        [ButtonVariant.SoftAccent]:
+          'border-0 bg-accent-soft text-accent-text hover:bg-surface-hover',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8',
@@ -99,6 +110,8 @@ export const buttonVariants = cva(
         [ButtonSize.MenuItem]: 'h-control justify-start gap-8 px-10 text-left',
         [ButtonSize.MenuRow]: 'min-h-control-sm justify-start gap-8 px-6 text-left',
         [ButtonSize.Area]: 'p-0',
+        [ButtonSize.TileAction]:
+          'h-control-sm px-10 text-caption leading-[18px] font-medium whitespace-normal',
       },
     },
     // The main action keeps its 14px label and wide padding at the smaller heights, as
