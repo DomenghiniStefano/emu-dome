@@ -4,11 +4,13 @@
 // opens L12 and is offered from the game details only (Cowork, #40); favourite and hide go
 // through `library.setFlags`.
 // Controller / keyboard: its own nav scope while open; B / Esc / a click outside close it.
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { EyeOff, Eye, ImageIcon, Star, StarOff } from '@lucide/vue'
+import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { useNavScope } from '../nav'
 import type { LibraryGame } from '../emu'
+import { useDismiss } from './library/useDismiss'
 
 const props = defineProps<{ game: LibraryGame; items: Array<'cover' | 'favourite' | 'hide'> }>()
 const emit = defineEmits<{
@@ -21,45 +23,33 @@ const { t } = useI18n()
 
 const root = ref<HTMLElement | null>(null)
 useNavScope(root, { autofocus: true, back: () => emit('close') })
-
-function onKey(e: KeyboardEvent) {
-  if (e.code === 'Escape') emit('close')
-}
-// A click outside closes it; the «…» button next to it toggles it itself.
-function onPointer(e: PointerEvent) {
-  const area = root.value?.parentElement
-  if (area && e.target instanceof Node && !area.contains(e.target)) emit('close')
-}
-onMounted(() => {
-  window.addEventListener('keydown', onKey)
-  window.addEventListener('pointerdown', onPointer, { capture: true })
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
-  window.removeEventListener('pointerdown', onPointer, { capture: true })
-})
+// The «…» button next to it toggles it itself.
+useDismiss(root, () => emit('close'), { outside: true })
 </script>
 
 <template>
+  <!-- 220px is the menu's own least width. -->
   <div
     ref="root"
-    class="menu glass-thick"
+    class="glass-thick absolute top-[calc(100%+6px)] right-0 z-raised flex min-w-[220px] flex-col gap-2 p-6"
     role="menu"
     :aria-label="t('library.moreFor', { title: props.game.title })"
   >
-    <button
+    <Button
       v-if="props.items.includes('cover')"
-      class="item"
+      :variant="ButtonVariant.Menu"
+      :size="ButtonSize.MenuItem"
       role="menuitem"
       data-nav-initial
       @click="emit('cover')"
     >
       <ImageIcon :size="16" :stroke-width="1.75" aria-hidden="true" />
       {{ t('library.menu.cover') }}
-    </button>
-    <button
+    </Button>
+    <Button
       v-if="props.items.includes('favourite')"
-      class="item"
+      :variant="ButtonVariant.Menu"
+      :size="ButtonSize.MenuItem"
       role="menuitem"
       @click="emit('flags', { favourite: !props.game.favourite })"
     >
@@ -70,10 +60,11 @@ onBeforeUnmount(() => {
         aria-hidden="true"
       />
       {{ t(props.game.favourite ? 'library.menu.unfavourite' : 'library.menu.favourite') }}
-    </button>
-    <button
+    </Button>
+    <Button
       v-if="props.items.includes('hide')"
-      class="item"
+      :variant="ButtonVariant.Menu"
+      :size="ButtonSize.MenuItem"
       role="menuitem"
       @click="emit('flags', { hidden: !props.game.hidden })"
     >
@@ -84,39 +75,6 @@ onBeforeUnmount(() => {
         aria-hidden="true"
       />
       {{ t(props.game.hidden ? 'library.menu.unhide' : 'library.menu.hide') }}
-    </button>
+    </Button>
   </div>
 </template>
-
-<style scoped>
-.menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 10;
-  min-width: 220px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: var(--radius-6);
-  background: none;
-  color: var(--ink);
-  text-align: left;
-  white-space: nowrap;
-}
-.item:hover {
-  background: var(--surface-hover);
-}
-.item svg {
-  color: var(--ink-muted);
-}
-</style>

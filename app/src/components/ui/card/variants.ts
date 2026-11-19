@@ -9,6 +9,9 @@ export const CardVariant = {
   Raised: 'raised',
   // A glass panel over the ambient haze (README «Vetro»: thick glass for menus and panels).
   Glass: 'glass',
+  // One of a choice of pictures (CoverPicker): opaque surface, `selected` on accent-soft with an
+  // accent-text edge; `data-empty` (nothing to show yet, «add one») draws a dashed strong edge.
+  Choice: 'choice',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
 
@@ -20,6 +23,8 @@ export const cardVariants = cva('flex flex-col text-left', {
       [CardVariant.Raised]:
         'rounded-10 border border-line bg-surface-raised p-10 data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.Glass]: 'glass-thick p-24',
+      [CardVariant.Choice]:
+        'rounded-10 border border-line bg-surface p-10 data-empty:not-data-selected:border-dashed data-empty:not-data-selected:border-line-strong data-selected:border-accent-text data-selected:bg-accent-soft',
     },
   },
   defaultVariants: { variant: CardVariant.Surface },

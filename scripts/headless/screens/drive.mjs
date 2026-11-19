@@ -11,8 +11,83 @@ const here = path.dirname(
 const mockSource = fs.readFileSync(path.join(here, "mock.js"), "utf8");
 fs.mkdirSync(outDir, { recursive: true });
 
-const rail = (n) => `document.querySelectorAll('.rail-item')[${n}].click()`;
+// The shell's rail is the first <nav> of the page (no class: it survives the migration).
+const rail = (n) =>
+  `document.querySelector('nav').querySelectorAll('button')[${n}].click()`;
+
+// Library and shell (stream A of #62): every state in the three themes, at the smallest and the
+// largest window. A step is a script, `{ key }` (a trusted key press, so nav.ts shows its focus
+// ring) or `{ hover }` (the pointer over the first element matching a selector).
+const SIZES = { small: [1024, 640], large: [1920, 1080] };
+const THEMES = ["dark", "black", "light"];
+const firstCover = "[data-game] button";
+const LIBRARY = {
+  lib: { mock: {}, steps: [] },
+  "lib-empty": { mock: { emptyLibrary: true }, steps: [] },
+  "lib-filters": {
+    mock: {},
+    steps: [`document.querySelector('main [aria-haspopup=dialog]').click()`],
+  },
+  "lib-cover-menu": {
+    mock: {},
+    steps: [
+      `document.querySelector('[data-game] [aria-haspopup=menu]').click()`,
+    ],
+  },
+  "lib-cover-hover": { mock: {}, steps: [{ hover: firstCover }] },
+  "lib-cover-focus": {
+    mock: {},
+    steps: [{ key: "ArrowDown" }, { key: "ArrowDown" }, { key: "ArrowDown" }],
+  },
+  "lib-rail-focus": {
+    mock: {},
+    steps: [{ key: "ArrowLeft" }, { key: "ArrowDown" }],
+  },
+  "lib-unreachable": { mock: { unreachableFolder: true }, steps: [] },
+  // The sweep is paused at a fixed point, so two runs draw the same frame.
+  "lib-scanning": {
+    mock: { scanning: true },
+    steps: [
+      `__mockEmit('library://scan', { phase: 'progress', checked: 40, found: 12 })`,
+      `document.getAnimations().forEach((a) => { a.pause(); a.currentTime = 700 })`,
+    ],
+  },
+  "lib-added": {
+    mock: { withheld: 2 },
+    steps: [
+      `__mockEmit('library://scan', { phase: 'started' }); __mockLibrary.games = __mockAllGames; __mockEmit('library://scan', { phase: 'done', found: 5, added: 2, unreachable: [] })`,
+    ],
+  },
+  "lib-no-match": {
+    mock: {},
+    steps: [
+      `document.querySelector('main [aria-haspopup=dialog]').click()`,
+      `document.querySelectorAll('[role=checkbox]')[0].click(); document.querySelectorAll('[role=checkbox]')[1].click()`,
+      `document.querySelector('main [aria-haspopup=dialog]').click()`,
+    ],
+  },
+  "lib-cover-picker": {
+    mock: {},
+    steps: [
+      `document.querySelector('${firstCover}').click()`,
+      `document.querySelector('main [aria-haspopup=menu]').click()`,
+      `document.querySelector('[role=menuitem]').click()`,
+    ],
+  },
+  placeholder: { mock: {}, steps: [rail(3)] },
+};
+const LIBRARY_SHOTS = Object.fromEntries(
+  Object.entries(LIBRARY).flatMap(([name, s]) =>
+    THEMES.flatMap((theme) =>
+      Object.entries(SIZES).map(([size, [width, height]]) => [
+        `${name}-${theme}-${size}`,
+        { ...s, mock: { ...s.mock, theme }, width, height },
+      ]),
+    ),
+  ),
+);
 const SCENARIOS = {
+  ...LIBRARY_SHOTS,
   "library-dark": { mock: {}, steps: [] },
   "library-light": { mock: { theme: "light" }, steps: [] },
   "library-black": { mock: { theme: "black" }, steps: [] },
@@ -106,12 +181,36 @@ async function page() {
   return { send, close };
 }
 
+/** A trusted key press, or the pointer moved over an element. */
+async function act(p, step) {
+  if (step.key) {
+    for (const type of ["keyDown", "keyUp"]) {
+      await p.send("Input.dispatchKeyEvent", {
+        type,
+        key: step.key,
+        code: step.key,
+        windowsVirtualKeyCode:
+          { ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40 }[
+            step.key
+          ] ?? 0,
+      });
+    }
+    return;
+  }
+  const r = await p.send("Runtime.evaluate", {
+    expression: `(() => { const r = document.querySelector(${JSON.stringify(step.hover)}).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2] })()`,
+    returnByValue: true,
+  });
+  const [x, y] = r.result.result.value;
+  await p.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+}
+
 for (const [name, s] of Object.entries(SCENARIOS)) {
   if (only.length && !only.includes(name)) continue;
   const p = await page();
   await p.send("Page.enable");
   await p.send("Emulation.setDeviceMetricsOverride", {
-    width: 1280,
+    width: s.width ?? 1280,
     height: s.height ?? 800,
     deviceScaleFactor: 1,
     mobile: false,
@@ -125,6 +224,11 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
   await p.send("Page.navigate", { url: baseUrl + (s.hash ?? "") });
   await sleep(3500);
   for (const step of s.steps) {
+    if (typeof step === "object") {
+      await act(p, step);
+      await sleep(600);
+      continue;
+    }
     const r = await p.send("Runtime.evaluate", {
       expression: step,
       returnByValue: true,

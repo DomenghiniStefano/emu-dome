@@ -12,12 +12,10 @@
 // From there a game opens, and closing it comes back to the details; «Mostra i backup» /
 // «Importa…» (L05), «Apri tutte le impostazioni…» (L06) and «Rimappa…» (L07) jump to the
 // Saves, Settings and Controls sections for that one game.
-import { computed, ref, watch, type Component } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { Cloud, Gamepad2, Library, Save, Settings2 } from '@lucide/vue'
-import { ambientGame, coverColours, type CoverColours } from '../ambient'
+import { computed, ref } from 'vue'
+import { cn } from '@/lib/cn'
 import { useNavScope } from '../nav'
-import { SECTIONS, type Section } from '../sections'
+import type { Section } from '../sections'
 import type { LibraryGame } from '../emu'
 import { controlsFocus, detailsOf, detailsReturn, gameScopeOf, settingsFocus } from '../gameDetails'
 import { savesFocus, savesImportFor } from '../savesFocus'
@@ -26,6 +24,11 @@ import GameDetails from './GameDetails.vue'
 import LibraryView from './LibraryView.vue'
 import SavesView from './SavesView.vue'
 import SettingsView from './SettingsView.vue'
+import AppRail from './shell/AppRail.vue'
+import AppTopBar from './shell/AppTopBar.vue'
+import SectionPlaceholder from './shell/SectionPlaceholder.vue'
+import { hasOwnInitialFocus, isFlush } from './shell/shellLayout'
+import { useCoverHaze } from './shell/useCoverHaze'
 
 defineProps<{ error: string | null }>()
 const emit = defineEmits<{
@@ -37,38 +40,10 @@ const emit = defineEmits<{
 }>()
 const section = defineModel<Section>({ required: true })
 
-const { t } = useI18n()
+const hazeStyle = useCoverHaze(section)
 
-// The haze takes the colours of the cover in the foreground of the library (ambient.ts); elsewhere,
-// and until a cover is known, the design's fallback spots (styles.css @property initial values).
-const coverSpots = ref<CoverColours | null>(null)
-watch(
-  () => (section.value === 'library' ? ambientGame.value : null),
-  async game => {
-    const colours = game ? await coverColours(game) : null
-    if ((section.value === 'library' ? ambientGame.value : null) === game)
-      coverSpots.value = colours
-  },
-  { immediate: true },
-)
-const hazeStyle = computed(() => {
-  const c = coverSpots.value
-  return c ? { '--cover-1': c[0], '--cover-2': c[1], '--cover-3': c[2] } : {}
-})
-
-const ICONS: Record<Section, Component> = {
-  library: Library,
-  saves: Save,
-  controls: Gamepad2,
-  cloud: Cloud,
-  settings: Settings2,
-}
 const root = ref<HTMLElement | null>(null)
-const rail = ref<HTMLElement | null>(null)
-
-function focusRail() {
-  rail.value?.querySelector<HTMLElement>('[aria-current="page"]')?.focus()
-}
+const rail = ref<InstanceType<typeof AppRail> | null>(null)
 
 // L1 / R1 go to the section that has tabs or levels (the settings scope bar, the controls tabs).
 const settingsView = ref<InstanceType<typeof SettingsView> | null>(null)
@@ -79,7 +54,7 @@ useNavScope(root, {
   // A section one step down (Controls C02–C04, a game's details) goes back up first.
   back: () => {
     if (showingDetails.value) return closeDetails()
-    if (!controlsView.value?.back()) focusRail()
+    if (!controlsView.value?.back()) rail.value?.focusCurrent()
   },
   tab: dir => {
     settingsView.value?.tab(dir)
@@ -128,48 +103,26 @@ function openSaves(g: LibraryGame) {
   savesFocus.value = g.path
   section.value = 'saves'
 }
-
-// The section's own first control takes the initial focus; a section without one
-// (the placeholders) leaves it on its rail item.
-const contentHasInitial = computed(() =>
-  ['library', 'settings', 'controls', 'saves'].includes(section.value),
-)
-function initialOn(s: Section) {
-  return s === section.value && !contentHasInitial.value ? '' : undefined
-}
 </script>
 
 <template>
-  <div ref="root" class="shell">
-    <div class="haze" aria-hidden="true" :style="hazeStyle"></div>
-    <header class="topbar">
-      <div class="wordmark">EmuDome</div>
-    </header>
-    <div class="body">
-      <nav ref="rail" class="rail" :aria-label="t('shell.sections')">
-        <template v-for="s in SECTIONS" :key="s">
-          <div v-if="s === 'settings'" class="spacer"></div>
-          <button
-            class="rail-item"
-            :class="{ on: s === section }"
-            :aria-current="s === section ? 'page' : undefined"
-            :data-nav-initial="initialOn(s)"
-            @click="pickSection(s)"
-          >
-            <component :is="ICONS[s]" :size="20" :stroke-width="1.75" aria-hidden="true" />
-            <span class="rail-name">{{ t(`shell.${s}`) }}</span>
-          </button>
-        </template>
-      </nav>
+  <div ref="root" class="relative isolate flex h-full flex-col overflow-hidden bg-bg">
+    <div class="ambient-haze" aria-hidden="true" :style="hazeStyle"></div>
+    <AppTopBar />
+    <div class="flex min-h-0 flex-1">
+      <AppRail
+        ref="rail"
+        :current="section"
+        :content-has-initial="hasOwnInitialFocus(section)"
+        @pick="pickSection"
+      />
       <main
-        class="content"
-        :class="{
-          flush:
-            section === 'settings' ||
-            section === 'controls' ||
-            section === 'saves' ||
-            showingDetails,
-        }"
+        :class="
+          cn(
+            'flex min-w-0 flex-1 flex-col',
+            isFlush(section, showingDetails) ? 'overflow-hidden p-0' : 'overflow-auto p-32',
+          )
+        "
       >
         <GameDetails
           v-if="showingDetails && detailsOf"
@@ -213,134 +166,8 @@ function initialOn(s: Section) {
           ref="controlsView"
           @error="text => emit('error', text)"
         />
-        <section v-else class="placeholder">
-          <h1 class="title">{{ t(`shell.${section}`) }}</h1>
-          <p class="line">{{ t('placeholder.line') }}</p>
-        </section>
+        <SectionPlaceholder v-else :section="section" />
       </main>
     </div>
   </div>
 </template>
-
-<style scoped>
-.shell {
-  position: relative;
-  isolation: isolate;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-  overflow: hidden;
-}
-/* Ambient haze (design L01): decoration only, off in Nero and with «Riduci la trasparenza»
-   (--haze-opacity 0). Its spots are the cover colours (--cover-1/2/3), fading on a change. */
-.haze {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: var(--haze-opacity);
-  background:
-    radial-gradient(60% 50% at 18% 0%, var(--cover-1) 0%, transparent 70%),
-    radial-gradient(40% 40% at 80% 10%, var(--cover-2) 0%, transparent 70%),
-    radial-gradient(50% 50% at 60% 100%, var(--cover-3) 0%, transparent 70%);
-  transition:
-    --cover-1 var(--duration-ambient) var(--ease-out),
-    --cover-2 var(--duration-ambient) var(--ease-out),
-    --cover-3 var(--duration-ambient) var(--ease-out);
-}
-.topbar {
-  flex: 0 0 40px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  background: var(--glass-thin);
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(24px) saturate(140%);
-}
-.wordmark {
-  font-weight: 600;
-  font-size: 14px;
-  letter-spacing: -0.025em;
-}
-.body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-}
-/* Rail (#59 item 1): 76 px, every item icon + name under it. */
-.rail {
-  flex: 0 0 76px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 12px 0;
-  background: var(--glass-thin);
-  border-right: 1px solid var(--line);
-}
-.spacer {
-  flex: 1;
-}
-.rail-item {
-  width: 64px;
-  height: 52px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--ink-muted);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 0;
-  transition: background 150ms;
-}
-.rail-name {
-  font-size: 10px;
-  line-height: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-.rail-item:hover {
-  background: var(--surface-hover);
-}
-.rail-item.on {
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  box-shadow: inset 2px 0 0 var(--violet);
-}
-.rail-item.on svg {
-  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--violet) 60%, transparent));
-}
-.content {
-  flex: 1;
-  min-width: 0;
-  overflow: auto;
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-}
-/* Settings: the category list sits flush and each column scrolls on its own. */
-.content.flush {
-  padding: 0;
-  overflow: hidden;
-}
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.title {
-  margin: 0;
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.line {
-  margin: 0;
-  color: var(--ink-muted);
-}
-</style>

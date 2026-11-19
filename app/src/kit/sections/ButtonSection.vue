@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Play, Settings, Trash2, Undo2 } from '@lucide/vue'
+import { Ellipsis, Library, Play, Save, Settings, Star, Trash2, Undo2 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
@@ -51,6 +51,66 @@ import KitState from '../KitState.vue'
         <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.IconSmall" aria-label="Settings">
           <Settings :size="16" :stroke-width="1.75" aria-hidden="true" />
         </Button>
+      </div>
+    </KitState>
+    <KitState label="Quiet">
+      <Button :variant="ButtonVariant.Quiet">Sort by: last played</Button>
+    </KitState>
+    <KitState label="Primary and Soft · Compact">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Compact">Resume</Button>
+        <Button :size="ButtonSize.Compact">Saves</Button>
+      </div>
+    </KitState>
+    <KitState label="Primary and Soft · Medium">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Choose a folder</Button>
+        <Button :size="ButtonSize.Medium">Open a file</Button>
+      </div>
+    </KitState>
+    <KitState label="Rail · current and not">
+      <div class="flex flex-col gap-4 bg-glass-thin p-6">
+        <Button :variant="ButtonVariant.Rail" :size="ButtonSize.Rail" aria-current="page">
+          <Library :size="20" :stroke-width="1.75" aria-hidden="true" />
+          <span class="text-[10px]/[12px] font-medium">Library</span>
+        </Button>
+        <Button :variant="ButtonVariant.Rail" :size="ButtonSize.Rail">
+          <Save :size="20" :stroke-width="1.75" aria-hidden="true" />
+          <span class="text-[10px]/[12px] font-medium">Saves</span>
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Inverse · CoverAction, Veil · CoverActionIcon">
+      <div class="flex w-field gap-6 rounded-10 bg-cover-2 p-8">
+        <Button :variant="ButtonVariant.Inverse" :size="ButtonSize.CoverAction" class="flex-1">
+          <Play :size="14" fill="currentColor" :stroke-width="0" aria-hidden="true" />
+          Play
+        </Button>
+        <Button :variant="ButtonVariant.Veil" :size="ButtonSize.CoverActionIcon" aria-label="More">
+          <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Menu · MenuItem, Menu · MenuRow (selected and not)">
+      <div class="glass-thick flex w-field flex-col gap-2 p-6">
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
+          <Star :size="16" :stroke-width="1.75" aria-hidden="true" />
+          Add to favourites
+        </Button>
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" data-selected>
+          Last played
+        </Button>
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow">Name</Button>
+      </div>
+    </KitState>
+    <KitState label="Bare · Area (a click area over a picture)">
+      <div class="relative size-48 rounded-10 bg-cover-1">
+        <Button
+          :variant="ButtonVariant.Bare"
+          :size="ButtonSize.Area"
+          class="absolute inset-0"
+          aria-label="Open"
+        ></Button>
       </div>
     </KitState>
   </KitSection>

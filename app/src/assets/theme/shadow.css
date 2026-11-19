@@ -7,6 +7,9 @@
    mixed from `--violet`, so they follow the user's accent like the screens' own glows do. */
 :root {
   --shadow-float: 0 24px 64px #0000008c, 0 2px 8px #00000059;
+  /* A cover at rest (LibraryView). The design system's `shadow-card` has a lighter Chiaro value,
+     0 1px 2px #1a1b2014: not applied until Cowork says so (spec, Decision 5). */
+  --shadow-card: 0 1px 2px #00000052;
 }
 :root[data-theme='light'] {
   --shadow-float: 0 24px 64px #1a1b202e, 0 2px 8px #1a1b2014;
@@ -24,6 +27,10 @@
   --shadow-glass: inset 0 1px 0 var(--glass-edge), var(--shadow-float);
   /* glow-sm: the main action and a switch that is on. */
   --shadow-glow-sm: 0 0 12px color-mix(in srgb, var(--violet) 45%, transparent);
+  /* A cover at rest. */
+  --shadow-card: var(--shadow-card);
+  /* The current section's marker on the rail (AppShell), drawn inside like the tab's. */
+  --shadow-rail: inset 2px 0 0 var(--violet);
   /* The active tab's underline, drawn inside so it takes no room. */
   --shadow-tab: inset 0 -2px 0 var(--accent-text);
   /* A slider's thumb lifted off its track (not in the design system yet: Cowork). */

@@ -18,6 +18,10 @@
    src/. */
 @source '../components/ui';
 @source '../kit';
+/* Migrated in cycle 2: the Library and the shell (#62, stream A). */
+@source '../components/library';
+@source '../components/shell';
+@source '../components/{AppShell,LibraryView,LibraryEmpty,LibraryFilters,GameCover,CoverMenu,CoverPicker}.vue';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

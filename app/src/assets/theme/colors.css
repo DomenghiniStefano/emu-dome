@@ -50,6 +50,19 @@
        recomputed when appearance.ts changes `--violet`. */
   --knob: #ffffff;
   --accent-edge: color-mix(in srgb, var(--violet) 40%, transparent);
+  /* New in cycle 2 (Library and shell, #62), each the value the screen wrote by hand:
+     - on-cover: text on a generated cover, the same in every theme (the design system's
+       `on-cover`);
+     - cover-badge: the veil under a cover's console badge (the design system's `cover-scrim`
+       is #000000b3: Cowork);
+     - cover-action: the «…» button over a cover, 90% of surface-raised;
+     - warning-wash / warning-edge: the fill and edge of a warning banner (E01), 10% and 33% of
+       `--warning` (the design system's `warning-soft` is 14%: Cowork). */
+  --on-cover: #ffffff;
+  --cover-badge: #000000a6;
+  --cover-action: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+  --warning-wash: color-mix(in srgb, var(--warning) 10%, transparent);
+  --warning-edge: color-mix(in srgb, var(--warning) 33%, transparent);
 }
 
 /* Nero: true black for OLED screens. */
@@ -150,9 +163,15 @@
   /* States: always with an icon or a word */
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-warning-wash: var(--warning-wash);
+  --color-warning-edge: var(--warning-edge);
   --color-danger: var(--danger);
   /* Controls */
   --color-knob: var(--knob);
+  /* On a cover */
+  --color-on-cover: var(--on-cover);
+  --color-cover-badge: var(--cover-badge);
+  --color-cover-action: var(--cover-action);
   /* The cover colours of the ambient haze (ambient.ts writes them) */
   --color-cover-1: var(--cover-1);
   --color-cover-2: var(--cover-2);
