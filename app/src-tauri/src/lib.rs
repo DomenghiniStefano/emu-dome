@@ -176,16 +176,16 @@ struct StatsDto {
     auto_saved_at: Option<u64>,
 }
 
-/// Which core to use for a file, by its extension, the console shown and its settings level.
-fn core_for(path: &Path) -> Result<(&'static str, &'static str, ConsoleId), ErrorCode> {
+/// Which core to use for a file, and its console, by its extension.
+fn core_for(path: &Path) -> Result<(&'static str, ConsoleId), ErrorCode> {
     let ext = path
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
     match ext.as_str() {
-        "gba" => Ok(("mgba", "GBA", ConsoleId::Gba)),
-        "gb" => Ok(("mgba", "GB", ConsoleId::Gb)),
-        "gbc" => Ok(("mgba", "GBC", ConsoleId::Gbc)),
+        "gba" => Ok(("mgba", ConsoleId::Gba)),
+        "gb" => Ok(("mgba", ConsoleId::Gb)),
+        "gbc" => Ok(("mgba", ConsoleId::Gbc)),
         "nds" => Err(ErrorCode::ConsoleNotYet {
             console: "nds".into(),
             phase: 2,
@@ -195,6 +195,18 @@ fn core_for(path: &Path) -> Result<(&'static str, &'static str, ConsoleId), Erro
             phase: 3,
         }),
         _ => Err(ErrorCode::UnsupportedFormat { ext }),
+    }
+}
+
+/// The console's short name in `GameInfo` (a .gb file whose header asks for a Game Boy Color
+/// is «GBC»).
+fn console_label(console: ConsoleId) -> &'static str {
+    match console {
+        ConsoleId::Gb => "GB",
+        ConsoleId::Gbc => "GBC",
+        ConsoleId::Gba => "GBA",
+        ConsoleId::Nds => "NDS",
+        ConsoleId::N3ds => "3DS",
     }
 }
 
@@ -211,7 +223,21 @@ fn open_game(
     }
     let game_path = PathBuf::from(&path);
     let game = GameId::from_rom_path(&game_path);
-    open_path(&app, &state, game_path, game, None, None)
+    let console = gb_console(&game_path);
+    open_path(&app, &state, game_path, game, None, console)
+}
+
+/// A Game Boy file outside the library: its header tells Game Boy from Game Boy Color (a
+/// `.gb` file can be a Game Boy Color cartridge). None for any other file, or an unreadable
+/// header: the extension decides.
+fn gb_console(path: &Path) -> Option<ConsoleId> {
+    let ext = path.extension()?.to_string_lossy().to_lowercase();
+    if ext != "gb" && ext != "gbc" {
+        return None;
+    }
+    emudome_core::library::identify(path)
+        .ok()
+        .map(|id| id.console)
 }
 
 /// Opens a library game: its settings are those of its content identity, and its play time
@@ -249,6 +275,14 @@ fn forced_core_options(core_name: &str) -> Vec<(String, String)> {
         .collect()
 }
 
+/// The options the core starts with: the settings' (console options), then the forced ones,
+/// which win.
+fn core_options(core_name: &str, flow: &settings::GameFlow) -> Vec<(String, String)> {
+    let mut options = flow.core_options.clone();
+    options.extend(forced_core_options(core_name));
+    options
+}
+
 /// Closes the open game, then opens `game_path` with `game` as its settings identity.
 /// `title` and `console` come from the library when known (else the file name and the extension).
 fn open_path(
@@ -259,7 +293,7 @@ fn open_path(
     title: Option<String>,
     console: Option<ConsoleId>,
 ) -> Result<GameInfo, ErrorCode> {
-    let (core_name, console_label, ext_console) = core_for(&game_path)?;
+    let (core_name, ext_console) = core_for(&game_path)?;
     let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref())
         .ok_or_else(|| ErrorCode::CoreNotFound {
             file: emudome_platform::core_file_name(core_name),
@@ -286,7 +320,7 @@ fn open_path(
             autosave_on_exit: flow.autosave_on_exit,
             resume_auto: flow.resume == "always",
             app_version: app.package_info().version.to_string(),
-            core_options: forced_core_options(core_name),
+            core_options: core_options(core_name, &flow),
             rewind_seconds: flow.rewind_seconds,
         },
         tx,
@@ -320,7 +354,7 @@ fn open_path(
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_default()
         }),
-        console: console_label.into(),
+        console: console_label(console_id).into(),
         console_id,
         core: core_name.into(),
         resumable,

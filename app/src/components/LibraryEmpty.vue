@@ -3,6 +3,7 @@
 // it), drag games or folders onto the window (App.vue), or open a single file the Phase 0 way.
 import { useI18n } from 'vue-i18n'
 import { Library } from '@lucide/vue'
+import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 
 defineProps<{ error: string | null }>()
 const emit = defineEmits<{ chooseFolder: []; openFile: [] }>()
@@ -11,70 +12,28 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="wrap">
-    <section class="empty">
-      <Library class="icon" :size="44" :stroke-width="1.5" aria-hidden="true" />
-      <h1 class="title">{{ t('library.emptyTitle') }}</h1>
-      <p class="lead">{{ t('library.emptyLead') }}</p>
-      <div class="actions">
-        <button class="btn btn-primary" data-nav-initial @click="emit('chooseFolder')">
+  <div class="grid flex-1 place-items-center">
+    <!-- The box's 480px width is its own; the title is `title` without its tracking (Cowork). -->
+    <section
+      class="flex max-w-[480px] flex-col items-center gap-14 rounded-16 border border-dashed border-line-strong p-48 text-center"
+    >
+      <Library class="text-accent-text" :size="44" :stroke-width="1.5" aria-hidden="true" />
+      <h1 class="m-0 text-title tracking-[normal]">{{ t('library.emptyTitle') }}</h1>
+      <p class="m-0 text-ink-muted">{{ t('library.emptyLead') }}</p>
+      <div class="flex gap-8">
+        <Button
+          :variant="ButtonVariant.Primary"
+          :size="ButtonSize.Medium"
+          data-nav-initial
+          @click="emit('chooseFolder')"
+        >
           {{ t('library.chooseFolder') }}
-        </button>
-        <button class="btn" @click="emit('openFile')">
+        </Button>
+        <Button :size="ButtonSize.Medium" @click="emit('openFile')">
           {{ t('library.openFile') }}
-        </button>
+        </Button>
       </div>
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
+      <p v-if="error" class="m-0 text-danger" role="alert">{{ error }}</p>
     </section>
   </div>
 </template>
-
-<style scoped>
-.wrap {
-  flex: 1;
-  display: grid;
-  place-items: center;
-}
-.empty {
-  max-width: 480px;
-  padding: 48px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  text-align: center;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-16);
-}
-.icon {
-  color: var(--accent-text);
-}
-.title {
-  margin: 0;
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 600;
-}
-.lead,
-.error {
-  margin: 0;
-}
-.lead {
-  color: var(--ink-muted);
-}
-.actions {
-  display: flex;
-  gap: 8px;
-}
-.actions .btn {
-  height: 36px;
-  white-space: nowrap;
-}
-.actions .btn-primary {
-  padding: 0 16px;
-  font-size: 13px;
-}
-.error {
-  color: var(--danger);
-}
-</style>

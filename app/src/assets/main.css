@@ -1,0 +1,76 @@
+/* The design system's entry (docs/specs/2026-11-18-design-system-foundations.md).
+
+   Tailwind v4 without its preflight: only the theme and the utilities layers are imported. The
+   preflight would restyle every screen (margins, headings, buttons, images), and cycle 1 changes
+   nothing on screen. The document's own base stays in styles.css, unlayered, loaded after this
+   file (main.ts).
+
+   Layers: every Tailwind class is in `@layer utilities`, and an unlayered rule beats any layered
+   one. So the screens' scoped CSS (unlayered) always wins over a utility on the same element,
+   and a utility can never restyle a screen that does not use it. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+
+/* Where Tailwind looks for classes: the design system's own code only. The screens not migrated
+   yet are not scanned, so a class name they use for their scoped CSS (`table`, `hidden`, `grid`…)
+   never turns into a utility. Cycle 2 adds each screen here as it migrates; cycle 3 scans all of
+   src/. */
+@source '../components/ui';
+@source '../kit';
+/* Migrated in cycle 2: the Library and the shell (#62, stream A). */
+@source '../components/library';
+@source '../components/shell';
+@source '../components/{AppShell,LibraryView,LibraryEmpty,LibraryFilters,GameCover,CoverMenu,CoverPicker}.vue';
+/* Migrated screens (cycle 2). */
+@source '../components/saves';
+@source '../components/SavesView.vue';
+@source '../components/SlotTile.vue';
+@source '../components/QuickSaveDialog.vue';
+@source '../components/ConflictTwoUp.vue';
+/* Migrated in cycle 2 (#62). */
+@source '../components/ButtonTester.vue';
+@source '../components/ControlsOverview.vue';
+@source '../components/ControlsRemap.vue';
+@source '../components/ControlsShortcuts.vue';
+@source '../components/ControlsSticks.vue';
+@source '../components/ControlsView.vue';
+@source '../components/controls';
+/* Cycle 2, the shell (Trello #62): the root, the first run, the game flow's overlays and dialogs,
+   the toasts, the game's own layers. */
+@source '../App.vue';
+@source '../components/FirstRun.vue';
+@source '../components/first-run';
+@source '../components/FlowDialog.vue';
+@source '../components/GameFlowOverlays.vue';
+@source '../components/game';
+@source '../components/ToastStack.vue';
+@source '../components/TouchControls.vue';
+@source '../components/GameCanvas.vue';
+@source '../components/GameSurround.vue';
+@source '../components/LibraryDropTarget.vue';
+/* Cycle 2, the quick menu (Trello #62). */
+@source '../components/QuickMenu.vue';
+@source '../components/quick-menu';
+/* Game details (L04–L10), migrated in cycle 2 (Trello #62). */
+@source '../components/GameDetails.vue';
+@source '../components/DetailsSaves.vue';
+@source '../components/DetailsSettings.vue';
+@source '../components/DetailsControls.vue';
+@source '../components/DetailsFiles.vue';
+@source '../components/details/*.vue';
+/* Settings (#62) */
+@source '../components/SettingsView.vue';
+@source '../components/SettingRow.vue';
+@source '../components/SettingSelect.vue';
+@source '../components/settings';
+
+@import './theme/colors.css';
+@import './theme/typography.css';
+@import './theme/spacing.css';
+@import './theme/radius.css';
+@import './theme/shadow.css';
+@import './theme/opacity.css';
+@import './theme/motion.css';
+@import './theme/layers.css';
+@import './utilities.css';

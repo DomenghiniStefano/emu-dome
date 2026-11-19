@@ -1,0 +1,54 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
+import KitSection from '../KitSection.vue'
+import KitState from '../KitState.vue'
+
+const speed = ref('normal')
+</script>
+
+<template>
+  <KitSection title="Segmented">
+    <KitState label="One chosen">
+      <Segmented v-model="speed" aria-label="Speed">
+        <SegmentedItem value="normal">Normal</SegmentedItem>
+        <SegmentedItem value="fast">Fast forward</SegmentedItem>
+        <SegmentedItem value="slow">Slow motion</SegmentedItem>
+      </Segmented>
+    </KitState>
+    <KitState label="Strong">
+      <Segmented v-model="speed" :variant="SegmentedVariant.Strong" aria-label="Speed">
+        <SegmentedItem value="normal">Normal</SegmentedItem>
+        <SegmentedItem value="fast">Fast forward</SegmentedItem>
+      </Segmented>
+    </KitState>
+    <KitState label="One item disabled">
+      <Segmented v-model="speed" aria-label="Speed">
+        <SegmentedItem value="normal">Normal</SegmentedItem>
+        <SegmentedItem value="fast" disabled>Fast forward</SegmentedItem>
+      </Segmented>
+    </KitState>
+    <KitState label="Disabled">
+      <Segmented model-value="normal" disabled aria-label="Speed">
+        <SegmentedItem value="normal">Normal</SegmentedItem>
+        <SegmentedItem value="fast">Fast forward</SegmentedItem>
+      </Segmented>
+    </KitState>
+    <KitState label="Stacked, StackedTouch (a name over its value)">
+      <div class="flex w-field flex-col gap-8">
+        <Segmented
+          v-for="v in [SegmentedVariant.Stacked, SegmentedVariant.StackedTouch]"
+          :key="v"
+          v-model="speed"
+          :variant="v"
+          aria-label="Speed"
+        >
+          <SegmentedItem v-for="id in ['normal', 'fast', 'slow']" :key="id" :value="id">
+            <span class="font-semibold">{{ id }}</span>
+            <span class="text-caption">1x</span>
+          </SegmentedItem>
+        </Segmented>
+      </div>
+    </KitState>
+  </KitSection>
+</template>

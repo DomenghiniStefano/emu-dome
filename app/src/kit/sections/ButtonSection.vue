@@ -1,0 +1,387 @@
+<script setup lang="ts">
+import {
+  ChevronLeft,
+  ChevronRight,
+  Ellipsis,
+  EllipsisVertical,
+  Heart,
+  Library,
+  Play,
+  RefreshCw,
+  Save,
+  Settings,
+  Star,
+  Trash2,
+  Undo2,
+} from '@lucide/vue'
+import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import KitSection from '../KitSection.vue'
+import KitState from '../KitState.vue'
+</script>
+
+<template>
+  <KitSection title="Button">
+    <KitState label="Primary · Large">
+      <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Large" data-nav-initial>
+        <Play :size="16" :stroke-width="1.75" aria-hidden="true" />
+        Resume
+      </Button>
+    </KitState>
+    <KitState label="Primary · Default">
+      <Button :variant="ButtonVariant.Primary">Play</Button>
+    </KitState>
+    <KitState label="Primary · disabled">
+      <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Large" disabled>Play</Button>
+    </KitState>
+    <KitState label="Medium (dialog actions)">
+      <div class="flex items-center gap-8">
+        <Button :size="ButtonSize.Medium">Not now</Button>
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Resume</Button>
+      </div>
+    </KitState>
+    <KitState label="RaisedAccent · Toast (a toast's action)">
+      <Button :variant="ButtonVariant.RaisedAccent" :size="ButtonSize.Toast">Undo</Button>
+    </KitState>
+    <KitState label="Soft">
+      <Button>Choose a folder</Button>
+    </KitState>
+    <KitState label="Soft · disabled">
+      <Button disabled>Choose a folder</Button>
+    </KitState>
+    <KitState label="Ghost · Small">
+      <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.Small">
+        <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />
+        Reset
+      </Button>
+    </KitState>
+    <KitState label="Ghost accent · Small">
+      <Button :variant="ButtonVariant.GhostAccent" :size="ButtonSize.Small">Done</Button>
+    </KitState>
+    <KitState label="Ghost · disabled">
+      <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.Small" disabled>Reset</Button>
+    </KitState>
+    <KitState label="Danger">
+      <Button :variant="ButtonVariant.Danger">
+        <Trash2 :size="16" :stroke-width="1.75" aria-hidden="true" />
+        Delete the save
+      </Button>
+    </KitState>
+    <KitState label="Soft · Medium (a dialog's actions)">
+      <Button :size="ButtonSize.Medium">Export…</Button>
+    </KitState>
+    <KitState label="Primary · Medium">
+      <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Play from here</Button>
+    </KitState>
+    <KitState label="Danger · Medium">
+      <Button :variant="ButtonVariant.Danger" :size="ButtonSize.Medium">Delete slot 1</Button>
+    </KitState>
+    <KitState label="SoftAccent · TileAction, Soft · TileAction (a tile's actions)">
+      <div class="flex w-field gap-6">
+        <Button
+          :variant="ButtonVariant.SoftAccent"
+          :size="ButtonSize.TileAction"
+          class="min-w-0 flex-1"
+        >
+          Play from here
+        </Button>
+        <Button :size="ButtonSize.TileAction" aria-label="More">
+          <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Primary · Hero (phone, full width)">
+      <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Hero" class="w-field">
+        <Play :size="18" fill="currentColor" :stroke-width="0" aria-hidden="true" />
+        Resume
+      </Button>
+    </KitState>
+    <KitState label="Soft · TallNarrow">
+      <div class="flex items-center gap-8">
+        <Button :size="ButtonSize.TallNarrow">
+          <Heart :size="16" :stroke-width="1.75" aria-hidden="true" />
+          Add to favourites
+        </Button>
+        <Button :size="ButtonSize.TallNarrow" aria-label="More">
+          <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="SoftAccent · TileAction · disabled">
+      <Button :variant="ButtonVariant.SoftAccent" :size="ButtonSize.TileAction" disabled>
+        Play from here
+      </Button>
+    </KitState>
+    <KitState label="Back · TextLine">
+      <Button :variant="ButtonVariant.Back" :size="ButtonSize.TextLine">
+        <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
+        Controls
+      </Button>
+    </KitState>
+    <KitState label="Ghost body · Small (a row's quiet action)">
+      <Button :variant="ButtonVariant.GhostBody" :size="ButtonSize.Small">Remove</Button>
+    </KitState>
+    <KitState label="Soft row · Default, and disabled">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.SoftRow">Choose a folder</Button>
+        <Button :variant="ButtonVariant.SoftRow" disabled>Sign in</Button>
+      </div>
+    </KitState>
+    <KitState label="Tall (40, standard label)">
+      <Button :size="ButtonSize.Tall">Add a folder</Button>
+    </KitState>
+    <KitState label="Lead sizes (phone first run): Small, Default, Tall, Footer, Main">
+      <div class="flex flex-wrap items-center gap-8">
+        <Button :variant="ButtonVariant.GhostBody" :size="ButtonSize.SmallLead">Remove</Button>
+        <Button :variant="ButtonVariant.SoftRow" :size="ButtonSize.DefaultLead">Choose</Button>
+        <Button :size="ButtonSize.TallLead">Add a folder</Button>
+        <Button :size="ButtonSize.FooterLead">Back</Button>
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.MainLead">Continue</Button>
+      </div>
+    </KitState>
+    <KitState label="Touch: shoulder, menu, face, system">
+      <div class="flex flex-wrap items-center gap-8">
+        <Button :variant="ButtonVariant.Touch" :size="ButtonSize.TouchShoulder">L</Button>
+        <Button :variant="ButtonVariant.Touch" :size="ButtonSize.TouchMenu" aria-label="Menu">
+          <Settings :size="20" :stroke-width="2" aria-hidden="true" />
+        </Button>
+        <Button :variant="ButtonVariant.Touch" :size="ButtonSize.TouchFace">A</Button>
+        <Button :variant="ButtonVariant.Touch" :size="ButtonSize.TouchSystem">START</Button>
+      </div>
+    </KitState>
+    <KitState label="Soft · Touch (phone)">
+      <Button :size="ButtonSize.Touch">Show the backups</Button>
+    </KitState>
+    <KitState label="Plain · IconTouch (phone)">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Plain" :size="ButtonSize.IconTouch" aria-label="Back">
+          <ChevronLeft :size="24" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button :variant="ButtonVariant.Plain" :size="ButtonSize.IconTouch" aria-label="More">
+          <EllipsisVertical :size="22" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Text · Bare">
+      <Button :variant="ButtonVariant.Text" :size="ButtonSize.Bare">
+        <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
+        Library
+      </Button>
+    </KitState>
+    <KitState label="UnderlineLink · Bare">
+      <Button :variant="ButtonVariant.UnderlineLink" :size="ButtonSize.Bare"
+        >Open every setting</Button
+      >
+    </KitState>
+    <KitState label="UnderlineLink · disabled">
+      <Button :variant="ButtonVariant.UnderlineLink" :size="ButtonSize.Bare" disabled>
+        Open every setting
+      </Button>
+    </KitState>
+    <KitState label="Icon · IconSmall">
+      <div class="flex items-center gap-8">
+        <Button :size="ButtonSize.Icon" aria-label="Settings">
+          <Settings :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.IconSmall" aria-label="Settings">
+          <Settings :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Quiet">
+      <Button :variant="ButtonVariant.Quiet">Sort by: last played</Button>
+    </KitState>
+    <KitState label="Primary and Soft · Compact">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Compact">Resume</Button>
+        <Button :size="ButtonSize.Compact">Saves</Button>
+      </div>
+    </KitState>
+    <KitState label="Primary and Soft · Medium">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Choose a folder</Button>
+        <Button :size="ButtonSize.Medium">Open a file</Button>
+      </div>
+    </KitState>
+    <KitState label="Rail · current and not">
+      <div class="flex flex-col gap-4 bg-glass-thin p-6">
+        <Button :variant="ButtonVariant.Rail" :size="ButtonSize.Rail" aria-current="page">
+          <Library :size="20" :stroke-width="1.75" aria-hidden="true" />
+          <span class="text-[10px]/[12px] font-medium">Library</span>
+        </Button>
+        <Button :variant="ButtonVariant.Rail" :size="ButtonSize.Rail">
+          <Save :size="20" :stroke-width="1.75" aria-hidden="true" />
+          <span class="text-[10px]/[12px] font-medium">Saves</span>
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Inverse · CoverAction, Veil · CoverActionIcon">
+      <div class="flex w-field gap-6 rounded-10 bg-cover-2 p-8">
+        <Button :variant="ButtonVariant.Inverse" :size="ButtonSize.CoverAction" class="flex-1">
+          <Play :size="14" fill="currentColor" :stroke-width="0" aria-hidden="true" />
+          Play
+        </Button>
+        <Button :variant="ButtonVariant.Veil" :size="ButtonSize.CoverActionIcon" aria-label="More">
+          <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Menu · MenuItem, Menu · MenuRow (selected and not)">
+      <div class="glass-thick flex w-field flex-col gap-2 p-6">
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
+          <Star :size="16" :stroke-width="1.75" aria-hidden="true" />
+          Add to favourites
+        </Button>
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" data-selected>
+          Last played
+        </Button>
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow">Name</Button>
+      </div>
+    </KitState>
+    <KitState label="Bare · Area (a click area over a picture)">
+      <div class="relative size-48 rounded-10 bg-cover-1">
+        <Button
+          :variant="ButtonVariant.Bare"
+          :size="ButtonSize.Area"
+          class="absolute inset-0"
+          aria-label="Open"
+        ></Button>
+      </div>
+    </KitState>
+    <KitState label="Quick menu · Menu, Menu disabled, MenuCompact">
+      <div class="flex items-center gap-8">
+        <Button :size="ButtonSize.Menu">Save to slot 1</Button>
+        <Button :size="ButtonSize.Menu" disabled>Slot 2 is empty</Button>
+        <Button :size="ButtonSize.MenuCompact">Undo changes</Button>
+      </div>
+    </KitState>
+    <KitState label="Strong · MenuCompact · DangerOutline · Menu">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Strong" :size="ButtonSize.MenuCompact">
+          Save for this game
+        </Button>
+        <Button :variant="ButtonVariant.DangerOutline" :size="ButtonSize.Menu">
+          <RefreshCw :size="18" :stroke-width="1.75" aria-hidden="true" />
+          Restart
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Pick · MenuCompact, MenuCompactTouch: one on, one disabled">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Pick" :size="ButtonSize.MenuCompact" :aria-pressed="true">
+          Sharp pixels
+        </Button>
+        <Button :variant="ButtonVariant.Pick" :size="ButtonSize.MenuCompact" :aria-pressed="false">
+          Soft
+        </Button>
+        <Button
+          :variant="ButtonVariant.Pick"
+          :size="ButtonSize.MenuCompact"
+          :aria-pressed="false"
+          disabled
+        >
+          CRT TV
+        </Button>
+        <Button
+          :variant="ButtonVariant.Pick"
+          :size="ButtonSize.MenuCompactTouch"
+          :aria-pressed="false"
+        >
+          LCD screen
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Touch · MenuTouch, MenuCompactTouch, MenuPairTouch (Strong)">
+      <div class="flex items-center gap-8">
+        <Button :size="ButtonSize.MenuTouch">Load</Button>
+        <Button :size="ButtonSize.MenuCompactTouch">Undo load</Button>
+        <Button :variant="ButtonVariant.Strong" :size="ButtonSize.MenuPairTouch">
+          Save for this game
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Primary · MenuMain, MenuMainTouch">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.MenuMain">
+          <Play :size="18" fill="currentColor" :stroke-width="0" aria-hidden="true" />
+          Resume game
+        </Button>
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.MenuMainTouch">Resume</Button>
+      </div>
+    </KitState>
+    <KitState label="Ghost · Back, Step, Step disabled, StepTouch, IconTouch">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.Back">
+          <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
+          Quick menu
+        </Button>
+        <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.Step" aria-label="Next">
+          <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.Step" disabled aria-label="Next">
+          <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.StepTouch" aria-label="Next">
+          <ChevronRight :size="18" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.IconTouch" aria-label="Back">
+          <ChevronLeft :size="22" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Link · Text, TextTouch">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Link" :size="ButtonSize.Text">More slots and saves</Button>
+        <Button :variant="ButtonVariant.Link" :size="ButtonSize.TextTouch">More slots</Button>
+      </div>
+    </KitState>
+    <KitState label="Row buttons (settings rows): not faded when disabled, the row fades instead">
+      <div class="flex flex-wrap items-center gap-8">
+        <Button :variant="ButtonVariant.RowSoft">Choose an image…</Button>
+        <Button :variant="ButtonVariant.RowSoft" disabled>Export…</Button>
+        <Button :variant="ButtonVariant.RowGhost" :size="ButtonSize.Small">
+          <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />
+          Reset
+        </Button>
+        <Button :variant="ButtonVariant.RowGhostAccent" :size="ButtonSize.Small" disabled>
+          Edit the list
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="NavItem · NavItem: a side list, the current page marked">
+      <div class="flex w-sidebar flex-col gap-2">
+        <Button :variant="ButtonVariant.NavItem" :size="ButtonSize.NavItem" aria-current="page">
+          <span class="flex-1 text-left">Video</span>
+        </Button>
+        <Button :variant="ButtonVariant.NavItem" :size="ButtonSize.NavItem">
+          <span class="flex-1 text-left">Screen effects</span>
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="LinkRow · LinkRow: rows of a card list that open a page">
+      <div class="flex w-page flex-col rounded-10 border border-line bg-surface">
+        <Button v-for="n in 2" :key="n" :variant="ButtonVariant.LinkRow" :size="ButtonSize.LinkRow">
+          <span class="flex min-w-0 flex-1 flex-col">
+            <span class="font-medium text-ink">Screen effect {{ n }}</span>
+            <span class="text-caption">Screen effects</span>
+          </span>
+          <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Swatch · IconSmall: the chosen one ringed, a disabled one">
+      <div class="flex gap-10" role="radiogroup" aria-label="Accent">
+        <Button
+          v-for="(c, i) in ['#7152f7', '#2f7ae5', '#1f9d8a']"
+          :key="c"
+          :variant="ButtonVariant.Swatch"
+          :size="ButtonSize.IconSmall"
+          role="radio"
+          :aria-checked="i === 0"
+          :aria-label="c"
+          :style="{ background: c }"
+          :disabled="i === 2"
+        />
+      </div>
+    </KitState>
+  </KitSection>
+</template>

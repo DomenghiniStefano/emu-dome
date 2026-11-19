@@ -1,0 +1,13 @@
+/* Radius tokens (README «Forme»): radius-4 badges and keys; radius-6 controls; radius-10 cards,
+   capsules, save slots; radius-16 panels and the quick menu. `rounded-full` (switches, round
+   touch keys) is Tailwind's own static class and survives the reset.
+
+   `static`: the screens' scoped CSS reads `var(--radius-6)` and friends by these very names, and
+   Tailwind only emits a theme variable a class of its own uses unless told to keep them all. */
+@theme static {
+  --radius-*: initial;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-10: 10px;
+  --radius-16: 16px;
+}

@@ -1,0 +1,202 @@
+/* The look that is more than one property, as named utilities: the glass panels, the accent's
+   dome gradient, a native range input's dressing. Each copies what styles.css or a screen draws
+   today, with the same values written through the tokens. */
+
+/* Thick glass (README «Vetro»): menus, dialogs, the quick menu. What `.glass-thick` in styles.css
+   draws, which the screens keep using until cycle 2. «Riduci la trasparenza» turns the fill solid
+   (colors.css) and the blur off (styles.css). */
+@utility glass-thick {
+  background: var(--glass-thick);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-16);
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge),
+    var(--shadow-float);
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+}
+
+/* The main action's dome (`.btn-primary`): the crown's light on the top edge only, then the
+   accent, darkening to accent-deep at the bottom. */
+@utility bg-accent-dome {
+  background: linear-gradient(
+    var(--accent-crown) 0,
+    var(--accent) 6px,
+    var(--accent) 60%,
+    var(--accent-deep) 100%
+  );
+}
+
+/* A switch that is on (SettingRow `.switch.on`). */
+@utility bg-accent-track {
+  background: linear-gradient(var(--accent-crown), var(--accent-deep));
+}
+
+/* Glass (README «Vetro»: the medium one), a panel over the ambient haze: fill, edge, the lit top
+   edge, no float shadow (LibraryView L11). */
+@utility glass {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-16);
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+}
+
+/* The glass's blur alone, for a bar whose fill and edge are its own (the shell's top bar). */
+@utility backdrop-glass {
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+}
+
+/* The ambient haze behind the shell (design L01): the cover colours (--cover-1/2/3, ambient.ts)
+   as three spots, fading over duration-ambient when they change. Decoration only, under
+   everything; off in Nero and with «Riduci la trasparenza» (--haze-opacity 0, opacity.css). */
+@utility ambient-haze {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--haze-opacity);
+  background:
+    radial-gradient(60% 50% at 18% 0%, var(--cover-1) 0%, transparent 70%),
+    radial-gradient(40% 40% at 80% 10%, var(--cover-2) 0%, transparent 70%),
+    radial-gradient(50% 50% at 60% 100%, var(--cover-3) 0%, transparent 70%);
+  transition:
+    --cover-1 var(--duration-ambient) var(--ease-out),
+    --cover-2 var(--duration-ambient) var(--ease-out),
+    --cover-3 var(--duration-ambient) var(--ease-out);
+}
+
+/* The accent's glow around an icon (the current section on the rail): 60% of the accent. */
+@utility glow-icon {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--violet) 60%, transparent));
+}
+
+/* Pixel art scaled up crisp: ROM icons, quick save thumbnails. */
+@utility pixelated {
+  image-rendering: pixelated;
+}
+
+/* Focus inside a frame that draws the ring itself (a cover of the library): the focused control
+   drops the global outline (focus-ring-none), or draws a tight 2px ring of its own
+   (focus-ring-tight). !important because the global ring (styles.css, `data-nav`) is unlayered,
+   and an unlayered rule beats every utility whatever its specificity. */
+@utility focus-ring-none {
+  :root[data-nav] &:focus,
+  :root[data-nav] &[data-nav-focus] {
+    outline: none !important;
+  }
+}
+@utility focus-ring-tight {
+  :root[data-nav] &:focus,
+  :root[data-nav] &[data-nav-focus] {
+    outline: none !important;
+    box-shadow: 0 0 0 2px var(--focus-ring) !important;
+  }
+}
+
+/* The scene behind a game starting or closing (G01, G14): the cover's colour, which the element
+   sets as `--cover`, glowing from the top third over the ground. */
+@utility bg-cover-glow {
+  background: radial-gradient(60% 50% at 50% 30%, var(--cover) 0%, transparent 75%), var(--bg);
+}
+
+/* An indeterminate progress bar's band (G01, G14): it slides across its track, 1.2 s a pass.
+   «Riduci le animazioni» stops it, full width. */
+@keyframes progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@utility animate-progress-slide {
+  animation: progress-slide 1.2s ease-in-out infinite;
+  :root[data-motion='reduce'] & {
+    animation: none;
+    width: 100%;
+  }
+}
+
+/* «Sfondo animato» (GameSurround): the side background drifts slowly. Only a transform moves,
+   which the compositor handles without repainting; the layer is larger than the window so its
+   edges never show. */
+@keyframes surround-drift {
+  from {
+    transform: translate(-6%, -4%) rotate(0deg);
+  }
+  to {
+    transform: translate(6%, 4%) rotate(8deg);
+  }
+}
+@utility animate-surround-drift {
+  animation: surround-drift 40s ease-in-out infinite alternate;
+}
+
+/* The first run's ground (FirstRun): the accent's light from the top centre over the ground; on
+   the phone a taller, wider glow (Tel-PrimoAvvio). */
+@utility bg-welcome-glow {
+  background:
+    radial-gradient(
+      60% 50% at 50% 0%,
+      color-mix(in srgb, var(--violet) 25%, transparent) 0%,
+      transparent 70%
+    ),
+    var(--bg);
+}
+@utility bg-welcome-glow-phone {
+  background:
+    radial-gradient(
+      90% 40% at 50% 0%,
+      color-mix(in srgb, var(--violet) 25%, transparent) 0%,
+      transparent 70%
+    ),
+    var(--bg);
+}
+
+/* EmuDome's mark (the first run's welcome): its own two violets, the same in every theme and
+   whatever the accent. */
+@utility bg-logo {
+  background: radial-gradient(circle at 50% 30%, #a996ff, #664bd1);
+}
+
+/* The library scan's band (the library, first run S02): no total is known while walking the
+   folders, so a band sweeps the track, 1.4 s a pass. «Riduci le animazioni» shows it full and half
+   faded. The 1.4s loop is not a design system duration yet (`duration-loop`, Cowork). */
+@keyframes scan-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+@utility animate-scan-sweep {
+  animation: scan-sweep 1.4s var(--ease-out) infinite;
+  :root[data-motion='reduce'] & {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
+
+/* A game's own colour behind its details (GameDetails, board «Dettagli»): `--cover-tint` is the
+   game's colour, set on the page. The header fades from a third of it to nothing, and the cover
+   glows in two thirds of it. The glow's names and the fixed drop shadow under it are spec
+   Decision 5's `glow-cover`, still for Cowork: the values are the screen's own. */
+@utility bg-cover-fade {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--cover-tint) 33%, transparent) 0%,
+    transparent 100%
+  );
+}
+/* The big cover (desktop): the glow, then the drop shadow of the dark theme in every theme. */
+@utility shadow-cover-hero {
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--cover-tint) 66%, transparent),
+    0 24px 64px #0000008c;
+}
+/* The small cover (phone): the glow alone. */
+@utility shadow-cover-glow {
+  box-shadow: 0 0 40px color-mix(in srgb, var(--cover-tint) 66%, transparent);
+}

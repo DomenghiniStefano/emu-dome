@@ -18,7 +18,11 @@ let watching = false
 export function watchInput() {
   if (watching) return
   watching = true
-  window.addEventListener('keydown', () => (inputMode.value = 'keyboard'), { capture: true })
+  // Only a real key press: nav.ts sends a controller step to a design-system primitive as a key
+  // event of its own (untrusted), and the controller must stay the input in use.
+  window.addEventListener('keydown', e => e.isTrusted && (inputMode.value = 'keyboard'), {
+    capture: true,
+  })
   window.addEventListener(
     'pointerdown',
     e => (inputMode.value = e.pointerType === 'touch' ? 'touch' : 'keyboard'),

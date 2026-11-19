@@ -1,0 +1,89 @@
+// Quick saves in the menu (G07, G08): the slots, the one chosen, Carica and Salva, and the line
+// «Salvato nello slot N · Annulla» a save made here leaves until the next choice.
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { AUTO_SLOT, emu, type SlotInfo } from '@/emu'
+import { errorText } from '@/i18n/labels'
+import { isEmptySlot } from './slots'
+
+export interface QuickSlotsOptions {
+  /** The number of slots `saves.slots` asks for. */
+  count: () => number
+  /** The slot the controller shortcuts use: chosen when the menu opens. */
+  initial: number
+  onSave: (slot: number) => void
+  onLoad: (slot: number) => void
+  onError: (text: string) => void
+}
+
+export function useQuickSlots(o: QuickSlotsOptions) {
+  const slots = ref<SlotInfo[]>([])
+  const chosen = ref(o.initial)
+  /** The slot a save made here went to, while its «Annulla» is offered. */
+  const savedSlot = ref<number | null>(null)
+  /** The slot a save asked here is going to, until its event arrives. */
+  let saving: number | null = null
+
+  async function load() {
+    try {
+      slots.value = await emu.listSlots(o.count())
+    } catch (e) {
+      o.onError(errorText(e))
+    }
+  }
+
+  const chosenEmpty = computed(() => isEmptySlot(slots.value.find(s => s.slot === chosen.value)))
+  const autoChosen = computed(() => chosen.value === AUTO_SLOT)
+
+  function pick(slot: number) {
+    chosen.value = slot
+    savedSlot.value = null
+  }
+  function save() {
+    saving = chosen.value
+    savedSlot.value = null
+    o.onSave(chosen.value)
+  }
+  /** Carica loads and resumes at once (App.vue shows G17). */
+  function loadChosen() {
+    if (!chosenEmpty.value) o.onLoad(chosen.value)
+  }
+  async function undoSave() {
+    try {
+      await emu.undoSave()
+    } catch (e) {
+      o.onError(errorText(e))
+    }
+  }
+
+  let unlisten: (() => void) | null = null
+  /** A save done here or with a shortcut: refresh the dates and thumbnails. */
+  async function follow() {
+    unlisten = await emu.onEvent(ev => {
+      if (ev.type === 'stateSaved') {
+        if (ev.slot === saving) savedSlot.value = ev.slot
+        saving = null
+        void load()
+      }
+      if (ev.type === 'saveUndone') {
+        savedSlot.value = null
+        void load()
+      }
+      if (ev.type === 'error') saving = null
+    })
+  }
+  onBeforeUnmount(() => unlisten?.())
+
+  return {
+    slots,
+    chosen,
+    chosenEmpty,
+    autoChosen,
+    savedSlot,
+    load,
+    pick,
+    save,
+    loadChosen,
+    undoSave,
+    follow,
+  }
+}

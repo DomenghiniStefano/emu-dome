@@ -26,5 +26,12 @@ export default withVueTs(
     files: ['src/**'],
     languageOptions: { globals: globals.browser },
   },
+  {
+    // The design system's primitives are one word each (Button.vue, Card.vue), as shadcn-vue names
+    // them. The rule exists to avoid clashing with HTML elements; a folder of primitives imported
+    // by name (`import { Button } from '@/components/ui/button'`) is where single words belong.
+    files: ['src/components/ui/**/*.vue'],
+    rules: { 'vue/multi-word-component-names': 'off' },
+  },
   prettier,
 )

@@ -1,6 +1,6 @@
-// Where the game is drawn, shared by the screens that depend on it: App.vue sets it (startup,
-// the quick menu's «Metodo di visualizzazione»), the settings rows read it (the screen effects
-// exist only on the Accelerated method, X05).
+// Where the game is drawn, shared by the screens that depend on it: `useVideoMode` sets it
+// (startup, the quick menu's «Metodo di visualizzazione»), the settings rows read it (the
+// screen effects exist only on the Accelerated method, X05).
 import { ref } from 'vue'
 import type { VideoMode } from './emu'
 

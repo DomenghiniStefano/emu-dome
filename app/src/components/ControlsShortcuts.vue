@@ -5,7 +5,9 @@
 // swap them. The rows come from `DEFAULT_COMBOS` (Rust): the reserved ones, whose feature does
 // not exist yet, show their button with a badge and cannot be changed.
 // On the keyboard the shortcuts are the fixed keys of keyboard.ts, listed read-only.
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+//
+// Off the design system's scales (Cowork): the note's 12px text on the 18px line.
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   emu,
@@ -15,16 +17,19 @@ import {
   type PadFamily,
   type PadState,
   type Pos,
-  type SettingEntry,
   type SettingRow,
   type SettingsSchema,
-  type SettingValue,
 } from '../emu'
 import { errorText } from '../i18n/labels'
 import { combosList, comboText, hotkeyName, keyName, posName, useCapture } from '../controls'
 import type { CaptureDevice } from '../controls'
 import { KEYBOARD_SHORTCUTS } from '../keyboard'
+import { CaptureField, CaptureFieldVariant } from '@/components/ui/capture-field'
+import { Card, CardVariant } from '@/components/ui/card'
 import SettingRowView from './SettingRow.vue'
+import ConflictBanner from './controls/ConflictBanner.vue'
+import ShortcutRow from './controls/ShortcutRow.vue'
+import { useGlobalSettings } from './controls/useGlobalSettings'
 
 const props = defineProps<{
   family: PadFamily
@@ -35,43 +40,26 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
+const onError = (text: string) => emit('error', text)
+const settings = useGlobalSettings(onError)
 
-const GLOBAL = { level: 'global' } as const
-
-const rows = ref<ComboRow[]>([])
-const modifier = ref<Pos>('l3')
-async function load() {
-  // The keyboard has no controller shortcuts: the names are those of a generic pad.
-  const family = props.family === 'keyboard' ? 'generic' : props.family
-  try {
-    const b = await emu.controls.bindings(family, GLOBAL)
-    rows.value = b.combos
-    modifier.value = b.modifier
-  } catch (e) {
-    emit('error', errorText(e))
-  }
-}
+/** The keyboard has no controller shortcuts: the names are those of a generic pad. */
 const padFamily = computed<PadFamily>(() =>
   props.family === 'keyboard' ? 'generic' : props.family,
 )
+const rows = ref<ComboRow[]>([])
+const modifier = ref<Pos>('l3')
+async function load() {
+  try {
+    const b = await emu.controls.bindings(padFamily.value, { level: 'global' })
+    rows.value = b.combos
+    modifier.value = b.modifier
+  } catch (e) {
+    onError(errorText(e))
+  }
+}
 
-const modEntry = computed<SettingEntry | undefined>(() =>
-  props.schema.entries.find(e => e.key === 'pad.mod'),
-)
-async function setSetting(key: string, value: SettingValue) {
-  try {
-    await emu.settings.set(key, GLOBAL, value)
-  } catch (e) {
-    emit('error', errorText(e))
-  }
-}
-async function resetSetting(key: string) {
-  try {
-    await emu.settings.reset(key, GLOBAL)
-  } catch (e) {
-    emit('error', errorText(e))
-  }
-}
+const modEntry = computed(() => props.schema.entries.find(e => e.key === 'pad.mod'))
 
 // ---- Capture and swap ----
 interface Conflict {
@@ -99,8 +87,8 @@ function change(hotkey: HotkeyId) {
 async function write(changes: Partial<Record<HotkeyId, Pos | null>>) {
   const list = combosList(rows.value, changes)
   if (list.length === 0 && props.globalRows['pad.combos']?.source === 'global')
-    await resetSetting('pad.combos')
-  else await setSetting('pad.combos', list)
+    await settings.reset('pad.combos')
+  else await settings.set('pad.combos', list)
 }
 
 async function assign(hotkey: HotkeyId, pos: Pos) {
@@ -109,8 +97,6 @@ async function assign(hotkey: HotkeyId, pos: Pos) {
   const other = rows.value.find(r => r.hotkey !== hotkey && r.pos === pos)
   if (other) {
     conflict.value = { hotkey, other: other.hotkey, pos }
-    await nextTick()
-    document.querySelector<HTMLElement>('[data-conflict-swap]')?.focus()
     return
   }
   await write({ [hotkey]: pos })
@@ -124,7 +110,14 @@ async function swap() {
 }
 
 /** The badge of a reserved row: «In arrivo», or «Con Nintendo DS». */
-const badge = (status: HotkeyStatus) => (status === 'later' ? 'soon' : 'nds')
+const badgeOf = (status: HotkeyStatus) =>
+  status === 'active' ? undefined : t(`controls.badge.${status === 'later' ? 'soon' : 'nds'}`)
+/** What a row says to press: the countdown while it listens, the menu's Home beside its combo. */
+function comboOf(r: ComboRow): string {
+  if (capture.target.value === r.hotkey) return t('controls.pressButton', { n: capture.left.value })
+  const combo = comboText(padFamily.value, modifier.value, r.pos)
+  return r.hotkey === 'menu' ? t('controls.menuCombo', { combo }) : combo
+}
 /** Fullscreen has no controller shortcut: its key, from the keyboard table. */
 const fullscreenKey = keyName(KEYBOARD_SHORTCUTS.find(k => k.action === 'fullscreen')?.code ?? '')
 
@@ -139,9 +132,9 @@ onBeforeUnmount(() => unlisten?.())
 </script>
 
 <template>
-  <div class="shortcuts">
+  <div class="flex flex-col gap-12">
     <template v-if="family !== 'keyboard'">
-      <div v-if="modEntry" class="card mod">
+      <Card v-if="modEntry" :variant="CardVariant.List" class="pb-12">
         <SettingRowView
           :entry="modEntry"
           :row="globalRows['pad.mod']"
@@ -149,156 +142,65 @@ onBeforeUnmount(() => unlisten?.())
           level="global"
           :level-name="() => t('settingsUi.scope.global')"
           :scoped="false"
-          @set="v => setSetting('pad.mod', v)"
-          @reset="resetSetting('pad.mod')"
-          @error="text => emit('error', text)"
+          @set="v => settings.set('pad.mod', v)"
+          @reset="settings.reset('pad.mod')"
+          @error="onError"
         />
-        <p class="note">{{ t('controls.modNote') }}</p>
-      </div>
+        <p class="m-0 px-16 text-caption leading-[18px] text-ink-muted">
+          {{ t('controls.modNote') }}
+        </p>
+      </Card>
 
-      <div class="card list">
+      <Card :variant="CardVariant.List">
         <template v-for="(r, i) in rows" :key="r.hotkey">
-          <div class="tr" :class="{ later: r.status !== 'active' }">
-            <span class="action">{{ hotkeyName(r.hotkey) }}</span>
-            <span class="combo num">
-              <span v-if="r.status !== 'active'" class="badge">
-                {{ t(`controls.badge.${badge(r.status)}`) }}
-              </span>
-              <template v-if="capture.target.value === r.hotkey">
-                {{ t('controls.pressButton', { n: capture.left.value }) }}
-              </template>
-              <template v-else-if="r.hotkey === 'menu'">
-                {{ t('controls.menuCombo', { combo: comboText(padFamily, modifier, r.pos) }) }}
-              </template>
-              <template v-else>{{ comboText(padFamily, modifier, r.pos) }}</template>
-            </span>
-            <span v-if="r.status !== 'active'"></span>
-            <button
-              v-else
-              class="ghost"
-              :class="{ listening: capture.target.value === r.hotkey }"
-              :data-nav-initial="i === 0 ? '' : undefined"
-              :aria-label="t('controls.changeShortcut', { action: hotkeyName(r.hotkey) })"
-              @click="change(r.hotkey)"
-            >
-              {{ t('controls.change') }}
-            </button>
-          </div>
-          <div v-if="conflict && conflict.hotkey === r.hotkey" class="conflict" role="alert">
-            <span class="conflict-text">
-              {{
-                t('controls.comboConflict', {
-                  source: posName(padFamily, conflict.pos, false),
-                  action: hotkeyName(conflict.other),
-                })
-              }}
-            </span>
-            <button class="btn" data-conflict-swap @click="swap">{{ t('controls.swap') }}</button>
-            <button class="btn" @click="conflict = null">{{ t('controls.cancel') }}</button>
-          </div>
+          <ShortcutRow
+            :action="hotkeyName(r.hotkey)"
+            :muted="r.status !== 'active'"
+            :badge="badgeOf(r.status)"
+          >
+            {{ comboOf(r) }}
+            <template #change>
+              <span v-if="r.status !== 'active'"></span>
+              <CaptureField
+                v-else
+                :variant="CaptureFieldVariant.Quiet"
+                :listening="capture.target.value === r.hotkey"
+                :data-nav-initial="i === 0 ? '' : undefined"
+                :aria-label="t('controls.changeShortcut', { action: hotkeyName(r.hotkey) })"
+                @click="change(r.hotkey)"
+              >
+                {{ t('controls.change') }}
+              </CaptureField>
+            </template>
+          </ShortcutRow>
+          <ConflictBanner
+            v-if="conflict && conflict.hotkey === r.hotkey"
+            :text="
+              t('controls.comboConflict', {
+                source: posName(padFamily, conflict.pos, false),
+                action: hotkeyName(conflict.other),
+              })
+            "
+            @swap="swap"
+            @cancel="conflict = null"
+          />
         </template>
-        <div class="tr later">
-          <span class="action">{{ t('controls.keys.fullscreen') }}</span>
-          <span class="combo num">{{ t('controls.keyboardOnly', { key: fullscreenKey }) }}</span>
-          <span></span>
-        </div>
-      </div>
+        <ShortcutRow :action="t('controls.keys.fullscreen')" muted>
+          {{ t('controls.keyboardOnly', { key: fullscreenKey }) }}
+        </ShortcutRow>
+      </Card>
     </template>
 
-    <div v-else class="card list">
-      <div
+    <Card v-else :variant="CardVariant.List">
+      <ShortcutRow
         v-for="k in KEYBOARD_SHORTCUTS"
         :key="k.code"
-        class="tr"
-        :class="{ later: k.status !== 'active' }"
+        :action="hotkeyName(k.action)"
+        :muted="k.status !== 'active'"
+        :badge="k.status !== 'active' ? t('controls.badge.soon') : undefined"
       >
-        <span class="action">{{ hotkeyName(k.action) }}</span>
-        <span class="combo num">
-          <span v-if="k.status !== 'active'" class="badge">{{ t('controls.badge.soon') }}</span>
-          <kbd>{{ keyName(k.code) }}</kbd>
-        </span>
-        <span></span>
-      </div>
-    </div>
+        <kbd>{{ keyName(k.code) }}</kbd>
+      </ShortcutRow>
+    </Card>
   </div>
 </template>
-
-<style scoped>
-.shortcuts {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.card {
-  border-radius: var(--radius-10);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  overflow: hidden;
-}
-.mod {
-  padding: 0 0 12px;
-}
-.note {
-  margin: 0;
-  padding: 0 16px;
-  font-size: 12px;
-  color: var(--ink-muted);
-}
-.tr {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 72px;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  border-top: 1px solid var(--line);
-}
-.tr:first-child {
-  border-top: 0;
-}
-.combo {
-  min-width: 150px;
-  text-align: right;
-  font-weight: 600;
-  display: inline-flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-.later .action {
-  color: var(--ink-muted);
-}
-.badge {
-  font-size: 11px;
-  font-weight: 500;
-  padding: 0 6px;
-  border-radius: 4px;
-  border: 1px dashed var(--line-strong);
-  color: var(--ink-muted);
-}
-.ghost {
-  height: 28px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: var(--radius-6);
-  background: none;
-  color: var(--ink-muted);
-}
-.ghost:hover {
-  background: var(--surface-hover);
-}
-.ghost.listening {
-  color: var(--accent-text);
-  outline: 1px dashed var(--accent-text);
-}
-.conflict {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: color-mix(in srgb, var(--warning) 10%, transparent);
-  border-top: 1px solid color-mix(in srgb, var(--warning) 33%, transparent);
-}
-.conflict-text {
-  flex: 1;
-}
-</style>

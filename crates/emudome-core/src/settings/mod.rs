@@ -17,6 +17,7 @@
 //! Pure logic and file I/O only: the Tauri commands are in `app/src-tauri/src/settings.rs`.
 
 mod catalog;
+pub mod core_values;
 pub mod schema;
 mod store;
 
