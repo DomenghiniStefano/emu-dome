@@ -466,6 +466,9 @@ const detailsTab = (n) =>
 // The tab row at the top of the window, so a tab's content is in the shot.
 const toTabs = `document.querySelector('[role=tablist]').scrollIntoView({ block: 'start' })`;
 const showFocus = `document.documentElement.setAttribute('data-nav', '')`;
+// The details page's own scroller (the tab row's nearest scrolling ancestor) scrolled to `top`.
+const detailsScroll = (top) =>
+  `(() => { let el = document.querySelector('[role=tablist]')?.parentElement; while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement; el?.scrollTo(0, ${top}); return !!el })()`;
 const filled = { gameSaves: true, gameOverrides: true };
 const tabState = (title, tab, mock = {}) => ({
   mock,
@@ -493,8 +496,17 @@ const DETAILS_STATES = {
       `document.querySelector('[aria-haspopup=menu]').click()`,
     ],
   },
-  // The focus ring on «Riprendi» (focused on opening), then on a tab (of a short tab: a long one
-  // squeezes the tab row to nothing at the small window, a bug of its own).
+  // The details page scrolled by 300 px and to the bottom: the tab row keeps its height
+  // (Trello #64: it used to shrink to its scrollbar once the page scrolled).
+  "scroll-300": {
+    mock: filled,
+    steps: [openDetails("Pocket Quest Advance"), detailsScroll("300")],
+  },
+  "scroll-end": {
+    mock: filled,
+    steps: [openDetails("Pocket Quest Advance"), detailsScroll("1e6")],
+  },
+  // The focus ring on «Riprendi» (focused on opening), then on a tab.
   focus: {
     mock: filled,
     steps: [openDetails("Pocket Quest Advance"), showFocus],
@@ -532,6 +544,8 @@ for (const [state, s] of Object.entries({
   controls: tabState("Dual Screen Tales", 2, filled),
   cheats: tabState("Star Pilot", 3),
   files: tabState("Pocket Quest Advance", 5),
+  "scroll-300": DETAILS_STATES["scroll-300"],
+  "scroll-end": DETAILS_STATES["scroll-end"],
   menu: {
     mock: {},
     steps: [
