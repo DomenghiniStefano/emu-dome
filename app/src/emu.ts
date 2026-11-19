@@ -364,6 +364,15 @@ export interface SettingsChanged {
   level: SettingLevel
 }
 
+/**
+ * Payload of `emu://core-restart` (mirror of `CoreRestart` in src-tauri/src/core_settings.rs):
+ * the settings whose new value the open game's core takes only when the game is opened again.
+ * Sent whenever the list changes; empty = nothing waits any more.
+ */
+export interface CoreRestart {
+  settings: string[]
+}
+
 // ---- Library (mirrors of crates/emudome-core/src/library and src-tauri/src/library.rs) ----
 
 /**
@@ -615,6 +624,9 @@ export const emu = {
       invoke<boolean>('settings_choose_background', { scope }),
     onChanged: (cb: (e: SettingsChanged) => void): Promise<UnlistenFn> =>
       listen<SettingsChanged>('settings://changed', e => cb(e.payload)),
+    /** Settings that wait for the game to be opened again (`emu://core-restart`). */
+    onCoreRestart: (cb: (e: CoreRestart) => void): Promise<UnlistenFn> =>
+      listen<CoreRestart>('emu://core-restart', e => cb(e.payload)),
   },
   /** EmuDome's version (tauri.conf.json). */
   appVersion: () => getVersion(),

@@ -19,6 +19,7 @@ use crate::error::ErrorCode;
 use crate::frame::Frame;
 use crate::input::InputState;
 use crate::rewind::Rewind;
+use crate::speed_audio::{FastAudio, SpeedAudio, SpeedMeter};
 
 /// Emulation speed.
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -69,6 +70,8 @@ pub enum Command {
     Rewind(bool),
     /// `speed.rew` / `speed.rewlen` changed: seconds to keep, `None` = rewind off.
     SetRewindLength(Option<u32>),
+    /// `audio.ff` changed: what the audio does at speeds other than 1×.
+    SetFastAudio(FastAudio),
     /// Saves the frame on screen as a PNG next to the saves ([`crate::screenshot`]).
     Screenshot,
     Stop,
@@ -139,6 +142,19 @@ pub struct Shared {
     pub stats: Mutex<Stats>,
     /// «Muto» in the quick menu: the audio output plays silence for this game.
     pub muted: std::sync::atomic::AtomicBool,
+    /// The options the core declared (empty until it does), sorted by key.
+    pub core_options: Mutex<Vec<CoreOptionInfo>>,
+}
+
+/// One option as the running core declares it (`SET_VARIABLES` / `SET_CORE_OPTIONS*`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoreOptionInfo {
+    pub key: String,
+    /// The core's own label, in English (not for the interface: it shows `settings.*` texts).
+    pub label: String,
+    /// Accepted values, in the core's order (empty = any).
+    pub values: Vec<String>,
+    pub default: String,
 }
 
 pub struct SessionOptions {
@@ -163,6 +179,8 @@ pub struct SessionOptions {
     pub core_options: Vec<(String, String)>,
     /// Rewind (`speed.rew`): the seconds to keep (`speed.rewlen`), `None` = off.
     pub rewind_seconds: Option<u32>,
+    /// The audio at speeds other than 1× (`audio.ff`).
+    pub fast_audio: FastAudio,
 }
 
 /// One quick save slot of a game, for the quick menu (G07).
@@ -293,6 +311,8 @@ fn emu_thread(
         system_dir: to_c(&opts.system_dir),
         save_dir: to_c(&opts.save_dir),
         audio_enabled: true,
+        speed_audio: SpeedAudio::new(opts.fast_audio),
+        audio_out: Vec::new(),
         options: CoreOptions::new(opts.core_options.iter().cloned()),
     });
 
@@ -362,6 +382,9 @@ fn emu_thread(
         60.0
     };
     let mut speed = Speed::Factor(1.0);
+    let mut fast_audio = opts.fast_audio;
+    // The speed at Max, measured for the audio.
+    let mut meter = SpeedMeter::new(base_fps, Instant::now());
     let mut paused = false;
     let mut rewind = Rewind::new(opts.rewind_seconds, base_fps);
     let mut rewinding = false;
@@ -429,8 +452,9 @@ fn emu_thread(
                 Command::SetSpeed(s) => {
                     log::info!("pacing: speed set to {s:?}");
                     speed = s;
-                    callbacks::set_audio_enabled(s.is_normal());
-                    if !s.is_normal() {
+                    meter = SpeedMeter::new(base_fps, Instant::now());
+                    callbacks::set_audio_speed(audio_speed(s));
+                    if !s.is_normal() && fast_audio == FastAudio::Mute {
                         shared.audio.lock().samples.clear();
                     }
                     shared.stats.lock().speed = Some(s);
@@ -519,11 +543,15 @@ fn emu_thread(
                 Command::Rewind(on) => {
                     if on != rewinding {
                         rewinding = on;
-                        // Silence while going back; the speed decides again afterwards.
-                        callbacks::set_audio_enabled(!on && speed.is_normal());
+                        // Silence while going back.
+                        callbacks::set_audio_enabled(!on);
                         shared.audio.lock().samples.clear();
                         shared.stats.lock().rewinding = on;
                     }
+                }
+                Command::SetFastAudio(policy) => {
+                    fast_audio = policy;
+                    callbacks::set_fast_audio(policy);
                 }
                 Command::SetRewindLength(seconds) => {
                     rewind.set_seconds(seconds);
@@ -581,6 +609,13 @@ fn emu_thread(
             }
         }
 
+        // At Max the audio follows the measured speed.
+        if speed == Speed::Max {
+            if let Some(s) = meter.frame(Instant::now()) {
+                callbacks::set_audio_speed(Some(s));
+            }
+        }
+
         // Emulation FPS.
         if let Some(rate) = fps.frame(Instant::now()) {
             shared.stats.lock().emu_fps = rate;
@@ -627,6 +662,14 @@ fn emu_thread(
     drop(core);
     callbacks::clear();
     let _ = events.send(Event::Stopped);
+}
+
+/// The speed the audio is made at: the factor, or None at Max until it is measured.
+fn audio_speed(speed: Speed) -> Option<f64> {
+    match speed {
+        Speed::Factor(f) => Some(f64::from(f)),
+        Speed::Max => None,
+    }
 }
 
 /// Emulated frames per second, measured over windows of at least one second of running game.
