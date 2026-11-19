@@ -5,6 +5,8 @@ import {
   cardPreview,
   chosenFileName,
   chosenList,
+  descNotes,
+  offeredOptions,
   rowState,
   rowValue,
   swatchKey,
@@ -127,5 +129,43 @@ describe('chosenFileName', () => {
     expect(chosenFileName('')).toBe('')
     expect(chosenFileName(null)).toBe('')
     expect(chosenFileName(true)).toBe('')
+  })
+})
+
+describe('descNotes', () => {
+  const locked = { reason: 'settingsUi.lockedGlobal', notYet: false }
+
+  it('puts the lock reason before the row’s words, unless the page already says it once', () => {
+    expect(descNotes(locked, false)).toEqual({ reason: 'settingsUi.lockedGlobal', notYet: false })
+    expect(descNotes(locked, true)).toEqual({ reason: null, notYet: false })
+    const desktop = { reason: 'settingsUi.lockedDesktop', notYet: false }
+    expect(descNotes(desktop, true).reason).toBe('settingsUi.lockedDesktop')
+  })
+
+  it('says «Arriva…» only for a row nothing locks', () => {
+    expect(descNotes({ reason: null, notYet: true }, false)).toEqual({ reason: null, notYet: true })
+    expect(descNotes({ ...locked, notYet: true }, false).notYet).toBe(false)
+    // The lock is still there when the page says it: the row does not claim it is coming either.
+    expect(descNotes({ ...locked, notYet: true }, true)).toEqual({ reason: null, notYet: false })
+  })
+})
+
+describe('offeredOptions', () => {
+  it('drops the options of another device, and has none for a row that is not a choice', () => {
+    const choice = entry({
+      kind: {
+        type: 'choice',
+        style: 'cards',
+        options: ['black', 'blur', 'image'],
+        moreAtRuntime: false,
+      },
+      hiddenOptions: ['blur'],
+    })
+    expect(offeredOptions(choice)).toEqual(['black', 'image'])
+    expect(offeredOptions(entry({ kind: { type: 'multi', options: ['a', 'b'] } }))).toEqual([
+      'a',
+      'b',
+    ])
+    expect(offeredOptions(entry())).toEqual([])
   })
 })

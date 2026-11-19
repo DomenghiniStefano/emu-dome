@@ -7,6 +7,7 @@ import { useListeners } from '@/composables/useListeners'
 import { onSettingsChanged, settingsUnder } from '@/composables/useSettingsChanged'
 import type { ErrorSink } from '@/i18n/labels'
 import { GLOBAL, loadSchema } from '@/lib/settingsModel'
+import { padChanged, padConnected, padGone } from './devices'
 
 export function useControlsData(options: {
   onError: ErrorSink
@@ -28,8 +29,14 @@ export function useControlsData(options: {
   }
 
   const listeners = useListeners()
+  // Closed while still loading: the live state must not be switched on after it was switched off.
+  let closed = false
   onMounted(async () => {
-    schema.value = await loadSchema()
+    try {
+      schema.value = await loadSchema()
+    } catch (e) {
+      options.onError(e)
+    }
     await loadGlobal()
     try {
       pads.value = await emu.controls.pads()
@@ -37,22 +44,21 @@ export function useControlsData(options: {
       options.onError(e)
     }
     await listeners.add(
-      emu.onGamepadConnected(p => {
-        if (!pads.value.some(x => x.id === p.id)) pads.value = [...pads.value, p]
-      }),
+      emu.onGamepadConnected(p => (pads.value = padConnected(pads.value, p))),
       emu.onGamepadDisconnected(p => {
-        pads.value = pads.value.filter(x => x.id !== p.id)
+        pads.value = padGone(pads.value, p.id)
         options.onPadGone(p.id)
       }),
-      emu.onGamepadChanged(p => {
-        pads.value = pads.value.map(x => (x.id === p.id ? p : x))
-      }),
+      emu.onGamepadChanged(p => (pads.value = padChanged(pads.value, p))),
       emu.controls.onPadState(s => (states.value = s)),
       onSettingsChanged(settingsUnder('pad.'), () => void loadGlobal()),
     )
-    await emu.controls.watch(true)
+    if (!closed) await emu.controls.watch(true)
   })
-  onBeforeUnmount(() => void emu.controls.watch(false))
+  onBeforeUnmount(() => {
+    closed = true
+    void emu.controls.watch(false)
+  })
 
   return { schema, globalRows, pads, states }
 }

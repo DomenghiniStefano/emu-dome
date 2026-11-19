@@ -7,10 +7,12 @@ import type {
   SettingEntry,
   SettingRow,
   SettingsSchema,
+  SettingsScope,
   SettingValue,
 } from '@/emu'
 import { cycle } from '@/lib/cycle'
-import { fold, isShown, showIfHolds } from '@/lib/settingsModel'
+import type { GameScope } from '@/lib/gameDetails'
+import { fold, isShown, pageLevels, showIfHolds } from '@/lib/settingsModel'
 
 /** The levels the Settings section edits (Session is the quick menu's). */
 export type EditLevel = 'global' | 'console' | 'game'
@@ -43,6 +45,41 @@ export function lastPlayedConsole(games: LibraryGame[]): ConsoleId | null {
 /** The level `dir` steps away from `current`, round the list (L1 / R1); null with one level. */
 export function stepLevel(levels: EditLevel[], current: EditLevel, dir: -1 | 1): EditLevel | null {
   return levels.length < 2 ? null : cycle(levels, current, dir)
+}
+
+/** «Solo questo gioco» is offered: the section opened for a game and the page has entries it can
+ * change. */
+export function offersGameLevel(entries: SettingEntry[], forGame: boolean): boolean {
+  return forGame && entries.some(e => e.levels.includes('game'))
+}
+
+/** The levels of a page's scope bar: «Tutti i giochi», the console's when the page has settings per
+ * console and a console is chosen, the game's when `offersGameLevel`. */
+export function scopeLevels(
+  entries: SettingEntry[],
+  console: ConsoleId | null,
+  forGame: boolean,
+): EditLevel[] {
+  const out: EditLevel[] = ['global']
+  if (pageLevels(entries).has('console') && console) out.push('console')
+  if (offersGameLevel(entries, forGame)) out.push('game')
+  return out
+}
+
+/** The level in effect: the one chosen, when the page has it, else «Tutti i giochi». */
+export function effectiveLevel(levels: EditLevel[], chosen: EditLevel): EditLevel {
+  return levels.includes(chosen) ? chosen : 'global'
+}
+
+/** The scope a level edits, with the console and the game it is for. */
+export function scopeAt(
+  level: EditLevel,
+  console: ConsoleId | null,
+  game: GameScope | null,
+): SettingsScope {
+  if (level === 'game' && game) return game
+  if (level === 'console' && console) return { level: 'console', console }
+  return { level: 'global' }
 }
 
 /** The schema's entries shown on page `page` (later phases stay hidden). */

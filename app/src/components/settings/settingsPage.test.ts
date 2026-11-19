@@ -2,10 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import type { LibraryGame, SettingEntry, SettingsSchema } from '@/emu'
 import {
   changedCount,
+  effectiveLevel,
   lastPlayedConsole,
+  offersGameLevel,
   pageSections,
   RESULTS,
+  scopeAt,
   scopeConsoles,
+  scopeLevels,
   searchSections,
   stepLevel,
   type PageValues,
@@ -123,5 +127,39 @@ describe('levels and consoles', () => {
   it('finds the console played last', () => {
     expect(lastPlayedConsole([game('gb', 5), game('nds', 9), game('gba', null)])).toBe('nds')
     expect(lastPlayedConsole([game('gba', null)])).toBeNull()
+  })
+})
+
+describe('the scope bar', () => {
+  const globalOnly = entry('general.theme', { levels: ['default', 'global'] })
+  const perConsole = entry('video.fps')
+  const perGame = entry('video.scale', { levels: ['default', 'global', 'game'] })
+  const zelda = { level: 'game', console: 'gba', game: 'gba:01' } as const
+
+  it('offers «Solo questo gioco» only for a game, on a page it can change', () => {
+    expect(offersGameLevel([perGame], true)).toBe(true)
+    expect(offersGameLevel([perGame], false)).toBe(false)
+    expect(offersGameLevel([perConsole, globalOnly], true)).toBe(false)
+  })
+
+  it('lists the console’s level only with settings per console and a console chosen', () => {
+    expect(scopeLevels([globalOnly], 'gba', true)).toEqual(['global'])
+    expect(scopeLevels([perConsole], null, false)).toEqual(['global'])
+    expect(scopeLevels([perConsole], 'gba', false)).toEqual(['global', 'console'])
+    expect(scopeLevels([perConsole, perGame], 'gba', true)).toEqual(['global', 'console', 'game'])
+    expect(scopeLevels([perGame], 'gba', true)).toEqual(['global', 'game'])
+  })
+
+  it('falls back to «Tutti i giochi» when the page has not the level chosen', () => {
+    expect(effectiveLevel(['global', 'console'], 'console')).toBe('console')
+    expect(effectiveLevel(['global', 'console'], 'game')).toBe('global')
+  })
+
+  it('edits the game’s or the console’s scope only when it has one', () => {
+    expect(scopeAt('game', 'gb', zelda)).toEqual(zelda)
+    expect(scopeAt('game', 'gb', null)).toEqual({ level: 'global' })
+    expect(scopeAt('console', 'gb', zelda)).toEqual({ level: 'console', console: 'gb' })
+    expect(scopeAt('console', null, null)).toEqual({ level: 'global' })
+    expect(scopeAt('global', 'gb', zelda)).toEqual({ level: 'global' })
   })
 })

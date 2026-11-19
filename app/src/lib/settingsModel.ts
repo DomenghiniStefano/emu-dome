@@ -16,9 +16,12 @@ import { nativeAvailable, videoMode } from './videoMode'
 
 let schemaPromise: Promise<SettingsSchema> | null = null
 
-/** The schema, asked once per app run (it is static). */
+/** The schema, asked once per app run (it is static). A read that fails is asked again next time. */
 export function loadSchema(): Promise<SettingsSchema> {
-  schemaPromise ??= emu.settings.schema()
+  schemaPromise ??= emu.settings.schema().catch((e: unknown) => {
+    schemaPromise = null
+    throw e
+  })
   return schemaPromise
 }
 

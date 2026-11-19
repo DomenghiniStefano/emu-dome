@@ -14,7 +14,16 @@ import {
 import type { GameFocus } from '@/lib/gameDetails'
 import { library } from '@/lib/library'
 import { pageLevels } from '@/lib/settingsModel'
-import { lastPlayedConsole, scopeConsoles, stepLevel, type EditLevel } from './settingsPage'
+import {
+  effectiveLevel,
+  lastPlayedConsole,
+  offersGameLevel,
+  scopeAt,
+  scopeConsoles,
+  scopeLevels,
+  stepLevel,
+  type EditLevel,
+} from './settingsPage'
 
 export function useSettingsScope(pageEntries: Ref<SettingEntry[]>, gameFocus: GameFocus | null) {
   const { t } = useI18n()
@@ -58,28 +67,18 @@ export function useSettingsScope(pageEntries: Ref<SettingEntry[]>, gameFocus: Ga
     level.value = 'console'
   }
 
-  /** The page has entries «Solo questo gioco» can change, and the section opened for a game. */
-  const gameLevel = computed(
-    () => !!gameFocus && pageEntries.value.some(e => e.levels.includes('game')),
-  )
+  const forGame = !!gameFocus
   /** The page has settings per console or per game: the scope bar is shown. */
-  const scoped = computed(() => pageLevels(pageEntries.value).has('console') || gameLevel.value)
-  const levels = computed<EditLevel[]>(() => {
-    const out: EditLevel[] = ['global']
-    if (pageLevels(pageEntries.value).has('console') && contextConsole.value) out.push('console')
-    if (gameLevel.value) out.push('game')
-    return out
-  })
-  /** The level in effect: the one chosen, when this page has it. */
-  const effective = computed<EditLevel>(() =>
-    levels.value.includes(level.value) ? level.value : 'global',
+  const scoped = computed(
+    () =>
+      pageLevels(pageEntries.value).has('console') || offersGameLevel(pageEntries.value, forGame),
   )
-  const scope = computed<SettingsScope>(() => {
-    if (effective.value === 'game' && gameFocus) return gameFocus.scope
-    if (effective.value === 'console' && contextConsole.value)
-      return { level: 'console', console: contextConsole.value }
-    return { level: 'global' }
-  })
+  const levels = computed(() => scopeLevels(pageEntries.value, contextConsole.value, forGame))
+  /** The level in effect: the one chosen, when this page has it. */
+  const effective = computed(() => effectiveLevel(levels.value, level.value))
+  const scope = computed<SettingsScope>(() =>
+    scopeAt(effective.value, contextConsole.value, gameFocus?.scope ?? null),
+  )
 
   /** The words of the scope bar for a level. */
   function levelName(l: SettingLevel): string {
