@@ -56,7 +56,8 @@ const line = computed(() => {
         class="flex cursor-pointer items-center gap-8 px-6 py-[1px] font-medium text-ink-muted"
       >
         {{ t('settingsUi.onlyChanged') }}
-        <Switch v-model="onlyChanged" />
+        <!-- no glow when on, unlike a setting's switch (as the bar's own switch was) -->
+        <Switch v-model="onlyChanged" class="data-[state=checked]:shadow-none" />
       </label>
     </div>
     <div

@@ -43,7 +43,8 @@ export const ButtonSize = {
   // Squares for an icon alone, at the two control heights.
   Icon: 'icon',
   IconSmall: 'iconSmall',
-  // 32px, 8px padding, the label at the start: an entry of a side list (ButtonVariant.NavItem).
+  // 32px, 8px side padding and none above or below (a squeezed column shrinks it to its text),
+  // the label at the start: an entry of a side list (ButtonVariant.NavItem).
   NavItem: 'navItem',
   // At least 56px, 8 / 16 padding, 16 between its parts: a list row (ButtonVariant.LinkRow).
   LinkRow: 'linkRow',
@@ -86,7 +87,7 @@ export const buttonVariants = cva(
         [ButtonSize.Large]: 'h-control-lg px-18 text-cta',
         [ButtonSize.Icon]: 'size-control p-0',
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
-        [ButtonSize.NavItem]: 'h-control gap-8 px-8',
+        [ButtonSize.NavItem]: 'h-control gap-8 px-8 py-0',
         [ButtonSize.LinkRow]: 'min-h-link-row gap-16 px-16 py-8',
       },
     },

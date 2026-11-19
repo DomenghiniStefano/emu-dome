@@ -7,8 +7,7 @@ import type { HTMLAttributes } from 'vue'
 import { computed } from 'vue'
 import { SliderRange, SliderRoot, SliderThumb, SliderTrack } from 'reka-ui'
 import { cn } from '@/lib/cn'
-import type { SliderVariant } from './variants'
-import { sliderRangeVariants, sliderTrackVariants } from './variants'
+import { fillPercent, SliderVariant, sliderRangeClass, sliderTrackVariants } from './variants'
 
 const props = withDefaults(
   defineProps<{
@@ -34,6 +33,8 @@ const values = computed({
     if (v?.[0] !== undefined) model.value = v[0]
   },
 })
+const edgeFill = computed(() => props.variant === SliderVariant.EdgeFill)
+const fill = computed(() => `${fillPercent(model.value, props.min, props.max)}%`)
 </script>
 
 <template>
@@ -54,8 +55,12 @@ const values = computed({
     "
     @value-commit="(v: number[]) => v[0] !== undefined && emit('commit', v[0])"
   >
-    <SliderTrack data-slot="slider-track" :class="sliderTrackVariants({ variant })">
-      <SliderRange data-slot="slider-range" :class="sliderRangeVariants({ variant })" />
+    <SliderTrack
+      data-slot="slider-track"
+      :class="sliderTrackVariants({ variant })"
+      :style="edgeFill ? { '--fill': fill } : undefined"
+    >
+      <SliderRange v-if="!edgeFill" data-slot="slider-range" :class="sliderRangeClass" />
     </SliderTrack>
     <SliderThumb
       data-slot="slider-thumb"

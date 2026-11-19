@@ -1,2 +1,2 @@
 export { default as Slider } from './Slider.vue'
-export { SliderVariant, sliderRangeVariants, sliderTrackVariants } from './variants'
+export { SliderVariant, fillPercent, sliderRangeClass, sliderTrackVariants } from './variants'

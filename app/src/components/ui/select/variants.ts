@@ -2,7 +2,7 @@ import { cva } from 'class-variance-authority'
 
 export const SelectTriggerVariant = {
   // The field showing the chosen option (SettingSelect `.field`): 200px at least, 32px high, an
-  // edge on surface-raised.
+  // edge on surface-raised, in the text colour around it.
   Field: 'field',
   // The choice inside a sentence or a title (Settings scope bar «Giochi <console> ▾»): no edge and
   // no fill until hovered, in the surrounding text's colour and semibold, 26px high and pulled
@@ -17,7 +17,7 @@ export const selectTriggerVariants = cva(
     variants: {
       variant: {
         [SelectTriggerVariant.Field]:
-          'h-control min-w-field border-line bg-surface-raised text-ink',
+          'h-control min-w-field border-line bg-surface-raised text-inherit',
         [SelectTriggerVariant.InTitle]:
           '-mt-[3px] -ml-10 h-[26px] min-w-0 border-transparent bg-transparent font-semibold text-inherit',
       },

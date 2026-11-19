@@ -2,8 +2,9 @@
 // A list choice (`sel` on the Settings board): a field with the current value that opens the
 // options in a small glass menu, on the Select primitive (Reka). B / Esc / a click outside close
 // it and the focus returns to the field. Also used by the first run (language) and by the scope
-// bar of Settings, where it sits in a level's title (`inTitle`).
-import { computed } from 'vue'
+// bar of Settings, where it sits in a level's title (`inTitle`): there the list hangs from the
+// title's block.
+import { computed, ref } from 'vue'
 import {
   Select,
   SelectContent,
@@ -22,13 +23,14 @@ const props = defineProps<{
   inTitle?: boolean
 }>()
 const emit = defineEmits<{ pick: [string] }>()
+const root = ref<HTMLElement | null>(null)
 
 /** The current option's text (the stored id when this device does not offer it). */
 const current = computed(() => props.options.find(o => o.id === props.value)?.text ?? props.value)
 </script>
 
 <template>
-  <div>
+  <div ref="root">
     <Select
       :model-value="value"
       :disabled="disabled"
@@ -40,7 +42,7 @@ const current = computed(() => props.options.find(o => o.id === props.value)?.te
       >
         <SelectValue>{{ current }}</SelectValue>
       </SelectTrigger>
-      <SelectContent :aria-label="label">
+      <SelectContent :aria-label="label" :anchor="inTitle ? root : null">
         <SelectItem v-for="o in options" :key="o.id" :value="o.id">{{ o.text }}</SelectItem>
       </SelectContent>
     </Select>
