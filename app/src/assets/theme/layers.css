@@ -3,13 +3,23 @@
    screens' others (5, 10, 30, 35) get theirs when cycle 2 migrates them.
    - raised: a panel or menu over its own screen (LibraryFilters, CoverMenu: 10);
    - menu: a menu open under its trigger (SettingSelectMenu: 20);
-   - dialog: a blocking dialog over everything (FlowDialog: 40). */
+   - overlay: what covers the screen without blocking it (the quick menu hint G06, the drop
+     target): 30;
+   - dialog: a blocking dialog over everything (FlowDialog: 40);
+   - toast: the short messages, above the dialogs too (a dialog's own result, «Dettagli copiati»,
+     shows over it): 50. */
 @utility z-raised {
   z-index: 10;
 }
 @utility z-menu {
   z-index: 20;
 }
+@utility z-overlay {
+  z-index: 30;
+}
 @utility z-dialog {
   z-index: 40;
+}
+@utility z-toast {
+  z-index: 50;
 }

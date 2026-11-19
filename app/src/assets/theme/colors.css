@@ -63,13 +63,18 @@
   --cover-action: color-mix(in srgb, var(--surface-raised) 90%, transparent);
   --warning-wash: color-mix(in srgb, var(--warning) 10%, transparent);
   --warning-edge: color-mix(in srgb, var(--warning) 33%, transparent);
-  /* New in cycle 2 (Saves), each again a value the screens wrote by hand:
-     - letterbox: the black around a game's picture (save thumbnails), the same in every theme;
+  /* New in cycle 2 (Saves and the shell), each again a value the screens wrote by hand:
+     - letterbox: the black around a game's picture (save thumbnails) and around the game itself
+       (the webview's stage, under the side background and its dimming), the same in every theme;
      - warning-soft, success-soft: the design system's soft state fills, 14% of the state's
        colour, recomputed with the theme's own warning / success. */
   --letterbox: #000000;
   --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
   --success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+  /* The first run's step dots (FirstRun): one not reached yet, a faint white in every theme; one
+     done, the accent's text colour at 53%. */
+  --dot: #ffffff33;
+  --dot-done: color-mix(in srgb, var(--accent-text) 53%, transparent);
 }
 
 /* Nero: true black for OLED screens. */
@@ -181,8 +186,11 @@
   --color-on-cover: var(--on-cover);
   --color-cover-badge: var(--cover-badge);
   --color-cover-action: var(--cover-action);
-  /* Pictures of a game */
+  /* Pictures of a game, and the game's surroundings */
   --color-letterbox: var(--letterbox);
+  /* Step dots */
+  --color-dot: var(--dot);
+  --color-dot-done: var(--dot-done);
   /* The cover colours of the ambient haze (ambient.ts writes them) */
   --color-cover-1: var(--cover-1);
   --color-cover-2: var(--cover-2);

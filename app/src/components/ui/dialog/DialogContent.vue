@@ -13,6 +13,9 @@ import { DialogContent, DialogOverlay, DialogPortal, useForwardPropsEmits } from
 import { cn } from '@/lib/cn'
 import DialogNavScope from './DialogNavScope.vue'
 
+// Attributes (a `role`, an `aria-*`) go to the panel, not to the portal around it.
+defineOptions({ inheritAttrs: false })
+
 const props = defineProps<DialogContentProps & { class?: HTMLAttributes['class'] }>()
 const emits = defineEmits<DialogContentEmits>()
 
@@ -52,7 +55,7 @@ function onClose(e: Event) {
       <DialogContent
         ref="content"
         data-slot="dialog-content"
-        v-bind="forwarded"
+        v-bind="{ ...forwarded, ...$attrs }"
         :class="cn('glass-thick flex w-full max-w-dialog flex-col gap-12 p-24', props.class)"
         @open-auto-focus="onOpen"
         @close-auto-focus="onClose"

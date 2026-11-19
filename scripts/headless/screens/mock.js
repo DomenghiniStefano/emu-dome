@@ -186,7 +186,7 @@
     );
   }
   const schema = {
-    device: "desktop",
+    device: scenario.device ?? "desktop",
     currentPhase: 1,
     pages: ["general", "a11y"],
     groups: [{ id: "app", pages: ["general", "a11y"] }],
@@ -328,14 +328,37 @@
     is_fullscreen: false,
     current_slot: 1,
     first_run_show: !!scenario.firstRun,
-    first_run_steps: ["welcome", "games", "controller", "ready"],
+    // `game`: a game opens at startup (the in-game screens).
+    ...(scenario.game
+      ? {
+          startup_game: "C:/Games/Pocket Quest Advance.gba",
+          open_game: {
+            title: "Pocket Quest Advance",
+            console: "Game Boy Advance",
+            consoleId: "gba",
+            core: "mgba",
+            resumable: false,
+            autosaveOnExit: true,
+          },
+          stats: {
+            running: false,
+            emuFps: 59.7,
+            targetFps: 59.7,
+            speed: { kind: "factor", value: 1 },
+            paused: false,
+            frames: 600,
+            autoSavedAt: null,
+          },
+        }
+      : {}),
     library_get: library,
     settings_schema: schema,
     settings_recent: [],
     settings_game_overrides: [],
     settings_game_scope: null,
     saves_summary: [],
-    gamepad_list: scenario.pads
+    // `pads` (Controls) or `pad` (first run S04): one controller connected.
+    gamepad_list: scenario.pads || scenario.pad
       ? [
           {
             id: 1,
@@ -343,7 +366,7 @@
             family: "xbox",
             vendor: 1118,
             product: 2835,
-            battery: 80,
+            battery: scenario.pads ? 80 : null,
           },
         ]
       : [],
@@ -357,8 +380,14 @@
   const listeners = new Map();
   let next = 1;
   window.__mockCalls = [];
+  // The G06 hint shows on the first few games only (a count in localStorage): off, so two runs
+  // in the same Chrome profile draw the same thing. A scenario shows it on purpose.
+  try {
+    localStorage.setItem("emudome.menuHintShown", "99");
+  } catch {}
   // A scenario step fires a backend event (`emu://pad-state`, …) to the page's listeners.
-  window.__mockEmit = (event, payload) => {
+  // `__mockEmit` (Controls) and `__emit` (the shell) are the same.
+  window.__mockEmit = window.__emit = (event, payload) => {
     for (const id of listeners.get(event) ?? [])
       callbacks.get(id)?.({ event, id: 0, payload });
   };
@@ -407,6 +436,11 @@
         const a = savesAnswer(cmd, args);
         if (a !== undefined) return JSON.parse(JSON.stringify(a));
       }
+      // S04 is a step only while a controller is connected, as in Rust.
+      if (cmd === "first_run_steps")
+        return args.controller
+          ? ["welcome", "games", "controller", "ready"]
+          : ["welcome", "games", "ready"];
       if (cmd in answers) return JSON.parse(JSON.stringify(answers[cmd]));
       return null;
     },

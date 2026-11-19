@@ -8,12 +8,14 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTitle,
+  DialogTone,
   DialogTrigger,
 } from '@/components/ui/dialog'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
 
 const open = ref(false)
+const openDanger = ref(false)
 </script>
 
 <template>
@@ -42,6 +44,27 @@ const open = ref(false)
         <Button>Back to the library</Button>
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Default">Try again</Button>
       </div>
+    </KitState>
+    <KitState label="Danger tone, Medium actions (FlowDialog)">
+      <Dialog v-model:open="openDanger">
+        <DialogTrigger as-child>
+          <Button>The emulator stopped</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogTitle :tone="DialogTone.Danger">The emulator stopped</DialogTitle>
+          <DialogDescription>Your progress was saved 2 minutes ago.</DialogDescription>
+          <DialogFooter>
+            <DialogClose as-child>
+              <Button :size="ButtonSize.Medium">Back to the library</Button>
+            </DialogClose>
+            <DialogClose as-child>
+              <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium" data-nav-initial>
+                Resume
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </KitState>
   </KitSection>
 </template>

@@ -26,6 +26,9 @@ export const CardVariant = {
   // frame of its own, hovered when it is a button; a disabled one is faded (0.5, spec Decision 5:
   // `locked` 0.55 awaits Cowork).
   Row: 'row',
+  // One of a choice of cards on a page (first run S04, A/B layout): Surface with 14 inside;
+  // `selected` marks the chosen one as Raised does. Not Choice: no hover, 14 on every side.
+  LayoutChoice: 'layoutChoice',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
 
@@ -46,6 +49,8 @@ export const cardVariants = cva('flex flex-col text-left', {
         'rounded-10 border border-line bg-surface px-14 py-12 enabled:hover:not-data-selected:bg-surface-hover data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.Row]:
         'flex-row items-center border-0 bg-transparent px-16 py-8 enabled:hover:bg-surface-hover disabled:cursor-default disabled:opacity-50',
+      [CardVariant.LayoutChoice]:
+        'rounded-10 border border-line bg-surface p-14 data-selected:border-accent-text data-selected:bg-accent-soft',
     },
   },
   defaultVariants: { variant: CardVariant.Surface },

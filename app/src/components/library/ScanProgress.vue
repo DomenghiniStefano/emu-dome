@@ -16,7 +16,7 @@ const { t } = useI18n()
       class="h-6 max-w-[320px] flex-1 overflow-hidden rounded-full bg-surface-raised"
       aria-hidden="true"
     >
-      <span class="progress-sweep block h-full w-[30%] rounded-[inherit] bg-accent-text"></span>
+      <span class="animate-scan-sweep block h-full w-[30%] rounded-[inherit] bg-accent-text"></span>
     </span>
     <span v-if="progress" class="text-ink-muted tabular-nums">
       {{ t('library.scan.found', { found: progress.found }, progress.found) }}

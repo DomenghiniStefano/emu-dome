@@ -1,38 +1,29 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-
-/** A button on a toast (G17 «Caricato lo slot N · Annulla»): it closes the toast when pressed. */
-export interface ToastAction {
-  label: string
-  run: () => void
-}
-export interface ToastOptions {
-  /** A second, quieter part of the text (G17 with a controller: «Annulla dal menu rapido»). */
-  note?: string
-  action?: ToastAction
-  /** How long it stays, in ms (the default: 2 s in game, 5 s for errors outside it). */
-  ms?: number
-}
+// The short messages (G13, G17): bottom left in the shell; in game at the top, never over the
+// centre of the game. Each goes away by itself; App.vue pushes them through `push`.
+import { computed, ref } from 'vue'
+import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { cn } from '@/lib/cn'
+import { ToastKind, toastDuration, type ToastAction, type ToastOptions } from '../lib/shell/toasts'
 
 interface Toast {
   id: number
   text: string
-  kind: 'info' | 'error'
+  kind: ToastKind
   note?: string
   action?: ToastAction
 }
-/** In game (G13): at the top, never over the centre of the game, 2 s at most for every kind. */
 const props = defineProps<{ inGame?: boolean }>()
 const toasts = ref<Toast[]>([])
 let next = 0
 
 const remove = (id: number) => (toasts.value = toasts.value.filter(t => t.id !== id))
 
-/** Short message at the bottom left, already translated; it goes away by itself (errors stay longer). */
-function push(text: string, kind: Toast['kind'] = 'info', opts: ToastOptions = {}) {
+/** A message already translated; it goes away by itself (errors stay longer outside the game). */
+function push(text: string, kind: ToastKind = ToastKind.Info, opts: ToastOptions = {}) {
   const id = next++
   toasts.value.push({ id, text, kind, note: opts.note, action: opts.action })
-  window.setTimeout(() => remove(id), opts.ms ?? (kind === 'error' && !props.inGame ? 5000 : 2000))
+  window.setTimeout(() => remove(id), toastDuration(kind, !!props.inGame, opts.ms))
 }
 
 function act(t: Toast) {
@@ -41,87 +32,41 @@ function act(t: Toast) {
 }
 
 defineExpose({ push })
+
+// The radius 12 and the 44px row of a toast with an action wait for Cowork (spec Decision 5).
+const stackClass = computed(() =>
+  props.inGame ? 'top-16 left-1/2 -translate-x-1/2 items-center' : 'bottom-16 left-16',
+)
+const toastClass = (t: Toast) =>
+  cn(
+    'glass-thick max-w-[420px]',
+    t.action
+      ? 'pointer-events-auto flex min-h-[44px] items-center gap-12 rounded-[12px] py-6 pr-6 pl-16 font-semibold whitespace-nowrap'
+      : 'rounded-10 px-14 py-10 font-medium',
+    t.kind === ToastKind.Error && 'text-danger',
+  )
 </script>
 
 <template>
-  <div class="toasts" :class="{ top: inGame }" aria-live="polite">
-    <div
-      v-for="t in toasts"
-      :key="t.id"
-      class="toast glass-thick"
-      :class="[t.kind, { actionable: t.action }]"
-    >
+  <div
+    :class="['pointer-events-none fixed z-toast flex flex-col gap-8', stackClass]"
+    aria-live="polite"
+  >
+    <div v-for="t in toasts" :key="t.id" :class="toastClass(t)">
       <span>
         {{ t.text }}
-        <span v-if="t.note" class="note">{{ t.note }}</span>
+        <span v-if="t.note" class="font-regular text-ink-muted before:content-['_·_']">
+          {{ t.note }}
+        </span>
       </span>
-      <button v-if="t.action" class="toast-action" @click="act(t)">{{ t.action.label }}</button>
+      <Button
+        v-if="t.action"
+        :variant="ButtonVariant.RaisedAccent"
+        :size="ButtonSize.Toast"
+        @click="act(t)"
+      >
+        {{ t.action.label }}
+      </Button>
     </div>
   </div>
 </template>
-
-<style scoped>
-.toasts {
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-  z-index: 40;
-}
-.toasts.top {
-  left: 50%;
-  bottom: auto;
-  top: 16px;
-  transform: translateX(-50%);
-  align-items: center;
-}
-.toast {
-  padding: 10px 14px;
-  border-radius: var(--radius-10);
-  font-weight: 500;
-  max-width: 420px;
-}
-.toast.error {
-  color: var(--danger);
-}
-.note {
-  color: var(--ink-muted);
-  font-weight: 400;
-}
-.note::before {
-  content: ' · ';
-}
-/* G17: «Caricato lo slot N» with its «Annulla» button, 44 px tall. */
-.toast.actionable {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  padding: 6px 6px 6px 16px;
-  border-radius: 12px;
-  font-weight: 600;
-  pointer-events: auto;
-  white-space: nowrap;
-}
-.toast-action {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--surface-raised);
-  color: var(--accent-text);
-  font-weight: 600;
-}
-.toast-action:hover {
-  background: var(--surface-hover);
-}
-@media (pointer: coarse) {
-  .toast-action {
-    min-height: 44px;
-    padding: 0 16px;
-  }
-}
-</style>
