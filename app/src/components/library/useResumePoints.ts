@@ -1,36 +1,33 @@
 // Where «Riprendi» picks up for each «Continua a giocare» game: the newest quick save (auto or
 // a slot), else the in-game save. Read again whenever the games played last change.
 import { ref, watch, type Ref } from 'vue'
-import { emu, type LibraryGame, type SettingsScope } from '../../emu'
-import { resumePoint, type ResumePoint } from '../../gameDetails'
-import { errorText } from '../../i18n/labels'
+import type { LibraryGame } from '../../emu'
+import type { ResumePoint } from '../../gameDetails'
+import type { ErrorSink } from '../../i18n/labels'
+import {
+  DEFAULT_SLOT_COUNT,
+  NOTHING_TO_RESUME,
+  loadResumePoint,
+  loadSlotCount,
+} from '../details/gameSaves'
 
-const GLOBAL: SettingsScope = { level: 'global' }
-/** `saves.slots` when the setting cannot be read. */
-const DEFAULT_SLOTS = 10
-
-export function useResumePoints(recent: Ref<LibraryGame[]>, onError: (text: string) => void) {
+export function useResumePoints(recent: Ref<LibraryGame[]>, onError: ErrorSink) {
+  /** By game id. */
   const resume = ref<Record<string, ResumePoint>>({})
 
   async function load() {
     const games = recent.value
     if (games.length === 0) return
-    let slots = DEFAULT_SLOTS
+    let slots = DEFAULT_SLOT_COUNT
     try {
-      const row = (await emu.settings.page('saves', GLOBAL)).find(r => r.key === 'saves.slots')
-      slots = Number(row?.value ?? DEFAULT_SLOTS) || DEFAULT_SLOTS
+      slots = await loadSlotCount()
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
     const points = await Promise.all(
-      games.map(async (g): Promise<[string, ResumePoint]> => {
-        try {
-          return [g.id, resumePoint(await emu.saves.game(g.path, slots))]
-        } catch {
-          // Saves unreadable for now: open the game as «Gioca» would.
-          return [g.id, { slot: null, thumbUrl: null, none: true }]
-        }
-      }),
+      // Unreadable saves: the card says «Gioca» (the details' hero keeps «Riprendi»: two
+      // looks of one state, kept as they were).
+      games.map(async g => [g.id, (await loadResumePoint(g, slots)) ?? NOTHING_TO_RESUME] as const),
     )
     resume.value = Object.fromEntries(points)
   }

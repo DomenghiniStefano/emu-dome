@@ -4,6 +4,7 @@
 import { onMounted, ref } from 'vue'
 import { flow } from './gameFlow'
 import type { Section } from './sections'
+import { coarsePointer } from './composables/useDeviceLayout'
 import { useDropTarget } from './composables/useDropTarget'
 import { useFirstRun } from './composables/useFirstRun'
 import { useGameKeys } from './composables/useGameKeys'
@@ -36,7 +37,7 @@ const events = useShellEvents(session, toast, drop.listen)
 // The shell's section: kept while a game is open, so closing it comes back here.
 const section = ref<Section>('library')
 // Touch screen (Android): on-screen buttons while playing.
-const touch = window.matchMedia('(pointer: coarse)').matches
+const touch = coarsePointer()
 
 onMounted(async () => {
   void decideFirstRun()

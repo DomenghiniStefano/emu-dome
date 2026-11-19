@@ -11,13 +11,15 @@
 // The parts and their logic live in saves/: this view loads, decides what is shown and passes
 // the events on. Controller / keyboard: the shell's nav scope covers this view; the dialogs open
 // their own.
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type GameSaves, type LibraryGame } from '../emu'
+import { useSettingsChanged } from '../composables/useSettingsChanged'
 import { errorText } from '../i18n/labels'
 import { library } from '../library'
 import { savesFocus, savesImportFor } from '../savesFocus'
 import QuickSaveDialog from './QuickSaveDialog.vue'
+import { loadGameSaves } from './details/gameSaves'
 import PickGameDialog from './saves/PickGameDialog.vue'
 import SavesEmpty from './saves/SavesEmpty.vue'
 import SavesGameList from './saves/SavesGameList.vue'
@@ -28,7 +30,8 @@ import { useFocusWhenLoaded } from './saves/useFocusWhenLoaded'
 import { useQuickSaveDetails } from './saves/useQuickSaveDetails'
 import { useSaveImport } from './saves/useSaveImport'
 import { useSavesOverview } from './saves/useSavesOverview'
-import { useSaveShortcut, useSavesSettings } from './saves/useSavesSettings'
+import { useSaveShortcut } from './saves/useSaveShortcut'
+import { useSavesSettings } from './saves/useSavesSettings'
 
 const emit = defineEmits<{
   openGame: [game: LibraryGame, slot: number]
@@ -79,7 +82,7 @@ async function loadDetails() {
     return
   }
   try {
-    details.value = await emu.saves.game(g.path, settings.slotCount.value)
+    details.value = await loadGameSaves(g, settings.slotCount.value)
   } catch (e) {
     fail(e)
   }
@@ -165,7 +168,6 @@ watch(
   () => void refresh(),
 )
 
-let unlistenSettings: (() => void) | null = null
 onMounted(async () => {
   await settings.load()
   const importFor = savesImportFor.value
@@ -176,13 +178,9 @@ onMounted(async () => {
   }
   await refresh()
   void shortcut.load()
-  unlistenSettings = await emu.settings.onChanged(c => {
-    if (c.key === 'saves.slots' || c.key === 'saves.autoq')
-      void settings.load().then(() => refresh())
-    if (c.key === 'pad.combos' || c.key === 'pad.mod') void shortcut.load()
-  })
 })
-onUnmounted(() => unlistenSettings?.())
+useSettingsChanged(['saves.slots', 'saves.autoq'], () => void settings.load().then(() => refresh()))
+useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
 </script>
 
 <template>

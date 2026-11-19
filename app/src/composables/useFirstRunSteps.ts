@@ -2,13 +2,10 @@
 // the current one, and moving between them.
 import { computed, ref, type Ref } from 'vue'
 import { emu, type FirstRunStep, type PadInfo } from '../emu'
-import { errorText } from '../i18n/labels'
+import type { ErrorSink } from '../i18n/labels'
 import { DEFAULT_STEPS, mainActionKey, stepAfterChange } from '../lib/first-run/steps'
 
-export function useFirstRunSteps(
-  pads: Ref<PadInfo[]>,
-  on: { error: (text: string) => void; done: () => void },
-) {
+export function useFirstRunSteps(pads: Ref<PadInfo[]>, on: { error: ErrorSink; done: () => void }) {
   const steps = ref<FirstRunStep[]>([...DEFAULT_STEPS])
   const step = ref<FirstRunStep>('welcome')
   const index = computed(() => Math.max(0, steps.value.indexOf(step.value)))
@@ -24,7 +21,7 @@ export function useFirstRunSteps(
       step.value = stepAfterChange(step.value, index.value, next)
       steps.value = next
     } catch (e) {
-      on.error(errorText(e))
+      on.error(e)
     }
   }
 
@@ -32,7 +29,7 @@ export function useFirstRunSteps(
     try {
       await emu.firstRun.done()
     } catch (e) {
-      on.error(errorText(e))
+      on.error(e)
     }
     on.done()
   }

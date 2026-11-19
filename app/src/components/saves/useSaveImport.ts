@@ -3,12 +3,14 @@
 // about the in-game save it replaces), the «Scegli il gioco» dialog, and the import itself.
 import { ref, type Ref } from 'vue'
 import { emu, type GameSaves, type ImportCandidate, type LibraryGame } from '../../emu'
+import type { ErrorSink } from '../../i18n/labels'
 import { library } from '../../library'
+import { loadGameSaves } from '../details/gameSaves'
 import { matchImportTarget } from './savesModel'
 
 export function useSaveImport(
   slotCount: Ref<number>,
-  fail: (e: unknown) => void,
+  fail: ErrorSink,
   /** The save went in: show that game. */
   imported: (game: LibraryGame) => Promise<void>,
 ) {
@@ -32,7 +34,7 @@ export function useSaveImport(
   async function setTarget(g: LibraryGame) {
     target.value = g
     try {
-      targetSaves.value = await emu.saves.game(g.path, slotCount.value)
+      targetSaves.value = await loadGameSaves(g, slotCount.value)
     } catch (e) {
       fail(e)
     }

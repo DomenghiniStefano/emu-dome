@@ -2,7 +2,7 @@
 // game's level. Pure: the translations come in as a `Translator`.
 import type { ConsoleId, SettingRow } from '../../emu'
 import { msg } from '../../settingsModel'
-import type { Translator } from './translator'
+import type { Translator } from '../../i18n/message'
 
 /** The `pad` page's rows by key. */
 export type PadRows = Record<string, SettingRow>

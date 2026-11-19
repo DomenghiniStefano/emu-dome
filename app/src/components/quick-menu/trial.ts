@@ -2,7 +2,7 @@
 // game or its console, or undone.
 import type { SettingEntry, SettingRow } from '@/emu'
 import { msg } from '@/settingsModel'
-import type { Message } from './slots'
+import type { Message } from '@/i18n/message'
 
 /** Each change «in prova» by its value (a choice: «Affiancati») or else by the setting's name. */
 export function trialNames(

@@ -3,11 +3,11 @@
 import { computed, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type LibraryGame, type SavesSummary } from '../../emu'
-import { sizeLabel } from '../../i18n/labels'
+import { sizeLabel, type ErrorSink } from '../../i18n/labels'
 import { library } from '../../library'
 import { gamesWithSaves } from './savesModel'
 
-export function useSavesOverview(slotCount: Ref<number>, fail: (e: unknown) => void) {
+export function useSavesOverview(slotCount: Ref<number>, fail: ErrorSink) {
   const { t } = useI18n()
   const summaries = ref<Record<string, SavesSummary>>({})
   /** The summaries of the loaded library are known. */

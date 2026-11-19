@@ -5,7 +5,9 @@
 // Rust) or from the arrow keys / Enter / Esc. Directions move the focus spatially to the
 // nearest focusable element in that direction, by bounding rects, so a segmented control
 // moves left/right within itself and up/down out of it without any per-screen code.
-// `confirm` clicks the focused element, `back` calls the scope's `back`.
+// `confirm` clicks the focused element, `back` calls the scope's `back`. Esc on the keyboard is
+// the same `back` for a scope that asks for it (`escape`), and for a part of a screen that goes
+// back on its own (`useEscapeBack`).
 //
 // The focus ring shows only while moving without the mouse: `data-nav` on <html>
 // (styles.css), set by a step or a key, cleared by the pointer. The focused element also
@@ -65,7 +67,24 @@ function focus(el: HTMLElement | null | undefined) {
   el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 }
 
-function focusInitial(root: HTMLElement) {
+/**
+ * Whether the user has not moved the focus yet: it is nowhere, or still on the shell rail's
+ * current item (`aria-current="page"`), where the shell's autofocus puts it while a section is
+ * still loading.
+ */
+function focusUnmoved(): boolean {
+  const active = document.activeElement
+  if (!active || active === document.body) return true
+  return active instanceof HTMLElement && active.getAttribute('aria-current') === 'page'
+}
+
+/**
+ * Focuses `root`'s first element: the one marked `data-nav-initial`, else its first focusable.
+ * `unlessMoved`: only while the user has not moved the focus yet (a section whose content
+ * arrives after the shell's autofocus).
+ */
+export function focusInitial(root: HTMLElement, { unlessMoved = false } = {}) {
+  if (unlessMoved && !focusUnmoved()) return
   const marked = root.querySelector<HTMLElement>(INITIAL)
   focus(marked && !marked.matches(':disabled') ? marked : focusables(root)[0])
 }
@@ -249,7 +268,7 @@ const KEY_DIRECTION: Record<string, Direction | undefined> = {
   ArrowRight: 'right',
 }
 
-/** Keyboard → step: arrows and Enter. Null for any other key (Esc stays with each screen). */
+/** Keyboard → step: arrows and Enter. Null for any other key (Esc: `useEscapeBack`). */
 export function keyToNav(e: KeyboardEvent): NavAction | null {
   // A text field keeps left / right for its caret.
   const t = e.target
@@ -282,11 +301,17 @@ export function keyToNav(e: KeyboardEvent): NavAction | null {
 
 /**
  * Registers a screen for controller/keyboard navigation while it is mounted.
- * `autofocus` focuses its `data-nav-initial` element (or the first focusable) on mount.
+ * `autofocus` focuses its `data-nav-initial` element (or the first focusable) on mount;
+ * `escape` makes Esc on the keyboard its `back` too (B = Esc).
  */
 export function useNavScope(
   root: Ref<HTMLElement | null>,
-  options: { back?: () => void; tab?: (dir: -1 | 1) => void; autofocus?: boolean } = {},
+  options: {
+    back?: () => void
+    tab?: (dir: -1 | 1) => void
+    autofocus?: boolean
+    escape?: boolean
+  } = {},
 ) {
   const scope: Scope = { root, back: options.back, tab: options.tab }
   onMounted(() => {
@@ -296,5 +321,47 @@ export function useNavScope(
   onBeforeUnmount(() => {
     const i = scopes.indexOf(scope)
     if (i >= 0) scopes.splice(i, 1)
+  })
+  if (options.escape) useEscapeBack(root, () => options.back?.())
+}
+
+// ---- Esc
+//
+// One listener for the whole app. Esc goes to the latest registered part whose root is inside
+// the scope that receives the steps: while a menu, a list or a dialog with a scope of its own is
+// open above it, Esc is theirs (a Reka primitive closes on Esc itself). In game, Esc is the
+// quick menu's key (useGameKeys.ts), not a step.
+
+interface EscapeTarget {
+  root: Ref<HTMLElement | null>
+  back: () => void
+}
+const escapeTargets: EscapeTarget[] = []
+let escapeListening = false
+
+function onEscape(e: KeyboardEvent) {
+  if (e.code !== 'Escape') return
+  const active = activeScopeRoot()
+  if (!active) return
+  const target = [...escapeTargets]
+    .reverse()
+    .find(x => x.root.value !== null && active.contains(x.root.value))
+  if (!target) return
+  e.preventDefault()
+  target.back()
+}
+
+/** Esc on the keyboard calls `back` while `root` is inside the scope that receives the steps. */
+export function useEscapeBack(root: Ref<HTMLElement | null>, back: () => void) {
+  const target: EscapeTarget = { root, back }
+  onMounted(() => {
+    escapeTargets.push(target)
+    if (escapeListening) return
+    escapeListening = true
+    window.addEventListener('keydown', onEscape)
+  })
+  onBeforeUnmount(() => {
+    const i = escapeTargets.indexOf(target)
+    if (i >= 0) escapeTargets.splice(i, 1)
   })
 }

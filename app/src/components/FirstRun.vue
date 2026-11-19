@@ -7,17 +7,19 @@
 //   `first_run::steps`); A/B layout and a press test. The only step with «Salta».
 // - S06 Ready: game count, covers, optional imports, the quick menu hint.
 // Controller: one nav scope; B goes back (not on S01, and not on S04, where B is a button to
-// try); Esc does the same on the keyboard.
+// try). Esc is that same `back` on the keyboard (nav.ts `escape`), so it stays on S04 too.
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type PadInfo } from '../emu'
-import { errorText } from '../i18n/labels'
-import { useNavScope } from '../nav'
+import { errorText, type ErrorSink } from '../i18n/labels'
+import { focusInitial, useNavScope } from '../nav'
 import { useFirstRunSteps } from '../composables/useFirstRunSteps'
+import { useListeners } from '../composables/useListeners'
+import { onSettingsChanged } from '../composables/useSettingsChanged'
 import { useLanguageChoice } from '../composables/useLanguageChoice'
 import { usePadTester } from '../composables/usePadTester'
-import { usePhoneLayout } from '../composables/usePhoneLayout'
-import { useSaveImports } from '../composables/useSaveImports'
+import { useDeviceLayout } from '../composables/useDeviceLayout'
+import { useFirstRunImports } from '../composables/useFirstRunImports'
 import ControllerStep from './first-run/ControllerStep.vue'
 import FirstRunFooter from './first-run/FirstRunFooter.vue'
 import GamesStep from './first-run/GamesStep.vue'
@@ -28,68 +30,56 @@ import WelcomeStep from './first-run/WelcomeStep.vue'
 const emit = defineEmits<{ done: []; error: [string] }>()
 const { t } = useI18n()
 const fail = (text: string) => emit('error', text)
+const failWith: ErrorSink = e => fail(errorText(e))
 
 const pads = ref<PadInfo[]>([])
 const { steps, step, index, mainKey, refresh, next, back } = useFirstRunSteps(pads, {
-  error: fail,
+  error: failWith,
   done: () => emit('done'),
 })
-const { phone, detect: detectPhone } = usePhoneLayout()
-const language = useLanguageChoice(fail)
-const tester = usePadTester(pads, () => step.value === 'controller', fail)
-const { imports, busy, pickFolder, importAll } = useSaveImports(fail)
+const { phone } = useDeviceLayout()
+const language = useLanguageChoice(failWith)
+const tester = usePadTester(pads, () => step.value === 'controller', failWith)
+const { imports, busy, pickFolder, importAll } = useFirstRunImports(failWith)
 
 // ---- Navigation ----
 const root = ref<HTMLElement | null>(null)
 useNavScope(root, {
   autofocus: true,
+  escape: true,
   back: () => {
     if (step.value !== 'controller') back()
   },
 })
-function onKey(e: KeyboardEvent) {
-  if (e.code !== 'Escape' || index.value === 0) return
-  e.preventDefault()
-  back()
-}
 /** Each step focuses its own first element (`data-nav-initial`), else the main button. */
 watch(step, async () => {
   await nextTick()
-  const el =
-    root.value?.querySelector<HTMLElement>('main [data-nav-initial]') ??
-    root.value?.querySelector<HTMLElement>('footer [data-nav-initial]')
-  el?.focus({ preventScroll: true })
+  if (root.value) focusInitial(root.value)
 })
 watch(step, s => tester.listen(s === 'controller'))
 watch(pads, () => void refresh())
 
 // ---- Lifecycle ----
-const unlisten: Array<() => void> = []
+const listeners = useListeners()
 onMounted(async () => {
-  window.addEventListener('keydown', onKey)
   try {
-    await detectPhone()
     await language.load()
     pads.value = await emu.controls.pads()
   } catch (e) {
-    fail(errorText(e))
+    failWith(e)
   }
-  unlisten.push(
-    await emu.onGamepadConnected(p => {
+  await listeners.add(
+    emu.onGamepadConnected(p => {
       if (!pads.value.some(x => x.id === p.id)) pads.value = [...pads.value, p]
     }),
-    await emu.onGamepadDisconnected(p => {
+    emu.onGamepadDisconnected(p => {
       pads.value = pads.value.filter(x => x.id !== p.id)
     }),
-    await emu.controls.onPadState(tester.onPadState),
-    await emu.settings.onChanged(e => {
-      if (e.key === 'pad.ab' || e.key === 'pad.remap') void tester.load()
-    }),
+    emu.controls.onPadState(tester.onPadState),
+    onSettingsChanged(['pad.ab', 'pad.remap'], () => void tester.load()),
   )
 })
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
-  unlisten.forEach(u => u())
   if (step.value === 'controller') void emu.controls.watch(false)
 })
 </script>

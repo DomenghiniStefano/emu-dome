@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Card, CardVariant } from '@/components/ui/card'
 import type { PadInfo } from '../../emu'
 import { gamepadName } from '../../i18n/labels'
-import type { AbLayout } from '../../composables/usePadTester'
+import { AB_LAYOUTS, type AbLayout } from '../../controls'
 import StepLayout from './StepLayout.vue'
 import StepTitle from './StepTitle.vue'
 
@@ -19,7 +19,7 @@ defineProps<{
 const emit = defineEmits<{ ab: [id: AbLayout] }>()
 const { t } = useI18n()
 
-const LAYOUTS: AbLayout[] = ['nintendo', 'printed']
+const LAYOUTS = AB_LAYOUTS
 </script>
 
 <template>
