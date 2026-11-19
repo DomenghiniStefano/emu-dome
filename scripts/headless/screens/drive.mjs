@@ -3,6 +3,7 @@
 // Chrome must already run headless with --remote-debugging-port=<cdpPort>.
 import fs from "node:fs";
 import path from "node:path";
+import { quickMenuScenarios } from "./quick-menu.mjs";
 
 const [cdpPort, baseUrl, outDir, ...only] = process.argv.slice(2);
 const here = path.dirname(
@@ -145,6 +146,7 @@ const SCENARIOS = {
     hash: "#kit",
     height: 1500,
   },
+  ...quickMenuScenarios,
 };
 
 // Saves (V01–V06, and the slot tile in Game details): every state in Scuro / Nero / Chiaro, at

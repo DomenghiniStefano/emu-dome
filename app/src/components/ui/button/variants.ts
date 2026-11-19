@@ -45,6 +45,14 @@ export const ButtonVariant = {
   // An action at the end of a list row (first run S06): Soft, half faded when it cannot be used
   // (0.5 and no pointer change, a value waiting for Cowork: spec Decision 5).
   SoftRow: 'softRow',
+  // The action a pair leans to (quick menu «Salva per questo gioco»): Soft on a strong edge, in
+  // semibold.
+  Strong: 'strong',
+  // Confirming a step that throws progress away (quick menu G11 «Riavvia»): danger ink and edge.
+  DangerOutline: 'dangerOutline',
+  // A link beside a heading or inside a sentence (quick menu «Altri slot e salvataggi»): accent
+  // text, no fill, no edge.
+  Link: 'link',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -100,6 +108,29 @@ export const ButtonSize = {
   TileAction: 'tileAction',
   // As tall as its line of text, an icon leading (ControlsView «‹ Controlli»).
   TextLine: 'textLine',
+  // The quick menu's sizes (Trello #62). Their 36 / 44 / 48 heights, 12 radius and the disabled
+  // 0.5 / 0.35 are off the design system's scales: kept as they are until Cowork decides (spec
+  // Decision 5), each in this one place.
+  // «‹ Menu rapido»: 32px, tight on the chevron's side.
+  Back: 'back',
+  // ‹ › beside a value (G09): 32, and 44 on the phone.
+  Step: 'step',
+  StepTouch: 'stepTouch',
+  // An icon alone at the phone's touch minimum, 44 (the sheet's back).
+  IconTouch: 'iconTouch',
+  // An action: 44 (the touch minimum, README) in semibold, 36 compact; on the phone 48, with the
+  // label at 14px; side by side on the phone, 44.
+  Menu: 'menu',
+  MenuCompact: 'menuCompact',
+  MenuTouch: 'menuTouch',
+  MenuCompactTouch: 'menuCompactTouch',
+  MenuPairTouch: 'menuPairTouch',
+  // The main action (Riprendi il gioco): 44, and 48 on the phone at 16px.
+  MenuMain: 'menuMain',
+  MenuMainTouch: 'menuMainTouch',
+  // A link's text alone, in the size around it; on the phone at least 44 tall, at 13px.
+  Text: 'text',
+  TextTouch: 'textTouch',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -141,6 +172,11 @@ export const buttonVariants = cva(
           'border-line bg-surface-raised text-ink hover:bg-surface-hover disabled:cursor-default disabled:opacity-50',
         [ButtonVariant.RaisedAccent]:
           'border-0 bg-surface-raised font-semibold text-accent-text hover:bg-surface-hover',
+        [ButtonVariant.Strong]:
+          'border-line-strong bg-surface-raised font-semibold text-ink hover:bg-surface-hover',
+        [ButtonVariant.DangerOutline]:
+          'border-danger bg-surface-raised text-danger hover:bg-surface-hover',
+        [ButtonVariant.Link]: 'border-0 bg-transparent font-medium text-accent-text',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8',
@@ -171,13 +207,35 @@ export const buttonVariants = cva(
         [ButtonSize.TileAction]:
           'h-control-sm px-10 text-caption leading-[18px] font-medium whitespace-normal',
         [ButtonSize.TextLine]: 'gap-2 py-2 pr-8 pl-4',
+        [ButtonSize.Back]: 'h-control gap-4 pr-10 pl-4',
+        [ButtonSize.Step]: 'size-control p-0 disabled:opacity-[0.35]',
+        [ButtonSize.StepTouch]: 'size-[44px] p-0 disabled:opacity-[0.35]',
+        [ButtonSize.IconTouch]: 'size-[44px] rounded-10 p-0',
+        [ButtonSize.Menu]: 'h-[44px] gap-8 rounded-10 px-14 font-semibold disabled:opacity-[0.5]',
+        [ButtonSize.MenuCompact]: 'h-[36px] gap-8 rounded-10 px-14 disabled:opacity-[0.5]',
+        [ButtonSize.MenuTouch]: 'h-48 gap-8 rounded-[12px] px-14 text-cta disabled:opacity-[0.5]',
+        [ButtonSize.MenuCompactTouch]:
+          'h-48 gap-8 rounded-[12px] px-14 text-cta font-medium disabled:opacity-[0.5]',
+        [ButtonSize.MenuPairTouch]:
+          'h-[44px] gap-8 rounded-[12px] px-14 text-cta font-medium disabled:opacity-[0.5]',
+        [ButtonSize.MenuMain]: 'h-[44px] gap-8 rounded-10 px-18 text-cta',
+        [ButtonSize.MenuMainTouch]: 'h-48 gap-8 rounded-[12px] px-18 text-[16px]',
+        [ButtonSize.Text]: 'h-auto p-0 text-[length:inherit] whitespace-normal',
+        [ButtonSize.TextTouch]:
+          'h-auto min-h-[44px] p-0 text-(length:--text-label) whitespace-normal',
       },
     },
     // The main action keeps its 14px label and wide padding at the smaller heights, as
-    // `.btn-primary` does wherever a screen sets only its height.
+    // `.btn-primary` does wherever a screen sets only its height. A size that sets the medium
+    // weight would win over Strong's semibold: Strong keeps it.
     compoundVariants: [
       { variant: ButtonVariant.Primary, size: ButtonSize.Compact, class: 'px-18 text-cta' },
       { variant: ButtonVariant.Primary, size: ButtonSize.Medium, class: 'px-16' },
+      {
+        variant: ButtonVariant.Strong,
+        size: [ButtonSize.MenuCompactTouch, ButtonSize.MenuPairTouch],
+        class: 'font-semibold',
+      },
     ],
     defaultVariants: {
       variant: ButtonVariant.Soft,

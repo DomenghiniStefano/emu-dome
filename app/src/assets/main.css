@@ -49,6 +49,9 @@
 @source '../components/GameCanvas.vue';
 @source '../components/GameSurround.vue';
 @source '../components/LibraryDropTarget.vue';
+/* Cycle 2, the quick menu (Trello #62). */
+@source '../components/QuickMenu.vue';
+@source '../components/quick-menu';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

@@ -55,7 +55,7 @@ const LEGACY = new Set([
   'components/DetailsSaves.vue',
   'components/DetailsSettings.vue',
   'components/GameDetails.vue',
-  'components/QuickMenu.vue',
+  'components/quick-menu/PendingValues.vue',
   'components/SettingRow.vue',
   'components/SettingSelect.vue',
   'components/SettingSelectMenu.vue',

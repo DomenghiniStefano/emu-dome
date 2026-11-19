@@ -29,6 +29,22 @@ export const CardVariant = {
   // One of a choice of cards on a page (first run S04, A/B layout): Surface with 14 inside;
   // `selected` marks the chosen one as Raised does. Not Choice: no hover, 14 on every side.
   LayoutChoice: 'layoutChoice',
+  // The quick menu's cards as buttons (Trello #62). Their 44 / 48 / 52 / 68 heights, 12 radius
+  // and the disabled 0.5 are off the design system's scales: kept until Cowork decides (spec
+  // Decision 5), each in this one place.
+  // A small choice among a row of them, on surface (a quick-save slot, G07); `selected` marks the
+  // chosen one. On the phone a 12 radius and a 2px edge when chosen.
+  Tile: 'tile',
+  TileTouch: 'tileTouch',
+  // A tool to run or switch on and off (G07 Strumenti), its icon over its name; `selected` = on.
+  // On the phone a row: icon beside the name.
+  Tool: 'tool',
+  ToolTouch: 'toolTouch',
+  // A row that leads to another page: icon, name, chevron (G07, G08). Not Row: its own edge
+  // and fill, 48 tall.
+  NavRow: 'navRow',
+  // A line of a list, no edge of its own (G10): the list draws the box.
+  ListRow: 'listRow',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
 
@@ -51,6 +67,18 @@ export const cardVariants = cva('flex flex-col text-left', {
         'flex-row items-center border-0 bg-transparent px-16 py-8 enabled:hover:bg-surface-hover disabled:cursor-default disabled:opacity-50',
       [CardVariant.LayoutChoice]:
         'rounded-10 border border-line bg-surface p-14 data-selected:border-accent-text data-selected:bg-accent-soft',
+      [CardVariant.Tile]:
+        'rounded-10 border border-line bg-surface p-6 data-selected:border-accent-text data-selected:bg-accent-soft',
+      [CardVariant.TileTouch]:
+        'rounded-[12px] border border-line bg-surface p-6 data-selected:border-2 data-selected:border-accent-text data-selected:bg-accent-soft',
+      [CardVariant.Tool]:
+        'h-[68px] items-center justify-center rounded-10 border border-line bg-surface-raised px-8 text-center text-(length:--text-caption) font-semibold whitespace-nowrap enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-[0.5] data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text',
+      [CardVariant.ToolTouch]:
+        'h-[44px] flex-row items-center rounded-[12px] border border-line bg-surface px-10 text-(length:--text-cta) font-semibold whitespace-nowrap enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-[0.5] data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text',
+      [CardVariant.NavRow]:
+        'h-48 flex-row items-center rounded-10 border border-line bg-surface px-12 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
+      [CardVariant.ListRow]:
+        'min-h-[52px] flex-row items-center border-0 bg-transparent px-12 py-8 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
     },
   },
   defaultVariants: { variant: CardVariant.Surface },

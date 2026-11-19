@@ -14,8 +14,12 @@ prove that a refactor changes nothing on screen (Trello #62).
 - `mock.js` answers every `invoke` with fixed data (games, saves, settings) and fixes the clock, so
   two runs are identical. A scenario sets its options (`theme`, `emptyLibrary`, `firstRun`, …).
 - `drive.mjs` lists the scenarios; a stream that migrates a screen adds the scenarios it needs.
-  A name ending in `*` takes every scenario starting with it (`shell-*`). A scenario can set
-  `width` / `height`, `touch` (a touch screen: `(pointer: coarse)`), `reducedMotion`, and `freeze`
-  (CSS animations stopped at their first frame). Its steps can reach the app's own modules
-  (`import('/src/gameFlow.ts')`) and play a backend event with the mock's `__emit(name, payload)`.
+  A name ending in `*` takes every scenario starting with it (`shell-*`, `saves-*`,
+  `controls-*`, `qm-*`: the quick menu's, from `quick-menu.mjs`). A scenario can set `width` /
+  `height`, `touch` (a touch screen: `(pointer: coarse)`), `reducedMotion`, `focus` (the focus
+  ring shows), and `freeze` (CSS animations stopped at their first frame). Its steps can reach the
+  app's own modules (`import('/src/gameFlow.ts')`) and play a backend event with the mock's
+  `__emit(name, payload)` (`emu://menu` opens the quick menu as a controller).
+- In-game scenarios set `game` in the mock: the game opens at startup (`true` for the shell's
+  screens, `"gba"` / `"nds"` for the quick menu's).
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.

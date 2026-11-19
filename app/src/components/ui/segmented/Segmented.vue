@@ -7,7 +7,8 @@ import type { HTMLAttributes } from 'vue'
 import { provide, toRef } from 'vue'
 import { ToggleGroupRoot } from 'reka-ui'
 import { cn } from '@/lib/cn'
-import { SegmentedVariant, SegmentedVariantKey } from './variants'
+import { SegmentedVariantKey } from './context'
+import { SegmentedVariant, segmentedVariants } from './variants'
 
 const props = withDefaults(
   defineProps<
@@ -34,9 +35,7 @@ function choose(value: unknown) {
     :loop="false"
     :model-value="model"
     :disabled="props.disabled"
-    :class="
-      cn('flex flex-wrap gap-2 rounded-6 border border-line bg-surface-raised p-2', props.class)
-    "
+    :class="cn(segmentedVariants({ variant }), props.class)"
     @update:model-value="choose"
   >
     <slot />
