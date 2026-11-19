@@ -17,7 +17,7 @@ import { ThemeNamespace, themeKeys, utilityKeys } from '@/lib/design/themeKeys'
 // and cn('text-label', 'text-ink') keeps only the second, so a button would lose its type the
 // moment a caller passes a colour. The names come from the theme files themselves, so a token is
 // still declared in one place. tailwind-merge has no theme key for durations, opacity,
-// z-index or edge widths: those extend their class groups instead.
+// z-index, edge widths or outline offsets: those extend their class groups instead.
 const merge = extendTailwindMerge({
   extend: {
     theme: {
@@ -39,6 +39,7 @@ const merge = extendTailwindMerge({
       z: [{ z: utilityKeys(layers, 'z') }],
       'border-w': [{ border: themeKeys(border, ThemeNamespace.BorderWidth) }],
       'outline-w': [{ outline: themeKeys(border, ThemeNamespace.OutlineWidth) }],
+      'outline-offset': [{ 'outline-offset': themeKeys(border, ThemeNamespace.OutlineOffset) }],
     },
   },
 })

@@ -16,4 +16,11 @@
 
   --default-outline-width: 1px;
   --outline-width-ring: 2px;
+
+  /* How far an outline stands off its element: a cover's frame, at the focus ring's own gap
+     (styles.css); the ring around a chosen colour swatch (3, pending Cowork); a hairline drawn
+     just inside the edge (a missing game's dashes, -1). */
+  --outline-offset-ring: 2px;
+  --outline-offset-swatch: 3px;
+  --outline-offset-inset: -1px;
 }

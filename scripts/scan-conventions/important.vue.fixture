@@ -1,0 +1,6 @@
+<!-- Fixture of scripts/scan-conventions.mjs: important overrides, both spellings. -->
+<template>
+  <div class="w-48! flex! !hidden hover:!bg-surface">
+    <span :class="{ 'px-8!': wide }">x</span>
+  </div>
+</template>

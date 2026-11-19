@@ -1,11 +1,17 @@
 <!-- Fixture of scripts/scan-conventions.mjs: written the way the design system asks; no rule fires. -->
 <script setup lang="ts">
 import { Button, ButtonVariant } from '@/components/ui/button'
+const props = defineProps<{ phone: boolean; touch?: boolean }>()
 const dark = { light: 'x' }
+const label = props.touch ? 'a' : 'b'
 </script>
 
 <template>
-  <div class="flex gap-8 bg-surface text-ink opacity-disabled">
-    <Button :variant="ButtonVariant.Primary" :size="size">{{ dark.light }}</Button>
+  <div
+    class="flex gap-8 bg-surface text-ink opacity-disabled touch:px-14 touch-none"
+    :class="{ 'gap-12': phone }"
+  >
+    <Button v-if="!phone" :variant="ButtonVariant.Primary" :size="size">{{ dark.light }}</Button>
+    <span class="grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] -translate-1/2">{{ label }}</span>
   </div>
 </template>

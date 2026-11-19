@@ -1,0 +1,13 @@
+// Fixture of scripts/scan-conventions.mjs: TypeScript and classes that look like the rules' targets
+// and are allowed; no rule fires.
+const el = document.querySelector('div')!
+const list: string[] = []
+const first = list[0]!
+export const ok = !el || first !== 'x'
+export const classes = [
+  'grid-cols-[minmax(0,1fr)_auto_var(--spacing-shortcut-col)]',
+  'top-[calc(100%+var(--spacing-6))] max-h-[50vh] top-[38%]',
+  'transition-[background] text-[length:inherit] leading-[inherit] [font:inherit]',
+  'opacity-0 opacity-100 opacity-(--haze-opacity) border-0 border-t-0 grid-cols-3 aspect-3/2',
+  'outline-offset-ring border-strong z-dialog duration-panel max-controls-stack:grid-cols-1',
+]

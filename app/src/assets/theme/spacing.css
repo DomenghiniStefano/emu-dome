@@ -193,7 +193,11 @@
   --spacing-pad-lift: 64px;
 }
 
-/* Tailwind's container sizes (max-w-md…) and breakpoints are not ours either. */
+/* Tailwind's container sizes (max-w-md…) and breakpoints (`md:`, `max-lg:`…) are not ours either:
+   a window width where a layout changes is a token here, used as `max-<name>:` (below it). */
 @theme {
   --container-*: initial;
+  --breakpoint-*: initial;
+  /* Pending Cowork: below this window width the Controls overview stacks its two columns. */
+  --breakpoint-controls-stack: 900px;
 }

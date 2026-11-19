@@ -220,7 +220,7 @@ export const buttonVariants = cva(
         [ButtonVariant.Veil]: 'border-0 bg-cover-action text-ink',
         [ButtonVariant.Bare]: 'border-0 bg-transparent',
         [ButtonVariant.Swatch]:
-          'rounded-full border-0 aria-checked:outline-ring aria-checked:outline-offset-3 aria-checked:outline-ink aria-checked:outline-solid',
+          'rounded-full border-0 aria-checked:outline-ring aria-checked:outline-offset-swatch aria-checked:outline-ink aria-checked:outline-solid',
         [ButtonVariant.Pad]:
           'border-line-strong bg-glass font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-surface-hover',
       },

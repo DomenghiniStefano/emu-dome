@@ -1,0 +1,8 @@
+<!-- Fixture of scripts/scan-conventions.mjs: a `phone` prop that only changes the look. -->
+<script setup lang="ts">
+defineProps<{ title: string; phone?: boolean }>()
+</script>
+
+<template>
+  <div class="p-16 touch:p-12" :class="{ 'gap-12': phone }">{{ title }}</div>
+</template>

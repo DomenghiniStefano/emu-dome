@@ -1,0 +1,8 @@
+<!-- Fixture of scripts/scan-conventions.mjs: lengths written into classes. -->
+<template>
+  <div class="w-[13px] text-[0.9rem] leading-[1.2em] rounded-[6px] tracking-[-0.5px]">
+    <span class="-translate-y-[2px] inset-x-[4px] shadow-[0_1px_2px_var(--shadow-colour)]">x</span>
+    <span class="top-[calc(100%+4px)] [@media(max-width:900px)]:grid-cols-1">x</span>
+    <span :class="{ 'max-w-[320px]': wide }">x</span>
+  </div>
+</template>

@@ -148,3 +148,10 @@
   --text-label-inline: var(--text-label);
   --text-cta-inline: var(--text-cta);
 }
+
+/* Pending Cowork: an inline icon on a line of text, nudged down onto the letters' middle (the
+   library's «unreachable folders» hint). vertical-align has no theme namespace in Tailwind, so
+   the value is a named utility, as the stacking layers are (layers.css). */
+@utility align-icon {
+  vertical-align: -2px;
+}

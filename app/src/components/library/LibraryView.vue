@@ -145,7 +145,7 @@ const unreachable = computed(() => unreachableFolders(library.folders, library.g
       </div>
       <p v-if="unreachable.length" class="m-0 text-ink-muted">
         <TriangleAlert
-          class="flex-none align-[-2px] text-warning"
+          class="flex-none align-icon text-warning"
           :size="14"
           :stroke-width="1.75"
           aria-hidden="true"

@@ -14,6 +14,7 @@ export const ThemeNamespace = {
   Radius: 'radius',
   BorderWidth: 'border-width',
   OutlineWidth: 'outline-width',
+  OutlineOffset: 'outline-offset',
   Shadow: 'shadow',
   Blur: 'blur',
   Ease: 'ease',
