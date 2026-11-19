@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Tabs, TabsContent, TabsList, TabsSize, TabsTrigger } from '@/components/ui/tabs'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 
 const tab = ref('overview')
 const large = ref('saves')

@@ -4,13 +4,13 @@
 // there, the list every change starts from. Read again when the level or a `pad.*` setting
 // changes.
 import { computed, onMounted, ref, watch } from 'vue'
-import { emu, type ConsoleId, type PadFamily, type RemapRow, type SettingsScope } from '../../emu'
-import { remapList, remapWithout } from '../../controls'
-import type { GameFocus } from '../../gameDetails'
-import type { ErrorSink } from '../../i18n/labels'
-import { library } from '../../library'
-import { readSetting } from '../../settingsModel'
-import { settingsUnder, useSettingsChanged } from '../../composables/useSettingsChanged'
+import { emu, type ConsoleId, type PadFamily, type RemapRow, type SettingsScope } from '@/emu'
+import { remapList, remapWithout } from '@/lib/controls'
+import type { GameFocus } from '@/lib/gameDetails'
+import type { ErrorSink } from '@/i18n/labels'
+import { library } from '@/lib/library'
+import { readSetting } from '@/lib/settingsModel'
+import { settingsUnder, useSettingsChanged } from '@/composables/useSettingsChanged'
 import {
   RemapLevel,
   lastPlayedConsole,

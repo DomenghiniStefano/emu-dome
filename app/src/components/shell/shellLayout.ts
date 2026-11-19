@@ -1,5 +1,5 @@
 // How the shell lays out a section. Pure: the shell feeds it the current section.
-import type { Section } from '../../sections'
+import type { Section } from './sections'
 
 /** Sections that sit flush against the rail, each column scrolling on its own. */
 const FLUSH: readonly Section[] = ['settings', 'controls', 'saves']

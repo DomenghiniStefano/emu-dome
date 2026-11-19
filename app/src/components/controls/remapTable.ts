@@ -1,5 +1,5 @@
 // C02's table: how many rows use each source, and what a row's status column says.
-import type { RemapRow } from '../../emu'
+import type { RemapRow } from '@/emu'
 
 /** How many rows use each source: a source used twice is flagged. */
 export function sourceUses(rows: RemapRow[]): Map<string, number> {

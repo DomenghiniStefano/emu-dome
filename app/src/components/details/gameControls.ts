@@ -1,8 +1,8 @@
 // L07 Controlli: what the tab says about a game's controls, from the `pad` page's rows at the
 // game's level. Pure: the translations come in as a `Translator`.
-import type { ConsoleId, SettingRow } from '../../emu'
-import { msg } from '../../settingsModel'
-import type { Translator } from '../../i18n/message'
+import type { ConsoleId, SettingRow } from '@/emu'
+import { msg } from '@/lib/settingsModel'
+import type { Translator } from '@/i18n/message'
 
 /** The `pad` page's rows by key. */
 export type PadRows = Record<string, SettingRow>

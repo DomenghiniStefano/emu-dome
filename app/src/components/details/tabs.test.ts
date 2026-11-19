@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cycle } from '../../lib/cycle'
+import { cycle } from '@/lib/cycle'
 import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './tabs'
 
 describe('the tabs with L1 / R1', () => {

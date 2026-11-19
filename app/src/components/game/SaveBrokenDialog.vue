@@ -5,8 +5,8 @@
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTone } from '@/components/ui/dialog'
-import { dateTimeLabel } from '../../i18n/labels'
-import FlowDialog from '../FlowDialog.vue'
+import { dateTimeLabel } from '@/i18n/labels'
+import FlowDialog from './FlowDialog.vue'
 
 defineProps<{
   title: string

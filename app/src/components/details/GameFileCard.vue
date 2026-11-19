@@ -3,8 +3,8 @@
 // code, the identity (SHA-1, or the title ID of a 3DS game) and the emulation engine.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { LibraryGame, SettingDevice } from '../../emu'
-import { sizeLabel } from '../../i18n/labels'
+import type { LibraryGame, SettingDevice } from '@/emu'
+import { sizeLabel } from '@/i18n/labels'
 import DetailsCard from './DetailsCard.vue'
 import { deviceLine, gameFacts } from './gameFiles'
 import { Heading, HeadingVariant } from '@/components/ui/heading'

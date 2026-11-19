@@ -1,7 +1,7 @@
 // Writing a setting at «Tutti i giochi» (Controls, the first run); a failure goes to `onError`.
-import { emu, type SettingValue } from '../../emu'
-import type { ErrorSink } from '../../i18n/labels'
-import { GLOBAL } from '../../settingsModel'
+import { emu, type SettingValue } from '@/emu'
+import type { ErrorSink } from '@/i18n/labels'
+import { GLOBAL } from '@/lib/settingsModel'
 
 export function useGlobalSettings(onError: ErrorSink) {
   async function set(key: string, value: SettingValue) {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GameSaves, SettingRow, SettingsSchema } from '../../emu'
+import type { GameSaves, SettingRow, SettingsSchema } from '@/emu'
 import {
   DEFAULT_SLOT_COUNT,
   NOTHING_TO_RESUME,
@@ -15,7 +15,7 @@ const bridge = vi.hoisted(() => ({
   page: vi.fn(),
   game: vi.fn(),
 }))
-vi.mock('../../emu', () => ({
+vi.mock('@/emu', () => ({
   emu: {
     settings: { schema: bridge.schema, page: bridge.page },
     saves: { game: bridge.game },

@@ -6,10 +6,10 @@ import {
   type CoverKind,
   type LibraryFolder,
   type LibraryGame,
-} from '../../emu'
-import type { ResumePoint } from '../../gameDetails'
-import type { Message } from '../../i18n/message'
-import { CONSOLES } from '../../librarySort'
+} from '@/emu'
+import type { ResumePoint } from '@/lib/gameDetails'
+import type { Message } from '@/i18n/message'
+import { CONSOLES } from './librarySort'
 
 /** A console chip: «Tutti» or one console present, with how many games it holds. */
 export interface ConsoleChip {

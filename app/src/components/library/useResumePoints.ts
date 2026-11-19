@@ -1,15 +1,15 @@
 // Where «Riprendi» picks up for each «Continua a giocare» game: the newest quick save (auto or
 // a slot), else the in-game save. Read again whenever the games played last change.
 import { ref, watch, type Ref } from 'vue'
-import type { LibraryGame } from '../../emu'
-import type { ResumePoint } from '../../gameDetails'
-import type { ErrorSink } from '../../i18n/labels'
+import type { LibraryGame } from '@/emu'
+import type { ResumePoint } from '@/lib/gameDetails'
+import type { ErrorSink } from '@/i18n/labels'
 import {
   DEFAULT_SLOT_COUNT,
   NOTHING_TO_RESUME,
   loadResumePoint,
   loadSlotCount,
-} from '../details/gameSaves'
+} from '@/components/details/gameSaves'
 
 export function useResumePoints(recent: Ref<LibraryGame[]>, onError: ErrorSink) {
   /** By game id. */

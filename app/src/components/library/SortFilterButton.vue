@@ -5,8 +5,8 @@ import { nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown } from '@lucide/vue'
 import { Button, ButtonVariant } from '@/components/ui/button'
-import type { ShowKey, Sort } from '../../librarySort'
-import LibraryFilters from '../LibraryFilters.vue'
+import type { ShowKey, Sort } from './librarySort'
+import LibraryFilters from './LibraryFilters.vue'
 
 defineProps<{ sort: Sort; show: Record<ShowKey, boolean> }>()
 const emit = defineEmits<{ sort: [Sort]; toggle: [ShowKey]; reset: [] }>()

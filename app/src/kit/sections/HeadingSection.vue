@@ -3,8 +3,8 @@ import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
 import { LabelledBlock } from '@/components/ui/labelled-block'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 </script>
 
 <template>

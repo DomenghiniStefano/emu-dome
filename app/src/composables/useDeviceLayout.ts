@@ -4,8 +4,8 @@
 // - `phone`: the phone's portrait layout (boards «Tel-…»): a phone held upright;
 // - `coarse`: a touch screen is the main pointer (on-screen controls, no keyboard hints).
 import { computed, onMounted, onScopeDispose, ref } from 'vue'
-import type { SettingDevice } from '../emu'
-import { loadSchema } from '../settingsModel'
+import type { SettingDevice } from '@/emu'
+import { loadSchema } from '@/lib/settingsModel'
 
 /** Whether a touch screen is the main pointer. Fixed for the app's run. */
 export const coarsePointer = (): boolean => window.matchMedia('(pointer: coarse)').matches

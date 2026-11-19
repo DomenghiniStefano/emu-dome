@@ -1,15 +1,9 @@
 // The state of one setting row (SettingRow), as pure functions: what the row shows at the level
 // being edited, and the small decisions of its controls. No i18n here: useSettingRow turns these
 // into text.
-import type {
-  SettingEntry,
-  SettingLevel,
-  SettingRow,
-  SettingsSchema,
-  SettingValue,
-} from '../../emu'
-import { lockReason, notYetWired } from '../../settingsModel'
-import { BUILTIN_BACKGROUNDS, SURROUND_CARDS } from '../../surround'
+import type { SettingEntry, SettingLevel, SettingRow, SettingsSchema, SettingValue } from '@/emu'
+import { lockReason, notYetWired } from '@/lib/settingsModel'
+import { BUILTIN_BACKGROUNDS, SURROUND_CARDS } from '@/lib/surround'
 
 export interface RowState {
   /** i18n key of why the row cannot be changed at this level, or null. */

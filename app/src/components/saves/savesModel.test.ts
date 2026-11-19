@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { LibraryGame, SavesSummary } from '../../emu'
+import type { LibraryGame, SavesSummary } from '@/emu'
 import {
   emptyTextKey,
   fileStem,

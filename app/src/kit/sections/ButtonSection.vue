@@ -15,8 +15,8 @@ import {
   Undo2,
 } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 // G09 «Schermi e immagine»: one card per setting, ‹ value ›, then the video method.
 import type { SettingEntry, SettingRow, SettingValue, VideoMode } from '@/emu'
-import { msg } from '@/settingsModel'
+import { msg } from '@/lib/settingsModel'
 import type { Message } from '@/i18n/message'
 
 /** The line under a card's value: where the value comes from. */

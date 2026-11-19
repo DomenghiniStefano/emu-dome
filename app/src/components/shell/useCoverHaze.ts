@@ -2,8 +2,8 @@
 // (ambient.ts); elsewhere, and until a cover is known, the design's fallback spots (the
 // @property initial values of --cover-1/2/3, theme/colors.css).
 import { computed, ref, watch, type Ref } from 'vue'
-import { ambientGame, coverColours, type CoverColours } from '../../ambient'
-import type { Section } from '../../sections'
+import { ambientGame, coverColours, type CoverColours } from '@/lib/ambient'
+import type { Section } from './sections'
 
 /** The haze's inline style: the three cover colours, or nothing for the fallback spots. */
 export function hazeStyle(colours: CoverColours | null): Record<string, string> {

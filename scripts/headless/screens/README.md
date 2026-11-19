@@ -18,7 +18,7 @@ prove that a refactor changes nothing on screen (Trello #62).
   `controls-*`, `qm-*`: the quick menu's, from `quick-menu.mjs`). A scenario can set `width` /
   `height`, `touch` (a touch screen: `(pointer: coarse)`), `reducedMotion`, `focus` (the focus
   ring shows), and `freeze` (CSS animations stopped at their first frame). Its steps can reach the
-  app's own modules (`import('/src/gameFlow.ts')`) and play a backend event with the mock's
+  app's own modules (`import('/src/components/game/gameFlow.ts')`) and play a backend event with the mock's
   `__emit(name, payload)` (`emu://menu` opens the quick menu as a controller).
 - In-game scenarios set `game` in the mock: the game opens at startup (`true` for the shell's
   screens, `"gba"` / `"nds"` for the quick menu's).

@@ -4,7 +4,7 @@
 //! setting (`system`, `dark`, `black`, `light`), then, for `system`, the operating system
 //! (dark → Scuro, light → Chiaro). The interface reads the system preference
 //! (`prefers-color-scheme`, which also follows live changes) and asks here again on every change
-//! of it or of the setting; the answer goes on `<html data-theme>` (app/src/theme.ts).
+//! of it or of the setting; the answer goes on `<html data-theme>` (app/src/lib/theme.ts).
 
 use serde::Serialize;
 

@@ -2,7 +2,7 @@
 // The console chips over the grid: «Tutti» and each console present, with how many games each.
 import { useI18n } from 'vue-i18n'
 import { Chip, ChipVariant } from '@/components/ui/chip'
-import type { ConsoleId } from '../../emu'
+import type { ConsoleId } from '@/emu'
 import type { ConsoleChip } from './libraryView'
 
 defineProps<{

@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 import { Search } from '@lucide/vue'
 import { Input, InputVariant } from '@/components/ui/input'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 
 const server = ref('')
 const query = ref('')

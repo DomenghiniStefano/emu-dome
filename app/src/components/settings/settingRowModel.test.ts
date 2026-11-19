@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingEntry, SettingRow, SettingsSchema } from '../../emu'
-import { SURROUND_CARDS } from '../../surround'
+import type { SettingEntry, SettingRow, SettingsSchema } from '@/emu'
+import { SURROUND_CARDS } from '@/lib/surround'
 import {
   cardPreview,
   chosenFileName,
@@ -12,7 +12,7 @@ import {
 } from './settingRowModel'
 
 // The bridge reads Tauri's globals when it loads; these functions never call it.
-vi.mock('../../emu', () => ({ emu: {} }))
+vi.mock('@/emu', () => ({ emu: {} }))
 
 const entry = (over: Partial<SettingEntry> = {}): SettingEntry => ({
   key: 'video.fps',

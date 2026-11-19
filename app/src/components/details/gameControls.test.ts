@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingRow } from '../../emu'
+import type { SettingRow } from '@/emu'
 import { hasOwnRemap, hasTouchScreen, pointerLabel, type PadRows } from './gameControls'
-import type { Translator } from '../../i18n/message'
+import type { Translator } from '@/i18n/message'
 
 // The bridge talks to Tauri as it loads; these functions never call it.
-vi.mock('../../emu', () => ({ emu: {} }))
+vi.mock('@/emu', () => ({ emu: {} }))
 
 const row = (
   key: string,

@@ -1,7 +1,7 @@
 // V03 opened from «…» on a slot tile: the quick save shown, and the focus back on that «…» when
 // the dialog closes.
 import { nextTick, ref } from 'vue'
-import type { QuickSave } from '../../emu'
+import type { QuickSave } from '@/emu'
 
 export function useQuickSaveDetails() {
   const quick = ref<QuickSave | null>(null)

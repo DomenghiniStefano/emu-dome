@@ -2,11 +2,11 @@
 // «Tutti i giochi» (reloaded when a `pad.*` setting changes), the connected controllers (kept up
 // to date by their events) and their live state (`emu://pad-state`, watched only meanwhile).
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { emu, type PadInfo, type PadState, type SettingRow, type SettingsSchema } from '../../emu'
-import { useListeners } from '../../composables/useListeners'
-import { onSettingsChanged, settingsUnder } from '../../composables/useSettingsChanged'
-import type { ErrorSink } from '../../i18n/labels'
-import { GLOBAL, loadSchema } from '../../settingsModel'
+import { emu, type PadInfo, type PadState, type SettingRow, type SettingsSchema } from '@/emu'
+import { useListeners } from '@/composables/useListeners'
+import { onSettingsChanged, settingsUnder } from '@/composables/useSettingsChanged'
+import type { ErrorSink } from '@/i18n/labels'
+import { GLOBAL, loadSchema } from '@/lib/settingsModel'
 
 export function useControlsData(options: {
   onError: ErrorSink

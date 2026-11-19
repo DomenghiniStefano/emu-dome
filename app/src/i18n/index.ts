@@ -3,8 +3,8 @@
 // The language is the `general.lang` setting («Tutti i giochi»); its default, `system`, follows
 // the OS / browser locale (WebView2 reports the system one).
 import { createI18n } from 'vue-i18n'
-import { onSettingsChanged } from '../composables/useSettingsChanged'
-import { readSetting } from '../settingsModel'
+import { onSettingsChanged } from '@/composables/useSettingsChanged'
+import { readSetting } from '@/lib/settingsModel'
 import en from './en.json'
 import it from './it.json'
 
