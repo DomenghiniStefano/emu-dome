@@ -26,6 +26,21 @@ export function isSameDevice(inUse: Device, candidate: Device): boolean {
   return inUse.id === candidate.id
 }
 
+/** The controllers after `pad` connected: added at the end, once. */
+export function padConnected(pads: PadInfo[], pad: PadInfo): PadInfo[] {
+  return pads.some(p => p.id === pad.id) ? pads : [...pads, pad]
+}
+
+/** The controllers after the one with `id` went. */
+export function padGone(pads: PadInfo[], id: number): PadInfo[] {
+  return pads.filter(p => p.id !== id)
+}
+
+/** The controllers after `pad` changed (its battery): replaced in place, never added. */
+export function padChanged(pads: PadInfo[], pad: PadInfo): PadInfo[] {
+  return pads.map(p => (p.id === pad.id ? pad : p))
+}
+
 /** «Collegato · batteria 80 %»: the line under a controller's name. */
 export function connectionText(pad: PadInfo): string {
   const parts = [t('controls.connected')]
