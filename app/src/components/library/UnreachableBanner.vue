@@ -14,7 +14,7 @@ const { t } = useI18n()
 
 <template>
   <div
-    class="flex items-center gap-12 rounded-10 border border-warning-edge bg-warning-wash px-14 py-10"
+    class="flex items-center gap-12 rounded-10 border border-warning-edge bg-warning-tint px-14 py-10"
     role="status"
   >
     <FolderX class="flex-none text-warning" :size="18" :stroke-width="1.75" aria-hidden="true" />

@@ -35,7 +35,7 @@ defineProps<{
     </span>
     <span
       v-if="badge"
-      class="flex-none rounded-full bg-success-tint px-8 py-2 text-caption leading-[18px] font-semibold text-success"
+      class="flex-none rounded-full bg-success-soft px-8 py-2 text-caption leading-[18px] font-semibold text-success"
     >
       {{ badge }}
     </span>
