@@ -1,7 +1,8 @@
 //! RetroPad button state, written by keyboard, controllers and touch,
 //! read by the core. One bitmask per source, merged on read.
+//! Also the touch-screen pointer (NDS, 3DS), read as `RETRO_DEVICE_POINTER`.
 
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::{AtomicU16, AtomicU64, Ordering};
 
 /// RetroPad buttons, each with the bit of its libretro id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -92,7 +93,21 @@ pub enum Source {
 #[derive(Default)]
 pub struct InputState {
     sources: [AtomicU16; 3],
+    /// The touch-screen pointer in `RETRO_DEVICE_POINTER` values
+    /// ([`crate::screens::pointer_value`]): x in bits 0-15, y in 16-31, pressed in bit 32.
+    /// One pointer whatever moves it (mouse, finger): the last writer wins.
+    pointer: AtomicU64,
 }
+
+/// Where the touch-screen pointer is, as the core reads it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Pointer {
+    pub x: i16,
+    pub y: i16,
+    pub pressed: bool,
+}
+
+const POINTER_PRESSED: u64 = 1 << 32;
 
 impl InputState {
     pub fn set(&self, source: Source, button: Button, pressed: bool) {
@@ -113,5 +128,53 @@ impl InputState {
         self.sources
             .iter()
             .fold(0, |m, s| m | s.load(Ordering::Relaxed))
+    }
+
+    /// Touches the screen at `at` (pointer values), or lets go with `None`: the last position
+    /// stays, as a finger lifted where it was.
+    pub fn set_pointer(&self, at: Option<(i16, i16)>) {
+        let packed = match at {
+            Some((x, y)) => u64::from(x as u16) | (u64::from(y as u16) << 16) | POINTER_PRESSED,
+            None => self.pointer.load(Ordering::Relaxed) & !POINTER_PRESSED,
+        };
+        self.pointer.store(packed, Ordering::Relaxed);
+    }
+
+    pub fn pointer(&self) -> Pointer {
+        let p = self.pointer.load(Ordering::Relaxed);
+        Pointer {
+            x: p as u16 as i16,
+            y: (p >> 16) as u16 as i16,
+            pressed: p & POINTER_PRESSED != 0,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{InputState, Pointer};
+
+    #[test]
+    fn the_pointer_keeps_its_place_when_released() {
+        let input = InputState::default();
+        assert_eq!(input.pointer(), Pointer::default());
+        input.set_pointer(Some((-32639, 12345)));
+        assert_eq!(
+            input.pointer(),
+            Pointer {
+                x: -32639,
+                y: 12345,
+                pressed: true
+            }
+        );
+        input.set_pointer(None);
+        assert_eq!(
+            input.pointer(),
+            Pointer {
+                x: -32639,
+                y: 12345,
+                pressed: false
+            }
+        );
     }
 }

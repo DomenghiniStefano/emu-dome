@@ -9,12 +9,22 @@
 //! - `--png <file>`: write the last frame before the state tests as a PNG;
 //! - `--press-a N`: before measuring, tap A N times, one tap per second (to leave a title screen);
 //! - `--rewind N`: at the end, record N seconds of rewind and report its memory, rewind for a
-//!   second, and take a screenshot (written under the temp folder's `saves/screenshots`).
+//!   second, and take a screenshot (written under the temp folder's `saves/screenshots`);
+//! - `--dir <folder>`: the system and save folders go under it (default: the temp folder's
+//!   `emudome-headless`);
+//! - `--screens <prefix>`: write each screen of the frame as its own PNG (`<prefix>-top.png`,
+//!   `<prefix>-bottom.png`; `<prefix>-main.png` on one-screen consoles);
+//! - `--touch`: NDS, touch the bottom screen through the shell's path (window point → composed
+//!   rectangle → pointer value) and check what the test ROM shows (`tools/test-rom-nds`).
+//!
+//! A `.nds` game runs as the shell runs it: melonDS DS's forced options and the two-screen split
+//! (`emudome_core::nds`).
 
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use emudome_core::input::{Button, Source};
+use emudome_core::screens::{self, Area, Layout, ScreenId, Split};
 use emudome_core::{Command, Session, SessionOptions, Speed};
 
 fn center_pixel(session: &Session) -> (u32, u32, [u8; 4], u64) {
@@ -39,6 +49,9 @@ struct Args {
     png: Option<std::path::PathBuf>,
     press_a: u32,
     rewind: Option<u32>,
+    dir: Option<std::path::PathBuf>,
+    screens: Option<String>,
+    touch: bool,
 }
 
 fn parse_args() -> anyhow::Result<Args> {
@@ -49,6 +62,9 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut png = None;
     let mut press_a = 0;
     let mut rewind = None;
+    let mut dir = None;
+    let mut screens = None;
+    let mut touch = false;
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -66,6 +82,9 @@ fn parse_args() -> anyhow::Result<Args> {
             "--png" => png = Some(value()?.into()),
             "--press-a" => press_a = value()?.parse()?,
             "--rewind" => rewind = Some(value()?.parse()?),
+            "--dir" => dir = Some(value()?.into()),
+            "--screens" => screens = Some(value()?),
+            "--touch" => touch = true,
             _ => positional.push(a),
         }
     }
@@ -80,6 +99,9 @@ fn parse_args() -> anyhow::Result<Args> {
         png,
         press_a,
         rewind,
+        dir,
+        screens,
+        touch,
     })
 }
 
@@ -90,6 +112,96 @@ fn write_png(session: &Session, path: &std::path::Path) -> anyhow::Result<()> {
     enc.set_color(png::ColorType::Rgba);
     enc.set_depth(png::BitDepth::Eight);
     enc.write_header()?.write_image_data(&f.rgba)?;
+    Ok(())
+}
+
+/// `--screens <prefix>`: each screen of the frame as its own PNG.
+fn write_screens(session: &Session, prefix: &str) -> anyhow::Result<()> {
+    let f = session.shared().frame.lock();
+    for s in f.screens() {
+        let name = match s.id {
+            ScreenId::Main => "main",
+            ScreenId::Top => "top",
+            ScreenId::Bottom => "bottom",
+        };
+        let mut rgba = Vec::with_capacity((s.src.w * s.src.h * 4) as usize);
+        for y in s.src.y..s.src.y + s.src.h {
+            let row = ((y * f.width + s.src.x) * 4) as usize;
+            rgba.extend_from_slice(&f.rgba[row..row + (s.src.w * 4) as usize]);
+        }
+        let path = format!("{prefix}-{name}.png");
+        let file = std::io::BufWriter::new(std::fs::File::create(&path)?);
+        let mut enc = png::Encoder::new(file, s.src.w, s.src.h);
+        enc.set_color(png::ColorType::Rgba);
+        enc.set_depth(png::BitDepth::Eight);
+        enc.write_header()?.write_image_data(&rgba)?;
+        println!("{name} screen {:?} written to {path}", s.src);
+    }
+    Ok(())
+}
+
+/// The colour of pixel (x, y) of a screen, in 5-bit components as the DS wrote them.
+fn screen_rgb5(session: &Session, id: ScreenId, x: u32, y: u32) -> Option<[u8; 3]> {
+    let f = session.shared().frame.lock();
+    let s = f.screens().into_iter().find(|s| s.id == id)?;
+    let i = (((s.src.y + y) * f.width + s.src.x + x) * 4) as usize;
+    let px = f.rgba.get(i..i + 3)?;
+    Some([px[0] >> 3, px[1] >> 3, px[2] >> 3])
+}
+
+/// `--touch`: window points on a 1920 x 1080 window with the default layout go through
+/// `screens::pointer_at` to the core; the test ROM paints its bottom screen with the point it
+/// read (red = x / 8, green = y / 8, blue = 16), so the colour proves the whole path.
+fn check_touch(session: &Session) -> anyhow::Result<()> {
+    let area = Area {
+        width: 1920.0,
+        height: 1080.0,
+        inset: 0.0,
+    };
+    let layout = Layout::default();
+    let (frame, split) = {
+        let f = session.shared().frame.lock();
+        ((f.width, f.height), f.split)
+    };
+    let placements = screens::compose(&layout, &split.screens(frame.0, frame.1), area);
+    for p in &placements {
+        println!(
+            "composed {:?}: frame {:?} -> window {:?}",
+            p.id, p.src, p.dst
+        );
+    }
+    let mut failures = 0;
+    for (wx, wy) in [
+        (704.0, 540.0),
+        (960.0, 732.0),
+        (1215.0, 923.0),
+        (800.0, 900.0),
+        (1100.0, 560.0),
+        (960.0, 300.0), // the top screen: not a touch
+    ] {
+        let want = screens::touch_at(&placements, wx, wy);
+        let pointer = screens::pointer_at(&layout, split, frame, area, wx, wy);
+        session.shared().input.set_pointer(pointer);
+        std::thread::sleep(Duration::from_millis(150));
+        let got = screen_rgb5(session, ScreenId::Bottom, 5, 5);
+        let ok = match (want, got) {
+            (Some((x, y)), Some(c)) => c == [(x / 8) as u8, (y / 8) as u8, 16],
+            (None, Some(c)) => c == [0, 0, 31],
+            (Some(_) | None, None) => false,
+        };
+        failures += u32::from(!ok);
+        println!(
+            "touch at window ({wx}, {wy}): touch-screen pixel {want:?}, pointer {pointer:?}, ROM shows rgb5 {got:?} -> {}",
+            if ok { "ok" } else { "MISMATCH" }
+        );
+    }
+    session.shared().input.set_pointer(None);
+    std::thread::sleep(Duration::from_millis(150));
+    println!(
+        "released: bottom screen rgb5 {:?} (want [0, 0, 31])",
+        screen_rgb5(session, ScreenId::Bottom, 5, 5)
+    );
+    anyhow::ensure!(failures == 0, "{failures} touch points did not match");
     Ok(())
 }
 
@@ -165,7 +277,21 @@ fn measure_rewind(
 
 fn main() -> anyhow::Result<()> {
     let args = parse_args()?;
-    let tmp = std::env::temp_dir().join("emudome-headless");
+    let tmp = args
+        .dir
+        .clone()
+        .unwrap_or_else(|| std::env::temp_dir().join("emudome-headless"));
+    // A DS game runs as the shell runs it: melonDS DS's forced options and the split.
+    let nds = args.rom.to_lowercase().ends_with(".nds");
+    let mut core_options: Vec<(String, String)> = if nds {
+        emudome_core::nds::FORCED_OPTIONS
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    core_options.extend(args.opts.iter().cloned());
     let (tx, rx) = mpsc::channel();
     let session = Session::start(
         SessionOptions {
@@ -177,8 +303,14 @@ fn main() -> anyhow::Result<()> {
             autosave_on_exit: false,
             resume_auto: false,
             app_version: env!("CARGO_PKG_VERSION").into(),
-            core_options: args.opts.clone(),
+            core_options,
             rewind_seconds: args.rewind,
+            split: if nds {
+                emudome_core::nds::SPLIT
+            } else {
+                Split::Whole
+            },
+            username: None,
         },
         tx,
     )?;
@@ -216,19 +348,33 @@ fn main() -> anyhow::Result<()> {
         write_png(&session, png)?;
         println!("frame written to {}", png.display());
     }
+    if let Some(prefix) = &args.screens {
+        write_screens(&session, prefix)?;
+    }
+    if args.touch {
+        check_touch(&session)?;
+    }
 
     session
         .shared()
         .input
         .set(Source::Keyboard, Button::A, true);
     std::thread::sleep(Duration::from_millis(200));
-    println!("A pressed: center pixel {:?}", center_pixel(&session));
+    println!(
+        "A pressed: center pixel {:?}, top screen rgb5 {:?}",
+        center_pixel(&session),
+        screen_rgb5(&session, ScreenId::Top, 5, 5)
+    );
     session
         .shared()
         .input
         .set(Source::Keyboard, Button::A, false);
     std::thread::sleep(Duration::from_millis(200));
-    println!("A released: center pixel {:?}", center_pixel(&session));
+    println!(
+        "A released: center pixel {:?}, top screen rgb5 {:?}",
+        center_pixel(&session),
+        screen_rgb5(&session, ScreenId::Top, 5, 5)
+    );
 
     session.send(Command::SetSpeed(Speed::Max));
     let t = Instant::now();

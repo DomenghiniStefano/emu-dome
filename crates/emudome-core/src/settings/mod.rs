@@ -18,6 +18,7 @@
 
 mod catalog;
 pub mod core_values;
+pub mod core_values_nds;
 pub mod schema;
 mod store;
 

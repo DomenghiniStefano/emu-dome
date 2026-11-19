@@ -105,6 +105,8 @@ pub struct GameFlow {
     pub rewind_seconds: Option<u32>,
     /// The core options the console options ask for (`settings::core_values`).
     pub core_options: Vec<(String, String)>,
+    /// The user's name on the console (`consoles.dsname` for a DS game), `None`: the OS user.
+    pub username: Option<String>,
 }
 
 const REWIND_KEYS: [&str; 2] = ["speed.rew", "speed.rewlen"];
@@ -155,6 +157,10 @@ pub fn game_flow(app: &AppHandle, console: ConsoleId, game: &GameId) -> GameFlow
         autosave_on_exit: !matches!(read("saves.autoexit"), Some(Value::Bool(false))),
         resume: text("saves.resume").unwrap_or_else(|| "always".into()),
         rewind_seconds: rewind_seconds(app, &scope),
+        username: match console {
+            ConsoleId::Nds => emudome_core::settings::core_values_nds::username(read),
+            ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::N3ds => None,
+        },
         core_options: emudome_core::settings::core_values::core_options(console, read),
     }
 }

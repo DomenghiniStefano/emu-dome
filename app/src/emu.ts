@@ -23,6 +23,17 @@ export type Button =
   | 'left'
   | 'right'
 
+/**
+ * Where a pointer position is measured (`pointer`): the window in the renderer's unit (physical
+ * pixels for native video, CSS pixels for the webview canvas) and the bottom share (0..0.9) kept
+ * clear for the quick menu. Mirror: `PointerArea` in app/src-tauri/src/lib.rs.
+ */
+export interface PointerArea {
+  width: number
+  height: number
+  inset: number
+}
+
 export interface GameInfo {
   title: string
   console: string
@@ -585,6 +596,9 @@ export const emu = {
   /** «Salvato nello slot N · Annulla»: the slot gets back what it held (`saveUndone`). */
   undoSave: () => invoke<void>('undo_save'),
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
+  /** The DS touch screen: the pointer at (x, y) in `area`; Rust maps it to the bottom screen. */
+  pointer: (x: number, y: number, pressed: boolean, area: PointerArea) =>
+    invoke<void>('pointer', { x, y, pressed, area }),
   stats: () => invoke<Stats>('stats'),
   /** Bench mode (`EMUDOME_BENCH`): the canvas reports its rounds with `benchFrames`. */
   benchActive: () => invoke<boolean>('bench_active'),

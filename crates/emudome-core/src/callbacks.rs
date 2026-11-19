@@ -12,9 +12,12 @@ use libretro_sys::{
     retro_core_option_definition, retro_core_option_v2_definition, retro_core_option_value,
     retro_core_options_intl, retro_core_options_v2, retro_core_options_v2_intl,
     retro_game_geometry, retro_system_av_info, retro_variable, RETRO_DEVICE_ID_JOYPAD_MASK,
-    RETRO_DEVICE_JOYPAD, RETRO_ENVIRONMENT_EXPERIMENTAL, RETRO_ENVIRONMENT_GET_CAN_DUPE,
+    RETRO_DEVICE_ID_POINTER_COUNT, RETRO_DEVICE_ID_POINTER_PRESSED, RETRO_DEVICE_ID_POINTER_X,
+    RETRO_DEVICE_ID_POINTER_Y, RETRO_DEVICE_JOYPAD, RETRO_DEVICE_POINTER,
+    RETRO_ENVIRONMENT_EXPERIMENTAL, RETRO_ENVIRONMENT_GET_CAN_DUPE,
     RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION, RETRO_ENVIRONMENT_GET_INPUT_BITMASKS,
-    RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY,
+    RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES, RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY,
+    RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, RETRO_ENVIRONMENT_GET_USERNAME,
     RETRO_ENVIRONMENT_GET_VARIABLE, RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE,
     RETRO_ENVIRONMENT_SET_CORE_OPTIONS, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY,
     RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2,
@@ -26,6 +29,7 @@ use libretro_sys::{
 };
 
 use crate::core_options::{CoreOptions, OptionDef};
+use crate::screens::Split;
 use crate::session::Shared;
 
 pub(crate) struct CallbackCtx {
@@ -37,6 +41,10 @@ pub(crate) struct CallbackCtx {
     pub audio_enabled: bool,
     /// Answers to `GET_VARIABLE`: the core's definitions and the shell's values.
     pub options: CoreOptions,
+    /// How the core lays its screens out in the frame (recorded on every frame).
+    pub split: Split,
+    /// The answer to `GET_USERNAME` (melonDS DS: the DS user name); `None`: not answered.
+    pub username: Option<CString>,
 }
 
 thread_local! {
@@ -98,6 +106,27 @@ pub(crate) unsafe extern "C" fn environment(cmd: c_uint, data: *mut c_void) -> b
             *(data as *mut *const c_char) = c.save_dir.as_ptr();
         })
         .is_some(),
+        RETRO_ENVIRONMENT_GET_USERNAME => {
+            if data.is_null() {
+                return false;
+            }
+            let name = with_ctx(|c| c.username.as_ref().map(|n| n.as_ptr())).flatten();
+            match name {
+                Some(p) => {
+                    *(data as *mut *const c_char) = p;
+                    true
+                }
+                None => false,
+            }
+        }
+        // The devices the host feeds: RetroPad and the touch-screen pointer.
+        RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES => {
+            if data.is_null() {
+                return false;
+            }
+            *(data as *mut u64) = (1 << RETRO_DEVICE_JOYPAD) | (1 << RETRO_DEVICE_POINTER);
+            true
+        }
         // Buttons can also be read as a single mask (faster for the core).
         x if x == (RETRO_ENVIRONMENT_GET_INPUT_BITMASKS & !RETRO_ENVIRONMENT_EXPERIMENTAL) => true,
         RETRO_ENVIRONMENT_SET_GEOMETRY => {
@@ -246,10 +275,9 @@ pub(crate) unsafe extern "C" fn video_refresh(
     }
     with_ctx(|c| {
         let fmt = c.pixel_format;
-        c.shared
-            .frame
-            .lock()
-            .write_from_core(data as *const u8, width, height, pitch, fmt);
+        let mut frame = c.shared.frame.lock();
+        frame.write_from_core(data as *const u8, width, height, pitch, fmt);
+        frame.split = c.split;
     });
 }
 
@@ -276,10 +304,30 @@ pub(crate) unsafe extern "C" fn input_poll() {}
 pub(crate) unsafe extern "C" fn input_state(
     port: c_uint,
     device: c_uint,
-    _index: c_uint,
+    index: c_uint,
     id: c_uint,
 ) -> i16 {
-    if port != 0 || device != RETRO_DEVICE_JOYPAD {
+    if port != 0 {
+        return 0;
+    }
+    if device == RETRO_DEVICE_POINTER {
+        // One pointer (index 0): the touch screen.
+        if index != 0 {
+            return 0;
+        }
+        return with_ctx(|c| {
+            let p = c.shared.input.pointer();
+            match id {
+                RETRO_DEVICE_ID_POINTER_X => p.x,
+                RETRO_DEVICE_ID_POINTER_Y => p.y,
+                RETRO_DEVICE_ID_POINTER_PRESSED => i16::from(p.pressed),
+                RETRO_DEVICE_ID_POINTER_COUNT => i16::from(p.pressed),
+                _ => 0,
+            }
+        })
+        .unwrap_or(0);
+    }
+    if device != RETRO_DEVICE_JOYPAD {
         return 0;
     }
     with_ctx(|c| {

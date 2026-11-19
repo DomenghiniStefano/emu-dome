@@ -20,7 +20,9 @@ pub fn core_options(
     let mut out = Vec::new();
     match console {
         ConsoleId::Gb | ConsoleId::Gbc => gb(&value, &mut out),
-        ConsoleId::Gba | ConsoleId::Nds | ConsoleId::N3ds => {}
+        // melonDS DS: its own module (`core_values_nds.rs`).
+        ConsoleId::Nds => super::core_values_nds::nds(&value, &mut out),
+        ConsoleId::Gba | ConsoleId::N3ds => {}
     }
     out
 }
