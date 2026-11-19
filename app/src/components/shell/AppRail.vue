@@ -39,7 +39,7 @@ defineExpose({ focusCurrent })
   <!-- The rail's 76px width is its own (the design system's `sidebar` is 56: Cowork). -->
   <nav
     ref="nav"
-    class="flex shrink-0 basis-[76px] flex-col items-center gap-4 border-r border-line bg-glass-thin py-12"
+    class="flex shrink-0 basis-rail flex-col items-center gap-4 border-r border-line bg-glass-thin py-12"
     :aria-label="t('shell.sections')"
   >
     <template v-for="s in SECTIONS" :key="s">
@@ -53,7 +53,7 @@ defineExpose({ focusCurrent })
       >
         <component :is="ICONS[s]" :size="20" :stroke-width="1.75" aria-hidden="true" />
         <!-- 10/12 is off the type scale (the smallest step is 11/14: Cowork). -->
-        <span class="text-[10px]/[12px] font-medium whitespace-nowrap">{{ t(`shell.${s}`) }}</span>
+        <span class="text-rail font-medium whitespace-nowrap">{{ t(`shell.${s}`) }}</span>
       </Button>
     </template>
   </nav>

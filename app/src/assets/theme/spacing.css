@@ -30,11 +30,17 @@
   --spacing-10: 10px;
   --spacing-14: 14px;
   --spacing-18: 18px;
+  /* Pending Cowork, off the grid too: 52, the tall rows and actions of the focus moments (the
+     quick menu's speeds, the rail's sections, the phone's main action, a cover's actions row). */
+  --spacing-52: 52px;
 
   /* Controls (tokens.json `size`) */
   --spacing-control-sm: 28px;
   --spacing-control: 32px;
   --spacing-control-lg: 40px;
+  /* Pending Cowork (spec Decision 5: fold into 32 or 40, or a fourth step): 36, a dialog's and a
+     page's pair of actions, a cover's actions, the quick menu's compact actions, the phone's tabs. */
+  --spacing-control-md: 36px;
   /* The top bar's height (tokens.json `titlebar`). */
   --spacing-titlebar: 40px;
   /* The least a cover of the library grid shrinks to (tokens.json `capsule-medium`). */
@@ -69,6 +75,110 @@
   --spacing-setting-text: 300px;
   /* A level card of the settings scope bar. */
   --spacing-level: 60px;
+}
+
+/* Roles: what a step is for, so «every card's padding» is one edit. Each points at a step of the
+   grid above (or a pending one), never at a number of its own. */
+@theme {
+  /* Inside a card: the standard one, a raised choice card, the phone's details card. */
+  --spacing-card-pad: var(--spacing-16);
+  --spacing-card-pad-sm: var(--spacing-10);
+  --spacing-card-pad-touch: var(--spacing-14);
+  /* Inside a control: a button's and a field's side padding. */
+  --spacing-control-pad: var(--spacing-12);
+  --spacing-field-pad: var(--spacing-10);
+  /* Inside a dialog, and between its parts. */
+  --spacing-dialog-pad: var(--spacing-24);
+  /* The room a panel keeps from the window's edges (the quick menu). */
+  --spacing-window-margin: var(--spacing-32);
+}
+
+/* Pending Cowork (spec Decision 5, «Handed back to design»): every other size the screens use
+   today, off the design system's scales, named once here by what it is for. A change of look is an
+   edit here, never in a screen. Steps first, then sizes by area. */
+@theme {
+  /* Off-grid steps: a hairline nudge (3: the rail's icon over its name, a phone slot's lines, a
+     title choice pulled up to its line); a key hint's side padding (5); the game details' header
+     (28). */
+  --spacing-3: 3px;
+  --spacing-5: 5px;
+  --spacing-28: 28px;
+
+  /* Covers (GameCover sizes): a list's thumbnail, a row's, the small row of the first run (80 on
+     the phone), the game details' (96 on the phone), the library's «Continua a giocare» picture. */
+  --spacing-cover-thumb: 28px;
+  --spacing-cover-row: 48px;
+  --spacing-cover-small: 96px;
+  --spacing-cover-small-touch: 80px;
+  --spacing-cover-hero: 168px;
+  --spacing-cover-hero-touch: 96px;
+  --spacing-continue-thumb: 96px;
+
+  /* The shell: the rail's width and one of its sections' width. */
+  --spacing-rail: 76px;
+  --spacing-rail-item: 64px;
+
+  /* Page widths: the game details' and Controls' content, a step of the first run, an empty
+     state (460, 480 in the library), a lead paragraph, the scan's bar, the button tester. */
+  --spacing-page-md: 1040px;
+  --spacing-page-wide: 1180px;
+  --spacing-step: 560px;
+  --spacing-empty: 460px;
+  --spacing-empty-wide: 480px;
+  --spacing-lead: 520px;
+  --spacing-scan: 320px;
+  --spacing-tester: 280px;
+  /* The game details' text beside the cover, the narrowest before it wraps under it. */
+  --spacing-hero-text: 420px;
+  /* Saves: the list of games beside the chosen one. */
+  --spacing-game-list: 360px;
+  /* The narrowest tile of an auto-filled grid: a «Continua a giocare» card, a controller card; a
+     console's count after a scan. */
+  --spacing-tile-min: 260px;
+  --spacing-stat-min: 160px;
+
+  /* Menus and messages: a cover's menu at its narrowest, a toast at its widest. */
+  --spacing-menu-min: 220px;
+  --spacing-toast: 420px;
+
+  /* The quick menu: the desktop panel, the G09 bar, the sheet's grip, where the G09 sheet starts
+     under the game (beyond its 3:2 picture), a tool tile's height. */
+  --spacing-panel: 640px;
+  --spacing-bar: 1040px;
+  --spacing-grip: 40px;
+  --spacing-sheet-screens: 112px;
+  --spacing-tool: 68px;
+  /* Its main action's width on the desktop. */
+  --spacing-menu-main: 260px;
+
+  /* Controls: a remap row's capture field, a shortcut's key column, a shortcut chip at its
+     narrowest, a shortcut row's action column. */
+  --spacing-capture: 30px;
+  --spacing-shortcut-key: 150px;
+  --spacing-key-chip: 96px;
+  --spacing-shortcut-col: 72px;
+
+  /* A choice inside a title (the settings scope bar's «Giochi <console> ▾»). */
+  --spacing-in-title: 26px;
+
+  /* The first run: the mark, the step dots' band (88 on the phone), the footer, the controller
+     test's box. */
+  --spacing-logo: 72px;
+  --spacing-dots: 72px;
+  --spacing-dots-touch: 88px;
+  --spacing-footer: 96px;
+  --spacing-press: 70px;
+
+  /* A scene's progress bar (a game starting or closing). */
+  --spacing-progress: 200px;
+
+  /* The on-screen gamepad: the shoulders' width, a face button, the d-pad's box, an arm's offset
+     from its edge, how high the pad sits. */
+  --spacing-pad-shoulder: 88px;
+  --spacing-pad-face: 64px;
+  --spacing-dpad: 148px;
+  --spacing-dpad-arm: 50px;
+  --spacing-pad-lift: 64px;
 }
 
 /* Tailwind's container sizes (max-w-md…) and breakpoints are not ours either. */

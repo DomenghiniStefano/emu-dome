@@ -56,7 +56,9 @@ function onClose(e: Event) {
         ref="content"
         data-slot="dialog-content"
         v-bind="{ ...forwarded, ...$attrs }"
-        :class="cn('glass-thick flex w-full max-w-dialog flex-col gap-12 p-24', props.class)"
+        :class="
+          cn('glass-thick flex w-full max-w-dialog flex-col gap-12 p-dialog-pad', props.class)
+        "
         @open-auto-focus="onOpen"
         @close-auto-focus="onClose"
       >

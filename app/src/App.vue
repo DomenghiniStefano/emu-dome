@@ -4,7 +4,8 @@
 import { onMounted, ref } from 'vue'
 import { flow } from './gameFlow'
 import type { Section } from './sections'
-import { coarsePointer } from './composables/useDeviceLayout'
+import { useDensity } from './composables/useDensity'
+import { coarsePointer, useDeviceLayout } from './composables/useDeviceLayout'
 import { useDropTarget } from './composables/useDropTarget'
 import { useFirstRun } from './composables/useFirstRun'
 import { useGameKeys } from './composables/useGameKeys'
@@ -38,6 +39,9 @@ const events = useShellEvents(session, toast, drop.listen)
 const section = ref<Section>('library')
 // Touch screen (Android): on-screen buttons while playing.
 const touch = coarsePointer()
+// The phone's layout (a phone held upright) sets the touch density for the whole interface.
+const layout = useDeviceLayout()
+useDensity(layout.phone)
 
 onMounted(async () => {
   void decideFirstRun()

@@ -12,14 +12,14 @@ export const SelectTriggerVariant = {
 export type SelectTriggerVariant = (typeof SelectTriggerVariant)[keyof typeof SelectTriggerVariant]
 
 export const selectTriggerVariants = cva(
-  'flex cursor-pointer items-center gap-8 rounded-6 border px-10 text-left font-sans text-label enabled:hover:bg-surface-hover disabled:cursor-not-allowed',
+  'flex cursor-pointer items-center gap-8 rounded-control border px-field-pad text-left font-sans text-label enabled:hover:bg-surface-hover disabled:cursor-not-allowed',
   {
     variants: {
       variant: {
         [SelectTriggerVariant.Field]:
           'h-control min-w-field border-line bg-surface-raised text-inherit',
         [SelectTriggerVariant.InTitle]:
-          '-mt-[3px] -ml-10 h-[26px] min-w-0 border-transparent bg-transparent font-semibold text-inherit',
+          '-mt-3 -ml-10 h-in-title min-w-0 border-transparent bg-transparent font-semibold text-inherit',
       },
     },
     defaultVariants: { variant: SelectTriggerVariant.Field },

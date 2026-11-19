@@ -14,13 +14,13 @@ const { t } = useI18n()
 <template>
   <section class="flex flex-1 flex-col items-center justify-center gap-12 p-32 text-center">
     <span
-      class="grid size-[56px] place-items-center rounded-16 border border-line bg-surface-raised text-ink-muted"
+      class="grid size-thumb place-items-center rounded-16 border border-line bg-surface-raised text-ink-muted"
       aria-hidden="true"
     >
       <Save :size="24" :stroke-width="1.75" />
     </span>
     <h1 class="m-0 text-title">{{ t('saves.empty.title') }}</h1>
-    <p class="m-0 max-w-[460px] text-ink-muted">{{ text }}</p>
+    <p class="m-0 max-w-empty text-ink-muted">{{ text }}</p>
     <div class="mt-4 flex flex-wrap justify-center gap-8">
       <Button :size="ButtonSize.Medium" data-nav-initial @click="emit('openLibrary')">
         {{ t('saves.empty.openLibrary') }}

@@ -3,7 +3,7 @@
 // and updates the setting.
 import { useI18n } from 'vue-i18n'
 import { Folder } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { emu } from '../../emu'
 import { errorText } from '../../i18n/labels'
 
@@ -29,16 +29,16 @@ async function add() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <!-- 36 high: the control height awaiting Cowork (spec Decision 5) -->
     <div
       v-for="path in folders"
       :key="path"
-      class="flex h-[36px] items-center gap-10 rounded-6 bg-surface-raised px-10"
+      class="flex h-control-md items-center gap-10 rounded-6 bg-surface-raised px-10"
     >
       <Folder :size="16" :stroke-width="1.75" aria-hidden="true" />
       <span class="min-w-0 flex-1 truncate">{{ path }}</span>
       <Button
-        :variant="ButtonVariant.RowGhost"
+        :variant="ButtonVariant.GhostRegular"
+        :fade="ButtonFade.None"
         :size="ButtonSize.Small"
         :disabled="disabled"
         @click="remove(path)"
@@ -46,7 +46,13 @@ async function add() {
         {{ t('settings.library.folders.value.remove') }}
       </Button>
     </div>
-    <Button :variant="ButtonVariant.RowSoft" class="self-start" :disabled="disabled" @click="add">
+    <Button
+      :variant="ButtonVariant.Soft"
+      :fade="ButtonFade.None"
+      class="self-start"
+      :disabled="disabled"
+      @click="add"
+    >
       {{ addText }}
     </Button>
   </div>

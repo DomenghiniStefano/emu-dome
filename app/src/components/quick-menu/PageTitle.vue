@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// The title of a quick menu page (17 / 22: off the type scale, awaiting Cowork).
+// The title of a quick menu page (`page-title`, 17 / 22 semibold: a pending token).
 </script>
 
 <template>
-  <div class="text-[17px] leading-[22px] font-semibold"><slot /></div>
+  <div class="text-page-title"><slot /></div>
 </template>

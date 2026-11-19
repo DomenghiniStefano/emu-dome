@@ -34,20 +34,21 @@ const speed = ref('normal')
         <SegmentedItem value="fast">Fast forward</SegmentedItem>
       </Segmented>
     </KitState>
-    <KitState label="Stacked, StackedTouch (a name over its value)">
+    <KitState label="Stacked (a name over its value): desktop, and on the phone">
       <div class="flex w-field flex-col gap-8">
-        <Segmented
-          v-for="v in [SegmentedVariant.Stacked, SegmentedVariant.StackedTouch]"
-          :key="v"
-          v-model="speed"
-          :variant="v"
-          aria-label="Speed"
+        <div
+          v-for="density in ['desktop', 'touch']"
+          :key="density"
+          :data-density="density"
+          class="flex flex-col"
         >
-          <SegmentedItem v-for="id in ['normal', 'fast', 'slow']" :key="id" :value="id">
-            <span class="font-semibold">{{ id }}</span>
-            <span class="text-caption">1x</span>
-          </SegmentedItem>
-        </Segmented>
+          <Segmented v-model="speed" :variant="SegmentedVariant.Stacked" aria-label="Speed">
+            <SegmentedItem v-for="id in ['normal', 'fast', 'slow']" :key="id" :value="id">
+              <span class="font-semibold">{{ id }}</span>
+              <span class="text-caption">1x</span>
+            </SegmentedItem>
+          </Segmented>
+        </div>
       </div>
     </KitState>
   </KitSection>

@@ -5,8 +5,6 @@
 // swap them. The rows come from `DEFAULT_COMBOS` (Rust): the reserved ones, whose feature does
 // not exist yet, show their button with a badge and cannot be changed.
 // On the keyboard the shortcuts are the fixed keys of keyboard.ts, listed read-only.
-//
-// Off the design system's scales (Cowork): the note's 12px text on the 18px line.
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -129,7 +127,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
           @reset="settings.reset('pad.mod')"
           @error="onError"
         />
-        <p class="m-0 px-16 text-caption leading-[18px] text-ink-muted">
+        <p class="m-0 px-16 text-caption-tall text-ink-muted">
           {{ t('controls.modNote') }}
         </p>
       </Card>

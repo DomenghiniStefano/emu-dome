@@ -6,7 +6,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArchiveRestore, RotateCcw, Save } from '@lucide/vue'
 import type { SlotInfo } from '@/emu'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import PageRow from './PageRow.vue'
 import QuickSlotTile from './QuickSlotTile.vue'
 import SectionLabel from './SectionLabel.vue'
@@ -35,41 +35,43 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const say = useSay()
-const columns = computed(() => {
-  if (props.touch) return 'grid-cols-3'
-  return props.all ? 'grid-cols-4' : 'grid-cols-5'
-})
-const actionSize = computed(() => (props.touch ? ButtonSize.MenuTouch : ButtonSize.Menu))
+/** Every slot (G08) in rows of four, the main screen's five in one row; three on the phone. */
+const columns = computed(() => (props.all ? 'grid-cols-4' : 'grid-cols-5'))
 const moreMark = { [FocusMark.MoreSlots]: '' }
 </script>
 
 <template>
   <section class="flex flex-col gap-10" :aria-label="t('qm.savesTitle')">
     <div v-if="!all" class="flex items-baseline justify-between gap-8">
-      <SectionLabel :touch="touch">{{ t('qm.savesTitle') }}</SectionLabel>
+      <SectionLabel>{{ t('qm.savesTitle') }}</SectionLabel>
       <Button
         v-bind="moreMark"
         :variant="ButtonVariant.Link"
-        :size="touch ? ButtonSize.TextTouch : ButtonSize.Text"
+        :size="ButtonSize.LabelLink"
         @click="emit('more', $event)"
       >
         {{ touch ? t('qm.moreShort') : t('qm.more') }}
       </Button>
     </div>
-    <div class="grid gap-8" :class="columns" role="radiogroup" :aria-label="t('qm.slotsLabel')">
+    <div
+      class="grid gap-8 touch:grid-cols-3"
+      :class="columns"
+      role="radiogroup"
+      :aria-label="t('qm.slotsLabel')"
+    >
       <QuickSlotTile
         v-for="s in slots"
         :key="s.slot"
         :info="s"
         :chosen="s.slot === chosen"
-        :touch="touch"
         @pick="emit('pick', s.slot)"
       />
     </div>
     <div class="grid grid-cols-[1fr_1fr] gap-8">
       <Button
         :variant="ButtonVariant.Soft"
-        :size="actionSize"
+        :size="ButtonSize.Menu"
+        :fade="ButtonFade.Dim"
         class="min-w-0"
         :disabled="chosenEmpty"
         @click="emit('load')"
@@ -79,14 +81,14 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
       </Button>
       <span
         v-if="autoChosen"
-        class="flex h-[44px] items-center justify-center rounded-10 border border-dashed border-line-strong px-8 text-center text-(length:--text-caption) text-ink-muted"
+        class="flex h-touch items-center justify-center rounded-10 border border-dashed border-line-strong px-8 text-center text-caption-inline text-ink-muted"
       >
         {{ t('qm.autoUpdates') }}
       </span>
       <Button
         v-else
         :variant="ButtonVariant.Soft"
-        :size="actionSize"
+        :size="ButtonSize.Menu"
         class="min-w-0"
         @click="emit('save')"
       >
@@ -103,7 +105,7 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
       <Button
         :variant="ButtonVariant.Link"
         :size="ButtonSize.Text"
-        class="px-4"
+        class="mx-4"
         @click="emit('undoSave')"
       >
         {{ t('qm.undoSave') }}

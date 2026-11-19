@@ -15,10 +15,10 @@ const { t } = useI18n()
   <div class="grid flex-1 place-items-center">
     <!-- The box's 480px width is its own; the title is `title` without its tracking (Cowork). -->
     <section
-      class="flex max-w-[480px] flex-col items-center gap-14 rounded-16 border border-dashed border-line-strong p-48 text-center"
+      class="flex max-w-empty-wide flex-col items-center gap-14 rounded-16 border border-dashed border-line-strong p-48 text-center"
     >
       <Library class="text-accent-text" :size="44" :stroke-width="1.5" aria-hidden="true" />
-      <h1 class="m-0 text-title tracking-[normal]">{{ t('library.emptyTitle') }}</h1>
+      <h1 class="m-0 text-title tracking-none">{{ t('library.emptyTitle') }}</h1>
       <p class="m-0 text-ink-muted">{{ t('library.emptyLead') }}</p>
       <div class="flex gap-8">
         <Button

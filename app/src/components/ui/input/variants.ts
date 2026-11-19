@@ -18,9 +18,9 @@ export const inputVariants = cva('m-0 font-sans text-body text-ink disabled:curs
   variants: {
     variant: {
       [InputVariant.Field]:
-        'h-control w-field rounded-6 border border-line-strong bg-surface-raised px-10 py-0',
+        'h-control w-field rounded-control border border-line-strong bg-surface-raised px-field-pad py-0',
       [InputVariant.Block]:
-        'h-control rounded-6 border border-line-strong bg-surface-raised px-10 py-0 placeholder:text-ink-muted disabled:opacity-disabled',
+        'h-control rounded-control border border-line-strong bg-surface-raised px-field-pad py-0 placeholder:text-ink-muted disabled:opacity-disabled',
       [InputVariant.Bare]: 'min-w-0 flex-1 border-0 bg-transparent outline-none',
     },
   },

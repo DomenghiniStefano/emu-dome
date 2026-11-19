@@ -15,14 +15,14 @@ export type CaptureFieldVariant = (typeof CaptureFieldVariant)[keyof typeof Capt
 // outline, so the global focus rules (styles.css) replace it while the field has the focus, as
 // they did over ControlsShortcuts' own `.ghost.listening`.
 export const captureFieldVariants = cva(
-  'cursor-pointer rounded-6 py-0 font-sans whitespace-nowrap select-none',
+  'cursor-pointer rounded-control py-0 font-sans whitespace-nowrap select-none',
   {
     variants: {
       variant: {
         [CaptureFieldVariant.Field]:
-          'h-[30px] border border-line bg-surface-raised px-12 text-label text-ink hover:not-data-listening:bg-surface-hover data-listening:border-dashed data-listening:border-accent-text data-listening:bg-transparent data-listening:text-accent-text',
+          'h-capture border border-line bg-surface-raised px-12 text-label text-ink hover:not-data-listening:bg-surface-hover data-listening:border-dashed data-listening:border-accent-text data-listening:bg-transparent data-listening:text-accent-text',
         [CaptureFieldVariant.Quiet]:
-          'h-control-sm border-0 bg-transparent px-8 text-body text-ink-muted hover:bg-surface-hover data-listening:text-accent-text data-listening:outline-1 data-listening:outline-accent-text data-listening:outline-dashed',
+          'h-control-sm border-0 bg-transparent px-8 text-body text-ink-muted hover:bg-surface-hover data-listening:text-accent-text data-listening:outline data-listening:outline-accent-text data-listening:outline-dashed',
       },
     },
     defaultVariants: { variant: CaptureFieldVariant.Field },

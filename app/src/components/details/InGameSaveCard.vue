@@ -49,7 +49,7 @@ async function exportInGame() {
 
 <template>
   <!-- The phone's card text is 14px (spec Decision 5, Cowork); its buttons take it. -->
-  <DetailsCard as="aside" :phone="phone" :class="phone ? 'gap-6 text-[14px]' : 'gap-10'">
+  <DetailsCard as="aside" class="gap-10 touch:gap-6 touch:text-cta-inline">
     <SectionLabel>{{ t('saves.inGameTitle') }}</SectionLabel>
     <div v-if="phone" class="tabular-nums">
       {{
@@ -72,12 +72,12 @@ async function exportInGame() {
       <TriangleAlert :size="16" :stroke-width="1.75" aria-hidden="true" />
       <span>{{ t('saves.brokenNote', { file: saves.broken[0] }) }}</span>
     </div>
-    <div class="flex flex-wrap gap-8" :class="!phone && 'mt-4'">
-      <DetailsAction :phone="phone" @click="emit('backups')">
+    <div class="mt-4 flex flex-wrap gap-8 touch:mt-0">
+      <DetailsAction @click="emit('backups')">
         {{ t('details.saves.showBackups') }}
       </DetailsAction>
-      <DetailsAction :phone="phone" @click="emit('import')">{{ t('saves.import') }}</DetailsAction>
-      <DetailsAction v-if="!phone && saves?.inGame" :phone="phone" @click="exportInGame">
+      <DetailsAction @click="emit('import')">{{ t('saves.import') }}</DetailsAction>
+      <DetailsAction v-if="!phone && saves?.inGame" @click="exportInGame">
         {{ t('saves.export') }}
       </DetailsAction>
     </div>

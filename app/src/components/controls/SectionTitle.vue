@@ -5,5 +5,5 @@ withDefaults(defineProps<{ as?: 'h1' | 'h2' }>(), { as: 'h1' })
 </script>
 
 <template>
-  <component :is="as" class="m-0 text-title tracking-[normal]"><slot /></component>
+  <component :is="as" class="m-0 text-title tracking-none"><slot /></component>
 </template>

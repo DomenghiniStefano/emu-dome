@@ -9,7 +9,7 @@ import type { LibraryGame, SettingDevice } from '../emu'
 import GameFileCard from './details/GameFileCard.vue'
 import GameLooksCard from './details/GameLooksCard.vue'
 
-defineProps<{ game: LibraryGame; phone: boolean; device?: SettingDevice | null }>()
+defineProps<{ game: LibraryGame; device?: SettingDevice | null }>()
 const emit = defineEmits<{
   /** «Cambia…»: L12. */
   cover: []
@@ -18,13 +18,8 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="grid items-start gap-16" :class="phone ? 'grid-cols-1' : 'grid-cols-2'">
-    <GameLooksCard
-      :game="game"
-      :phone="phone"
-      @cover="emit('cover')"
-      @error="text => emit('error', text)"
-    />
-    <GameFileCard :game="game" :phone="phone" :device="device" />
+  <div class="grid grid-cols-2 items-start gap-16 touch:grid-cols-1">
+    <GameLooksCard :game="game" @cover="emit('cover')" @error="text => emit('error', text)" />
+    <GameFileCard :game="game" :device="device" />
   </div>
 </template>

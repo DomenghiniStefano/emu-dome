@@ -1,27 +1,62 @@
-// Where the quick menu's glass panel sits and how it is cut, per layout. The shadows, the sheet's
-// 20 radius and the 640 / 1040 widths are off the design system's scales (spec Decision 5): the
-// literal shadows live in QuickMenu.vue as `--qm-*` variables, awaiting Cowork.
+// Where the quick menu's glass panel sits and how it is cut, per layout: the desktop's panel, the
+// G09 bar, the phone's sheet. Its shadows (`shadow-panel`, `shadow-sheet`), the sheet's 20 radius
+// and the 640 / 1040 widths are pending tokens, awaiting Cowork (spec Decision 5).
+import { cva } from 'class-variance-authority'
 import { QuickMenuView } from './view'
 
-/** Thick glass without its float shadow: the quick menu draws its own. */
-const GLASS = 'flex flex-col border-line bg-glass-thick backdrop-blur-glass backdrop-saturate-140'
+export const PanelLayout = {
+  /** Desktop: centred, 640 px wide, as tall as its content. */
+  Menu: 'menu',
+  /** G09 on desktop: a bar at the bottom, 1040 px, the game visible above it. */
+  Bar: 'bar',
+  /**
+   * Phone in portrait: a bottom sheet under the game (board «Tel-MenuRapido3», 390 × 844: the top
+   * is 44 px + the 3:2 game image; G08 starts higher, G09 lower).
+   */
+  Sheet: 'sheet',
+} as const
+export type PanelLayout = (typeof PanelLayout)[keyof typeof PanelLayout]
 
-/** Desktop: centred, 640 px wide, as tall as its content. */
-export const MENU_PANEL = `${GLASS} absolute top-1/2 left-1/2 max-h-[calc(100vh-32px)] w-[640px] max-w-[calc(100vw-32px)] -translate-1/2 gap-16 rounded-16 border p-20 shadow-(--qm-panel-shadow)`
+/** Where the phone's sheet starts, under the game's 3:2 image. */
+export const SheetTop = {
+  /** The main screen and its pages. */
+  Page: 'page',
+  /** G08, the slots: higher, more room for them. */
+  Slots: 'slots',
+  /** G09, the screens: lower, more of the game above. */
+  Screens: 'screens',
+} as const
+export type SheetTop = (typeof SheetTop)[keyof typeof SheetTop]
 
-/** G09 on desktop: a bar at the bottom, 1040 px, the game visible above it. */
-export const BAR_PANEL = `${GLASS} absolute bottom-20 left-1/2 w-[1040px] max-w-[calc(100vw-32px)] -translate-x-1/2 gap-16 rounded-16 border shadow-(--qm-panel-shadow)`
+/** Thick glass's material without its float shadow: the quick menu draws its own. */
+export const panelVariants = cva('glass-thick-flat flex flex-col border-line', {
+  variants: {
+    layout: {
+      [PanelLayout.Menu]:
+        'absolute top-1/2 left-1/2 max-h-[calc(100vh-var(--spacing-window-margin))] w-panel max-w-[calc(100vw-var(--spacing-window-margin))] -translate-1/2 gap-16 rounded-16 border p-20 shadow-panel',
+      [PanelLayout.Bar]:
+        'absolute bottom-20 left-1/2 w-bar max-w-[calc(100vw-var(--spacing-window-margin))] -translate-x-1/2 gap-16 rounded-16 border shadow-panel',
+      [PanelLayout.Sheet]:
+        'absolute inset-x-0 bottom-0 gap-10 rounded-t-20 border-t px-16 pt-8 pb-18 text-lead shadow-sheet',
+    },
+    top: {
+      [SheetTop.Page]: 'top-[calc(100vw*2/3+var(--spacing-touch))]',
+      [SheetTop.Slots]: 'top-[calc(100vw*2/3-var(--spacing-24))]',
+      [SheetTop.Screens]: 'top-[calc(100vw*2/3+var(--spacing-sheet-screens))]',
+    },
+  },
+})
 
-/**
- * Phone in portrait: a bottom sheet under the game (board «Tel-MenuRapido3», 390 × 844: the top
- * is 44 px + the 3:2 game image; G08 starts higher, G09 lower).
- */
+export const MENU_PANEL = panelVariants({ layout: PanelLayout.Menu })
+export const BAR_PANEL = panelVariants({ layout: PanelLayout.Bar })
+
+/** The phone's sheet for a view: where it starts depends on the page. */
 export function sheetPanel(view: QuickMenuView): string {
   const top =
     view === QuickMenuView.Slots
-      ? 'top-[calc(100vw*2/3-24px)]'
+      ? SheetTop.Slots
       : view === QuickMenuView.Screens
-        ? 'top-[calc(100vw*2/3+112px)]'
-        : 'top-[calc(100vw*2/3+44px)]'
-  return `${GLASS} absolute inset-x-0 bottom-0 ${top} gap-10 rounded-t-[20px] border-t px-16 pt-8 pb-18 text-lead shadow-(--qm-sheet-shadow)`
+        ? SheetTop.Screens
+        : SheetTop.Page
+  return panelVariants({ layout: PanelLayout.Sheet, top })
 }

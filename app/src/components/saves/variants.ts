@@ -11,7 +11,7 @@ export type SaveBadgeTone = (typeof SaveBadgeTone)[keyof typeof SaveBadgeTone]
 
 // 11px on a 16px line is off the type scale (its 11px step sits on a 14px line): kept until Cowork places
 // it (spec Decision 5).
-export const saveBadgeVariants = cva('rounded-4 px-6 text-[11px] leading-[16px]', {
+export const saveBadgeVariants = cva('rounded-4 px-6 text-badge', {
   variants: {
     tone: {
       [SaveBadgeTone.Neutral]: 'bg-surface-raised font-medium text-ink-muted',

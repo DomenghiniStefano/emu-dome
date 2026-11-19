@@ -115,12 +115,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div
-    v-if="game"
-    ref="root"
-    class="flex min-h-0 flex-1 flex-col overflow-y-auto"
-    :class="phone && 'text-lead'"
-  >
+  <div v-if="game" ref="root" class="flex min-h-0 flex-1 flex-col overflow-y-auto touch:text-lead">
     <DetailsHero
       ref="hero"
       :game="game"
@@ -136,12 +131,11 @@ onMounted(async () => {
     <Tabs
       class="contents"
       :model-value="current"
-      :size="phone ? TabsSize.Pill : TabsSize.Large"
+      :size="TabsSize.Large"
       @update:model-value="selectTab"
     >
       <TabsList
-        class="overflow-x-auto"
-        :class="phone ? 'gap-8 border-b-0 px-16 pt-16' : 'px-32'"
+        class="overflow-x-auto px-32 touch:gap-8 touch:border-b-0 touch:px-16 touch:pt-16"
         :aria-label="t('details.tabsLabel')"
       >
         <TabsTrigger v-for="tab in DETAILS_TABS" :key="tab" :value="tab">
@@ -151,8 +145,7 @@ onMounted(async () => {
     </Tabs>
 
     <div
-      class="flex max-w-[1040px] flex-col"
-      :class="phone ? 'gap-16 p-16' : 'gap-20 px-32 pt-24 pb-48'"
+      class="flex max-w-page-md flex-col gap-20 px-32 pt-24 pb-48 touch:gap-16 touch:p-16"
       role="tabpanel"
       :aria-label="t(tabLabelKey(current, phone))"
     >
@@ -177,14 +170,12 @@ onMounted(async () => {
       <DetailsControls
         v-else-if="current === 'controls'"
         :game="game"
-        :phone="phone"
         @remap="emit('remap', game!)"
         @error="text => emit('error', text)"
       />
       <DetailsFiles
         v-else-if="current === 'files'"
         :game="game"
-        :phone="phone"
         :device="device"
         @cover="pickingCover = true"
         @error="text => emit('error', text)"

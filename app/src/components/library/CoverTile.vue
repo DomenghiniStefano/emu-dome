@@ -10,7 +10,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Ellipsis, Play } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { LibraryGame } from '../../emu'
 import { lastPlayedLabel, playTimeLabel } from '../../i18n/labels'
 import CoverMenu from '../CoverMenu.vue'
@@ -42,7 +42,7 @@ const meta = computed(() =>
 <template>
   <div class="flex min-w-0 flex-col gap-8" :data-game="game.id">
     <div
-      class="group/frame relative rounded-10 shadow-card outline-2 outline-offset-2 outline-transparent transition-[outline-color] hover:outline-focus-ring focus-within:outline-focus-ring data-open:outline-focus-ring"
+      class="group/frame relative rounded-10 shadow-card outline-ring outline-offset-2 outline-transparent transition-[outline-color] hover:outline-focus-ring focus-within:outline-focus-ring data-open:outline-focus-ring"
       :data-open="menuOpen ? '' : undefined"
       @contextmenu.prevent="emit('details')"
     >
@@ -50,14 +50,14 @@ const meta = computed(() =>
       <GameCover
         :game="game"
         :class="{
-          'opacity-45 outline-1 -outline-offset-1 outline-line-strong outline-dashed': off,
+          'opacity-missing outline -outline-offset-1 outline-line-strong outline-dashed': off,
         }"
       />
-      <!-- 52px: the action strip's height, which the click area stops above. -->
+      <!-- The action strip's height (52), which the click area stops above. -->
       <Button
         :variant="ButtonVariant.Bare"
         :size="ButtonSize.Area"
-        class="focus-ring-none absolute inset-x-0 top-0 bottom-[52px] rounded-t-10 rounded-b-none"
+        class="focus-ring-none absolute inset-x-0 top-0 bottom-52 rounded-t-10 rounded-b-none"
         v-bind="{ [COVER_OF]: game.id }"
         :aria-label="t('library.openDetails', { title: game.title })"
         @click="emit('details')"
@@ -68,8 +68,8 @@ const meta = computed(() =>
         <Button
           :variant="ButtonVariant.Inverse"
           :size="ButtonSize.CoverAction"
+          :fade="ButtonFade.None"
           class="focus-ring-tight min-w-0 flex-1"
-          :class="{ 'cursor-not-allowed': off }"
           :aria-disabled="off || undefined"
           @click="emit('play')"
         >

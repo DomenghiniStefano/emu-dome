@@ -1,20 +1,14 @@
 <script setup lang="ts">
 // G11: the confirmation of «Riavvia il gioco», in place of the menu.
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RefreshCw } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import PageTitle from './PageTitle.vue'
 import { FocusMark } from './view'
 
-const props = defineProps<{
-  /** The phone's sheet: the touch size. */
-  touch?: boolean
-}>()
 const emit = defineEmits<{ cancel: []; confirm: [] }>()
 
 const { t } = useI18n()
-const size = computed(() => (props.touch ? ButtonSize.MenuTouch : ButtonSize.Menu))
 const initial = { [FocusMark.SubInitial]: '' }
 </script>
 
@@ -25,7 +19,7 @@ const initial = { [FocusMark.SubInitial]: '' }
     <Button
       v-bind="initial"
       :variant="ButtonVariant.Soft"
-      :size="size"
+      :size="ButtonSize.Menu"
       class="min-w-0"
       @click="emit('cancel')"
     >
@@ -33,7 +27,7 @@ const initial = { [FocusMark.SubInitial]: '' }
     </Button>
     <Button
       :variant="ButtonVariant.DangerOutline"
-      :size="size"
+      :size="ButtonSize.Menu"
       class="min-w-0"
       @click="emit('confirm')"
     >

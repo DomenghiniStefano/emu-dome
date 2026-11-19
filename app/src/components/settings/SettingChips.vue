@@ -3,7 +3,7 @@
 // every option into a chip to switch on or off, «Fatto» goes back.
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Chip, ChipVariant } from '@/components/ui/chip'
 import { toggleChosen } from './settingRowModel'
 import type { RowOption } from './useSettingRow'
@@ -40,7 +40,8 @@ function toggle(id: string) {
         {{ optionText(id) }}
       </Chip>
       <Button
-        :variant="ButtonVariant.RowGhostAccent"
+        :variant="ButtonVariant.GhostAccent"
+        :fade="ButtonFade.None"
         :size="ButtonSize.Small"
         :disabled="disabled"
         @click="editing = true"
@@ -62,7 +63,8 @@ function toggle(id: string) {
         {{ o.text }}
       </Chip>
       <Button
-        :variant="ButtonVariant.RowGhostAccent"
+        :variant="ButtonVariant.GhostAccent"
+        :fade="ButtonFade.None"
         :size="ButtonSize.Small"
         @click="editing = false"
       >

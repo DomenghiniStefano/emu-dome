@@ -9,7 +9,7 @@ import DetailsCard from './DetailsCard.vue'
 import { deviceLine, gameFacts } from './gameFiles'
 import SectionLabel from './SectionLabel.vue'
 
-const props = defineProps<{ game: LibraryGame; phone: boolean; device?: SettingDevice | null }>()
+const props = defineProps<{ game: LibraryGame; device?: SettingDevice | null }>()
 
 const { t } = useI18n()
 
@@ -18,7 +18,7 @@ const facts = computed(() => gameFacts(props.game, t))
 </script>
 
 <template>
-  <DetailsCard :phone="phone" class="gap-14">
+  <DetailsCard class="gap-14">
     <SectionLabel>{{ t('details.files.fileTitle') }}</SectionLabel>
     <div class="flex flex-col gap-2">
       <span class="font-medium">{{ onDevice }}</span>
@@ -31,8 +31,8 @@ const facts = computed(() => gameFacts(props.game, t))
     >
       <template v-for="f in facts" :key="f.label">
         <dt>{{ f.label }}</dt>
-        <!-- The identity in the system's monospace (no font token yet). -->
-        <dd class="m-0" :class="f.mono && 'font-[family-name:ui-monospace,monospace] break-all'">
+        <!-- The identity in the system's monospace. -->
+        <dd class="m-0" :class="f.mono && 'font-mono break-all'">
           {{ f.value }}
         </dd>
       </template>

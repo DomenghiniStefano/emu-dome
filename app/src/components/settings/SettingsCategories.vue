@@ -33,9 +33,8 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
   >
     <div class="flex flex-col gap-12">
       <h1 class="m-0 px-8 text-title">{{ t('settingsUi.title') }}</h1>
-      <!-- radius 8: off the radius scale (spec Decision 5, Cowork) -->
       <label
-        class="flex h-control-lg items-center gap-8 rounded-[8px] border border-line-strong bg-surface-raised px-12 text-ink-muted"
+        class="flex h-control-lg items-center gap-8 rounded-8 border border-line-strong bg-surface-raised px-12 text-ink-muted"
       >
         <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
         <span class="sr-only">{{ t('settingsUi.search') }}</span>
@@ -48,9 +47,9 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
       </label>
     </div>
     <Button
-      :variant="ButtonVariant.NavItem"
+      :variant="ButtonVariant.NavHead"
       :size="ButtonSize.NavItem"
-      class="shrink font-semibold"
+      class="shrink"
       :aria-current="current(OVERVIEW)"
       :data-nav-initial="page === OVERVIEW ? '' : undefined"
       @click="emit('pick', OVERVIEW)"

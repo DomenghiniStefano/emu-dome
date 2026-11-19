@@ -58,7 +58,6 @@ const notYet = computed(() => {
     :speed="speed"
     :ff-option="ffOption"
     :slow-option="slowOption"
-    :touch="sheet"
     @speed="s => emit('speed', s)"
     @set-speeds="e => emit('open', QuickMenuView.Speed, e)"
   />

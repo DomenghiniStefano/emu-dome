@@ -23,7 +23,7 @@ useDismiss(root, () => emit('close'))
 <template>
   <div
     ref="root"
-    class="glass-thick absolute top-[calc(100%+8px)] right-0 z-raised flex w-menu flex-col gap-14 p-16"
+    class="glass-thick absolute top-[calc(100%+var(--spacing-8))] right-0 z-raised flex w-menu flex-col gap-14 p-16"
     role="dialog"
     :aria-label="t('library.filters.label')"
   >
@@ -42,7 +42,7 @@ useDismiss(root, () => emit('close'))
         @click="emit('sort', s)"
       >
         <span
-          class="size-[14px] shrink-0 rounded-full border border-line-strong group-data-selected:border-4 group-data-selected:border-accent-text"
+          class="size-14 shrink-0 rounded-full border border-line-strong group-data-selected:border-check group-data-selected:border-accent-text"
           aria-hidden="true"
         ></span>
         {{ t(`library.sort.${s}`) }}
@@ -61,7 +61,7 @@ useDismiss(root, () => emit('close'))
         @click="emit('toggle', k)"
       >
         <span
-          class="size-[14px] shrink-0 rounded-4"
+          class="size-14 shrink-0 rounded-4"
           :class="show[k] ? 'bg-accent-text' : 'border border-line-strong'"
           aria-hidden="true"
         ></span>

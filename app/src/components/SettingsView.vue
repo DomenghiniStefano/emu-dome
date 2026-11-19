@@ -135,7 +135,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         >
           <!-- 1px down to sit on the text's first line -->
           <Info
-            class="mt-[1px] flex-none text-accent-text"
+            class="mt-px flex-none text-accent-text"
             :size="16"
             :stroke-width="1.75"
             aria-hidden="true"

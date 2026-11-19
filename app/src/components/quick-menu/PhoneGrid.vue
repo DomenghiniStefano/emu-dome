@@ -32,7 +32,7 @@ const PAGES: { view: QuickMenuView; icon: Component; label: string }[] = [
       v-for="p in PAGES"
       :key="p.view"
       as="button"
-      :variant="CardVariant.ToolTouch"
+      :variant="CardVariant.Tool"
       class="min-w-0 gap-8"
       @click="emit('open', p.view, $event)"
     >
@@ -49,7 +49,7 @@ const PAGES: { view: QuickMenuView; icon: Component; label: string }[] = [
       v-for="x in tools"
       :key="x.id"
       as="button"
-      :variant="CardVariant.ToolTouch"
+      :variant="CardVariant.Tool"
       :selected="x.pressed"
       class="min-w-0 gap-8"
       :disabled="!x.available"

@@ -3,7 +3,7 @@
 // says which file is chosen, or that none is. A row with no backend yet shows its button disabled, with the reason
 // on hover.
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonVariant } from '@/components/ui/button'
 
 defineProps<{
   text: string
@@ -20,15 +20,27 @@ const { t } = useI18n()
   <!-- line height 20: off the type scale (Cowork) -->
   <span
     v-if="fileState"
-    class="rounded-full bg-surface-hover px-8 text-caption leading-[20px] whitespace-nowrap text-ink-muted"
+    class="rounded-full bg-surface-hover px-8 text-caption leading-file whitespace-nowrap text-ink-muted"
   >
     {{ fileState }}
   </span>
   <template v-if="text">
-    <Button v-if="notYet" :variant="ButtonVariant.RowSoft" disabled :title="t('settingsUi.notYet')">
+    <Button
+      v-if="notYet"
+      :variant="ButtonVariant.Soft"
+      :fade="ButtonFade.None"
+      disabled
+      :title="t('settingsUi.notYet')"
+    >
       {{ text }}
     </Button>
-    <Button v-else :variant="ButtonVariant.RowSoft" :disabled="disabled" @click="emit('choose')">
+    <Button
+      v-else
+      :variant="ButtonVariant.Soft"
+      :fade="ButtonFade.None"
+      :disabled="disabled"
+      @click="emit('choose')"
+    >
       {{ text }}
     </Button>
   </template>

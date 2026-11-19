@@ -15,7 +15,7 @@ defineEmits<{ back: [] }>()
 </script>
 
 <template>
-  <div class="flex gap-8" :class="touch ? 'flex-row items-center' : 'flex-col'">
+  <div class="flex flex-col gap-8 touch:flex-row touch:items-center">
     <BackButton
       :label="backLabel"
       :hint="touch ? null : hint"

@@ -1,0 +1,19 @@
+/* Edge widths: what a border or an outline is, so every edge's weight is one edit. The colours of
+   the edges are colour tokens (`border-line`, `border-line-strong`, `border-accent-text`…,
+   colors.css).
+
+   - `border` alone is the edge (`--default-border-width`, 1px), on every card, field and panel;
+   - strong: an edge that marks a choice or a target (a chosen slot on the phone, the drop
+     target), 2;
+   - check: the dot of a chosen radio in the library's filters, 4 (pending Cowork);
+   - outlines: `outline` alone is the hairline (a missing game's dashes, a listening field), and
+     `outline-ring` the 2px ring around a chosen colour and a cover's frame (the focus ring's own
+     width, styles.css). */
+@theme {
+  --default-border-width: 1px;
+  --border-width-strong: 2px;
+  --border-width-check: 4px;
+
+  --default-outline-width: 1px;
+  --outline-width-ring: 2px;
+}

@@ -123,11 +123,13 @@ const sticksSub = computed(() =>
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-1 flex-col gap-20 overflow-auto px-32 pt-24 pb-48 *:max-w-[1180px]">
+  <div
+    class="flex min-w-0 flex-1 flex-col gap-20 overflow-auto px-32 pt-24 pb-48 *:max-w-page-wide"
+  >
     <SectionTitle>{{ t('shell.controls') }}</SectionTitle>
 
     <div
-      class="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-12"
+      class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-tile-min),1fr))] gap-12"
       role="radiogroup"
       :aria-label="t('controls.devices')"
     >

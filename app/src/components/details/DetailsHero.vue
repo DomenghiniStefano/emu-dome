@@ -12,6 +12,7 @@ import type { ResumePoint } from '../../gameDetails'
 import { playTimeLabel, saveWhenLabel } from '../../i18n/labels'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import GameCover from '../GameCover.vue'
+import { CoverSize } from '../cover/variants'
 import GameMoreButton from './GameMoreButton.vue'
 import ResumeButton from './ResumeButton.vue'
 
@@ -44,8 +45,7 @@ defineExpose({
 
 <template>
   <section
-    class="relative flex flex-col bg-cover-fade"
-    :class="phone ? 'gap-16 px-16 pt-8' : 'gap-20 px-32 pt-24 pb-[28px]'"
+    class="relative flex flex-col gap-20 bg-cover-fade px-32 pt-24 pb-28 touch:gap-16 touch:px-16 touch:pt-8 touch:pb-0"
     :style="{ '--cover-tint': game.colour }"
     :aria-label="game.title"
   >
@@ -79,43 +79,26 @@ defineExpose({
       {{ t('shell.library') }}
     </Button>
 
-    <div class="flex items-end" :class="phone ? 'flex-nowrap gap-14' : 'flex-wrap gap-[28px]'">
+    <div class="flex flex-wrap items-end gap-28 touch:flex-nowrap touch:gap-14">
       <GameCover
-        class="flex-none"
-        :class="phone ? 'w-[96px] shadow-cover-glow' : 'w-[168px] shadow-cover-hero'"
+        :size="CoverSize.Hero"
+        class="flex-none shadow-cover-hero touch:shadow-cover-glow"
         :game="game"
         :badge="false"
       />
-      <div
-        class="flex min-w-0 flex-col"
-        :class="phone ? 'flex-1 gap-4' : 'flex-[1_1_420px] gap-10'"
-      >
-        <div
-          class="text-ink-muted uppercase"
-          :class="phone ? 'text-caption font-semibold tracking-[0.08em]' : 'text-overline'"
-        >
+      <div class="flex min-w-0 grow basis-hero-text flex-col gap-10 touch:flex-1 touch:gap-4">
+        <div class="text-overline text-ink-muted uppercase touch:text-overline-lg">
           {{ t(`console.${game.console}`) }}
         </div>
-        <h1
-          class="m-0 wrap-anywhere"
-          :class="phone ? 'text-[22px]/[28px] font-semibold tracking-[-0.02em]' : 'text-display'"
-        >
+        <h1 class="m-0 text-display wrap-anywhere touch:text-display-sm">
           {{ game.title }}
         </h1>
-        <div class="text-ink-muted tabular-nums" :class="phone ? 'text-body' : 'text-lead'">
+        <div class="text-lead text-ink-muted tabular-nums touch:text-body">
           {{ meta }}
         </div>
         <div v-if="!phone" class="mt-6 flex flex-wrap gap-8">
-          <ResumeButton
-            :phone="false"
-            :available="game.available"
-            :fresh="!!resume?.none"
-            @click="emit('play')"
-          />
-          <Button
-            :size="ButtonSize.TallNarrow"
-            @click="emit('flags', { favourite: !game.favourite })"
-          >
+          <ResumeButton :available="game.available" :fresh="!!resume?.none" @click="emit('play')" />
+          <Button :size="ButtonSize.Tall" @click="emit('flags', { favourite: !game.favourite })">
             <Heart
               :size="16"
               :stroke-width="1.75"
@@ -140,7 +123,6 @@ defineExpose({
     </div>
     <ResumeButton
       v-if="phone"
-      phone
       :available="game.available"
       :fresh="!!resume?.none"
       @click="emit('play')"

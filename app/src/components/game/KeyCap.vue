@@ -4,7 +4,7 @@
 </script>
 
 <template>
-  <kbd class="rounded-4 border border-line-strong px-6 py-px text-caption leading-[18px] text-ink">
+  <kbd class="rounded-4 border border-line-strong px-6 py-px text-caption-tall text-ink">
     <slot />
   </kbd>
 </template>

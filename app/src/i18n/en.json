@@ -1760,12 +1760,10 @@
     "slow": "Slow motion",
     "row": {
       "screens": {
-        "name": "Screens and picture",
-        "sub": "Size, smoothing, screen effects"
+        "name": "Screens and picture"
       },
       "controls": {
-        "name": "Controls",
-        "sub": "Remap for this game, shortcuts"
+        "name": "Controls"
       }
     },
     "resumeShort": "Resume",

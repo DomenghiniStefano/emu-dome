@@ -33,15 +33,16 @@ function act(t: Toast) {
 
 defineExpose({ push })
 
-// The radius 12 and the 44px row of a toast with an action wait for Cowork (spec Decision 5).
+// A toast with an action is a row at the touch minimum (44), its radius 12 pending Cowork (spec
+// Decision 5).
 const stackClass = computed(() =>
   props.inGame ? 'top-16 left-1/2 -translate-x-1/2 items-center' : 'bottom-16 left-16',
 )
 const toastClass = (t: Toast) =>
   cn(
-    'glass-thick max-w-[420px]',
+    'glass-thick max-w-toast',
     t.action
-      ? 'pointer-events-auto flex min-h-[44px] items-center gap-12 rounded-[12px] py-6 pr-6 pl-16 font-semibold whitespace-nowrap'
+      ? 'pointer-events-auto flex min-h-touch items-center gap-12 rounded-12 py-6 pr-6 pl-16 font-semibold whitespace-nowrap'
       : 'rounded-10 px-14 py-10 font-medium',
     t.kind === ToastKind.Error && 'text-danger',
   )

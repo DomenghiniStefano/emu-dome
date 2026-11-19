@@ -51,7 +51,7 @@ const statusText = computed(() => {
       {{ fieldText }}
     </CaptureField>
     <span
-      class="text-caption leading-[18px] text-ink-muted data-warn:text-warning"
+      class="text-caption-tall text-ink-muted data-warn:text-warning"
       :data-warn="status === RemapRowStatus.UsedTwice ? '' : undefined"
     >
       {{ statusText }}

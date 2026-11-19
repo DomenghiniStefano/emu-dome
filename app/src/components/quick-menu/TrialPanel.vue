@@ -8,8 +8,6 @@ import TrialActions from './TrialActions.vue'
 defineProps<{
   title: string
   consoleName: string
-  /** The phone's sheet: the touch size. */
-  touch?: boolean
 }>()
 const emit = defineEmits<{ discard: []; commit: ['game' | 'console'] }>()
 
@@ -26,11 +24,7 @@ const { t } = useI18n()
       <div class="text-caption text-ink-muted">{{ t('qm.trialHint') }}</div>
     </div>
     <div class="grid grid-cols-[1fr_1fr] gap-8">
-      <TrialActions
-        :touch="touch"
-        @discard="emit('discard')"
-        @commit-game="emit('commit', 'game')"
-      />
+      <TrialActions @discard="emit('discard')" @commit-game="emit('commit', 'game')" />
     </div>
     <Button
       :variant="ButtonVariant.Link"

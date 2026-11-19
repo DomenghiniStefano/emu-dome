@@ -15,7 +15,7 @@ export type ChipVariant = (typeof ChipVariant)[keyof typeof ChipVariant]
 // `data-selected` is set by Chip from its `selected` prop; aria-pressed / aria-checked stay the
 // caller's, who knows which role the chip has.
 export const chipVariants = cva(
-  'inline-flex shrink-0 items-center gap-6 rounded-6 border border-line bg-surface-raised font-sans text-label text-ink whitespace-nowrap enabled:cursor-pointer disabled:cursor-not-allowed data-selected:bg-accent-soft data-selected:text-accent-text',
+  'inline-flex shrink-0 items-center gap-6 rounded-control border border-line bg-surface-raised font-sans text-label text-ink whitespace-nowrap enabled:cursor-pointer disabled:cursor-not-allowed data-selected:bg-accent-soft data-selected:text-accent-text',
   {
     variants: {
       variant: {

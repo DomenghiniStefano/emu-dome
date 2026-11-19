@@ -15,7 +15,7 @@ export const searchFieldVariants = cva(
   {
     variants: {
       size: {
-        [SearchFieldSize.Default]: 'h-control rounded-6 px-10',
+        [SearchFieldSize.Default]: 'h-control rounded-control px-field-pad',
       },
     },
     defaultVariants: { size: SearchFieldSize.Default },

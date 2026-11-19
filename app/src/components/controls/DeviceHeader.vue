@@ -13,7 +13,7 @@ const { t } = useI18n()
 <template>
   <div class="flex flex-col">
     <Button
-      :variant="ButtonVariant.Back"
+      :variant="ButtonVariant.Ghost"
       :size="ButtonSize.TextLine"
       class="mb-4 -ml-6 self-start"
       data-nav-initial

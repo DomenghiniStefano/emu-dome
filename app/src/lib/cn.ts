@@ -5,6 +5,7 @@ import colors from '@/assets/theme/colors.css?raw'
 import layers from '@/assets/theme/layers.css?raw'
 import motion from '@/assets/theme/motion.css?raw'
 import opacity from '@/assets/theme/opacity.css?raw'
+import border from '@/assets/theme/border.css?raw'
 import radius from '@/assets/theme/radius.css?raw'
 import shadow from '@/assets/theme/shadow.css?raw'
 import spacing from '@/assets/theme/spacing.css?raw'
@@ -15,8 +16,8 @@ import { ThemeNamespace, themeKeys, utilityKeys } from '@/lib/design/themeKeys'
 // classes silently: tailwind-merge only knows t-shirt font sizes, reads `text-label` as a colour,
 // and cn('text-label', 'text-ink') keeps only the second, so a button would lose its type the
 // moment a caller passes a colour. The names come from the theme files themselves, so a token is
-// still declared in one place. tailwind-merge has no theme key for durations, opacity or
-// z-index: those extend their class groups instead.
+// still declared in one place. tailwind-merge has no theme key for durations, opacity,
+// z-index or edge widths: those extend their class groups instead.
 const merge = extendTailwindMerge({
   extend: {
     theme: {
@@ -26,6 +27,8 @@ const merge = extendTailwindMerge({
       'font-weight': themeKeys(typography, ThemeNamespace.FontWeight),
       spacing: themeKeys(spacing, ThemeNamespace.Spacing),
       radius: themeKeys(radius, ThemeNamespace.Radius),
+      leading: themeKeys(typography, ThemeNamespace.Leading),
+      tracking: themeKeys(typography, ThemeNamespace.Tracking),
       shadow: themeKeys(shadow, ThemeNamespace.Shadow),
       blur: themeKeys(shadow, ThemeNamespace.Blur),
       ease: themeKeys(motion, ThemeNamespace.Ease),
@@ -34,6 +37,8 @@ const merge = extendTailwindMerge({
       duration: [{ duration: themeKeys(motion, ThemeNamespace.TransitionDuration) }],
       opacity: [{ opacity: themeKeys(opacity, ThemeNamespace.Opacity) }],
       z: [{ z: utilityKeys(layers, 'z') }],
+      'border-w': [{ border: themeKeys(border, ThemeNamespace.BorderWidth) }],
+      'outline-w': [{ outline: themeKeys(border, ThemeNamespace.OutlineWidth) }],
     },
   },
 })
