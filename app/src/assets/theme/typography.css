@@ -19,14 +19,10 @@
 
   --tracking-*: initial;
   --leading-*: initial;
-  /* No tracking at all: a step's own tracking taken off (pending Cowork: the titles that never had
-     the title step's). */
-  --tracking-none: normal;
   /* Pending Cowork: lines off the scale, each one place's: a cover's title (19), the quick menu's
-     speed segments (17), a setting's file name (20). */
+     speed segments (17). */
   --leading-cover: 19px;
   --leading-stacked: 17px;
-  --leading-file: 20px;
 
   --text-*: initial;
   /* Scena: the focus moments (first run, game card, quick search). */
@@ -123,17 +119,14 @@
   --text-display-sm--letter-spacing: -0.02em;
   /* More pending steps, each one place's:
      - page-title: a quick menu page's title, 17 / 22 semibold;
-     - stat-sm, stat-md: a console's count in the first run (24 / 30) and after a scan (32 / 38,
-       display without its tracking);
+     - stat-md: a console's count (ui/stat-tile: the first run, after a scan), 32 / 38, display
+       without its tracking;
      - rail: a rail section's name, 10 / 12;
      - wordmark: the top bar's «EmuDome», 14 semibold at -0.025em;
      - console-badge: a cover's console badge, 11 / 16 semibold at 0.04em. */
   --text-page-title: 17px;
   --text-page-title--line-height: 22px;
   --text-page-title--font-weight: 600;
-  --text-stat-sm: 24px;
-  --text-stat-sm--line-height: 30px;
-  --text-stat-sm--font-weight: 600;
   --text-stat-md: 32px;
   --text-stat-md--line-height: 38px;
   --text-stat-md--font-weight: 600;

@@ -7,8 +7,8 @@ import type { SettingValue, Speed } from '@/emu'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
 import { msg } from '@/settingsModel'
-import SectionLabel from './SectionLabel.vue'
 import { SpeedChoiceId, chosenSpeed, type SpeedChoice } from './speedChoices'
+import { LabelledBlock } from '@/components/ui/labelled-block'
 
 const props = defineProps<{
   choices: SpeedChoice[]
@@ -50,9 +50,8 @@ function choose(id: string) {
 </script>
 
 <template>
-  <section class="flex flex-col gap-10" :aria-label="t('qm.speedTitle')">
-    <div class="flex items-baseline justify-between gap-8">
-      <SectionLabel>{{ t('qm.speedTitle') }}</SectionLabel>
+  <LabelledBlock :title="t('qm.speedTitle')" :aria-label="t('qm.speedTitle')">
+    <template #aside>
       <Button
         :variant="ButtonVariant.Link"
         :size="ButtonSize.LabelLink"
@@ -60,7 +59,7 @@ function choose(id: string) {
       >
         {{ t('qm.setSpeeds') }}
       </Button>
-    </div>
+    </template>
     <Segmented
       :model-value="chosen"
       :variant="SegmentedVariant.Stacked"
@@ -76,5 +75,5 @@ function choose(id: string) {
         </span>
       </SegmentedItem>
     </Segmented>
-  </section>
+  </LabelledBlock>
 </template>

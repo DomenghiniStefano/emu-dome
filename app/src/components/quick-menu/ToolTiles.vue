@@ -3,8 +3,8 @@
 // named in the note under them.
 import { useI18n } from 'vue-i18n'
 import { Card, CardVariant } from '@/components/ui/card'
-import SectionLabel from './SectionLabel.vue'
 import type { Tool } from './tools'
+import { LabelledBlock } from '@/components/ui/labelled-block'
 
 defineProps<{
   tools: Tool[]
@@ -19,8 +19,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <section class="flex flex-col gap-10" :aria-label="t('qm.toolsTitle')">
-    <SectionLabel>{{ t('qm.toolsTitle') }}</SectionLabel>
+  <LabelledBlock :title="t('qm.toolsTitle')" :aria-label="t('qm.toolsTitle')">
     <div class="grid gap-8" :class="threeColumns ? 'grid-cols-3' : 'grid-cols-4'">
       <Card
         v-for="x in tools"
@@ -38,5 +37,5 @@ const { t } = useI18n()
       </Card>
     </div>
     <span v-if="notYet" class="text-caption text-ink-muted">{{ notYet }}</span>
-  </section>
+  </LabelledBlock>
 </template>

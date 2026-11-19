@@ -4,6 +4,7 @@
 // this text and greys the name (the control beside it keeps its colour).
 import { useI18n } from 'vue-i18n'
 import type { SettingDevice } from '../../emu'
+import { Badge } from '@/components/ui/badge'
 
 defineProps<{
   name: string
@@ -29,9 +30,7 @@ const { t } = useI18n()
         {{ t('settingsUi.changed') }}
         <span class="sr-only">{{ t('settingsUi.changedSr') }}</span>
       </span>
-      <span v-if="onlyOn" class="rounded-4 bg-surface-raised px-6 text-badge text-ink-muted">
-        {{ t(`settingsUi.onlyHere.${onlyOn}`) }}
-      </span>
+      <Badge v-if="onlyOn">{{ t(`settingsUi.onlyHere.${onlyOn}`) }}</Badge>
     </div>
     <div class="text-caption text-ink-muted">{{ desc }}</div>
   </div>

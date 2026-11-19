@@ -80,8 +80,11 @@
 /* Roles: what a step is for, so «every card's padding» is one edit. Each points at a step of the
    grid above (or a pending one), never at a number of its own. */
 @theme {
-  /* Inside a card: the standard one, a raised choice card, the phone's details card. */
+  /* Inside a card: the standard one; a snug one (a stat, a message with its action, a save's
+     side); a tight one (a raised choice card, a slot tile, a «Continua a giocare» card); the
+     phone's details card. */
   --spacing-card-pad: var(--spacing-16);
+  --spacing-card-pad-md: var(--spacing-12);
   --spacing-card-pad-sm: var(--spacing-10);
   --spacing-card-pad-touch: var(--spacing-14);
   /* Inside a control: a button's and a field's side padding. */
@@ -91,6 +94,16 @@
   --spacing-dialog-pad: var(--spacing-24);
   /* The room a panel keeps from the window's edges (the quick menu). */
   --spacing-window-margin: var(--spacing-32);
+  /* A section's page (ui/section-page: Settings, Controls, Saves, a game's details): the room on
+     its sides, above and below its content, and between its blocks; on the phone one step all
+     round and between. */
+  --spacing-section-x: var(--spacing-32);
+  --spacing-section-top: var(--spacing-24);
+  --spacing-section-bottom: var(--spacing-48);
+  --spacing-section-gap: var(--spacing-20);
+  --spacing-section-touch: var(--spacing-16);
+  /* Between a block's label and the block (ui/labelled-block). */
+  --spacing-block-gap: var(--spacing-10);
 }
 
 /* Pending Cowork (spec Decision 5, «Handed back to design»): every other size the screens use
@@ -119,12 +132,11 @@
   --spacing-rail-item: 64px;
 
   /* Page widths: the game details' and Controls' content, a step of the first run, an empty
-     state (460, 480 in the library), a lead paragraph, the scan's bar, the button tester. */
+     state (its text, and the library's framed one), a lead paragraph, the scan's bar, the button tester. */
   --spacing-page-md: 1040px;
   --spacing-page-wide: 1180px;
   --spacing-step: 560px;
   --spacing-empty: 460px;
-  --spacing-empty-wide: 480px;
   --spacing-lead: 520px;
   --spacing-scan: 320px;
   --spacing-tester: 280px;

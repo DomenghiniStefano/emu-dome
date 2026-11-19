@@ -4,6 +4,7 @@
 // on hover.
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonFade, ButtonVariant } from '@/components/ui/button'
+import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
 
 defineProps<{
   text: string
@@ -17,13 +18,9 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <!-- line height 20: off the type scale (Cowork) -->
-  <span
-    v-if="fileState"
-    class="rounded-full bg-surface-hover px-8 text-caption leading-file whitespace-nowrap text-ink-muted"
-  >
+  <Badge v-if="fileState" :variant="BadgeVariant.Quiet" :size="BadgeSize.Pill">
     {{ fileState }}
-  </span>
+  </Badge>
   <template v-if="text">
     <Button
       v-if="notYet"

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { LibraryGame } from '../../emu'
 import type { ResumePoint } from '../../gameDetails'
 import ContinueCard from './ContinueCard.vue'
+import { Heading } from '@/components/ui/heading'
 
 defineProps<{ games: LibraryGame[]; resume: Record<string, ResumePoint> }>()
 const emit = defineEmits<{
@@ -19,7 +20,7 @@ const { t } = useI18n()
 <template>
   <section class="flex flex-col gap-10" :aria-label="t('library.continue.title')">
     <div class="flex flex-wrap items-baseline justify-between gap-8">
-      <h1 class="m-0 text-title">{{ t('library.continue.title') }}</h1>
+      <Heading as="h1">{{ t('library.continue.title') }}</Heading>
       <span class="text-caption text-ink-muted">{{ t('library.continue.lead') }}</span>
     </div>
     <div class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-tile-min),1fr))] gap-12">

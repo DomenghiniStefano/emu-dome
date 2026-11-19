@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // One quick-save slot to choose in the menu (G07, G08): its picture, name and date; on the phone's
 // sheet larger text and a wider picture. The chosen one takes the focus when the menu or the page
-// opens. (Saves' SlotTile is a different card,
-// with its own actions; the two looks are Cowork's to bring together.)
+// opens. Its picture is the saves' SaveThumb, cropped. (Saves' SlotTile is a different card, with
+// its own actions; the two looks are Cowork's to bring together.)
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SlotInfo } from '@/emu'
 import { Card, CardVariant } from '@/components/ui/card'
+import { cn } from '@/lib/cn'
+import SaveThumb from '../saves/SaveThumb.vue'
 import { slotDateLabel } from '@/i18n/labels'
 import { isEmptySlot, slotName } from './slots'
 import { useSay } from '@/i18n/message'
@@ -42,18 +44,16 @@ const marks = computed(() =>
     :aria-checked="chosen"
     @click="$emit('pick')"
   >
-    <span
-      class="block aspect-3/2 w-full overflow-hidden rounded-6 bg-surface-raised touch:aspect-2/1"
-      :class="{ 'border border-dashed border-line-strong': empty }"
-      aria-hidden="true"
-    >
-      <img
-        v-if="info.thumbUrl"
-        :src="info.thumbUrl"
-        alt=""
-        class="pixelated block size-full object-cover"
-      />
-    </span>
+    <SaveThumb
+      :src="info.thumbUrl"
+      crop
+      :class="
+        cn(
+          'aspect-3/2 w-full rounded-6 bg-surface-raised touch:aspect-2/1',
+          empty && 'border border-dashed border-line-strong',
+        )
+      "
+    />
     <span class="truncate text-caption font-semibold touch:text-label-tight">
       {{ say(slotName(info.slot)) }}
     </span>

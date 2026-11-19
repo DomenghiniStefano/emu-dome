@@ -9,7 +9,6 @@ import {
 } from '../../emu'
 import type { ResumePoint } from '../../gameDetails'
 import type { Message } from '../../i18n/message'
-import type { ScanSummary } from '../../library'
 import { CONSOLES } from '../../librarySort'
 
 /** A console chip: «Tutti» or one console present, with how many games it holds. */
@@ -59,23 +58,6 @@ export function unreachableFolders(
 }
 
 /** L11: one card of «N giochi aggiunti», an i18n key and a count. */
-export interface AddedCard {
-  key: string
-  count: number
-}
-
-/** The consoles a scan added games to; Game Boy and Game Boy Color share one card. */
-export function addedCards(summary: ScanSummary | null): AddedCard[] {
-  const per = summary?.perConsole ?? {}
-  const cards: AddedCard[] = [
-    { key: 'console.gba', count: per.gba ?? 0 },
-    { key: 'console.nds', count: per.nds ?? 0 },
-    { key: 'console.3ds', count: per['3ds'] ?? 0 },
-    { key: 'library.added.gbAndColor', count: (per.gb ?? 0) + (per.gbc ?? 0) },
-  ]
-  return cards.filter(c => c.count > 0)
-}
-
 /** Where «Riprendi» picks up; null when there is nothing. */
 export function resumeSource(point: ResumePoint | undefined): Message | null {
   if (!point || point.none) return null

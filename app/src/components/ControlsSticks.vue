@@ -14,6 +14,7 @@ import LiveStick from './controls/LiveStick.vue'
 import { axisUnit } from './controls/stick'
 import { errorText } from '../i18n/labels'
 import { useGlobalSettings } from './controls/useGlobalSettings'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{
   device: CaptureDevice
@@ -50,7 +51,9 @@ const axes = computed(() => {
 <template>
   <div class="flex flex-col gap-12">
     <section v-for="g in groups" :key="g.id" class="flex flex-col gap-8">
-      <div class="text-overline text-ink-muted">{{ t(`settings.sections.pad.${g.id}`) }}</div>
+      <Heading as="h2" :variant="HeadingVariant.Overline">{{
+        t(`settings.sections.pad.${g.id}`)
+      }}</Heading>
       <Card :variant="CardVariant.List">
         <SettingRowView
           v-for="e in g.entries"

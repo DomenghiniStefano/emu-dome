@@ -4,6 +4,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonFade } from '@/components/ui/button'
+import { Card, CardVariant } from '@/components/ui/card'
 import type { FolderImport } from '../../emu'
 import type { ImportState } from '../../lib/first-run/imports'
 import { readyCovers } from '../../lib/first-run/library'
@@ -13,7 +14,7 @@ import { CoverSize } from '../cover/variants'
 import ImportRow from './ImportRow.vue'
 import ReadyRow from './ReadyRow.vue'
 import StepLayout from './StepLayout.vue'
-import StepTitle from './StepTitle.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 defineProps<{
   phone: boolean
@@ -29,19 +30,17 @@ const count = computed(() => library.games.length)
 
 <template>
   <StepLayout centred wide>
-    <StepTitle>{{ t('firstRun.ready.title') }}</StepTitle>
+    <Heading as="h1" :variant="HeadingVariant.Display">{{ t('firstRun.ready.title') }}</Heading>
     <p class="m-0 text-lead text-ink-muted tabular-nums">
       {{ t('firstRun.ready.count', { n: count }, count) }}
     </p>
     <div v-if="covers.length" class="flex gap-14" aria-hidden="true">
       <GameCover v-for="g in covers" :key="g.id" :size="CoverSize.Small" :game="g" :badge="false" />
     </div>
-    <div class="mt-8 self-stretch text-left text-overline text-ink-muted">
+    <Heading as="h2" :variant="HeadingVariant.Overline" class="mt-8 self-stretch text-left">
       {{ t('firstRun.ready.optional') }}
-    </div>
-    <div
-      class="divide-y divide-line self-stretch overflow-hidden rounded-10 border border-line bg-surface text-left"
-    >
+    </Heading>
+    <Card :variant="CardVariant.List" class="divide-y divide-line self-stretch">
       <ImportRow
         :name="t('firstRun.ready.desmume')"
         :hint="t('firstRun.ready.desmumeHint')"
@@ -70,7 +69,7 @@ const count = computed(() => library.games.length)
         @pick="emit('pick', 'any')"
         @import="emit('import', 'any')"
       />
-    </div>
+    </Card>
     <p class="m-0 text-ink-muted">
       {{ phone ? t('firstRun.ready.hintPhone') : t('firstRun.ready.hintDesktop') }}
     </p>

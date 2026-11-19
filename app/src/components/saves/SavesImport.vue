@@ -10,6 +10,7 @@ import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import ImportStep from './ImportStep.vue'
 import SaveWarning from './SaveWarning.vue'
+import { Heading } from '@/components/ui/heading'
 
 const props = defineProps<{
   candidate: ImportCandidate | null
@@ -43,7 +44,7 @@ const replaced = computed(() => (props.target ? (props.targetSaves?.inGame ?? nu
 <template>
   <section class="flex flex-col gap-18">
     <div class="flex flex-col gap-4">
-      <h2 class="m-0 text-title">{{ t('saves.importer.title') }}</h2>
+      <Heading>{{ t('saves.importer.title') }}</Heading>
       <p class="m-0 text-ink-muted">{{ t('saves.importer.intro') }}</p>
     </div>
     <Card class="gap-14">

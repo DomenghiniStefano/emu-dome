@@ -3,7 +3,7 @@
 // saves (search, «Importa…»), on the right the chosen game (V02: in-game save, quick saves,
 // backups with «Ripristina») or the import (V05). A quick save opens its details (V03).
 // No saves at all: E03. The in-game save set aside as unreadable (E04) shows as a note over the
-// backups. V06 (two versions) waits for Google Drive sync: ConflictTwoUp.vue is ready for it.
+// backups. V06 (two versions) waits for Google Drive sync: saves/ConflictTwoUp.vue is ready for it.
 //
 // Saves are found from each library game's ROM file name (TODO(game identity, Trello #21)):
 // games opened from a file outside the library are not listed.
@@ -32,6 +32,7 @@ import { useSaveImport } from './saves/useSaveImport'
 import { useSavesOverview } from './saves/useSavesOverview'
 import { useSaveShortcut } from './saves/useSaveShortcut'
 import { useSavesSettings } from './saves/useSavesSettings'
+import { SectionPage } from '@/components/ui/section-page'
 
 const emit = defineEmits<{
   openGame: [game: LibraryGame, slot: number]
@@ -202,7 +203,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
         @import="startImport"
       />
 
-      <main class="min-h-0 min-w-0 flex-1 overflow-auto px-32 pt-24 pb-48">
+      <SectionPage as="main">
         <SavesImport
           v-if="mode === 'import'"
           :candidate="candidate"
@@ -227,7 +228,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
           @more="quickDetails.open"
           @restore="restore"
         />
-      </main>
+      </SectionPage>
     </template>
 
     <!-- V03: a quick save -->

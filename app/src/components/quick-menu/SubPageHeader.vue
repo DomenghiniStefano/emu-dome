@@ -2,7 +2,7 @@
 // The head of a quick menu page: back one level (B / Esc), then the page's title. On the phone's
 // sheet the chevron alone, beside the title.
 import BackButton from './BackButton.vue'
-import PageTitle from './PageTitle.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 defineProps<{
   title: string
@@ -22,6 +22,6 @@ defineEmits<{ back: [] }>()
       :icon-only="touch"
       @click="$emit('back')"
     />
-    <PageTitle>{{ title }}</PageTitle>
+    <Heading as="h2" :variant="HeadingVariant.PageTitle">{{ title }}</Heading>
   </div>
 </template>

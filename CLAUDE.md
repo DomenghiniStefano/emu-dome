@@ -260,6 +260,8 @@ Prettier on the staged frontend files).
   and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
+- No arbitrary size in a class (`[13px]`) and no look-only `phone` / `touch` prop: until #63 makes the scanner block
+  them, held by review.
 - Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
   tested pure functions, nothing duplicated across screens, names that say what a thing is for.
 
@@ -301,7 +303,14 @@ everywhere). Until #63 no new screen or graphic work starts.
 - **Primitives** in `app/src/components/ui/<name>/`, all on **Reka UI** (one standard, no hand-made ones):
   `index.ts` re-exports, `variants.ts` holds the variants as `as const` constants (`ButtonVariant.Primary`, never
   `variant="primary"`), the parts are `.vue` files. Today: Button, Card, Chip, Tabs, Segmented, Slider, Select,
-  Switch, Dialog. A screen never restyles a primitive; a missing look is a new variant.
+  Switch, Dialog, Input, Heading, Badge, Kbd, Progress, EmptyState, LinkRow, StatTile, SectionPage,
+  LabelledBlock. A screen never restyles a primitive; a missing look is a new variant.
+- **Every visual value is a token**: colours, borders (width and colour, `theme/border.css`), margins, paddings, gaps,
+  radius, shadows, opacity. Where a value has a role it has a role name (`radius-control`, `spacing-card-pad`,
+  `spacing-section-x`…), so changing it everywhere is one edit. Values Cowork has not decided yet are tokens under a
+  «pending Cowork» comment, never literals in a screen. Internal design variables only, not user settings.
+- **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
+  components never take a `phone` / `touch` prop just to change their look.
 - **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
 - **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
   by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its

@@ -4,6 +4,7 @@
 import { useI18n } from 'vue-i18n'
 import { Save } from '@lucide/vue'
 import { Button, ButtonSize } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 
 defineProps<{ text: string }>()
 const emit = defineEmits<{ openLibrary: []; import: [] }>()
@@ -12,23 +13,15 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <section class="flex flex-1 flex-col items-center justify-center gap-12 p-32 text-center">
-    <span
-      class="grid size-thumb place-items-center rounded-16 border border-line bg-surface-raised text-ink-muted"
-      aria-hidden="true"
-    >
-      <Save :size="24" :stroke-width="1.75" />
-    </span>
-    <h1 class="m-0 text-title">{{ t('saves.empty.title') }}</h1>
-    <p class="m-0 max-w-empty text-ink-muted">{{ text }}</p>
-    <div class="mt-4 flex flex-wrap justify-center gap-8">
-      <Button :size="ButtonSize.Medium" data-nav-initial @click="emit('openLibrary')">
-        {{ t('saves.empty.openLibrary') }}
-      </Button>
-      <Button :size="ButtonSize.Medium" @click="emit('import')">
-        {{ t('saves.empty.import') }}
-      </Button>
-    </div>
-    <p class="m-0 text-caption text-ink-faint">{{ t('saves.empty.formats') }}</p>
-  </section>
+  <EmptyState :icon="Save" :title="t('saves.empty.title')" title-as="h1" :text="text">
+    <Button :size="ButtonSize.Medium" data-nav-initial @click="emit('openLibrary')">
+      {{ t('saves.empty.openLibrary') }}
+    </Button>
+    <Button :size="ButtonSize.Medium" @click="emit('import')">
+      {{ t('saves.empty.import') }}
+    </Button>
+    <template #footer>
+      <p class="m-0 text-caption text-ink-faint">{{ t('saves.empty.formats') }}</p>
+    </template>
+  </EmptyState>
 </template>

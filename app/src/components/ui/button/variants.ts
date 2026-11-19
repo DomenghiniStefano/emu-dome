@@ -48,8 +48,9 @@ export const ButtonVariant = {
   NavItem: 'navItem',
   // The head of such a list, its overview (the settings' «Panoramica»): NavItem in semibold.
   NavHead: 'navHead',
-  // A row of a card list that opens something (Settings T01 «Usate più spesso»): full width, a
-  // line between rows, regular muted text. With ButtonSize.LinkRow.
+  // A row of a card list that opens something (ui/link-row: Settings T01, Controls C01): full
+  // width, a line between rows, regular muted text; hovered only as a button (a `div` row only
+  // says where a thing is done). With ButtonSize.LinkRow.
   LinkRow: 'linkRow',
   // A section of the shell's rail: no fill until hovered; the current one (`aria-current="page"`)
   // on accent-soft with the rail marker and its icon glowing. Only the fill fades: the focus ring
@@ -212,7 +213,7 @@ export const buttonVariants = cva(
         [ButtonVariant.NavHead]:
           'justify-start border-0 bg-transparent font-semibold text-ink hover:bg-surface-hover aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent-text',
         [ButtonVariant.LinkRow]:
-          'w-full justify-start whitespace-normal rounded-none border-0 border-t border-line bg-transparent text-left font-regular text-ink-muted first:border-t-0 hover:bg-surface-hover',
+          'w-full justify-start whitespace-normal rounded-none border-0 border-t border-line bg-transparent text-left font-regular text-ink-muted first:border-t-0 enabled:hover:bg-surface-hover [&:not(button)]:cursor-default',
         [ButtonVariant.Rail]:
           'border-0 bg-transparent text-ink-muted transition-[background] hover:not-aria-[current=page]:bg-surface-hover aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent-text aria-[current=page]:shadow-rail aria-[current=page]:[&_svg]:glow-icon',
         [ButtonVariant.Inverse]: 'border-0 bg-ink font-semibold text-bg',

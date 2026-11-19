@@ -12,7 +12,7 @@ import { CoverSize } from '../cover/variants'
 import DetailsAction from './DetailsAction.vue'
 import DetailsCard from './DetailsCard.vue'
 import { coverDescription } from './gameFiles'
-import SectionLabel from './SectionLabel.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{
@@ -53,7 +53,9 @@ const coverLine = computed(() => coverDescription(props.game, t))
 
 <template>
   <DetailsCard class="gap-14">
-    <SectionLabel>{{ t('details.files.looksTitle') }}</SectionLabel>
+    <Heading as="h2" :variant="HeadingVariant.Overline">{{
+      t('details.files.looksTitle')
+    }}</Heading>
     <label class="flex flex-col gap-6">
       <span class="font-medium">{{ t('details.files.name') }}</span>
       <Input

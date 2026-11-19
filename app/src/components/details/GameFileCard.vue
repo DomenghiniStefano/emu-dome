@@ -7,7 +7,7 @@ import type { LibraryGame, SettingDevice } from '../../emu'
 import { sizeLabel } from '../../i18n/labels'
 import DetailsCard from './DetailsCard.vue'
 import { deviceLine, gameFacts } from './gameFiles'
-import SectionLabel from './SectionLabel.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{ game: LibraryGame; device?: SettingDevice | null }>()
 
@@ -19,7 +19,7 @@ const facts = computed(() => gameFacts(props.game, t))
 
 <template>
   <DetailsCard class="gap-14">
-    <SectionLabel>{{ t('details.files.fileTitle') }}</SectionLabel>
+    <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('details.files.fileTitle') }}</Heading>
     <div class="flex flex-col gap-2">
       <span class="font-medium">{{ onDevice }}</span>
       <span class="text-caption break-all text-ink-muted">

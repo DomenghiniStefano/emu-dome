@@ -4,6 +4,7 @@
 // Decision 5).
 import { useI18n } from 'vue-i18n'
 import { Library } from '@lucide/vue'
+import { Heading } from '@/components/ui/heading'
 
 const { t } = useI18n()
 </script>
@@ -17,7 +18,7 @@ const { t } = useI18n()
       class="flex flex-1 flex-col items-center justify-center gap-14 rounded-16 border-strong border-dashed border-accent-text text-accent-text"
     >
       <Library :size="44" :stroke-width="1.5" />
-      <div class="text-title tracking-none text-ink">{{ t('library.drop') }}</div>
+      <Heading as="div" class="text-ink">{{ t('library.drop') }}</Heading>
     </div>
   </div>
 </template>

@@ -25,10 +25,8 @@ import { errorText, gamepadName } from '../i18n/labels'
 import { buttonName, keyName, posName, testerCells } from '../controls'
 import { GLOBAL } from '../settingsModel'
 import { Card, CardVariant } from '@/components/ui/card'
-import ButtonTester from './ButtonTester.vue'
-import ControlsLinkRow from './controls/ControlsLinkRow.vue'
 import DeviceCard from './controls/DeviceCard.vue'
-import SectionTitle from './controls/SectionTitle.vue'
+import TesterCard from './controls/TesterCard.vue'
 import ShortcutsToRemember from './controls/ShortcutsToRemember.vue'
 import {
   connectionText,
@@ -41,6 +39,9 @@ import { keyboardRememberLines, padRememberLines } from './controls/shortcutLine
 import { ControlsTab } from './controls/tabs'
 import { buttonsUsing } from './controls/tester'
 import { useButtonTester } from './controls/useButtonTester'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { LinkRow } from '@/components/ui/link-row'
+import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 
 const props = defineProps<{
   pads: PadInfo[]
@@ -123,10 +124,8 @@ const sticksSub = computed(() =>
 </script>
 
 <template>
-  <div
-    class="flex min-w-0 flex-1 flex-col gap-20 overflow-auto px-32 pt-24 pb-48 *:max-w-page-wide"
-  >
-    <SectionTitle>{{ t('shell.controls') }}</SectionTitle>
+  <SectionPage :width="SectionWidth.Wide">
+    <Heading as="h1" :variant="HeadingVariant.Title">{{ t('shell.controls') }}</Heading>
 
     <div
       class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-tile-min),1fr))] gap-12"
@@ -164,31 +163,26 @@ const sticksSub = computed(() =>
       />
 
       <section class="flex flex-col gap-8">
-        <span class="text-overline text-ink-muted">{{ t('controls.tester') }}</span>
-        <Card class="items-center gap-12">
-          <ButtonTester
-            :cells="cells"
-            :held="tester.held.value"
-            :label="t('controls.overview.outline')"
-          />
-          <div class="text-center text-ink-muted" aria-live="polite">
-            {{ tester.last.value || t('controls.overview.press') }}
-          </div>
-        </Card>
+        <TesterCard
+          :cells="cells"
+          :held="tester.held.value"
+          :last="tester.last.value"
+          :idle="t('controls.overview.press')"
+        />
 
         <Card :variant="CardVariant.List">
-          <ControlsLinkRow
+          <LinkRow
             :name="t('controls.overview.remap')"
             :sub="t('controls.overview.remapSub')"
             @click="emit('open', ControlsTab.Remap)"
           />
-          <ControlsLinkRow
+          <LinkRow
             :name="t('controls.overview.sticks')"
             :sub="sticksSub"
             :disabled="isKeyboard"
             @click="emit('open', ControlsTab.Sticks)"
           />
-          <ControlsLinkRow
+          <LinkRow
             as="div"
             :name="t('controls.overview.touch')"
             :sub="t('controls.overview.touchSub')"
@@ -196,5 +190,5 @@ const sticksSub = computed(() =>
         </Card>
       </section>
     </div>
-  </div>
+  </SectionPage>
 </template>

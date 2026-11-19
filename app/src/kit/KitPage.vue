@@ -8,13 +8,18 @@ import { ref, watch } from 'vue'
 import { accentTokens } from '@/accent'
 import { Segmented, SegmentedItem } from '@/components/ui/segmented'
 import { dispatchNav, keyToNav, useNavScope } from '@/nav'
+import BadgeSection from './sections/BadgeSection.vue'
 import ButtonSection from './sections/ButtonSection.vue'
 import CaptureFieldSection from './sections/CaptureFieldSection.vue'
 import CardSection from './sections/CardSection.vue'
 import ChipSection from './sections/ChipSection.vue'
 import DialogSection from './sections/DialogSection.vue'
+import EmptyStateSection from './sections/EmptyStateSection.vue'
+import HeadingSection from './sections/HeadingSection.vue'
+import ProgressSection from './sections/ProgressSection.vue'
 import SearchFieldSection from './sections/SearchFieldSection.vue'
 import InputSection from './sections/InputSection.vue'
+import SectionPageSection from './sections/SectionPageSection.vue'
 import SegmentedSection from './sections/SegmentedSection.vue'
 import SelectSection from './sections/SelectSection.vue'
 import SliderSection from './sections/SliderSection.vue'
@@ -76,18 +81,23 @@ useNavScope(root, { autofocus: true })
           </Segmented>
         </div>
       </header>
+      <HeadingSection />
       <ButtonSection />
+      <BadgeSection />
       <CardSection />
       <ChipSection />
       <TabsSection />
       <SwitchSection />
       <SegmentedSection />
       <SliderSection />
+      <ProgressSection />
       <SelectSection />
       <InputSection />
       <DialogSection />
+      <EmptyStateSection />
       <SearchFieldSection />
       <CaptureFieldSection />
+      <SectionPageSection />
     </div>
   </main>
 </template>

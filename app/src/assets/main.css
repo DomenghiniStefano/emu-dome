@@ -28,9 +28,7 @@
 @source '../components/SavesView.vue';
 @source '../components/SlotTile.vue';
 @source '../components/QuickSaveDialog.vue';
-@source '../components/ConflictTwoUp.vue';
 /* Migrated in cycle 2 (#62). */
-@source '../components/ButtonTester.vue';
 @source '../components/ControlsOverview.vue';
 @source '../components/ControlsRemap.vue';
 @source '../components/ControlsShortcuts.vue';

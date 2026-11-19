@@ -8,6 +8,7 @@ import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { useNavScope } from '../nav'
 import { SHOW_KEYS, SORTS, type ShowKey, type Sort } from '../librarySort'
 import { useDismiss } from './library/useDismiss'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 defineProps<{ sort: Sort; show: Record<ShowKey, boolean> }>()
 const emit = defineEmits<{ sort: [Sort]; toggle: [ShowKey]; reset: []; close: [] }>()
@@ -27,7 +28,7 @@ useDismiss(root, () => emit('close'))
     role="dialog"
     :aria-label="t('library.filters.label')"
   >
-    <div class="text-overline text-ink-muted">{{ t('library.filters.sortBy') }}</div>
+    <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('library.filters.sortBy') }}</Heading>
     <div class="flex flex-col gap-2" role="radiogroup" :aria-label="t('library.filters.sortBy')">
       <Button
         v-for="s in SORTS"
@@ -48,7 +49,7 @@ useDismiss(root, () => emit('close'))
         {{ t(`library.sort.${s}`) }}
       </Button>
     </div>
-    <div class="text-overline text-ink-muted">{{ t('library.filters.show') }}</div>
+    <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('library.filters.show') }}</Heading>
     <div class="flex flex-col gap-2">
       <Button
         v-for="k in SHOW_KEYS"

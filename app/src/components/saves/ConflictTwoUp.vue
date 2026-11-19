@@ -11,12 +11,12 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize } from '@/components/ui/button'
-import FlowDialog from './FlowDialog.vue'
-import ConflictSide from './saves/ConflictSide.vue'
-import type { ConflictVersion } from './saves/conflict'
-import { newerIndex } from './saves/conflict'
+import FlowDialog from '../FlowDialog.vue'
+import ConflictSide from './ConflictSide.vue'
+import type { ConflictVersion } from './conflict'
+import { newerIndex } from './conflict'
 
-export type { ConflictVersion } from './saves/conflict'
+export type { ConflictVersion } from './conflict'
 
 const props = defineProps<{ title: string; versions: [ConflictVersion, ConflictVersion] }>()
 const emit = defineEmits<{ keep: [index: 0 | 1]; keepBoth: []; later: [] }>()

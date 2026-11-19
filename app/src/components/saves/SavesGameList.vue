@@ -5,9 +5,9 @@ import { useI18n } from 'vue-i18n'
 import type { LibraryGame } from '../../emu'
 import { Button } from '@/components/ui/button'
 import { SearchField } from '@/components/ui/search-field'
-import SaveBadge from './SaveBadge.vue'
 import SavesGameRow from './SavesGameRow.vue'
-import { SaveBadgeTone } from './variants'
+import { Heading } from '@/components/ui/heading'
+import { Badge, BadgeVariant } from '@/components/ui/badge'
 
 /** A game of the list with its line: what it has saved, and whether a save was set aside. */
 export interface SavesListRow {
@@ -33,7 +33,7 @@ const { t } = useI18n()
     :aria-label="t('saves.games')"
   >
     <div class="flex items-center justify-between gap-8">
-      <h1 class="m-0 text-title">{{ t('shell.saves') }}</h1>
+      <Heading as="h1">{{ t('shell.saves') }}</Heading>
       <Button @click="emit('import')">{{ t('saves.import') }}</Button>
     </div>
     <SearchField v-model="query" :label="t('saves.search')" :placeholder="t('saves.search')" />
@@ -49,9 +49,7 @@ const { t } = useI18n()
         :data-nav-initial="i === 0 ? '' : undefined"
         @click="emit('pick', game)"
       >
-        <SaveBadge v-if="broken" :tone="SaveBadgeTone.Warning">{{
-          t('saves.brokenBadge')
-        }}</SaveBadge>
+        <Badge v-if="broken" :variant="BadgeVariant.Warning">{{ t('saves.brokenBadge') }}</Badge>
       </SavesGameRow>
       <p v-if="rows.length === 0" class="m-0 text-caption text-ink-muted">
         {{ t('saves.noneShown') }}

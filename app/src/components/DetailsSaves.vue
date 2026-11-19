@@ -12,9 +12,9 @@ import { AUTO_SLOT, type GameSaves, type LibraryGame, type QuickSave } from '../
 import { errorText, saveWhenLabel } from '../i18n/labels'
 import { loadGameSaves } from './details/gameSaves'
 import InGameSaveCard from './details/InGameSaveCard.vue'
-import SectionLabel from './details/SectionLabel.vue'
 import QuickSaveDialog from './QuickSaveDialog.vue'
 import SlotTile from './SlotTile.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{ game: LibraryGame; phone: boolean }>()
 const emit = defineEmits<{
@@ -74,7 +74,7 @@ async function onChanged() {
   >
     <section class="flex flex-col gap-10">
       <div class="flex items-center justify-between gap-12">
-        <SectionLabel>{{ t('saves.quickTitle') }}</SectionLabel>
+        <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('saves.quickTitle') }}</Heading>
         <span v-if="!phone" class="text-caption text-ink-muted">
           {{ t('details.saves.quickHint') }}
         </span>

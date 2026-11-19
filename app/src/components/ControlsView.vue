@@ -39,6 +39,7 @@ import {
 import { cycle } from '../lib/cycle'
 import { ControlsTab, tabOrRemap, tabsFor } from './controls/tabs'
 import { useControlsData } from './controls/useControlsData'
+import { SectionPage } from '@/components/ui/section-page'
 
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
@@ -121,7 +122,7 @@ defineExpose({ tab: stepTabs, back })
       @error="text => emit('error', text)"
     />
 
-    <main v-else class="flex min-w-0 flex-1 flex-col gap-18 overflow-auto px-32 pt-24 pb-48">
+    <SectionPage v-else as="main">
       <DeviceHeader :name="deviceName(device)" :detail="deviceDetail(device)" @back="back" />
       <Tabs :model-value="tab" class="contents" @update:model-value="chooseTab">
         <TabsList :aria-label="t('controls.tabsLabel')">
@@ -160,6 +161,6 @@ defineExpose({ tab: stepTabs, back })
           @error="text => emit('error', text)"
         />
       </template>
-    </main>
+    </SectionPage>
   </div>
 </template>
