@@ -1,103 +1,50 @@
 <script setup lang="ts">
-// A list choice (`sel` on the Settings board): a button with the current value that opens the
-// options in a small glass menu (SettingSelectMenu). B / Esc / a click outside close it and the
-// focus returns to the button.
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { ChevronDown } from '@lucide/vue'
-import SettingSelectMenu from './SettingSelectMenu.vue'
+// A list choice (`sel` on the Settings board): a field with the current value that opens the
+// options in a small glass menu, on the Select primitive (Reka). B / Esc / a click outside close
+// it and the focus returns to the field. Also used by the first run (language) and by the scope
+// bar of Settings, where it sits in a level's title (`inTitle`): there the list hangs from the
+// title's block.
+import { computed, ref } from 'vue'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectTriggerVariant,
+  SelectValue,
+} from '@/components/ui/select'
 
 const props = defineProps<{
   label: string
   value: string
   options: { id: string; text: string }[]
   disabled?: boolean
+  /** Inside a title: no edge or fill, the title's colour and weight. */
+  inTitle?: boolean
 }>()
 const emit = defineEmits<{ pick: [string] }>()
+const root = ref<HTMLElement | null>(null)
 
-const open = ref(false)
-const wrap = ref<HTMLElement | null>(null)
-const button = ref<HTMLButtonElement | null>(null)
-
-function close() {
-  open.value = false
-  void nextTick(() => button.value?.focus())
-}
-function pick(id: string) {
-  emit('pick', id)
-  close()
-}
-
-function onKey(e: KeyboardEvent) {
-  if (e.code !== 'Escape') return
-  e.stopPropagation()
-  close()
-}
-function onPointer(e: PointerEvent) {
-  if (e.target instanceof Node && !wrap.value?.contains(e.target)) open.value = false
-}
-function listen(on: boolean) {
-  if (on) {
-    window.addEventListener('keydown', onKey, { capture: true })
-    window.addEventListener('pointerdown', onPointer, { capture: true })
-  } else {
-    window.removeEventListener('keydown', onKey, { capture: true })
-    window.removeEventListener('pointerdown', onPointer, { capture: true })
-  }
-}
-watch(open, listen)
-onBeforeUnmount(() => listen(false))
-
-function current(): string {
-  return props.options.find(o => o.id === props.value)?.text ?? props.value
-}
+/** The current option's text (the stored id when this device does not offer it). */
+const current = computed(() => props.options.find(o => o.id === props.value)?.text ?? props.value)
 </script>
 
 <template>
-  <div ref="wrap" class="select">
-    <button
-      ref="button"
-      class="field"
-      :aria-label="label"
-      aria-haspopup="listbox"
-      :aria-expanded="open"
+  <div ref="root">
+    <Select
+      :model-value="value"
       :disabled="disabled"
-      @click="open = !open"
+      @update:model-value="v => typeof v === 'string' && emit('pick', v)"
     >
-      <span class="text">{{ current() }}</span>
-      <ChevronDown :size="14" :stroke-width="1.75" aria-hidden="true" />
-    </button>
-    <SettingSelectMenu
-      v-if="open"
-      :label="label"
-      :value="value"
-      :options="options"
-      @pick="pick"
-      @close="close"
-    />
+      <SelectTrigger
+        :variant="inTitle ? SelectTriggerVariant.InTitle : SelectTriggerVariant.Field"
+        :aria-label="label"
+      >
+        <SelectValue>{{ current }}</SelectValue>
+      </SelectTrigger>
+      <SelectContent :aria-label="label" :anchor="inTitle ? root : null">
+        <SelectItem v-for="o in options" :key="o.id" :value="o.id">{{ o.text }}</SelectItem>
+      </SelectContent>
+    </Select>
   </div>
 </template>
-
-<style scoped>
-.select {
-  position: relative;
-}
-.field {
-  min-width: 200px;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: var(--radius-6);
-  border: 1px solid var(--line);
-  background: var(--surface-raised);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-}
-.field:hover:not(:disabled) {
-  background: var(--surface-hover);
-}
-.text {
-  flex: 1;
-  text-align: left;
-}
-</style>

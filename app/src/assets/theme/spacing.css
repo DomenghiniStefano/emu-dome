@@ -54,6 +54,21 @@
   --spacing-dialog: 520px;
   /* A slider's value beside it. */
   --spacing-value: 64px;
+
+  /* Settings (#62, the values of the screen as it is; not in the design system yet: Cowork). */
+  /* A section's side column of pages (the settings categories). */
+  --spacing-sidebar: 248px;
+  /* The widest a page's content grows (a settings page). */
+  --spacing-page: 920px;
+  /* A card's preview (the choice cards of a setting), and a list row that opens a page. */
+  --spacing-thumb: 56px;
+  --spacing-link-row: 56px;
+  /* The narrowest card of a grid of choice cards. */
+  --spacing-card-min: 180px;
+  /* The narrowest a setting's name and description get before its control goes under them. */
+  --spacing-setting-text: 300px;
+  /* A level card of the settings scope bar. */
+  --spacing-level: 60px;
 }
 
 /* Tailwind's container sizes (max-w-md…) and breakpoints are not ours either. */

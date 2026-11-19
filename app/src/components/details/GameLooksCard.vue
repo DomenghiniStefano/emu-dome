@@ -5,7 +5,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type LibraryGame } from '../../emu'
 import { errorText } from '../../i18n/labels'
-import { Input } from '@/components/ui/input'
+import { Input, InputVariant } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import GameCover from '../GameCover.vue'
 import DetailsAction from './DetailsAction.vue'
@@ -57,6 +57,7 @@ const coverLine = computed(() => coverDescription(props.game, t))
       <span class="font-medium">{{ t('details.files.name') }}</span>
       <Input
         v-model="name"
+        :variant="InputVariant.Block"
         :class="phone && 'min-h-touch text-lead'"
         type="text"
         maxlength="128"

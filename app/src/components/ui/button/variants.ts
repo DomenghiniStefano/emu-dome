@@ -62,6 +62,23 @@ export const ButtonVariant = {
   // Words that act in accent text, underlined on hover; a disabled one is faint (DetailsSettings
   // `.link`, «Apri tutte le impostazioni di questo gioco»).
   UnderlineLink: 'underlineLink',
+  // Settings rows (SettingRow): a row shows that it cannot be changed by fading its text, so the
+  // buttons inside it are not faded again when disabled (`.btn`, `.ghost` there have no disabled
+  // look of their own). RowSoft is Soft, RowGhost a Ghost in regular weight («Ripristina»,
+  // «Rimuovi»), RowGhostAccent the GhostAccent («Modifica l’elenco», «Fatto»).
+  RowSoft: 'rowSoft',
+  RowGhost: 'rowGhost',
+  RowGhostAccent: 'rowGhostAccent',
+  // An entry of a side list of pages (SettingsView categories): no fill until hovered, the page
+  // shown (`aria-current="page"`) in accent text on accent-soft. With ButtonSize.NavItem.
+  NavItem: 'navItem',
+  // A row of a card list that opens something (Settings T01 «Usate più spesso», «Modificate di
+  // recente»): full width, a line between rows, regular muted text. With ButtonSize.LinkRow.
+  LinkRow: 'linkRow',
+  // A colour to pick (`general.accent`): a round swatch, its fill from the caller's `style`, the
+  // chosen one (`aria-checked`) ringed in ink. With ButtonSize.IconSmall; like the row buttons,
+  // not faded when disabled.
+  Swatch: 'swatch',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -152,6 +169,11 @@ export const ButtonSize = {
   Hero: 'hero',
   // No box at all, for Text and UnderlineLink: the words alone, wrapping like text.
   Bare: 'bare',
+  // 32px, 8px side padding and none above or below (a squeezed column shrinks it to its text),
+  // the label at the start: an entry of a side list (ButtonVariant.NavItem).
+  NavItem: 'navItem',
+  // At least 56px, 8 / 16 padding, 16 between its parts: a list row (ButtonVariant.LinkRow).
+  LinkRow: 'linkRow',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -205,6 +227,18 @@ export const buttonVariants = cva(
         [ButtonVariant.Text]: 'border-0 bg-transparent text-ink-muted hover:text-ink',
         [ButtonVariant.UnderlineLink]:
           'border-0 bg-transparent text-accent-text enabled:hover:underline disabled:text-ink-faint disabled:opacity-100',
+        [ButtonVariant.RowSoft]:
+          'border-line bg-surface-raised text-ink hover:bg-surface-hover disabled:opacity-100',
+        [ButtonVariant.RowGhost]:
+          'border-0 bg-transparent font-regular text-ink-muted hover:bg-surface-hover disabled:opacity-100 disabled:hover:bg-transparent',
+        [ButtonVariant.RowGhostAccent]:
+          'border-0 bg-transparent text-accent-text hover:bg-surface-hover disabled:opacity-100 disabled:hover:bg-transparent',
+        [ButtonVariant.NavItem]:
+          'justify-start border-0 bg-transparent text-ink hover:bg-surface-hover aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent-text',
+        [ButtonVariant.LinkRow]:
+          'w-full justify-start whitespace-normal rounded-none border-0 border-t border-line bg-transparent text-left font-regular text-ink-muted first:border-t-0 hover:bg-surface-hover',
+        [ButtonVariant.Swatch]:
+          'rounded-full border-0 aria-checked:outline-2 aria-checked:outline-offset-3 aria-checked:outline-ink aria-checked:outline-solid disabled:opacity-100',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8',
@@ -256,6 +290,8 @@ export const buttonVariants = cva(
           'h-touch rounded-10 px-14 text-[length:inherit] leading-[inherit] font-medium whitespace-normal',
         [ButtonSize.Hero]: 'h-[52px] gap-8 rounded-10 px-18 text-[16px]/[22px]',
         [ButtonSize.Bare]: 'h-auto gap-4 rounded-none p-0 whitespace-normal',
+        [ButtonSize.NavItem]: 'h-control gap-8 px-8 py-0',
+        [ButtonSize.LinkRow]: 'min-h-link-row gap-16 px-16 py-8',
       },
     },
     // The main action keeps its 14px label and wide padding at the smaller heights, as

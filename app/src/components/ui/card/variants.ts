@@ -45,6 +45,9 @@ export const CardVariant = {
   NavRow: 'navRow',
   // A line of a list, no edge of its own (G10): the list draws the box.
   ListRow: 'listRow',
+  // Raised, and the chosen one's text turns accent too (Settings scope bar: «Tutti i giochi»,
+  // «Giochi <console>», «Solo questo gioco»).
+  RaisedAccent: 'raisedAccent',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
 
@@ -79,6 +82,8 @@ export const cardVariants = cva('flex flex-col text-left', {
         'h-48 flex-row items-center rounded-10 border border-line bg-surface px-12 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
       [CardVariant.ListRow]:
         'min-h-[52px] flex-row items-center border-0 bg-transparent px-12 py-8 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
+      [CardVariant.RaisedAccent]:
+        'rounded-10 border border-line bg-surface-raised p-10 data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text',
     },
   },
   defaultVariants: { variant: CardVariant.Surface },

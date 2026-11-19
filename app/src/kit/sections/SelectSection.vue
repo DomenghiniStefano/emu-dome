@@ -5,6 +5,7 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectTriggerVariant,
   SelectValue,
 } from '@/components/ui/select'
 import KitSection from '../KitSection.vue'
@@ -40,6 +41,20 @@ const language = ref('system')
           }}</SelectItem>
         </SelectContent>
       </Select>
+    </KitState>
+    <KitState label="InTitle: inside a title, in its colour and weight">
+      <span class="text-accent-text">
+        <Select v-model="language">
+          <SelectTrigger :variant="SelectTriggerVariant.InTitle" aria-label="Language">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="o in options" :key="o.value" :value="o.value" :disabled="o.disabled">
+              {{ o.label }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </span>
     </KitState>
   </KitSection>
 </template>

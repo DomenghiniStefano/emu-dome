@@ -257,6 +257,257 @@
               : "default",
         changed: e.key === "general.bgpause" || e.key in trial,
       }));
+  // `richSettings`: every kind of setting row on a few pages (the Settings stream's scenarios),
+  // with values set per level so changed, inherited and locked rows show. Off by default, so the
+  // other scenarios keep the small schema above.
+  const rich = scenario.richSettings ? richSettings() : null;
+  function richSettings() {
+    const G = ["default", "global"];
+    const ALL = ["default", "global", "console", "game", "session"];
+    const more = [
+      entry(
+        "video.scale",
+        "video",
+        choice("segments", ["fit", "integer", "fill"]),
+        "fit",
+      ),
+      entry(
+        "video.aspect",
+        "video",
+        choice("list", ["original", "4_3", "16_9"]),
+        "original",
+        { mostUsed: false },
+      ),
+      entry(
+        "video.surround",
+        "video",
+        choice("cards", ["black", "cover", "blur", "builtin", "image"]),
+        "black",
+        { mostUsed: false },
+      ),
+      entry("video.surroundImg", "video", { type: "file" }, "", {
+        mostUsed: false,
+        showIf: { key: "video.surround", values: ["image"], not: false },
+      }),
+      entry(
+        "video.surroundDim",
+        "video",
+        { type: "slider", min: 0, max: 80, step: 5, unit: "percent" },
+        40,
+        {
+          mostUsed: false,
+          showIf: { key: "video.surround", values: ["black"], not: true },
+        },
+      ),
+      entry("video.fps", "video", { type: "toggle" }, false, {
+        levels: G,
+        mostUsed: false,
+      }),
+      entry(
+        "video.window",
+        "video",
+        choice("segments", ["windowed", "fullscreen", "borderless"]),
+        "windowed",
+        { levels: G, perDevice: true, platform: "desktop", mostUsed: false },
+      ),
+      entry("video.vsync", "video", { type: "toggle" }, true, {
+        perDevice: true,
+        mostUsed: false,
+      }),
+      entry(
+        "fx.fxpick",
+        "fx",
+        choice("cards", [
+          "none",
+          "lcd",
+          "lcd_grid",
+          "crt",
+          "crt_curved",
+          "soft_pixels",
+        ]),
+        "lcd",
+      ),
+      entry(
+        "fx.fxint",
+        "fx",
+        { type: "slider", min: 0, max: 100, step: 5, unit: "percent" },
+        60,
+        { mostUsed: false },
+      ),
+      entry("fx.fxfile", "fx", { type: "action", style: "button" }, null, {
+        levels: G,
+        mostUsed: false,
+      }),
+      entry(
+        "presets.preset",
+        "presets",
+        {
+          type: "apply",
+          options: ["faithful", "performance", "quality", "battery"],
+        },
+        null,
+        { levels: G, mostUsed: false },
+      ),
+      entry(
+        "presets.export",
+        "presets",
+        { type: "action", style: "button" },
+        null,
+        { levels: G, mostUsed: false },
+      ),
+      entry("library.folders", "library", { type: "folders" }, [], {
+        levels: G,
+        perDevice: true,
+        mostUsed: false,
+      }),
+      entry("pad.remap", "pad", { type: "bindings", table: "remap" }, null, {
+        mostUsed: false,
+      }),
+      entry("online.wfc", "online", { type: "text" }, "", {
+        levels: G,
+        mostUsed: false,
+      }),
+      entry("bios.bgba", "bios", { type: "file" }, "", {
+        levels: G,
+        perDevice: true,
+        mostUsed: false,
+      }),
+    ];
+    // `inGame`: the quick menu's speed rows (G16), shown at the Session level.
+    const speed = scenario.inGame
+      ? [
+          entry("speed.ffval", "speed", choice("segments", ["2", "3", "4", "max"]), "4"),
+          entry("speed.slow", "speed", choice("segments", ["0.25", "0.5", "0.75"]), "0.5", {
+            levels: G,
+          }),
+          entry("audio.ff", "speed", choice("segments", ["mute", "pitch_up", "same_pitch"]), "mute"),
+        ]
+      : [];
+    // The rows of the Controls section's shortcuts and sticks tabs (C03, C04).
+    const pad = [
+      entry("pad.mod", "pad", choice("list", ["l3", "r3", "select"]), "l3", { levels: G, mostUsed: false }),
+      entry("pad.dead", "pad", { type: "slider", min: 0, max: 50, step: 1, unit: "percent" }, 15, { levels: G, mostUsed: false }),
+      entry("pad.stickdpad", "pad", { type: "slider", min: 20, max: 90, step: 5, unit: "percent" }, 50, { mostUsed: false }),
+      entry("pad.trig", "pad", { type: "slider", min: 10, max: 90, step: 5, unit: "percent" }, 50, { levels: G, mostUsed: false }),
+      entry("pad.rumble", "pad", { type: "slider", min: 0, max: 100, step: 10, unit: "percent" }, 70, { mostUsed: false, phase: 2 }),
+      entry("pad.confirm", "pad", choice("segments", ["right", "bottom"]), "right", { levels: G, mostUsed: false }),
+      entry("pad.repeat", "pad", choice("list", ["slow", "normal", "fast"]), "normal", { levels: G, mostUsed: false }),
+    ];
+    const all = [...entries, ...more, ...speed, ...pad];
+    const pages = [
+      "video",
+      "fx",
+      "pad",
+      "general",
+      "library",
+      "a11y",
+      "presets",
+      "bios",
+      "online",
+    ];
+    const s = {
+      device: "desktop",
+      currentPhase: 1,
+      pages,
+      groups: [
+        { id: "game", pages: ["video", "fx"] },
+        { id: "controls", pages: ["pad"] },
+        { id: "app", pages: ["general", "library", "a11y", "presets"] },
+        { id: "system", pages: ["bios", "online"] },
+      ],
+      sections: [
+        ...schema.sections,
+        {
+          page: "video",
+          id: "image",
+          keys: [
+            "video.scale",
+            "video.aspect",
+            "video.surround",
+            "video.surroundImg",
+            "video.surroundDim",
+          ],
+        },
+        {
+          page: "video",
+          id: "window",
+          keys: ["video.fps", "video.window", "video.vsync"],
+        },
+        { page: "fx", id: "effect", keys: ["fx.fxpick", "fx.fxfile"] },
+        { page: "fx", id: "adjust", keys: ["fx.fxint"] },
+        { page: "pad", id: "buttons", keys: ["pad.remap"] },
+        { page: "library", id: "folders", keys: ["library.folders"] },
+        { page: "presets", id: "ready", keys: ["presets.preset"] },
+        { page: "presets", id: "file", keys: ["presets.export"] },
+        { page: "bios", id: "gba", keys: ["bios.bgba"] },
+        { page: "online", id: "online", keys: ["online.wfc"] },
+      ],
+      entries: all,
+    };
+    const vals = {
+      ...values,
+      "video.surround": "image",
+      "video.scale": "integer",
+      "fx.fxint": 75,
+      "library.folders": ["C:/Games", "D:/Emulation/Handhelds"],
+      // The interface scale (CSS zoom on <html>): 100% unless the scenario asks for another.
+      "a11y.textsize": scenario.textsize ?? 100,
+      "a11y.cblind": ["deutan", "protan"],
+      "speed.ffval": "3",
+      "pad.dead": 20,
+    };
+    // Where each value comes from, per level edited: changed here, inherited from another level.
+    const sources = {
+      global: {
+        "pad.dead": "global",
+        "general.bgpause": "global",
+        "video.fps": "global",
+        "fx.fxint": "global",
+      },
+      session: { "speed.ffval": "session", "speed.slow": "global" },
+      console: {
+        "video.scale": "console",
+        "video.fps": "global",
+        "fx.fxint": "global",
+        "general.bgpause": "global",
+      },
+    };
+    const recent = [
+      {
+        key: "video.scale",
+        level: "console",
+        console: "gba",
+        game: null,
+        at: FIXED - 3600000,
+      },
+      {
+        key: "fx.fxint",
+        level: "global",
+        console: null,
+        game: null,
+        at: FIXED - day,
+      },
+      {
+        key: "general.theme",
+        level: "global",
+        console: null,
+        game: null,
+        at: FIXED - 4 * day,
+      },
+    ];
+    const rowsAt = (page, scope) => {
+      const src = sources[scope?.level] ?? {};
+      return all
+        .filter((e) => e.page === page)
+        .map((e) => ({
+          key: e.key,
+          value: e.key in vals ? vals[e.key] : e.default,
+          source: src[e.key] ?? "default",
+          changed: !!src[e.key],
+        }));
+    };
+    return { schema: s, recent, rowsAt };
+  }
   const remapButtons = [
     "a",
     "b",
@@ -383,8 +634,23 @@
     autosaveOnExit: true,
   };
   const answers = {
-    startup_game: scenario.game ? `C:/Games/${gameInfo.title}.${gameInfo.consoleId}` : null,
-    open_game: gameInfo,
+    // `game` (the quick menu's, named by console) or `inGame` (the settings' row hosts): a game
+    // opens at startup.
+    startup_game: scenario.game
+      ? `C:/Games/${gameInfo.title}.${gameInfo.consoleId}`
+      : scenario.inGame
+        ? "C:/Games/Pocket Quest Advance.gba"
+        : null,
+    open_game: scenario.inGame
+      ? {
+          title: "Pocket Quest Advance",
+          console: "Game Boy Advance",
+          consoleId: "gba",
+          core: "mgba",
+          resumable: false,
+          autosaveOnExit: false,
+        }
+      : gameInfo,
     video_mode: ["webview", false],
     is_fullscreen: false,
     current_slot: 1,
@@ -414,8 +680,8 @@
         }
       : {}),
     library_get: library,
-    settings_schema: schema,
-    settings_recent: [],
+    settings_schema: rich ? rich.schema : schema,
+    settings_recent: rich ? rich.recent : [],
     settings_game_overrides: [],
     settings_game_scope: null,
     saves_summary: [],
@@ -537,7 +803,8 @@
       if (cmd === "save_state")
         setTimeout(() => window.__emit("emu://event", { type: "stateSaved", slot: args.slot }), 50);
       if (cmd === "plugin:event|unlisten") return null;
-      if (cmd === "settings_page") return rows(args.page);
+      if (cmd === "settings_page")
+        return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);
       if (cmd === "library_scan") return null;
       if (scenario.saves && cmd.startsWith("saves_")) {
         const a = savesAnswer(cmd, args);

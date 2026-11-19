@@ -7,6 +7,7 @@ import type { HTMLAttributes } from 'vue'
 import { computed } from 'vue'
 import { SliderRange, SliderRoot, SliderThumb, SliderTrack } from 'reka-ui'
 import { cn } from '@/lib/cn'
+import { fillPercent, SliderVariant, sliderRangeClass, sliderTrackVariants } from './variants'
 
 const props = withDefaults(
   defineProps<{
@@ -18,6 +19,7 @@ const props = withDefaults(
     label?: string
     /** The value as words, for assistive technology («70%»). */
     valueText?: string
+    variant?: SliderVariant
     class?: HTMLAttributes['class']
   }>(),
   { min: 0, max: 100, step: 1 },
@@ -31,10 +33,13 @@ const values = computed({
     if (v?.[0] !== undefined) model.value = v[0]
   },
 })
+const edgeFill = computed(() => props.variant === SliderVariant.EdgeFill)
+const fill = computed(() => `${fillPercent(model.value, props.min, props.max)}%`)
 </script>
 
 <template>
-  <!-- 200px wide, a 4px track edged in `line` and filled in accent-text, a 16px knob. -->
+  <!-- 200px wide, a 4px track edged in `line` and filled in accent-text (variants.ts), a 16px
+       knob. -->
   <SliderRoot
     v-model="values"
     data-slot="slider"
@@ -52,9 +57,10 @@ const values = computed({
   >
     <SliderTrack
       data-slot="slider-track"
-      class="relative h-4 flex-1 rounded-full border border-line bg-surface-raised"
+      :class="sliderTrackVariants({ variant })"
+      :style="edgeFill ? { '--fill': fill } : undefined"
     >
-      <SliderRange data-slot="slider-range" class="absolute h-full rounded-full bg-accent-text" />
+      <SliderRange v-if="!edgeFill" data-slot="slider-range" :class="sliderRangeClass" />
     </SliderTrack>
     <SliderThumb
       data-slot="slider-thumb"

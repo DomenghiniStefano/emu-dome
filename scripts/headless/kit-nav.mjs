@@ -120,7 +120,8 @@ await pad('right')
 check('slider: a controller step steps once', await attr(thumb, 'aria-valuenow'), '72')
 check('slider: the focus stays', await js('document.activeElement.getAttribute("role")'), 'slider')
 await pad('down')
-check('slider: down leaves it', (await js('document.activeElement.getAttribute("role")')) !== 'slider', true)
+// Another slider may sit below it (the EdgeFill state): leaving means leaving this one.
+check('slider: down leaves it', (await js('document.activeElement.getAttribute("aria-label")')) !== 'Volume', true)
 
 // Select: A opens on the chosen option, a step moves, A picks and the focus goes back.
 const field = '[data-slot="select-trigger"][aria-label="Language"]'

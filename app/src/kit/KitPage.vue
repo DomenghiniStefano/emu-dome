@@ -84,10 +84,10 @@ useNavScope(root, { autofocus: true })
       <SegmentedSection />
       <SliderSection />
       <SelectSection />
+      <InputSection />
       <DialogSection />
       <SearchFieldSection />
       <CaptureFieldSection />
-      <InputSection />
     </div>
   </main>
 </template>

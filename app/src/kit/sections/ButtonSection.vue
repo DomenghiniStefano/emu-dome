@@ -309,5 +309,54 @@ import KitState from '../KitState.vue'
         <Button :variant="ButtonVariant.Link" :size="ButtonSize.TextTouch">More slots</Button>
       </div>
     </KitState>
+    <KitState label="Row buttons (settings rows): not faded when disabled, the row fades instead">
+      <div class="flex flex-wrap items-center gap-8">
+        <Button :variant="ButtonVariant.RowSoft">Choose an image…</Button>
+        <Button :variant="ButtonVariant.RowSoft" disabled>Export…</Button>
+        <Button :variant="ButtonVariant.RowGhost" :size="ButtonSize.Small">
+          <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />
+          Reset
+        </Button>
+        <Button :variant="ButtonVariant.RowGhostAccent" :size="ButtonSize.Small" disabled>
+          Edit the list
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="NavItem · NavItem: a side list, the current page marked">
+      <div class="flex w-sidebar flex-col gap-2">
+        <Button :variant="ButtonVariant.NavItem" :size="ButtonSize.NavItem" aria-current="page">
+          <span class="flex-1 text-left">Video</span>
+        </Button>
+        <Button :variant="ButtonVariant.NavItem" :size="ButtonSize.NavItem">
+          <span class="flex-1 text-left">Screen effects</span>
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="LinkRow · LinkRow: rows of a card list that open a page">
+      <div class="flex w-page flex-col rounded-10 border border-line bg-surface">
+        <Button v-for="n in 2" :key="n" :variant="ButtonVariant.LinkRow" :size="ButtonSize.LinkRow">
+          <span class="flex min-w-0 flex-1 flex-col">
+            <span class="font-medium text-ink">Screen effect {{ n }}</span>
+            <span class="text-caption">Screen effects</span>
+          </span>
+          <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Swatch · IconSmall: the chosen one ringed, a disabled one">
+      <div class="flex gap-10" role="radiogroup" aria-label="Accent">
+        <Button
+          v-for="(c, i) in ['#7152f7', '#2f7ae5', '#1f9d8a']"
+          :key="c"
+          :variant="ButtonVariant.Swatch"
+          :size="ButtonSize.IconSmall"
+          role="radio"
+          :aria-checked="i === 0"
+          :aria-label="c"
+          :style="{ background: c }"
+          :disabled="i === 2"
+        />
+      </div>
+    </KitState>
   </KitSection>
 </template>

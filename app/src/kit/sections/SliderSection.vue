@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Slider } from '@/components/ui/slider'
+import { Slider, SliderVariant } from '@/components/ui/slider'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
 
@@ -30,6 +30,9 @@ const committed = ref(70)
     </KitState>
     <KitState label="Disabled">
       <Slider :model-value="40" disabled label="Disabled" />
+    </KitState>
+    <KitState label="EdgeFill (settings rows): the fill reaches the track's edge">
+      <Slider :model-value="60" :variant="SliderVariant.EdgeFill" label="Strength" />
     </KitState>
   </KitSection>
 </template>
