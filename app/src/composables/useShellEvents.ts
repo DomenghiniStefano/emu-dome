@@ -1,5 +1,6 @@
 // The backend's events the shell follows for its whole life: settings, the controller (menu
-// button, navigation, combos, connections), the library and the core. Stopped on unmount.
+// button, navigation, combos, connections), the library, the core and the screen effects.
+// Stopped on unmount.
 import { onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu } from '../emu'
@@ -36,6 +37,8 @@ export function useShellEvents(
         dispatchNav(action)
       }),
       await emu.onHotkey(session.onHotkey),
+      // A screen effect could not be used: the game shows without it.
+      await emu.onEffectError(toasts.failWith),
       await emu.onGamepadConnected(p => {
         controller.value = gamepadName(p)
         toasts.notify(t('toast.gamepadConnected', { name: gamepadName(p) }))

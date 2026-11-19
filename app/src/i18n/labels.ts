@@ -19,6 +19,11 @@ export function errorText(e: unknown): string {
       params.console = known(name) ? t(name) : e.params.console
     }
     if (e.code === 'settingInvalidValue') params.name = settingName(e.params.key)
+    if (e.code === 'effectNotLoaded') {
+      // A built-in effect has its option's name; the user's own file keeps its file name.
+      const option = `settings.fx.fxpick.option.${e.params.name}`
+      params.name = known(option) ? t(option) : e.params.name
+    }
     if (e.code === 'settingLevelRefused') {
       const words = e.params.levels.map(l => t(`settingsUi.levelWord.${l}`))
       params.levels = new Intl.ListFormat(i18n.global.locale.value, {

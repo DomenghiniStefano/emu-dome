@@ -130,6 +130,8 @@ crates/emudome-platform  EVERYTHING that depends on the operating system, one mo
                          jniLibs from cores/android/<abi>/)
 app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
                          settings.rs (settings commands, file locations, settings://changed),
+                         effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
+                         emu://effect-error), video.rs runs them through librashader (native path only)
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
@@ -152,6 +154,10 @@ app/src                  Vue interface: App.vue, FirstRun (4 steps, once per dev
     Needs Tauri's `unstable` feature (`window.add_child`).
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
+- Screen effects (`fx.*`): librashader 0.12 (its wgpu must stay our wgpu version) renders the game texture
+  (`Rgba8Unorm`, the core's sRGB bytes as they are) into a texture the size of the game's rectangle; our pass mixes it
+  over the plain image (`fx.fxint`, `fx.fxbright`). Rows with `needs_native_video` are disabled on Compatible (X05).
+  GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
 - Audio: shared queue, linear resampling to the device's rate,
   ±0.5% correction on the queue's fill level. Muted when the speed is not 1×.
 - Keyboard: for now it goes through the webview (`input` command). Controllers go through an SDL3 thread

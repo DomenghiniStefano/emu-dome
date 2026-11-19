@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SettingEntry, SettingRow } from '@/emu'
 import { backKeyLabel } from './hints'
-import { settingCard, sourceLine, stepper, videoPathCard } from './screenCards'
+import { settingCard, sourceLine, stepper, unavailableOptions, videoPathCard } from './screenCards'
+import { ScreenPickId, pickChanges, screenPicks } from './screenPicks'
 import {
   isEmptySlot,
   loadLabel,
@@ -37,6 +38,7 @@ const entry = (key: string, options: string[] | null, hidden: string[] = []): Se
     hiddenOptions: hidden,
     synonyms: [],
     mostUsed: false,
+    needsNativeVideo: false,
   }) as unknown as SettingEntry
 
 const row = (key: string, value: unknown, source: SettingRow['source']): SettingRow =>
@@ -183,7 +185,7 @@ describe('G09 cards', () => {
       entry: e,
       row: row('video.scale', 'fit', 'session'),
       value: 'fit',
-      locked: false,
+      reason: null,
       consoleName: 'GBA',
       set,
     })
@@ -195,11 +197,33 @@ describe('G09 cards', () => {
       entry: e,
       row: undefined,
       value: null,
-      locked: true,
+      reason: 'settingsUi.lockedNeedsNative',
       consoleName: 'GBA',
       set,
     })
     expect(locked).toMatchObject({ value: null, prev: null, next: null, trial: false })
+    // A locked card says why instead of where its value comes from (X05).
+    expect(locked.sub).toEqual({ key: 'settingsUi.lockedNeedsNative' })
+  })
+  it('offers «Effetto da file» only once a file was chosen', () => {
+    const none = (key: string) => (key === 'fx.fxfile' ? '' : null)
+    const chosen = (key: string) => (key === 'fx.fxfile' ? 'C:/fx/crt.slangp' : null)
+    expect(unavailableOptions('fx.fxpick', none)).toEqual(['file'])
+    expect(unavailableOptions('fx.fxpick', chosen)).toEqual([])
+    expect(unavailableOptions('video.scale', none)).toEqual([])
+    const set = vi.fn()
+    const card = settingCard({
+      entry: entry('fx.fxpick', ['none', 'crt', 'file']),
+      row: undefined,
+      value: 'crt',
+      reason: null,
+      unavailable: ['file'],
+      consoleName: 'GBA',
+      set,
+    })
+    expect(card.next).toBeNull()
+    card.prev?.()
+    expect(set).toHaveBeenCalledWith('none')
   })
   it('offers the accelerated method only where it exists', () => {
     const set = vi.fn()
@@ -210,5 +234,40 @@ describe('G09 cards', () => {
     expect(both.sub).toEqual({ key: 'settingsUi.onlyHere.phone' })
     both.next?.()
     expect(set).toHaveBeenCalledWith('webview')
+  })
+})
+
+describe('screen picks', () => {
+  const values: Record<string, string> = {
+    'video.scale': 'integer',
+    'video.filter': 'none',
+    'fx.fxpick': 'none',
+  }
+  const value = (key: string) => values[key] ?? null
+
+  it('marks the pick whose every value is the current one', () => {
+    const picks = screenPicks({ value, locked: () => false })
+    expect(picks.map(p => [p.id, p.on])).toEqual([
+      [ScreenPickId.Sharp, true],
+      [ScreenPickId.Soft, false],
+      [ScreenPickId.Lcd, false],
+      [ScreenPickId.Crt, false],
+    ])
+    expect(picks.every(p => p.available)).toBe(true)
+    expect(picks[0]?.label).toBe('qm.picks.sharp')
+  })
+
+  it('disables a pick that would change a locked setting (the effects on Compatible)', () => {
+    const picks = screenPicks({ value, locked: key => key === 'fx.fxpick' })
+    expect(picks.filter(p => p.available).map(p => p.id)).toEqual([ScreenPickId.Sharp])
+  })
+
+  it('changes only the values that differ', () => {
+    expect(pickChanges(ScreenPickId.Lcd, value)).toEqual([['fx.fxpick', 'lcd']])
+    expect(pickChanges(ScreenPickId.Sharp, value)).toEqual([])
+    expect(pickChanges(ScreenPickId.Crt, value)).toEqual([
+      ['video.scale', 'fit'],
+      ['fx.fxpick', 'crt'],
+    ])
   })
 })

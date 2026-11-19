@@ -11,8 +11,8 @@ import {
   type SettingsSchema,
 } from '../../emu'
 import { LOCALE } from '../../i18n'
-import { msg, optionNotYet } from '../../settingsModel'
-import { rowState, rowValue, type RowState } from './settingRowModel'
+import { FILE_PICKERS, msg, optionNotYet } from '../../settingsModel'
+import { chosenFileName, rowState, rowValue, type RowState } from './settingRowModel'
 
 /** One option of a choice, as the controls show it. */
 export interface RowOption {
@@ -85,6 +85,11 @@ export function useSettingRow(props: SettingRowInput) {
       : '',
   )
 
+  /** A file row with its own picker and a file chosen shows the file's name («crt.slangp»). */
+  const fileName = computed(() =>
+    props.entry.kind.type === 'file' && FILE_PICKERS[key.value] ? chosenFileName(value.value) : '',
+  )
+
   const buttonText = computed(() => {
     const k = key.value
     if (k === 'cloud.acct') return t('settings.cloud.acct.value.signIn')
@@ -111,5 +116,5 @@ export function useSettingRow(props: SettingRowInput) {
       }))
   })
 
-  return { key, value, state, name, desc, noFile, buttonText, options }
+  return { key, value, state, name, desc, noFile, fileName, buttonText, options }
 }

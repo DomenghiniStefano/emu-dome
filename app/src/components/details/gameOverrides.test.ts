@@ -24,6 +24,7 @@ const entry = (key: string, kind: SettingKind, phase = 0): SettingEntry => ({
   hiddenOptions: [],
   synonyms: [],
   mostUsed: false,
+  needsNativeVideo: false,
 })
 
 const filter = entry('video.filter', {

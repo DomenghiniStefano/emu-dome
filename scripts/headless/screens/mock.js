@@ -87,6 +87,7 @@
     hiddenOptions: [],
     synonyms: [],
     mostUsed: true,
+    needsNativeVideo: false,
     ...extra,
   });
   const choice = (style, options) => ({
@@ -190,11 +191,14 @@
     entries.push(
       entry("video.scale", "video", choice("segments", ["fit", "integer", "fill"]), "fit"),
       entry("video.filter", "video", choice("segments", ["none", "light", "soft"]), "light"),
+      // The effects work on the Accelerated method only (X05); «Effetto da file» stays hidden
+      // until a file is chosen.
       entry(
         "fx.fxpick",
         "fx",
-        choice("cards", ["none", "lcd", "lcd_grid", "crt", "crt_curved", "soft_pixels"]),
+        choice("cards", ["none", "lcd", "lcd_grid", "crt", "crt_curved", "soft_pixels", "file"]),
         "none",
+        { needsNativeVideo: true },
       ),
       entry("audio.ff", "audio", choice("segments", ["mute", "pitch_up", "same_pitch"]), "mute"),
       entry("speed.ffval", "speed", choice("segments", ["2", "3", "4", "max"]), "4"),
@@ -211,7 +215,13 @@
     );
   }
   // Changes «in prova» (Session level) in the quick menu.
-  const trial = scenario.trial ? { "video.filter": "soft", "speed.ffval": "2" } : {};
+  // `trial: "crt"`: the quick pick «TV CRT» applied (fit, no smoothing, the CRT effect).
+  const trial =
+    scenario.trial === "crt"
+      ? { "video.scale": "fit", "video.filter": "none", "fx.fxpick": "crt" }
+      : scenario.trial
+        ? { "video.filter": "soft", "speed.ffval": "2" }
+        : {};
   const schema = {
     // `device` (the shell's phone first run) or `phone` (the quick menu's sheet).
     device: scenario.device ?? (scenario.phone ? "phone" : "desktop"),
@@ -651,7 +661,8 @@
           autosaveOnExit: false,
         }
       : gameInfo,
-    video_mode: ["webview", false],
+    // `nativeVideo`: the Accelerated method in use (the screen effects can change).
+    video_mode: scenario.nativeVideo ? ["native", true] : ["webview", false],
     is_fullscreen: false,
     current_slot: 1,
     first_run_show: !!scenario.firstRun,

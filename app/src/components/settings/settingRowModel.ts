@@ -51,6 +51,11 @@ export function rowValue(entry: SettingEntry, row: SettingRow | undefined): Sett
   return row?.value ?? entry.default
 }
 
+/** The name of a chosen file (its path's last part), or '' when the value is not a path. */
+export function chosenFileName(value: SettingValue | null): string {
+  return typeof value === 'string' ? (value.split(/[\\/]/).pop() ?? '') : ''
+}
+
 /** The chosen ids of a multiple choice, in order (anything else counts as none chosen). */
 export function chosenList(value: SettingValue | null): string[] {
   return Array.isArray(value) ? value : []

@@ -1,7 +1,6 @@
 // What the settings pages (T01–T19) need beyond the bridge: the schema loaded once, the i18n
 // keys of an entry, which rows are shown and why a row cannot be changed at a level.
 // Everything comes from the Rust schema (`emu.settings.schema`): nothing here lists settings.
-import { ref } from 'vue'
 import {
   emu,
   type SettingDevice,
@@ -10,11 +9,8 @@ import {
   type SettingPlatform,
   type SettingsSchema,
   type SettingValue,
-  type VideoMode,
 } from './emu'
-
-/** The video path in use (App.vue keeps it current): some game effects exist on one path only. */
-export const liveVideoMode = ref<VideoMode>('native')
+import { nativeAvailable, videoMode } from './videoMode'
 
 let schemaPromise: Promise<SettingsSchema> | null = null
 
@@ -88,6 +84,9 @@ export function lockReason(
 ): string | null {
   if (!platformIncludes(entry.platform, schema.device))
     return entry.platform === 'desktop' ? 'settingsUi.lockedDesktop' : 'settingsUi.lockedPhone'
+  // X05: the screen effects exist only on the Accelerated method.
+  if (entry.needsNativeVideo && videoMode.value !== 'native')
+    return nativeAvailable.value ? 'settingsUi.lockedNeedsNative' : 'qm.noNative'
   if (entry.kind.type === 'action' || entry.kind.type === 'apply') return null
   // Session («in prova», quick menu): open to what can be saved per console or per game.
   if (level === 'session')
@@ -99,15 +98,24 @@ export function lockReason(
   return null
 }
 
+/**
+ * File rows that work: the picker the row's button opens, which stores the chosen file itself.
+ * Resolves the path, or null when cancelled.
+ */
+export const FILE_PICKERS: Partial<Record<string, () => Promise<string | null>>> = {
+  'fx.fxfile': () => emu.effects.chooseFile(),
+}
+
 /** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */
 export function notYetWired(entry: SettingEntry): boolean {
   // The colour-blind filter is drawn on the webview's canvas; the native video has no filter
   // pass yet (it belongs in video.rs).
-  if (entry.key === 'a11y.cblind') return liveVideoMode.value === 'native'
+  if (entry.key === 'a11y.cblind') return videoMode.value === 'native'
   switch (entry.kind.type) {
-    // The one file row with a backend: the background image (`settings_choose_background`).
+    // File rows with a backend: their own picker (FILE_PICKERS), or the background image,
+    // whose picker the page opens at its scope (`settings_choose_background`).
     case 'file':
-      return entry.key !== 'video.surroundImg'
+      return !FILE_PICKERS[entry.key] && entry.key !== 'video.surroundImg'
     // `apply` (presets): the bundles and their confirmation are not defined yet.
     case 'action':
     case 'apply':

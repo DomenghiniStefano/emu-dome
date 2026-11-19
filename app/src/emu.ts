@@ -93,6 +93,7 @@ export type ErrorCode =
   | { code: 'saveImportInvalid'; params: { detail: string } }
   | { code: 'saveFileFailed'; params: { detail: string } }
   | { code: 'screenshotFailed'; params: { detail: string } }
+  | { code: 'effectNotLoaded'; params: { name: string; detail: string } }
 
 export type EmuEvent =
   | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
@@ -296,6 +297,8 @@ export interface SettingEntry {
   mostUsed: boolean
   /** Shown only while another row has (or has not) some values; absent: always. */
   showIf?: SettingShowIf
+  /** Works only on the Accelerated (native) video method: disabled with the reason otherwise. */
+  needsNativeVideo: boolean
 }
 
 /** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */
@@ -683,6 +686,13 @@ export const emu = {
     listen<{ action: NavAction }>('emu://nav', e => cb(e.payload.action)),
   onHotkey: (cb: (e: HotkeyEvent) => void): Promise<UnlistenFn> =>
     listen<HotkeyEvent>('emu://hotkey', e => cb(e.payload)),
+  /** A screen effect could not be used (`effectNotLoaded`): the game shows without it. */
+  onEffectError: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
+    listen<ErrorCode>('emu://effect-error', e => cb(e.payload)),
+  effects: {
+    /** «Aggiungi un effetto da file»: picks a `.slangp` into `fx.fxfile`; null = cancelled. */
+    chooseFile: () => invoke<string | null>('effects_choose_file'),
+  },
   onGamepadConnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
     listen<PadInfo>('emu://gamepad-connected', e => cb(e.payload)),
   onGamepadDisconnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>

@@ -5,11 +5,14 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BackButton from './BackButton.vue'
 import ScreenCardView from './ScreenCard.vue'
+import ScreenPicks from './ScreenPicks.vue'
 import TrialActions from './TrialActions.vue'
 import type { ScreenCard } from './screenCards'
+import type { ScreenPick, ScreenPickId } from './screenPicks'
 
 defineProps<{
   cards: ScreenCard[]
+  picks: ScreenPick[]
   /** The changes «in prova», as the title over them says; '' with none. */
   trialTitle: string
   hint: string | null
@@ -19,6 +22,7 @@ const emit = defineEmits<{
   discard: []
   commitGame: []
   inset: [number]
+  pick: [ScreenPickId]
 }>()
 
 const { t } = useI18n()
@@ -51,6 +55,7 @@ onBeforeUnmount(() => {
       <span class="min-w-0 flex-1"></span>
       <span class="text-caption text-ink-muted">{{ t('qm.liveNote') }}</span>
     </div>
+    <ScreenPicks :picks="picks" @pick="id => emit('pick', id)" />
     <div class="grid grid-cols-4 gap-8">
       <ScreenCardView v-for="(c, i) in cards" :key="c.key" :card="c" :first="i === 0" />
     </div>

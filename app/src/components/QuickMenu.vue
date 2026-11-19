@@ -29,6 +29,7 @@ import PhoneGrid from './quick-menu/PhoneGrid.vue'
 import QuickSaves from './quick-menu/QuickSaves.vue'
 import RestartConfirm from './quick-menu/RestartConfirm.vue'
 import ScreenCardView from './quick-menu/ScreenCard.vue'
+import ScreenPicks from './quick-menu/ScreenPicks.vue'
 import ScreensBar from './quick-menu/ScreensBar.vue'
 import ShortcutsPage from './quick-menu/ShortcutsPage.vue'
 import SpeedPage from './quick-menu/SpeedPage.vue'
@@ -39,7 +40,13 @@ import TrialPanel from './quick-menu/TrialPanel.vue'
 import UndoLoadBanner from './quick-menu/UndoLoadBanner.vue'
 import { backKeyLabel } from './quick-menu/hints'
 import { BAR_PANEL, MENU_PANEL, sheetPanel } from './quick-menu/panel'
-import { settingCard, videoPathCard, type ScreenCard } from './quick-menu/screenCards'
+import {
+  settingCard,
+  unavailableOptions,
+  videoPathCard,
+  type ScreenCard,
+} from './quick-menu/screenCards'
+import { pickChanges, screenPicks, type ScreenPickId } from './quick-menu/screenPicks'
 import { loadedLine, mainSlotCount, slotCount } from './quick-menu/slots'
 import { followedSpeed, modeSpeeds, speedChoices } from './quick-menu/speedChoices'
 import { ToolId, quickTools, toolsNotYet, type Tool } from './quick-menu/tools'
@@ -220,7 +227,8 @@ const cards = computed<ScreenCard[]>(() => {
         entry: e,
         row: sessionRows.value[e.key],
         value: settingValue(e.key),
-        locked: lockReason(e, s, 'session') !== null,
+        reason: lockReason(e, s, 'session'),
+        unavailable: unavailableOptions(e.key, settingValue),
         consoleName: consoleName.value,
         set: id => void setSession(e.key, id),
       }),
@@ -233,6 +241,22 @@ const cards = computed<ScreenCard[]>(() => {
     }),
   ]
 })
+
+// G09 quick picks: several settings «in prova» in one press.
+const picks = computed(() => {
+  const s = schema.value
+  if (!s) return []
+  return screenPicks({
+    value: settingValue,
+    locked: key => {
+      const e = s.entries.find(x => x.key === key)
+      return !e || lockReason(e, s, 'session') !== null
+    },
+  })
+})
+async function applyPick(id: ScreenPickId) {
+  for (const [key, v] of pickChanges(id, settingValue)) await setSession(key, v)
+}
 
 onMounted(async () => {
   await startSession()
@@ -264,12 +288,14 @@ onBeforeUnmount(() => emit('inset', 0))
       >
         <ScreensBar
           :cards="cards"
+          :picks="picks"
           :trial-title="trialTitle"
           :hint="backKey"
           @back="back"
           @discard="discard"
           @commit-game="commit('game')"
           @inset="px => emit('inset', px)"
+          @pick="applyPick"
         />
       </section>
 
@@ -377,10 +403,13 @@ onBeforeUnmount(() => emit('inset', 0))
               @error="reportError"
             />
 
-            <!-- Phone G09: the cards in the sheet, the game at full brightness above. -->
-            <div v-else-if="view === QuickMenuView.Screens" class="grid grid-cols-[1fr_1fr] gap-8">
-              <ScreenCardView v-for="c in cards" :key="c.key" :card="c" touch />
-            </div>
+            <!-- Phone G09: the picks and the cards in the sheet, the game at full brightness above. -->
+            <template v-else-if="view === QuickMenuView.Screens">
+              <ScreenPicks :picks="picks" touch @pick="applyPick" />
+              <div class="grid grid-cols-[1fr_1fr] gap-8">
+                <ScreenCardView v-for="c in cards" :key="c.key" :card="c" touch />
+              </div>
+            </template>
 
             <ControlsPage
               v-else-if="view === QuickMenuView.Controls"

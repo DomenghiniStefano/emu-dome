@@ -1,16 +1,12 @@
 // The video path (native under the webview, or the webview's canvas) and the page's background
-// that goes with it. The quick menu switches it; the settings model mirrors it.
-import { ref, watch } from 'vue'
+// that goes with it. The quick menu switches it; the settings rows read the same refs
+// (`videoMode.ts`: the screen effects exist only on the Accelerated method, X05).
 import { emu, type VideoMode } from '../emu'
 import { pageBackground } from '../lib/shell/session'
-import { liveVideoMode } from '../settingsModel'
+import { nativeAvailable, videoMode } from '../videoMode'
 import type { Toasts } from './useToasts'
 
 export function useVideoMode(toasts: Toasts) {
-  const videoMode = ref<VideoMode>('native')
-  watch(videoMode, mode => (liveVideoMode.value = mode))
-  const nativeAvailable = ref(false)
-
   const paintBackground = () =>
     (document.documentElement.style.background = pageBackground(videoMode.value))
 

@@ -26,6 +26,7 @@ const entry = (key: string, over: Partial<SettingEntry> = {}): SettingEntry => (
   hiddenOptions: [],
   synonyms: [],
   mostUsed: false,
+  needsNativeVideo: false,
   ...over,
 })
 const surround = entry('video.surround', {

@@ -28,6 +28,12 @@ anyhow = "1"
 log = "0.4"
 parking_lot = "0.12"
 wgpu = "30"
+# Screen effects (`fx.*`): RetroArch `.slangp` presets on the native path. Its wgpu must stay
+# the same version as ours (docs/feasibility.md, 2026-11-17). MPL-2.0 OR GPL-3.0.
+librashader = { version = "0.12.1", default-features = false, features = [
+    "runtime-wgpu",
+    "presets",
+] }
 pollster = "0.4"
 bytemuck = { version = "1", features = ["derive"] }
 cpal = "0.18"

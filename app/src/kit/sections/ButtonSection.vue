@@ -265,6 +265,31 @@ import KitState from '../KitState.vue'
         </Button>
       </div>
     </KitState>
+    <KitState label="Pick · MenuCompact, MenuCompactTouch: one on, one disabled">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Pick" :size="ButtonSize.MenuCompact" :aria-pressed="true">
+          Sharp pixels
+        </Button>
+        <Button :variant="ButtonVariant.Pick" :size="ButtonSize.MenuCompact" :aria-pressed="false">
+          Soft
+        </Button>
+        <Button
+          :variant="ButtonVariant.Pick"
+          :size="ButtonSize.MenuCompact"
+          :aria-pressed="false"
+          disabled
+        >
+          CRT TV
+        </Button>
+        <Button
+          :variant="ButtonVariant.Pick"
+          :size="ButtonSize.MenuCompactTouch"
+          :aria-pressed="false"
+        >
+          LCD screen
+        </Button>
+      </div>
+    </KitState>
     <KitState label="Touch · MenuTouch, MenuCompactTouch, MenuPairTouch (Strong)">
       <div class="flex items-center gap-8">
         <Button :size="ButtonSize.MenuTouch">Load</Button>

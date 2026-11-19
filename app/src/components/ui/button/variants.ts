@@ -79,6 +79,9 @@ export const ButtonVariant = {
   // chosen one (`aria-checked`) ringed in ink. With ButtonSize.IconSmall; like the row buttons,
   // not faded when disabled.
   Swatch: 'swatch',
+  // One of a row of picks that can each be on (quick menu G09 «Pixel nitidi», «TV CRT»): Soft,
+  // the one on (`aria-pressed`) edged and written in accent text. With ButtonSize.MenuCompact.
+  Pick: 'pick',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -237,6 +240,8 @@ export const buttonVariants = cva(
           'justify-start border-0 bg-transparent text-ink hover:bg-surface-hover aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent-text',
         [ButtonVariant.LinkRow]:
           'w-full justify-start whitespace-normal rounded-none border-0 border-t border-line bg-transparent text-left font-regular text-ink-muted first:border-t-0 hover:bg-surface-hover',
+        [ButtonVariant.Pick]:
+          'border-line bg-surface-raised text-ink hover:bg-surface-hover aria-pressed:border-accent-text aria-pressed:text-accent-text',
         [ButtonVariant.Swatch]:
           'rounded-full border-0 aria-checked:outline-2 aria-checked:outline-offset-3 aria-checked:outline-ink aria-checked:outline-solid disabled:opacity-100',
       },

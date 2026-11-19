@@ -14,7 +14,8 @@ import { useI18n } from 'vue-i18n'
 import { Undo2 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { SettingEntry, SettingLevel, SettingRow, SettingsSchema, SettingValue } from '../emu'
-import { msg } from '../settingsModel'
+import { errorText } from '../i18n/labels'
+import { FILE_PICKERS, msg } from '../settingsModel'
 import SettingSelect from './SettingSelect.vue'
 import SettingCards from './settings/SettingCards.vue'
 import SettingChips from './settings/SettingChips.vue'
@@ -56,12 +57,25 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { key, value, state, name, desc, noFile, buttonText, options } = useSettingRow(props)
+const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
+  useSettingRow(props)
 const kind = computed(() => props.entry.kind)
 const disabled = computed(() => state.value.disabled)
 
 function set(v: SettingValue) {
   if (!disabled.value) emit('set', v)
+}
+
+/** A file row with its own picker (FILE_PICKERS) opens it here, the others let the page do it. */
+async function choose() {
+  const pick = FILE_PICKERS[key.value]
+  if (!pick) return emit('choose')
+  if (disabled.value) return
+  try {
+    await pick()
+  } catch (e) {
+    emit('error', errorText(e))
+  }
 }
 </script>
 
@@ -151,10 +165,10 @@ function set(v: SettingValue) {
         <SettingFileAction
           v-else-if="kind.type === 'file' || kind.type === 'action'"
           :text="buttonText"
-          :no-file="noFile"
+          :file-state="fileName || noFile"
           :not-yet="state.notYet"
           :disabled="disabled"
-          @choose="emit('choose')"
+          @choose="choose"
         />
       </div>
     </div>

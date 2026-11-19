@@ -38,6 +38,12 @@ const STATES = {
     mock: { trial: true },
     steps: [escape, click("^(Screens and picture|Schermi e immagine)$")],
   },
+  // Screen effects (#43): on the Accelerated method with «TV CRT» picked «in prova»; on
+  // Compatible (every other scenario) the effect card is locked with its reason.
+  effects: {
+    mock: { nativeVideo: true, trial: "crt" },
+    steps: [escape, click("^(Screens and picture|Schermi e immagine)$")],
+  },
 };
 
 const PHONE_STATES = {
@@ -45,6 +51,10 @@ const PHONE_STATES = {
   slots: { mock: { slots: "full" }, steps: [escape, click("^(More slots|Altri slot)$")] },
   speed: { mock: { trial: true }, steps: [escape, click("^(Set speeds|Imposta le velocità)$")] },
   screens: { mock: { trial: true }, steps: [escape, click("^(Screens and picture|Schermi e immagine)$")] },
+  effects: {
+    mock: { nativeVideo: true, trial: "crt" },
+    steps: [escape, click("^(Screens and picture|Schermi e immagine)$")],
+  },
   restart: { mock: {}, steps: [escape, click("^(Restart game|Riavvia il gioco)$")] },
 };
 

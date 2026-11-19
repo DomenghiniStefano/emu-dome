@@ -261,7 +261,8 @@
     "saveGameOpen": "Questo gioco è aperto. Chiudilo e riprova.",
     "saveImportInvalid": "Questo file non è un salvataggio che EmuDome sa importare ({detail}). Scegli un file .sav, .dsv o .duc.",
     "saveFileFailed": "Non riesco a usare il file del salvataggio: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
-    "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova."
+    "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
+    "effectNotLoaded": "Non riesco a usare l’effetto «{name}», quindi il gioco si vede senza. Scegli un altro effetto o un altro file."
   },
   "consoleShort": {
     "gb": "GB",
@@ -614,7 +615,8 @@
           "lcd_grid": "Schermo LCD a griglia",
           "crt": "TV a tubo catodico",
           "crt_curved": "TV curva",
-          "soft_pixels": "Pixel morbidi"
+          "soft_pixels": "Pixel morbidi",
+          "file": "Effetto da file"
         },
         "optionDesc": {
           "none": "L’immagine originale",
@@ -622,7 +624,8 @@
           "lcd_grid": "Ogni pixel separato, come da vicino",
           "crt": "Linee orizzontali e colori caldi",
           "crt_curved": "Tubo catodico con bordi curvi",
-          "soft_pixels": "Ingrandimento che arrotonda i bordi"
+          "soft_pixels": "Ingrandimento che arrotonda i bordi",
+          "file": "Il file .slangp che hai scelto in «Aggiungi un effetto da file»"
         }
       },
       "fxint": {
@@ -636,7 +639,10 @@
       "fxfile": {
         "name": "Aggiungi un effetto da file",
         "desc": "Effetti nel formato di RetroArch (.slangp) che hai scaricato tu.",
-        "button": "Scegli un file…"
+        "button": "Scegli un file…",
+        "value": {
+          "none": "Nessun file scelto"
+        }
       }
     },
     "screens": {
@@ -1645,6 +1651,7 @@
     "lockedNote": "Le voci in grigio valgono per tutti i giochi: per cambiarle scegli «Tutti i giochi».",
     "lockedPhone": "Solo su questo telefono.",
     "lockedDesktop": "Solo su questo computer.",
+    "lockedNeedsNative": "Richiede il metodo di visualizzazione Accelerato: sceglilo nel menu rapido, in «Schermi e immagine».",
     "notYet": "Arriva con un prossimo aggiornamento.",
     "emptyOnly": "Nessuna impostazione modificata qui. Tutti i valori sono ereditati.",
     "noResults": "Nessuna impostazione per «{query}»",
@@ -1710,6 +1717,13 @@
     "close": "Chiudi"
   },
   "qm": {
+    "picks": {
+      "label": "Scelte rapide",
+      "sharp": "Pixel netti",
+      "soft": "Morbido",
+      "lcd": "Schermo LCD",
+      "crt": "TV CRT"
+    },
     "label": "Menu rapido",
     "auto": "Automatico",
     "slot": "Slot {slot}",

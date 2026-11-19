@@ -3,6 +3,7 @@ import type { SettingEntry, SettingRow, SettingsSchema } from '../../emu'
 import { SURROUND_CARDS } from '../../surround'
 import {
   cardPreview,
+  chosenFileName,
   chosenList,
   rowState,
   rowValue,
@@ -25,6 +26,7 @@ const entry = (over: Partial<SettingEntry> = {}): SettingEntry => ({
   hiddenOptions: [],
   synonyms: [],
   mostUsed: false,
+  needsNativeVideo: false,
   ...over,
 })
 const schema: SettingsSchema = {
@@ -115,5 +117,15 @@ describe('card previews and swatches', () => {
 
   it('names a swatch by its hex without the #', () => {
     expect(swatchKey('general.accent', '#7152f7')).toBe('settings.general.accent.swatch.7152f7')
+  })
+})
+
+describe('chosenFileName', () => {
+  it('keeps the last part of a path, with either separator', () => {
+    expect(chosenFileName('C:\\fx\\crt.slangp')).toBe('crt.slangp')
+    expect(chosenFileName('/home/me/fx/lcd.slangp')).toBe('lcd.slangp')
+    expect(chosenFileName('')).toBe('')
+    expect(chosenFileName(null)).toBe('')
+    expect(chosenFileName(true)).toBe('')
   })
 })

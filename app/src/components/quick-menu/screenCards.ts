@@ -59,25 +59,42 @@ export interface SettingCardInput {
   entry: SettingEntry
   row: SettingRow | undefined
   value: SettingValue | null
-  /** The setting cannot change at the Session level: no ‹ ›. */
-  locked: boolean
+  /**
+   * Why the setting cannot change at the Session level (i18n key, `lockReason`), or null: a
+   * locked card has no ‹ › and says why instead of where its value comes from (X05: the screen
+   * effects need the Accelerated method).
+   */
+  reason: string | null
+  /** Options not offered right now (`unavailableOptions`). */
+  unavailable?: string[]
   consoleName: string
   set: (id: string) => void
+}
+
+/**
+ * Options that need something chosen elsewhere first: «Effetto da file» only once a file was
+ * chosen in Settings (`fx.fxfile`).
+ */
+export function unavailableOptions(
+  key: string,
+  value: (key: string) => SettingValue | null,
+): string[] {
+  return key === 'fx.fxpick' && !value('fx.fxfile') ? ['file'] : []
 }
 
 /** The card of a choice setting. */
 export function settingCard(c: SettingCardInput): ScreenCard {
   const kind = c.entry.kind
-  const ids =
-    kind.type === 'choice' ? kind.options.filter(id => !c.entry.hiddenOptions.includes(id)) : []
+  const skip = [...c.entry.hiddenOptions, ...(c.unavailable ?? [])]
+  const ids = kind.type === 'choice' ? kind.options.filter(id => !skip.includes(id)) : []
   const current = String(c.value ?? '')
   return {
     key: c.entry.key,
     name: { key: msg.name(c.entry.key) },
     value: current ? { key: msg.option(c.entry.key, current) } : null,
-    sub: sourceLine(c.row, c.consoleName),
+    sub: c.reason ? { key: c.reason } : sourceLine(c.row, c.consoleName),
     trial: c.row?.source === 'session',
-    ...(c.locked ? { prev: null, next: null } : stepper(ids, current, c.set)),
+    ...(c.reason ? { prev: null, next: null } : stepper(ids, current, c.set)),
   }
 }
 

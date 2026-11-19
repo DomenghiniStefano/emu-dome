@@ -264,6 +264,9 @@ pub struct Entry {
     pub most_used: bool,
     /// Shown only when another entry has (or has not) some values; `None`: always shown.
     pub show_if: Option<ShowIf>,
+    /// Works only on the native (Accelerated) video path: on Compatible the interface shows the
+    /// row disabled with the reason (X05). The screen effects (`fx.*`).
+    pub needs_native_video: bool,
 }
 
 impl Entry {
@@ -443,6 +446,8 @@ pub struct EntryDto {
     /// When the row is shown; absent: always.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show_if: Option<ShowIf>,
+    /// Works only on the native (Accelerated) video path.
+    pub needs_native_video: bool,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -482,6 +487,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 synonyms: synonyms(e.key),
                 most_used: e.most_used,
                 show_if: e.show_if,
+                needs_native_video: e.needs_native_video,
             })
             .collect(),
     }
