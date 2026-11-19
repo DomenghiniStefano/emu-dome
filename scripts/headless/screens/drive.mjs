@@ -593,7 +593,8 @@ const consoleLevel = `(() => { const r = document.querySelectorAll('[role=region
 const gameLevel = [
   rail(0),
   `(() => { const b = document.querySelector('[aria-label^="Apri i dettagli di"]'); b && b.click(); return !!b })()`,
-  `__clickText('[role=tab]', "Impostazioni")`,
+  // Reka tabs switch on mousedown, so a plain click() leaves the tab where it was.
+  `(() => { const t = [...document.querySelectorAll('[role=tab]')].find(e => e.textContent.trim().startsWith("Impostazioni")); t?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })); t?.click(); return !!t })()`,
   `__clickText('button', "Apri tutte le impostazioni")`,
 ];
 const SETTINGS_SCENES = {
