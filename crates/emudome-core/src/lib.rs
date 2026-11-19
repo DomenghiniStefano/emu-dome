@@ -24,12 +24,13 @@ pub mod saves;
 pub mod screens;
 pub mod screenshot;
 pub mod settings;
+pub mod speed_audio;
 pub mod tuning;
 
 pub use core::GameFiles;
 pub use error::ErrorCode;
 pub use frame::Frame;
 pub use session::{
-    has_auto_save, slot_infos, Command, Event, Session, SessionOptions, Shared, SlotInfo, Speed,
-    Stats, AUTO_SLOT,
+    has_auto_save, slot_infos, Command, CoreOptionInfo, Event, Session, SessionOptions, Shared,
+    SlotInfo, Speed, Stats, AUTO_SLOT,
 };

@@ -12,6 +12,8 @@ use std::ffi::{CStr, CString};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OptionDef {
     pub key: String,
+    /// The core's own label (`desc`), in English: for logs and the option listing only.
+    pub label: String,
     /// Accepted values, in the core's order.
     pub values: Vec<String>,
     pub default: String,
@@ -26,17 +28,24 @@ impl OptionDef {
             .unwrap_or_default();
         Self {
             key,
+            label: String::new(),
             values,
             default,
         }
     }
 
+    /// The same definition with the core's label.
+    pub fn with_label(mut self, label: Option<String>) -> Self {
+        self.label = label.unwrap_or_default();
+        self
+    }
+
     /// Parses a v0 variable (`SET_VARIABLES`): `"Description; first|second|third"`,
     /// the first value being the default. None when there is no `; ` separator.
     pub fn from_variable(key: &str, raw: &str) -> Option<Self> {
-        let (_desc, list) = raw.split_once("; ")?;
+        let (desc, list) = raw.split_once("; ")?;
         let values: Vec<String> = list.split('|').map(str::to_owned).collect();
-        Some(Self::new(key.to_owned(), values, None))
+        Some(Self::new(key.to_owned(), values, None).with_label(Some(desc.to_owned())))
     }
 
     fn accepts(&self, value: &str) -> bool {
@@ -66,6 +75,22 @@ impl CoreOptions {
         me.refresh();
         me.updated = false;
         me
+    }
+
+    /// The core's definitions, sorted by key (the option listing, `Shared::core_options`).
+    pub fn declared(&self) -> Vec<crate::session::CoreOptionInfo> {
+        let mut out: Vec<_> = self
+            .defs
+            .values()
+            .map(|d| crate::session::CoreOptionInfo {
+                key: d.key.clone(),
+                label: d.label.clone(),
+                values: d.values.clone(),
+                default: d.default.clone(),
+            })
+            .collect();
+        out.sort_by(|a, b| a.key.cmp(&b.key));
+        out
     }
 
     /// The core declared its options: they replace the earlier ones.

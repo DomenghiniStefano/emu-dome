@@ -1,75 +1,231 @@
-//! Settings that become core options: entries of the Console options page (T13) that a core
-//! reads through `GET_VARIABLE`, turned into that core's keys and values. Pure: the caller
-//! resolves each key for the game being opened.
+//! Settings that become core options: entries of the catalogue (`consoles.*`, `cores.*`) that a
+//! core reads through `GET_VARIABLE`, turned into that core's keys and values. Pure: the caller
+//! resolves each settings key for the game (Default → Global → Console → Game → Session).
 //!
-//! For now the Game Boy / Game Boy Color entries (mGBA). The option keys and values are the
-//! ones mGBA's libretro core declares (checked against the core in `cores/`); a value the
-//! core does not accept falls back to its default with a warning (`core_options.rs`).
-//! TODO(settings engine): the GBA (`consoles.gbacc`, `gbablend`, `solar`) and `cores.*`
-//! entries.
+//! # How it is declared
+//!
+//! One [`CoreTable`] per core, in its own module (`core_values/<core>.rs`), listed in
+//! [`TABLES`]. A table is a list of [`Rule`]s, each «setting key + value → core option key(s) +
+//! value(s)»:
+//!
+//! - [`Map::Toggle`]: an on / off setting → one option with an «on» and an «off» value;
+//! - [`Map::Choice`]: each option id of a choice setting → one or more core options (a choice
+//!   sets **every** option it owns, so switching from one choice to another leaves nothing of the
+//!   first behind);
+//! - [`Map::Percent`]: a 0..=100 slider → `round(percent × max / 100)` as text (`0`..=`max`).
+//!
+//! A rule also says the consoles it applies to (a GBA setting does not reach a Game Boy game run
+//! by the same core) and whether the core takes a change while the game runs ([`Apply::Live`],
+//! read at its next `GET_VARIABLE_UPDATE`) or only when the game is opened again
+//! ([`Apply::Restart`]).
+//!
+//! # Adding a core (extension point)
+//!
+//! 1. Write `core_values/<core>.rs` with `pub(super) static TABLE: CoreTable` (its `core` is the
+//!    name `core_for` gives the core in `app/src-tauri/src/lib.rs`: `mgba`, `melondsds`,
+//!    `azahar`).
+//! 2. Add `mod <core>;` below and `&<core>::TABLE` to [`TABLES`].
+//! 3. Option keys and values are the core's own: list them with
+//!    `cargo run -p emudome-core --example headless -- <core file> <rom> --list-options`; the
+//!    restart flag comes from the core's labels or source (mGBA writes «(Restart)» in the label).
+//!
+//! The tests in `settings/tests.rs` check every table against the catalogue: every rule's setting
+//! exists with a kind its [`Map`] can read, every option id of a mapped choice has a value.
+//!
+//! What a change means while a game runs is decided by [`plan_update`]: the live options that
+//! changed are pushed to the core, the restart ones are reported by their setting keys (the shell
+//! sends them as `emu://core-restart`).
+
+mod melondsds;
+mod mgba;
 
 use super::{ConsoleId, Value};
 
-/// The core options the settings ask for, for a game of `console`. `value` resolves a
-/// settings key for that game (None when it cannot be read: the core's default stays).
-/// Options are read by the core when the game starts (mGBA marks these «Restart»).
-pub fn core_options(
+/// When a core takes a new value of an option.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Apply {
+    /// While the game runs (the core re-reads it at `GET_VARIABLE_UPDATE`).
+    Live,
+    /// Only when the game is opened again.
+    Restart,
+}
+
+/// A choice id of a setting and the core options (key, value) it sets.
+pub type ChoiceValues = (&'static str, &'static [(&'static str, &'static str)]);
+
+/// How a setting's value becomes core options.
+#[derive(Clone, Copy, Debug)]
+pub enum Map {
+    /// On / off → `option` = `on` or `off`.
+    Toggle {
+        option: &'static str,
+        on: &'static str,
+        off: &'static str,
+    },
+    /// Option id of the setting → the core options it sets.
+    Choice(&'static [ChoiceValues]),
+    /// 0..=100 → `round(percent × max / 100)`, written as text.
+    Percent { option: &'static str, max: u32 },
+}
+
+/// One setting of the catalogue and the core options it drives.
+#[derive(Clone, Copy, Debug)]
+pub struct Rule {
+    pub setting: &'static str,
+    /// The consoles of the core this rule applies to.
+    pub consoles: &'static [ConsoleId],
+    pub map: Map,
+    pub apply: Apply,
+}
+
+/// The rules of one core.
+#[derive(Debug)]
+pub struct CoreTable {
+    /// The core's name in the shell (`mgba`, `melondsds`, `azahar`).
+    pub core: &'static str,
+    pub rules: &'static [Rule],
+}
+
+/// Every core's table.
+pub static TABLES: &[&CoreTable] = &[&mgba::TABLE, &melondsds::TABLE];
+
+/// One core option a setting asks for.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MappedOption {
+    /// The setting it comes from.
+    pub setting: &'static str,
+    /// The core's option key and value.
+    pub key: &'static str,
+    pub value: String,
+    pub apply: Apply,
+}
+
+/// The table of `core`, if it has one.
+pub fn table(core: &str) -> Option<&'static CoreTable> {
+    TABLES.iter().copied().find(|t| t.core == core)
+}
+
+/// Whether a change of `setting` can change some core's options.
+pub fn is_core_setting(setting: &str) -> bool {
+    TABLES
+        .iter()
+        .flat_map(|t| t.rules.iter())
+        .any(|r| r.setting == setting)
+}
+
+/// The core options the settings ask for, for a game of `console` run by `core`. `value`
+/// resolves a settings key for that game. A setting that cannot be read, holds a value of
+/// another kind or an unknown choice asks for nothing: the core's default stays.
+pub fn mapped(
+    core: &str,
     console: ConsoleId,
-    value: impl Fn(&str) -> Option<Value>,
-) -> Vec<(String, String)> {
+    mut value: impl FnMut(&str) -> Option<Value>,
+) -> Vec<MappedOption> {
+    let rules = table(core).map(|t| t.rules).unwrap_or_default();
     let mut out = Vec::new();
-    match console {
-        ConsoleId::Gb | ConsoleId::Gbc => gb(&value, &mut out),
-        // melonDS DS: its own module (`core_values_nds.rs`).
-        ConsoleId::Nds => super::core_values_nds::nds(&value, &mut out),
-        ConsoleId::Gba | ConsoleId::N3ds => {}
+    for rule in rules.iter().filter(|r| r.consoles.contains(&console)) {
+        let mut push = |key: &'static str, v: String| {
+            out.push(MappedOption {
+                setting: rule.setting,
+                key,
+                value: v,
+                apply: rule.apply,
+            });
+        };
+        match (rule.map, value(rule.setting)) {
+            (Map::Toggle { option, on, off }, Some(Value::Bool(b))) => {
+                push(option, if b { on } else { off }.to_owned());
+            }
+            (Map::Choice(choices), Some(Value::Text(id))) => {
+                match choices.iter().find(|(c, _)| *c == id) {
+                    Some((_, options)) => {
+                        for (k, v) in *options {
+                            push(k, (*v).to_owned());
+                        }
+                    }
+                    None => log::warn!("{}={id} has no core option value", rule.setting),
+                }
+            }
+            (Map::Percent { option, max }, Some(Value::Int(p))) => {
+                let level = (p.clamp(0, 100) as f64 * f64::from(max) / 100.0).round() as u32;
+                push(option, level.to_string());
+            }
+            (
+                Map::Toggle { .. } | Map::Choice(_) | Map::Percent { .. },
+                Some(Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_)) | None,
+            ) => {}
+        }
     }
     out
 }
 
-fn text(value: &impl Fn(&str) -> Option<Value>, key: &str) -> Option<String> {
-    match value(key) {
-        Some(Value::Text(t)) => Some(t),
-        Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
-    }
+/// [`mapped`] as `GET_VARIABLE` key and value pairs, for opening a game.
+pub fn core_options(
+    core: &str,
+    console: ConsoleId,
+    value: impl FnMut(&str) -> Option<Value>,
+) -> Vec<(String, String)> {
+    pairs(&mapped(core, console, value))
 }
 
-fn push(out: &mut Vec<(String, String)>, key: &str, value: &str) {
-    out.push((key.to_owned(), value.to_owned()));
+/// Options as `GET_VARIABLE` key and value pairs.
+pub fn pairs(options: &[MappedOption]) -> Vec<(String, String)> {
+    options
+        .iter()
+        .map(|o| (o.key.to_owned(), o.value.clone()))
+        .collect()
 }
 
-/// `consoles.gbmodel`, `consoles.gbpal`, `consoles.sgb` → mGBA.
-fn gb(value: &impl Fn(&str) -> Option<Value>, out: &mut Vec<(String, String)>) {
-    let model = match text(value, "consoles.gbmodel").as_deref() {
-        Some("auto") => Some("Autodetect"),
-        Some("gb") => Some("Game Boy"),
-        Some("gbc") => Some("Game Boy Color"),
-        Some("sgb") => Some("Super Game Boy"),
-        Some(_) | None => None,
-    };
-    if let Some(model) = model {
-        push(out, "mgba_gb_model", model);
-    }
+/// What a settings change means for the running core.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Update {
+    /// Live options whose value changed: sent to the core now.
+    pub push: Vec<(String, String)>,
+    /// Settings whose restart options now differ from what the core was opened with, sorted,
+    /// no duplicates. Empty: nothing waits for the game to be opened again.
+    pub restart: Vec<&'static str>,
+}
 
-    // The palette of black-and-white games. «gbc» = the colours a Game Boy Color gives the
-    // games it knows (mGBA's hardware presets); a game it does not know keeps the core's
-    // default palette.
-    let palette = match text(value, "consoles.gbpal").as_deref() {
-        Some("green") => Some(("DMG Green", "0")),
-        Some("pocket") => Some(("GB Pocket", "0")),
-        Some("light") => Some(("GB Light", "0")),
-        Some("gbc") => Some(("", "1")),
-        Some(_) | None => None,
+/// Compares the options the settings ask for now (`now`) with what the core has: `started`
+/// (what it was opened with) for the restart options, `previous` (the last options asked for)
+/// for the live ones. A live option no longer asked for goes back to the value it was opened
+/// with, if it had one (else the core keeps the value until the game is opened again).
+pub fn plan_update(
+    started: &[MappedOption],
+    previous: &[MappedOption],
+    now: &[MappedOption],
+) -> Update {
+    let find = |list: &[MappedOption], key: &str| -> Option<String> {
+        list.iter().find(|o| o.key == key).map(|o| o.value.clone())
     };
-    if let Some((colors, preset)) = palette {
-        if !colors.is_empty() {
-            push(out, "mgba_gb_colors", colors);
+    let mut update = Update::default();
+    for o in now {
+        match o.apply {
+            Apply::Live => {
+                if find(previous, o.key).as_deref() != Some(o.value.as_str()) {
+                    update.push.push((o.key.to_owned(), o.value.clone()));
+                }
+            }
+            Apply::Restart => {
+                if find(started, o.key).as_deref() != Some(o.value.as_str()) {
+                    update.restart.push(o.setting);
+                }
+            }
         }
-        push(out, "mgba_gb_colors_preset", preset);
     }
-
-    match value("consoles.sgb") {
-        Some(Value::Bool(on)) => push(out, "mgba_sgb_borders", if on { "ON" } else { "OFF" }),
-        Some(Value::Int(_) | Value::Text(_) | Value::List(_)) | None => {}
+    for o in previous {
+        if o.apply == Apply::Live && find(now, o.key).is_none() {
+            if let Some(v) = find(started, o.key).filter(|v| *v != o.value) {
+                update.push.push((o.key.to_owned(), v));
+            }
+        }
     }
+    for o in started {
+        if o.apply == Apply::Restart && find(now, o.key).is_none() {
+            update.restart.push(o.setting);
+        }
+    }
+    update.restart.sort_unstable();
+    update.restart.dedup();
+    update
 }

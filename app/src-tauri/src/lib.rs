@@ -8,6 +8,7 @@
 
 mod audio;
 mod bench;
+mod core_settings;
 mod dirs;
 mod effects;
 mod first_run;
@@ -262,7 +263,7 @@ fn open_library_game(
 /// host does not implement yet (Trello #16); its default `auto` fails to load.
 /// melonDS DS: the screens where the shell cuts them, touch from the shell's pointer, built-in
 /// BIOS and firmware (`emudome_core::nds`).
-/// TODO(settings engine): the `cores.*` entries will be mapped to core options here.
+/// The settings' core options are `emudome_core::settings::core_values` (one table per core).
 const FORCED_CORE_OPTIONS: &[(&str, &[(&str, &str)])] = &[
     ("azahar", &[("citra_graphics_api", "Software")]),
     (emudome_core::nds::CORE, emudome_core::nds::FORCED_OPTIONS),
@@ -280,7 +281,7 @@ fn forced_core_options(core_name: &str) -> Vec<(String, String)> {
 /// The options the core starts with: the settings' (console options), then the forced ones,
 /// which win.
 fn core_options(core_name: &str, flow: &settings::GameFlow) -> Vec<(String, String)> {
-    let mut options = flow.core_options.clone();
+    let mut options = emudome_core::settings::core_values::pairs(&flow.core_options);
     options.extend(forced_core_options(core_name));
     options
 }
@@ -314,7 +315,7 @@ fn open_path(
     close_current(app, state);
 
     let console_id = console.unwrap_or(ext_console);
-    let flow = settings::game_flow(app, console_id, &game);
+    let flow = settings::game_flow(app, core_name, console_id, &game);
     let save_dir = state.save_dir();
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
     saves::before_open(app, &save_dir, &game_path)?;
@@ -335,6 +336,7 @@ fn open_path(
             rewind_seconds: flow.rewind_seconds,
             split: screen_split(console_id),
             username: flow.username.clone(),
+            fast_audio: flow.fast_audio,
         },
         tx,
     )
@@ -358,6 +360,7 @@ fn open_path(
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
     *state.game_path.lock() = Some(game_path.clone());
+    core_settings::started(app, core_name, console_id, flow.core_options);
     settings::begin_session(app, console_id, game);
 
     Ok(GameInfo {
@@ -378,6 +381,7 @@ fn open_path(
 /// Ends the open game: play time, the settings session, video, the emulation thread.
 fn close_current(app: &tauri::AppHandle, state: &AppState) {
     library::end_play(app);
+    core_settings::stopped(app);
     settings::end_session(app);
     state.native_source(None);
     *state.current.lock() = None;
@@ -395,6 +399,7 @@ fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
 #[tauri::command]
 fn abandon_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
     library::end_play(&app);
+    core_settings::stopped(&app);
     settings::end_session(&app);
     state.native_source(None);
     *state.current.lock() = None;

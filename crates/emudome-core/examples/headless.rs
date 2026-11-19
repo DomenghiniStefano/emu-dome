@@ -8,6 +8,12 @@
 //! - `--secs N`: measure the 1x and Max speeds over N seconds each (default 1);
 //! - `--png <file>`: write the last frame before the state tests as a PNG;
 //! - `--press-a N`: before measuring, tap A N times, one tap per second (to leave a title screen);
+//! - `--live key=value` (repeatable): after the 1x measure, change a core option while the
+//!   game runs and print the center pixel before and after (does the core take it live?);
+//! - `--fast-audio mute|pitch_up|same_pitch`: `audio.ff`; then also count the audio frames
+//!   queued per second of wall time at 1x, 4x and 0.5x (about the core's rate when converted);
+//! - `--list-options`: print the options the core declared (key, default, values, label) and
+//!   stop, without the speed and state tests;
 //! - `--rewind N`: at the end, record N seconds of rewind and report its memory, rewind for a
 //!   second, and take a screenshot (written under the temp folder's `saves/screenshots`);
 //! - `--dir <folder>`: the system and save folders go under it (default: the temp folder's
@@ -52,6 +58,30 @@ struct Args {
     dir: Option<std::path::PathBuf>,
     screens: Option<String>,
     touch: bool,
+    list_options: bool,
+    live: Vec<(String, String)>,
+    fast_audio: Option<emudome_core::speed_audio::FastAudio>,
+}
+
+fn key_value(kv: &str) -> anyhow::Result<(String, String)> {
+    let (k, v) = kv
+        .split_once('=')
+        .ok_or_else(|| anyhow::anyhow!("wanted key=value, got {kv}"))?;
+    Ok((k.to_owned(), v.to_owned()))
+}
+
+/// Audio frames queued per second of wall time over `secs` (the queue drained every 5 ms).
+fn audio_rate(session: &Session, secs: f64) -> f64 {
+    session.shared().audio.lock().samples.clear();
+    let t = Instant::now();
+    let mut samples = 0usize;
+    while t.elapsed().as_secs_f64() < secs {
+        std::thread::sleep(Duration::from_millis(5));
+        let mut q = session.shared().audio.lock();
+        samples += q.samples.len();
+        q.samples.clear();
+    }
+    samples as f64 / 2.0 / t.elapsed().as_secs_f64()
 }
 
 fn parse_args() -> anyhow::Result<Args> {
@@ -65,6 +95,9 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut dir = None;
     let mut screens = None;
     let mut touch = false;
+    let mut list_options = false;
+    let mut live = Vec::new();
+    let mut fast_audio = None;
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -85,6 +118,15 @@ fn parse_args() -> anyhow::Result<Args> {
             "--dir" => dir = Some(value()?.into()),
             "--screens" => screens = Some(value()?),
             "--touch" => touch = true,
+            "--list-options" => list_options = true,
+            "--live" => live.push(key_value(&value()?)?),
+            "--fast-audio" => {
+                let id = value()?;
+                fast_audio = Some(
+                    emudome_core::speed_audio::FastAudio::from_option(&id)
+                        .ok_or_else(|| anyhow::anyhow!("unknown --fast-audio {id}"))?,
+                );
+            }
             _ => positional.push(a),
         }
     }
@@ -102,6 +144,9 @@ fn parse_args() -> anyhow::Result<Args> {
         dir,
         screens,
         touch,
+        list_options,
+        live,
+        fast_audio,
     })
 }
 
@@ -311,10 +356,21 @@ fn main() -> anyhow::Result<()> {
                 Split::Whole
             },
             username: None,
+            fast_audio: args.fast_audio.unwrap_or_default(),
         },
         tx,
     )?;
     println!("event: {:?}", rx.recv_timeout(Duration::from_secs(5))?);
+
+    if args.list_options {
+        for o in session.shared().core_options.lock().iter() {
+            println!(
+                "{} = {:?} of {:?} ({})",
+                o.key, o.default, o.values, o.label
+            );
+        }
+        return Ok(());
+    }
 
     for _ in 0..args.press_a {
         std::thread::sleep(Duration::from_millis(850));
@@ -344,6 +400,36 @@ fn main() -> anyhow::Result<()> {
         stats.av_info.timing.fps,
         center_pixel(&session)
     );
+    for (key, value) in &args.live {
+        let before = center_pixel(&session);
+        session.send(Command::SetCoreOption {
+            key: key.clone(),
+            value: value.clone(),
+        });
+        std::thread::sleep(Duration::from_millis(200));
+        println!(
+            "live {key}={value}: center pixel {:?} -> {:?}",
+            before.2,
+            center_pixel(&session).2
+        );
+    }
+    if args.fast_audio.is_some() {
+        for (label, speed) in [
+            ("1x", Speed::Factor(1.0)),
+            ("4x", Speed::Factor(4.0)),
+            ("0.5x", Speed::Factor(0.5)),
+            ("Max", Speed::Max),
+        ] {
+            session.send(Command::SetSpeed(speed));
+            std::thread::sleep(Duration::from_millis(300));
+            let rate = session.shared().audio.lock().sample_rate;
+            println!(
+                "audio at {label}: {:.0} frames/s queued (core rate {rate})",
+                audio_rate(&session, 1.0)
+            );
+        }
+        session.send(Command::SetSpeed(Speed::Factor(1.0)));
+    }
     if let Some(png) = &args.png {
         write_png(&session, png)?;
         println!("frame written to {}", png.display());

@@ -1,6 +1,6 @@
 //! A minimal libretro host for the spike: loads the core, answers the environment (core options
-//! from the command line, `SET_HW_RENDER` for Vulkan, the Vulkan interfaces) and records what
-//! the core does with them. Everything the core reports lands in [`STATE`].
+//! from the command line, `SET_HW_RENDER` for Vulkan and, with `--gl`, desktop OpenGL; the
+//! Vulkan interfaces) and records what the core does with them. Everything the core reports lands in [`STATE`].
 //!
 //! Not the shell's host (`emudome-core`): the spike stays out of it on purpose, so the Phase 3
 //! integration can choose its own shape from what is measured here.
@@ -18,8 +18,8 @@ use libretro_sys::symbols::{
     RetroSetInputPoll, RetroSetInputState, RetroSetVideoRefresh, RetroUnloadGame,
 };
 use libretro_sys::{
-    retro_game_info, retro_hw_render_callback, retro_system_av_info, retro_system_info,
-    retro_variable, RETRO_API_VERSION, RETRO_ENVIRONMENT_EXPERIMENTAL,
+    retro_game_geometry, retro_game_info, retro_hw_render_callback, retro_system_av_info,
+    retro_system_info, retro_variable, RETRO_API_VERSION, RETRO_ENVIRONMENT_EXPERIMENTAL,
     RETRO_ENVIRONMENT_GET_CAN_DUPE, RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION,
     RETRO_ENVIRONMENT_GET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_SUPPORT,
     RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, RETRO_ENVIRONMENT_GET_INPUT_BITMASKS,
@@ -32,8 +32,9 @@ use libretro_sys::{
     RETRO_ENVIRONMENT_SET_HW_RENDER, RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE,
     RETRO_ENVIRONMENT_SET_HW_SHARED_CONTEXT, RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS,
     RETRO_ENVIRONMENT_SET_MESSAGE, RETRO_ENVIRONMENT_SET_PIXEL_FORMAT,
-    RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, RETRO_ENVIRONMENT_SET_VARIABLES, RETRO_HW_CONTEXT_VULKAN,
-    RETRO_HW_FRAME_BUFFER_VALID, RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN,
+    RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, RETRO_ENVIRONMENT_SET_VARIABLES, RETRO_HW_CONTEXT_OPENGL,
+    RETRO_HW_CONTEXT_OPENGL_CORE, RETRO_HW_CONTEXT_VULKAN, RETRO_HW_FRAME_BUFFER_VALID,
+    RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN,
 };
 use parking_lot::Mutex;
 
@@ -48,8 +49,12 @@ pub struct HostState {
     pub save_dir: Option<CString>,
     /// Every `SET_HW_RENDER` the core asked for (context type, version), accepted or not.
     pub hw_requests: Vec<(c_uint, c_uint, c_uint)>,
-    /// The accepted `SET_HW_RENDER` (Vulkan only).
+    /// The accepted `SET_HW_RENDER` (Vulkan, or desktop OpenGL when `accept_gl`).
     pub hw: Option<retro_hw_render_callback>,
+    /// `--gl`: accept desktop OpenGL contexts (compatibility or core profile).
+    pub accept_gl: bool,
+    /// Geometry the core announced after loading (`SET_GEOMETRY` / `SET_SYSTEM_AV_INFO`).
+    pub geometry: Option<retro_game_geometry>,
     pub negotiation: *const RetroNegotiationVulkanV1,
     /// What `GET_HW_RENDER_INTERFACE` answers; set by the frontend before `context_reset`.
     pub iface: Option<Box<RetroHwRenderInterfaceVulkan>>,
@@ -99,6 +104,8 @@ pub static STATE: Mutex<HostState> = parking_lot::const_mutex(HostState {
     save_dir: None,
     hw_requests: Vec::new(),
     hw: None,
+    accept_gl: false,
+    geometry: None,
     negotiation: std::ptr::null(),
     iface: None,
     image: None,
@@ -336,8 +343,18 @@ unsafe extern "C" fn environment(cmd: c_uint, data: *mut c_void) -> bool {
         let mut st = STATE.lock();
         st.hw_requests
             .push((req.context_type, req.version_major, req.version_minor));
+        let desktop_gl = req.context_type == RETRO_HW_CONTEXT_OPENGL
+            || req.context_type == RETRO_HW_CONTEXT_OPENGL_CORE;
+        if desktop_gl && st.accept_gl {
+            // The context itself is made before `context_reset` (main.rs); the version is
+            // checked there against what the driver gives.
+            req.get_current_framebuffer = Some(crate::gl::get_current_framebuffer);
+            req.get_proc_address = Some(crate::gl::get_proc_address);
+            st.hw = Some(*req);
+            return true;
+        }
         if req.context_type != RETRO_HW_CONTEXT_VULKAN {
-            // The spike has no GL context: refuse, as a host without that API must.
+            // GLES, D3D, or GL without `--gl`: refuse, as a host without that API must.
             return false;
         }
         // Vulkan uses neither field; set them so a core never calls a null pointer.
@@ -350,7 +367,11 @@ unsafe extern "C" fn environment(cmd: c_uint, data: *mut c_void) -> bool {
         if data.is_null() {
             return false;
         }
-        *(data as *mut c_uint) = RETRO_HW_CONTEXT_VULKAN;
+        *(data as *mut c_uint) = if STATE.lock().accept_gl {
+            RETRO_HW_CONTEXT_OPENGL_CORE
+        } else {
+            RETRO_HW_CONTEXT_VULKAN
+        };
         return true;
     }
     if cmd == masked(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE) {
@@ -392,6 +413,14 @@ unsafe extern "C" fn environment(cmd: c_uint, data: *mut c_void) -> bool {
         };
     }
     if cmd == masked(RETRO_ENVIRONMENT_SET_HW_SHARED_CONTEXT) {
+        return true;
+    }
+    if cmd == RETRO_ENVIRONMENT_SET_GEOMETRY && !data.is_null() {
+        STATE.lock().geometry = Some(*(data as *const retro_game_geometry));
+        return true;
+    }
+    if cmd == RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO && !data.is_null() {
+        STATE.lock().geometry = Some((*(data as *const retro_system_av_info)).geometry);
         return true;
     }
     // Option declarations, input descriptors, geometry: accepted and ignored (unanswered options

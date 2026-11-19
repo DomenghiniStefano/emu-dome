@@ -120,7 +120,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          settings/ (settings engine: schema.rs types, catalog.rs the 155 entries,
                          mod.rs levels / resolve / session, store.rs files,
-                         core_values.rs settings → core options; pure, unit-tested)
+                         core_values.rs settings → core options, one table per core in core_values/<core>.rs;
+                         pure, unit-tested)
+                         speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
@@ -160,7 +162,12 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   over the plain image (`fx.fxint`, `fx.fxbright`). Rows with `needs_native_video` are disabled on Compatible (X05).
   GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
 - Audio: shared queue, linear resampling to the device's rate,
-  ±0.5% correction on the queue's fill level. Muted when the speed is not 1×.
+  ±0.5% correction on the queue's fill level. Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread):
+  muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about real time reaches
+  the queue. At Max the speed is measured.
+- Core options: the settings' values come from `settings::core_values` (a `CoreTable` per core: setting → core
+  option, `Live` or `Restart`). A change while the game runs: live options go to the core
+  (`GET_VARIABLE_UPDATE`), restart ones are listed in `emu://core-restart` (`core_settings.rs`).
 - Keyboard: for now it goes through the webview (`input` command). Controllers go through an SDL3 thread
   (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
   count as L2/R2 and d-pad.
@@ -190,7 +197,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   live in `SYNONYMS` (catalog.rs).
 - Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
-  `settings://changed` (`{ key, level }`).
+  `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
+  opened again).
 
 ## Lessons already learned (do not repeat)
 
@@ -362,10 +370,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 
 ## Known gaps of the prototype (intentional, for later)
 
-- Core options are answered (`core_options.rs`), but the only values the shell sets are the forced ones in
-  `FORCED_CORE_OPTIONS` (`app/src-tauri/src/lib.rs`: Azahar's software renderer) and the Game Boy console options
-  (`settings/core_values.rs`); the other `consoles.*` and the `cores.*` entries are not mapped to them yet.
-- Audio is muted in fast forward and slow motion.
+- Core options: every `consoles.*` / `cores.*` entry with a real mGBA option is mapped (`settings/core_values/mgba.rs`);
+  melonDS DS and Azahar have no table yet (Azahar only gets `FORCED_CORE_OPTIONS`, `app/src-tauri/src/lib.rs`).
+  `perf.frameskip` is not mapped. The interface does not show `emu://core-restart` yet.
+- Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - The cores are not included in the build; the package takes them from `cores/` as a resource.
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
   Cheats (L08) and patches (L09) have no backend yet. Screen effects (librashader) are not wired.

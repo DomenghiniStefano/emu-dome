@@ -15,6 +15,7 @@
 //! they are set, and DSi mode becomes possible.
 
 use crate::screens::Split;
+use crate::settings::Value;
 
 /// The core's buildbot name (`melondsds_libretro.*`).
 pub const CORE: &str = "melondsds";
@@ -35,11 +36,36 @@ pub const FORCED_OPTIONS: &[(&str, &str)] = &[
     ("melonds_show_cursor", "disabled"),
     // Built-in BIOS and firmware only (see the module's TODO).
     ("melonds_sysfile_mode", "builtin"),
+    // The DS user name comes from the frontend (`GET_USERNAME`, [`username`]); unanswered, the
+    // core takes the OS user, which is what an empty `consoles.dsname` means.
+    ("melonds_firmware_username", "guess_username"),
 ];
+
+/// The DS user name for `GET_USERNAME` (`consoles.dsname`): `None` when empty (the core then
+/// uses the OS user name). Not a core option: melonDS DS asks the frontend for it. The DS keeps
+/// 10 characters; melonDS DS cuts the rest.
+pub fn username(value: impl Fn(&str) -> Option<Value>) -> Option<String> {
+    match value("consoles.dsname") {
+        Some(Value::Text(n)) => Some(n.trim().to_owned()).filter(|n| !n.is_empty()),
+        Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use super::{FORCED_OPTIONS, SPLIT};
+    use super::{username, Value, FORCED_OPTIONS, SPLIT};
+
+    #[test]
+    fn the_user_name_is_answered_only_when_set() {
+        let name = |v: &str| {
+            let v = v.to_owned();
+            username(move |key| (key == "consoles.dsname").then(|| Value::Text(v.clone())))
+        };
+        assert_eq!(name(""), None);
+        assert_eq!(name("   "), None);
+        assert_eq!(name(" Stefano "), Some("Stefano".into()));
+        assert_eq!(username(|_| None), None);
+    }
 
     #[test]
     fn the_forced_layout_is_the_split() {

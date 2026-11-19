@@ -1160,7 +1160,7 @@ fn gb_options(s: Settings, console: ConsoleId) -> Vec<(String, String)> {
         console,
         game: GameId::from_rom_path("C:/games/test.gb".as_ref()),
     };
-    super::core_values::core_options(console, |key| {
+    super::core_values::core_options("mgba", console, |key| {
         s.borrow_mut()
             .resolve(key, &scope)
             .ok()
@@ -1184,6 +1184,10 @@ fn gb_defaults_become_mgba_options() {
             ("mgba_gb_colors", "DMG Green"),
             ("mgba_gb_colors_preset", "0"),
             ("mgba_sgb_borders", "ON"),
+            ("mgba_use_bios", "ON"),
+            ("mgba_skip_bios", "OFF"),
+            ("mgba_audio_low_pass_filter", "disabled"),
+            ("mgba_allow_opposing_directions", "no"),
         ])
     );
 }
@@ -1200,14 +1204,15 @@ fn gbc_console_level_changes_reach_the_core_and_not_gb() {
     s.set("consoles.gbpal", &gbc, Value::Text("gbc".into()))
         .unwrap();
     s.set("consoles.sgb", &gbc, Value::Bool(false)).unwrap();
-    assert_eq!(
-        gb_options(s, ConsoleId::Gbc),
-        pairs(&[
-            ("mgba_gb_model", "Game Boy Color"),
-            ("mgba_gb_colors_preset", "1"),
-            ("mgba_sgb_borders", "OFF"),
-        ])
-    );
+    let out = gb_options(s, ConsoleId::Gbc);
+    for pair in pairs(&[
+        ("mgba_gb_model", "Game Boy Color"),
+        ("mgba_gb_colors", "Grayscale"),
+        ("mgba_gb_colors_preset", "1"),
+        ("mgba_sgb_borders", "OFF"),
+    ]) {
+        assert!(out.contains(&pair), "{pair:?} missing from {out:?}");
+    }
     // The Game Boy console keeps its own values.
     let s = settings(&dir);
     assert!(gb_options(s, ConsoleId::Gb).contains(&("mgba_gb_model".into(), "Autodetect".into())));
@@ -1222,7 +1227,7 @@ fn every_gb_choice_maps_to_an_mgba_value() {
             panic!("{key} is not a choice");
         };
         for id in options {
-            let out = super::core_values::core_options(ConsoleId::Gb, |k| {
+            let out = super::core_values::core_options("mgba", ConsoleId::Gb, |k| {
                 (k == key).then(|| Value::Text((*id).to_owned()))
             });
             assert!(!out.is_empty(), "{key}={id} has no mGBA value");
@@ -1231,7 +1236,284 @@ fn every_gb_choice_maps_to_an_mgba_value() {
 }
 
 #[test]
-fn other_consoles_get_no_gb_options() {
+fn gba_gets_no_gb_options_and_gb_no_gba_options() {
     let dir = TestDir::new("gb-core-gba");
-    assert!(gb_options(settings(&dir), ConsoleId::Gba).is_empty());
+    let gba = gb_options(settings(&dir), ConsoleId::Gba);
+    assert!(gba
+        .iter()
+        .all(|(k, _)| !k.starts_with("mgba_gb_") && k != "mgba_sgb_borders"));
+    let gb = gb_options(settings(&dir), ConsoleId::Gb);
+    for k in [
+        "mgba_color_correction",
+        "mgba_interframe_blending",
+        "mgba_solar_sensor_level",
+    ] {
+        assert!(
+            gb.iter().all(|(key, _)| key != k),
+            "{k} reached a Game Boy game"
+        );
+    }
+}
+
+// ---- Every core's option table (core_values.rs) ----
+
+#[test]
+fn gba_defaults_become_mgba_options() {
+    let dir = TestDir::new("gba-core-defaults");
+    assert_eq!(
+        gb_options(settings(&dir), ConsoleId::Gba),
+        pairs(&[
+            ("mgba_color_correction", "Auto"),
+            ("mgba_interframe_blending", "OFF"),
+            ("mgba_solar_sensor_level", "5"),
+            ("mgba_use_bios", "ON"),
+            ("mgba_skip_bios", "OFF"),
+            ("mgba_audio_low_pass_filter", "disabled"),
+            ("mgba_allow_opposing_directions", "no"),
+        ])
+    );
+}
+
+#[test]
+fn gba_game_and_session_levels_reach_the_core() {
+    let dir = TestDir::new("gba-core-levels");
+    let mut s = settings(&dir);
+    let gba = Scope::Console {
+        console: ConsoleId::Gba,
+    };
+    let game = Scope::Game {
+        console: ConsoleId::Gba,
+        game: GameId::from_rom_path("C:/games/test.gb".as_ref()),
+    };
+    s.set("consoles.gbablend", &gba, Value::Text("on".into()))
+        .unwrap();
+    s.set("consoles.gbablend", &game, Value::Text("auto".into()))
+        .unwrap();
+    s.set("consoles.solar", &game, Value::Int(100)).unwrap();
+    s.set("cores.mgbaopp", &gba, Value::Bool(true)).unwrap();
+    let out = gb_options(s, ConsoleId::Gba);
+    for pair in pairs(&[
+        ("mgba_interframe_blending", "mix_smart"),
+        ("mgba_solar_sensor_level", "10"),
+        ("mgba_allow_opposing_directions", "yes"),
+    ]) {
+        assert!(out.contains(&pair), "{pair:?} missing from {out:?}");
+    }
+}
+
+#[test]
+fn percent_rounds_to_the_core_levels() {
+    use super::core_values::mapped;
+    let level = |p: i64| {
+        mapped("mgba", ConsoleId::Gba, |k| {
+            (k == "consoles.solar").then_some(Value::Int(p))
+        })
+        .into_iter()
+        .find(|o| o.key == "mgba_solar_sensor_level")
+        .map(|o| o.value)
+    };
+    assert_eq!(level(0).as_deref(), Some("0"));
+    assert_eq!(level(5).as_deref(), Some("1")); // 0.5 rounds up
+    assert_eq!(level(50).as_deref(), Some("5"));
+    assert_eq!(level(100).as_deref(), Some("10"));
+    assert_eq!(level(250).as_deref(), Some("10"), "out of range is clamped");
+}
+
+#[test]
+fn a_value_of_the_wrong_kind_or_an_unknown_choice_asks_for_nothing() {
+    use super::core_values::mapped;
+    let out = mapped("mgba", ConsoleId::Gba, |k| match k {
+        "consoles.gbacc" => Some(Value::Text("sepia".into())),
+        "cores.mgbalp" => Some(Value::Int(1)),
+        _ => None,
+    });
+    assert!(out.is_empty(), "{out:?}");
+    assert!(mapped("nosuchcore", ConsoleId::Gba, |_| Some(Value::Bool(true))).is_empty());
+}
+
+#[test]
+fn every_core_table_matches_the_catalogue() {
+    use super::core_values::{Map, TABLES};
+    let mut seen = HashSet::new();
+    for table in TABLES {
+        for rule in table.rules {
+            assert!(
+                seen.insert((table.core, rule.setting)),
+                "{} maps {} twice",
+                table.core,
+                rule.setting
+            );
+            assert!(
+                !rule.consoles.is_empty(),
+                "{} reaches no console",
+                rule.setting
+            );
+            let e = entry(rule.setting)
+                .unwrap_or_else(|| panic!("{} is not in the catalogue", rule.setting));
+            match (rule.map, &e.kind) {
+                (Map::Toggle { .. }, Kind::Toggle) => {}
+                (Map::Percent { .. }, Kind::Slider { min, max, .. }) => {
+                    assert_eq!(
+                        (*min, *max),
+                        (0, 100),
+                        "{} is not a percentage",
+                        rule.setting
+                    );
+                }
+                (Map::Choice(choices), Kind::Choice { options, .. }) => {
+                    // Every option id of the catalogue has its core values, and nothing else.
+                    let ids: HashSet<&str> = choices.iter().map(|(id, _)| *id).collect();
+                    let catalogue: HashSet<&str> = options.iter().copied().collect();
+                    assert_eq!(ids, catalogue, "{} choices", rule.setting);
+                    // Each choice sets the same options, so a change leaves nothing behind.
+                    fn keys<'a>(o: &[(&'a str, &str)]) -> Vec<&'a str> {
+                        o.iter().map(|(k, _)| *k).collect()
+                    }
+                    for (id, o) in choices {
+                        assert_eq!(keys(o), keys(choices[0].1), "{}={id}", rule.setting);
+                    }
+                }
+                (map, kind) => panic!("{}: {map:?} cannot read {kind:?}", rule.setting),
+            }
+        }
+    }
+}
+
+#[test]
+fn every_console_and_core_entry_with_an_mgba_option_is_mapped() {
+    // The `consoles.*` and `cores.*` entries of the consoles mGBA runs that have a real mGBA
+    // option. `cores.mgbaall` is a link (the full option list), not a value.
+    use super::core_values::{is_core_setting, table};
+    let mapped: HashSet<&str> = table("mgba")
+        .map(|t| t.rules.iter().map(|r| r.setting).collect())
+        .unwrap_or_default();
+    for key in [
+        "consoles.gbmodel",
+        "consoles.gbpal",
+        "consoles.sgb",
+        "consoles.gbacc",
+        "consoles.gbablend",
+        "consoles.solar",
+        "cores.mgbabios",
+        "cores.mgbaskip",
+        "cores.mgbalp",
+        "cores.mgbaopp",
+    ] {
+        assert!(mapped.contains(key), "{key} is not mapped");
+        assert!(is_core_setting(key));
+    }
+    assert!(!is_core_setting("audio.vol"));
+}
+
+mod core_updates {
+    use super::super::core_values::{plan_update, Apply, MappedOption, Update};
+
+    fn opt(setting: &'static str, key: &'static str, value: &str, apply: Apply) -> MappedOption {
+        MappedOption {
+            setting,
+            key,
+            value: value.to_owned(),
+            apply,
+        }
+    }
+
+    fn live(value: &str) -> MappedOption {
+        opt(
+            "consoles.gbacc",
+            "mgba_color_correction",
+            value,
+            Apply::Live,
+        )
+    }
+
+    fn restart(value: &str) -> MappedOption {
+        opt("consoles.gbmodel", "mgba_gb_model", value, Apply::Restart)
+    }
+
+    #[test]
+    fn nothing_changed_nothing_to_do() {
+        let started = [live("Auto"), restart("Autodetect")];
+        assert_eq!(plan_update(&started, &started, &started), Update::default());
+    }
+
+    #[test]
+    fn a_live_change_is_pushed_once() {
+        let started = [live("Auto")];
+        let now = [live("GBA")];
+        let update = plan_update(&started, &started, &now);
+        assert_eq!(
+            update.push,
+            vec![("mgba_color_correction".to_owned(), "GBA".to_owned())]
+        );
+        assert!(update.restart.is_empty());
+        // The same values again: already pushed.
+        assert_eq!(plan_update(&started, &now, &now), Update::default());
+        // Back to the start: pushed again.
+        assert_eq!(plan_update(&started, &now, &started).push.len(), 1);
+    }
+
+    #[test]
+    fn a_restart_change_is_reported_until_it_goes_back() {
+        let started = [restart("Autodetect"), live("Auto")];
+        let now = [restart("Game Boy"), live("Auto")];
+        let update = plan_update(&started, &started, &now);
+        assert!(update.push.is_empty(), "a restart option is not pushed");
+        assert_eq!(update.restart, vec!["consoles.gbmodel"]);
+        // Still pending at the next unrelated change.
+        let later = [restart("Game Boy"), live("GBA")];
+        assert_eq!(
+            plan_update(&started, &now, &later).restart,
+            vec!["consoles.gbmodel"]
+        );
+        // Back to the value the game was opened with: nothing waits any more.
+        assert!(plan_update(&started, &later, &started).restart.is_empty());
+    }
+
+    #[test]
+    fn options_that_disappear_go_back_or_wait() {
+        let started = [live("Auto"), restart("Autodetect")];
+        let previous = [live("GBA"), restart("Autodetect")];
+        let update = plan_update(&started, &previous, &[]);
+        assert_eq!(
+            update.push,
+            vec![("mgba_color_correction".to_owned(), "Auto".to_owned())]
+        );
+        assert_eq!(update.restart, vec!["consoles.gbmodel"]);
+    }
+
+    #[test]
+    fn a_choice_with_two_options_is_reported_once() {
+        let started = [
+            opt(
+                "consoles.gbpal",
+                "mgba_gb_colors",
+                "DMG Green",
+                Apply::Restart,
+            ),
+            opt(
+                "consoles.gbpal",
+                "mgba_gb_colors_preset",
+                "0",
+                Apply::Restart,
+            ),
+        ];
+        let now = [
+            opt(
+                "consoles.gbpal",
+                "mgba_gb_colors",
+                "Grayscale",
+                Apply::Restart,
+            ),
+            opt(
+                "consoles.gbpal",
+                "mgba_gb_colors_preset",
+                "1",
+                Apply::Restart,
+            ),
+        ];
+        assert_eq!(
+            plan_update(&started, &started, &now).restart,
+            vec!["consoles.gbpal"]
+        );
+    }
 }
