@@ -210,6 +210,9 @@ melonDS DS in software has ample headroom on the PC. A71 measurements: not done 
 
 ## Hardware rendering (`SET_HW_RENDER`)
 
+**2026-11-19**: OpenGL (melonDS DS, Azahar), GL readback vs GL-to-Vulkan zero copy, resolution scaling and the
+recommendation per OS are in `docs/feasibility-hw-render.md`, which now carries the whole answer to #16.
+
 **2026-11-18 · Step 1, done with Vulkan instead of GL (Windows, headless).** Trello #16, for #46.
 
 **Question**: can EmuDome's host give a libretro core a hardware render context and present the core's frames through
