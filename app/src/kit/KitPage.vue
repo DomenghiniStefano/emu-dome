@@ -14,6 +14,7 @@ import CardSection from './sections/CardSection.vue'
 import ChipSection from './sections/ChipSection.vue'
 import DialogSection from './sections/DialogSection.vue'
 import SearchFieldSection from './sections/SearchFieldSection.vue'
+import InputSection from './sections/InputSection.vue'
 import SegmentedSection from './sections/SegmentedSection.vue'
 import SelectSection from './sections/SelectSection.vue'
 import SliderSection from './sections/SliderSection.vue'
@@ -86,6 +87,7 @@ useNavScope(root, { autofocus: true })
       <DialogSection />
       <SearchFieldSection />
       <CaptureFieldSection />
+      <InputSection />
     </div>
   </main>
 </template>

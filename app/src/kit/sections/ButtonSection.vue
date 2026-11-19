@@ -3,6 +3,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Ellipsis,
+  EllipsisVertical,
+  Heart,
   Library,
   Play,
   RefreshCw,
@@ -87,6 +89,23 @@ import KitState from '../KitState.vue'
         </Button>
       </div>
     </KitState>
+    <KitState label="Primary · Hero (phone, full width)">
+      <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Hero" class="w-field">
+        <Play :size="18" fill="currentColor" :stroke-width="0" aria-hidden="true" />
+        Resume
+      </Button>
+    </KitState>
+    <KitState label="Soft · TallNarrow">
+      <div class="flex items-center gap-8">
+        <Button :size="ButtonSize.TallNarrow">
+          <Heart :size="16" :stroke-width="1.75" aria-hidden="true" />
+          Add to favourites
+        </Button>
+        <Button :size="ButtonSize.TallNarrow" aria-label="More">
+          <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
     <KitState label="SoftAccent · TileAction · disabled">
       <Button :variant="ButtonVariant.SoftAccent" :size="ButtonSize.TileAction" disabled>
         Play from here
@@ -128,6 +147,35 @@ import KitState from '../KitState.vue'
         <Button :variant="ButtonVariant.Touch" :size="ButtonSize.TouchFace">A</Button>
         <Button :variant="ButtonVariant.Touch" :size="ButtonSize.TouchSystem">START</Button>
       </div>
+    </KitState>
+    <KitState label="Soft · Touch (phone)">
+      <Button :size="ButtonSize.Touch">Show the backups</Button>
+    </KitState>
+    <KitState label="Plain · IconTouch (phone)">
+      <div class="flex items-center gap-8">
+        <Button :variant="ButtonVariant.Plain" :size="ButtonSize.IconTouch" aria-label="Back">
+          <ChevronLeft :size="24" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button :variant="ButtonVariant.Plain" :size="ButtonSize.IconTouch" aria-label="More">
+          <EllipsisVertical :size="22" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Text · Bare">
+      <Button :variant="ButtonVariant.Text" :size="ButtonSize.Bare">
+        <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
+        Library
+      </Button>
+    </KitState>
+    <KitState label="UnderlineLink · Bare">
+      <Button :variant="ButtonVariant.UnderlineLink" :size="ButtonSize.Bare"
+        >Open every setting</Button
+      >
+    </KitState>
+    <KitState label="UnderlineLink · disabled">
+      <Button :variant="ButtonVariant.UnderlineLink" :size="ButtonSize.Bare" disabled>
+        Open every setting
+      </Button>
     </KitState>
     <KitState label="Icon · IconSmall">
       <div class="flex items-center gap-8">

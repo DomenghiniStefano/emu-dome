@@ -5,15 +5,18 @@
 // - Pressione ripetuta (turbo): not built yet (`pad.turbo` has no backend), X05 with the reason.
 // - Controlli touch (telefono): customised on the phone (Phase 4).
 // - Tocco sullo schermo inferiore: Nintendo DS and 3DS games only, `pad.pointer` for this game.
-// Phone in portrait: the same cards, one per row.
+// Two per row, an odd last card the whole row; phone in portrait: one per row.
 //
 // Controller / keyboard: the shell's nav scope.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { emu, type LibraryGame, type SettingRow } from '../emu'
+import { emu, type LibraryGame } from '../emu'
 import { gameScopeOf } from '../gameDetails'
 import { errorText } from '../i18n/labels'
-import { msg } from '../settingsModel'
+import DetailsAction from './details/DetailsAction.vue'
+import DetailsCard from './details/DetailsCard.vue'
+import { hasOwnRemap, hasTouchScreen, pointerLabel, type PadRows } from './details/gameControls'
+import SectionLabel from './details/SectionLabel.vue'
 
 const props = defineProps<{ game: LibraryGame; phone: boolean }>()
 const emit = defineEmits<{
@@ -26,10 +29,8 @@ const { t, te } = useI18n()
 
 const scope = computed(() => gameScopeOf(props.game))
 const consoleName = computed(() => t(`console.${props.game.console}`))
-/** Nintendo DS and 3DS: the bottom screen is touched. */
-const twoScreens = computed(() => props.game.console === 'nds' || props.game.console === '3ds')
 
-const rows = ref<Record<string, SettingRow>>({})
+const rows = ref<PadRows>({})
 async function load() {
   const s = scope.value
   if (!s) return
@@ -42,14 +43,8 @@ async function load() {
 }
 watch(scope, () => void load())
 
-/** `pad.remap` stored at this game's level. */
-const ownRemap = computed(() => rows.value['pad.remap']?.source === 'game')
-const pointer = computed(() => {
-  const v = rows.value['pad.pointer']?.value
-  const id = typeof v === 'string' ? v : 'mouse'
-  const key = msg.option('pad.pointer', id)
-  return te(key) ? t(key) : id
-})
+const ownRemap = computed(() => hasOwnRemap(rows.value))
+const pointer = computed(() => pointerLabel(rows.value, { t, te }))
 
 let unlisten: (() => void) | null = null
 onMounted(async () => {
@@ -59,88 +54,39 @@ onMounted(async () => {
   })
 })
 onUnmounted(() => unlisten?.())
+
+/** A card of this tab: the odd one out at the end takes the whole row, no empty cell beside it. */
+const card = computed(() => ['last:odd:col-span-full', props.phone ? 'gap-6' : 'gap-10'])
 </script>
 
 <template>
-  <div class="controls" :class="{ phone }">
-    <div class="card">
-      <h2 class="overline">{{ t('details.controls.padTitle') }}</h2>
-      <div class="strong">
+  <div class="grid gap-16" :class="phone ? 'grid-cols-1' : 'grid-cols-2'">
+    <DetailsCard :phone="phone" :class="card">
+      <SectionLabel>{{ t('details.controls.padTitle') }}</SectionLabel>
+      <div class="font-medium">
         {{
           ownRemap
             ? t('details.controls.remapOwn')
             : t('details.controls.remapInherited', { console: consoleName })
         }}
       </div>
-      <div class="muted">{{ t('details.controls.remapLead') }}</div>
-      <button class="btn" :disabled="!scope" @click="emit('remap')">
+      <div class="text-ink-muted">{{ t('details.controls.remapLead') }}</div>
+      <DetailsAction :phone="phone" class="self-start" :disabled="!scope" @click="emit('remap')">
         {{ t('details.controls.remap') }}
-      </button>
-    </div>
-    <div class="card">
-      <h2 class="overline">{{ t('details.controls.turboTitle') }}</h2>
-      <div class="muted">{{ t('details.notYet') }}</div>
-    </div>
-    <div class="card">
-      <h2 class="overline">{{ t('details.controls.touchTitle') }}</h2>
-      <div class="muted">{{ t('details.controls.touchLead') }}</div>
-    </div>
-    <div v-if="twoScreens" class="card">
-      <h2 class="overline">{{ t('details.controls.pointerTitle') }}</h2>
-      <div class="strong">{{ pointer }}</div>
-      <div class="muted">{{ t('details.controls.pointerLead') }}</div>
-    </div>
+      </DetailsAction>
+    </DetailsCard>
+    <DetailsCard :phone="phone" :class="card">
+      <SectionLabel>{{ t('details.controls.turboTitle') }}</SectionLabel>
+      <div class="text-ink-muted">{{ t('details.notYet') }}</div>
+    </DetailsCard>
+    <DetailsCard :phone="phone" :class="card">
+      <SectionLabel>{{ t('details.controls.touchTitle') }}</SectionLabel>
+      <div class="text-ink-muted">{{ t('details.controls.touchLead') }}</div>
+    </DetailsCard>
+    <DetailsCard v-if="hasTouchScreen(game.console)" :phone="phone" :class="card">
+      <SectionLabel>{{ t('details.controls.pointerTitle') }}</SectionLabel>
+      <div class="font-medium">{{ pointer }}</div>
+      <div class="text-ink-muted">{{ t('details.controls.pointerLead') }}</div>
+    </DetailsCard>
   </div>
 </template>
-
-<style scoped>
-.controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-/* An odd card out takes the whole row: no empty cell beside it. */
-.card:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-.card {
-  border-radius: var(--radius-10);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.overline {
-  margin: 0;
-}
-.strong {
-  font-weight: 500;
-}
-.muted {
-  color: var(--ink-muted);
-}
-.btn {
-  align-self: flex-start;
-}
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Phone in portrait: one card per row. */
-.controls.phone {
-  grid-template-columns: minmax(0, 1fr);
-}
-.phone .card {
-  border-radius: var(--radius-16);
-  padding: 14px;
-  gap: 6px;
-}
-.phone .btn {
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--radius-10);
-}
-</style>

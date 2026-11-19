@@ -39,6 +39,8 @@
   --spacing-titlebar: 40px;
   /* The least a cover of the library grid shrinks to (tokens.json `capsule-medium`). */
   --spacing-capsule-medium: 156px;
+  /* The phone's touch minimum (README: 44px): its buttons and fields (board «Tel-Dettagli»). */
+  --spacing-touch: 44px;
   /* A tab of a section (Controls: 40) and of the game details (44). */
   --spacing-tab: 40px;
   --spacing-tab-lg: 44px;

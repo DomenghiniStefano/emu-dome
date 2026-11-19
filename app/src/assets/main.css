@@ -52,6 +52,13 @@
 /* Cycle 2, the quick menu (Trello #62). */
 @source '../components/QuickMenu.vue';
 @source '../components/quick-menu';
+/* Game details (L04–L10), migrated in cycle 2 (Trello #62). */
+@source '../components/GameDetails.vue';
+@source '../components/DetailsSaves.vue';
+@source '../components/DetailsSettings.vue';
+@source '../components/DetailsControls.vue';
+@source '../components/DetailsFiles.vue';
+@source '../components/details/*.vue';
 
 @import './theme/colors.css';
 @import './theme/typography.css';

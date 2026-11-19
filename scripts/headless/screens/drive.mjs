@@ -454,6 +454,102 @@ for (const [view, c] of Object.entries(CONTROLS)) {
   }
 }
 
+// Game details (L04–L10), opened from a Library cover (its label in English or Italian, the
+// browser's language): every tab, empty and filled, the «…» menu, the focus ring, in each theme at
+// the smallest and the largest window; plus the phone in portrait (device «phone», 390 × 844).
+// Named `details-<state>-<theme>-<size>` and `details-phone-<tab>-<theme>`.
+const openDetails = (title) =>
+  `[...document.querySelectorAll('[aria-label]')].find(b => ['Open the details of ${title}', 'Apri i dettagli di ${title}'].includes(b.getAttribute('aria-label'))).click()`;
+// A tab by position: mousedown for Reka's trigger, click for a plain button.
+const detailsTab = (n) =>
+  `(() => { const t = document.querySelectorAll('[role=tab]')[${n}]; t.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })); t.click() })()`;
+// The tab row at the top of the window, so a tab's content is in the shot.
+const toTabs = `document.querySelector('[role=tablist]').scrollIntoView({ block: 'start' })`;
+const showFocus = `document.documentElement.setAttribute('data-nav', '')`;
+const filled = { gameSaves: true, gameOverrides: true };
+const tabState = (title, tab, mock = {}) => ({
+  mock,
+  steps: [
+    openDetails(title),
+    ...(tab === null ? [] : [detailsTab(tab)]),
+    toTabs,
+  ],
+});
+const DETAILS_STATES = {
+  saves: { mock: filled, steps: [openDetails("Pocket Quest Advance")] },
+  "saves-tab": tabState("Pocket Quest Advance", null, filled),
+  "saves-empty": tabState("Tiny Blocks", null),
+  settings: tabState("Pocket Quest Advance", 1, filled),
+  "settings-empty": tabState("Tiny Blocks", 1),
+  controls: tabState("Dual Screen Tales", 2, filled),
+  "controls-gba": tabState("Pocket Quest Advance", 2),
+  cheats: tabState("Star Pilot", 3),
+  patches: tabState("Star Pilot", 4),
+  files: tabState("Pocket Quest Advance", 5),
+  menu: {
+    mock: {},
+    steps: [
+      openDetails("Pocket Quest Advance"),
+      `document.querySelector('[aria-haspopup=menu]').click()`,
+    ],
+  },
+  // The focus ring on «Riprendi» (focused on opening), then on a tab (of a short tab: a long one
+  // squeezes the tab row to nothing at the small window, a bug of its own).
+  focus: {
+    mock: filled,
+    steps: [openDetails("Pocket Quest Advance"), showFocus],
+    focus: true,
+  },
+  "focus-tab": {
+    mock: filled,
+    steps: [
+      openDetails("Pocket Quest Advance"),
+      detailsTab(1),
+      showFocus,
+      `document.querySelectorAll('[role=tab]')[2].focus()`,
+      toTabs,
+    ],
+    focus: true,
+  },
+};
+const DETAILS_THEMES = { dark: undefined, black: "black", light: "light" };
+for (const [state, s] of Object.entries(DETAILS_STATES)) {
+  for (const [themeName, theme] of Object.entries(DETAILS_THEMES)) {
+    for (const [sizeName, [width, height]] of Object.entries(SIZES)) {
+      SCENARIOS[`details-${state}-${themeName}-${sizeName}`] = {
+        ...s,
+        mock: { ...s.mock, theme },
+        width,
+        height,
+      };
+    }
+  }
+}
+for (const [state, s] of Object.entries({
+  saves: { mock: filled, steps: [openDetails("Pocket Quest Advance")] },
+  "saves-tab": tabState("Pocket Quest Advance", null, filled),
+  settings: tabState("Pocket Quest Advance", 1, filled),
+  controls: tabState("Dual Screen Tales", 2, filled),
+  cheats: tabState("Star Pilot", 3),
+  files: tabState("Pocket Quest Advance", 5),
+  menu: {
+    mock: {},
+    steps: [
+      openDetails("Pocket Quest Advance"),
+      `document.querySelector('[aria-haspopup=menu]').click()`,
+    ],
+  },
+})) {
+  for (const [themeName, theme] of Object.entries(DETAILS_THEMES)) {
+    SCENARIOS[`details-phone-${state}-${themeName}`] = {
+      ...s,
+      mock: { ...s.mock, theme, device: "phone" },
+      width: 390,
+      height: 844,
+    };
+  }
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function page() {

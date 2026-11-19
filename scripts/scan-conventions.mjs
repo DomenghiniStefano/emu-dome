@@ -50,11 +50,6 @@ const FIXTURES = join(ROOT, 'scripts', 'scan-conventions')
 
 // The screens as they were when cycle 1 landed (paths under app/src/). Cycle 2 shrinks this list.
 const LEGACY = new Set([
-  'components/DetailsControls.vue',
-  'components/DetailsFiles.vue',
-  'components/DetailsSaves.vue',
-  'components/DetailsSettings.vue',
-  'components/GameDetails.vue',
   'components/quick-menu/PendingValues.vue',
   'components/SettingRow.vue',
   'components/SettingSelect.vue',
