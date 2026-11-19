@@ -1,8 +1,8 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import type { SettingsChanged, SettingsSchema } from '../../emu'
-import { DEFAULT_SORT } from '../../librarySort'
+import type { SettingsChanged, SettingsSchema } from '@/emu'
+import { DEFAULT_SORT } from './librarySort'
 import { useLibrarySort } from './useLibrarySort'
 
 const bridge = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ const bridge = vi.hoisted(() => ({
   reset: vi.fn(),
   changed: [] as Array<(e: SettingsChanged) => void>,
 }))
-vi.mock('../../emu', () => ({
+vi.mock('@/emu', () => ({
   emu: {
     settings: {
       schema: () =>

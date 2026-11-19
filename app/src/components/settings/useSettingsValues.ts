@@ -10,9 +10,9 @@ import {
   type SettingsSchema,
   type SettingsScope,
   type SettingValue,
-} from '../../emu'
-import type { ErrorSink } from '../../i18n/labels'
-import { isShown } from '../../settingsModel'
+} from '@/emu'
+import type { ErrorSink } from '@/i18n/labels'
+import { isShown } from '@/lib/settingsModel'
 import type { PageValues } from './settingsPage'
 
 /** How many recent changes T01 lists. */

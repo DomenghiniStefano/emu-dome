@@ -2,10 +2,10 @@
 // file name unless the game was chosen first, as from L05 «Importa…»), that game's saves (to warn
 // about the in-game save it replaces), the «Scegli il gioco» dialog, and the import itself.
 import { ref, type Ref } from 'vue'
-import { emu, type GameSaves, type ImportCandidate, type LibraryGame } from '../../emu'
-import type { ErrorSink } from '../../i18n/labels'
-import { library } from '../../library'
-import { loadGameSaves } from '../details/gameSaves'
+import { emu, type GameSaves, type ImportCandidate, type LibraryGame } from '@/emu'
+import type { ErrorSink } from '@/i18n/labels'
+import { library } from '@/lib/library'
+import { loadGameSaves } from '@/components/details/gameSaves'
 import { matchImportTarget } from './savesModel'
 
 export function useSaveImport(

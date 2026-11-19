@@ -1,8 +1,8 @@
 // The toast stack App.vue renders as `ref="toasts"`: what the shell and the game tell the user.
 import { useTemplateRef } from 'vue'
-import type ToastStack from '../components/ToastStack.vue'
-import { errorText } from '../i18n/labels'
-import { ToastKind, type ToastOptions } from '../lib/shell/toasts'
+import type ToastStack from '@/components/toasts/ToastStack.vue'
+import { errorText } from '@/i18n/labels'
+import { ToastKind, type ToastOptions } from '@/components/toasts/toasts'
 
 export function useToasts() {
   const stack = useTemplateRef<InstanceType<typeof ToastStack>>('toasts')

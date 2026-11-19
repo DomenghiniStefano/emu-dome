@@ -4,8 +4,8 @@
 // The state lives in useSaveImport; this panel shows it and asks for the steps.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { GameSaves, ImportCandidate, LibraryGame } from '../../emu'
-import { saveWhenLabel } from '../../i18n/labels'
+import type { GameSaves, ImportCandidate, LibraryGame } from '@/emu'
+import { saveWhenLabel } from '@/i18n/labels'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import ImportStep from './ImportStep.vue'

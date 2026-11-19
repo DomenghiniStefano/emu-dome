@@ -135,16 +135,17 @@ app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), 
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
-app/src                  Vue interface: App.vue, FirstRun (4 steps, once per device: marker
-                         `<app local data>/first-run/done`, src-tauri/src/first_run.rs),
-                         AppShell (rail + sections, outside the game), LibraryEmpty,
-                         QuickMenu, GameCanvas (webview mode), ToastStack, TouchControls (Android overlay),
-                         emu.ts (typed bridge),
-                         theme.ts (data-theme on <html>), sections.ts,
-                         nav.ts (controller/keyboard focus navigation for every screen),
+app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
+                         emu.ts (typed bridge), nav.ts (controller/keyboard focus navigation for every screen),
+                         components/<feature>/ one folder per feature: shell (AppShell: rail + sections,
+                         outside the game), library, details, saves, settings, controls, quick-menu,
+                         game (GameCanvas: webview mode, TouchControls: Android overlay, the game flow),
+                         first-run (FirstRun, 4 steps, once per device: marker `<app local data>/first-run/done`,
+                         src-tauri/src/first_run.rs), cover, toasts; components/ui/ (the primitives),
+                         composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
+                         lib/settingsModel.ts, lib/cn.ts, lib/design/…),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text),
-                         assets/theme/ (design tokens, one file per family), components/ui/ (the primitives),
-                         lib/ (cn, design helpers), kit/ (Kit page, development only): see «Interface structure»
+                         assets/theme/ (design tokens, one file per family), kit/ (Kit page, development only)
 ```
 
 - The interface never touches the core: it calls the Tauri commands, which send `Command` to the `Session`.
@@ -240,7 +241,7 @@ instead of repeating commands. No CI, by choice. It runs everything and summariz
 
 **Checked**: `cargo fmt`, clippy with the workspace lints (no `unwrap`, no `_ =>` on enums, no glob imports),
 `cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
-`vue-tsc`, ESLint, Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
+`vue-tsc`, ESLint (the import style included), Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
 (`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
@@ -290,8 +291,9 @@ review-only list above. A rule in neither place is the thing this section exists
 
 Owner, 2026-11-18: cleanliness, components and tokens, so that changing anything later happens **in one place**,
 written as clean code. The full rules and their reasons: `docs/specs/2026-11-18-design-system-foundations.md`.
-Migration: Trello #61 (foundations, done) → #62 (every screen moved, no visual change) → #63 (rules blocking
-everywhere). Until #63 no new screen or graphic work starts.
+Migration done: Trello #61 (foundations) → #62 (every screen moved) → #65 (one place for every look and rule:
+role tokens, shared components, feature folders) → #63 (rules blocking everywhere). New screens and graphic work
+are written only in this structure; `docs/frontend-conventions.md` is the full reference.
 
 - **Tokens** in `app/src/assets/theme/`, one file per family: `colors.css`, `typography.css`, `spacing.css`,
   `radius.css`, `shadow.css`, `opacity.css`, `motion.css`, `layers.css`; imported by `assets/main.css`.
@@ -299,7 +301,7 @@ everywhere). Until #63 no new screen or graphic work starts.
     duration that is not a token generates no class at all. Preflight is off.
   - Names come from the design system (`title`, `heading`, `body`, `space-*`, `control`, `radius-*`, `glow-*`…).
     One value per step: a new value is a design-system change (Cowork), never a literal in a screen.
-  - Themes (Scuro / Nero / Chiaro) and the runtime accent (`appearance.ts`, `accent.ts`) are CSS variables on
+  - Themes (Scuro / Nero / Chiaro) and the runtime accent (`lib/appearance.ts`, `lib/accent.ts`) are CSS variables on
     `:root` / `[data-theme]`; Tailwind points at them (`@theme inline`), so a theme or accent change needs no class.
   - Glass, glow and other compound looks are named utilities (`assets/utilities.css`), not long class strings.
 - **Primitives** in `app/src/components/ui/<name>/`, all on **Reka UI** (one standard, no hand-made ones):
@@ -320,6 +322,19 @@ everywhere). Until #63 no new screen or graphic work starts.
   Vitest (`components/ui/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
 - **Kit page** (`app/src/kit/`, `#kit`, development only, not in the build): every primitive in every state, the
   three themes, the five accents. A new primitive or variant is added there first.
+- **Where a file goes** (`app/src/`), by what owns it:
+  - `components/ui/<name>/`: the primitives.
+  - `components/<feature>/`: everything one feature is: its screen root (`LibraryView.vue`, `QuickMenu.vue`…), its
+    parts, its composables (`useX.ts`), its pure modules (`x.ts`) and their tests. A component another feature reuses
+    stays with the feature it belongs to and is imported from there (`settings/SettingRow.vue`, `cover/GameCover.vue`).
+  - `composables/` (`useX`) and `lib/` (plain modules and helpers) only for what 2+ features, or the root for the
+    whole app, use. A module only one feature uses moves into that feature's folder.
+  - The root holds the app's wiring only: `main.ts`, `App.vue`, `emu.ts`, `nav.ts`, `styles.css`, `i18n/`,
+    `assets/`, `kit/`.
+- **Imports**: `./name` for a file in the same folder, `@/path` for anything else (never `../`, never `./sub/x`),
+  so a path reads the same in every file and a move changes only the moved file's importers. `vi.mock` names the
+  module as it is imported. Checked by ESLint (`no-restricted-imports` and `no-restricted-syntax`,
+  `app/eslint.config.js`); blind spot: a path that is not a plain string literal.
 - **Clean code**: small components with one job (a screen composes panels, a panel composes primitives); logic in
   composables (`useX`) and pure functions with tests, the template only composes; nothing duplicated across screens
   (one slot tile, one button tester, one combo table, one confirm dialog); names that say what a thing is for.

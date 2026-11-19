@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
-import type { GameSaves, ImportCandidate, LibraryGame } from '../../emu'
+import type { GameSaves, ImportCandidate, LibraryGame } from '@/emu'
 import { useSaveImport } from './useSaveImport'
 
 // The bridge's saves calls and the library's games, as the import reads them.
@@ -10,12 +10,12 @@ const bridge = vi.hoisted(() => ({
   import: vi.fn(),
   games: [] as LibraryGame[],
 }))
-vi.mock('../../emu', () => ({
+vi.mock('@/emu', () => ({
   emu: {
     saves: { importPick: bridge.importPick, game: bridge.game, import: bridge.import },
   },
 }))
-vi.mock('../../library', () => ({
+vi.mock('@/lib/library', () => ({
   library: {
     get games() {
       return bridge.games

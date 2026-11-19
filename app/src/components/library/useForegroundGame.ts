@@ -3,9 +3,9 @@
 // first of the grid). When the library changes (a scan, a new cover) the same game stays, with
 // its fresh record.
 import { watch, type Ref } from 'vue'
-import { ambientGame } from '../../ambient'
-import type { LibraryGame } from '../../emu'
-import { library } from '../../library'
+import { ambientGame } from '@/lib/ambient'
+import type { LibraryGame } from '@/emu'
+import { library } from '@/lib/library'
 
 export function useForegroundGame(recent: Ref<LibraryGame[]>, games: Ref<LibraryGame[]>) {
   watch(

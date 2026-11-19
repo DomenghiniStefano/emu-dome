@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // S01 Welcome: the mark, and the language (`general.lang`, «Tutti i giochi»). No «Indietro».
 import { useI18n } from 'vue-i18n'
-import SettingSelect from '../SettingSelect.vue'
+import SettingSelect from '@/components/settings/SettingSelect.vue'
 import StepLayout from './StepLayout.vue'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
 

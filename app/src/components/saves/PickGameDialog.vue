@@ -2,9 +2,9 @@
 // V05 «Scegli un altro gioco…»: every library game in title order, the current target chosen
 // (and focused first), «Annulla». Controller / keyboard: FlowDialog's own nav scope.
 import { useI18n } from 'vue-i18n'
-import type { LibraryGame } from '../../emu'
+import type { LibraryGame } from '@/emu'
 import { Button, ButtonSize } from '@/components/ui/button'
-import FlowDialog from '../FlowDialog.vue'
+import FlowDialog from '@/components/game/FlowDialog.vue'
 import SavesGameRow from './SavesGameRow.vue'
 
 defineProps<{ games: LibraryGame[]; chosen: LibraryGame | null }>()

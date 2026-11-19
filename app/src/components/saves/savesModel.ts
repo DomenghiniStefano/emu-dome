@@ -1,7 +1,7 @@
 // The Saves section's rules as pure functions (board «Salvataggi», V01, V05, E03): which games
 // are listed and in what order, the search, how an imported file finds its game, and which
 // sentence the empty section shows. No Vue, no bridge: unit-tested in savesModel.test.ts.
-import type { LibraryGame, SavesSummary } from '../../emu'
+import type { LibraryGame, SavesSummary } from '@/emu'
 
 /** Whether a game has anything saved: an in-game save, a quick save, or a broken save (E04). */
 export function hasSaves(s: SavesSummary | undefined): boolean {

@@ -8,8 +8,8 @@ import {
   SelectTriggerVariant,
   SelectValue,
 } from '@/components/ui/select'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 
 const options = [
   { value: 'system', label: 'Like the system' },

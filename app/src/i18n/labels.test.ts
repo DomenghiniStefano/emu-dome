@@ -10,7 +10,7 @@ import {
 } from './labels'
 
 // i18n/index.ts follows `general.lang` through the bridge, which reads Tauri's internals.
-vi.mock('../emu', () => ({ emu: { settings: { onChanged: () => Promise.resolve(() => {}) } } }))
+vi.mock('@/emu', () => ({ emu: { settings: { onChanged: () => Promise.resolve(() => {}) } } }))
 
 const at = (y: number, m: number, d: number, h = 12, min = 0) =>
   new Date(y, m - 1, d, h, min).getTime()

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
 import { Kbd, KbdSize, KbdVariant } from '@/components/ui/kbd'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 </script>
 
 <template>

@@ -8,9 +8,9 @@ import { useI18n } from 'vue-i18n'
 import { Disc3, Gamepad2, Layers } from '@lucide/vue'
 import { Card, CardVariant } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import type { ConsoleId, SettingLevel } from '../../emu'
-import type { GameFocus } from '../../gameDetails'
-import SettingSelect from '../SettingSelect.vue'
+import type { ConsoleId, SettingLevel } from '@/emu'
+import type { GameFocus } from '@/lib/gameDetails'
+import SettingSelect from './SettingSelect.vue'
 import type { EditLevel } from './settingsPage'
 
 const props = defineProps<{

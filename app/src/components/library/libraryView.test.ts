@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AUTO_SLOT, type LibraryFolder, type LibraryGame } from '../../emu'
+import { AUTO_SLOT, type LibraryFolder, type LibraryGame } from '@/emu'
 import {
   consoleChips,
   coverKinds,
@@ -10,7 +10,7 @@ import {
 } from './libraryView'
 
 // emu.ts reaches for the Tauri bridge when it loads; these functions need only its constant.
-vi.mock('../../emu', () => ({ AUTO_SLOT: 0 }))
+vi.mock('@/emu', () => ({ AUTO_SLOT: 0 }))
 
 const game = (id: string, over: Partial<LibraryGame> = {}): LibraryGame =>
   ({

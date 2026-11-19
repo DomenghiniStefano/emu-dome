@@ -10,10 +10,10 @@ import {
   type SettingEntry,
   type SettingLevel,
   type SettingsScope,
-} from '../../emu'
-import type { GameFocus } from '../../gameDetails'
-import { library } from '../../library'
-import { pageLevels } from '../../settingsModel'
+} from '@/emu'
+import type { GameFocus } from '@/lib/gameDetails'
+import { library } from '@/lib/library'
+import { pageLevels } from '@/lib/settingsModel'
 import { lastPlayedConsole, scopeConsoles, stepLevel, type EditLevel } from './settingsPage'
 
 export function useSettingsScope(pageEntries: Ref<SettingEntry[]>, gameFocus: GameFocus | null) {

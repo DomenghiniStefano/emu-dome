@@ -11,8 +11,8 @@ import {
   DialogTone,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 
 const open = ref(false)
 const openDanger = ref(false)

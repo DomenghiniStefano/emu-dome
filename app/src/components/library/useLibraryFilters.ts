@@ -1,9 +1,9 @@
 // What the grid shows: L03's «Mostra» switches and the console chip over the library, in the
 // chosen order. A chip whose console left the list (filters, removal) falls back to «Tutti».
 import { computed, reactive, ref, watch, type Ref } from 'vue'
-import type { ConsoleId } from '../../emu'
-import { library } from '../../library'
-import { SHOW_KEYS, shown, sorted, type ShowKey, type Sort } from '../../librarySort'
+import type { ConsoleId } from '@/emu'
+import { library } from '@/lib/library'
+import { SHOW_KEYS, shown, sorted, type ShowKey, type Sort } from './librarySort'
 import { consoleChips, ofConsole } from './libraryView'
 
 export function useLibraryFilters(sort: Ref<Sort>) {

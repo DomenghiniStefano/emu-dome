@@ -1,8 +1,8 @@
 // L04 «Riprendi» / «Gioca»: where the game picks up (the newest quick save, else the in-game
 // save), read again whenever the game is played.
 import { ref, watch, type Ref } from 'vue'
-import type { LibraryGame } from '../../emu'
-import type { ResumePoint } from '../../gameDetails'
+import type { LibraryGame } from '@/emu'
+import type { ResumePoint } from '@/lib/gameDetails'
 import { loadResumePoint } from './gameSaves'
 
 export function useResumePoint(game: Ref<LibraryGame | null>) {

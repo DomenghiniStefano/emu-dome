@@ -2,10 +2,10 @@
 // One game in a list of the Saves section: its small cover, the title and a line under it (what
 // it has saved, or its console), and an optional badge (the slot). A button: the list and the
 // «Scegli il gioco» dialog choose a game with it; `selected` marks the chosen one.
-import type { LibraryGame } from '../../emu'
+import type { LibraryGame } from '@/emu'
 import { Card, CardVariant } from '@/components/ui/card'
-import GameCover from '../GameCover.vue'
-import { CoverSize } from '../cover/variants'
+import GameCover from '@/components/cover/GameCover.vue'
+import { CoverSize } from '@/components/cover/variants'
 
 defineProps<{
   game: LibraryGame

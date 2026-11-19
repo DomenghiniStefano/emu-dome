@@ -1,7 +1,7 @@
 // The changes «in prova» (Session level): live in the game, listed in the menu, saved for this
 // game or its console, or undone.
 import type { SettingEntry, SettingRow } from '@/emu'
-import { msg } from '@/settingsModel'
+import { msg } from '@/lib/settingsModel'
 import type { Message } from '@/i18n/message'
 
 /** Each change «in prova» by its value (a choice: «Affiancati») or else by the setting's name. */

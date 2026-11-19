@@ -5,9 +5,9 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTone } from '@/components/ui/dialog'
-import type { ConsoleId } from '../../emu'
-import { timeAgoLabel } from '../../i18n/labels'
-import FlowDialog from '../FlowDialog.vue'
+import type { ConsoleId } from '@/emu'
+import { timeAgoLabel } from '@/i18n/labels'
+import FlowDialog from './FlowDialog.vue'
 
 const props = defineProps<{
   consoleId: ConsoleId

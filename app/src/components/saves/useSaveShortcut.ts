@@ -1,9 +1,9 @@
 // The quick save shortcut as C01 shows it (generic pad names), for E03's sentence in Saves.
 import { ref } from 'vue'
-import { emu } from '../../emu'
-import { comboText } from '../../controls'
-import type { ErrorSink } from '../../i18n/labels'
-import { GLOBAL } from '../../settingsModel'
+import { emu } from '@/emu'
+import { comboText } from '@/lib/controls'
+import type { ErrorSink } from '@/i18n/labels'
+import { GLOBAL } from '@/lib/settingsModel'
 
 export function useSaveShortcut(fail: ErrorSink) {
   const text = ref('')

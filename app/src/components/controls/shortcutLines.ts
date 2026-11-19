@@ -1,10 +1,10 @@
 // C01 «Scorciatoie da ricordare»: one line per shortcut, what to press and its short name. The
 // controller's come from the bindings in force (`DEFAULT_COMBOS` with `pad.combos`), the
 // keyboard's from its one table (keyboard.ts): never a list here.
-import type { ComboRow, PadFamily, Pos } from '../../emu'
-import { comboText, keyName, shortName, slotPairText } from '../../controls'
-import { t } from '../../i18n'
-import { KEYBOARD_SHORTCUTS, shortcutLines, type KeyAction } from '../../keyboard'
+import type { ComboRow, PadFamily, Pos } from '@/emu'
+import { comboText, keyName, shortName, slotPairText } from '@/lib/controls'
+import { t } from '@/i18n'
+import { KEYBOARD_SHORTCUTS, shortcutLines, type KeyAction } from '@/lib/keyboard'
 
 export interface RememberLine {
   key: KeyAction | 'slot'

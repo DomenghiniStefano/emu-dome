@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The cover grid of «I tuoi giochi»: as many columns as fit, each at least `capsule-medium`.
 // Always rendered, empty too: the view's gaps around it stay the same.
-import type { LibraryGame } from '../../emu'
+import type { LibraryGame } from '@/emu'
 import CoverTile from './CoverTile.vue'
 
 defineProps<{

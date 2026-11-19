@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { LibraryGame, SettingEntry, SettingsSchema } from '../../emu'
+import type { LibraryGame, SettingEntry, SettingsSchema } from '@/emu'
 import {
   changedCount,
   lastPlayedConsole,
@@ -12,7 +12,7 @@ import {
 } from './settingsPage'
 
 // The bridge reads Tauri's globals when it loads; these functions never call it.
-vi.mock('../../emu', () => ({ emu: {} }))
+vi.mock('@/emu', () => ({ emu: {} }))
 
 const entry = (key: string, over: Partial<SettingEntry> = {}): SettingEntry => ({
   key,

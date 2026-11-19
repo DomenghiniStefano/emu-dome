@@ -3,7 +3,7 @@
 // `loaded` turns true, the first `data-nav-initial` control of `root` takes it, once, unless the
 // user has already moved it somewhere else.
 import { nextTick, watch, type Ref } from 'vue'
-import { focusInitial } from '../../nav'
+import { focusInitial } from '@/nav'
 
 export function useFocusWhenLoaded(root: Ref<HTMLElement | null>, loaded: Ref<boolean>) {
   let focused = false

@@ -2,9 +2,9 @@
 // the focus sits on the rail's current item. Once the library is there, the view's own first
 // control takes it (once); back from a game's details, that game's cover does.
 import { nextTick, onMounted, watch, type Ref } from 'vue'
-import { detailsReturn } from '../../gameDetails'
-import { library } from '../../library'
-import { focusInitial } from '../../nav'
+import { detailsReturn } from '@/lib/gameDetails'
+import { library } from '@/lib/library'
+import { focusInitial } from '@/nav'
 
 /** The attribute a cover's click area carries, with its game's id. */
 export const COVER_OF = 'data-cover-of'

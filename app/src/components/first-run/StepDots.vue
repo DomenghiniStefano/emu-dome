@@ -2,7 +2,7 @@
 // Where the first run is: one dot per step, the current one long, the ones done half accent.
 // On the phone they sit lower, above the step. Sizes 72 and 88 are the boards' own.
 import { useI18n } from 'vue-i18n'
-import type { FirstRunStep } from '../../emu'
+import type { FirstRunStep } from '@/emu'
 
 defineProps<{ steps: FirstRunStep[]; index: number }>()
 const { t } = useI18n()

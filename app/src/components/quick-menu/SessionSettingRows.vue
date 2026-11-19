@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The settings a page changes «in prova» (Session level), as compact setting rows.
 import type { SettingEntry, SettingRow, SettingsSchema, SettingValue } from '@/emu'
-import SettingRowView from '../SettingRow.vue'
+import SettingRowView from '@/components/settings/SettingRow.vue'
 
 defineProps<{
   entries: SettingEntry[]

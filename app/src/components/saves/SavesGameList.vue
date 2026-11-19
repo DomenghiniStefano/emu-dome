@@ -2,7 +2,7 @@
 // V01, the games that have saves: the title with «Importa…», the search, and one row per game
 // (what it has saved; «Salvataggio illeggibile» when its in-game save was set aside, E04).
 import { useI18n } from 'vue-i18n'
-import type { LibraryGame } from '../../emu'
+import type { LibraryGame } from '@/emu'
 import { Button } from '@/components/ui/button'
 import { SearchField } from '@/components/ui/search-field'
 import SavesGameRow from './SavesGameRow.vue'

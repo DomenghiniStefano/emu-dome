@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingEntry, SettingKind, SettingsSchema } from '../../emu'
+import type { SettingEntry, SettingKind, SettingsSchema } from '@/emu'
 import { overrideRows, settingValueText } from './gameOverrides'
-import type { Translator } from '../../i18n/message'
+import type { Translator } from '@/i18n/message'
 
 // The bridge talks to Tauri as it loads; these functions never call it.
-vi.mock('../../emu', () => ({ emu: {} }))
+vi.mock('@/emu', () => ({ emu: {} }))
 
 const KNOWN = new Set(['settings.video.filter.option.smooth'])
 const i18n: Translator = {

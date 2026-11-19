@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // The in-game save's backups (V02), newest first: when, why it was made, «Ripristina».
 import { useI18n } from 'vue-i18n'
-import type { SaveBackup } from '../../emu'
-import { saveWhenLabel } from '../../i18n/labels'
+import type { SaveBackup } from '@/emu'
+import { saveWhenLabel } from '@/i18n/labels'
 import { Button } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 

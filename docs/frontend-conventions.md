@@ -8,16 +8,27 @@ the EmuDome Design System artifact linked from `CLAUDE.md`.
 ## Layout of `app/src`
 
 - `components/ui/<name>/`: the **primitives**, the only place a raw `<button>` / `<input>` is written.
-- `components/<feature>/`: a feature's components, composables and pure modules live together in its
-  folder; a screen composes panels, a panel composes primitives.
-- `composables/`: the `useX` functions shared by more than one feature; `lib/`: pure helpers (`cn`,
-  `lib/design/`), with their tests beside them.
-- `kit/`: the Kit page. `i18n/`: messages and the code → text labels. `assets/`: tokens and named
-  utilities.
-- `emu.ts` is the only file that calls `invoke` (the typed bridge to Rust); `nav.ts` is the focus
-  navigation.
+- `components/<feature>/`: everything one feature is, together: its screen root (`library/LibraryView.vue`,
+  `quick-menu/QuickMenu.vue`…), its parts, its composables (`useX.ts`), its pure modules (`x.ts`) and their
+  tests. A screen composes panels, a panel composes primitives. A component another feature reuses stays
+  with the feature it belongs to and is imported from there (`settings/SettingRow.vue`,
+  `cover/GameCover.vue`, `saves/SlotTile.vue`). Features today: `controls`, `cover`, `details`,
+  `first-run`, `game`, `library`, `quick-menu`, `saves`, `settings`, `shell`, `toasts`.
+- `composables/`: the `useX` functions used by two or more features or by the app root (`useDensity`,
+  `useDeviceLayout`, `useListeners`, `useSettingsChanged`, `useToasts`); `lib/`: plain modules and
+  helpers shared the same way (`cn`, `cycle`, `design/`, `settingsModel`, `controls`, `theme`…). A
+  module only one feature uses moves into that feature's folder.
+- The root holds the app's wiring only: `main.ts`, `App.vue`, `emu.ts` (the only file that calls
+  `invoke`, the typed bridge to Rust), `nav.ts` (the focus navigation), `styles.css`, `i18n/`
+  (messages, `Message` / `useSay`, code → text labels), `assets/` (tokens and named utilities), `kit/`
+  (the Kit page).
 
-> TODO (manager, after ds3/placement merges): the exact folder layout and the one import style.
+## Imports
+
+`./name` for a file in the same folder, `@/path` for anything else; never `../`, never `./sub/x`. A path
+reads the same in every file, and a move changes only the moved file's importers. `vi.mock` and
+`import()` name the module the same way. Checked by ESLint (`no-restricted-imports` and
+`no-restricted-syntax` in `app/eslint.config.js`); blind spot: a path that is not a plain string literal.
 
 ## Primitives (`components/ui/`)
 

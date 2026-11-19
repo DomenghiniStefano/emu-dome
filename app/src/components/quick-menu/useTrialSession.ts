@@ -13,7 +13,7 @@ import {
 } from '@/emu'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
 import type { ErrorSink } from '@/i18n/labels'
-import { isShown, loadSchema } from '@/settingsModel'
+import { isShown, loadSchema } from '@/lib/settingsModel'
 import { trialNames, trialTitle } from './trial'
 import { SESSION_PAGES, SESSION_ROWS, type QuickMenuView } from './view'
 
