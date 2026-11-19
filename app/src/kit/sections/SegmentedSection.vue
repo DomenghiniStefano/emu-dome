@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Segmented, SegmentedItem } from '@/components/ui/segmented'
+import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
 
@@ -14,6 +14,12 @@ const speed = ref('normal')
         <SegmentedItem value="normal">Normal</SegmentedItem>
         <SegmentedItem value="fast">Fast forward</SegmentedItem>
         <SegmentedItem value="slow">Slow motion</SegmentedItem>
+      </Segmented>
+    </KitState>
+    <KitState label="Strong">
+      <Segmented v-model="speed" :variant="SegmentedVariant.Strong" aria-label="Speed">
+        <SegmentedItem value="normal">Normal</SegmentedItem>
+        <SegmentedItem value="fast">Fast forward</SegmentedItem>
       </Segmented>
     </KitState>
     <KitState label="One item disabled">

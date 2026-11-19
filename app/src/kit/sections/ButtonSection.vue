@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { Ellipsis, Library, Play, Save, Settings, Star, Trash2, Undo2 } from '@lucide/vue'
+import {
+  ChevronLeft,
+  Ellipsis,
+  Library,
+  Play,
+  Save,
+  Settings,
+  Star,
+  Trash2,
+  Undo2,
+} from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
@@ -69,6 +79,12 @@ import KitState from '../KitState.vue'
     <KitState label="SoftAccent · TileAction · disabled">
       <Button :variant="ButtonVariant.SoftAccent" :size="ButtonSize.TileAction" disabled>
         Play from here
+      </Button>
+    </KitState>
+    <KitState label="Back · TextLine">
+      <Button :variant="ButtonVariant.Back" :size="ButtonSize.TextLine">
+        <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
+        Controls
       </Button>
     </KitState>
     <KitState label="Icon · IconSmall">

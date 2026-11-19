@@ -5,18 +5,14 @@
 // They take effect at once: the controller thread reloads them on `settings://changed`.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  emu,
-  type PadState,
-  type SettingEntry,
-  type SettingRow,
-  type SettingsSchema,
-  type SettingValue,
-} from '../emu'
-import { errorText } from '../i18n/labels'
+import { type PadState, type SettingEntry, type SettingRow, type SettingsSchema } from '../emu'
 import { isShown } from '../settingsModel'
 import type { CaptureDevice } from '../controls'
+import { Card, CardVariant } from '@/components/ui/card'
 import SettingRowView from './SettingRow.vue'
+import LiveStick from './controls/LiveStick.vue'
+import { axisUnit } from './controls/stick'
+import { useGlobalSettings } from './controls/useGlobalSettings'
 
 const props = defineProps<{
   device: CaptureDevice
@@ -26,6 +22,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
+const onError = (text: string) => emit('error', text)
+const settings = useGlobalSettings(onError)
 
 const GROUPS: { id: string; keys: string[] }[] = [
   { id: 'sticks', keys: ['pad.dead', 'pad.stickdpad', 'pad.trig', 'pad.rumble'] },
@@ -40,49 +38,19 @@ const groups = computed(() =>
   })),
 )
 
-const GLOBAL = { level: 'global' } as const
-async function set(key: string, value: SettingValue) {
-  try {
-    await emu.settings.set(key, GLOBAL, value)
-  } catch (e) {
-    emit('error', errorText(e))
-  }
-}
-async function reset(key: string) {
-  try {
-    await emu.settings.reset(key, GLOBAL)
-  } catch (e) {
-    emit('error', errorText(e))
-  }
-}
-
 // ---- Live stick ----
-const SIZE = 120
-const DOT = 12
 const dead = computed(() => Number(props.globalRows['pad.dead']?.value ?? 15))
-const stick = computed(() => {
+const axes = computed(() => {
   const id = props.device.kind === 'pad' ? props.device.id : null
-  const axes = props.states.find(s => s.id === id)?.axes
-  return { x: (axes?.[0] ?? 0) / 32767, y: (axes?.[1] ?? 0) / 32767 }
-})
-const dotStyle = computed(() => {
-  const r = (SIZE - DOT) / 2
-  return {
-    left: `${r + stick.value.x * r}px`,
-    top: `${r + stick.value.y * r}px`,
-  }
-})
-const deadStyle = computed(() => {
-  const d = (SIZE * dead.value) / 100
-  return { width: `${d}px`, height: `${d}px` }
+  return props.states.find(s => s.id === id)?.axes
 })
 </script>
 
 <template>
-  <div class="sticks">
-    <section v-for="g in groups" :key="g.id" class="group">
-      <div class="overline">{{ t(`settings.sections.pad.${g.id}`) }}</div>
-      <div class="card">
+  <div class="flex flex-col gap-12">
+    <section v-for="g in groups" :key="g.id" class="flex flex-col gap-8">
+      <div class="text-overline text-ink-muted">{{ t(`settings.sections.pad.${g.id}`) }}</div>
+      <Card :variant="CardVariant.List">
         <SettingRowView
           v-for="e in g.entries"
           :key="e.key"
@@ -92,74 +60,13 @@ const deadStyle = computed(() => {
           level="global"
           :level-name="() => t('settingsUi.scope.global')"
           :scoped="false"
-          @set="v => set(e.key, v)"
-          @reset="reset(e.key)"
-          @error="text => emit('error', text)"
+          @set="v => settings.set(e.key, v)"
+          @reset="settings.reset(e.key)"
+          @error="onError"
         />
-      </div>
+      </Card>
     </section>
 
-    <div class="card live">
-      <div
-        class="pad"
-        role="img"
-        :aria-label="t('controls.stickLabel')"
-        :style="{ width: `${SIZE}px`, height: `${SIZE}px` }"
-      >
-        <span class="dead" :style="deadStyle"></span>
-        <span class="dot" :style="dotStyle"></span>
-      </div>
-      <div class="muted">{{ t('controls.stickHint') }}</div>
-    </div>
+    <LiveStick :x="axisUnit(axes?.[0])" :y="axisUnit(axes?.[1])" :dead="dead" />
   </div>
 </template>
-
-<style scoped>
-.sticks {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.card {
-  border-radius: var(--radius-10);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  overflow: hidden;
-}
-.live {
-  padding: 16px;
-  display: flex;
-  gap: 24px;
-  align-items: center;
-}
-.pad {
-  position: relative;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--surface-raised);
-  border: 1px solid var(--line);
-}
-.dead {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  border: 1px dashed var(--line-strong);
-}
-.dot {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: var(--accent-text);
-}
-.muted {
-  color: var(--ink-muted);
-}
-</style>

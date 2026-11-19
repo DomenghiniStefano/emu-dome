@@ -222,6 +222,78 @@ for (const [state, s] of Object.entries(SAVES_STATES)) {
   }
 }
 
+// Controls (C01–C04, E05), stream E of #62: every view and state, in the three themes, at the
+// smallest (1024×640) and a large (1920×1080) window. Steps find elements by role, ARIA label or
+// English text, never by a scoped class, so the same steps drive the code before and after.
+const pointerPress = (expr) => `__press(${expr})`;
+const button = (text) =>
+  `[...document.querySelectorAll('button, [role=radio]')].find(b => b.textContent.includes(${JSON.stringify(text)}))`;
+const tab = (n) => pointerPress(`document.querySelectorAll('[role=tab]')[${n}]`);
+const padState = (held, axes = [0, 0, 0, 0, 0, 0]) =>
+  `__mockEmit('emu://pad-state', { pads: [{ id: 1, held: ${JSON.stringify(held)}, axes: ${JSON.stringify(axes)} }] })`;
+const remapChip = (n) =>
+  pointerPress(
+    `document.querySelectorAll('[aria-label*="Press to change it"]')[${n}]`,
+  );
+const shortcutChange = (n) =>
+  pointerPress(
+    `document.querySelectorAll('[aria-label^="Change the shortcut"]')[${n}]`,
+  );
+const keyboard = pointerPress(button("Keyboard"));
+const CONTROLS = {
+  e05: { pads: false, steps: [] },
+  overview: { steps: [] },
+  "overview-held": { steps: [padState(["south", "r1"])] },
+  "overview-keyboard": { steps: [keyboard] },
+  remap: { steps: [pointerPress(button("Remap buttons"))] },
+  "remap-capture": { steps: [pointerPress(button("Remap buttons")), remapChip(1)] },
+  "remap-conflict": {
+    steps: [pointerPress(button("Remap buttons")), remapChip(1), padState(["east"])],
+  },
+  "remap-held": {
+    steps: [pointerPress(button("Remap buttons")), padState(["west", "l2"])],
+  },
+  "remap-keyboard": { steps: [keyboard, pointerPress(button("Remap buttons"))] },
+  shortcuts: { steps: [pointerPress(button("Edit shortcuts"))] },
+  "shortcuts-capture": {
+    steps: [pointerPress(button("Edit shortcuts")), shortcutChange(1)],
+  },
+  "shortcuts-conflict": {
+    steps: [
+      pointerPress(button("Edit shortcuts")),
+      shortcutChange(1),
+      padState(["l1"]),
+    ],
+  },
+  "shortcuts-keyboard": { steps: [keyboard, pointerPress(button("Edit shortcuts"))] },
+  sticks: {
+    steps: [
+      pointerPress(button("Sticks, triggers")),
+      padState([], [16000, -8000, 0, 0, 0, 0]),
+    ],
+  },
+  "sticks-live": {
+    steps: [
+      pointerPress(button("Sticks, triggers")),
+      padState([], [-32767, 32767, 0, 0, 0, 0]),
+      `document.querySelectorAll('main').forEach(m => (m.scrollTop = 99999))`,
+    ],
+  },
+  "sticks-tab": { steps: [pointerPress(button("Remap buttons")), tab(2)] },
+};
+for (const [view, c] of Object.entries(CONTROLS)) {
+  for (const theme of ["dark", "black", "light"]) {
+    for (const [size, [width, height]] of Object.entries(SIZES)) {
+      SCENARIOS[`controls-${view}-${theme}-${size}`] = {
+        mock: { theme, pads: c.pads ?? true, lang: "en" },
+        steps: [rail(2), ...c.steps],
+        width,
+        height,
+      };
+    }
+  }
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function page() {

@@ -74,7 +74,7 @@ useDismiss(root, () => emit('close'))
           v-for="k in kinds"
           :key="k"
           as="button"
-          :variant="CardVariant.Choice"
+          :variant="CardVariant.PictureChoice"
           :selected="choice === k"
           :data-empty="isEmpty(k) ? '' : undefined"
           class="gap-8"

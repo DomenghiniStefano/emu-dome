@@ -31,6 +31,9 @@ export const ButtonVariant = {
   // A second action in accent ink on the accent's soft fill, quieter than Primary (SlotTile
   // «Gioca da qui»).
   SoftAccent: 'softAccent',
+  // The way back to the page above, over a page's title (ControlsView «‹ Controlli»): Ghost whose
+  // text turns ink when hovered.
+  Back: 'back',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -64,6 +67,8 @@ export const ButtonSize = {
   // 28px with a 12px label on the document's 18px line, wrapping when the room is short: the
   // actions inside a tile (SlotTile).
   TileAction: 'tileAction',
+  // As tall as its line of text, an icon leading (ControlsView «‹ Controlli»).
+  TextLine: 'textLine',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -95,6 +100,8 @@ export const buttonVariants = cva(
         [ButtonVariant.Bare]: 'border-0 bg-transparent',
         [ButtonVariant.SoftAccent]:
           'border-0 bg-accent-soft text-accent-text hover:bg-surface-hover',
+        [ButtonVariant.Back]:
+          'border-0 bg-transparent text-ink-muted hover:bg-surface-hover hover:text-ink',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8',
@@ -112,6 +119,7 @@ export const buttonVariants = cva(
         [ButtonSize.Area]: 'p-0',
         [ButtonSize.TileAction]:
           'h-control-sm px-10 text-caption leading-[18px] font-medium whitespace-normal',
+        [ButtonSize.TextLine]: 'gap-2 py-2 pr-8 pl-4',
       },
     },
     // The main action keeps its 14px label and wide padding at the smaller heights, as

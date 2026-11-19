@@ -188,3 +188,25 @@
   --color-cover-2: var(--cover-2);
   --color-cover-3: var(--cover-3);
 }
+
+/* New in cycle 2 (Controls, Trello #62): tints the Controls screens mixed by hand, named with the
+   same values so a class can use them. Cowork: the design system has `success-soft` and
+   `warning-soft` at other alphas (14% dark / 10% light), and no tint of the accent or edge of a
+   warning: fold these into them, or keep them.
+   - success-tint: a success badge's fill («In uso», ControlsOverview);
+   - warning-tint, warning-edge: a warning banner's fill and its top edge (a conflict, «… è già
+     usato per … Scambiali?», ControlsRemap and ControlsShortcuts);
+   - violet-tint: the row waiting for a button (ControlsRemap), following the accent. */
+:root {
+  --success-tint: color-mix(in srgb, var(--success) 14%, transparent);
+  --warning-tint: color-mix(in srgb, var(--warning) 10%, transparent);
+  --warning-edge: color-mix(in srgb, var(--warning) 33%, transparent);
+  --violet-tint: color-mix(in srgb, var(--violet) 10%, transparent);
+}
+
+@theme inline reference {
+  --color-success-tint: var(--success-tint);
+  --color-warning-tint: var(--warning-tint);
+  --color-warning-edge: var(--warning-edge);
+  --color-violet-tint: var(--violet-tint);
+}

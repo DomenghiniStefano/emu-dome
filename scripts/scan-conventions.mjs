@@ -51,12 +51,6 @@ const FIXTURES = join(ROOT, 'scripts', 'scan-conventions')
 // The screens as they were when cycle 1 landed (paths under app/src/). Cycle 2 shrinks this list.
 const LEGACY = new Set([
   'App.vue',
-  'components/ButtonTester.vue',
-  'components/ControlsOverview.vue',
-  'components/ControlsRemap.vue',
-  'components/ControlsShortcuts.vue',
-  'components/ControlsSticks.vue',
-  'components/ControlsView.vue',
   'components/DetailsControls.vue',
   'components/DetailsFiles.vue',
   'components/DetailsSaves.vue',
@@ -78,8 +72,8 @@ const LEGACY = new Set([
 
 // utility-collision: legacy class names whose utility is harmless, each checked by hand.
 const NEUTRAL = new Map([
-  ['block', 'the scoped `.block` sets `display: flex` (ControlsOverview, QuickMenu, SavesView)'],
-  ['grid', 'the scoped `.grid` sets `display: grid` (ControlsRemap, LibraryView)'],
+  ['block', 'the scoped `.block` sets `display: flex` (QuickMenu, SavesView)'],
+  ['grid', 'the scoped `.grid` sets `display: grid` (LibraryView)'],
   ['underline', 'QuickMenu `.link.underline` sets `text-decoration: underline` itself'],
   ['glass-thick', 'utilities.css `glass-thick` is styles.css `.glass-thick`, same values'],
 ])

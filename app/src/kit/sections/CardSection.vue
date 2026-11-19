@@ -7,6 +7,7 @@ import KitState from '../KitState.vue'
 const chosen = ref('normal')
 const picture = ref('generated')
 const row = ref('Pocket Quest')
+const device = ref('pad')
 </script>
 
 <template>
@@ -41,13 +42,13 @@ const row = ref('Pocket Quest')
         <CardDescription>Thick glass over the haze.</CardDescription>
       </Card>
     </KitState>
-    <KitState label="Choice · selected, not, empty (data-empty)">
+    <KitState label="PictureChoice · selected, not, empty (data-empty)">
       <div class="flex gap-10">
         <Card
           v-for="id in ['generated', 'icon', 'user']"
           :key="id"
           as="button"
-          :variant="CardVariant.Choice"
+          :variant="CardVariant.PictureChoice"
           :selected="picture === id"
           :data-empty="id === 'user' ? '' : undefined"
           role="radio"
@@ -76,6 +77,37 @@ const row = ref('Pocket Quest')
           </span>
         </Card>
       </div>
+    </KitState>
+    <KitState label="Choice · selected and not">
+      <div class="flex gap-10">
+        <Card
+          v-for="id in ['pad', 'keyboard']"
+          :key="id"
+          as="button"
+          :variant="CardVariant.Choice"
+          :selected="device === id"
+          role="radio"
+          :aria-checked="device === id"
+          class="w-field cursor-pointer gap-2"
+          @click="device = id"
+        >
+          <CardTitle>{{ id }}</CardTitle>
+          <CardDescription>One device of a few.</CardDescription>
+        </Card>
+      </div>
+    </KitState>
+    <KitState label="List · with Row (button, disabled, div)">
+      <Card :variant="CardVariant.List" class="w-dialog">
+        <Card as="button" :variant="CardVariant.Row" class="gap-16">
+          <CardTitle>Remap buttons</CardTitle>
+        </Card>
+        <Card as="button" disabled :variant="CardVariant.Row" class="gap-16">
+          <CardTitle>Sticks and triggers</CardTitle>
+        </Card>
+        <Card :variant="CardVariant.Row" class="gap-16">
+          <CardTitle>Touch controls</CardTitle>
+        </Card>
+      </Card>
     </KitState>
   </KitSection>
 </template>
