@@ -55,8 +55,11 @@ export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 // so a height inside a variant would lose. Primary's hover is flat accent-hover: the dome's
 // gradient is a background image, which `bg-none` drops (`.btn-primary:hover`). Disabled is the screens' `.btn:disabled`: 40% and the
 // not-allowed cursor. The focus ring is the global one (styles.css, `data-nav`), not drawn here.
+// Only the background fades, as `.btn` does (`transition: background 150ms`): `transition-colors`
+// would also fade the ring's outline colour, which the pixel compare of the game details catches
+// (Trello #62).
 export const buttonVariants = cva(
-  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-6 whitespace-nowrap rounded-6 border border-transparent font-sans text-label transition-colors select-none disabled:cursor-not-allowed disabled:opacity-disabled [&_svg]:shrink-0',
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-6 whitespace-nowrap rounded-6 border border-transparent font-sans text-label transition-[background] select-none disabled:cursor-not-allowed disabled:opacity-disabled [&_svg]:shrink-0',
   {
     variants: {
       variant: {
