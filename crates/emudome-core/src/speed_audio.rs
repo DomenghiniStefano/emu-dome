@@ -159,8 +159,8 @@ impl Pitch {
                         self.need = speed;
                     }
                     let take = left.min(self.need);
-                    for c in 0..2 {
-                        self.acc[c] += f[c] * take as f32;
+                    for (acc, sample) in self.acc.iter_mut().zip(f) {
+                        *acc += sample * take as f32;
                     }
                     self.acc_weight += take;
                     self.need -= take;
