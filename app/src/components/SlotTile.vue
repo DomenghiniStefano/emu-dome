@@ -8,6 +8,7 @@
 import { useI18n } from 'vue-i18n'
 import { Ellipsis, TriangleAlert } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Card, CardPad } from '@/components/ui/card'
 import { cn } from '@/lib/cn'
 import SaveThumb from './saves/SaveThumb.vue'
 
@@ -28,7 +29,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-6 rounded-10 border border-line bg-surface p-8 text-left">
+  <Card :pad="CardPad.Tight" class="min-w-0 gap-6">
     <SaveThumb
       :src="empty ? null : thumbUrl"
       :class="cn('aspect-4/3 rounded-4', empty && 'bg-surface-raised')"
@@ -60,5 +61,5 @@ const { t } = useI18n()
         <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
       </Button>
     </span>
-  </div>
+  </Card>
 </template>

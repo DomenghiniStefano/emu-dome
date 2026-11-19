@@ -9,7 +9,7 @@ import { emu, type GameSaves, type LibraryGame } from '../../emu'
 import { errorText, saveWhenLabel } from '../../i18n/labels'
 import DetailsAction from './DetailsAction.vue'
 import DetailsCard from './DetailsCard.vue'
-import SectionLabel from './SectionLabel.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{ game: LibraryGame; saves: GameSaves | null; phone: boolean }>()
 const emit = defineEmits<{
@@ -50,7 +50,7 @@ async function exportInGame() {
 <template>
   <!-- The phone's card text is 14px (spec Decision 5, Cowork); its buttons take it. -->
   <DetailsCard as="aside" class="gap-10 touch:gap-6 touch:text-cta-inline">
-    <SectionLabel>{{ t('saves.inGameTitle') }}</SectionLabel>
+    <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('saves.inGameTitle') }}</Heading>
     <div v-if="phone" class="tabular-nums">
       {{
         lastChange ? t('details.saves.lastChangeLine', { when: lastChange }) : t('saves.noInGame')

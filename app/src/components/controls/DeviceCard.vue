@@ -3,6 +3,7 @@
 // on. One of the devices' radio group: choosing it sets what the rest of C01 shows.
 import type { Component } from 'vue'
 import { Card, CardVariant } from '@/components/ui/card'
+import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
 
 defineProps<{
   icon: Component
@@ -33,11 +34,6 @@ defineProps<{
       <span class="truncate font-semibold">{{ name }}</span>
       <span class="text-caption text-ink-muted">{{ detail }}</span>
     </span>
-    <span
-      v-if="badge"
-      class="flex-none rounded-full bg-success-soft px-8 py-2 text-caption-tall font-semibold text-success"
-    >
-      {{ badge }}
-    </span>
+    <Badge v-if="badge" :variant="BadgeVariant.Success" :size="BadgeSize.Pill">{{ badge }}</Badge>
   </Card>
 </template>

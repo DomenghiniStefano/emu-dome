@@ -27,6 +27,7 @@ import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './deta
 import { useDeviceLayout } from '../composables/useDeviceLayout'
 import { focusInitial, useEscapeBack } from '../nav'
 import { useResumePoint } from './details/useResumePoint'
+import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 
 const props = defineProps<{ id: GameId }>()
 const emit = defineEmits<{
@@ -135,7 +136,7 @@ onMounted(async () => {
       @update:model-value="selectTab"
     >
       <TabsList
-        class="overflow-x-auto px-32 touch:gap-8 touch:border-b-0 touch:px-16 touch:pt-16"
+        class="overflow-x-auto px-section-x touch:gap-8 touch:border-b-0 touch:px-section-touch touch:pt-section-touch"
         :aria-label="t('details.tabsLabel')"
       >
         <TabsTrigger v-for="tab in DETAILS_TABS" :key="tab" :value="tab">
@@ -144,8 +145,9 @@ onMounted(async () => {
       </TabsList>
     </Tabs>
 
-    <div
-      class="flex max-w-page-md flex-col gap-20 px-32 pt-24 pb-48 touch:gap-16 touch:p-16"
+    <SectionPage
+      :width="SectionWidth.Medium"
+      :scroll="false"
       role="tabpanel"
       :aria-label="t(tabLabelKey(current, phone))"
     >
@@ -181,7 +183,7 @@ onMounted(async () => {
         @error="text => emit('error', text)"
       />
       <NotBuiltPanel v-else :tab="current" />
-    </div>
+    </SectionPage>
 
     <CoverPicker v-if="pickingCover" :game="game" @close="closeCoverPicker" />
   </div>

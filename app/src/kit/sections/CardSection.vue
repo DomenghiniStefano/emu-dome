@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Camera, ChevronRight, Rows2, VolumeX } from '@lucide/vue'
-import { Card, CardDescription, CardTitle, CardVariant } from '@/components/ui/card'
+import { Card, CardDescription, CardPad, CardTitle, CardVariant } from '@/components/ui/card'
+import { StatTile } from '@/components/ui/stat-tile'
+import { LinkRow } from '@/components/ui/link-row'
 import KitSection from '../KitSection.vue'
 import KitState from '../KitState.vue'
 
@@ -21,6 +23,26 @@ const muted = ref(true)
         <CardTitle>Files</CardTitle>
         <CardDescription>The game file and where its saves are.</CardDescription>
       </Card>
+    </KitState>
+    <KitState label="Surface · pad Snug (12), Tight (10)">
+      <div class="flex gap-10">
+        <Card :pad="CardPad.Snug" class="w-field gap-6">
+          <CardTitle>Snug</CardTitle>
+          <CardDescription>A line with its action.</CardDescription>
+        </Card>
+        <Card :pad="CardPad.Tight" class="w-field gap-6">
+          <CardTitle>Tight</CardTitle>
+          <CardDescription>A slot tile, a banner.</CardDescription>
+        </Card>
+      </div>
+    </KitState>
+    <KitState label="StatTile · a count per console">
+      <div class="grid w-dialog grid-cols-4 gap-10">
+        <StatTile :value="12" label="Game Boy Advance" />
+        <StatTile :value="3" label="Nintendo DS" />
+        <StatTile :value="0" label="Nintendo 3DS" />
+        <StatTile :value="7" label="Game Boy and Color" />
+      </div>
     </KitState>
     <KitState label="Detail: desktop, and on the phone (rounder, tighter)">
       <div class="flex gap-10">
@@ -144,17 +166,12 @@ const muted = ref(true)
         </Card>
       </div>
     </KitState>
-    <KitState label="List · with Row (button, disabled, div)">
+    <KitState label="List · with LinkRow (button, value, disabled, div)">
       <Card :variant="CardVariant.List" class="w-dialog">
-        <Card as="button" :variant="CardVariant.Row">
-          <CardTitle>Remap buttons</CardTitle>
-        </Card>
-        <Card as="button" disabled :variant="CardVariant.Row">
-          <CardTitle>Sticks and triggers</CardTitle>
-        </Card>
-        <Card :variant="CardVariant.Row">
-          <CardTitle>Touch controls</CardTitle>
-        </Card>
+        <LinkRow name="Remap buttons" sub="Change what each button does" />
+        <LinkRow name="Screen effect" sub="Video" value="CRT" />
+        <LinkRow name="Sticks and triggers" sub="Dead zone 15%" disabled />
+        <LinkRow as="div" name="Touch controls" sub="Customised on the phone" />
       </Card>
     </KitState>
     <KitState label="Tile · a slot to choose (as button), chosen and not; chosen on the phone">

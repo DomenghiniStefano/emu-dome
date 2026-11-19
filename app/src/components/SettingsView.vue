@@ -33,6 +33,10 @@ import {
 } from './settings/settingsPage'
 import { useSettingsScope } from './settings/useSettingsScope'
 import { useSettingsValues } from './settings/useSettingsValues'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
+import { Card, CardPad } from '@/components/ui/card'
+import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 
 const emit = defineEmits<{ error: [string]; openControls: [] }>()
 const { t } = useI18n()
@@ -108,9 +112,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       @pick="pick"
     />
 
-    <main
-      class="flex min-w-0 flex-1 flex-col gap-20 overflow-y-auto px-32 pt-24 pb-48 *:w-full *:max-w-page"
-    >
+    <SectionPage as="main" :width="SectionWidth.Page">
       <SettingsOverview
         v-if="page === OVERVIEW && !searching"
         :schema="schema"
@@ -126,13 +128,10 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
 
       <template v-else-if="!searching">
         <div class="flex flex-col gap-4">
-          <h2 class="m-0 text-title">{{ t(msg.page(page)) }}</h2>
+          <Heading>{{ t(msg.page(page)) }}</Heading>
           <div class="text-ink-muted">{{ t(msg.summary(page)) }}</div>
         </div>
-        <div
-          v-if="INTROS.has(page)"
-          class="flex gap-10 rounded-10 border border-line bg-surface px-14 py-12"
-        >
+        <Card v-if="INTROS.has(page)" :pad="CardPad.Snug" class="flex-row gap-10">
           <!-- 1px down to sit on the text's first line -->
           <Info
             class="mt-px flex-none text-accent-text"
@@ -141,7 +140,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
             aria-hidden="true"
           />
           <span>{{ t(`settingsUi.intro.${page}`) }}</span>
-        </div>
+        </Card>
 
         <SettingsScopeBar
           v-if="scopeBar.scoped.value"
@@ -158,11 +157,9 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         />
         <div v-else class="text-ink-muted">{{ t('settingsUi.appWide') }}</div>
       </template>
-      <div v-else class="flex flex-col gap-4">
-        <h2 class="m-0 text-heading">
-          {{ t('settingsUi.resultsTitle', { query: query.trim() }) }}
-        </h2>
-      </div>
+      <Heading v-else :variant="HeadingVariant.Heading">
+        {{ t('settingsUi.resultsTitle', { query: query.trim() }) }}
+      </Heading>
 
       <SettingsSection
         v-for="sec in sections"
@@ -187,22 +184,22 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         />
       </SettingsSection>
 
-      <div
+      <EmptyState
         v-if="searching && sections.length === 0"
-        class="rounded-10 border border-line bg-surface p-32 text-center text-ink-muted"
-      >
-        {{ t('settingsUi.noResults', { query: query.trim() }) }}
-      </div>
-      <div
+        as="div"
+        :variant="EmptyStateVariant.Card"
+        :text="t('settingsUi.noResults', { query: query.trim() })"
+      />
+      <EmptyState
         v-else-if="onlyChanged && sections.length === 0"
-        class="rounded-10 border border-line bg-surface p-32 text-center text-ink-muted"
-      >
-        {{ t('settingsUi.emptyOnly') }}
-      </div>
+        as="div"
+        :variant="EmptyStateVariant.Card"
+        :text="t('settingsUi.emptyOnly')"
+      />
 
       <div v-if="page !== OVERVIEW || searching" class="text-caption text-ink-muted">
         {{ t('settingsUi.hint') }}
       </div>
-    </main>
+    </SectionPage>
   </div>
 </template>

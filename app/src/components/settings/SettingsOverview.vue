@@ -15,9 +15,10 @@ import type {
 import { changedWhenLabel } from '../../i18n/labels'
 import { isShown, msg } from '../../settingsModel'
 import SettingRowView from '../SettingRow.vue'
-import SettingsLinkRow from './SettingsLinkRow.vue'
 import SettingsSection from './SettingsSection.vue'
 import type { PageValues } from './settingsPage'
+import { Heading } from '@/components/ui/heading'
+import { LinkRow } from '@/components/ui/link-row'
 
 const props = defineProps<{
   schema: SettingsSchema
@@ -67,13 +68,13 @@ function recentLine(r: SettingRecent): string {
 </script>
 
 <template>
-  <h2 class="m-0 text-title">{{ t('settingsUi.overview.name') }}</h2>
+  <Heading>{{ t('settingsUi.overview.name') }}</Heading>
   <SettingsSection
     :title="t('settingsUi.overview.mostUsed')"
     :note="t('settingsUi.overview.mostUsedNote')"
   >
     <template v-for="e in mostUsed" :key="e.key">
-      <SettingsLinkRow
+      <LinkRow
         v-if="isCards(e)"
         :name="t(msg.name(e.key))"
         :sub="t(msg.page(e.page))"
@@ -98,7 +99,7 @@ function recentLine(r: SettingRecent): string {
   </SettingsSection>
 
   <SettingsSection v-if="recent.length" :title="t('settingsUi.overview.recent')">
-    <SettingsLinkRow
+    <LinkRow
       v-for="r in recent"
       :key="`${r.key}.${r.level}.${r.console ?? ''}.${r.game ?? ''}`"
       :name="t(msg.name(r.key))"

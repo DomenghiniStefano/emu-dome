@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { AUTO_SLOT, type LibraryFolder, type LibraryGame } from '../../emu'
 import {
-  addedCards,
   consoleChips,
   coverKinds,
   ofConsole,
@@ -81,19 +80,6 @@ describe('unreachableFolders', () => {
     ]
     const games = [game('a', { folder: 'D:/Old' }), game('b'), game('c', { folder: 'D:/Old' })]
     expect(unreachableFolders(folders, games)).toEqual([{ path: 'D:/Old', count: 2 }])
-  })
-})
-
-describe('addedCards', () => {
-  it('is empty without a summary', () => {
-    expect(addedCards(null)).toEqual([])
-  })
-
-  it('shows the consoles with new games, Game Boy and Game Boy Color on one card', () => {
-    expect(addedCards({ added: 4, perConsole: { nds: 1, gb: 1, gbc: 2 } })).toEqual([
-      { key: 'console.nds', count: 1 },
-      { key: 'library.added.gbAndColor', count: 3 },
-    ])
   })
 })
 

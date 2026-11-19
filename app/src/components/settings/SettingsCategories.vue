@@ -11,6 +11,7 @@ import { Input, InputVariant } from '@/components/ui/input'
 import type { SettingsSchema } from '../../emu'
 import { msg } from '../../settingsModel'
 import { OVERVIEW } from './settingsPage'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{
   schema: SettingsSchema
@@ -32,7 +33,7 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
     :aria-label="t('settingsUi.categories')"
   >
     <div class="flex flex-col gap-12">
-      <h1 class="m-0 px-8 text-title">{{ t('settingsUi.title') }}</h1>
+      <Heading as="h1" class="px-8">{{ t('settingsUi.title') }}</Heading>
       <label
         class="flex h-control-lg items-center gap-8 rounded-8 border border-line-strong bg-surface-raised px-12 text-ink-muted"
       >
@@ -57,7 +58,9 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
       <span class="flex-1 text-left">{{ t('settingsUi.overview.name') }}</span>
     </Button>
     <div v-for="g in schema.groups" :key="g.id" class="flex flex-col gap-2">
-      <div class="px-8 pb-4 text-overline text-ink-muted">{{ t(msg.group(g.id)) }}</div>
+      <Heading as="h2" :variant="HeadingVariant.Overline" class="px-8 pb-4">{{
+        t(msg.group(g.id))
+      }}</Heading>
       <Button
         v-for="p in g.pages"
         :key="p"

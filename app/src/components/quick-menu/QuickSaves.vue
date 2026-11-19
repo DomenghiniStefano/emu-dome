@@ -9,10 +9,10 @@ import type { SlotInfo } from '@/emu'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import PageRow from './PageRow.vue'
 import QuickSlotTile from './QuickSlotTile.vue'
-import SectionLabel from './SectionLabel.vue'
 import { loadLabel } from './slots'
 import { useSay } from '@/i18n/message'
 import { FocusMark } from './view'
+import { LabelledBlock } from '@/components/ui/labelled-block'
 
 const props = defineProps<{
   slots: SlotInfo[]
@@ -41,9 +41,8 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
 </script>
 
 <template>
-  <section class="flex flex-col gap-10" :aria-label="t('qm.savesTitle')">
-    <div v-if="!all" class="flex items-baseline justify-between gap-8">
-      <SectionLabel>{{ t('qm.savesTitle') }}</SectionLabel>
+  <LabelledBlock :title="all ? undefined : t('qm.savesTitle')" :aria-label="t('qm.savesTitle')">
+    <template v-if="!all" #aside>
       <Button
         v-bind="moreMark"
         :variant="ButtonVariant.Link"
@@ -52,7 +51,7 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
       >
         {{ touch ? t('qm.moreShort') : t('qm.more') }}
       </Button>
-    </div>
+    </template>
     <div
       class="grid gap-8 touch:grid-cols-3"
       :class="columns"
@@ -116,5 +115,5 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
       <PageRow :icon="ArchiveRestore" :label="t('qm.backup')" disabled />
       <span class="text-caption text-ink-muted">{{ t('qm.backupNotHere') }}</span>
     </template>
-  </section>
+  </LabelledBlock>
 </template>

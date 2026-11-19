@@ -11,9 +11,11 @@ import GameCover from '../GameCover.vue'
 import { CoverSize } from '../cover/variants'
 import SlotTile from '../SlotTile.vue'
 import SaveBackups from './SaveBackups.vue'
-import SavesBlock from './SavesBlock.vue'
 import SaveWarning from './SaveWarning.vue'
 import { useSlotName } from './useSlotName'
+import { Heading } from '@/components/ui/heading'
+import { Card, CardPad } from '@/components/ui/card'
+import { LabelledBlock } from '@/components/ui/labelled-block'
 
 const props = defineProps<{
   game: LibraryGame
@@ -55,7 +57,7 @@ const inGameLine = computed(() =>
         :title="false"
       />
       <div class="min-w-0 flex-1">
-        <h2 class="m-0 text-title">{{ game.title }}</h2>
+        <Heading>{{ game.title }}</Heading>
         <div class="text-ink-muted tabular-nums">
           {{ t('saves.gameMeta', { console: t(`console.${game.console}`), meta: detail }) }}
         </div>
@@ -63,14 +65,14 @@ const inGameLine = computed(() =>
       <Button @click="emit('openDetails')">{{ t('saves.details') }}</Button>
     </div>
 
-    <SavesBlock :title="t('saves.inGameTitle')">
-      <div class="flex items-center gap-12 rounded-10 border border-line bg-surface px-16 py-10">
+    <LabelledBlock title-as="h3" :title="t('saves.inGameTitle')">
+      <Card :pad="CardPad.Snug" class="flex-row items-center gap-12">
         <span class="min-w-0 flex-1 tabular-nums">{{ inGameLine }}</span>
         <Button v-if="saves.inGame" @click="emit('exportInGame')">{{ t('saves.export') }}</Button>
-      </div>
-    </SavesBlock>
+      </Card>
+    </LabelledBlock>
 
-    <SavesBlock :title="t('saves.quickTitle')">
+    <LabelledBlock title-as="h3" :title="t('saves.quickTitle')">
       <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03).
            The date only: a quick save has no play time of its own (Cowork, #37).
            `outdated`: an older version of its core made it (saves.rs, `is_outdated`). -->
@@ -87,9 +89,9 @@ const inGameLine = computed(() =>
         />
       </div>
       <p v-else class="m-0 text-ink-muted">{{ t('saves.noQuick') }}</p>
-    </SavesBlock>
+    </LabelledBlock>
 
-    <SavesBlock :title="t('saves.backupsTitle')">
+    <LabelledBlock title-as="h3" :title="t('saves.backupsTitle')">
       <!-- E04: the unreadable in-game save was set aside. -->
       <SaveWarning v-if="saves.broken.length">
         {{ t('saves.brokenNote', { file: saves.broken[0] }) }}
@@ -101,6 +103,6 @@ const inGameLine = computed(() =>
       />
       <p v-else class="m-0 text-ink-muted">{{ t('saves.noBackups') }}</p>
       <p class="m-0 text-caption text-ink-muted">{{ t('saves.backupNote') }}</p>
-    </SavesBlock>
+    </LabelledBlock>
   </section>
 </template>

@@ -3,8 +3,8 @@
 // touch minimum.
 import { ChevronLeft } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import KeyHint from './KeyHint.vue'
 import { FocusMark } from './view'
+import { Kbd, KbdSize } from '@/components/ui/kbd'
 
 defineProps<{
   /** Where back leads: the button's text, or its accessible name when the chevron is alone. */
@@ -41,6 +41,6 @@ const mark = { [FocusMark.Back]: '' }
   >
     <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
     {{ label }}
-    <KeyHint v-if="hint" :label="hint" />
+    <Kbd v-if="hint" :size="KbdSize.Small" class="ml-4">{{ hint }}</Kbd>
   </Button>
 </template>

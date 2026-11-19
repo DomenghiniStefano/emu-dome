@@ -23,13 +23,9 @@ export const CardVariant = {
   // One row of a list the user picks from, rendered `as="button"` (Saves: the games): cover,
   // text and badge in a row, no fill until hovered, `selected` on accent-soft.
   ListItem: 'listItem',
-  // A card that holds rows separated by lines (Controls: shortcut lists, the remap table): no
-  // padding, the rows draw their own.
+  // A card that holds rows separated by lines (Controls: shortcut lists, the remap table; the
+  // rows of ui/link-row): no padding, the rows draw their own.
   List: 'list',
-  // A row of a List card that opens what it names (Controls «Rimappa i pulsanti»): at least 56
-  // tall, 16 between its parts, no frame of its own, hovered when it is a button; a disabled one is
-  // half faded (`opacity-dim`).
-  Row: 'row',
   // The quick menu's cards as buttons (Trello #62). Their 44 / 48 / 52 / 68 heights and 12 radius
   // are off the design system's scales: pending tokens, or literals of this one place.
   // A small choice among a row of them, on surface (a quick-save slot, G07); `selected` marks the
@@ -38,13 +34,24 @@ export const CardVariant = {
   // A tool to run or switch on and off (G07 Strumenti), its icon over its name; `selected` = on.
   // On the phone a row on surface: icon beside the name, 44 tall.
   Tool: 'tool',
-  // A row that leads to another page: icon, name, chevron (G07, G08). Not Row: its own edge
+  // A row that leads to another page: icon, name, chevron (G07, G08). Not ui/link-row: its own edge
   // and fill, 48 tall.
   NavRow: 'navRow',
   // A line of a list, no edge of its own (G10): the list draws the box.
   ListRow: 'listRow',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
+
+// The room inside a card, when it is not its variant's own (Surface: `card-pad`, 16). Set with
+// Surface or List; the other variants keep their own.
+export const CardPad = {
+  // 12 (`card-pad-md`): a stat, a line with its action, one side of a save conflict.
+  Snug: 'snug',
+  // 10 (`card-pad-sm`): a card packed with a picture and actions (a slot tile, «Continua a
+  // giocare»), a banner with a button at its end.
+  Tight: 'tight',
+} as const
+export type CardPad = (typeof CardPad)[keyof typeof CardPad]
 
 // The gap between the card's parts is the caller's: the screens use 6, 10 and 14 today. A `touch:`
 // class that changes a fill repeats the states after it (`touch:data-selected:…`): the touch
@@ -65,9 +72,8 @@ export const cardVariants = cva('flex flex-col text-left', {
         'rounded-card border border-line bg-surface px-14 py-12 enabled:hover:not-data-selected:bg-surface-hover data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.ListItem]:
         'flex-row items-center gap-10 rounded-8 border-0 bg-transparent p-8 hover:not-data-selected:bg-surface-hover data-selected:bg-accent-soft',
-      [CardVariant.List]: 'overflow-hidden rounded-card border border-line bg-surface',
-      [CardVariant.Row]:
-        'min-h-link-row flex-row items-center gap-16 border-0 bg-transparent px-16 py-8 enabled:hover:bg-surface-hover disabled:cursor-default disabled:opacity-dim',
+      [CardVariant.List]:
+        'm-0 list-none overflow-hidden rounded-card border border-line bg-surface p-0',
       [CardVariant.Tile]:
         'rounded-card border border-line bg-surface p-6 data-selected:border-accent-text data-selected:bg-accent-soft touch:rounded-12 touch:data-selected:border-strong',
       [CardVariant.Tool]:
@@ -76,6 +82,10 @@ export const cardVariants = cva('flex flex-col text-left', {
         'h-48 flex-row items-center rounded-card border border-line bg-surface px-12 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
       [CardVariant.ListRow]:
         'min-h-52 flex-row items-center border-0 bg-transparent px-12 py-8 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
+    },
+    pad: {
+      [CardPad.Snug]: 'p-card-pad-md',
+      [CardPad.Tight]: 'p-card-pad-sm',
     },
   },
   defaultVariants: { variant: CardVariant.Surface },

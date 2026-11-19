@@ -26,6 +26,7 @@ import { KEYBOARD_SHORTCUTS } from '../keyboard'
 import { GLOBAL } from '../settingsModel'
 import { CaptureField, CaptureFieldVariant } from '@/components/ui/capture-field'
 import { Card, CardVariant } from '@/components/ui/card'
+import { Kbd } from '@/components/ui/kbd'
 import SettingRowView from './SettingRow.vue'
 import ConflictBanner from './controls/ConflictBanner.vue'
 import ShortcutRow from './controls/ShortcutRow.vue'
@@ -180,7 +181,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
         :muted="k.status !== 'active'"
         :badge="k.status !== 'active' ? t('controls.badge.soon') : undefined"
       >
-        <kbd>{{ keyName(k.code) }}</kbd>
+        <Kbd>{{ keyName(k.code) }}</Kbd>
       </ShortcutRow>
     </Card>
   </div>

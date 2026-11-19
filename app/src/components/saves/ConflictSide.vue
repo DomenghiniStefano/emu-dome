@@ -5,9 +5,10 @@
 import { useI18n } from 'vue-i18n'
 import { playTimeLabel, saveWhenLabel, sizeLabel } from '../../i18n/labels'
 import { Button } from '@/components/ui/button'
+import { Card, CardPad } from '@/components/ui/card'
 import type { ConflictVersion } from './conflict'
-import SaveBadge from './SaveBadge.vue'
 import SaveThumb from './SaveThumb.vue'
+import { Badge } from '@/components/ui/badge'
 
 defineProps<{ version: ConflictVersion; newest: boolean }>()
 const emit = defineEmits<{ keep: [] }>()
@@ -16,11 +17,11 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="flex flex-col gap-10 rounded-10 border border-line bg-surface p-12 text-ink">
+  <Card :pad="CardPad.Snug" class="gap-10 text-ink">
     <SaveThumb :src="version.thumbUrl" class="aspect-3/2 rounded-6" />
     <div class="flex items-center gap-8 text-heading">
       <span>{{ version.device }}</span>
-      <SaveBadge v-if="newest">{{ t('saves.conflict.newest') }}</SaveBadge>
+      <Badge v-if="newest">{{ t('saves.conflict.newest') }}</Badge>
     </div>
     <dl
       class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-12 gap-y-4 text-caption text-ink-muted tabular-nums"
@@ -37,5 +38,5 @@ const { t } = useI18n()
     <Button :data-nav-initial="newest ? '' : undefined" @click="emit('keep')">
       {{ t('saves.conflict.keepThis') }}
     </Button>
-  </div>
+  </Card>
 </template>

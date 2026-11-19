@@ -55,16 +55,6 @@ body,
     color: inherit;
     cursor: pointer;
   }
-  /* A key named in a line of text. In the base layer too, so a component's utilities can dress
-     it (game/KeyCap.vue); the screens' scoped rules still win, as before. */
-  kbd {
-    font: inherit;
-    font-size: 11px;
-    padding: 0 5px;
-    border: 1px solid var(--line-strong);
-    border-radius: 4px;
-    color: var(--ink-muted);
-  }
 }
 /* Focus ring for controller and keyboard navigation (src/nav.ts sets data-nav on <html>
    while the user moves without the mouse): accent outline with a soft glow. */

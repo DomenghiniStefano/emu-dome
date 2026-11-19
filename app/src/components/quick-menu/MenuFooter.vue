@@ -4,7 +4,7 @@
 import { useI18n } from 'vue-i18n'
 import { Play, Power } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import KeyHint from './KeyHint.vue'
+import { Kbd, KbdSize, KbdVariant } from '@/components/ui/kbd'
 
 defineProps<{
   /** The key that resumes with the input in use, or null. */
@@ -45,7 +45,9 @@ const { t } = useI18n()
     >
       <Play :size="18" fill="currentColor" :stroke-width="0" aria-hidden="true" />
       {{ t('qm.resume') }}
-      <KeyHint v-if="hint" :label="hint" on-accent />
+      <Kbd v-if="hint" :variant="KbdVariant.OnAccent" :size="KbdSize.Small" class="ml-4">
+        {{ hint }}
+      </Kbd>
     </Button>
   </footer>
 </template>

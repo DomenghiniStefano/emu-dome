@@ -4,8 +4,10 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { X } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { StatTile } from '@/components/ui/stat-tile'
 import type { ScanSummary } from '../../library'
-import { addedCards } from './libraryView'
+import { consoleCounts } from '../../lib/consoleCounts'
+import { Heading } from '@/components/ui/heading'
 
 const props = defineProps<{ summary: ScanSummary }>()
 const emit = defineEmits<{ close: [] }>()
@@ -15,13 +17,13 @@ const { t } = useI18n()
 const title = computed(() =>
   t('library.added.title', { n: props.summary.added }, props.summary.added),
 )
-const cards = computed(() => addedCards(props.summary))
+const cards = computed(() => consoleCounts(props.summary.perConsole, { hideEmpty: true }))
 </script>
 
 <template>
   <section class="glass flex flex-col gap-16 p-20" :aria-label="title">
     <div class="flex items-center justify-between gap-12">
-      <h2 class="m-0 text-title">{{ title }}</h2>
+      <Heading>{{ title }}</Heading>
       <Button
         :variant="ButtonVariant.Ghost"
         :size="ButtonSize.Icon"
@@ -36,11 +38,7 @@ const cards = computed(() => addedCards(props.summary))
       v-if="cards.length"
       class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))] gap-12"
     >
-      <div v-for="c in cards" :key="c.key" class="rounded-10 border border-line bg-surface p-14">
-        <!-- 32/38 semibold: `display` without its tracking (Cowork). -->
-        <div class="text-stat-md tabular-nums">{{ c.count }}</div>
-        <div class="text-ink-muted">{{ t(c.key) }}</div>
-      </div>
+      <StatTile v-for="c in cards" :key="c.id" :value="c.count" :label="t(c.label)" />
     </div>
   </section>
 </template>

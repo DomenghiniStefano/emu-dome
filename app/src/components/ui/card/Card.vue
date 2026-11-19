@@ -5,11 +5,13 @@ import type { PrimitiveProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import { Primitive } from 'reka-ui'
 import { cn } from '@/lib/cn'
-import type { CardVariant } from './variants'
+import type { CardPad, CardVariant } from './variants'
 import { cardVariants } from './variants'
 
 interface Props extends PrimitiveProps {
   variant?: CardVariant
+  /** The room inside, when not the variant's own (CardPad). */
+  pad?: CardPad
   /** The chosen card of a choice (Raised): accent edge on accent-soft. */
   selected?: boolean
   class?: HTMLAttributes['class']
@@ -25,7 +27,7 @@ const props = withDefaults(defineProps<Props>(), { as: 'div' })
     :as-child="asChild"
     :type="as === 'button' && !asChild ? 'button' : undefined"
     :data-selected="selected ? '' : undefined"
-    :class="cn(cardVariants({ variant }), props.class)"
+    :class="cn(cardVariants({ variant, pad }), props.class)"
   >
     <slot />
   </Primitive>

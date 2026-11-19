@@ -5,13 +5,15 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Folder } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Card, CardVariant } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { StatTile } from '@/components/ui/stat-tile'
 import { emu } from '../../emu'
 import { errorText } from '../../i18n/labels'
-import { consoleTiles } from '../../lib/first-run/library'
+import { consoleCounts, countByConsole } from '../../lib/consoleCounts'
 import { chooseFolder, library } from '../../library'
-import ScanBar from './ScanBar.vue'
 import StepLayout from './StepLayout.vue'
-import StepTitle from './StepTitle.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
@@ -28,17 +30,19 @@ async function removeFolder(path: string) {
   }
 }
 
-const tiles = computed(() => consoleTiles(library.games))
+const tiles = computed(() => consoleCounts(countByConsole(library.games)))
 const found = computed(() => library.progress?.found ?? 0)
 </script>
 
 <template>
   <StepLayout wide>
-    <StepTitle>{{ t('firstRun.games.title') }}</StepTitle>
+    <Heading as="h1" :variant="HeadingVariant.Display">{{ t('firstRun.games.title') }}</Heading>
     <p class="m-0 text-lead text-ink-muted">{{ t('firstRun.games.lead') }}</p>
-    <ul
+    <Card
       v-if="library.folders.length"
-      class="m-0 list-none divide-y divide-line overflow-hidden rounded-10 border border-line bg-surface p-0"
+      as="ul"
+      :variant="CardVariant.List"
+      class="divide-y divide-line"
       :aria-label="t('firstRun.games.folders')"
     >
       <li
@@ -57,7 +61,7 @@ const found = computed(() => library.progress?.found ?? 0)
           {{ t('firstRun.games.remove') }}
         </Button>
       </li>
-    </ul>
+    </Card>
     <Button
       :size="ButtonSize.Tall"
       class="self-start"
@@ -67,20 +71,12 @@ const found = computed(() => library.progress?.found ?? 0)
       {{ t('firstRun.games.add') }}
     </Button>
     <template v-if="library.folders.length">
-      <ScanBar :running="library.scanning" />
+      <Progress :value="library.scanning ? null : 100" :label="t('firstRun.games.progress')" />
       <p v-if="library.scanning" class="m-0 text-ink-muted tabular-nums">
         {{ t('library.scan.found', { found }, found) }}
       </p>
       <div class="grid grid-cols-4 gap-10 touch:grid-cols-2">
-        <div
-          v-for="tile in tiles"
-          :key="tile.id"
-          class="rounded-10 border border-line bg-surface p-12"
-        >
-          <!-- stat-sm: pending Cowork (spec Decision 5). -->
-          <div class="text-stat-sm tabular-nums">{{ tile.count }}</div>
-          <div class="text-caption text-ink-muted">{{ t(tile.label) }}</div>
-        </div>
+        <StatTile v-for="tile in tiles" :key="tile.id" :value="tile.count" :label="t(tile.label)" />
       </div>
       <p v-if="library.scanning" class="m-0 text-ink-muted">
         {{ t('firstRun.games.background') }}

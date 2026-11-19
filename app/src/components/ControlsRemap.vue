@@ -26,7 +26,7 @@ import { Button, ButtonFade } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import ConflictBanner from './controls/ConflictBanner.vue'
 import RemapTableRow from './controls/RemapTableRow.vue'
-import RemapTesterCard from './controls/RemapTesterCard.vue'
+import TesterCard from './controls/TesterCard.vue'
 import RemapToolbar from './controls/RemapToolbar.vue'
 import { remapRowStatus, sourceUses } from './controls/remapTable'
 import { buttonsUsing } from './controls/tester'
@@ -34,6 +34,7 @@ import { useBindingConflict } from './controls/useBindingConflict'
 import { useButtonTester } from './controls/useButtonTester'
 import { useGlobalSettings } from './controls/useGlobalSettings'
 import { useRemapLevel } from './controls/useRemapLevel'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{
   family: PadFamily
@@ -176,14 +177,17 @@ const hint = computed(() => {
       </Card>
 
       <aside class="flex flex-col gap-12">
-        <RemapTesterCard
+        <TesterCard
           :hint="hint"
           :cells="cells"
           :held="tester.held.value"
           :last="tester.last.value"
+          :idle="t('controls.noPress')"
         />
         <Card class="gap-10">
-          <div class="text-overline text-ink-muted">{{ t('controls.otherActions') }}</div>
+          <Heading as="h2" :variant="HeadingVariant.Overline">{{
+            t('controls.otherActions')
+          }}</Heading>
           <Button class="self-start" @click="restoreDefaults">
             {{ t('controls.restoreDefaults') }}
           </Button>

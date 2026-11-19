@@ -15,6 +15,7 @@ import GameCover from '../GameCover.vue'
 import { CoverSize } from '../cover/variants'
 import GameMoreButton from './GameMoreButton.vue'
 import ResumeButton from './ResumeButton.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{ game: LibraryGame; phone: boolean; resume: ResumePoint | null }>()
 const emit = defineEmits<{
@@ -45,7 +46,7 @@ defineExpose({
 
 <template>
   <section
-    class="relative flex flex-col gap-20 bg-cover-fade px-32 pt-24 pb-28 touch:gap-16 touch:px-16 touch:pt-8 touch:pb-0"
+    class="relative flex flex-col gap-section-gap bg-cover-fade px-section-x pt-section-top pb-28 touch:gap-section-touch touch:px-section-touch touch:pt-8 touch:pb-0"
     :style="{ '--cover-tint': game.colour }"
     :aria-label="game.title"
   >
@@ -87,12 +88,12 @@ defineExpose({
         :badge="false"
       />
       <div class="flex min-w-0 grow basis-hero-text flex-col gap-10 touch:flex-1 touch:gap-4">
-        <div class="text-overline text-ink-muted uppercase touch:text-overline-lg">
+        <Heading as="div" :variant="HeadingVariant.Overline">
           {{ t(`console.${game.console}`) }}
-        </div>
-        <h1 class="m-0 text-display wrap-anywhere touch:text-display-sm">
+        </Heading>
+        <Heading as="h1" :variant="HeadingVariant.Hero">
           {{ game.title }}
-        </h1>
+        </Heading>
         <div class="text-lead text-ink-muted tabular-nums touch:text-body">
           {{ meta }}
         </div>

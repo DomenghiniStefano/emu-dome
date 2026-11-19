@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // One row of C03's shortcut list: the action, what to press (the default slot) with its badge
 // when reserved, and the row's own control (the `change` slot: «Cambia», or nothing).
+import { Badge, BadgeVariant } from '@/components/ui/badge'
 defineProps<{
   action: string
   /** A reserved or keyboard-only row: the action in muted ink. */
@@ -18,12 +19,7 @@ defineProps<{
     <span
       class="inline-flex min-w-shortcut-key items-center justify-end gap-8 text-right font-semibold tabular-nums"
     >
-      <span
-        v-if="badge"
-        class="rounded-4 border border-dashed border-line-strong px-6 text-badge font-medium text-ink-muted"
-      >
-        {{ badge }}
-      </span>
+      <Badge v-if="badge" :variant="BadgeVariant.Reserved">{{ badge }}</Badge>
       <slot />
     </span>
     <slot name="change"><span></span></slot>

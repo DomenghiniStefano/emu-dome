@@ -2,12 +2,12 @@
 // S04 Controller (only while one is connected): the A/B layout (`pad.ab`) as two cards, and a
 // press test that says what each button does in the game. The only step with «Salta».
 import { useI18n } from 'vue-i18n'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardPad, CardVariant } from '@/components/ui/card'
 import type { PadInfo } from '../../emu'
 import { gamepadName } from '../../i18n/labels'
 import { AB_LAYOUTS, type AbLayout } from '../../controls'
 import StepLayout from './StepLayout.vue'
-import StepTitle from './StepTitle.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 defineProps<{
   pad: PadInfo
@@ -23,7 +23,9 @@ const LAYOUTS = AB_LAYOUTS
 
 <template>
   <StepLayout wide>
-    <StepTitle>{{ t('firstRun.controller.title') }}</StepTitle>
+    <Heading as="h1" :variant="HeadingVariant.Display">{{
+      t('firstRun.controller.title')
+    }}</Heading>
     <p class="m-0 text-lead text-ink-muted">
       {{ t('firstRun.controller.lead', { name: gamepadName(pad) }) }}
     </p>
@@ -48,10 +50,7 @@ const LAYOUTS = AB_LAYOUTS
         <span class="text-caption text-ink-muted">{{ t(`firstRun.controller.${id}`) }}</span>
       </Card>
     </div>
-    <div
-      class="flex min-h-press items-center gap-12 rounded-10 border border-line bg-surface p-14"
-      aria-live="polite"
-    >
+    <Card :pad="CardPad.Snug" class="min-h-press flex-row items-center gap-12" aria-live="polite">
       <span
         v-if="pressed?.button"
         class="grid size-control-lg flex-none place-items-center rounded-full bg-accent-soft font-semibold text-accent-text"
@@ -70,6 +69,6 @@ const LAYOUTS = AB_LAYOUTS
           {{ t('firstRun.controller.unused', { which: pressed.which }) }}
         </template>
       </span>
-    </div>
+    </Card>
   </StepLayout>
 </template>

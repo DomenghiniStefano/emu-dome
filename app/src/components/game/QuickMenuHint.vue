@@ -2,7 +2,7 @@
 // G06: how to open the quick menu, at the top over the game, the first few games. It fades out
 // (600 ms, a value waiting for Cowork: spec Decision 5).
 import { useI18n } from 'vue-i18n'
-import KeyCap from './KeyCap.vue'
+import { Kbd } from '@/components/ui/kbd'
 
 defineProps<{ shown: boolean }>()
 const { t } = useI18n()
@@ -15,9 +15,9 @@ const { t } = useI18n()
       class="glass-thick pointer-events-none fixed top-16 left-1/2 z-overlay flex -translate-x-1/2 items-center gap-6 rounded-10 px-14 py-8 text-ink-muted"
       role="status"
     >
-      <KeyCap>{{ t('flow.hintEsc') }}</KeyCap>
+      <Kbd>{{ t('flow.hintEsc') }}</Kbd>
       <span>{{ t('flow.hintOr') }}</span>
-      <KeyCap>{{ t('flow.hintHome') }}</KeyCap>
+      <Kbd>{{ t('flow.hintHome') }}</Kbd>
       <span>{{ t('flow.hintText') }}</span>
     </div>
   </Transition>

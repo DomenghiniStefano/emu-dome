@@ -5,6 +5,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Card, CardPad } from '@/components/ui/card'
+import { cn } from '@/lib/cn'
+import SaveThumb from '../saves/SaveThumb.vue'
 import type { LibraryGame } from '../../emu'
 import type { ResumePoint } from '../../gameDetails'
 import { lastPlayedLabel, playTimeLabel } from '../../i18n/labels'
@@ -19,22 +22,17 @@ const from = computed(() => resumeSource(props.point))
 </script>
 
 <template>
-  <div class="flex min-w-0 gap-12 rounded-10 border border-line bg-surface p-10">
+  <Card :pad="CardPad.Tight" class="min-w-0 flex-row gap-12">
     <!-- 96px is the picture's own width; a game that is not reachable fades it to 45%
          (Cowork: `disabled` is 40%). -->
-    <span
-      class="aspect-3/2 w-continue-thumb flex-none overflow-hidden rounded-6"
-      :class="{ 'opacity-missing': !game.available }"
-      aria-hidden="true"
+    <SaveThumb
+      :src="point?.thumbUrl"
+      crop
+      :class="
+        cn('aspect-3/2 w-continue-thumb flex-none rounded-6', !game.available && 'opacity-missing')
+      "
       :style="{ background: game.colour }"
-    >
-      <img
-        v-if="point?.thumbUrl"
-        class="pixelated block size-full object-cover"
-        :src="point.thumbUrl"
-        alt=""
-      />
-    </span>
+    />
     <div class="flex min-w-0 flex-1 flex-col gap-4">
       <div class="truncate font-semibold">{{ game.title }}</div>
       <div class="text-caption text-ink-muted tabular-nums">
@@ -64,5 +62,5 @@ const from = computed(() => resumeSource(props.point))
         {{ t(from.key, from.params ?? {}) }}
       </div>
     </div>
-  </div>
+  </Card>
 </template>

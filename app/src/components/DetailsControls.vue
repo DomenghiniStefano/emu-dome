@@ -17,7 +17,7 @@ import { errorText } from '../i18n/labels'
 import DetailsAction from './details/DetailsAction.vue'
 import DetailsCard from './details/DetailsCard.vue'
 import { hasOwnRemap, hasTouchScreen, pointerLabel, type PadRows } from './details/gameControls'
-import SectionLabel from './details/SectionLabel.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{
@@ -55,7 +55,9 @@ useSettingsChanged(settingsUnder('pad.'), () => void load())
   <!-- A card of this tab: the odd one out at the end takes the whole row, no empty cell beside it. -->
   <div class="grid grid-cols-2 gap-16 touch:grid-cols-1">
     <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
-      <SectionLabel>{{ t('details.controls.padTitle') }}</SectionLabel>
+      <Heading as="h2" :variant="HeadingVariant.Overline">{{
+        t('details.controls.padTitle')
+      }}</Heading>
       <div class="font-medium">
         {{
           ownRemap
@@ -69,18 +71,24 @@ useSettingsChanged(settingsUnder('pad.'), () => void load())
       </DetailsAction>
     </DetailsCard>
     <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
-      <SectionLabel>{{ t('details.controls.turboTitle') }}</SectionLabel>
+      <Heading as="h2" :variant="HeadingVariant.Overline">{{
+        t('details.controls.turboTitle')
+      }}</Heading>
       <div class="text-ink-muted">{{ t('details.notYet') }}</div>
     </DetailsCard>
     <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
-      <SectionLabel>{{ t('details.controls.touchTitle') }}</SectionLabel>
+      <Heading as="h2" :variant="HeadingVariant.Overline">{{
+        t('details.controls.touchTitle')
+      }}</Heading>
       <div class="text-ink-muted">{{ t('details.controls.touchLead') }}</div>
     </DetailsCard>
     <DetailsCard
       v-if="hasTouchScreen(game.console)"
       class="gap-10 last:odd:col-span-full touch:gap-6"
     >
-      <SectionLabel>{{ t('details.controls.pointerTitle') }}</SectionLabel>
+      <Heading as="h2" :variant="HeadingVariant.Overline">{{
+        t('details.controls.pointerTitle')
+      }}</Heading>
       <div class="font-medium">{{ pointer }}</div>
       <div class="text-ink-muted">{{ t('details.controls.pointerLead') }}</div>
     </DetailsCard>

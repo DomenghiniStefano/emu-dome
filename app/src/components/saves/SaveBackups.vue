@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { SaveBackup } from '../../emu'
 import { saveWhenLabel } from '../../i18n/labels'
 import { Button } from '@/components/ui/button'
+import { Card, CardVariant } from '@/components/ui/card'
 
 defineProps<{ backups: SaveBackup[] }>()
 const emit = defineEmits<{ restore: [name: string] }>()
@@ -12,7 +13,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="overflow-hidden rounded-10 border border-line bg-surface">
+  <Card :variant="CardVariant.List">
     <div
       v-for="b in backups"
       :key="b.name"
@@ -22,5 +23,5 @@ const { t } = useI18n()
       <span class="text-caption text-ink-muted">{{ t(`saves.reason.${b.reason}`) }}</span>
       <Button @click="emit('restore', b.name)">{{ t('saves.restore') }}</Button>
     </div>
-  </div>
+  </Card>
 </template>

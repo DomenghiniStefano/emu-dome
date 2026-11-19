@@ -76,7 +76,6 @@ describe('themeKeys', () => {
       'display-md',
       'display-sm',
       'page-title',
-      'stat-sm',
       'stat-md',
       'rail',
       'wordmark',

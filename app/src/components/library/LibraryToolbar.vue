@@ -8,6 +8,7 @@ import type { ShowKey, Sort } from '../../librarySort'
 import ConsoleChips from './ConsoleChips.vue'
 import type { ConsoleChip } from './libraryView'
 import SortFilterButton from './SortFilterButton.vue'
+import { Heading } from '@/components/ui/heading'
 
 defineProps<{
   chips: ConsoleChip[]
@@ -24,7 +25,7 @@ const { t } = useI18n()
 
 <template>
   <div class="flex flex-wrap items-center gap-12">
-    <h2 class="m-0 mr-8 text-title">{{ t('library.yourGames') }}</h2>
+    <Heading class="mr-8">{{ t('library.yourGames') }}</Heading>
     <ConsoleChips v-model="consoleFilter" :chips="chips" :initial="initialChip" />
     <div class="flex-1"></div>
     <SortFilterButton

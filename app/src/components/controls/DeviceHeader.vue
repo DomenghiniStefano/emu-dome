@@ -3,7 +3,7 @@
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import SectionTitle from './SectionTitle.vue'
+import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 defineProps<{ name: string; detail: string }>()
 const emit = defineEmits<{ back: [] }>()
@@ -22,7 +22,7 @@ const { t } = useI18n()
       <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
       {{ t('shell.controls') }}
     </Button>
-    <SectionTitle as="h2">{{ name }}</SectionTitle>
+    <Heading as="h2" :variant="HeadingVariant.Title">{{ name }}</Heading>
     <div class="text-ink-muted">{{ detail }}</div>
   </div>
 </template>

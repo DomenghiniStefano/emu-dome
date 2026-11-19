@@ -2,6 +2,9 @@
 // The full-window scene while a game starts (G01) or closes (G14): its title over the cover's
 // colour, a line below, and a bar that keeps moving while the work has no known length.
 // Layer `scene` (35), between the overlays and the dialogs.
+import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Progress } from '@/components/ui/progress'
+
 defineProps<{
   title: string
   /** The cover's colour; none: the surface's. */
@@ -15,10 +18,10 @@ defineProps<{
     :style="{ '--cover-tint': colour ?? 'var(--surface)' }"
     role="status"
   >
-    <div class="px-16 text-center text-display">{{ title }}</div>
+    <Heading as="div" :variant="HeadingVariant.Display" class="px-16 text-center">{{
+      title
+    }}</Heading>
     <slot />
-    <div class="h-4 w-progress overflow-hidden rounded-full bg-surface-raised" aria-hidden="true">
-      <span class="block h-full w-2/5 animate-progress-slide rounded-full bg-accent-text"></span>
-    </div>
+    <Progress class="w-progress" :label="title" />
   </div>
 </template>
