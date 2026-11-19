@@ -4,7 +4,7 @@
 // that resolves after it unmounted (useListeners.ts); a module that lives as long as the app uses
 // `onSettingsChanged`.
 import { onMounted } from 'vue'
-import { emu, type SettingsChanged } from '../emu'
+import { emu, type SettingsChanged } from '@/emu'
 import { useListeners, type Unlisten } from './useListeners'
 
 /** Which changes a follower cares about: one key, a list of keys, or a test on the change. */

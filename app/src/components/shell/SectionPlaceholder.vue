@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // A section that has no screen yet (Cloud): its name and one line saying it is coming.
 import { useI18n } from 'vue-i18n'
-import type { Section } from '../../sections'
+import type { Section } from './sections'
 import { Heading } from '@/components/ui/heading'
 
 defineProps<{ section: Section }>()

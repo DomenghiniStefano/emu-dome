@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import type { SettingValue, Speed } from '@/emu'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
-import { msg } from '@/settingsModel'
+import { msg } from '@/lib/settingsModel'
 import { SpeedChoiceId, chosenSpeed, type SpeedChoice } from './speedChoices'
 import { LabelledBlock } from '@/components/ui/labelled-block'
 

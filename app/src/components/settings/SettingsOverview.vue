@@ -5,16 +5,10 @@
 // first), each opening its page at the level it was made.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type {
-  SettingEntry,
-  SettingLevel,
-  SettingRecent,
-  SettingsSchema,
-  SettingValue,
-} from '../../emu'
-import { changedWhenLabel } from '../../i18n/labels'
-import { isShown, msg } from '../../settingsModel'
-import SettingRowView from '../SettingRow.vue'
+import type { SettingEntry, SettingLevel, SettingRecent, SettingsSchema, SettingValue } from '@/emu'
+import { changedWhenLabel } from '@/i18n/labels'
+import { isShown, msg } from '@/lib/settingsModel'
+import SettingRowView from './SettingRow.vue'
 import SettingsSection from './SettingsSection.vue'
 import type { PageValues } from './settingsPage'
 import { Heading } from '@/components/ui/heading'

@@ -3,7 +3,7 @@
 // changed at this level, «Solo su questo computer» for a per-device value. A locked row fades
 // this text and greys the name (the control beside it keeps its colour).
 import { useI18n } from 'vue-i18n'
-import type { SettingDevice } from '../../emu'
+import type { SettingDevice } from '@/emu'
 import { Badge } from '@/components/ui/badge'
 
 defineProps<{

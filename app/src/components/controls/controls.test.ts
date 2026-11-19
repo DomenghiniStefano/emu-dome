@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
-import type { ComboRow, LibraryGame, PadInfo, PadState, RemapRow } from '../../emu'
-import { i18n } from '../../i18n'
+import type { ComboRow, LibraryGame, PadInfo, PadState, RemapRow } from '@/emu'
+import { i18n } from '@/i18n'
 import {
   captureDeviceOf,
   connectionText,

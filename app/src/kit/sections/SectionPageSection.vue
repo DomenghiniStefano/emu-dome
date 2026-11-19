@@ -2,8 +2,8 @@
 import { Card } from '@/components/ui/card'
 import { Heading } from '@/components/ui/heading'
 import { SectionPage, SectionWidth } from '@/components/ui/section-page'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 </script>
 
 <template>

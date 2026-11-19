@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Switch } from '@/components/ui/switch'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 
 const on = ref(true)
 const off = ref(false)

@@ -2,11 +2,11 @@
 // when the user picks one in L03, reset with the panel's «Ripristina», and read again when the
 // setting changes elsewhere (Settings). A failure is reported and the order read back.
 import { onMounted, ref } from 'vue'
-import { useSettingsChanged } from '../../composables/useSettingsChanged'
-import { emu } from '../../emu'
-import type { ErrorSink } from '../../i18n/labels'
-import { DEFAULT_SORT, isSort, type Sort } from '../../librarySort'
-import { GLOBAL, readSetting } from '../../settingsModel'
+import { useSettingsChanged } from '@/composables/useSettingsChanged'
+import { emu } from '@/emu'
+import type { ErrorSink } from '@/i18n/labels'
+import { DEFAULT_SORT, isSort, type Sort } from './librarySort'
+import { GLOBAL, readSetting } from '@/lib/settingsModel'
 
 const KEY = 'library.sort'
 

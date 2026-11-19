@@ -4,8 +4,8 @@ import { Camera, ChevronRight, Rows2, VolumeX } from '@lucide/vue'
 import { Card, CardDescription, CardPad, CardTitle, CardVariant } from '@/components/ui/card'
 import { StatTile } from '@/components/ui/stat-tile'
 import { LinkRow } from '@/components/ui/link-row'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 
 const chosen = ref('normal')
 const picture = ref('generated')

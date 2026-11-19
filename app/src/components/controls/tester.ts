@@ -1,5 +1,5 @@
 // The button tester's pure parts: what was just pressed, and which game buttons a source gives.
-import type { Button, RemapRow } from '../../emu'
+import type { Button, RemapRow } from '@/emu'
 
 /** The sources held `now` that were not held before, in `now`'s order. */
 export const newlyHeld = <T extends string>(before: ReadonlySet<T>, now: Iterable<T>): T[] =>

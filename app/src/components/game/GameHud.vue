@@ -3,9 +3,9 @@
 // when it is not 1×, «In pausa» (L3 + A, menu closed), and the FPS (L3 + Y, F10).
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { Speed } from '../../emu'
-import { speedLabel } from '../../i18n/labels'
-import { speedShown } from '../../lib/shell/session'
+import type { Speed } from '@/emu'
+import { speedLabel } from '@/i18n/labels'
+import { speedShown } from './session'
 import HudChip from './HudChip.vue'
 
 const props = defineProps<{

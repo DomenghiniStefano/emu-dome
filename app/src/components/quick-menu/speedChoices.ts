@@ -1,7 +1,7 @@
 // The three speeds of the quick menu (G07): Normale, Avanti veloce (`speed.ffval`) and
 // Rallentatore (`speed.slow`), and the game following G16 when the speed in use changes.
 import type { Speed } from '@/emu'
-import { FF_DEFAULT, NORMAL, SLOW_DEFAULT, sameSpeed, speedFromOption } from '@/speeds'
+import { FF_DEFAULT, NORMAL, SLOW_DEFAULT, sameSpeed, speedFromOption } from '@/lib/speeds'
 
 export const SpeedChoiceId = {
   Normal: 'normal',

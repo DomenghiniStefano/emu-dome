@@ -3,7 +3,7 @@
 // one), when it was saved, the play time when known, the size, and «Tieni questa». The newer
 // side's «Tieni questa» takes the focus first.
 import { useI18n } from 'vue-i18n'
-import { playTimeLabel, saveWhenLabel, sizeLabel } from '../../i18n/labels'
+import { playTimeLabel, saveWhenLabel, sizeLabel } from '@/i18n/labels'
 import { Button } from '@/components/ui/button'
 import { Card, CardPad } from '@/components/ui/card'
 import type { ConflictVersion } from './conflict'

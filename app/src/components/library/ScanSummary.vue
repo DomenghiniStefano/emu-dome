@@ -5,8 +5,8 @@ import { useI18n } from 'vue-i18n'
 import { X } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { StatTile } from '@/components/ui/stat-tile'
-import type { ScanSummary } from '../../library'
-import { consoleCounts } from '../../lib/consoleCounts'
+import type { ScanSummary } from '@/lib/library'
+import { consoleCounts } from '@/lib/consoleCounts'
 import { Heading } from '@/components/ui/heading'
 
 const props = defineProps<{ summary: ScanSummary }>()

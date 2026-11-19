@@ -1,5 +1,5 @@
 // The tabs one step below C01: remap (C02), shortcuts (C03), sticks and triggers (C04).
-import type { PadFamily } from '../../emu'
+import type { PadFamily } from '@/emu'
 
 export const ControlsTab = {
   Remap: 'remap',

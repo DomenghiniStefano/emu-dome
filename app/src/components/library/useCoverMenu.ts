@@ -1,8 +1,8 @@
 // The «…» menu of a cover (CoverMenu): one open at a time, the focus back on its button when it
 // closes, favourite and hide through `library.setFlags`.
 import { nextTick, ref } from 'vue'
-import { emu, type LibraryGame } from '../../emu'
-import type { ErrorSink } from '../../i18n/labels'
+import { emu, type LibraryGame } from '@/emu'
+import type { ErrorSink } from '@/i18n/labels'
 
 export function useCoverMenu(onError: ErrorSink) {
   /** The id of the game whose menu is open. */

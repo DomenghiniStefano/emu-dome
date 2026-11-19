@@ -295,7 +295,7 @@ the G12 overlay will read it the same way.
 
 ### Keyboard table
 
-The keyboard's fixed keys in game are one table too: `KEYBOARD_SHORTCUTS` in `app/src/keyboard.ts`
+The keyboard's fixed keys in game are one table too: `KEYBOARD_SHORTCUTS` in `app/src/lib/keyboard.ts`
 (the keyboard goes through the webview). `App.vue` carries them out; C01 lists them under «Tasti della
 tastiera», C03 on the keyboard's tab; the G12 overlay will read them from there. A key does what the
 controller hotkey with the same id does.

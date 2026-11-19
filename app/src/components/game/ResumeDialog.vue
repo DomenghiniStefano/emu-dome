@@ -2,7 +2,7 @@
 // `saves.resume` = ask: resume from the auto quick save, or start over.
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import FlowDialog from '../FlowDialog.vue'
+import FlowDialog from './FlowDialog.vue'
 
 const emit = defineEmits<{ answer: [resume: boolean] }>()
 const { t } = useI18n()

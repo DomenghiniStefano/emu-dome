@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // «Continua a giocare»: the games played last, whatever the filters.
 import { useI18n } from 'vue-i18n'
-import type { LibraryGame } from '../../emu'
-import type { ResumePoint } from '../../gameDetails'
+import type { LibraryGame } from '@/emu'
+import type { ResumePoint } from '@/lib/gameDetails'
 import ContinueCard from './ContinueCard.vue'
 import { Heading } from '@/components/ui/heading'
 

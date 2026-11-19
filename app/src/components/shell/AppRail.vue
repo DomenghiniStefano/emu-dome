@@ -6,7 +6,7 @@ import { ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Cloud, Gamepad2, Library, Save, Settings2 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { SECTIONS, type Section } from '../../sections'
+import { SECTIONS, type Section } from './sections'
 
 const props = defineProps<{
   current: Section

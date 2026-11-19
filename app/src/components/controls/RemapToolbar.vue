@@ -3,7 +3,7 @@
 // «Disposizione A/B» (`pad.ab`, controllers only).
 import { useI18n } from 'vue-i18n'
 import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
-import type { ConsoleId } from '../../emu'
+import type { ConsoleId } from '@/emu'
 import { levelName, type RemapLevel } from './levels'
 
 defineProps<{

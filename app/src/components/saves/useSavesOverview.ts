@@ -2,9 +2,9 @@
 // line the list shows for one («3 salvataggi rapidi · 1,3 MB»).
 import { computed, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { emu, type LibraryGame, type SavesSummary } from '../../emu'
-import { sizeLabel, type ErrorSink } from '../../i18n/labels'
-import { library } from '../../library'
+import { emu, type LibraryGame, type SavesSummary } from '@/emu'
+import { sizeLabel, type ErrorSink } from '@/i18n/labels'
+import { library } from '@/lib/library'
 import { gamesWithSaves } from './savesModel'
 
 export function useSavesOverview(slotCount: Ref<number>, fail: ErrorSink) {

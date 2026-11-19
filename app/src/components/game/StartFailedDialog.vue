@@ -3,7 +3,7 @@
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTone } from '@/components/ui/dialog'
-import FlowDialog from '../FlowDialog.vue'
+import FlowDialog from './FlowDialog.vue'
 
 defineProps<{ title: string; reason: string }>()
 const emit = defineEmits<{ close: [] }>()

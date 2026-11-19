@@ -4,8 +4,8 @@
 import { useI18n } from 'vue-i18n'
 import { Folder } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { emu } from '../../emu'
-import { errorText } from '../../i18n/labels'
+import { emu } from '@/emu'
+import { errorText } from '@/i18n/labels'
 
 defineProps<{ folders: string[]; addText: string; disabled: boolean }>()
 const emit = defineEmits<{ error: [string] }>()

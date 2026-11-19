@@ -1,9 +1,9 @@
 // The Saves section's settings at «Tutti i giochi»: how many quick save slots there are
 // (`saves.slots`) and how often the auto quick save runs (`saves.autoq`, E03's sentence).
 import { ref } from 'vue'
-import type { ErrorSink } from '../../i18n/labels'
-import { readSetting } from '../../settingsModel'
-import { DEFAULT_SLOT_COUNT, loadSlotCount } from '../details/gameSaves'
+import type { ErrorSink } from '@/i18n/labels'
+import { readSetting } from '@/lib/settingsModel'
+import { DEFAULT_SLOT_COUNT, loadSlotCount } from '@/components/details/gameSaves'
 
 export function useSavesSettings(fail: ErrorSink) {
   const slotCount = ref(DEFAULT_SLOT_COUNT)

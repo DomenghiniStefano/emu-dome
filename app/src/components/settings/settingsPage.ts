@@ -8,9 +8,9 @@ import type {
   SettingRow,
   SettingsSchema,
   SettingValue,
-} from '../../emu'
-import { cycle } from '../../lib/cycle'
-import { fold, isShown, showIfHolds } from '../../settingsModel'
+} from '@/emu'
+import { cycle } from '@/lib/cycle'
+import { fold, isShown, showIfHolds } from '@/lib/settingsModel'
 
 /** The levels the Settings section edits (Session is the quick menu's). */
 export type EditLevel = 'global' | 'console' | 'game'

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Progress } from '@/components/ui/progress'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 </script>
 
 <template>

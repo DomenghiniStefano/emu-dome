@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The capture field (design system «CaptureField»): a button that names what a row is bound to
 // and, once pressed, listens for the next button or key (the screen runs the capture, `useCapture`
-// in src/controls.ts, and says so with `listening`). A native <button>, so nav.ts moves to it and
+// in src/lib/controls.ts, and says so with `listening`). A native <button>, so nav.ts moves to it and
 // clicks it on `confirm` like any button.
 import type { PrimitiveProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'

@@ -1,7 +1,7 @@
 // C02's «Si applica a»: the levels a remap table is edited at, «Tutti i giochi», «Giochi
 // <console>» and «Solo questo gioco», and the settings scope of each.
-import type { ConsoleId, LibraryGame, SettingsScope } from '../../emu'
-import { t } from '../../i18n'
+import type { ConsoleId, LibraryGame, SettingsScope } from '@/emu'
+import { t } from '@/i18n'
 
 export const RemapLevel = {
   Global: 'global',

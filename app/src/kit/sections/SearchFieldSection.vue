@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { SearchField } from '@/components/ui/search-field'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 
 const empty = ref('')
 const filled = ref('Pocket Quest')

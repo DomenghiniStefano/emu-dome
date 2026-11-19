@@ -1,9 +1,9 @@
 // The saves of one game, with as many quick save slots as the `saves.slots` setting asks for:
 // the one place that reads the setting (the game details, «Continua a giocare», Saves, the quick
 // menu). Reads throw; each caller reports or falls back its own way.
-import { emu, type GameSaves, type LibraryGame } from '../../emu'
-import { resumePoint, type ResumePoint } from '../../gameDetails'
-import { readSetting } from '../../settingsModel'
+import { emu, type GameSaves, type LibraryGame } from '@/emu'
+import { resumePoint, type ResumePoint } from '@/lib/gameDetails'
+import { readSetting } from '@/lib/settingsModel'
 
 /** The slots when the setting is missing or is not a number. */
 export const DEFAULT_SLOT_COUNT = 10

@@ -1,9 +1,9 @@
 // The devices of the Controls section (C01–C04, E05): which one is in use, its name and the
 // line under it, and what a capture listens to on it. Pure functions over the bridge's data.
-import type { PadFamily, PadInfo, Pos } from '../../emu'
-import type { CaptureDevice } from '../../controls'
-import { t } from '../../i18n'
-import { gamepadName } from '../../i18n/labels'
+import type { PadFamily, PadInfo, Pos } from '@/emu'
+import type { CaptureDevice } from '@/lib/controls'
+import { t } from '@/i18n'
+import { gamepadName } from '@/i18n/labels'
 
 /** A device as the section chooses it: a controller's id, or the keyboard. */
 export type DeviceId = number | 'keyboard'

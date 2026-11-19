@@ -9,9 +9,9 @@ import {
   type SettingLevel,
   type SettingRow,
   type SettingsSchema,
-} from '../../emu'
-import { LOCALE } from '../../i18n'
-import { FILE_PICKERS, msg, optionNotYet } from '../../settingsModel'
+} from '@/emu'
+import { LOCALE } from '@/i18n'
+import { FILE_PICKERS, msg, optionNotYet } from '@/lib/settingsModel'
 import { chosenFileName, rowState, rowValue, type RowState } from './settingRowModel'
 
 /** One option of a choice, as the controls show it. */

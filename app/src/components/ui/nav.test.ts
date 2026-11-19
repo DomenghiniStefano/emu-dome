@@ -11,9 +11,9 @@ import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
 import { dispatchNav, keyToNav, ownsArrow, ownsEnter, useNavScope } from '@/nav'
-import { Button } from './button'
-import { Card, CardVariant } from './card'
-import { Chip } from './chip'
+import { Button } from '@/components/ui/button'
+import { Card, CardVariant } from '@/components/ui/card'
+import { Chip } from '@/components/ui/chip'
 import {
   Dialog,
   DialogClose,
@@ -21,12 +21,18 @@ import {
   DialogDescription,
   DialogTitle,
   DialogTrigger,
-} from './dialog'
-import { Segmented, SegmentedItem } from './segmented'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
-import { Slider } from './slider'
-import { Switch } from './switch'
-import { Tabs, TabsList, TabsTrigger } from './tabs'
+} from '@/components/ui/dialog'
+import { Segmented, SegmentedItem } from '@/components/ui/segmented'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 // --- layout stub: a rect per element, 10x10 at the origin unless placed
 

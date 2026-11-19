@@ -2,8 +2,8 @@
 import { Save } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
-import KitSection from '../KitSection.vue'
-import KitState from '../KitState.vue'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
 </script>
 
 <template>

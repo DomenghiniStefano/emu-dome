@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { LibraryGame } from '../../emu'
+import type { LibraryGame } from '@/emu'
 import { coverDescription, deviceLine, gameFacts } from './gameFiles'
 
 const t = (key: string) => key

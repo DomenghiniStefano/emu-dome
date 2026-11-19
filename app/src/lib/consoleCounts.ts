@@ -1,7 +1,7 @@
 // Games counted per console, the way the interface shows them: one tile for each of GBA, NDS and
 // 3DS, and one for Game Boy and Game Boy Color together. The first run's S02 counts the library,
 // the library's L11 counts what a scan added: both through `consoleCounts`.
-import type { ConsoleId, LibraryGame } from '../emu'
+import type { ConsoleId, LibraryGame } from '@/emu'
 
 /** The tiles, in order; `label` is the message key of the tile's name. */
 const GROUPS: { id: string; consoles: ConsoleId[]; label: string }[] = [

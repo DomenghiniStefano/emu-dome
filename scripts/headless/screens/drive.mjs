@@ -230,7 +230,7 @@ for (const [state, s] of Object.entries(SAVES_STATES)) {
 // instances the app uses), the mock's `__emit` (a backend event) and the toast stack's exposed
 // `push`. `freeze` stops CSS animations at their first frame, so a moving bar shoots the same.
 const flowSet = (state) =>
-  `import('/src/gameFlow.ts').then(m => Object.assign(m.flow, ${state}))`;
+  `import('/src/components/game/gameFlow.ts').then(m => Object.assign(m.flow, ${state}))`;
 const firstRunNext = `document.querySelector('footer [data-nav-initial]').click()`;
 const toast = (text, kind, opts) =>
   `document.querySelector('[aria-live=polite]').__vueParentComponent.exposed.push(${JSON.stringify(text)}, '${kind}', { ms: 600000, ...${opts ?? "{}"} })`;

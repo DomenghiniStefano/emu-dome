@@ -1,7 +1,7 @@
 // Backend data → text: error codes, speeds, controller names. The backend sends codes
 // and values only; every sentence comes from the message files.
 import { i18n, t } from './index'
-import type { ErrorCode, GamepadEvent, Speed } from '../emu'
+import type { ErrorCode, GamepadEvent, Speed } from '@/emu'
 
 const known = (key: string) => i18n.global.te(key)
 

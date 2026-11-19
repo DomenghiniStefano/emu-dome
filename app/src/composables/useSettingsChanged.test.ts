@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import type { SettingsChanged } from '../emu'
+import type { SettingsChanged } from '@/emu'
 import { listenerSet } from './useListeners'
 import {
   EVERY_SETTING,
@@ -29,7 +29,7 @@ const bridge = vi.hoisted(() => {
     emit: (e: SettingsChanged) => subscriptions.forEach(s => s.cb(e)),
   }
 })
-vi.mock('../emu', () => ({ emu: { settings: { onChanged: bridge.onChanged } } }))
+vi.mock('@/emu', () => ({ emu: { settings: { onChanged: bridge.onChanged } } }))
 
 const change = (key: string, level: SettingsChanged['level'] = 'global'): SettingsChanged => ({
   key,
