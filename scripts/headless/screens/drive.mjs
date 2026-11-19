@@ -103,6 +103,7 @@ const DETAILS_STATES = {
   controls: tabState("Dual Screen Tales", 2, filled),
   "controls-gba": tabState("Pocket Quest Advance", 2),
   cheats: tabState("Star Pilot", 3),
+  patches: tabState("Star Pilot", 4),
   files: tabState("Pocket Quest Advance", 5),
   menu: {
     mock: {},
@@ -149,7 +150,15 @@ for (const [state, s] of Object.entries({
   "saves-tab": tabState("Pocket Quest Advance", null, filled),
   settings: tabState("Pocket Quest Advance", 1, filled),
   controls: tabState("Dual Screen Tales", 2, filled),
+  cheats: tabState("Star Pilot", 3),
   files: tabState("Pocket Quest Advance", 5),
+  menu: {
+    mock: {},
+    steps: [
+      openDetails("Pocket Quest Advance"),
+      `document.querySelector('[aria-haspopup=menu]').click()`,
+    ],
+  },
 })) {
   for (const [themeName, theme] of Object.entries(THEMES)) {
     SCENARIOS[`details-phone-${state}-${themeName}`] = {
