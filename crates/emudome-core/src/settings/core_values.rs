@@ -36,6 +36,7 @@
 //! changed are pushed to the core, the restart ones are reported by their setting keys (the shell
 //! sends them as `emu://core-restart`).
 
+mod melondsds;
 mod mgba;
 
 use super::{ConsoleId, Value};
@@ -86,7 +87,7 @@ pub struct CoreTable {
 }
 
 /// Every core's table.
-pub static TABLES: &[&CoreTable] = &[&mgba::TABLE];
+pub static TABLES: &[&CoreTable] = &[&mgba::TABLE, &melondsds::TABLE];
 
 /// One core option a setting asks for.
 #[derive(Clone, Debug, PartialEq, Eq)]

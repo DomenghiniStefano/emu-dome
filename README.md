@@ -95,6 +95,7 @@ app/
   src-tauri/         Tauri shell: window, wgpu video, cpal audio, SDL3 controllers, commands
 scripts/             core downloads, scripts/check (every check), git hooks
 tools/test-rom/      GBA test ROM (homebrew, made here)
+tools/test-rom-nds/  NDS test ROM (homebrew, made here: both screens, A, touch)
 ```
 
 Windowless test of the core host alone (handy on Linux/CI):

@@ -11,6 +11,7 @@ import { useFirstRun } from '@/components/first-run/useFirstRun'
 import { useGameKeys } from '@/components/game/useGameKeys'
 import { useGameLaunch } from '@/components/game/useGameLaunch'
 import { useGameSession } from '@/components/game/useGameSession'
+import { useScreenTouch } from '@/components/game/useScreenTouch'
 import { useShellEvents } from '@/components/shell/useShellEvents'
 import { useToasts } from '@/composables/useToasts'
 import { useVideoMode } from '@/components/game/useVideoMode'
@@ -39,6 +40,12 @@ const events = useShellEvents(session, toast, drop.listen)
 const section = ref<Section>('library')
 // Touch screen (Android): on-screen buttons while playing.
 const touch = coarsePointer()
+// DS games: the mouse or a finger on the bottom screen is the stylus (no menu open).
+useScreenTouch(
+  () => game.value?.consoleId === 'nds' && !menuOpen.value,
+  videoMode,
+  () => menuInset.value,
+)
 // The phone's layout (a phone held upright) sets the touch density for the whole interface.
 const layout = useDeviceLayout()
 useDensity(layout.phone)

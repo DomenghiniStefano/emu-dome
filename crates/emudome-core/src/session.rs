@@ -179,6 +179,12 @@ pub struct SessionOptions {
     pub core_options: Vec<(String, String)>,
     /// Rewind (`speed.rew`): the seconds to keep (`speed.rewlen`), `None` = off.
     pub rewind_seconds: Option<u32>,
+    /// How the core lays its screens out in the frame ([`crate::screens::Split`]): whole for
+    /// one-screen consoles, [`crate::nds::SPLIT`] for melonDS DS with its forced options.
+    pub split: crate::screens::Split,
+    /// The user's name for the console, answered to `GET_USERNAME` (`consoles.dsname`; melonDS
+    /// DS writes it in the DS firmware). `None`: unanswered, the core guesses (the OS user).
+    pub username: Option<String>,
     /// The audio at speeds other than 1× (`audio.ff`).
     pub fast_audio: FastAudio,
 }
@@ -314,6 +320,12 @@ fn emu_thread(
         speed_audio: SpeedAudio::new(opts.fast_audio),
         audio_out: Vec::new(),
         options: CoreOptions::new(opts.core_options.iter().cloned()),
+        split: opts.split,
+        username: opts
+            .username
+            .as_deref()
+            .filter(|n| !n.is_empty())
+            .and_then(|n| CString::new(n).ok()),
     });
 
     let started = (|| -> Result<(LoadedCore, GameFiles)> {

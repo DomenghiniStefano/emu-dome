@@ -88,11 +88,16 @@ License 1.1: list it here and ship its `OFL.txt` next to the font files.
 - No other image is shipped. Game covers are generated, read from the user's games or chosen by the
   user on their device, and never included.
 
-### Test ROM
+### Test ROMs
 
 `tools/test-rom/emudome-test.gba` is homebrew written for EmuDome from `tools/test-rom/test.s` and
 `build.py`, under GPL-3.0-or-later (`tools/test-rom/LICENSE`). Its header leaves the logo area
 empty: it contains no Nintendo material.
+
+`tools/test-rom-nds/emudome-test.nds` is homebrew written for EmuDome from `tools/test-rom-nds/test.s`
+and `build.py` (its own small assembler), under GPL-3.0-or-later (`tools/test-rom-nds/LICENSE`). Its
+header leaves the logo area and the logo checksum empty, and it needs no BIOS or firmware file: it
+contains no Nintendo material.
 
 ### Platform components (not shipped by EmuDome)
 

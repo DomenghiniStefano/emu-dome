@@ -195,3 +195,26 @@ Errors and fixes: `crates/hw-render-spike/src/present.rs`, wgpu panicked "Mixing
 encoding API is not permitted" when the raw image barrier and the wgpu render pass shared one encoder; the barrier now
 has its own encoder, submitted first in the same `submit`.
 Proposed next step: the same spike on the A71 (Azahar Android core, Vulkan) and one PC run under the Khronos validation layer.
+
+## 2026-11-19 23:10 · NDS with melonDS DS through the shell's host: two screens, touch (headless, Windows)
+Trello #45, core side. melonDS DS 1.4.0 nightly of 2026-11-19, `tools/test-rom-nds/emudome-test.nds` (our homebrew:
+top screen magenta / green with A, bottom screen blue / the touched point as a colour), `headless` example
+(`--screens`, `--touch`), debug build of the host. Built-in BIOS and firmware only.
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless; the frame is 256 x 384, top screen above the bottom one (forced `top-bottom`, gap 0), cut into two screens by `screens::Split` (PNGs of each screen checked by eye) |
+| 2. FPS at 1× | 60.0 frames/s over 3 s (core target 59.83) | Max 528 frames/s (debug host); test ROM, so the CPU load is not a game's |
+| 3. Audio | not tested | headless, silent ROM |
+| 4. Controller | not tested | A from the input state: top screen green while held, magenta after |
+| 5. Native vs webview | not tested | both paths draw the whole frame with the one fit rule (`screens::fit`), which the default layout matches exactly |
+
+Touch: six window points of a 1920 x 1080 window through `screens::pointer_at` (default layout, bottom screen at
+704,540 2x) reached the ROM as the expected touch-screen pixel (corners 0,0 and 255,191 included); a point on the top
+screen is a release. Save state 18.3 MB, saved and loaded; rewind 10 s = 100 states, 19.2 MB; screenshot ok.
+Homebrew writes no `.sav` (melonDS DS keeps one shared SD image, `saves/melonDS DS/dldi_sd_card.bin`).
+
+Errors and fixes: melonDS DS refused the first test ROM ("Expected logo CRC16 of 0xCF56"): it checks the logo checksum of
+non-homebrew ROMs only, so the test ROM is homebrew (ARM9 at 0x1000) and carries no logo and no logo checksum; it also
+wants at least 0x1000 bytes of header ("ROM is only 1536 bytes").
+Proposed next step: open a DS homebrew game in the app (native and webview) and check the stylus with the mouse (UAT).

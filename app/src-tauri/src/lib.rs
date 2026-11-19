@@ -29,6 +29,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
 use emudome_core::input::{Button, Source};
+use emudome_core::screens::{Area, Layout, Split};
 use emudome_core::settings::{ConsoleId, GameId};
 use emudome_core::tuning::{Tuning, VideoPath};
 use emudome_core::{Command, ErrorCode, Event, Session, SessionOptions, Shared, Speed};
@@ -187,10 +188,7 @@ fn core_for(path: &Path) -> Result<(&'static str, ConsoleId), ErrorCode> {
         "gba" => Ok(("mgba", ConsoleId::Gba)),
         "gb" => Ok(("mgba", ConsoleId::Gb)),
         "gbc" => Ok(("mgba", ConsoleId::Gbc)),
-        "nds" => Err(ErrorCode::ConsoleNotYet {
-            console: "nds".into(),
-            phase: 2,
-        }),
+        "nds" => Ok((emudome_core::nds::CORE, ConsoleId::Nds)),
         "3ds" | "cci" | "cxi" | "cia" => Err(ErrorCode::ConsoleNotYet {
             console: "3ds".into(),
             phase: 3,
@@ -263,9 +261,13 @@ fn open_library_game(
 /// Core options the shell always sets, per core (`GET_VARIABLE` key and value).
 /// Azahar: the software renderer, the only one that does not ask for `SET_HW_RENDER`, which the
 /// host does not implement yet (Trello #16); its default `auto` fails to load.
+/// melonDS DS: the screens where the shell cuts them, touch from the shell's pointer, built-in
+/// BIOS and firmware (`emudome_core::nds`).
 /// The settings' core options are `emudome_core::settings::core_values` (one table per core).
-const FORCED_CORE_OPTIONS: &[(&str, &[(&str, &str)])] =
-    &[("azahar", &[("citra_graphics_api", "Software")])];
+const FORCED_CORE_OPTIONS: &[(&str, &[(&str, &str)])] = &[
+    ("azahar", &[("citra_graphics_api", "Software")]),
+    (emudome_core::nds::CORE, emudome_core::nds::FORCED_OPTIONS),
+];
 
 fn forced_core_options(core_name: &str) -> Vec<(String, String)> {
     FORCED_CORE_OPTIONS
@@ -282,6 +284,15 @@ fn core_options(core_name: &str, flow: &settings::GameFlow) -> Vec<(String, Stri
     let mut options = emudome_core::settings::core_values::pairs(&flow.core_options);
     options.extend(forced_core_options(core_name));
     options
+}
+
+/// How the console's core lays its screens out in the frame (with the forced options above).
+fn screen_split(console: ConsoleId) -> Split {
+    match console {
+        ConsoleId::Nds => emudome_core::nds::SPLIT,
+        // TODO(Phase 3): Azahar's two screens.
+        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::N3ds => Split::Whole,
+    }
 }
 
 /// Closes the open game, then opens `game_path` with `game` as its settings identity.
@@ -323,6 +334,8 @@ fn open_path(
             app_version: app.package_info().version.to_string(),
             core_options: core_options(core_name, &flow),
             rewind_seconds: flow.rewind_seconds,
+            split: screen_split(console_id),
+            username: flow.username.clone(),
             fast_audio: flow.fast_audio,
         },
         tx,
@@ -621,6 +634,42 @@ fn input(state: tauri::State<'_, AppState>, button: Button, pressed: bool) {
     }
 }
 
+/// Where a pointer position is measured (`pointer`): the window in the renderer's unit (physical
+/// pixels for the native video, CSS pixels for the webview canvas) and the bottom share (0..0.9)
+/// kept clear for the quick menu. Mirror: `PointerArea` in app/src/emu.ts.
+#[derive(serde::Deserialize)]
+struct PointerArea {
+    width: f32,
+    height: f32,
+    inset: f32,
+}
+
+/// Touch screen (NDS): the mouse or a finger at (`x`, `y`) in `area`, pressed or not. Rust maps it
+/// through the composed bottom screen (`screens::pointer_at`); off the touch screen it is a
+/// release, as on the console. One-screen consoles ignore it.
+/// TODO(#28): the layout from the `screens.*` settings; today the default (stacked).
+#[tauri::command]
+fn pointer(state: tauri::State<'_, AppState>, x: f32, y: f32, pressed: bool, area: PointerArea) {
+    let Some(shared) = state.current.lock().clone() else {
+        return;
+    };
+    let at = if pressed {
+        let (frame, split) = {
+            let f = shared.frame.lock();
+            ((f.width, f.height), f.split)
+        };
+        let area = Area {
+            width: area.width,
+            height: area.height,
+            inset: area.inset,
+        };
+        emudome_core::screens::pointer_at(&Layout::default(), split, frame, area, x, y)
+    } else {
+        None
+    };
+    shared.input.set_pointer(at);
+}
+
 #[tauri::command]
 fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
     match state.current.lock().as_ref() {
@@ -812,6 +861,7 @@ pub fn run() {
             rewind,
             screenshot,
             input,
+            pointer,
             stats,
             video_mode,
             set_video_mode,

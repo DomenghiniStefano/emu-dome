@@ -1052,14 +1052,20 @@ fn game_rect(size: (u32, u32), game: &GameTexture, inset: f32) -> (f32, f32, f32
 /// The game's rectangle `(x, y, w, h)` on a `surface` of `(width, height)`: integer scale when it
 /// fits, otherwise the largest that keeps the aspect ratio, centred in the part of the surface
 /// above the bottom `inset` share (0..0.9) that the quick menu's bar keeps clear.
+///
+/// The rule is `emudome_core::screens::fit`, the one the touch mapping composes the screens
+/// with: the whole frame drawn here is the default screen layout (NDS: top above bottom).
+/// TODO(#28): draw each `screens::compose` placement once the layout comes from `screens.*`.
 fn viewport(surface: (f32, f32), game: (f32, f32), inset: f32) -> (f32, f32, f32, f32) {
-    let (sw, full_h) = surface;
-    let (w, h) = game;
-    let sh = full_h * (1.0 - inset.clamp(0.0, 0.9));
-    let fit = (sw / w).min(sh / h);
-    let scale = if fit >= 1.0 { fit.floor() } else { fit };
-    let (vw, vh) = (w * scale, h * scale);
-    (((sw - vw) / 2.0).floor(), ((sh - vh) / 2.0).floor(), vw, vh)
+    let r = emudome_core::screens::fit(
+        emudome_core::screens::Area {
+            width: surface.0,
+            height: surface.1,
+            inset,
+        },
+        game,
+    );
+    (r.x, r.y, r.w, r.h)
 }
 
 #[cfg(test)]
@@ -1204,6 +1210,7 @@ mod gpu_tests {
             height: TARGET.1,
             rgba,
             seq: 0,
+            split: emudome_core::screens::Split::Whole,
         };
         let path = std::path::Path::new(&dir).join(format!("{name}.png"));
         std::fs::write(&path, frame.to_png().expect("png")).expect("written");

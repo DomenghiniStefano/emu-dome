@@ -113,6 +113,8 @@ pub struct GameFlow {
     pub fast_audio: FastAudio,
     /// The core options the settings ask for (`settings::core_values`).
     pub core_options: Vec<emudome_core::settings::core_values::MappedOption>,
+    /// The user's name on the console (`consoles.dsname` for a DS game), `None`: the OS user.
+    pub username: Option<String>,
 }
 
 const REWIND_KEYS: [&str; 2] = ["speed.rew", "speed.rewlen"];
@@ -183,6 +185,10 @@ pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameId)
         autosave_on_exit: !matches!(read("saves.autoexit"), Some(Value::Bool(false))),
         resume: text("saves.resume").unwrap_or_else(|| "always".into()),
         rewind_seconds: rewind_seconds(app, &scope),
+        username: match console {
+            ConsoleId::Nds => emudome_core::nds::username(read),
+            ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::N3ds => None,
+        },
         fast_audio: fast_audio(app, &scope),
         core_options: emudome_core::settings::core_values::mapped(core, console, read),
     }

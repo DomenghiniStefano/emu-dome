@@ -2,6 +2,8 @@
 
 use libretro_sys::{RETRO_PIXEL_FORMAT_RGB565, RETRO_PIXEL_FORMAT_XRGB8888};
 
+use crate::screens::{SourceScreen, Split};
+
 #[derive(Default, Clone)]
 pub struct Frame {
     pub width: u32,
@@ -10,9 +12,16 @@ pub struct Frame {
     pub rgba: Vec<u8>,
     /// Grows with every new frame: the renderer uploads the texture only when it changes.
     pub seq: u64,
+    /// How the core laid its screens out in this frame (NDS: two, one above the other).
+    pub split: Split,
 }
 
 impl Frame {
+    /// The screens inside this frame, each with its rectangle.
+    pub fn screens(&self) -> Vec<SourceScreen> {
+        self.split.screens(self.width, self.height)
+    }
+
     /// The frame as a PNG file (slot thumbnails, screenshots). Errors on an empty frame.
     pub fn to_png(&self) -> Result<Vec<u8>, png::EncodingError> {
         let mut out = Vec::new();

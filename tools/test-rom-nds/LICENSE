@@ -1,0 +1,18 @@
+The EmuDome NDS test ROM (emudome-test.nds) and its sources in this folder (test.s, build.py) were
+written for EmuDome and are part of it.
+
+Copyright (C) 2026 the EmuDome authors
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
+
+The full licence text is in the LICENSE file at the root of the repository, or at
+https://www.gnu.org/licenses/gpl-3.0.txt.
+
+The ROM contains no Nintendo material: the header's logo area and logo checksum are left empty
+(zeros), and it needs no BIOS or firmware file (melonDS's built-in replacements run it).

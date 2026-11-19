@@ -70,12 +70,12 @@ forbid() {
 }
 
 # Files that must never be in the repository: ROMs and Nintendo BIOS / firmware / keys, by
-# name. The homebrew test ROM is the one allowed exception. Cannot see a file renamed to
+# name. The homebrew test ROMs (GBA, NDS) are the allowed exceptions. Cannot see a file renamed to
 # another extension, or one kept in a git-ignored folder (cores/, *.sav: never committed).
 nintendo_files() {
 	git ls-files --cached --others --exclude-standard |
 		grep -iE '\.(gb|gbc|gba|nds|dsi|srl|3ds|3dsx|cia|cci|cxi|cxa|z3ds)$|(^|/)(gba_bios|bios7|bios9|dsi_bios7|dsi_bios9|firmware|dsi_firmware|dsi_nand|boot9|boot11|aes_keys|seeddb|movable|secinfo|otp)\.(bin|txt|sed|dat)$' |
-		grep -vxF 'tools/test-rom/emudome-test.gba'
+		grep -vxF -e 'tools/test-rom/emudome-test.gba' -e 'tools/test-rom-nds/emudome-test.nds'
 }
 
 # --- Rust

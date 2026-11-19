@@ -11,7 +11,14 @@ pub const RETRO_API_VERSION: c_uint = 1;
 // Devices
 pub const RETRO_DEVICE_NONE: c_uint = 0;
 pub const RETRO_DEVICE_JOYPAD: c_uint = 1;
+pub const RETRO_DEVICE_ANALOG: c_uint = 5;
 pub const RETRO_DEVICE_POINTER: c_uint = 6;
+
+// Pointer (touch screen): X and Y from -0x7FFF to 0x7FFF over the core's whole frame.
+pub const RETRO_DEVICE_ID_POINTER_X: c_uint = 0;
+pub const RETRO_DEVICE_ID_POINTER_Y: c_uint = 1;
+pub const RETRO_DEVICE_ID_POINTER_PRESSED: c_uint = 2;
+pub const RETRO_DEVICE_ID_POINTER_COUNT: c_uint = 3;
 
 // RetroPad buttons
 pub const RETRO_DEVICE_ID_JOYPAD_B: c_uint = 0;
@@ -54,11 +61,13 @@ pub const RETRO_ENVIRONMENT_GET_VARIABLE: c_uint = 15;
 pub const RETRO_ENVIRONMENT_SET_VARIABLES: c_uint = 16;
 pub const RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE: c_uint = 17;
 pub const RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME: c_uint = 18;
+pub const RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES: c_uint = 24;
 pub const RETRO_ENVIRONMENT_GET_LOG_INTERFACE: c_uint = 27;
 pub const RETRO_ENVIRONMENT_GET_CORE_ASSETS_DIRECTORY: c_uint = 30;
 pub const RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY: c_uint = 31;
 pub const RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO: c_uint = 32;
 pub const RETRO_ENVIRONMENT_SET_GEOMETRY: c_uint = 37;
+pub const RETRO_ENVIRONMENT_GET_USERNAME: c_uint = 38;
 pub const RETRO_ENVIRONMENT_GET_LANGUAGE: c_uint = 39;
 pub const RETRO_ENVIRONMENT_GET_INPUT_BITMASKS: c_uint = 51 | RETRO_ENVIRONMENT_EXPERIMENTAL;
 pub const RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION: c_uint = 52;
