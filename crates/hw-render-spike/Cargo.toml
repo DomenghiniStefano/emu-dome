@@ -1,6 +1,6 @@
 [package]
 name = "hw-render-spike"
-description = "Feasibility spike (Trello #16): a libretro core rendering through SET_HW_RENDER (Vulkan) on wgpu's device, windowless."
+description = "Feasibility spike (Trello #16): a libretro core rendering through SET_HW_RENDER (Vulkan, or desktop OpenGL) presented by wgpu, with no visible window."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -15,10 +15,12 @@ anyhow = "1"
 # Same versions as wgpu 30 resolves (one wgpu, one ash in the tree).
 ash = "0.38"
 env_logger = "0.11"
+# wgpu-hal's GL backend uses glow 0.17: same version, one glow in the tree.
+glow = "0.17"
 libloading = "0.9"
 log = "0.4"
 parking_lot = "0.12"
 png = "0.18"
 pollster = "0.4"
 wgpu = "30"
-wgpu-hal = { version = "30", features = ["vulkan"] }
+wgpu-hal = { version = "30", features = ["vulkan", "gles"] }

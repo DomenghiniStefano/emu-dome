@@ -1934,6 +1934,7 @@ dependencies = [
  "anyhow",
  "ash",
  "env_logger",
+ "glow",
  "libloading 0.9.1",
  "libretro-sys",
  "log",
