@@ -3,6 +3,7 @@
 // `loaded` turns true, the first `data-nav-initial` control of `root` takes it, once, unless the
 // user has already moved it somewhere else.
 import { nextTick, watch, type Ref } from 'vue'
+import { focusInitial } from '../../nav'
 
 export function useFocusWhenLoaded(root: Ref<HTMLElement | null>, loaded: Ref<boolean>) {
   let focused = false
@@ -10,9 +11,6 @@ export function useFocusWhenLoaded(root: Ref<HTMLElement | null>, loaded: Ref<bo
     if (focused || !loaded.value) return
     focused = true
     await nextTick()
-    const active = document.activeElement
-    const onRail = active instanceof HTMLElement && active.getAttribute('aria-current') === 'page'
-    if (active && active !== document.body && !onRail) return
-    root.value?.querySelector<HTMLElement>('[data-nav-initial]:not(:disabled)')?.focus()
+    if (root.value) focusInitial(root.value, { unlessMoved: true })
   })
 }

@@ -2,8 +2,8 @@
 // save), read again whenever the game is played.
 import { ref, watch, type Ref } from 'vue'
 import type { LibraryGame } from '../../emu'
-import { resumePoint, type ResumePoint } from '../../gameDetails'
-import { loadGameSaves } from './gameSaves'
+import type { ResumePoint } from '../../gameDetails'
+import { loadResumePoint } from './gameSaves'
 
 export function useResumePoint(game: Ref<LibraryGame | null>) {
   const resume = ref<ResumePoint | null>(null)
@@ -11,12 +11,7 @@ export function useResumePoint(game: Ref<LibraryGame | null>) {
   async function reload() {
     const g = game.value
     if (!g) return
-    try {
-      resume.value = resumePoint(await loadGameSaves(g))
-    } catch {
-      // Saves unreadable for now: the game starts as «Gioca» would.
-      resume.value = null
-    }
+    resume.value = await loadResumePoint(g)
   }
   watch(
     () => `${game.value?.path}:${game.value?.lastPlayed}`,

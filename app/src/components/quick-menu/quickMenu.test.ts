@@ -3,15 +3,7 @@ import type { SettingEntry, SettingRow } from '@/emu'
 import { backKeyLabel } from './hints'
 import { settingCard, sourceLine, stepper, unavailableOptions, videoPathCard } from './screenCards'
 import { ScreenPickId, pickChanges, screenPicks } from './screenPicks'
-import {
-  isEmptySlot,
-  loadLabel,
-  loadedLine,
-  mainSlotCount,
-  slotCount,
-  slotDate,
-  slotName,
-} from './slots'
+import { isEmptySlot, loadLabel, loadedLine, mainSlotCount, slotName } from './slots'
 import { chosenSpeed, followedSpeed, modeSpeeds, speedChoices } from './speedChoices'
 import { ToolId, quickTools, toolsNotYet } from './tools'
 import { trialNames, trialTitle } from './trial'
@@ -61,11 +53,6 @@ describe('hints', () => {
 })
 
 describe('quick saves', () => {
-  it('asks for the slots of saves.slots, ten when it is not a number', () => {
-    expect(slotCount('5')).toBe(5)
-    expect(slotCount(null)).toBe(10)
-    expect(slotCount('many')).toBe(10)
-  })
   it('shows Automatico and four slots on desktop, two on the phone', () => {
     expect(mainSlotCount(false)).toBe(5)
     expect(mainSlotCount(true)).toBe(3)
@@ -81,14 +68,12 @@ describe('quick saves', () => {
     expect(loadedLine(0)).toEqual({ key: 'toast.autoLoaded' })
     expect(loadedLine(4)).toEqual({ key: 'toast.stateLoaded', params: { slot: 4 } })
   })
-  it('tells an empty slot from a saved one, and dates the saved one', () => {
+  it('tells an empty slot from a saved one', () => {
     const empty = { slot: 1, savedAt: null, thumbUrl: null }
     const saved = { slot: 1, savedAt: Date.UTC(2026, 10, 18, 9, 30), thumbUrl: null }
     expect(isEmptySlot(undefined)).toBe(true)
     expect(isEmptySlot(empty)).toBe(true)
     expect(isEmptySlot(saved)).toBe(false)
-    expect(slotDate(empty, 'en')).toBeNull()
-    expect(slotDate(saved, 'en')).toMatch(/11\/18\/26/)
   })
 })
 

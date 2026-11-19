@@ -2,7 +2,7 @@
 // translations come in as a `Translator`.
 import type { GameOverride, SettingEntry, SettingsSchema, SettingValue } from '../../emu'
 import { isShown, msg } from '../../settingsModel'
-import type { Translator } from './translator'
+import type { Translator } from '../../i18n/message'
 
 /** One setting of the game, named and with its values in words. */
 export interface OverrideRow {

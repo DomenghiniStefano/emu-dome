@@ -1,7 +1,7 @@
 // L10 File e informazioni: what the tab says about a game's cover and file. Pure: the
 // translations come in as `t`.
 import type { LibraryGame, SettingDevice } from '../../emu'
-import type { Translator } from './translator'
+import type { Translator } from '../../i18n/message'
 
 /** One line of «File del gioco»: a label and its value; `mono` for an identity in hex. */
 export interface GameFact {

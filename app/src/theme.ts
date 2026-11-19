@@ -5,6 +5,7 @@
 // preference, which the webview knows (`prefers-color-scheme`). Asked again whenever the system
 // preference or the setting changes. Without an answer (a failed call) the page keeps the dark
 // tokens of :root.
+import { onSettingsChanged } from './composables/useSettingsChanged'
 import { emu, type Theme } from './emu'
 
 const systemDark = window.matchMedia('(prefers-color-scheme: dark)')
@@ -25,7 +26,5 @@ async function refresh() {
 export function startTheme() {
   void refresh()
   systemDark.addEventListener('change', () => void refresh())
-  void emu.settings.onChanged(e => {
-    if (e.key === 'general.theme') void refresh()
-  })
+  void onSettingsChanged('general.theme', () => void refresh())
 }

@@ -12,6 +12,7 @@ import { Card, CardVariant } from '@/components/ui/card'
 import SettingRowView from './SettingRow.vue'
 import LiveStick from './controls/LiveStick.vue'
 import { axisUnit } from './controls/stick'
+import { errorText } from '../i18n/labels'
 import { useGlobalSettings } from './controls/useGlobalSettings'
 
 const props = defineProps<{
@@ -23,7 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
 const onError = (text: string) => emit('error', text)
-const settings = useGlobalSettings(onError)
+const settings = useGlobalSettings(e => onError(errorText(e)))
 
 const GROUPS: { id: string; keys: string[] }[] = [
   { id: 'sticks', keys: ['pad.dead', 'pad.stickdpad', 'pad.trig', 'pad.rumble'] },

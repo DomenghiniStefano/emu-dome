@@ -8,9 +8,10 @@
 // Two per row, an odd last card the whole row; phone in portrait: one per row.
 //
 // Controller / keyboard: the shell's nav scope.
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type LibraryGame } from '../emu'
+import { settingsUnder, useSettingsChanged } from '../composables/useSettingsChanged'
 import { gameScopeOf } from '../gameDetails'
 import { errorText } from '../i18n/labels'
 import DetailsAction from './details/DetailsAction.vue'
@@ -46,14 +47,8 @@ watch(scope, () => void load())
 const ownRemap = computed(() => hasOwnRemap(rows.value))
 const pointer = computed(() => pointerLabel(rows.value, { t, te }))
 
-let unlisten: (() => void) | null = null
-onMounted(async () => {
-  await load()
-  unlisten = await emu.settings.onChanged(c => {
-    if (c.key.startsWith('pad.')) void load()
-  })
-})
-onUnmounted(() => unlisten?.())
+onMounted(() => void load())
+useSettingsChanged(settingsUnder('pad.'), () => void load())
 
 /** A card of this tab: the odd one out at the end takes the whole row, no empty cell beside it. */
 const card = computed(() => ['last:odd:col-span-full', props.phone ? 'gap-6' : 'gap-10'])

@@ -8,6 +8,7 @@ import {
   type LibraryGame,
 } from '../../emu'
 import type { ResumePoint } from '../../gameDetails'
+import type { Message } from '../../i18n/message'
 import type { ScanSummary } from '../../library'
 import { CONSOLES } from '../../librarySort'
 
@@ -75,10 +76,8 @@ export function addedCards(summary: ScanSummary | null): AddedCard[] {
   return cards.filter(c => c.count > 0)
 }
 
-/** Where «Riprendi» picks up, as an i18n key and its parameters; null when there is nothing. */
-export function resumeSource(
-  point: ResumePoint | undefined,
-): { key: string; params?: { slot: number } } | null {
+/** Where «Riprendi» picks up; null when there is nothing. */
+export function resumeSource(point: ResumePoint | undefined): Message | null {
   if (!point || point.none) return null
   if (point.slot === null) return { key: 'library.continue.fromInGame' }
   if (point.slot === AUTO_SLOT) return { key: 'library.continue.fromAuto' }

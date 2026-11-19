@@ -1,8 +1,9 @@
 // Quick saves in the menu (G07, G08): the slots, the one chosen, Carica and Salva, and the line
 // «Salvato nello slot N · Annulla» a save made here leaves until the next choice.
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { AUTO_SLOT, emu, type SlotInfo } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import { computed, onMounted, ref } from 'vue'
+import { useListeners } from '@/composables/useListeners'
+import { AUTO_SLOT, emu, type EmuEvent, type SlotInfo } from '@/emu'
+import type { ErrorSink } from '@/i18n/labels'
 import { isEmptySlot } from './slots'
 
 export interface QuickSlotsOptions {
@@ -12,7 +13,7 @@ export interface QuickSlotsOptions {
   initial: number
   onSave: (slot: number) => void
   onLoad: (slot: number) => void
-  onError: (text: string) => void
+  onError: ErrorSink
 }
 
 export function useQuickSlots(o: QuickSlotsOptions) {
@@ -27,7 +28,7 @@ export function useQuickSlots(o: QuickSlotsOptions) {
     try {
       slots.value = await emu.listSlots(o.count())
     } catch (e) {
-      o.onError(errorText(e))
+      o.onError(e)
     }
   }
 
@@ -51,27 +52,25 @@ export function useQuickSlots(o: QuickSlotsOptions) {
     try {
       await emu.undoSave()
     } catch (e) {
-      o.onError(errorText(e))
+      o.onError(e)
     }
   }
 
-  let unlisten: (() => void) | null = null
   /** A save done here or with a shortcut: refresh the dates and thumbnails. */
-  async function follow() {
-    unlisten = await emu.onEvent(ev => {
-      if (ev.type === 'stateSaved') {
-        if (ev.slot === saving) savedSlot.value = ev.slot
-        saving = null
-        void load()
-      }
-      if (ev.type === 'saveUndone') {
-        savedSlot.value = null
-        void load()
-      }
-      if (ev.type === 'error') saving = null
-    })
+  function onEvent(ev: EmuEvent) {
+    if (ev.type === 'stateSaved') {
+      if (ev.slot === saving) savedSlot.value = ev.slot
+      saving = null
+      void load()
+    }
+    if (ev.type === 'saveUndone') {
+      savedSlot.value = null
+      void load()
+    }
+    if (ev.type === 'error') saving = null
   }
-  onBeforeUnmount(() => unlisten?.())
+  const listeners = useListeners()
+  onMounted(() => void listeners.add(emu.onEvent(onEvent)))
 
   return {
     slots,
@@ -84,6 +83,5 @@ export function useQuickSlots(o: QuickSlotsOptions) {
     save,
     loadChosen,
     undoSave,
-    follow,
   }
 }

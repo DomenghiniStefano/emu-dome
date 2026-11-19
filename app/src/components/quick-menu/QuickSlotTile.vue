@@ -6,8 +6,9 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SlotInfo } from '@/emu'
 import { Card, CardVariant } from '@/components/ui/card'
-import { isEmptySlot, slotDate, slotName } from './slots'
-import { useSay } from './useSay'
+import { slotDateLabel } from '@/i18n/labels'
+import { isEmptySlot, slotName } from './slots'
+import { useSay } from '@/i18n/message'
 import { FocusMark } from './view'
 
 const props = defineProps<{
@@ -18,10 +19,12 @@ const props = defineProps<{
 }>()
 defineEmits<{ pick: [] }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const say = useSay()
 const empty = computed(() => isEmptySlot(props.info))
-const when = computed(() => slotDate(props.info, locale.value) ?? t('qm.empty'))
+const when = computed(() =>
+  props.info.savedAt === null ? t('qm.empty') : slotDateLabel(props.info.savedAt),
+)
 const marks = computed(() =>
   props.chosen
     ? { [FocusMark.SubInitial]: '', 'data-nav-initial': '', [FocusMark.ChosenSlot]: '' }

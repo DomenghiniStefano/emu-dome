@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { SettingEntry, SettingKind, SettingsSchema } from '../../emu'
 import { overrideRows, settingValueText } from './gameOverrides'
-import type { Translator } from './translator'
+import type { Translator } from '../../i18n/message'
 
 // The bridge talks to Tauri as it loads; these functions never call it.
 vi.mock('../../emu', () => ({ emu: {} }))

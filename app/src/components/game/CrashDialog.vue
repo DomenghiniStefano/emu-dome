@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTone } from '@/components/ui/dialog'
 import type { ConsoleId } from '../../emu'
-import { timeAgo } from '../../lib/shell/timeAgo'
+import { timeAgoLabel } from '../../i18n/labels'
 import FlowDialog from '../FlowDialog.vue'
 
 const props = defineProps<{
@@ -15,11 +15,11 @@ const props = defineProps<{
   savedAt: number | null
 }>()
 const emit = defineEmits<{ copy: []; library: []; resume: [] }>()
-const { t, locale } = useI18n()
+const { t } = useI18n()
 
 const savedLine = computed(() =>
   props.savedAt
-    ? t('flow.crashSaved', { when: timeAgo(props.savedAt, Date.now(), locale.value) })
+    ? t('flow.crashSaved', { when: timeAgoLabel(props.savedAt) })
     : t('flow.crashNoSave'),
 )
 </script>

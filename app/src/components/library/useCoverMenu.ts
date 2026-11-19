@@ -2,9 +2,9 @@
 // closes, favourite and hide through `library.setFlags`.
 import { nextTick, ref } from 'vue'
 import { emu, type LibraryGame } from '../../emu'
-import { errorText } from '../../i18n/labels'
+import type { ErrorSink } from '../../i18n/labels'
 
-export function useCoverMenu(onError: (text: string) => void) {
+export function useCoverMenu(onError: ErrorSink) {
   /** The id of the game whose menu is open. */
   const menuFor = ref<string | null>(null)
   let menuButton: HTMLElement | null = null
@@ -22,7 +22,7 @@ export function useCoverMenu(onError: (text: string) => void) {
     try {
       await emu.library.setFlags(g.id, flags)
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
 

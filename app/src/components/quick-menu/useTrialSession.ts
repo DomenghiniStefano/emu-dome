@@ -1,8 +1,9 @@
 // The settings the quick menu changes «in prova» (Session level): read for the open game, set
 // live, listed, then saved for this game or its console (all or nothing) or undone. Closing the
 // game drops them (the backend).
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useSay } from '@/i18n/message'
 import {
   emu,
   type SettingEntry,
@@ -10,15 +11,17 @@ import {
   type SettingsSchema,
   type SettingValue,
 } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
+import type { ErrorSink } from '@/i18n/labels'
 import { isShown, loadSchema } from '@/settingsModel'
 import { trialNames, trialTitle } from './trial'
 import { SESSION_PAGES, SESSION_ROWS, type QuickMenuView } from './view'
 
 const SESSION = { level: 'session' } as const
 
-export function useTrialSession(onError: (text: string) => void) {
+export function useTrialSession(onError: ErrorSink) {
   const { t } = useI18n()
+  const say = useSay()
   const schema = ref<SettingsSchema | null>(null)
   /** The Session rows of the open game, by key. */
   const rows = ref<Record<string, SettingRow>>({})
@@ -28,7 +31,7 @@ export function useTrialSession(onError: (text: string) => void) {
       const pages = await Promise.all(SESSION_PAGES.map(p => emu.settings.page(p, SESSION)))
       rows.value = Object.fromEntries(pages.flat().map(r => [r.key, r]))
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
 
@@ -42,21 +45,21 @@ export function useTrialSession(onError: (text: string) => void) {
     try {
       await emu.settings.set(key, SESSION, v)
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
   async function commit(target: 'game' | 'console') {
     try {
       await emu.settings.commitSession(target)
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
   async function discard() {
     try {
       await emu.settings.discardSession()
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
 
@@ -65,8 +68,7 @@ export function useTrialSession(onError: (text: string) => void) {
   /** The title over the changes; '' when there are none. */
   const title = computed(() => {
     if (names.value.length === 0) return ''
-    const m = trialTitle(names.value)
-    return t(m.key, m.params ?? {})
+    return say(trialTitle(names.value))
   })
 
   /** The entries a page shows at the Session level. */
@@ -78,16 +80,12 @@ export function useTrialSession(onError: (text: string) => void) {
       .filter((e): e is SettingEntry => !!e && isShown(e, s))
   }
 
-  let unlisten: (() => void) | null = null
-  /** Reads the schema and the rows, then follows every change. */
+  /** Reads the schema and the rows; every change from then on reads the rows again. */
   async function start() {
     schema.value = await loadSchema()
     await load()
   }
-  async function follow() {
-    unlisten = await emu.settings.onChanged(() => void load())
-  }
-  onBeforeUnmount(() => unlisten?.())
+  useSettingsChanged(EVERY_SETTING, () => void load())
 
-  return { schema, rows, value, set, commit, discard, names, title, entriesOf, start, follow }
+  return { schema, rows, value, set, commit, discard, names, title, entriesOf, start }
 }

@@ -20,7 +20,15 @@ import type { KeyAction } from './keyboard'
 
 const known = (key: string) => i18n.global.te(key)
 
-const FACES: Pos[] = ['south', 'east', 'west', 'north']
+/** The four face buttons, by position. */
+export const FACES: Pos[] = ['south', 'east', 'west', 'north']
+
+/** The A/B layout (`pad.ab`): as on Nintendo's consoles, or as printed on the controller. */
+export type AbLayout = 'nintendo' | 'printed'
+export const AB_LAYOUTS: AbLayout[] = ['nintendo', 'printed']
+
+/** A `pad.ab` value as a layout: anything but `printed` (the default too) is Nintendo's. */
+export const abLayout = (value: unknown): AbLayout => (value === 'printed' ? 'printed' : 'nintendo')
 
 /** The 12 buttons of the tester (C01, C02): faces, shoulders, triggers, Start / Select, sticks. */
 const TESTER_POSITIONS: Pos[] = [

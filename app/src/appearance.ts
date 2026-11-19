@@ -8,7 +8,9 @@
 // «Come il sistema» follows `prefers-reduced-motion` / `prefers-reduced-transparency`.
 import { ref } from 'vue'
 import { accentTokens } from './accent'
+import { onSettingsChanged } from './composables/useSettingsChanged'
 import { emu, type SettingRow, type SettingValue } from './emu'
+import { GLOBAL } from './settingsModel'
 
 /** The interface's scale (`a11y.textsize` / 100). */
 export const uiZoom = ref(1)
@@ -72,7 +74,7 @@ function apply() {
 async function refresh() {
   try {
     const rows: SettingRow[] = (
-      await Promise.all(['general', 'a11y'].map(p => emu.settings.page(p, { level: 'global' })))
+      await Promise.all(['general', 'a11y'].map(p => emu.settings.page(p, GLOBAL)))
     ).flat()
     values = Object.fromEntries(rows.filter(r => KEYS.includes(r.key)).map(r => [r.key, r.value]))
   } catch (e) {
@@ -86,7 +88,5 @@ export function startAppearance() {
   void refresh()
   systemMotion.addEventListener('change', apply)
   systemTransp.addEventListener('change', apply)
-  void emu.settings.onChanged(e => {
-    if (KEYS.includes(e.key)) void refresh()
-  })
+  void onSettingsChanged(KEYS, () => void refresh())
 }

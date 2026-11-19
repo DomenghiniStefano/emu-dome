@@ -26,12 +26,12 @@ describe('useDismiss', () => {
   })
 
   /** A toggle and its popover side by side in one area, plus something else on the page. */
-  function popover(outside: boolean) {
+  function popover() {
     const close = vi.fn()
     const Popover = defineComponent({
       setup() {
         const root = ref<HTMLElement | null>(null)
-        useDismiss(root, close, { outside })
+        useDismiss(root, close)
         return () => h('div', { ref: root, class: 'popover' })
       },
     })
@@ -46,15 +46,8 @@ describe('useDismiss', () => {
     return { close, wrapper, press }
   }
 
-  it('closes on Esc', () => {
-    const { close, wrapper } = popover(false)
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }))
-    expect(close).toHaveBeenCalledOnce()
-    wrapper.unmount()
-  })
-
   it('closes on a press outside the area, not on the toggle or the popover', () => {
-    const { close, wrapper, press } = popover(true)
+    const { close, wrapper, press } = popover()
     press('.area button')
     press('.popover')
     expect(close).not.toHaveBeenCalled()
@@ -63,18 +56,17 @@ describe('useDismiss', () => {
     wrapper.unmount()
   })
 
-  it('ignores presses when asked to close on Esc only', () => {
-    const { close, wrapper, press } = popover(false)
-    press('p')
+  it('leaves Esc to the nav scope', () => {
+    const { close, wrapper } = popover()
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }))
     expect(close).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 
   it('stops listening once unmounted', () => {
-    const { close, wrapper, press } = popover(true)
+    const { close, wrapper, press } = popover()
     wrapper.unmount()
     press('p')
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }))
     expect(close).not.toHaveBeenCalled()
   })
 })

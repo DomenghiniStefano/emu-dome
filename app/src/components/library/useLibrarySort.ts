@@ -1,23 +1,24 @@
 // The library's order: the `library.sort` setting at the Global level, read on mount, written
 // when the user picks one in L03, reset with the panel's «Ripristina», and read again when the
-// setting changes elsewhere (Settings). A failure is reported as text and the order read back.
-import { onMounted, onUnmounted, ref } from 'vue'
-import { emu, type SettingsScope } from '../../emu'
-import { errorText } from '../../i18n/labels'
+// setting changes elsewhere (Settings). A failure is reported and the order read back.
+import { onMounted, ref } from 'vue'
+import { useSettingsChanged } from '../../composables/useSettingsChanged'
+import { emu } from '../../emu'
+import type { ErrorSink } from '../../i18n/labels'
 import { DEFAULT_SORT, isSort, type Sort } from '../../librarySort'
+import { GLOBAL, readSetting } from '../../settingsModel'
 
-const GLOBAL: SettingsScope = { level: 'global' }
 const KEY = 'library.sort'
 
-export function useLibrarySort(onError: (text: string) => void) {
+export function useLibrarySort(onError: ErrorSink) {
   const sort = ref<Sort>(DEFAULT_SORT)
 
   async function load() {
     try {
-      const row = (await emu.settings.page('library', GLOBAL)).find(r => r.key === KEY)
+      const row = await readSetting(KEY)
       sort.value = isSort(row?.value) ? row.value : DEFAULT_SORT
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
 
@@ -26,7 +27,7 @@ export function useLibrarySort(onError: (text: string) => void) {
     try {
       await emu.settings.set(KEY, GLOBAL, s)
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
       await load()
     }
   }
@@ -35,19 +36,13 @@ export function useLibrarySort(onError: (text: string) => void) {
     try {
       await emu.settings.reset(KEY, GLOBAL)
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
     await load()
   }
 
-  let unlisten: (() => void) | null = null
-  onMounted(async () => {
-    await load()
-    unlisten = await emu.settings.onChanged(c => {
-      if (c.key === KEY) void load()
-    })
-  })
-  onUnmounted(() => unlisten?.())
+  onMounted(() => void load())
+  useSettingsChanged(KEY, () => void load())
 
   return { sort, setSort, resetSort }
 }

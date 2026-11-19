@@ -1,9 +1,9 @@
 // G10's controller shortcuts, read-only (they are edited in Controls, C03).
 import { computed, ref } from 'vue'
 import { emu, type ComboRow, type Pos } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import type { ErrorSink } from '@/i18n/labels'
 
-export function useControllerShortcuts(onError: (text: string) => void) {
+export function useControllerShortcuts(onError: ErrorSink) {
   const combos = ref<ComboRow[]>([])
   const modifier = ref<Pos>('l3')
 
@@ -14,7 +14,7 @@ export function useControllerShortcuts(onError: (text: string) => void) {
       combos.value = b.combos.filter(c => c.status === 'active')
       modifier.value = b.modifier
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
 

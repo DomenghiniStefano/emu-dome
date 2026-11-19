@@ -15,9 +15,9 @@ const emit = defineEmits<{ sort: [Sort]; toggle: [ShowKey]; reset: []; close: []
 const { t } = useI18n()
 
 const root = ref<HTMLElement | null>(null)
-useNavScope(root, { autofocus: true, back: () => emit('close') })
+useNavScope(root, { autofocus: true, escape: true, back: () => emit('close') })
 // The parent holds the panel next to its toggle button, which toggles it itself.
-useDismiss(root, () => emit('close'), { outside: true })
+useDismiss(root, () => emit('close'))
 </script>
 
 <template>

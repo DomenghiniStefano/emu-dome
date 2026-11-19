@@ -1,23 +1,21 @@
-// Writing a setting at «Tutti i giochi» from the Controls section; a failure goes to `onError`
-// as text, as everywhere in the section.
+// Writing a setting at «Tutti i giochi» (Controls, the first run); a failure goes to `onError`.
 import { emu, type SettingValue } from '../../emu'
-import { errorText } from '../../i18n/labels'
+import type { ErrorSink } from '../../i18n/labels'
+import { GLOBAL } from '../../settingsModel'
 
-const GLOBAL = { level: 'global' } as const
-
-export function useGlobalSettings(onError: (text: string) => void) {
+export function useGlobalSettings(onError: ErrorSink) {
   async function set(key: string, value: SettingValue) {
     try {
       await emu.settings.set(key, GLOBAL, value)
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
   async function reset(key: string) {
     try {
       await emu.settings.reset(key, GLOBAL)
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
   return { set, reset }
