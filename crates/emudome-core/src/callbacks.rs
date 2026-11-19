@@ -27,14 +27,19 @@ use libretro_sys::{
 
 use crate::core_options::{CoreOptions, OptionDef};
 use crate::session::Shared;
+use crate::speed_audio::SpeedAudio;
 
 pub(crate) struct CallbackCtx {
     pub shared: Arc<Shared>,
     pub pixel_format: u32,
     pub system_dir: CString,
     pub save_dir: CString,
-    /// When false, the produced audio is dropped (e.g. in fast forward).
+    /// When false, the produced audio is dropped (while rewinding).
     pub audio_enabled: bool,
+    /// The audio at speeds other than 1× (`audio.ff`).
+    pub speed_audio: SpeedAudio,
+    /// Scratch buffer for [`SpeedAudio`]'s output.
+    pub audio_out: Vec<i16>,
     /// Answers to `GET_VARIABLE`: the core's definitions and the shell's values.
     pub options: CoreOptions,
 }
@@ -57,6 +62,16 @@ pub(crate) fn set_audio_enabled(enabled: bool) {
             ctx.audio_enabled = enabled;
         }
     });
+}
+
+/// The emulation speed for the audio (None: not measured yet, at Max).
+pub(crate) fn set_audio_speed(speed: Option<f64>) {
+    with_ctx(|c| c.speed_audio.set_speed(speed));
+}
+
+/// What the audio does off 1× (`audio.ff`).
+pub(crate) fn set_fast_audio(policy: crate::speed_audio::FastAudio) {
+    with_ctx(|c| c.speed_audio.set_policy(policy));
 }
 
 /// Changes a core option while the game runs (seen at the core's next `GET_VARIABLE_UPDATE`).
@@ -178,7 +193,11 @@ pub(crate) unsafe extern "C" fn environment(cmd: c_uint, data: *mut c_void) -> b
 /// Stores the definitions the core declared; false when there is no session to store them in.
 fn define(defs: Vec<OptionDef>) -> bool {
     log::debug!("core declared {} options", defs.len());
-    with_ctx(|c| c.options.define(defs)).is_some()
+    with_ctx(|c| {
+        c.options.define(defs);
+        *c.shared.core_options.lock() = c.options.declared();
+    })
+    .is_some()
 }
 
 unsafe fn c_string(p: *const c_char) -> Option<String> {
@@ -208,11 +227,10 @@ unsafe fn definitions_v1(mut d: *const retro_core_option_definition) -> Vec<Opti
     let mut defs = Vec::new();
     while !d.is_null() && !(*d).key.is_null() {
         if let Some(key) = c_string((*d).key) {
-            defs.push(OptionDef::new(
-                key,
-                values(&(*d).values),
-                c_string((*d).default_value),
-            ));
+            defs.push(
+                OptionDef::new(key, values(&(*d).values), c_string((*d).default_value))
+                    .with_label(c_string((*d).desc)),
+            );
         }
         d = d.add(1);
     }
@@ -224,11 +242,10 @@ unsafe fn definitions_v2(mut d: *const retro_core_option_v2_definition) -> Vec<O
     let mut defs = Vec::new();
     while !d.is_null() && !(*d).key.is_null() {
         if let Some(key) = c_string((*d).key) {
-            defs.push(OptionDef::new(
-                key,
-                values(&(*d).values),
-                c_string((*d).default_value),
-            ));
+            defs.push(
+                OptionDef::new(key, values(&(*d).values), c_string((*d).default_value))
+                    .with_label(c_string((*d).desc)),
+            );
         }
         d = d.add(1);
     }
@@ -253,21 +270,33 @@ pub(crate) unsafe extern "C" fn video_refresh(
     });
 }
 
+/// The core's samples to the audio queue, through [`SpeedAudio`] off 1×.
+fn push_audio(c: &mut CallbackCtx, samples: &[i16]) {
+    if !c.audio_enabled {
+        return;
+    }
+    let mut queue = c.shared.audio.lock();
+    if c.speed_audio.is_passthrough() {
+        queue.push(samples);
+        return;
+    }
+    c.audio_out.clear();
+    c.speed_audio
+        .process(queue.sample_rate, samples, &mut c.audio_out);
+    if !c.audio_out.is_empty() {
+        queue.push(&c.audio_out);
+    }
+}
+
 pub(crate) unsafe extern "C" fn audio_sample(left: i16, right: i16) {
-    with_ctx(|c| {
-        if c.audio_enabled {
-            c.shared.audio.lock().push(&[left, right]);
-        }
-    });
+    with_ctx(|c| push_audio(c, &[left, right]));
 }
 
 pub(crate) unsafe extern "C" fn audio_sample_batch(data: *const i16, frames: usize) -> usize {
-    with_ctx(|c| {
-        if c.audio_enabled && !data.is_null() {
-            let samples = std::slice::from_raw_parts(data, frames * 2);
-            c.shared.audio.lock().push(samples);
-        }
-    });
+    if !data.is_null() {
+        let samples = std::slice::from_raw_parts(data, frames * 2);
+        with_ctx(|c| push_audio(c, samples));
+    }
     frames
 }
 

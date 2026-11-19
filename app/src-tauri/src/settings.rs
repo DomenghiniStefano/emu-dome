@@ -6,6 +6,7 @@ use emudome_core::settings::{
     CommitTarget, ConsoleId, Device, GameId, GameOverride, Level, PageValue, RecentChange,
     SchemaDto, Scope, Settings, Value,
 };
+use emudome_core::speed_audio::FastAudio;
 use emudome_core::ErrorCode;
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -56,10 +57,15 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
     if keys.iter().any(|k| crate::effects::is_effect_key(k)) {
         crate::effects::apply(app);
     }
+    crate::core_settings::settings_changed(app, keys);
     if keys.iter().any(|k| REWIND_KEYS.contains(k)) {
         // The open game follows at once (no game: nothing to tell).
         let seconds = rewind_seconds(app, &Scope::Session);
         crate::send_command(app, emudome_core::Command::SetRewindLength(seconds));
+    }
+    if keys.contains(&FAST_AUDIO_KEY) {
+        let policy = fast_audio(app, &Scope::Session);
+        crate::send_command(app, emudome_core::Command::SetFastAudio(policy));
     }
     for key in keys {
         if let Err(e) = app.emit("settings://changed", Changed { key, level }) {
@@ -103,11 +109,32 @@ pub struct GameFlow {
     pub resume: String,
     /// `speed.rew` / `speed.rewlen`: the seconds of rewind to keep, `None` = off.
     pub rewind_seconds: Option<u32>,
-    /// The core options the console options ask for (`settings::core_values`).
-    pub core_options: Vec<(String, String)>,
+    /// `audio.ff`: the audio in fast forward and slow motion.
+    pub fast_audio: FastAudio,
+    /// The core options the settings ask for (`settings::core_values`).
+    pub core_options: Vec<emudome_core::settings::core_values::MappedOption>,
 }
 
 const REWIND_KEYS: [&str; 2] = ["speed.rew", "speed.rewlen"];
+const FAST_AUDIO_KEY: &str = "audio.ff";
+
+/// `audio.ff` seen from `scope`; muted when it cannot be read.
+fn fast_audio(app: &AppHandle, scope: &Scope) -> FastAudio {
+    let resolved = app
+        .try_state::<SettingsState>()
+        .map(|state| state.0.lock().resolve(FAST_AUDIO_KEY, scope));
+    match resolved {
+        Some(Ok(r)) => match r.value {
+            Some(Value::Text(id)) => FastAudio::from_option(&id).unwrap_or_default(),
+            Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => FastAudio::default(),
+        },
+        Some(Err(e)) => {
+            log::warn!("{FAST_AUDIO_KEY} unavailable: {e:?}");
+            FastAudio::default()
+        }
+        None => FastAudio::default(),
+    }
+}
 
 /// `speed.rew` and `speed.rewlen` seen from `scope` (the open game's session, or the game
 /// being opened); `None` = rewind off.
@@ -126,7 +153,8 @@ fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
     emudome_core::rewind::seconds_from_settings(read(REWIND_KEYS[0]), read(REWIND_KEYS[1]))
 }
 
-pub fn game_flow(app: &AppHandle, console: ConsoleId, game: &GameId) -> GameFlow {
+/// What the game flow reads for a game of `console` run by `core` (`mgba`, ...).
+pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameId) -> GameFlow {
     let scope = Scope::Game {
         console,
         game: game.clone(),
@@ -155,7 +183,8 @@ pub fn game_flow(app: &AppHandle, console: ConsoleId, game: &GameId) -> GameFlow
         autosave_on_exit: !matches!(read("saves.autoexit"), Some(Value::Bool(false))),
         resume: text("saves.resume").unwrap_or_else(|| "always".into()),
         rewind_seconds: rewind_seconds(app, &scope),
-        core_options: emudome_core::settings::core_values::core_options(console, read),
+        fast_audio: fast_audio(app, &scope),
+        core_options: emudome_core::settings::core_values::mapped(core, console, read),
     }
 }
 
