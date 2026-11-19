@@ -241,9 +241,11 @@ instead of repeating commands. No CI, by choice. It runs everything and summariz
 **Checked**: `cargo fmt`, clippy with the workspace lints (no `unwrap`, no `_ =>` on enums, no glob imports),
 `cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
 `vue-tsc`, ESLint, Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
-(`scripts/scan-conventions.mjs`: no literal colour, alpha modifier or `dark:` in classes, no string variant, no raw
-`<button>` / `<input>` or `<style>` outside `components/ui`; screens not migrated yet are on its `LEGACY` list and only
-counted), and the gates: no merge conflict marker,
+(`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
+px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
+duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
+`components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`; the rows and what each cannot see are in
+`docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no `#[cfg(target_os)]` outside `crates/emudome-platform`, `invoke` only in `app/src/emu.ts`, no emoji,
 no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`).
 Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,
@@ -260,8 +262,8 @@ Prettier on the staged frontend files).
   and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
-- No arbitrary size in a class (`[13px]`) and no look-only `phone` / `touch` prop: until #63 makes the scanner block
-  them, held by review.
+- What the conventions scanner cannot see: a length in % / vh / vw, an icon size passed as a prop (`:size="14"`), a
+  `style` binding, a look-only `phone` / `touch` prop read in `<script>` or passed down to a child.
 - Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
   tested pure functions, nothing duplicated across screens, names that say what a thing is for.
 
@@ -321,9 +323,9 @@ everywhere). Until #63 no new screen or graphic work starts.
 - **Clean code**: small components with one job (a screen composes panels, a panel composes primitives); logic in
   composables (`useX`) and pure functions with tests, the template only composes; nothing duplicated across screens
   (one slot tile, one button tester, one combo table, one confirm dialog); names that say what a thing is for.
-- **Checked** by `scripts/scan-conventions.mjs` (in `scripts/check`, each rule self-tested on its fixture): no literal
-  colour, alpha modifier or `dark:` in classes, no string variant, no raw `<button>` / `<input>` or `<style>` outside
-  `components/ui`. Screens written before the design system are on its `LEGACY` list until #62 migrates them.
+- **Checked** by `scripts/scan-conventions.mjs` (in `scripts/check`, each rule self-tested on its fixture, blocking in
+  every file): the rules listed in «What is checked». The conventions as a whole, and what each scanner rule cannot
+  see: `docs/frontend-conventions.md`.
 
 ## References
 

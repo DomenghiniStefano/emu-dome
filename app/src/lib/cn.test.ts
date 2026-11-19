@@ -51,6 +51,18 @@ describe('cn', () => {
     expect(cn('border border-line', 'border-0')).toBe('border-line border-0')
   })
 
+  it('keeps an outline offset beside an outline colour', () => {
+    expect(cn('outline outline-offset-inset outline-line-strong')).toBe(
+      'outline outline-offset-inset outline-line-strong',
+    )
+  })
+
+  it('lets a later outline offset replace an earlier one, keeping the ring', () => {
+    expect(cn('outline-ring outline-offset-ring', 'outline-offset-swatch')).toBe(
+      'outline-ring outline-offset-swatch',
+    )
+  })
+
   it('drops falsy inputs', () => {
     expect(cn('text-label', false, undefined, 'text-ink')).toBe('text-label text-ink')
   })

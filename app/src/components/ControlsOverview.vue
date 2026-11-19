@@ -154,7 +154,7 @@ const sticksSub = computed(() =>
     </div>
 
     <div
-      class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-20 [@media(max-width:900px)]:grid-cols-[minmax(0,1fr)]"
+      class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-20 max-controls-stack:grid-cols-[minmax(0,1fr)]"
     >
       <ShortcutsToRemember
         :lines="lines"

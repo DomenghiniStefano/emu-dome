@@ -1,0 +1,2 @@
+// Fixture of scripts/scan-conventions.mjs: an important override in a variants file.
+export const v = 'h-control! px-8'

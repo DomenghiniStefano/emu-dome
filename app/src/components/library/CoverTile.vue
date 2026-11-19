@@ -42,7 +42,7 @@ const meta = computed(() =>
 <template>
   <div class="flex min-w-0 flex-col gap-8" :data-game="game.id">
     <div
-      class="group/frame relative rounded-10 shadow-card outline-ring outline-offset-2 outline-transparent transition-[outline-color] hover:outline-focus-ring focus-within:outline-focus-ring data-open:outline-focus-ring"
+      class="group/frame relative rounded-10 shadow-card outline-ring outline-offset-ring outline-transparent transition-[outline-color] hover:outline-focus-ring focus-within:outline-focus-ring data-open:outline-focus-ring"
       :data-open="menuOpen ? '' : undefined"
       @contextmenu.prevent="emit('details')"
     >
@@ -50,7 +50,7 @@ const meta = computed(() =>
       <GameCover
         :game="game"
         :class="{
-          'opacity-missing outline -outline-offset-1 outline-line-strong outline-dashed': off,
+          'opacity-missing outline outline-offset-inset outline-line-strong outline-dashed': off,
         }"
       />
       <!-- The action strip's height (52), which the click area stops above. -->
@@ -99,7 +99,7 @@ const meta = computed(() =>
         </div>
       </div>
     </div>
-    <div class="flex flex-col gap-2" :class="{ 'opacity-60': off }">
+    <div class="flex flex-col gap-2" :class="{ 'opacity-missing-label': off }">
       <div class="min-w-0 font-medium wrap-anywhere">{{ game.title }}</div>
       <div class="text-caption text-ink-muted tabular-nums">{{ meta }}</div>
     </div>

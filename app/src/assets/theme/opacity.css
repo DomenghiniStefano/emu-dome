@@ -1,5 +1,6 @@
-/* Opacity tokens. Tailwind's numeric opacities (`opacity-40`) stay; these name the ones that
-   mean something. */
+/* Opacity tokens. Tailwind's numeric opacities cannot be switched off in the theme (`opacity-40`
+   compiles from the number alone), so scripts/scan-conventions.mjs refuses them, except
+   `opacity-0` and `opacity-100` (hidden and shown): every other opacity is one of these names. */
 @theme {
   /* A control that cannot be used now (Button, Input). */
   --opacity-disabled: 0.4;
@@ -10,10 +11,12 @@
      of the quick menu's actions, of a list row that cannot be opened yet (Controls) and of the
      first run's row actions. */
   --opacity-dim: 0.5;
-  /* Pending Cowork: a value under its name, a little quieter (the quick menu's speed factors), and
-     a game whose file is missing (the library's covers, 45%). */
+  /* Pending Cowork: a value under its name, a little quieter (the quick menu's speed factors, a
+     console chip's count), and a game whose file is missing (the library's covers, 45%; the
+     title and details under them, 60%). */
   --opacity-soft: 0.8;
   --opacity-missing: 0.45;
+  --opacity-missing-label: 0.6;
 }
 
 /* The ambient haze's strength behind the shell (`ambient-strength`), per theme; Nero and

@@ -29,7 +29,7 @@ const { t } = useI18n()
       <!-- One run of text: the space before the count is the text's own, not the chip's gap. -->
       <span
         >{{ c.id === 'all' ? t('library.all') : t(`console.${c.id}`) }}
-        <span class="opacity-80 tabular-nums">{{ c.count }}</span></span
+        <span class="opacity-soft tabular-nums">{{ c.count }}</span></span
       >
     </Chip>
   </div>
