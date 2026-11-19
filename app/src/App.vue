@@ -4,11 +4,13 @@
 import { onMounted, ref } from 'vue'
 import { flow } from './gameFlow'
 import type { Section } from './sections'
+import { useDensity } from './composables/useDensity'
 import { useDropTarget } from './composables/useDropTarget'
 import { useFirstRun } from './composables/useFirstRun'
 import { useGameKeys } from './composables/useGameKeys'
 import { useGameLaunch } from './composables/useGameLaunch'
 import { useGameSession } from './composables/useGameSession'
+import { usePhoneLayout } from './composables/usePhoneLayout'
 import { useShellEvents } from './composables/useShellEvents'
 import { useToasts } from './composables/useToasts'
 import { useVideoMode } from './composables/useVideoMode'
@@ -37,8 +39,14 @@ const events = useShellEvents(session, toast, drop.listen)
 const section = ref<Section>('library')
 // Touch screen (Android): on-screen buttons while playing.
 const touch = window.matchMedia('(pointer: coarse)').matches
+// The phone's layout (a phone held upright) sets the touch density for the whole interface.
+const layout = usePhoneLayout()
+useDensity(layout.phone)
 
 onMounted(async () => {
+  // A schema that cannot be read leaves the desktop density; the screens that need the schema
+  // report the failure themselves.
+  void layout.detect().catch(() => undefined)
   void decideFirstRun()
   await loadVideoMode()
   keys.listen()

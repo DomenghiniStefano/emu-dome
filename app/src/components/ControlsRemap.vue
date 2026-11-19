@@ -7,8 +7,6 @@
 //
 // Values: `pad.remap` (overrides per controller type, `crates/emudome-core/src/bindings.rs`),
 // resolved with the defaults by `emu.controls.bindings`.
-//
-// Off the design system's scales (spec Decision 5, Cowork): the disabled actions' 0.5 opacity.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -34,7 +32,7 @@ import {
   useCapture,
   type CaptureDevice,
 } from '../controls'
-import { Button } from '@/components/ui/button'
+import { Button, ButtonFade } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import ConflictBanner from './controls/ConflictBanner.vue'
 import RemapTableRow from './controls/RemapTableRow.vue'
@@ -277,10 +275,20 @@ onBeforeUnmount(() => unlisten?.())
           <Button class="self-start" @click="restoreDefaults">
             {{ t('controls.restoreDefaults') }}
           </Button>
-          <Button class="self-start disabled:opacity-50" disabled :title="t('settingsUi.notYet')">
+          <Button
+            :fade="ButtonFade.Dim"
+            class="self-start"
+            disabled
+            :title="t('settingsUi.notYet')"
+          >
             {{ t('controls.copyFrom') }}
           </Button>
-          <Button class="self-start disabled:opacity-50" disabled :title="t('settingsUi.notYet')">
+          <Button
+            :fade="ButtonFade.Dim"
+            class="self-start"
+            disabled
+            :title="t('settingsUi.notYet')"
+          >
             {{ t('controls.turbo') }}
           </Button>
         </Card>

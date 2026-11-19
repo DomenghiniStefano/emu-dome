@@ -1,16 +1,24 @@
 /* Opacity tokens. Tailwind's numeric opacities (`opacity-40`) stay; these name the ones that
    mean something. */
 @theme {
-  /* A control that cannot be used now (LibraryView, DetailsControls `.btn:disabled`). */
+  /* A control that cannot be used now (Button, Input). */
   --opacity-disabled: 0.4;
   /* A setting that cannot be changed at this level, a choice that is not available yet
      (SettingRow `.locked`, `.not-yet`). */
   --opacity-locked: 0.55;
+  /* Pending Cowork (spec Decision 5 proposes 0.5 -> `locked` 0.55): half faded, the disabled look
+     of the quick menu's actions, of a list row that cannot be opened yet (Controls) and of the
+     first run's row actions. */
+  --opacity-dim: 0.5;
+  /* Pending Cowork: a value under its name, a little quieter (the quick menu's speed factors), and
+     a game whose file is missing (the library's covers, 45%). */
+  --opacity-soft: 0.8;
+  --opacity-missing: 0.45;
 }
 
 /* The ambient haze's strength behind the shell (`ambient-strength`), per theme; Nero and
-   «Riduci la trasparenza» switch it off. A run-time value, read by AppShell's scoped CSS: it stays
-   a plain variable, in the order it had in styles.css. */
+   «Riduci la trasparenza» switch it off. A run-time value, read by the `ambient-haze` utility
+   (utilities.css): it stays a plain variable. */
 :root {
   --haze-opacity: 0.5;
 }

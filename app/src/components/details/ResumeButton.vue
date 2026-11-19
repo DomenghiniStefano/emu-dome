@@ -7,7 +7,6 @@ import { Play } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 
 defineProps<{
-  phone: boolean
   /** The game file is where the library expects it. */
   available: boolean
   /** Nothing saved yet: «Gioca». */
@@ -20,12 +19,17 @@ const { t } = useI18n()
 <template>
   <Button
     :variant="ButtonVariant.Primary"
-    :size="phone ? ButtonSize.Hero : ButtonSize.Large"
-    class="aria-disabled:cursor-not-allowed aria-disabled:opacity-disabled"
+    :size="ButtonSize.Large"
     data-nav-initial
     :aria-disabled="!available || undefined"
   >
-    <Play :size="phone ? 18 : 16" fill="currentColor" :stroke-width="0" aria-hidden="true" />
+    <Play
+      :size="16"
+      class="touch:size-18"
+      fill="currentColor"
+      :stroke-width="0"
+      aria-hidden="true"
+    />
     {{ t(fresh ? 'library.hero.play' : 'library.hero.resume') }}
   </Button>
 </template>

@@ -3,7 +3,7 @@
 // holds, then import the saves that match library games.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade } from '@/components/ui/button'
 import { canImport, importLine, type ImportState } from '../../lib/first-run/imports'
 import ReadyRow from './ReadyRow.vue'
 
@@ -13,7 +13,6 @@ const props = defineProps<{
   hint: string
   state: ImportState
   busy: boolean
-  phone: boolean
 }>()
 const emit = defineEmits<{ pick: []; import: [] }>()
 const { t } = useI18n()
@@ -35,7 +34,6 @@ const line = computed(() => {
   return props.hint
 })
 const matches = computed(() => props.state.found?.matches.length ?? 0)
-const size = computed(() => (props.phone ? ButtonSize.DefaultLead : ButtonSize.Default))
 </script>
 
 <template>
@@ -44,20 +42,13 @@ const size = computed(() => (props.phone ? ButtonSize.DefaultLead : ButtonSize.D
     <template #action>
       <Button
         v-if="canImport(state)"
-        :variant="ButtonVariant.SoftRow"
-        :size="size"
+        :fade="ButtonFade.Dim"
         :disabled="busy"
         @click="emit('import')"
       >
         {{ t('firstRun.ready.import', { n: matches }, matches) }}
       </Button>
-      <Button
-        v-else
-        :variant="ButtonVariant.SoftRow"
-        :size="size"
-        :disabled="busy"
-        @click="emit('pick')"
-      >
+      <Button v-else :fade="ButtonFade.Dim" :disabled="busy" @click="emit('pick')">
         {{ t('library.chooseFolder') }}
       </Button>
     </template>

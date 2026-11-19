@@ -7,12 +7,14 @@ import type { HTMLAttributes } from 'vue'
 import { Primitive } from 'reka-ui'
 import { computed } from 'vue'
 import { cn } from '@/lib/cn'
-import type { ButtonSize, ButtonVariant } from './variants'
+import type { ButtonFade, ButtonSize, ButtonVariant } from './variants'
 import { buttonVariants } from './variants'
 
 interface Props extends PrimitiveProps {
   variant?: ButtonVariant
   size?: ButtonSize
+  /** How it shows that it is disabled (ButtonFade). */
+  fade?: ButtonFade
   class?: HTMLAttributes['class']
 }
 
@@ -31,7 +33,7 @@ const type = computed(() => (props.as === 'button' && !props.asChild ? 'button' 
     :as="as"
     :as-child="asChild"
     :type="type"
-    :class="cn(buttonVariants({ variant, size }), props.class)"
+    :class="cn(buttonVariants({ variant, size, fade }), props.class)"
   >
     <slot />
   </Primitive>

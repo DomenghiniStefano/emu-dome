@@ -1760,12 +1760,10 @@
     "slow": "Rallentatore",
     "row": {
       "screens": {
-        "name": "Schermi e immagine",
-        "sub": "Dimensione, smussatura, effetti schermo"
+        "name": "Schermi e immagine"
       },
       "controls": {
-        "name": "Controlli",
-        "sub": "Rimappa per questo gioco, scorciatoie"
+        "name": "Controlli"
       }
     },
     "resumeShort": "Riprendi",

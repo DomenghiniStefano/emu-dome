@@ -6,10 +6,14 @@
 // variable: `--text-body` belongs to `text`.
 export const ThemeNamespace = {
   Text: 'text',
+  Leading: 'leading',
+  Tracking: 'tracking',
   Font: 'font',
   FontWeight: 'font-weight',
   Spacing: 'spacing',
   Radius: 'radius',
+  BorderWidth: 'border-width',
+  OutlineWidth: 'outline-width',
   Shadow: 'shadow',
   Blur: 'blur',
   Ease: 'ease',

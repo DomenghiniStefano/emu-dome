@@ -22,6 +22,20 @@ const muted = ref(true)
         <CardDescription>The game file and where its saves are.</CardDescription>
       </Card>
     </KitState>
+    <KitState label="Detail: desktop, and on the phone (rounder, tighter)">
+      <div class="flex gap-10">
+        <Card :variant="CardVariant.Detail" class="w-field gap-10">
+          <CardTitle>Files</CardTitle>
+          <CardDescription>A card of the game details.</CardDescription>
+        </Card>
+        <div data-density="touch" class="flex">
+          <Card :variant="CardVariant.Detail" class="w-field gap-6">
+            <CardTitle>Files</CardTitle>
+            <CardDescription>A card of the game details.</CardDescription>
+          </Card>
+        </div>
+      </div>
+    </KitState>
     <KitState label="Raised · a choice (as button), selected and not">
       <div class="flex gap-10">
         <Card
@@ -40,13 +54,13 @@ const muted = ref(true)
         </Card>
       </div>
     </KitState>
-    <KitState label="LayoutChoice · on a page (first run A/B), selected and not">
+    <KitState label="Choice · on a page (first run A/B), selected and not">
       <div class="flex gap-10">
         <Card
           v-for="id in ['nintendo', 'printed']"
           :key="id"
           as="button"
-          :variant="CardVariant.LayoutChoice"
+          :variant="CardVariant.Choice"
           :selected="choice === id"
           role="radio"
           :aria-checked="choice === id"
@@ -76,12 +90,6 @@ const muted = ref(true)
         </Card>
       </div>
     </KitState>
-    <KitState label="Glass">
-      <Card :variant="CardVariant.Glass" class="w-field gap-10">
-        <CardTitle>Quick menu</CardTitle>
-        <CardDescription>Thick glass over the haze.</CardDescription>
-      </Card>
-    </KitState>
     <KitState label="PictureChoice · selected, not, empty (data-empty)">
       <div class="flex gap-10">
         <Card
@@ -93,7 +101,7 @@ const muted = ref(true)
           :data-empty="id === 'user' ? '' : undefined"
           role="radio"
           :aria-checked="picture === id"
-          class="w-[120px] cursor-pointer gap-8"
+          class="w-cover-hero-touch cursor-pointer gap-8"
           @click="picture = id"
         >
           <CardTitle>{{ id }}</CardTitle>
@@ -138,18 +146,18 @@ const muted = ref(true)
     </KitState>
     <KitState label="List · with Row (button, disabled, div)">
       <Card :variant="CardVariant.List" class="w-dialog">
-        <Card as="button" :variant="CardVariant.Row" class="gap-16">
+        <Card as="button" :variant="CardVariant.Row">
           <CardTitle>Remap buttons</CardTitle>
         </Card>
-        <Card as="button" disabled :variant="CardVariant.Row" class="gap-16">
+        <Card as="button" disabled :variant="CardVariant.Row">
           <CardTitle>Sticks and triggers</CardTitle>
         </Card>
-        <Card :variant="CardVariant.Row" class="gap-16">
+        <Card :variant="CardVariant.Row">
           <CardTitle>Touch controls</CardTitle>
         </Card>
       </Card>
     </KitState>
-    <KitState label="Tile, TileTouch · a slot to choose (as button), chosen and not">
+    <KitState label="Tile · a slot to choose (as button), chosen and not; chosen on the phone">
       <div class="flex gap-8">
         <Card
           v-for="n in [1, 2]"
@@ -157,43 +165,51 @@ const muted = ref(true)
           as="button"
           :variant="CardVariant.Tile"
           :selected="slot === n"
-          class="w-[120px] gap-4"
+          class="w-cover-hero-touch gap-4"
           @click="slot = n"
         >
           <CardTitle>Slot {{ n }}</CardTitle>
           <CardDescription>18/11/26</CardDescription>
         </Card>
-        <Card as="button" :variant="CardVariant.TileTouch" selected class="w-[120px] gap-[3px]">
-          <CardTitle>Slot 3</CardTitle>
-          <CardDescription>Phone</CardDescription>
-        </Card>
+        <div data-density="touch" class="flex">
+          <Card as="button" :variant="CardVariant.Tile" selected class="w-cover-hero-touch gap-3">
+            <CardTitle>Slot 3</CardTitle>
+            <CardDescription>Phone</CardDescription>
+          </Card>
+        </div>
       </div>
     </KitState>
-    <KitState label="Tool (on, off, disabled), ToolTouch">
+    <KitState label="Tool (on, off, disabled), and on the phone (off, on)">
       <div class="flex gap-8">
         <Card
           as="button"
           :variant="CardVariant.Tool"
           :selected="muted"
           :aria-pressed="muted"
-          class="w-[120px] gap-6"
+          class="w-cover-hero-touch gap-6"
           @click="muted = !muted"
         >
           <VolumeX :size="20" :stroke-width="1.75" aria-hidden="true" />
           Mute
         </Card>
-        <Card as="button" :variant="CardVariant.Tool" class="w-[120px] gap-6">
+        <Card as="button" :variant="CardVariant.Tool" class="w-cover-hero-touch gap-6">
           <Camera :size="20" :stroke-width="1.75" aria-hidden="true" />
           Screenshot
         </Card>
-        <Card as="button" :variant="CardVariant.Tool" disabled class="w-[120px] gap-6">
+        <Card as="button" :variant="CardVariant.Tool" disabled class="w-cover-hero-touch gap-6">
           <Camera :size="20" :stroke-width="1.75" aria-hidden="true" />
           Not yet
         </Card>
-        <Card as="button" :variant="CardVariant.ToolTouch" class="w-[160px] gap-8">
-          <Camera :size="18" :stroke-width="1.75" aria-hidden="true" />
-          Screenshot
-        </Card>
+        <div data-density="touch" class="flex gap-8">
+          <Card as="button" :variant="CardVariant.Tool" class="w-stat-min gap-8">
+            <Camera :size="18" :stroke-width="1.75" aria-hidden="true" />
+            Screenshot
+          </Card>
+          <Card as="button" :variant="CardVariant.Tool" selected class="w-stat-min gap-8">
+            <VolumeX :size="18" :stroke-width="1.75" aria-hidden="true" />
+            Mute
+          </Card>
+        </div>
       </div>
     </KitState>
     <KitState label="NavRow (and disabled), ListRow">

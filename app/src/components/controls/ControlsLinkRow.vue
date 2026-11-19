@@ -11,7 +11,7 @@ withDefaults(defineProps<{ name: string; sub: string; as?: 'button' | 'div' }>()
 </script>
 
 <template>
-  <Card :as="as" :variant="CardVariant.Row" class="min-h-[56px] gap-16">
+  <Card :as="as" :variant="CardVariant.Row">
     <span class="flex min-w-0 flex-1 flex-col">
       <span class="font-medium">{{ name }}</span>
       <span class="text-caption text-ink-muted">{{ sub }}</span>

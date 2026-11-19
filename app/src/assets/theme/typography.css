@@ -9,6 +9,8 @@
 @theme {
   --font-*: initial;
   --font-sans: 'Geist', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  /* An identity in the system's monospace (a SHA-1, a title ID). */
+  --font-mono: ui-monospace, monospace;
 
   --font-weight-*: initial;
   --font-weight-regular: 400;
@@ -17,6 +19,14 @@
 
   --tracking-*: initial;
   --leading-*: initial;
+  /* No tracking at all: a step's own tracking taken off (pending Cowork: the titles that never had
+     the title step's). */
+  --tracking-none: normal;
+  /* Pending Cowork: lines off the scale, each one place's: a cover's title (19), the quick menu's
+     speed segments (17), a setting's file name (20). */
+  --leading-cover: 19px;
+  --leading-stacked: 17px;
+  --leading-file: 20px;
 
   --text-*: initial;
   /* Scena: the focus moments (first run, game card, quick search). */
@@ -66,4 +76,82 @@
   --text-dialog: 18px;
   --text-dialog--line-height: 24px;
   --text-dialog--font-weight: 600;
+
+  /* Pending Cowork (spec Decision 5, «Handed back to design»): steps in use today, off the
+     scale, named once here until Cowork places them. No weight where the screens inherit it.
+     - caption-tall: caption on the body's 18px line (key caps, a tester's key, hints beside a
+       control, a tile's actions);
+     - caption-tight: caption on a 14px line (a quick save's date on the phone);
+     - label-tight: label on a 16px line (a quick save's name on the phone);
+     - fine: 11px on a 14px line, no tracking (a quick save's date, a small cover's title, the
+       game a save continues from);
+     - badge: 11px on a 16px line (a save's state, a setting's level, a key hint);
+     - overline-lg: the overline one step up, 12px (a section's label on the phone);
+     - label-lead: a control's label on the phone, lead's size in label's weight (the touch
+       density's buttons, boards «Tel-*»);
+     - hero: the phone's main action, 16 / 22 (Riprendi, the first run's Continua);
+     - display-md, display-sm: the display type on the phone (the first run's step titles 26 /
+       32, a game's name in its details 22 / 28). */
+  --text-caption-tall: 12px;
+  --text-caption-tall--line-height: 18px;
+  --text-caption-tall--font-weight: 400;
+  --text-caption-tight: 12px;
+  --text-caption-tight--line-height: 14px;
+  --text-label-tight: 13px;
+  --text-label-tight--line-height: 16px;
+  --text-fine: 11px;
+  --text-fine--line-height: 14px;
+  --text-badge: 11px;
+  --text-badge--line-height: 16px;
+  --text-overline-lg: 12px;
+  --text-overline-lg--line-height: 16px;
+  --text-overline-lg--font-weight: 600;
+  --text-overline-lg--letter-spacing: 0.08em;
+  --text-label-lead: 15px;
+  --text-label-lead--line-height: 22px;
+  --text-label-lead--font-weight: 500;
+  --text-hero: 16px;
+  --text-hero--line-height: 22px;
+  --text-hero--font-weight: 600;
+  --text-display-md: 26px;
+  --text-display-md--line-height: 32px;
+  --text-display-md--font-weight: 600;
+  --text-display-md--letter-spacing: -0.02em;
+  --text-display-sm: 22px;
+  --text-display-sm--line-height: 28px;
+  --text-display-sm--font-weight: 600;
+  --text-display-sm--letter-spacing: -0.02em;
+  /* More pending steps, each one place's:
+     - page-title: a quick menu page's title, 17 / 22 semibold;
+     - stat-sm, stat-md: a console's count in the first run (24 / 30) and after a scan (32 / 38,
+       display without its tracking);
+     - rail: a rail section's name, 10 / 12;
+     - wordmark: the top bar's «EmuDome», 14 semibold at -0.025em;
+     - console-badge: a cover's console badge, 11 / 16 semibold at 0.04em. */
+  --text-page-title: 17px;
+  --text-page-title--line-height: 22px;
+  --text-page-title--font-weight: 600;
+  --text-stat-sm: 24px;
+  --text-stat-sm--line-height: 30px;
+  --text-stat-sm--font-weight: 600;
+  --text-stat-md: 32px;
+  --text-stat-md--line-height: 38px;
+  --text-stat-md--font-weight: 600;
+  --text-rail: 10px;
+  --text-rail--line-height: 12px;
+  --text-wordmark: 14px;
+  --text-wordmark--font-weight: 600;
+  --text-wordmark--letter-spacing: -0.025em;
+  --text-console-badge: 11px;
+  --text-console-badge--line-height: 16px;
+  --text-console-badge--font-weight: 600;
+  --text-console-badge--letter-spacing: 0.04em;
+
+  /* A step's size alone, on the line of the text around it: for the boxes whose line their
+     container sets (the quick menu's cards sit on the panel's line, which the phone's sheet
+     raises to lead's 22px). The size is the step's own, read from it. */
+  --text-overline-inline: var(--text-overline);
+  --text-caption-inline: var(--text-caption);
+  --text-label-inline: var(--text-label);
+  --text-cta-inline: var(--text-cta);
 }

@@ -31,8 +31,8 @@ const pill = ref('saves')
         </TabsList>
       </Tabs>
     </KitState>
-    <KitState label="Pill (phone, 36)">
-      <Tabs v-model="pill" :size="TabsSize.Pill">
+    <KitState label="Large on the phone: pills (36)">
+      <Tabs v-model="pill" :size="TabsSize.Large" data-density="touch">
         <TabsList class="gap-8 border-b-0">
           <TabsTrigger value="saves">Saves</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>

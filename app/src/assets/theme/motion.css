@@ -12,6 +12,8 @@
   --transition-duration-panel: 250ms;
   --transition-duration-scene: 500ms;
   --transition-duration-ambient: 1200ms;
+  /* Pending Cowork: the quick menu's hint (G06) fading out. */
+  --transition-duration-hint: 600ms;
 
   --ease-*: initial;
   /* Everything that enters. `--ease-out` is also the name the screens' scoped CSS reads. */

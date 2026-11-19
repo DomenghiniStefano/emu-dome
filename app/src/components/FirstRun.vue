@@ -97,26 +97,20 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="root"
-    class="fixed inset-0 flex flex-col overflow-hidden text-ink"
-    :class="phone ? 'bg-welcome-glow-phone text-lead' : 'bg-welcome-glow'"
+    class="fixed inset-0 flex flex-col overflow-hidden bg-welcome-glow text-ink touch:bg-welcome-glow-phone touch:text-lead"
   >
-    <StepDots :steps="steps" :index="index" :phone="phone" />
+    <StepDots :steps="steps" :index="index" />
 
-    <main
-      class="grid min-h-0 flex-1 place-items-center overflow-y-auto"
-      :class="phone ? 'px-20' : 'px-16'"
-    >
+    <main class="grid min-h-0 flex-1 place-items-center overflow-y-auto px-16 touch:px-20">
       <WelcomeStep
         v-if="step === 'welcome'"
-        :phone="phone"
         :lang="language.lang.value"
         :lang-options="language.options.value"
         @lang="language.choose"
       />
-      <GamesStep v-else-if="step === 'games'" :phone="phone" @error="fail" />
+      <GamesStep v-else-if="step === 'games'" @error="fail" />
       <ControllerStep
         v-else-if="step === 'controller' && tester.pad.value"
-        :phone="phone"
         :pad="tester.pad.value"
         :ab="tester.ab.value"
         :pressed="tester.pressed.value"

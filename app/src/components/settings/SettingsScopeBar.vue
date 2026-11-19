@@ -42,19 +42,17 @@ const line = computed(() => {
 </script>
 
 <template>
-  <!-- radius 12 and layer 5: off the scales (spec Decision 5, Cowork). `!`: the global
-       `.glass-thick` of styles.css is unlayered and would put its own radius back. -->
+  <!-- Thick glass with radius 12 (pending Cowork): the glass's material, edge and shadow, its
+       own corners. Sticks over the rows that scroll under it. -->
   <div
-    class="glass-thick sticky top-0 z-[5] flex flex-col gap-10 rounded-[12px]! px-16 py-14"
+    class="glass-thick-flat sticky top-0 z-sticky flex flex-col gap-10 rounded-12 border border-line px-16 py-14 shadow-glass"
     role="region"
     :aria-label="t('settingsUi.scopeRegion')"
   >
     <div class="flex flex-wrap items-center justify-between gap-12">
       <div class="text-heading">{{ t('settingsUi.scopeTitle') }}</div>
       <!-- 6 / 1 padding: what the browser gave the button this used to be -->
-      <label
-        class="flex cursor-pointer items-center gap-8 px-6 py-[1px] font-medium text-ink-muted"
-      >
+      <label class="flex cursor-pointer items-center gap-8 px-6 py-px font-medium text-ink-muted">
         {{ t('settingsUi.onlyChanged') }}
         <!-- no glow when on, unlike a setting's switch (as the bar's own switch was) -->
         <Switch v-model="onlyChanged" class="data-[state=checked]:shadow-none" />

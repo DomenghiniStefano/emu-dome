@@ -1,21 +1,27 @@
-/* The look that is more than one property, as named utilities: the glass panels, the accent's
-   dome gradient, a native range input's dressing. Each copies what styles.css or a screen draws
-   today, with the same values written through the tokens. */
+/* The looks that are more than one property, as named utilities: the glass panels, the accent's
+   gradients, the ambient haze, the focus rings drawn inside a frame, the scenes' glows and the
+   progress bands, each written through the tokens. */
 
-/* Thick glass (README «Vetro»): menus, dialogs, the quick menu. What `.glass-thick` in styles.css
-   draws, which the screens keep using until cycle 2. «Riduci la trasparenza» turns the fill solid
-   (colors.css) and the blur off (styles.css). */
+/* Thick glass (README «Vetro»): menus, dialogs, panels. «Riduci la trasparenza» turns the fill
+   solid (colors.css) and the blur off (styles.css). */
 @utility glass-thick {
   background: var(--glass-thick);
   border: 1px solid var(--line);
-  border-radius: var(--radius-16);
+  border-radius: var(--radius-panel);
   box-shadow:
     inset 0 1px 0 var(--glass-edge),
     var(--shadow-float);
   backdrop-filter: blur(var(--blur-glass)) saturate(140%);
 }
 
-/* The main action's dome (`.btn-primary`): the crown's light on the top edge only, then the
+/* Thick glass's material alone, its fill and blur: for a panel that draws its own edge, corners
+   and shadow (the quick menu's panel, bar and sheet, quick-menu/panel.ts). */
+@utility glass-thick-flat {
+  background: var(--glass-thick);
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+}
+
+/* The main action's dome (ButtonVariant.Primary): the crown's light on the top edge only, then the
    accent, darkening to accent-deep at the bottom. */
 @utility bg-accent-dome {
   background: linear-gradient(
@@ -26,17 +32,17 @@
   );
 }
 
-/* A switch that is on (SettingRow `.switch.on`). */
+/* A switch that is on (Switch). */
 @utility bg-accent-track {
   background: linear-gradient(var(--accent-crown), var(--accent-deep));
 }
 
 /* Glass (README «Vetro»: the medium one), a panel over the ambient haze: fill, edge, the lit top
-   edge, no float shadow (LibraryView L11). */
+   edge, no float shadow (the library's panels, L11). */
 @utility glass {
   background: var(--glass);
   border: 1px solid var(--line);
-  border-radius: var(--radius-16);
+  border-radius: var(--radius-panel);
   box-shadow: inset 0 1px 0 var(--glass-edge);
   backdrop-filter: blur(var(--blur-glass)) saturate(140%);
 }
@@ -93,10 +99,10 @@
   }
 }
 
-/* The scene behind a game starting or closing (G01, G14): the cover's colour, which the element
-   sets as `--cover`, glowing from the top third over the ground. */
+/* The scene behind a game starting or closing (G01, G14): the game's colour, which the element
+   sets as `--cover-tint`, glowing from the top third over the ground. */
 @utility bg-cover-glow {
-  background: radial-gradient(60% 50% at 50% 30%, var(--cover) 0%, transparent 75%), var(--bg);
+  background: radial-gradient(60% 50% at 50% 30%, var(--cover-tint) 0%, transparent 75%), var(--bg);
 }
 
 /* An indeterminate progress bar's band (G01, G14): it slides across its track, 1.2 s a pass.

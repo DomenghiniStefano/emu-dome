@@ -31,7 +31,7 @@ useDismiss(root, () => emit('close'), { outside: true })
   <!-- 220px is the menu's own least width. -->
   <div
     ref="root"
-    class="glass-thick absolute top-[calc(100%+6px)] right-0 z-raised flex min-w-[220px] flex-col gap-2 p-6"
+    class="glass-thick absolute top-[calc(100%+var(--spacing-6))] right-0 z-raised flex min-w-menu-min flex-col gap-2 p-6"
     role="menu"
     :aria-label="t('library.moreFor', { title: props.game.title })"
   >

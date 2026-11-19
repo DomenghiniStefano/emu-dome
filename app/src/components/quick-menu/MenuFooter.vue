@@ -18,12 +18,11 @@ const { t } = useI18n()
 
 <template>
   <footer
-    class="items-center justify-between pt-4"
-    :class="touch ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-8' : 'flex gap-12'"
+    class="flex items-center justify-between gap-12 pt-4 touch:grid touch:grid-cols-[auto_minmax(0,1fr)] touch:gap-8"
   >
     <Button
       :variant="ButtonVariant.Danger"
-      :size="touch ? ButtonSize.MenuTouch : ButtonSize.Menu"
+      :size="ButtonSize.Menu"
       class="min-w-0"
       @click="$emit('close')"
     >
@@ -33,7 +32,7 @@ const { t } = useI18n()
     <Button
       v-if="touch"
       :variant="ButtonVariant.Primary"
-      :size="ButtonSize.MenuMainTouch"
+      :size="ButtonSize.MenuMain"
       @click="$emit('resume')"
     >
       {{ t('qm.resumeShort') }}
@@ -42,7 +41,6 @@ const { t } = useI18n()
       v-else
       :variant="ButtonVariant.Primary"
       :size="ButtonSize.MenuMain"
-      class="w-[260px]"
       @click="$emit('resume')"
     >
       <Play :size="18" fill="currentColor" :stroke-width="0" aria-hidden="true" />

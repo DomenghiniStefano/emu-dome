@@ -29,11 +29,7 @@ const { t } = useI18n()
         {{ t('settingsUi.changed') }}
         <span class="sr-only">{{ t('settingsUi.changedSr') }}</span>
       </span>
-      <!-- 11 / 16: off the type scale (spec Decision 5, Cowork) -->
-      <span
-        v-if="onlyOn"
-        class="rounded-4 bg-surface-raised px-6 text-[11px] leading-[16px] text-ink-muted"
-      >
+      <span v-if="onlyOn" class="rounded-4 bg-surface-raised px-6 text-badge text-ink-muted">
         {{ t(`settingsUi.onlyHere.${onlyOn}`) }}
       </span>
     </div>

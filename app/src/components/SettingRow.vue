@@ -12,7 +12,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Undo2 } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { SettingEntry, SettingLevel, SettingRow, SettingsSchema, SettingValue } from '../emu'
 import { errorText } from '../i18n/labels'
 import { FILE_PICKERS, msg } from '../settingsModel'
@@ -99,7 +99,8 @@ async function choose() {
         </span>
         <Button
           v-if="state.changedHere && !compact"
-          :variant="ButtonVariant.RowGhost"
+          :variant="ButtonVariant.GhostRegular"
+          :fade="ButtonFade.None"
           :size="ButtonSize.Small"
           @click="emit('reset')"
         >
@@ -156,7 +157,8 @@ async function choose() {
         <!-- binding list: edited in the Controls section -->
         <Button
           v-else-if="kind.type === 'bindings'"
-          :variant="ButtonVariant.RowSoft"
+          :variant="ButtonVariant.Soft"
+          :fade="ButtonFade.None"
           :disabled="disabled || compact"
           @click="emit('open')"
         >

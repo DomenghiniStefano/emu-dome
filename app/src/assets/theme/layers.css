@@ -1,13 +1,19 @@
 /* Stacking order, named. Tailwind has no theme namespace for z-index, so the names are utilities
-   and the numbers live here once. Only the layers a primitive uses are named in cycle 1; the
-   screens' others (5, 10, 30, 35) get theirs when cycle 2 migrates them.
+   and the numbers live here once.
+   - sticky: a bar that sticks to the top of its scrolling page, over the rows that scroll under
+     it (the settings scope bar: 5);
    - raised: a panel or menu over its own screen (LibraryFilters, CoverMenu: 10);
    - menu: a menu open under its trigger (SettingSelectMenu: 20);
    - overlay: what covers the screen without blocking it (the quick menu hint G06, the drop
      target): 30;
+   - scene: a game starting or closing (GameScene, G01 / G14): over the overlays, under the
+     dialogs a start can raise (35);
    - dialog: a blocking dialog over everything (FlowDialog: 40);
    - toast: the short messages, above the dialogs too (a dialog's own result, «Dettagli copiati»,
      shows over it): 50. */
+@utility z-sticky {
+  z-index: 5;
+}
 @utility z-raised {
   z-index: 10;
 }
@@ -16,6 +22,9 @@
 }
 @utility z-overlay {
   z-index: 30;
+}
+@utility z-scene {
+  z-index: 35;
 }
 @utility z-dialog {
   z-index: 40;

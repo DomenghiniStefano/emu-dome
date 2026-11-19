@@ -62,10 +62,10 @@ onUnmounted(() => {
 
 /** The d-pad's arms, each placed on its side of the cross. */
 const ARMS: { dir: GameButton; place: string }[] = [
-  { dir: 'up', place: 'top-0 left-[50px] h-[52px] w-48' },
-  { dir: 'down', place: 'bottom-0 left-[50px] h-[52px] w-48' },
-  { dir: 'left', place: 'top-[50px] left-0 h-48 w-[52px]' },
-  { dir: 'right', place: 'top-[50px] right-0 h-48 w-[52px]' },
+  { dir: 'up', place: 'top-0 left-dpad-arm h-52 w-48' },
+  { dir: 'down', place: 'bottom-0 left-dpad-arm h-52 w-48' },
+  { dir: 'left', place: 'top-dpad-arm left-0 h-48 w-52' },
+  { dir: 'right', place: 'top-dpad-arm right-0 h-48 w-52' },
 ]
 const FACES: { button: GameButton; key: string; place: string }[] = [
   { button: 'b', key: 'touch.b', place: 'bottom-16 left-0' },
@@ -90,8 +90,8 @@ const SYSTEM: { button: GameButton; key: string }[] = [
       <Button
         v-for="s in SHOULDERS"
         :key="s.button"
-        :variant="ButtonVariant.Touch"
-        :size="ButtonSize.TouchShoulder"
+        :variant="ButtonVariant.Pad"
+        :size="ButtonSize.PadShoulder"
         class="pointer-events-auto absolute top-12"
         :class="s.place"
         @pointerdown="hold($event, s.button)"
@@ -103,8 +103,8 @@ const SYSTEM: { button: GameButton; key: string }[] = [
     </template>
 
     <Button
-      :variant="ButtonVariant.Touch"
-      :size="ButtonSize.TouchMenu"
+      :variant="ButtonVariant.Pad"
+      :size="ButtonSize.PadMenu"
       class="pointer-events-auto absolute top-12 left-1/2 -translate-x-1/2"
       :aria-label="t('touch.menu')"
       @click="emit('menu')"
@@ -127,7 +127,7 @@ const SYSTEM: { button: GameButton; key: string }[] = [
 
     <div
       ref="dpad"
-      class="pointer-events-auto absolute bottom-[64px] left-24 size-[148px] touch-none"
+      class="pointer-events-auto absolute bottom-pad-lift left-24 size-dpad touch-none"
       role="group"
       :aria-label="t('touch.dpad')"
       @pointerdown="dpadDown"
@@ -143,12 +143,12 @@ const SYSTEM: { button: GameButton; key: string }[] = [
       />
     </div>
 
-    <div class="absolute right-24 bottom-[64px] size-[148px]">
+    <div class="absolute right-24 bottom-pad-lift size-dpad">
       <Button
         v-for="f in FACES"
         :key="f.button"
-        :variant="ButtonVariant.Touch"
-        :size="ButtonSize.TouchFace"
+        :variant="ButtonVariant.Pad"
+        :size="ButtonSize.PadFace"
         class="pointer-events-auto absolute"
         :class="f.place"
         @pointerdown="hold($event, f.button)"
@@ -163,8 +163,8 @@ const SYSTEM: { button: GameButton; key: string }[] = [
       <Button
         v-for="b in SYSTEM"
         :key="b.button"
-        :variant="ButtonVariant.Touch"
-        :size="ButtonSize.TouchSystem"
+        :variant="ButtonVariant.Pad"
+        :size="ButtonSize.PadSystem"
         class="pointer-events-auto"
         @pointerdown="hold($event, b.button)"
         @pointerup="press(b.button, false)"

@@ -1,8 +1,6 @@
-/* The document's base. The design tokens (colours, radii, shadows, motion) and their values per
-   theme moved to src/assets/theme/ (cycle 1 of the design system,
-   docs/specs/2026-11-18-design-system-foundations.md), under the same variable names: every
-   `var(--…)` below and in the screens' scoped CSS still resolves. This file keeps the global rules
-   the screens rely on, unlayered, until cycle 3 removes them. */
+/* The document's base: its font and line, the reduced transparency and motion switches, the
+   transparent page over the native game, and the focus ring. The design tokens and their values
+   per theme live in src/assets/theme/ (docs/specs/2026-11-18-design-system-foundations.md). */
 :root {
   font-family: 'Geist', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
@@ -81,52 +79,4 @@ body,
    shows the ring above. */
 :root:not([data-nav]) :focus {
   outline: none;
-}
-/* `.glass-thick` is the design system's utility now (assets/utilities.css, same values): the
-   screens that still write the class get it from there. */
-
-.btn {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: var(--radius-6);
-  border: 1px solid var(--line);
-  background: var(--surface-raised);
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: background 150ms;
-}
-.btn:hover {
-  background: var(--surface-hover);
-}
-.btn-primary {
-  height: 40px;
-  padding: 0 18px;
-  border: 0;
-  color: var(--on-accent);
-  font-weight: 600;
-  font-size: 14px;
-  background: linear-gradient(
-    var(--accent-crown) 0,
-    var(--accent) 6px,
-    var(--accent) 60%,
-    var(--accent-deep) 100%
-  );
-  /* glow-sm, in the accent the user chose (general.accent). */
-  box-shadow: 0 0 12px color-mix(in srgb, var(--violet) 45%, transparent);
-}
-.btn-primary:hover {
-  background: var(--accent-hover);
-}
-.overline {
-  font-size: 11px;
-  line-height: 14px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
-}
-.num {
-  font-variant-numeric: tabular-nums;
 }

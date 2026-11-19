@@ -48,10 +48,9 @@ const ROOT = resolve(import.meta.dirname, '..')
 const SRC = join(ROOT, 'app', 'src')
 const FIXTURES = join(ROOT, 'scripts', 'scan-conventions')
 
-// The screens as they were when cycle 1 landed (paths under app/src/). Cycle 2 shrinks this list.
-const LEGACY = new Set([
-  'components/quick-menu/PendingValues.vue',
-])
+// The screens as they were when cycle 1 landed (paths under app/src/). Cycle 2 emptied it (the
+// last one, the quick menu's pending values, became tokens, Trello #65); cycle 3 deletes the list.
+const LEGACY = new Set([])
 
 // utility-collision: legacy class names whose utility is harmless, each checked by hand.
 const NEUTRAL = new Map([

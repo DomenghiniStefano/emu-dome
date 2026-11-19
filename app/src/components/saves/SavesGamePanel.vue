@@ -8,6 +8,7 @@ import type { GameSaves, LibraryGame, QuickSave } from '../../emu'
 import { saveWhenLabel, sizeLabel } from '../../i18n/labels'
 import { Button } from '@/components/ui/button'
 import GameCover from '../GameCover.vue'
+import { CoverSize } from '../cover/variants'
 import SlotTile from '../SlotTile.vue'
 import SaveBackups from './SaveBackups.vue'
 import SavesBlock from './SavesBlock.vue'
@@ -46,9 +47,13 @@ const inGameLine = computed(() =>
 <template>
   <section class="flex flex-col gap-18">
     <div class="flex items-center gap-14">
-      <!-- GameCover's own scoped CSS beats any utility: `!` makes it the 48px cover of the
-           heading (TODO: a size of GameCover's own, Library stream). -->
-      <GameCover class="w-48! flex-none rounded-6! p-0! text-[0px]!" :game="game" :badge="false" />
+      <GameCover
+        :size="CoverSize.Row"
+        class="flex-none"
+        :game="game"
+        :badge="false"
+        :title="false"
+      />
       <div class="min-w-0 flex-1">
         <h2 class="m-0 text-title">{{ game.title }}</h2>
         <div class="text-ink-muted tabular-nums">

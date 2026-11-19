@@ -48,7 +48,7 @@ defineExpose({ focus })
     <Button
       ref="trigger"
       :variant="phone ? ButtonVariant.Plain : ButtonVariant.Soft"
-      :size="phone ? ButtonSize.IconTouch : ButtonSize.TallNarrow"
+      :size="phone ? ButtonSize.IconTouch : ButtonSize.Tall"
       :aria-label="t('library.more')"
       :title="t('library.more')"
       aria-haspopup="menu"

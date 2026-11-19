@@ -2,7 +2,7 @@
    capsules, save slots; radius-16 panels and the quick menu. `rounded-full` (switches, round
    touch keys) is Tailwind's own static class and survives the reset.
 
-   `static`: the screens' scoped CSS reads `var(--radius-6)` and friends by these very names, and
+   `static`: the named utilities (utilities.css) read `var(--radius-16)` by this very name, and
    Tailwind only emits a theme variable a class of its own uses unless told to keep them all. */
 @theme static {
   --radius-*: initial;
@@ -10,4 +10,20 @@
   --radius-6: 6px;
   --radius-10: 10px;
   --radius-16: 16px;
+
+  /* Pending Cowork (spec Decision 5 proposes 8 -> 6, 12 -> 10, 20 -> 16): radii in use today, off
+     the design system's scale, named here once until Cowork decides.
+     - 8: the rail's sections, a cover's actions, a quick menu row's icon, a toast's action, the
+       quick menu's speed segments, a settings category's search, a tester's key, a list item;
+     - 12: the quick menu's cards and actions on the phone, a toast, the settings scope bar;
+     - 20: the phone's quick menu sheet, the first run's logo. */
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-20: 20px;
+
+  /* Roles: what a radius is for, so «every control's corners» is one edit. */
+  --radius-badge: var(--radius-4);
+  --radius-control: var(--radius-6);
+  --radius-card: var(--radius-10);
+  --radius-panel: var(--radius-16);
 }

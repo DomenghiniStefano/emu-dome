@@ -1,12 +1,10 @@
 <script setup lang="ts">
 // A card of the game details' tabs: the Surface card, rounder and a little tighter on the phone
-// (board «Tel-Dettagli»). The gap between its parts is the caller's.
+// (board «Tel-Dettagli», CardVariant.Detail). The gap between its parts is the caller's.
 import type { HTMLAttributes } from 'vue'
-import { Card } from '@/components/ui/card'
-import { cn } from '@/lib/cn'
+import { Card, CardVariant } from '@/components/ui/card'
 
 const props = defineProps<{
-  phone: boolean
   /** The element it renders (`aside` for a side card). */
   as?: string
   class?: HTMLAttributes['class']
@@ -14,7 +12,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <Card :as="as ?? 'div'" :class="cn(phone && 'rounded-16 p-14', props.class)">
+  <Card :as="as ?? 'div'" :variant="CardVariant.Detail" :class="props.class">
     <slot />
   </Card>
 </template>

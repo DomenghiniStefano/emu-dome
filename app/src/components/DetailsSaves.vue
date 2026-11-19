@@ -70,8 +70,7 @@ async function onChanged() {
 
 <template>
   <div
-    class="grid items-start"
-    :class="phone ? 'grid-cols-1 gap-10' : 'grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-20'"
+    class="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start gap-20 touch:grid-cols-1 touch:gap-10"
   >
     <section class="flex flex-col gap-10">
       <div class="flex items-center justify-between gap-12">
@@ -80,11 +79,7 @@ async function onChanged() {
           {{ t('details.saves.quickHint') }}
         </span>
       </div>
-      <div
-        v-if="saves && saves.quick.length"
-        class="grid gap-10"
-        :class="phone ? 'grid-cols-2' : 'grid-cols-3'"
-      >
+      <div v-if="saves && saves.quick.length" class="grid grid-cols-3 gap-10 touch:grid-cols-2">
         <SlotTile
           v-for="q in saves.quick"
           :key="q.slot"

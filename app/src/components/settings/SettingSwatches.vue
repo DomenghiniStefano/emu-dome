@@ -2,7 +2,7 @@
 // A colour among a few (`colour`, `general.accent`): round swatches, the chosen one ringed.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { swatchKey } from './settingRowModel'
 
 const props = defineProps<{
@@ -35,6 +35,7 @@ function swatchName(hex: string): string {
       :key="c"
       :variant="ButtonVariant.Swatch"
       :size="ButtonSize.IconSmall"
+      :fade="ButtonFade.None"
       role="radio"
       :aria-checked="chosen === c"
       :aria-label="swatchName(c)"

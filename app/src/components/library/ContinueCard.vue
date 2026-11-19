@@ -23,8 +23,8 @@ const from = computed(() => resumeSource(props.point))
     <!-- 96px is the picture's own width; a game that is not reachable fades it to 45%
          (Cowork: `disabled` is 40%). -->
     <span
-      class="aspect-[3/2] w-[96px] flex-none overflow-hidden rounded-6"
-      :class="{ 'opacity-45': !game.available }"
+      class="aspect-3/2 w-continue-thumb flex-none overflow-hidden rounded-6"
+      :class="{ 'opacity-missing': !game.available }"
       aria-hidden="true"
       :style="{ background: game.colour }"
     >
@@ -60,8 +60,7 @@ const from = computed(() => resumeSource(props.point))
           {{ t('shell.saves') }}
         </Button>
       </div>
-      <!-- 11/14 regular is off the type scale (the 11px step is semibold and tracked: Cowork). -->
-      <div v-if="from" class="text-[11px]/[14px] text-ink-faint">
+      <div v-if="from" class="text-fine text-ink-faint">
         {{ t(from.key, from.params ?? {}) }}
       </div>
     </div>

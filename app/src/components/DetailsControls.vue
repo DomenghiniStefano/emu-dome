@@ -18,7 +18,7 @@ import DetailsCard from './details/DetailsCard.vue'
 import { hasOwnRemap, hasTouchScreen, pointerLabel, type PadRows } from './details/gameControls'
 import SectionLabel from './details/SectionLabel.vue'
 
-const props = defineProps<{ game: LibraryGame; phone: boolean }>()
+const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{
   /** «Rimappa i pulsanti per questo gioco». */
   remap: []
@@ -54,14 +54,12 @@ onMounted(async () => {
   })
 })
 onUnmounted(() => unlisten?.())
-
-/** A card of this tab: the odd one out at the end takes the whole row, no empty cell beside it. */
-const card = computed(() => ['last:odd:col-span-full', props.phone ? 'gap-6' : 'gap-10'])
 </script>
 
 <template>
-  <div class="grid gap-16" :class="phone ? 'grid-cols-1' : 'grid-cols-2'">
-    <DetailsCard :phone="phone" :class="card">
+  <!-- A card of this tab: the odd one out at the end takes the whole row, no empty cell beside it. -->
+  <div class="grid grid-cols-2 gap-16 touch:grid-cols-1">
+    <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
       <SectionLabel>{{ t('details.controls.padTitle') }}</SectionLabel>
       <div class="font-medium">
         {{
@@ -71,19 +69,22 @@ const card = computed(() => ['last:odd:col-span-full', props.phone ? 'gap-6' : '
         }}
       </div>
       <div class="text-ink-muted">{{ t('details.controls.remapLead') }}</div>
-      <DetailsAction :phone="phone" class="self-start" :disabled="!scope" @click="emit('remap')">
+      <DetailsAction class="self-start" :disabled="!scope" @click="emit('remap')">
         {{ t('details.controls.remap') }}
       </DetailsAction>
     </DetailsCard>
-    <DetailsCard :phone="phone" :class="card">
+    <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
       <SectionLabel>{{ t('details.controls.turboTitle') }}</SectionLabel>
       <div class="text-ink-muted">{{ t('details.notYet') }}</div>
     </DetailsCard>
-    <DetailsCard :phone="phone" :class="card">
+    <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
       <SectionLabel>{{ t('details.controls.touchTitle') }}</SectionLabel>
       <div class="text-ink-muted">{{ t('details.controls.touchLead') }}</div>
     </DetailsCard>
-    <DetailsCard v-if="hasTouchScreen(game.console)" :phone="phone" :class="card">
+    <DetailsCard
+      v-if="hasTouchScreen(game.console)"
+      class="gap-10 last:odd:col-span-full touch:gap-6"
+    >
       <SectionLabel>{{ t('details.controls.pointerTitle') }}</SectionLabel>
       <div class="font-medium">{{ pointer }}</div>
       <div class="text-ink-muted">{{ t('details.controls.pointerLead') }}</div>

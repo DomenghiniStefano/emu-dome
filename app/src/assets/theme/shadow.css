@@ -37,6 +37,11 @@
   --shadow-tab: inset 0 -2px 0 var(--accent-text);
   /* A slider's thumb lifted off its track (not in the design system yet: Cowork). */
   --shadow-thumb: 0 1px 3px #00000080;
+  /* Pending Cowork (spec Decision 5): the quick menu's own, the same in every theme.
+     - panel: the panel's lit top edge and a deeper shadow than `float`, over the paused game;
+     - sheet: the phone's sheet lifted off the game above it. */
+  --shadow-panel: inset 0 1px 0 var(--glass-edge), 0 32px 96px #000000a6;
+  --shadow-sheet: 0 -24px 64px #0000008c;
 }
 
 @theme {
@@ -45,4 +50,8 @@
   --blur-glass: 24px;
   /* Behind focus moments and under dialogs. */
   --blur-scene: 32px;
+  /* Pending Cowork: the paused game behind the quick menu (2), the screen behind the cover picker
+     and the drop target (8). */
+  --blur-veil: 2px;
+  --blur-dim: 8px;
 }

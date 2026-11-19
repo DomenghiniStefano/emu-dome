@@ -5,6 +5,7 @@
 import type { LibraryGame } from '../../emu'
 import { Card, CardVariant } from '@/components/ui/card'
 import GameCover from '../GameCover.vue'
+import { CoverSize } from '../cover/variants'
 
 defineProps<{
   game: LibraryGame
@@ -17,12 +18,12 @@ defineProps<{
 
 <template>
   <Card :variant="CardVariant.ListItem" as="button" :selected="selected">
-    <!-- GameCover draws itself with its own scoped CSS, which beats any utility: `!` makes it
-         the 28px thumbnail of a row (TODO: a size of GameCover's own, Library stream). -->
     <GameCover
-      class="w-[28px]! flex-none rounded-4! p-0! text-[0px]!"
+      :size="CoverSize.Thumb"
+      class="flex-none"
       :game="game"
       :badge="false"
+      :title="false"
     />
     <span class="flex min-w-0 flex-1 flex-col gap-2">
       <span class="font-medium wrap-anywhere">{{ game.title }}</span>

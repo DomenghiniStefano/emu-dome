@@ -11,6 +11,7 @@ import { emu, type CoverKind, type LibraryGame } from '../emu'
 import { errorText } from '../i18n/labels'
 import { useNavScope } from '../nav'
 import GameCover from './GameCover.vue'
+import { CoverSize } from './cover/variants'
 import { coverKinds } from './library/libraryView'
 import { useDismiss } from './library/useDismiss'
 
@@ -56,10 +57,10 @@ useDismiss(root, () => emit('close'))
 <template>
   <!-- The veil's 8px blur and the dialog's 640px width are not design system values yet
        (Cowork, spec Decision 5). -->
-  <div class="fixed inset-0 z-menu grid place-items-center bg-scrim p-16 backdrop-blur-[8px]">
+  <div class="fixed inset-0 z-menu grid place-items-center bg-scrim p-16 backdrop-blur-dim">
     <div
       ref="root"
-      class="glass-thick flex max-h-full w-[min(640px,100%)] flex-col gap-14 overflow-auto p-24"
+      class="glass-thick flex max-h-full w-panel max-w-full flex-col gap-14 overflow-auto p-24"
       role="dialog"
       aria-modal="true"
       :aria-label="t('library.cover.title', { title: game.title })"
@@ -83,10 +84,15 @@ useDismiss(root, () => emit('close'))
           :data-nav-initial="choice === k ? '' : undefined"
           @click="choice = k"
         >
-          <GameCover v-if="k === 'generated'" class="rounded-6" :game="generated" :badge="false" />
+          <GameCover
+            v-if="k === 'generated'"
+            :size="CoverSize.Choice"
+            :game="generated"
+            :badge="false"
+          />
           <span
             v-else
-            class="relative grid aspect-[2/3] place-items-center overflow-hidden rounded-6 text-ink-muted"
+            class="relative grid aspect-2/3 place-items-center overflow-hidden rounded-6 text-ink-muted"
             :class="{ 'bg-surface-raised': !isEmpty(k) }"
           >
             <template v-if="k === 'icon'">

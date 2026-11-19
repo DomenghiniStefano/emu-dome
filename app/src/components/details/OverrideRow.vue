@@ -13,7 +13,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="flex items-center gap-12 py-12" :class="phone ? 'px-14' : 'px-16'">
+  <div class="flex items-center gap-12 px-16 py-12 touch:px-14">
     <span v-if="!phone" class="size-6 flex-none rounded-full bg-accent-text" aria-hidden="true" />
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       <span class="font-medium">{{ row.name }}</span>
@@ -27,12 +27,11 @@ const { t } = useI18n()
       </span>
     </div>
     <span v-if="!phone" class="font-semibold text-accent-text">{{ row.value }}</span>
-    <!-- The row's own type, regular weight: larger on the phone, with the touch height. -->
+    <!-- The row's own type, regular weight (larger on the phone), with the touch height there. -->
     <Button
-      :variant="ButtonVariant.Ghost"
+      :variant="ButtonVariant.GhostRegular"
       :size="ButtonSize.Small"
-      class="flex-none"
-      :class="phone ? 'min-h-touch text-lead' : 'text-body'"
+      class="flex-none touch:min-h-touch"
       @click="emit('reset')"
     >
       {{ t('settingsUi.reset') }}

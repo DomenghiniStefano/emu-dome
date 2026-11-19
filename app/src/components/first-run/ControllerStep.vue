@@ -10,7 +10,6 @@ import StepLayout from './StepLayout.vue'
 import StepTitle from './StepTitle.vue'
 
 defineProps<{
-  phone: boolean
   pad: PadInfo
   ab: AbLayout
   /** The last press: what it is on the controller and what the game gets (null: unused). */
@@ -23,14 +22,13 @@ const LAYOUTS: AbLayout[] = ['nintendo', 'printed']
 </script>
 
 <template>
-  <StepLayout wide :phone="phone">
-    <StepTitle :phone="phone">{{ t('firstRun.controller.title') }}</StepTitle>
+  <StepLayout wide>
+    <StepTitle>{{ t('firstRun.controller.title') }}</StepTitle>
     <p class="m-0 text-lead text-ink-muted">
       {{ t('firstRun.controller.lead', { name: gamepadName(pad) }) }}
     </p>
     <div
-      class="grid gap-12"
-      :class="phone ? 'grid-cols-1' : 'grid-cols-2'"
+      class="grid grid-cols-2 gap-12 touch:grid-cols-1"
       role="radiogroup"
       :aria-label="t('settings.pad.ab.name')"
     >
@@ -38,7 +36,7 @@ const LAYOUTS: AbLayout[] = ['nintendo', 'printed']
         v-for="id in LAYOUTS"
         :key="id"
         as="button"
-        :variant="CardVariant.LayoutChoice"
+        :variant="CardVariant.Choice"
         :selected="ab === id"
         class="gap-6"
         role="radio"
@@ -51,7 +49,7 @@ const LAYOUTS: AbLayout[] = ['nintendo', 'printed']
       </Card>
     </div>
     <div
-      class="flex min-h-[70px] items-center gap-12 rounded-10 border border-line bg-surface p-14"
+      class="flex min-h-press items-center gap-12 rounded-10 border border-line bg-surface p-14"
       aria-live="polite"
     >
       <span

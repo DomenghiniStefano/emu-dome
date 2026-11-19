@@ -21,7 +21,7 @@ const delegated = computed(() => {
     v-bind="delegated"
     :class="
       cn(
-        'flex h-control shrink-0 cursor-pointer items-center rounded-6 px-10 font-sans text-body whitespace-nowrap text-inherit select-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-locked data-[highlighted]:bg-surface-hover data-[state=checked]:bg-accent-soft data-[state=checked]:font-semibold data-[state=checked]:text-accent-text',
+        'flex h-control shrink-0 cursor-pointer items-center rounded-control px-10 font-sans text-body whitespace-nowrap text-inherit select-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-locked data-[highlighted]:bg-surface-hover data-[state=checked]:bg-accent-soft data-[state=checked]:font-semibold data-[state=checked]:text-accent-text',
         props.class,
       )
     "

@@ -77,6 +77,15 @@
      done, the accent's text colour at 53%. */
   --dot: #ffffff33;
   --dot-done: color-mix(in srgb, var(--accent-text) 53%, transparent);
+  /* Pending Cowork (spec Decision 5, «Handed back to design»): the quick menu's own values, the
+     same in every theme, named once here until Cowork places them.
+     - game-scrim: the paused game behind the menu (the design system's `scene-scrim` is not
+       decided yet);
+     - grip: the handle of the phone's sheet;
+     - on-accent-edge: a key hint's edge on the main action's accent fill. */
+  --game-scrim: #00000099;
+  --grip: #ffffff33;
+  --on-accent-edge: #ffffff80;
 }
 
 /* Nero: true black for OLED screens. */
@@ -193,14 +202,22 @@
   /* Step dots */
   --color-dot: var(--dot);
   --color-dot-done: var(--dot-done);
+  /* The quick menu (pending Cowork) */
+  --color-game-scrim: var(--game-scrim);
+  --color-grip: var(--grip);
+  --color-on-accent-edge: var(--on-accent-edge);
+  /* A game's own colour, set by the element that shows the game (`--cover-tint`): its cover, its
+     details' header, the scene of its start and close. */
+  --color-cover-tint: var(--cover-tint);
   /* The cover colours of the ambient haze (ambient.ts writes them) */
   --color-cover-1: var(--cover-1);
   --color-cover-2: var(--cover-2);
   --color-cover-3: var(--cover-3);
 }
 
-/* New in cycle 2 (Controls, Trello #62): the row waiting for a button (ControlsRemap), 10% of the
-   accent, following it. Cowork: the design system has no tint of the accent. */
+/* New in cycle 2 (Controls, Trello #62): the row waiting for a button (ControlsRemap), and a quick
+   menu card changed «in prova» (G09), 10% of the accent, following it. Cowork: the design system
+   has no tint of the accent. */
 :root {
   --violet-tint: color-mix(in srgb, var(--violet) 10%, transparent);
 }

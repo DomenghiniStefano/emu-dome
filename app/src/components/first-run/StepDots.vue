@@ -4,7 +4,7 @@
 import { useI18n } from 'vue-i18n'
 import type { FirstRunStep } from '../../emu'
 
-defineProps<{ steps: FirstRunStep[]; index: number; phone: boolean }>()
+defineProps<{ steps: FirstRunStep[]; index: number }>()
 const { t } = useI18n()
 
 const dotClass = (i: number, index: number) =>
@@ -13,8 +13,7 @@ const dotClass = (i: number, index: number) =>
 
 <template>
   <ol
-    class="m-0 flex flex-none list-none justify-center gap-8 p-0"
-    :class="phone ? 'h-[88px] items-end pb-12' : 'h-[72px] items-center'"
+    class="m-0 flex h-dots flex-none list-none items-center justify-center gap-8 p-0 touch:h-dots-touch touch:items-end touch:pb-12"
     :aria-label="t('firstRun.steps')"
   >
     <li

@@ -65,13 +65,46 @@ describe('themeKeys', () => {
       'overline',
       'cta',
       'dialog',
+      'caption-tall',
+      'caption-tight',
+      'label-tight',
+      'fine',
+      'badge',
+      'overline-lg',
+      'label-lead',
+      'hero',
+      'display-md',
+      'display-sm',
+      'page-title',
+      'stat-sm',
+      'stat-md',
+      'rail',
+      'wordmark',
+      'console-badge',
+      'overline-inline',
+      'caption-inline',
+      'label-inline',
+      'cta-inline',
     ])
-    expect(themeKeys(radius, ThemeNamespace.Radius)).toEqual(['4', '6', '10', '16'])
+    expect(themeKeys(radius, ThemeNamespace.Radius)).toEqual([
+      '4',
+      '6',
+      '10',
+      '16',
+      '8',
+      '12',
+      '20',
+      'badge',
+      'control',
+      'card',
+      'panel',
+    ])
     expect(themeKeys(motion, ThemeNamespace.TransitionDuration)).toEqual([
       'fast',
       'panel',
       'scene',
       'ambient',
+      'hint',
     ])
     expect(themeKeys(spacing, ThemeNamespace.Spacing)).toContain('control')
     expect(themeKeys(colors, ThemeNamespace.Color)).toContain('accent-soft')

@@ -32,10 +32,13 @@ const cards = computed(() => addedCards(props.summary))
         <X :size="16" :stroke-width="1.75" aria-hidden="true" />
       </Button>
     </div>
-    <div v-if="cards.length" class="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-12">
+    <div
+      v-if="cards.length"
+      class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))] gap-12"
+    >
       <div v-for="c in cards" :key="c.key" class="rounded-10 border border-line bg-surface p-14">
         <!-- 32/38 semibold: `display` without its tracking (Cowork). -->
-        <div class="text-[32px]/[38px] font-semibold tabular-nums">{{ c.count }}</div>
+        <div class="text-stat-md tabular-nums">{{ c.count }}</div>
         <div class="text-ink-muted">{{ t(c.key) }}</div>
       </div>
     </div>
