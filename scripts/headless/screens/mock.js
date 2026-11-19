@@ -275,7 +275,27 @@
         mostUsed: false,
       }),
     ];
-    const all = [...entries, ...more];
+    // `inGame`: the quick menu's speed rows (G16), shown at the Session level.
+    const speed = scenario.inGame
+      ? [
+          entry("speed.ffval", "speed", choice("segments", ["2", "3", "4", "max"]), "4"),
+          entry("speed.slow", "speed", choice("segments", ["0.25", "0.5", "0.75"]), "0.5", {
+            levels: G,
+          }),
+          entry("audio.ff", "speed", choice("segments", ["mute", "pitch_up", "same_pitch"]), "mute"),
+        ]
+      : [];
+    // The rows of the Controls section's shortcuts and sticks tabs (C03, C04).
+    const pad = [
+      entry("pad.mod", "pad", choice("list", ["l3", "r3", "select"]), "l3", { levels: G, mostUsed: false }),
+      entry("pad.dead", "pad", { type: "slider", min: 0, max: 50, step: 1, unit: "percent" }, 15, { levels: G, mostUsed: false }),
+      entry("pad.stickdpad", "pad", { type: "slider", min: 20, max: 90, step: 5, unit: "percent" }, 50, { mostUsed: false }),
+      entry("pad.trig", "pad", { type: "slider", min: 10, max: 90, step: 5, unit: "percent" }, 50, { levels: G, mostUsed: false }),
+      entry("pad.rumble", "pad", { type: "slider", min: 0, max: 100, step: 10, unit: "percent" }, 70, { mostUsed: false, phase: 2 }),
+      entry("pad.confirm", "pad", choice("segments", ["right", "bottom"]), "right", { levels: G, mostUsed: false }),
+      entry("pad.repeat", "pad", choice("list", ["slow", "normal", "fast"]), "normal", { levels: G, mostUsed: false }),
+    ];
+    const all = [...entries, ...more, ...speed, ...pad];
     const pages = [
       "video",
       "fx",
@@ -335,14 +355,18 @@
       // The interface scale (CSS zoom on <html>): 100% unless the scenario asks for another.
       "a11y.textsize": scenario.textsize ?? 100,
       "a11y.cblind": ["deutan", "protan"],
+      "speed.ffval": "3",
+      "pad.dead": 20,
     };
     // Where each value comes from, per level edited: changed here, inherited from another level.
     const sources = {
       global: {
+        "pad.dead": "global",
         "general.bgpause": "global",
         "video.fps": "global",
         "fx.fxint": "global",
       },
+      session: { "speed.ffval": "session", "speed.slow": "global" },
       console: {
         "video.scale": "console",
         "video.fps": "global",
@@ -440,7 +464,16 @@
     modifier: "l3",
   };
   const answers = {
-    startup_game: null,
+    // `inGame`: a game opens at startup (the quick menu's scenarios).
+    startup_game: scenario.inGame ? "C:/Games/Pocket Quest Advance.gba" : null,
+    open_game: {
+      title: "Pocket Quest Advance",
+      console: "Game Boy Advance",
+      consoleId: "gba",
+      core: "mgba",
+      resumable: false,
+      autosaveOnExit: false,
+    },
     video_mode: ["webview", false],
     is_fullscreen: false,
     current_slot: 1,
@@ -452,7 +485,10 @@
     settings_game_overrides: [],
     settings_game_scope: null,
     saves_summary: [],
-    gamepad_list: [],
+    // `pad`: one controller connected (the Controls section's tabs).
+    gamepad_list: scenario.pad
+      ? [{ id: 1, name: "Xbox Wireless Controller", family: "xbox", vendor: 1118, product: 2835, battery: null }]
+      : [],
     controls_bindings: bindings,
     theme: scenario.theme ?? "dark",
     bench_active: false,

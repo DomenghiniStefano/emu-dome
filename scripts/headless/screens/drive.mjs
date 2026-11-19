@@ -111,8 +111,18 @@ const SETTINGS_HELPERS = `(() => {
 })()`;
 const page_ = (name) => `__clickText('nav button', ${JSON.stringify(name)})`;
 const consoleLevel = `(() => { const r = document.querySelectorAll('[role=region] [role=radio]')[1]; r && r.click(); return !!r })()`;
+// «Solo questo gioco»: back to the library, a game's details, its settings tab, «Apri tutte…».
+const gameLevel = [
+  rail(0),
+  `(() => { const b = document.querySelector('[aria-label^="Apri i dettagli di"]'); b && b.click(); return !!b })()`,
+  `__clickText('[role=tab]', "Impostazioni")`,
+  `__clickText('button', "Apri tutte le impostazioni")`,
+];
 const SETTINGS_SCENES = {
   overview: [],
+  "game-overview": gameLevel,
+  "video-game": [...gameLevel, page_("Video")],
+  "general-game": [...gameLevel, page_("Generale")],
   general: [page_("Generale")],
   video: [page_("Video")],
   "video-console": [page_("Video"), consoleLevel],
@@ -161,6 +171,32 @@ for (const theme of ["dark", "black", "light"])
         height,
         stepMs: 600,
       };
+// The other screens that render a setting row or a select field: the Controls tabs (C03, C04),
+// the quick menu's speeds (G16) and the first run's language.
+// A controller connected, then the overview's way into that tab.
+const padTab = (button) => [rail(2), `__clickText('button', ${JSON.stringify(button)})`];
+const esc = `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }))`;
+const ROW_HOSTS = {
+  "ctl-shortcuts": { pad: true, steps: padTab("Modifica le scorciatoie") },
+  "ctl-sticks": { pad: true, steps: padTab("Stick, grilletti") },
+  "qm-home": { inGame: true, steps: [esc] },
+  "qm-speed": {
+    inGame: true,
+    steps: [esc, `__clickText('button', "Imposta le velocità")`],
+  },
+  "first-run": { firstRun: true, steps: [] },
+  "first-run-lang-open": {
+    firstRun: true,
+    steps: [`__openSelect(${JSON.stringify("Lingua")})`],
+  },
+};
+for (const theme of ["dark", "light"])
+  for (const [name, { steps, ...mock }] of Object.entries(ROW_HOSTS))
+    SCENARIOS[`set-host-${name}-${theme}`] = {
+      mock: { theme, richSettings: true, ...mock },
+      steps: [SETTINGS_HELPERS, ...steps],
+      stepMs: 600,
+    };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
