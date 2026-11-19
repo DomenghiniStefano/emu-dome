@@ -4,13 +4,14 @@
 import { nextTick, onMounted, watch, type Ref } from 'vue'
 import { detailsReturn } from '../../gameDetails'
 import { library } from '../../library'
+import { focusInitial } from '../../nav'
 
 /** The attribute a cover's click area carries, with its game's id. */
 export const COVER_OF = 'data-cover-of'
 
 export function useLibraryFocus(root: Ref<HTMLElement | null>) {
   let focused = false
-  async function focusInitial() {
+  async function focusOnce() {
     if (focused || !library.loaded) return
     focused = true
     await nextTick()
@@ -24,11 +25,8 @@ export function useLibraryFocus(root: Ref<HTMLElement | null>) {
       cover.scrollIntoView({ block: 'nearest' })
       return
     }
-    const active = document.activeElement
-    const onRail = active instanceof HTMLElement && active.getAttribute('aria-current') === 'page'
-    if (active && active !== document.body && !onRail) return
-    root.value?.querySelector<HTMLElement>('[data-nav-initial]:not(:disabled)')?.focus()
+    if (root.value) focusInitial(root.value, { unlessMoved: true })
   }
-  watch(() => library.loaded, focusInitial)
-  onMounted(() => void focusInitial())
+  watch(() => library.loaded, focusOnce)
+  onMounted(() => void focusOnce())
 }

@@ -9,6 +9,7 @@ import type {
   SettingsSchema,
   SettingValue,
 } from '../../emu'
+import { cycle } from '../../lib/cycle'
 import { fold, isShown, showIfHolds } from '../../settingsModel'
 
 /** The levels the Settings section edits (Session is the quick menu's). */
@@ -41,9 +42,7 @@ export function lastPlayedConsole(games: LibraryGame[]): ConsoleId | null {
 
 /** The level `dir` steps away from `current`, round the list (L1 / R1); null with one level. */
 export function stepLevel(levels: EditLevel[], current: EditLevel, dir: -1 | 1): EditLevel | null {
-  if (levels.length < 2) return null
-  const i = levels.indexOf(current)
-  return levels[(i + dir + levels.length) % levels.length] ?? null
+  return levels.length < 2 ? null : cycle(levels, current, dir)
 }
 
 /** The schema's entries shown on page `page` (later phases stay hidden). */

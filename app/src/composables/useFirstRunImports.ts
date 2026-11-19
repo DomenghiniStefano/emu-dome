@@ -2,11 +2,11 @@
 // a folder, then imports the saves that match library games.
 import { ref } from 'vue'
 import { emu, type FolderImport } from '../emu'
-import { errorText } from '../i18n/labels'
+import type { ErrorSink } from '../i18n/labels'
 import type { ImportState } from '../lib/first-run/imports'
 import { library } from '../library'
 
-export function useSaveImports(onError: (text: string) => void) {
+export function useFirstRunImports(onError: ErrorSink) {
   const imports = ref<Record<FolderImport, ImportState>>({
     desmume: { found: null, imported: null },
     any: { found: null, imported: null },
@@ -18,7 +18,7 @@ export function useSaveImports(onError: (text: string) => void) {
     try {
       await job()
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     } finally {
       busy.value = false
     }

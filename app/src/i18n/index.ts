@@ -3,7 +3,8 @@
 // The language is the `general.lang` setting («Tutti i giochi»); its default, `system`, follows
 // the OS / browser locale (WebView2 reports the system one).
 import { createI18n } from 'vue-i18n'
-import { emu } from '../emu'
+import { onSettingsChanged } from '../composables/useSettingsChanged'
+import { readSetting } from '../settingsModel'
 import en from './en.json'
 import it from './it.json'
 
@@ -46,8 +47,7 @@ export function applyLanguage(setting: unknown) {
 
 async function refreshLanguage() {
   try {
-    const rows = await emu.settings.page('general', { level: 'global' })
-    applyLanguage(rows.find(r => r.key === 'general.lang')?.value)
+    applyLanguage((await readSetting('general.lang'))?.value)
   } catch (e) {
     console.warn('general.lang unavailable, keeping the system language', e)
   }
@@ -56,7 +56,5 @@ async function refreshLanguage() {
 /** Applies `general.lang` now and follows its changes from then on. */
 export function startLanguage() {
   void refreshLanguage()
-  void emu.settings.onChanged(e => {
-    if (e.key === 'general.lang') void refreshLanguage()
-  })
+  void onSettingsChanged('general.lang', () => void refreshLanguage())
 }

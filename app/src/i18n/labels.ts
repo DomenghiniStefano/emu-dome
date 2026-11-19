@@ -10,6 +10,13 @@ export function isErrorCode(e: unknown): e is ErrorCode {
   return typeof e === 'object' && e !== null && typeof (e as { code?: unknown }).code === 'string'
 }
 
+/**
+ * Where a composable sends a failure: the error as it was thrown (an `ErrorCode` from the bridge,
+ * or anything else). The screen or the toast that shows it turns it into text with `errorText`,
+ * so a composable never translates an error itself.
+ */
+export type ErrorSink = (e: unknown) => void
+
 /** Readable text for any error: known codes are translated, anything else is shown as a detail. */
 export function errorText(e: unknown): string {
   if (isErrorCode(e) && known(`errors.${e.code}`)) {
@@ -66,25 +73,6 @@ export function playTimeLabel(secs: number, long = false): string {
   return t('library.time.hours', { h })
 }
 
-/**
- * When a game was last played, as the L01 board writes it: "today", "yesterday", "3 days ago",
- * "last week", then the month ("October", with the year when it is not this one).
- */
-export function lastPlayedLabel(ms: number, now = Date.now()): string {
-  const locale = i18n.global.locale.value
-  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-  const then = new Date(ms)
-  const days = Math.round((day(new Date(now)) - day(then)) / 86_400_000)
-  const rel = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
-  if (days < 7) return rel.format(-Math.max(0, days), 'day')
-  if (days < 14) return rel.format(-1, 'week')
-  const sameYear = then.getFullYear() === new Date(now).getFullYear()
-  return new Intl.DateTimeFormat(
-    locale,
-    sameYear ? { month: 'long' } : { month: 'long', year: 'numeric' },
-  ).format(then)
-}
-
 /** A file size for the Saves section: "8 KB", "1.8 MB" / "1,8 MB" in the UI language. */
 export function sizeLabel(bytes: number): string {
   const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte'] as const
@@ -102,52 +90,84 @@ export function sizeLabel(bytes: number): string {
   }).format(value)
 }
 
-/** A full date and time in the UI language ("17 November 2026 at 08:12"), for sentences. */
+// ---- Dates and times, in the UI language ----
+//
+// Every date the interface writes is built here. The boards write a date differently per place:
+// the library says how long ago a game was played, Saves and the details say the day and the
+// time of a save, the quick menu's slot tiles a short date and time, Settings the day only.
+
+const locale = () => i18n.global.locale.value
+const format = (ms: number, options: Intl.DateTimeFormatOptions) =>
+  new Intl.DateTimeFormat(locale(), options).format(new Date(ms))
+const relative = () => new Intl.RelativeTimeFormat(locale(), { numeric: 'auto' })
+
+/** Calendar days from `then` to `now` in local time: 0 the same day, 1 the day before. */
+export function daysApart(then: number, now: number): number {
+  const day = (ms: number) => {
+    const d = new Date(ms)
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  }
+  return Math.round((day(now) - day(then)) / 86_400_000)
+}
+
+const sameYear = (then: number, now: number) =>
+  new Date(then).getFullYear() === new Date(now).getFullYear()
+
+/** "12 Nov", with the year when it is not this one. */
+const shortDay = (ms: number, now: number) =>
+  format(
+    ms,
+    sameYear(ms, now)
+      ? { day: 'numeric', month: 'short' }
+      : { day: 'numeric', month: 'short', year: 'numeric' },
+  )
+
+/**
+ * When a game was last played, as the L01 board writes it: "today", "yesterday", "3 days ago",
+ * "last week", then the month ("October", with the year when it is not this one).
+ */
+export function lastPlayedLabel(ms: number, now = Date.now()): string {
+  const days = daysApart(ms, now)
+  if (days < 7) return relative().format(-Math.max(0, days), 'day')
+  if (days < 14) return relative().format(-1, 'week')
+  return format(ms, sameYear(ms, now) ? { month: 'long' } : { month: 'long', year: 'numeric' })
+}
+
+/** A full date and time ("17 November 2026 at 08:12"), for sentences. */
 export function dateTimeLabel(ms: number): string {
-  return new Intl.DateTimeFormat(i18n.global.locale.value, {
-    dateStyle: 'long',
-    timeStyle: 'short',
-  }).format(new Date(ms))
+  return format(ms, { dateStyle: 'long', timeStyle: 'short' })
 }
 
 /** When a save was written, as the Saves boards write it: "today at 08:12", "yesterday at
  * 22:41", "12 Nov at 19:02" (with the year when it is not this one). */
 export function saveWhenLabel(ms: number, now = Date.now()): string {
-  const locale = i18n.global.locale.value
-  const then = new Date(ms)
-  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(then)
-  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-  const days = Math.round((day(new Date(now)) - day(then)) / 86_400_000)
+  const time = format(ms, { hour: '2-digit', minute: '2-digit' })
+  const days = daysApart(ms, now)
   if (days === 0) return t('saves.when.today', { time })
   if (days === 1) return t('saves.when.yesterday', { time })
-  const sameYear = then.getFullYear() === new Date(now).getFullYear()
-  const date = new Intl.DateTimeFormat(
-    locale,
-    sameYear
-      ? { day: 'numeric', month: 'short' }
-      : { day: 'numeric', month: 'short', year: 'numeric' },
-  ).format(then)
-  return t('saves.when.date', { date, time })
+  return t('saves.when.date', { date: shortDay(ms, now), time })
+}
+
+/** A quick save slot's date on the quick menu's tiles (G07, G08): short date and time
+ * ("11/18/26, 9:30 AM"), as the board's tiles have room for. Saves writes the same save with
+ * `saveWhenLabel`: two boards, two formats (Cowork's to bring together). */
+export function slotDateLabel(ms: number): string {
+  return format(ms, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 /** When a setting was last changed, as the T01 board writes it: "today", "yesterday", "12 Nov"
  * (with the year when it is not this one). */
 export function changedWhenLabel(ms: number, now = Date.now()): string {
-  const locale = i18n.global.locale.value
-  const then = new Date(ms)
-  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-  const days = Math.round((day(new Date(now)) - day(then)) / 86_400_000)
-  if (days <= 1) {
-    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
-      -Math.max(0, days),
-      'day',
-    )
-  }
-  const sameYear = then.getFullYear() === new Date(now).getFullYear()
-  return new Intl.DateTimeFormat(
-    locale,
-    sameYear
-      ? { day: 'numeric', month: 'short' }
-      : { day: 'numeric', month: 'short', year: 'numeric' },
-  ).format(then)
+  const days = daysApart(ms, now)
+  if (days <= 1) return relative().format(-Math.max(0, days), 'day')
+  return shortDay(ms, now)
+}
+
+/** «2 minuti fa»: minutes under an hour, then hours (E11, when the last auto quick save was
+ * written). */
+export function timeAgoLabel(at: number, now = Date.now()): string {
+  const minutes = Math.round((at - now) / 60000)
+  return Math.abs(minutes) < 60
+    ? relative().format(minutes, 'minute')
+    : relative().format(Math.round(minutes / 60), 'hour')
 }

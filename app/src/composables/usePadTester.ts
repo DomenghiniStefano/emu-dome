@@ -2,21 +2,20 @@
 import { computed, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type PadInfo, type PadState, type Pos, type RemapRow } from '../emu'
-import { buttonName, posName } from '../controls'
-import { errorText } from '../i18n/labels'
-
-/** The A/B layout: as on Nintendo's consoles, or as printed on the controller. */
-export type AbLayout = 'nintendo' | 'printed'
-
-const FACES: Pos[] = ['south', 'east', 'west', 'north']
+import { abLayout, buttonName, FACES, posName, type AbLayout } from '../controls'
+import { buttonsUsing, newlyHeld } from '../components/controls/tester'
+import { useGlobalSettings } from '../components/controls/useGlobalSettings'
+import type { ErrorSink } from '../i18n/labels'
+import { GLOBAL, readSetting } from '../settingsModel'
 
 export function usePadTester(
   pads: Ref<PadInfo[]>,
   /** Whether the test is on screen: presses count only then. */
   active: () => boolean,
-  onError: (text: string) => void,
+  onError: ErrorSink,
 ) {
   const { t } = useI18n()
+  const settings = useGlobalSettings(onError)
   const pad = computed(() => pads.value[0] ?? null)
   const ab = ref<AbLayout>('nintendo')
   const remap = ref<RemapRow[]>([])
@@ -26,22 +25,16 @@ export function usePadTester(
 
   async function load() {
     try {
-      const rows = await emu.settings.page('pad', { level: 'global' })
-      ab.value = rows.find(r => r.key === 'pad.ab')?.value === 'printed' ? 'printed' : 'nintendo'
-      if (pad.value)
-        remap.value = (await emu.controls.bindings(pad.value.family, { level: 'global' })).remap
+      ab.value = abLayout((await readSetting('pad.ab'))?.value)
+      if (pad.value) remap.value = (await emu.controls.bindings(pad.value.family, GLOBAL)).remap
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
 
   async function setAb(id: AbLayout) {
     ab.value = id
-    try {
-      await emu.settings.set('pad.ab', { level: 'global' }, id)
-    } catch (e) {
-      onError(errorText(e))
-    }
+    await settings.set('pad.ab', id)
   }
 
   /** The buttons held now (while the test listens): a new press shows what it does. */
@@ -49,9 +42,8 @@ export function usePadTester(
     const p = pad.value
     if (!p || !active()) return
     const held = new Set<Pos>(states.find(s => s.id === p.id)?.held ?? [])
-    for (const pos of held) {
-      if (prevHeld.has(pos)) continue
-      const button = remap.value.find(r => r.source === pos)?.button
+    for (const pos of newlyHeld(prevHeld, held)) {
+      const button = buttonsUsing(remap.value, pos)[0]
       pressed.value = {
         which: FACES.includes(pos)
           ? t(`firstRun.controller.which.${pos}`)

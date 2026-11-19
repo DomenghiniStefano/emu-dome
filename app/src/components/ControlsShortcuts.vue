@@ -5,7 +5,7 @@
 // swap them. The rows come from `DEFAULT_COMBOS` (Rust): the reserved ones, whose feature does
 // not exist yet, show their button with a badge and cannot be changed.
 // On the keyboard the shortcuts are the fixed keys of keyboard.ts, listed read-only.
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   emu,
@@ -18,15 +18,18 @@ import {
   type SettingRow,
   type SettingsSchema,
 } from '../emu'
-import { errorText } from '../i18n/labels'
+import { useSettingsChanged } from '../composables/useSettingsChanged'
+import { errorText, type ErrorSink } from '../i18n/labels'
 import { combosList, comboText, hotkeyName, keyName, posName, useCapture } from '../controls'
 import type { CaptureDevice } from '../controls'
 import { KEYBOARD_SHORTCUTS } from '../keyboard'
+import { GLOBAL } from '../settingsModel'
 import { CaptureField, CaptureFieldVariant } from '@/components/ui/capture-field'
 import { Card, CardVariant } from '@/components/ui/card'
 import SettingRowView from './SettingRow.vue'
 import ConflictBanner from './controls/ConflictBanner.vue'
 import ShortcutRow from './controls/ShortcutRow.vue'
+import { useBindingConflict } from './controls/useBindingConflict'
 import { useGlobalSettings } from './controls/useGlobalSettings'
 
 const props = defineProps<{
@@ -38,8 +41,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
-const onError = (text: string) => emit('error', text)
-const settings = useGlobalSettings(onError)
+const failWith: ErrorSink = e => emit('error', errorText(e))
+const settings = useGlobalSettings(failWith)
 
 /** The keyboard has no controller shortcuts: the names are those of a generic pad. */
 const padFamily = computed<PadFamily>(() =>
@@ -49,23 +52,17 @@ const rows = ref<ComboRow[]>([])
 const modifier = ref<Pos>('l3')
 async function load() {
   try {
-    const b = await emu.controls.bindings(padFamily.value, { level: 'global' })
+    const b = await emu.controls.bindings(padFamily.value, GLOBAL)
     rows.value = b.combos
     modifier.value = b.modifier
   } catch (e) {
-    onError(errorText(e))
+    failWith(e)
   }
 }
 
 const modEntry = computed(() => props.schema.entries.find(e => e.key === 'pad.mod'))
 
 // ---- Capture and swap ----
-interface Conflict {
-  hotkey: HotkeyId
-  other: HotkeyId
-  pos: Pos
-}
-const conflict = ref<Conflict | null>(null)
 const capture = useCapture({
   device: () => props.device,
   state: id => props.states.find(s => s.id === id),
@@ -89,22 +86,14 @@ async function write(changes: Partial<Record<HotkeyId, Pos | null>>) {
   else await settings.set('pad.combos', list)
 }
 
-async function assign(hotkey: HotkeyId, pos: Pos) {
+const binding = useBindingConflict({
+  rows: () => rows.value.map(r => ({ id: r.hotkey, source: r.pos })),
+  write,
+})
+const { conflict, swap } = binding
+function assign(hotkey: HotkeyId, pos: Pos) {
   // The shortcut button itself cannot be a shortcut.
-  if (pos === modifier.value) return
-  const other = rows.value.find(r => r.hotkey !== hotkey && r.pos === pos)
-  if (other) {
-    conflict.value = { hotkey, other: other.hotkey, pos }
-    return
-  }
-  await write({ [hotkey]: pos })
-}
-async function swap() {
-  const c = conflict.value
-  if (!c) return
-  conflict.value = null
-  const mine = rows.value.find(r => r.hotkey === c.hotkey)?.pos ?? null
-  await write({ [c.hotkey]: c.pos, [c.other]: mine })
+  if (pos !== modifier.value) return binding.assign(hotkey, pos)
 }
 
 /** The badge of a reserved row: «In arrivo», or «Con Nintendo DS». */
@@ -119,14 +108,8 @@ function comboOf(r: ComboRow): string {
 /** Fullscreen has no controller shortcut: its key, from the keyboard table. */
 const fullscreenKey = keyName(KEYBOARD_SHORTCUTS.find(k => k.action === 'fullscreen')?.code ?? '')
 
-let unlisten: (() => void) | null = null
-onMounted(async () => {
-  await load()
-  unlisten = await emu.settings.onChanged(e => {
-    if (e.key === 'pad.combos' || e.key === 'pad.mod') void load()
-  })
-})
-onBeforeUnmount(() => unlisten?.())
+onMounted(() => void load())
+useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
 </script>
 
 <template>
@@ -172,10 +155,10 @@ onBeforeUnmount(() => unlisten?.())
             </template>
           </ShortcutRow>
           <ConflictBanner
-            v-if="conflict && conflict.hotkey === r.hotkey"
+            v-if="conflict && conflict.id === r.hotkey"
             :text="
               t('controls.comboConflict', {
-                source: posName(padFamily, conflict.pos, false),
+                source: posName(padFamily, conflict.source, false),
                 action: hotkeyName(conflict.other),
               })
             "

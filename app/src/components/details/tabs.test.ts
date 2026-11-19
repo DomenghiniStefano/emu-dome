@@ -1,23 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { DETAILS_TABS, isDetailsTab, stepTab, tabLabelKey, type DetailsTab } from './tabs'
+import { cycle } from '../../lib/cycle'
+import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './tabs'
 
-describe('stepTab', () => {
-  it('moves to the next and the previous tab', () => {
-    expect(stepTab('settings', 1)).toBe('controls')
-    expect(stepTab('settings', -1)).toBe('saves')
-  })
-
-  it('wraps around at both ends', () => {
-    expect(stepTab('files', 1)).toBe('saves')
-    expect(stepTab('saves', -1)).toBe('files')
-  })
-
+describe('the tabs with L1 / R1', () => {
   it('visits every tab once in a full turn', () => {
     const seen = new Set<string>()
     let tab: DetailsTab = DETAILS_TABS[0]
     for (let i = 0; i < DETAILS_TABS.length; i++) {
       seen.add(tab)
-      tab = stepTab(tab, 1)
+      tab = cycle(DETAILS_TABS, tab, 1)
     }
     expect(seen.size).toBe(DETAILS_TABS.length)
     expect(tab).toBe(DETAILS_TABS[0])

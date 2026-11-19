@@ -14,12 +14,6 @@ export const tabsFor = (family: PadFamily): ControlsTab[] =>
     ? [ControlsTab.Remap, ControlsTab.Shortcuts]
     : [ControlsTab.Remap, ControlsTab.Shortcuts, ControlsTab.Sticks]
 
-/** L1 / R1: the previous / next tab, round the ends. */
-export function stepTab(list: ControlsTab[], current: ControlsTab, dir: -1 | 1): ControlsTab {
-  const at = list.indexOf(current)
-  return list[(at + dir + list.length) % list.length] ?? current
-}
-
 /** A tab that `list` has, else the first (remap). */
 export const tabOrRemap = (list: ControlsTab[], wanted: ControlsTab): ControlsTab =>
   list.includes(wanted) ? wanted : ControlsTab.Remap

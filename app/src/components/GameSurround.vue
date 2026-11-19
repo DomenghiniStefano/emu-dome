@@ -10,6 +10,7 @@
 // Decoration only: no input, hidden from assistive technology.
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { coverColours, type CoverColours } from '../ambient'
+import { settingsUnder, useSettingsChanged } from '../composables/useSettingsChanged'
 import { reducedMotion, uiZoom } from '../appearance'
 import { shiftLightness } from '../colour'
 import { insetShare } from '../lib/shell/session'
@@ -54,22 +55,12 @@ function onResize() {
   win.value = { w: window.innerWidth, h: window.innerHeight, dpr: window.devicePixelRatio }
 }
 
-let unlisten: (() => void) | null = null
-let closed = false
-onMounted(async () => {
+onMounted(() => {
   window.addEventListener('resize', onResize)
   void load()
-  const off = await emu.settings.onChanged(e => {
-    if (e.key.startsWith('video.surround')) void load()
-  })
-  if (closed) off()
-  else unlisten = off
 })
-onUnmounted(() => {
-  closed = true
-  window.removeEventListener('resize', onResize)
-  unlisten?.()
-})
+useSettingsChanged(settingsUnder('video.surround'), () => void load())
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 const kind = computed(() => String(values.value['video.surround'] ?? 'black'))
 const builtin = computed(() => String(values.value['video.surroundSet'] ?? 'aurora'))

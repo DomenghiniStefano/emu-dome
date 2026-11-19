@@ -4,13 +4,14 @@
 import { reactive, ref, watch, type Ref } from 'vue'
 import {
   emu,
+  type SettingsChanged,
   type SettingEntry,
   type SettingRecent,
   type SettingsSchema,
   type SettingsScope,
   type SettingValue,
 } from '../../emu'
-import { errorText } from '../../i18n/labels'
+import type { ErrorSink } from '../../i18n/labels'
 import { isShown } from '../../settingsModel'
 import type { PageValues } from './settingsPage'
 
@@ -21,7 +22,7 @@ export function useSettingsValues(
   schema: Ref<SettingsSchema | null>,
   byKey: Ref<Map<string, SettingEntry>>,
   scope: Ref<SettingsScope>,
-  onError: (text: string) => void,
+  onError: ErrorSink,
 ) {
   /** Values of every page at the current scope, by page then key. */
   const values = reactive<Record<string, PageValues>>({})
@@ -32,7 +33,7 @@ export function useSettingsValues(
     try {
       await call()
     } catch (e) {
-      onError(errorText(e))
+      onError(e)
     }
   }
 
@@ -62,15 +63,13 @@ export function useSettingsValues(
   /** «Scegli un’immagine…» (`video.surroundImg`): the picker, then the value at this scope. */
   const chooseBackground = () => attempt(() => emu.settings.chooseBackground(scope.value))
 
-  /** Follows changes made anywhere; returns the function that stops following. */
-  function follow(): Promise<() => void> {
-    return emu.settings.onChanged(e => {
-      // The page from the schema: a key's prefix is not always its page («Avanzate»).
-      const p = byKey.value.get(e.key)?.page
-      if (p) void loadPage(p)
-      void loadRecent()
-    })
+  /** A change made anywhere: its page and the recent changes are read again. */
+  function onChanged(e: SettingsChanged) {
+    // The page from the schema: a key's prefix is not always its page («Avanzate»).
+    const p = byKey.value.get(e.key)?.page
+    if (p) void loadPage(p)
+    void loadRecent()
   }
 
-  return { values, recent, loadAll, loadRecent, set, reset, chooseBackground, follow }
+  return { values, recent, loadAll, loadRecent, set, reset, chooseBackground, onChanged }
 }

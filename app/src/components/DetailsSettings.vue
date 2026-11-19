@@ -5,9 +5,10 @@
 // «Solo questo gioco».
 //
 // Controller / keyboard: the shell's nav scope.
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type GameOverride, type LibraryGame, type SettingsSchema } from '../emu'
+import { useSettingsChanged } from '../composables/useSettingsChanged'
 import { gameScopeOf } from '../gameDetails'
 import { errorText } from '../i18n/labels'
 import { loadSchema } from '../settingsModel'
@@ -60,14 +61,11 @@ async function reset(key: string) {
   await load()
 }
 
-let unlisten: (() => void) | null = null
-onMounted(async () => {
-  await load()
-  unlisten = await emu.settings.onChanged(c => {
-    if (c.level === 'game') void load()
-  })
-})
-onUnmounted(() => unlisten?.())
+onMounted(() => void load())
+useSettingsChanged(
+  c => c.level === 'game',
+  () => void load(),
+)
 </script>
 
 <template>

@@ -23,6 +23,7 @@ import {
 } from '../emu'
 import { errorText, gamepadName } from '../i18n/labels'
 import { buttonName, keyName, posName, testerCells } from '../controls'
+import { GLOBAL } from '../settingsModel'
 import { Card, CardVariant } from '@/components/ui/card'
 import ButtonTester from './ButtonTester.vue'
 import ControlsLinkRow from './controls/ControlsLinkRow.vue'
@@ -65,7 +66,7 @@ const modifier = ref<Pos>('l3')
 const remap = ref<RemapRow[]>([])
 async function load() {
   try {
-    const own = await emu.controls.bindings(family.value, { level: 'global' })
+    const own = await emu.controls.bindings(family.value, GLOBAL)
     remap.value = own.remap
     combos.value = own.combos
     modifier.value = own.modifier

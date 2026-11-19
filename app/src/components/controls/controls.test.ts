@@ -15,7 +15,7 @@ import { RemapLevel, lastPlayedConsole, levelScope, remapLevels } from './levels
 import { RemapRowStatus, remapRowStatus, sourceUses } from './remapTable'
 import { keyboardRememberLines, padRememberLines } from './shortcutLines'
 import { axisUnit, deadZoneDiameter, stickDot } from './stick'
-import { ControlsTab, stepTab, tabOrRemap, tabsFor } from './tabs'
+import { ControlsTab, tabOrRemap, tabsFor } from './tabs'
 import { buttonsUsing, newlyHeld } from './tester'
 import { useButtonTester } from './useButtonTester'
 
@@ -88,13 +88,6 @@ describe('tabs', () => {
   it('drops sticks for the keyboard', () => {
     expect(tabsFor('keyboard')).toEqual([ControlsTab.Remap, ControlsTab.Shortcuts])
     expect(tabsFor('generic')).toHaveLength(3)
-  })
-
-  it('steps round the ends', () => {
-    const list = tabsFor('xbox')
-    expect(stepTab(list, ControlsTab.Sticks, 1)).toBe(ControlsTab.Remap)
-    expect(stepTab(list, ControlsTab.Remap, -1)).toBe(ControlsTab.Sticks)
-    expect(stepTab(list, ControlsTab.Remap, 1)).toBe(ControlsTab.Shortcuts)
   })
 
   it('falls back to remap for a tab the device has not', () => {

@@ -21,9 +21,11 @@ import DetailsSaves from './DetailsSaves.vue'
 import DetailsSettings from './DetailsSettings.vue'
 import DetailsHero from './details/DetailsHero.vue'
 import NotBuiltPanel from './details/NotBuiltPanel.vue'
-import { DETAILS_TABS, isDetailsTab, stepTab, tabLabelKey, type DetailsTab } from './details/tabs'
-import { useEscapeBack } from './details/useEscapeBack'
-import { usePhoneLayout } from './details/usePhoneLayout'
+import { cycle } from '../lib/cycle'
+import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './details/tabs'
+
+import { useDeviceLayout } from '../composables/useDeviceLayout'
+import { focusInitial, useEscapeBack } from '../nav'
 import { useResumePoint } from './details/useResumePoint'
 
 const props = defineProps<{ id: GameId }>()
@@ -51,7 +53,7 @@ watch(game, g => {
   if (!g && library.loaded) emit('back')
 })
 
-const { device, phone, loadDevice } = usePhoneLayout()
+const { device, phone } = useDeviceLayout()
 const { resume, reload: reloadResume } = useResumePoint(game)
 
 // ---- L04: «Riprendi» / «Gioca», the favourite, «…» ----
@@ -90,7 +92,7 @@ function selectTab(value: unknown) {
 }
 /** L1 / R1: the previous / next tab; the focus follows when it was on the tabs. */
 function step(dir: -1 | 1) {
-  current.value = stepTab(current.value, dir)
+  current.value = cycle(DETAILS_TABS, current.value, dir)
   void nextTick(() => {
     const list = root.value?.querySelector<HTMLElement>('[role="tablist"]')
     if (!list) return
@@ -107,8 +109,7 @@ const root = ref<HTMLElement | null>(null)
 useEscapeBack(root, () => emit('back'))
 onMounted(async () => {
   await nextTick()
-  root.value?.querySelector<HTMLElement>('[data-nav-initial]:not(:disabled)')?.focus()
-  await loadDevice()
+  if (root.value) focusInitial(root.value)
   await reloadResume()
 })
 </script>

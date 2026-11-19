@@ -11,7 +11,7 @@ import PageRow from './PageRow.vue'
 import QuickSlotTile from './QuickSlotTile.vue'
 import SectionLabel from './SectionLabel.vue'
 import { loadLabel } from './slots'
-import { useSay } from './useSay'
+import { useSay } from '@/i18n/message'
 import { FocusMark } from './view'
 
 const props = defineProps<{

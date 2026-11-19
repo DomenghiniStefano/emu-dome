@@ -7,7 +7,9 @@ import {
   type SettingEntry,
   type SettingLevel,
   type SettingPlatform,
+  type SettingRow,
   type SettingsSchema,
+  type SettingsScope,
   type SettingValue,
 } from './emu'
 import { nativeAvailable, videoMode } from './videoMode'
@@ -18,6 +20,22 @@ let schemaPromise: Promise<SettingsSchema> | null = null
 export function loadSchema(): Promise<SettingsSchema> {
   schemaPromise ??= emu.settings.schema()
   return schemaPromise
+}
+
+/** «Tutti i giochi»: the level every game shares. */
+export const GLOBAL: SettingsScope = { level: 'global' }
+
+/**
+ * One setting as `scope` resolves it (its value and the level it comes from), read from its page
+ * in the schema. Undefined when the schema has no such key. It can throw: the caller reports it.
+ */
+export async function readSetting(
+  key: string,
+  scope: SettingsScope = GLOBAL,
+): Promise<SettingRow | undefined> {
+  const page = (await loadSchema()).entries.find(e => e.key === key)?.page
+  if (!page) return undefined
+  return (await emu.settings.page(page, scope)).find(r => r.key === key)
 }
 
 /** i18n key of an option: option ids may hold `.` (speeds), a path separator for vue-i18n. */

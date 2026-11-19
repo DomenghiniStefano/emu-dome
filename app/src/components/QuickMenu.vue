@@ -16,15 +16,16 @@
 // This component wires the state (quick-menu/use*.ts) to the parts (quick-menu/*.vue).
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Gamepad2, Rows2 } from '@lucide/vue'
+
 import type { GameInfo, Speed, VideoMode } from '../emu'
 import { useNavScope } from '../nav'
 import { inputMode } from '../inputMode'
+import { errorText, type ErrorSink } from '../i18n/labels'
 import { lockReason } from '../settingsModel'
+import { useDeviceLayout } from '../composables/useDeviceLayout'
 import ControlsPage from './quick-menu/ControlsPage.vue'
 import MenuFooter from './quick-menu/MenuFooter.vue'
-import PageRow from './quick-menu/PageRow.vue'
-import PhoneGrid from './quick-menu/PhoneGrid.vue'
+import QuickMenuHome from './quick-menu/QuickMenuHome.vue'
 import QuickSaves from './quick-menu/QuickSaves.vue'
 import RestartConfirm from './quick-menu/RestartConfirm.vue'
 import ScreenCardView from './quick-menu/ScreenCard.vue'
@@ -32,9 +33,7 @@ import ScreenPicks from './quick-menu/ScreenPicks.vue'
 import ScreensBar from './quick-menu/ScreensBar.vue'
 import ShortcutsPage from './quick-menu/ShortcutsPage.vue'
 import SpeedPage from './quick-menu/SpeedPage.vue'
-import SpeedPicker from './quick-menu/SpeedPicker.vue'
 import SubPageHeader from './quick-menu/SubPageHeader.vue'
-import ToolTiles from './quick-menu/ToolTiles.vue'
 import TrialPanel from './quick-menu/TrialPanel.vue'
 import UndoLoadBanner from './quick-menu/UndoLoadBanner.vue'
 import { backKeyLabel } from './quick-menu/hints'
@@ -46,14 +45,15 @@ import {
   type ScreenCard,
 } from './quick-menu/screenCards'
 import { pickChanges, screenPicks, type ScreenPickId } from './quick-menu/screenPicks'
-import { loadedLine, mainSlotCount, slotCount } from './quick-menu/slots'
+import { slotCount } from './details/gameSaves'
+import { loadedLine, mainSlotCount } from './quick-menu/slots'
 import { followedSpeed, modeSpeeds, speedChoices } from './quick-menu/speedChoices'
-import { ToolId, quickTools, toolsNotYet, type Tool } from './quick-menu/tools'
+import { ToolId, type Tool } from './quick-menu/tools'
 import { useControllerShortcuts } from './quick-menu/useControllerShortcuts'
-import { usePortrait } from './quick-menu/usePortrait'
+
 import { useQuickMenuNavigation } from './quick-menu/useQuickMenuNavigation'
 import { useQuickSlots } from './quick-menu/useQuickSlots'
-import { useSay } from './quick-menu/useSay'
+import { useSay } from '../i18n/message'
 import { useTrialSession } from './quick-menu/useTrialSession'
 import { QuickMenuView, SUB_PAGE_TITLE, isSubPage } from './quick-menu/view'
 
@@ -91,6 +91,7 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const say = useSay()
 const reportError = (text: string) => emit('error', text)
+const failWith: ErrorSink = e => reportError(errorText(e))
 
 // ---- State ----
 const root = ref<HTMLElement | null>(null)
@@ -104,8 +105,7 @@ const {
   title: trialTitle,
   entriesOf,
   start: startSession,
-  follow: followSession,
-} = useTrialSession(reportError)
+} = useTrialSession(failWith)
 const {
   slots,
   chosen,
@@ -117,15 +117,14 @@ const {
   save,
   loadChosen,
   undoSave,
-  follow: followSaves,
 } = useQuickSlots({
   count: () => slotCount(settingValue('saves.slots')),
   initial: props.currentSlot,
   onSave: slot => emit('save', slot),
   onLoad: slot => emit('load', slot),
-  onError: reportError,
+  onError: failWith,
 })
-const { combos, modifier, boundCount, load: loadShortcuts } = useControllerShortcuts(reportError)
+const { combos, modifier, boundCount, load: loadShortcuts } = useControllerShortcuts(failWith)
 const { view, open, back, home, focusChosenSlot } = useQuickMenuNavigation(root, {
   resume: () => emit('resume'),
   home: () => void loadSlots(),
@@ -133,9 +132,11 @@ const { view, open, back, home, focusChosenSlot } = useQuickMenuNavigation(root,
 useNavScope(root, { back, autofocus: true })
 
 // ---- Layout: desktop panel, G09 bar, phone sheet ----
-const portrait = usePortrait()
-const phone = computed(() => schema.value?.device === 'phone')
-const sheet = computed(() => phone.value && portrait.value)
+const layout = useDeviceLayout()
+/** The phone, upright or not (its tools, its video methods). */
+const phone = computed(() => layout.device.value === 'phone')
+/** The phone held upright: the bottom sheet. */
+const sheet = layout.phone
 /** G09 on desktop: the bar at the bottom instead of the panel. */
 const barShown = computed(() => view.value === QuickMenuView.Screens && !sheet.value)
 /** The game shows through on G09 (and the phone's sheet sits under it): no dimming. */
@@ -179,22 +180,8 @@ watch(modes, (now, before) => {
   if (next) emit('speed', next)
 })
 
-// ---- Tools ----
+// ---- Tools (listed by QuickMenuHome) ----
 const dualScreen = computed(() => props.game.consoleId === 'nds' || props.game.consoleId === '3ds')
-const tools = computed(() =>
-  quickTools({
-    phone: phone.value,
-    dualScreen: dualScreen.value,
-    muted: props.muted,
-    fullscreen: props.fullscreen,
-  }),
-)
-const notYet = computed(() => {
-  const names = toolsNotYet(tools.value)
-    .map(key => t(key))
-    .join(', ')
-  return names ? t('qm.toolsNotYet', { names }) : ''
-})
 function runTool(tool: Tool, e: Event) {
   switch (tool.id) {
     case ToolId.Screenshot:
@@ -262,8 +249,6 @@ onMounted(async () => {
   await loadSlots()
   void focusChosenSlot()
   await loadShortcuts()
-  await followSession()
-  await followSaves()
 })
 onBeforeUnmount(() => emit('inset', 0))
 </script>
@@ -350,37 +335,21 @@ onBeforeUnmount(() => emit('inset', 0))
             @undo-save="undoSave"
           />
 
-          <template v-if="view === QuickMenuView.Home">
-            <SpeedPicker
-              :choices="choices"
-              :speed="speed"
-              :ff-option="settingValue('speed.ffval')"
-              :slow-option="settingValue('speed.slow')"
-              @speed="s => emit('speed', s)"
-              @set-speeds="e => open(QuickMenuView.Speed, e)"
-            />
-            <template v-if="!sheet">
-              <ToolTiles
-                :tools="tools"
-                :three-columns="dualScreen"
-                :not-yet="notYet"
-                @run="runTool"
-              />
-              <nav class="grid grid-cols-[1fr_1fr] gap-8" :aria-label="t('qm.moreLabel')">
-                <PageRow
-                  :icon="Rows2"
-                  :label="t('qm.row.screens.name')"
-                  @click="e => open(QuickMenuView.Screens, e)"
-                />
-                <PageRow
-                  :icon="Gamepad2"
-                  :label="t('qm.row.controls.name')"
-                  @click="e => open(QuickMenuView.Controls, e)"
-                />
-              </nav>
-            </template>
-            <PhoneGrid v-else :tools="tools" :not-yet="notYet" @open="open" @run="runTool" />
-          </template>
+          <QuickMenuHome
+            v-if="view === QuickMenuView.Home"
+            :choices="choices"
+            :speed="speed"
+            :ff-option="settingValue('speed.ffval')"
+            :slow-option="settingValue('speed.slow')"
+            :sheet="sheet"
+            :phone="phone"
+            :dual-screen="dualScreen"
+            :muted="muted"
+            :fullscreen="fullscreen"
+            @speed="s => emit('speed', s)"
+            @open="open"
+            @run="runTool"
+          />
 
           <SpeedPage
             v-else-if="view === QuickMenuView.Speed"

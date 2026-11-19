@@ -6,27 +6,17 @@
 // Beside it the tester: every position held lights up, and the last press says what it does.
 //
 // Values: `pad.remap` (overrides per controller type, `crates/emudome-core/src/bindings.rs`),
-// resolved with the defaults by `emu.controls.bindings`.
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+// resolved with the defaults by `emu.controls.bindings`; the level and its table are
+// controls/useRemapLevel.ts's, the capture's conflicts controls/useBindingConflict.ts's.
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  emu,
-  type Button as GameButton,
-  type ConsoleId,
-  type PadFamily,
-  type PadState,
-  type RemapRow,
-  type SettingRow,
-  type SettingsScope,
-} from '../emu'
-import { errorText } from '../i18n/labels'
+import { type Button as GameButton, type PadFamily, type PadState, type SettingRow } from '../emu'
+import { errorText, type ErrorSink } from '../i18n/labels'
 import type { GameFocus } from '../gameDetails'
-import { library } from '../library'
 import {
+  abLayout,
   buttonName,
   posName,
-  remapList,
-  remapWithout,
   sourceName,
   testerCells,
   useCapture,
@@ -38,17 +28,12 @@ import ConflictBanner from './controls/ConflictBanner.vue'
 import RemapTableRow from './controls/RemapTableRow.vue'
 import RemapTesterCard from './controls/RemapTesterCard.vue'
 import RemapToolbar from './controls/RemapToolbar.vue'
-import {
-  RemapLevel,
-  lastPlayedConsole,
-  levelScope,
-  remapLevels,
-  type RemapLevel as Level,
-} from './controls/levels'
 import { remapRowStatus, sourceUses } from './controls/remapTable'
 import { buttonsUsing } from './controls/tester'
+import { useBindingConflict } from './controls/useBindingConflict'
 import { useButtonTester } from './controls/useButtonTester'
 import { useGlobalSettings } from './controls/useGlobalSettings'
+import { useRemapLevel } from './controls/useRemapLevel'
 
 const props = defineProps<{
   family: PadFamily
@@ -60,73 +45,38 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
-const onError = (text: string) => emit('error', text)
+const failWith: ErrorSink = e => emit('error', errorText(e))
 
-// ---- Level: «Tutti i giochi», «Giochi <console>», «Solo questo gioco» ----
-const level = ref<Level>(RemapLevel.Global)
-const contextConsole = ref<ConsoleId | null>(null)
-const gameScope = ref<SettingsScope | null>(null)
-async function findContext() {
-  if (props.game) {
-    gameScope.value = props.game.scope
-    contextConsole.value = props.game.scope.console
-    level.value = RemapLevel.Game
-    return
-  }
-  gameScope.value = await emu.settings.gameScope().catch(() => null)
-  const open = gameScope.value
-  contextConsole.value =
-    open && open.level === 'game' ? open.console : lastPlayedConsole(library.games)
-}
-const levels = computed(() => remapLevels(contextConsole.value, gameScope.value))
-const scope = computed(() => levelScope(level.value, contextConsole.value, gameScope.value))
-
-// ---- The table at this level ----
-const rows = ref<RemapRow[]>([])
-/** `pad.remap` as stored or inherited at this level (the list a change starts from). */
-const stored = ref<string[]>([])
-const storedHere = ref(false)
-async function load() {
-  try {
-    const [b, page] = await Promise.all([
-      emu.controls.bindings(props.family, scope.value),
-      emu.settings.page('pad', scope.value),
-    ])
-    rows.value = b.remap
-    const row = page.find(r => r.key === 'pad.remap')
-    stored.value = Array.isArray(row?.value) ? row.value : []
-    storedHere.value = row?.source === scope.value.level
-  } catch (e) {
-    onError(errorText(e))
-  }
-}
-watch(scope, () => void load(), { deep: true })
-
-async function write(list: string[]) {
-  try {
-    if (list.length === 0 && level.value === RemapLevel.Global && storedHere.value)
-      await emu.settings.reset('pad.remap', scope.value)
-    else await emu.settings.set('pad.remap', scope.value, list)
-  } catch (e) {
-    onError(errorText(e))
-  }
-}
-
+// ---- The table at the level being edited ----
+const {
+  level,
+  contextConsole,
+  levels,
+  rows,
+  change,
+  restoreDefaults: restoreLevel,
+} = useRemapLevel({
+  family: () => props.family,
+  game: () => props.game,
+  onError: failWith,
+})
 const uses = computed(() => sourceUses(rows.value))
 const name = (source: string | null) => sourceName(props.family, source)
 
 // ---- Capture and conflicts ----
-interface Conflict {
-  button: GameButton
-  other: GameButton
-  source: string
-}
-const conflict = ref<Conflict | null>(null)
-
 const capture = useCapture({
   device: () => props.device,
   state: id => props.states.find(s => s.id === id),
   done: (id, source) => void assign(id as GameButton, source),
+})
+const { conflict, assign, swap } = useBindingConflict({
+  rows: () => rows.value.map(r => ({ id: r.button, source: r.source })),
+  write: change,
+  assigned: (button, source) =>
+    (tester.last.value = t('controls.assigned', {
+      source: name(source),
+      button: buttonName(button),
+    })),
 })
 
 // ---- Tester: what is held lights up; the last press says what it does in the game ----
@@ -158,41 +108,15 @@ function startCapture(button: GameButton) {
   capture.start(button)
 }
 
-async function assign(button: GameButton, source: string) {
-  const row = rows.value.find(r => r.button === button)
-  if (!row || row.source === source) return
-  const other = rows.value.find(r => r.button !== button && r.source === source)
-  if (other) {
-    conflict.value = { button, other: other.button, source }
-    return
-  }
-  tester.last.value = t('controls.assigned', { source: name(source), button: buttonName(button) })
-  await write(remapList(stored.value, props.family, rows.value, { [button]: source }))
-}
-
-async function swap() {
-  const c = conflict.value
-  if (!c) return
-  conflict.value = null
-  const mine = rows.value.find(r => r.button === c.button)?.source ?? null
-  tester.last.value = t('controls.assigned', {
-    source: name(c.source),
-    button: buttonName(c.button),
-  })
-  await write(
-    remapList(stored.value, props.family, rows.value, { [c.button]: c.source, [c.other]: mine }),
-  )
-}
-
 async function restoreDefaults() {
   conflict.value = null
-  await write(remapWithout(stored.value, props.family))
+  await restoreLevel()
 }
 
 // ---- A/B layout (`pad.ab`, «Tutti i giochi») ----
-const settings = useGlobalSettings(onError)
+const settings = useGlobalSettings(failWith)
 const ab = computed({
-  get: () => String(props.globalRows['pad.ab']?.value ?? 'nintendo'),
+  get: () => abLayout(props.globalRows['pad.ab']?.value),
   set: id => void settings.set('pad.ab', id),
 })
 
@@ -205,18 +129,6 @@ const hint = computed(() => {
     back,
   })
 })
-
-let unlisten: (() => void) | null = null
-onMounted(async () => {
-  await findContext()
-  await load()
-})
-onMounted(async () => {
-  unlisten = await emu.settings.onChanged(e => {
-    if (e.key.startsWith('pad.')) void load()
-  })
-})
-onBeforeUnmount(() => unlisten?.())
 </script>
 
 <template>
@@ -250,7 +162,7 @@ onBeforeUnmount(() => unlisten?.())
             @capture="startCapture(r.button)"
           />
           <ConflictBanner
-            v-if="conflict && conflict.button === r.button"
+            v-if="conflict && conflict.id === r.button"
             :text="
               t('controls.conflict', {
                 source: name(conflict.source),

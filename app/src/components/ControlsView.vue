@@ -19,6 +19,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { controlsFocus } from '../gameDetails'
+import { errorText } from '../i18n/labels'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ControlsOverview from './ControlsOverview.vue'
 import ControlsRemap from './ControlsRemap.vue'
@@ -35,7 +36,8 @@ import {
   menuBackPos,
   type DeviceId,
 } from './controls/devices'
-import { ControlsTab, stepTab, tabOrRemap, tabsFor } from './controls/tabs'
+import { cycle } from '../lib/cycle'
+import { ControlsTab, tabOrRemap, tabsFor } from './controls/tabs'
 import { useControlsData } from './controls/useControlsData'
 
 const emit = defineEmits<{ error: [string] }>()
@@ -54,7 +56,7 @@ const root = ref<HTMLElement | null>(null)
 /** The chosen device; null = the first controller. */
 const chosen = ref<DeviceId | null>(null)
 const { schema, globalRows, pads, states } = useControlsData({
-  onError: text => emit('error', text),
+  onError: e => emit('error', errorText(e)),
   onPadGone: id => {
     if (chosen.value === id) chosen.value = null
   },
@@ -76,7 +78,7 @@ watch(tabs, list => (tab.value = tabOrRemap(list, tab.value)))
 /** L1 / R1: the previous / next tab. */
 function stepTabs(dir: -1 | 1) {
   if (empty.value || view.value !== View.Device) return
-  tab.value = stepTab(tabs.value, tab.value, dir)
+  tab.value = cycle(tabs.value, tab.value, dir)
 }
 /** Reka hands the tab chosen with a click, Enter or A. */
 function chooseTab(value: string | number) {

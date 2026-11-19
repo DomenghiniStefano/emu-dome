@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { ScreenCard } from './screenCards'
-import { useSay } from './useSay'
+import { useSay } from '@/i18n/message'
 import { FocusMark } from './view'
 
 const props = defineProps<{

@@ -13,7 +13,6 @@ import { useNavScope } from '../nav'
 import GameCover from './GameCover.vue'
 import { CoverSize } from './cover/variants'
 import { coverKinds } from './library/libraryView'
-import { useDismiss } from './library/useDismiss'
 
 const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{ close: [] }>()
@@ -50,8 +49,7 @@ async function apply() {
 }
 
 const root = ref<HTMLElement | null>(null)
-useNavScope(root, { autofocus: true, back: () => emit('close') })
-useDismiss(root, () => emit('close'))
+useNavScope(root, { autofocus: true, escape: true, back: () => emit('close') })
 </script>
 
 <template>

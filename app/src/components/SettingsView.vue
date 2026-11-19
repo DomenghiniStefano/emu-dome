@@ -9,11 +9,13 @@
 // The level edited is useSettingsScope's, the values useSettingsValues', the choice of rows
 // settingsPage.ts's.
 // Controller: the shell's nav scope; L1 / R1 change level (exposed `tab`, called by AppShell).
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Info } from '@lucide/vue'
 import type { SettingEntry, SettingRecent, SettingsSchema } from '../emu'
+import { EVERY_SETTING, useSettingsChanged } from '../composables/useSettingsChanged'
 import { settingsFocus } from '../gameDetails'
+import { errorText } from '../i18n/labels'
 import { loadSchema, lockReason, msg } from '../settingsModel'
 import SettingRowView from './SettingRow.vue'
 import SettingsCategories from './settings/SettingsCategories.vue'
@@ -49,7 +51,7 @@ const pageEntries = computed(() => (schema.value ? shownOn(schema.value, page.va
 
 const scopeBar = useSettingsScope(pageEntries, gameFocus)
 const { effective, scope, levelName } = scopeBar
-const store = useSettingsValues(schema, byKey, scope, text => emit('error', text))
+const store = useSettingsValues(schema, byKey, scope, e => emit('error', errorText(e)))
 const { values } = store
 
 const sections = computed(() => {
@@ -87,15 +89,13 @@ function openRecent(r: SettingRecent) {
 
 defineExpose({ tab: scopeBar.tab })
 
-let unlisten: (() => void) | null = null
 onMounted(async () => {
   schema.value = await loadSchema()
   await scopeBar.findContextConsole()
   await store.loadAll()
   await store.loadRecent()
-  unlisten = await store.follow()
 })
-onBeforeUnmount(() => unlisten?.())
+useSettingsChanged(EVERY_SETTING, store.onChanged)
 </script>
 
 <template>

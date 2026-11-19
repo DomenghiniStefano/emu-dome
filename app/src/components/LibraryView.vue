@@ -12,7 +12,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import { errorText } from '../i18n/labels'
+import { errorText, type ErrorSink } from '../i18n/labels'
 import type { LibraryGame } from '../emu'
 import { chooseFolder, library, replaceFolder } from '../library'
 import ContinuePlaying from './library/ContinuePlaying.vue'
@@ -44,11 +44,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const reportError = (text: string) => emit('error', text)
+const failWith: ErrorSink = e => reportError(errorText(e))
 
 const root = ref<HTMLElement | null>(null)
 useLibraryFocus(root)
 
-const { sort, setSort, resetSort } = useLibrarySort(reportError)
+const { sort, setSort, resetSort } = useLibrarySort(failWith)
 const { show, consoleFilter, chips, games, filtering, toggleShow, clearShow, clearFilters } =
   useLibraryFilters(sort)
 /** L03 «Ripristina»: the switches off and the order back to its default. */
@@ -58,14 +59,14 @@ async function resetFilters() {
 }
 
 const recent = computed(() => recentlyPlayed(library.games))
-const resume = useResumePoints(recent, reportError)
+const resume = useResumePoints(recent, failWith)
 const foreground = useForegroundGame(recent, games)
-const { menuFor, toggleMenu, closeMenu, setFlags } = useCoverMenu(reportError)
+const { menuFor, toggleMenu, closeMenu, setFlags } = useCoverMenu(failWith)
 
 /** Opens a game, or says why not when its folder is not reachable. */
 function open(g: LibraryGame, slot?: number) {
   if (!g.available) {
-    reportError(errorText({ code: 'libraryGameUnavailable', params: { id: g.id } }))
+    failWith({ code: 'libraryGameUnavailable', params: { id: g.id } })
     return
   }
   emit('open', g, slot)
