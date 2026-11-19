@@ -12,7 +12,14 @@ import {
 } from '@/emu'
 import { LOCALE } from '@/i18n'
 import { FILE_PICKERS, msg, optionNotYet } from '@/lib/settingsModel'
-import { chosenFileName, rowState, rowValue, type RowState } from './settingRowModel'
+import {
+  chosenFileName,
+  descNotes,
+  offeredOptions,
+  rowState,
+  rowValue,
+  type RowState,
+} from './settingRowModel'
 
 /** One option of a choice, as the controls show it. */
 export interface RowOption {
@@ -70,12 +77,9 @@ export function useSettingRow(props: SettingRowInput) {
   })
   /** The description at this level: why it is locked first, «Arriva…» after when not wired. */
   const desc = computed(() => {
-    const { reason, notYet } = state.value
-    const own =
-      !reason || (props.lockNote && reason === 'settingsUi.lockedGlobal')
-        ? baseDesc.value
-        : `${t(reason)} ${baseDesc.value}`.trim()
-    return notYet && !reason ? `${own} ${t('settingsUi.notYet')}` : own
+    const { reason, notYet } = descNotes(state.value, !!props.lockNote)
+    const own = reason ? `${t(reason)} ${baseDesc.value}`.trim() : baseDesc.value
+    return notYet ? `${own} ${t('settingsUi.notYet')}` : own
   })
 
   /** A file row with no file chosen says so beside its button («Nessuna immagine scelta»). */
@@ -99,22 +103,17 @@ export function useSettingRow(props: SettingRowInput) {
   })
 
   /** The options this device offers (a choice may have some for another device only). */
-  const options = computed<RowOption[]>(() => {
-    const kind = props.entry.kind
-    if (kind.type !== 'choice' && kind.type !== 'multi' && kind.type !== 'apply') return []
-    const hidden = props.entry.hiddenOptions
-    return kind.options
-      .filter(id => !hidden.includes(id))
-      .map(id => ({
-        id,
-        // `{language}`: «Come il sistema (Italiano)» of `general.lang`; other options ignore it.
-        text: t(msg.option(key.value, id), {
-          language: t(`settings.general.lang.option.${LOCALE}`),
-        }),
-        desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
-        notYet: optionNotYet(props.entry, id),
-      }))
-  })
+  const options = computed<RowOption[]>(() =>
+    offeredOptions(props.entry).map(id => ({
+      id,
+      // `{language}`: «Come il sistema (Italiano)» of `general.lang`; other options ignore it.
+      text: t(msg.option(key.value, id), {
+        language: t(`settings.general.lang.option.${LOCALE}`),
+      }),
+      desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
+      notYet: optionNotYet(props.entry, id),
+    })),
+  )
 
   return { key, value, state, name, desc, noFile, fileName, buttonText, options }
 }

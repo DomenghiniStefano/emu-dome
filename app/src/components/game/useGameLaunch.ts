@@ -5,20 +5,11 @@ import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { AUTO_SLOT, emu, type LibraryGame } from '@/emu'
 import { flow } from './gameFlow'
-import { errorText, isErrorCode } from '@/i18n/labels'
+import { errorText } from '@/i18n/labels'
+import { launchFailure, openedPath, type Launch } from './launch'
 import { fileTitle } from './session'
 import type { GameSession } from './useGameSession'
 import type { Toasts } from '@/composables/useToasts'
-
-/** What was opened: a file, or a library game (whose play time the backend counts). */
-type Opened = { kind: 'path'; path: string } | { kind: 'library'; game: LibraryGame }
-
-/** One opening: what, under which title, over which cover colour. */
-interface Launch {
-  opened: Opened
-  title: string
-  colour: string | null
-}
 
 export function useGameLaunch(session: GameSession, toasts: Toasts) {
   const { t } = useI18n()
@@ -40,11 +31,12 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
       await session.begin(info, opened.kind === 'library' ? opened.game : null, resumeAuto)
       return true
     } catch (e) {
-      if (isErrorCode(e) && e.code === 'saveUnreadable') {
+      const failure = launchFailure(e)
+      if (failure.kind === 'saveBroken') {
         broken = launch
-        flow.saveBroken = { title, backupAt: e.params.backupAt }
+        flow.saveBroken = { title, backupAt: failure.backupAt }
       } else {
-        flow.startError = { title, reason: errorText(e) }
+        flow.startError = { title, reason: failure.reason }
       }
       return false
     } finally {
@@ -105,7 +97,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     const b = takeBroken()
     if (!b) return
     try {
-      await emu.saves.restoreLatest(b.opened.kind === 'path' ? b.opened.path : b.opened.game.path)
+      await emu.saves.restoreLatest(openedPath(b.opened))
     } catch (e) {
       flow.startError = { title: b.title, reason: errorText(e) }
       return

@@ -3,8 +3,9 @@
 import { onUnmounted } from 'vue'
 import { emu } from '@/emu'
 import { watchInput } from '@/lib/inputMode'
-import { keyShortcut, type KeyAction } from '@/lib/keyboard'
+import type { KeyAction } from '@/lib/keyboard'
 import { keymap, loadKeymap } from '@/lib/keymap'
+import { keyRoute } from './keyRoute'
 import { rewindAfter } from './session'
 import { dispatchNav, keyToNav, showFocusRing } from '@/nav'
 import type { GameSession } from './useGameSession'
@@ -47,42 +48,48 @@ export function useGameKeys(session: GameSession) {
 
   function onKey(e: KeyboardEvent, pressed: boolean) {
     if (pressed) showFocusRing()
-    const shortcut = keyShortcut(e.code)
-    // Backspace let go after the menu opened: the rewind it held still ends.
-    if (
-      shortcut?.action === 'rewind' &&
-      !pressed &&
-      !settings.value.rewindToggle &&
-      rewinding.value
+    const route = keyRoute(
+      e.code,
+      pressed,
+      e.repeat,
+      {
+        inGame: !!game.value,
+        menuOpen: menuOpen.value,
+        rewindToggle: settings.value.rewindToggle,
+        rewinding: rewinding.value,
+      },
+      keymap.value,
     )
-      return rewindKey(false, false)
-    if (shortcut?.action === 'menu' && pressed) {
-      // In the quick menu Esc is «back»: one level up, and from its main screen the game resumes.
-      if (menuOpen.value) return dispatchNav('back')
-      return void session.setMenu(true)
-    }
-    if (shortcut?.action === 'fullscreen') {
-      e.preventDefault()
-      if (pressed && !e.repeat) void session.toggleFullscreen()
-      return
-    }
-    // Menu or shell: arrows move the focus, Enter confirms.
-    if (!game.value || menuOpen.value) {
-      const nav = pressed ? keyToNav(e) : null
-      if (nav) {
+    switch (route.kind) {
+      case 'endRewind':
+        return rewindKey(false, false)
+      case 'back':
+        // In the quick menu Esc is «back»: one level up, and from its main screen the game resumes.
+        return dispatchNav('back')
+      case 'openMenu':
+        return void session.setMenu(true)
+      case 'fullscreen':
         e.preventDefault()
-        dispatchNav(nav)
+        if (route.toggle) void session.toggleFullscreen()
+        return
+      case 'nav': {
+        // Menu or shell: arrows move the focus, Enter confirms.
+        const nav = keyToNav(e)
+        if (nav) {
+          e.preventDefault()
+          dispatchNav(nav)
+        }
+        return
       }
-      return
-    }
-    if (shortcut && shortcut.action !== 'menu') {
-      e.preventDefault()
-      return runKey(shortcut.action, pressed, e.repeat)
-    }
-    const button = keymap.value[e.code]
-    if (button) {
-      e.preventDefault()
-      if (!e.repeat) void emu.input(button, pressed)
+      case 'shortcut':
+        e.preventDefault()
+        return runKey(route.action, pressed, e.repeat)
+      case 'button':
+        e.preventDefault()
+        if (route.send) void emu.input(route.button, pressed)
+        return
+      case 'none':
+        return
     }
   }
 

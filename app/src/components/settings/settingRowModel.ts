@@ -40,6 +40,28 @@ export function rowState(
   }
 }
 
+/** What the row's description says around its own words: why it is locked (i18n key; null when
+ * there is no reason, or the page already says it once with `lockNote`), and «Arriva…» when the
+ * control is not wired and nothing locks it. */
+export function descNotes(
+  state: Pick<RowState, 'reason' | 'notYet'>,
+  lockNote: boolean,
+): { reason: string | null; notYet: boolean } {
+  const { reason, notYet } = state
+  return {
+    reason: reason && !(lockNote && reason === 'settingsUi.lockedGlobal') ? reason : null,
+    notYet: notYet && !reason,
+  }
+}
+
+/** The options of a choice this device offers (a choice may have some for another device only);
+ * none for a row that is not a choice. */
+export function offeredOptions(entry: SettingEntry): string[] {
+  const kind = entry.kind
+  if (kind.type !== 'choice' && kind.type !== 'multi' && kind.type !== 'apply') return []
+  return kind.options.filter(id => !entry.hiddenOptions.includes(id))
+}
+
 /** The value a row shows: the stored one, else the schema's default. */
 export function rowValue(entry: SettingEntry, row: SettingRow | undefined): SettingValue | null {
   return row?.value ?? entry.default
