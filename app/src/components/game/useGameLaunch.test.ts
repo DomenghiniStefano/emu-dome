@@ -171,6 +171,28 @@ describe('useGameLaunch', () => {
     expect(bridge.loadState).not.toHaveBeenCalled()
   })
 
+  it('a failure after the game opened is told over it, not as G02 «could not start»', async () => {
+    const { launch, session, toasts } = setup()
+    session.begin.mockRejectedValueOnce({ code: 'stateInvalid', params: { slot: 0 } })
+    await launch.openLibraryGame(minish)
+    expect(flow.startError).toBeNull()
+    expect(flow.launching).toBeNull()
+    expect(toasts.failWith).toHaveBeenCalledWith({ code: 'stateInvalid', params: { slot: 0 } })
+  })
+
+  it('a second launch while one is opening is dropped', async () => {
+    const { launch, session } = setup()
+    const first = launch.openLibraryGame(minish)
+    const second = launch.openFile('C:/roms/kirby.gba')
+    await Promise.all([first, second])
+    expect(bridge.libraryOpen).toHaveBeenCalledOnce()
+    expect(bridge.openGame).not.toHaveBeenCalled()
+    expect(session.begin).toHaveBeenCalledOnce()
+    // Once it ended, the next one opens.
+    await launch.openFile('C:/roms/kirby.gba')
+    expect(bridge.openGame).toHaveBeenCalledWith('C:/roms/kirby.gba')
+  })
+
   it('answers the resume question: from the auto quick save, or from where the game starts', async () => {
     const { launch } = setup()
     flow.resumeAsk = true

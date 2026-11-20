@@ -3,7 +3,7 @@
 // resume question, and starting again after E11.
 import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
-import { AUTO_SLOT, emu, type GameId, type LibraryGame } from '@/emu'
+import { AUTO_SLOT, emu, type GameId, type GameInfo, type LibraryGame } from '@/emu'
 import { flow } from './gameFlow'
 import { errorText } from '@/i18n/labels'
 import { launchFailure, type Launch } from './launch'
@@ -20,17 +20,40 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
   // restoring a backup.
   let broken: { launch: Launch; game: GameId } | null = null
 
+  // One launch at a time: a second one (a double click, the startup game still opening) is
+  // dropped rather than racing the first to the core.
+  let starting = false
+
+  /** Opens the game; resolves whether it runs. */
   async function start(launch: Launch, resumeAuto = false): Promise<boolean> {
+    if (starting) return false
+    starting = true
+    try {
+      const info = await openCore(launch)
+      if (!info) return false
+      last = launch
+      const { opened } = launch
+      // The game runs from here: what fails now (the auto quick save, the pause for the resume
+      // question) is told over it, never as G02 «could not start».
+      try {
+        await session.begin(info, opened.kind === 'library' ? opened.game : null, resumeAuto)
+      } catch (e) {
+        toasts.failWith(e)
+      }
+      return true
+    } finally {
+      starting = false
+    }
+  }
+
+  /** The core loads the game under G01; a failure is G02, or E04 for an unreadable save. */
+  async function openCore(launch: Launch): Promise<GameInfo | null> {
     const { opened, title, colour } = launch
     flow.launching = { title, colour }
     try {
-      const info =
-        opened.kind === 'path'
-          ? await emu.openGame(opened.path)
-          : await emu.library.open(opened.game.id)
-      last = launch
-      await session.begin(info, opened.kind === 'library' ? opened.game : null, resumeAuto)
-      return true
+      return opened.kind === 'path'
+        ? await emu.openGame(opened.path)
+        : await emu.library.open(opened.game.id)
     } catch (e) {
       const failure = launchFailure(e)
       if (failure.kind === 'saveBroken') {
@@ -39,7 +62,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
       } else {
         flow.startError = { title, reason: failure.reason }
       }
-      return false
+      return null
     } finally {
       flow.launching = null
     }
@@ -70,8 +93,12 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     if (!started || slot === undefined) return
     // The quick save asked for wins over the resume question.
     flow.resumeAsk = false
-    await emu.setPaused(false)
-    await emu.loadState(slot)
+    try {
+      await emu.setPaused(false)
+      await emu.loadState(slot)
+    } catch (e) {
+      toasts.failWith(e)
+    }
   }
 
   /** The game given on the command line, if any. */
