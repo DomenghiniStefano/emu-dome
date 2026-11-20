@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::GameFiles;
 use crate::session::AUTO_SLOT;
+use crate::write_atomic;
 
 /// Why a backup was made (the board's «Avvio del gioco», «Prima dell’importazione», …).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -283,18 +284,6 @@ pub fn game_saves(save_dir: &Path, game: &Path, slots: u8) -> GameSaves {
         backups: backups(save_dir, game),
         broken: broken.into_iter().map(|(_, n)| n).collect(),
     }
-}
-
-/// Writes through a temporary file and a rename: an interrupted write leaves the old file whole
-/// instead of a truncated one (the usual cause of E04).
-pub fn write_atomic(path: &Path, data: &[u8]) -> io::Result<()> {
-    let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".tmp");
-    let tmp = PathBuf::from(tmp);
-    std::fs::write(&tmp, data)?;
-    std::fs::rename(&tmp, path).inspect_err(|_| {
-        let _ = std::fs::remove_file(&tmp);
-    })
 }
 
 /// What a quick save slot held before a save replaced it, so «Salvato nello slot N · Annulla»

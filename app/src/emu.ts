@@ -77,6 +77,7 @@ export type ErrorCode =
   | { code: 'consoleNotYet'; params: { console: string; phase: number } }
   | { code: 'coreNotFound'; params: { file: string } }
   | { code: 'openFailed'; params: { detail: string } }
+  | { code: 'coreNeedsRestart'; params: { core: string } }
   | { code: 'noGame' }
   | { code: 'nativeVideoUnavailable' }
   | { code: 'webviewBackgroundFailed'; params: { detail: string } }
@@ -92,10 +93,12 @@ export type ErrorCode =
     }
   | { code: 'settingInvalidValue'; params: { key: string } }
   | { code: 'settingsWriteFailed'; params: { detail: string } }
+  | { code: 'settingsReadFailed'; params: { detail: string } }
   | { code: 'libraryFolderUnreachable'; params: { path: string } }
   | { code: 'libraryGameUnknown'; params: { id: string } }
   | { code: 'libraryGameUnavailable'; params: { id: string } }
   | { code: 'libraryWriteFailed'; params: { detail: string } }
+  | { code: 'libraryReadFailed'; params: { detail: string } }
   | { code: 'coverInvalid'; params: { detail: string } }
   | { code: 'nothingToUndo' }
   | { code: 'undoFailed'; params: { detail: string } }

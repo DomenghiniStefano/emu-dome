@@ -27,7 +27,7 @@ fn write_marker(app: &AppHandle) -> Result<(), ErrorCode> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(failed)?;
     }
-    emudome_core::saves::write_atomic(&path, b"1\n").map_err(failed)
+    emudome_core::write_atomic(&path, b"1\n").map_err(failed)
 }
 
 /// Whether the interface starts with the first run.

@@ -9,9 +9,16 @@
 //!
 //! Each file is a flat JSON object `key → value`. The whole object is kept in memory and
 //! written back, so keys this version does not know (from a newer version, or from another
-//! device) survive. Writes are atomic: a temporary file next to the target, flushed, then renamed
-//! over it. A file that cannot be parsed is moved aside to `<name>.unreadable` and the level
-//! starts empty, so the next write does not destroy what was there.
+//! device) survive. Writes go through [`crate::write_atomic`] (temporary file, fsync, rename).
+//!
+//! Reading a file has three outcomes, kept apart so that a file is never lost:
+//! - missing: the level is empty, and the first write creates the file;
+//! - not valid JSON: the file is renamed to `<name>.json.unreadable` (kept for the user), the
+//!   level starts empty and the next write creates a new file; if the rename fails, it is
+//!   treated as below;
+//! - not readable (permission denied, a folder in its place, an I/O error): nothing is cached,
+//!   the level reads as empty (the defaults show) and every write to that file is refused with
+//!   `settingsReadFailed` until a later read succeeds. The file is never written over.
 //!
 //! When each value was last changed («Modificate di recente», T01) lives in the same layer as the
 //! value, under the reserved key [`CHANGED_KEY`]: `"$changed": { "<key>": <Unix ms> }`. So the
@@ -19,9 +26,8 @@
 //! per-device entries. A reset records its time too (the value went back to the weaker level).
 //! Older versions see `$changed` as an unknown key and keep it.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -89,8 +95,11 @@ pub struct Change<'a> {
 pub struct Store {
     synced_dir: PathBuf,
     device_file: PathBuf,
+    /// Layers read (or found missing); a file that could not be read is never here.
     synced: HashMap<FileId, Layer>,
     device: Option<DeviceLayers>,
+    /// Files whose last read failed: logged once until they read again.
+    unreadable: HashSet<PathBuf>,
 }
 
 impl Store {
@@ -100,6 +109,7 @@ impl Store {
             device_file,
             synced: HashMap::new(),
             device: None,
+            unreadable: HashSet::new(),
         }
     }
 
@@ -120,25 +130,35 @@ impl Store {
     /// The stored JSON for `key` at `file`, from the device file when `per_device`.
     pub fn get(&mut self, file: &FileId, per_device: bool, key: &str) -> Option<Json> {
         if per_device {
-            self.device_layers().layer(file)?.get(key).cloned()
+            self.device_layers().ok()?.layer(file)?.get(key).cloned()
         } else {
-            self.synced_layer(file).get(key).cloned()
+            self.synced_layer(file).ok()?.get(key).cloned()
         }
     }
 
     /// Applies the changes to `file` and writes the touched files (synced and/or device).
-    /// On a write error nothing changes in memory.
+    /// On a write error nothing changes in memory. Refused with `settingsReadFailed`, writing
+    /// nothing, when a file it would write could not be read.
     pub fn apply(&mut self, file: &FileId, changes: &[Change<'_>]) -> Result<(), ErrorCode> {
         let (device_changes, synced_changes): (Vec<&Change<'_>>, Vec<&Change<'_>>) =
             changes.iter().partition(|c| c.per_device);
-        if !synced_changes.is_empty() {
-            let mut layer = self.synced_layer(file).clone();
+        // Both files are read before either is written: a refusal writes nothing at all.
+        let synced = if synced_changes.is_empty() {
+            None
+        } else {
+            Some(self.synced_layer(file)?.clone())
+        };
+        let device = if device_changes.is_empty() {
+            None
+        } else {
+            Some(self.device_layers()?.clone())
+        };
+        if let Some(mut layer) = synced {
             apply_to(&mut layer, &synced_changes);
             write_json(&self.synced_path(file), &layer)?;
             self.synced.insert(file.clone(), layer);
         }
-        if !device_changes.is_empty() {
-            let mut layers = self.device_layers().clone();
+        if let Some(mut layers) = device {
             apply_to(layers.layer_mut(file), &device_changes);
             write_json(&self.device_file, &layers)?;
             self.device = Some(layers);
@@ -148,8 +168,8 @@ impl Store {
 
     /// When each key of `file` was last changed (synced and per-device values together).
     pub fn changed_in(&mut self, file: &FileId) -> Vec<(String, u64)> {
-        let mut out = changed_of(self.synced_layer(file));
-        if let Some(layer) = self.device_layers().layer(file) {
+        let mut out = self.synced_layer(file).map(changed_of).unwrap_or_default();
+        if let Some(layer) = self.device_layers().ok().and_then(|d| d.layer(file)) {
             out.extend(changed_of(layer));
         }
         out
@@ -175,8 +195,12 @@ impl Store {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => log::warn!("settingsReadFailed: {}: {e}", dir.display()),
         }
-        for key in self.device_layers().game.keys() {
-            if let Ok(id) = GameId::try_from(key.clone()) {
+        let device_games: Vec<String> = self
+            .device_layers()
+            .map(|d| d.game.keys().cloned().collect())
+            .unwrap_or_default();
+        for key in device_games {
+            if let Ok(id) = GameId::try_from(key) {
                 if !ids.contains(&id) {
                     ids.push(id);
                 }
@@ -186,20 +210,62 @@ impl Store {
         ids
     }
 
-    fn synced_layer(&mut self, file: &FileId) -> &Layer {
+    /// The layer of `file`, read on first use. A file that cannot be read is not cached: the
+    /// next call reads it again.
+    fn synced_layer(&mut self, file: &FileId) -> Result<&Layer, ErrorCode> {
         if !self.synced.contains_key(file) {
-            let layer = read_json::<Layer>(&self.synced_path(file)).unwrap_or_default();
+            let path = self.synced_path(file);
+            let layer = self.read::<Layer>(&path)?;
             self.synced.insert(file.clone(), layer);
         }
-        self.synced.entry(file.clone()).or_default()
+        Ok(self.synced.entry(file.clone()).or_default())
     }
 
-    fn device_layers(&mut self) -> &DeviceLayers {
+    /// The per-device layers, read on first use; not cached when unreadable, as above.
+    fn device_layers(&mut self) -> Result<&DeviceLayers, ErrorCode> {
         if self.device.is_none() {
-            self.device = Some(read_json(&self.device_file).unwrap_or_default());
+            let path = self.device_file.clone();
+            let layers = self.read::<DeviceLayers>(&path)?;
+            self.device = Some(layers);
         }
-        self.device.get_or_insert_with(DeviceLayers::default)
+        Ok(self.device.get_or_insert_with(DeviceLayers::default))
     }
+
+    /// Reads a file: missing (or moved aside) gives the default; unreadable gives
+    /// `settingsReadFailed`, logged once until the file reads again.
+    fn read<T>(&mut self, path: &Path) -> Result<T, ErrorCode>
+    where
+        T: for<'de> Deserialize<'de> + Default,
+    {
+        match read_json(path) {
+            Read::Found(value) => {
+                self.unreadable.remove(path);
+                Ok(value)
+            }
+            Read::Missing => {
+                self.unreadable.remove(path);
+                Ok(T::default())
+            }
+            Read::Failed(detail) => {
+                if self.unreadable.insert(path.to_path_buf()) {
+                    log::warn!(
+                        "settingsReadFailed: {}: {detail}; writes to it are refused until it reads",
+                        path.display()
+                    );
+                }
+                Err(ErrorCode::SettingsReadFailed { detail })
+            }
+        }
+    }
+}
+
+/// What reading a settings file gave.
+enum Read<T> {
+    Found(T),
+    /// No file (or a file that was not JSON, now moved aside).
+    Missing,
+    /// The file is there but could not be read: never to be written over.
+    Failed(String),
 }
 
 fn apply_to(layer: &mut Layer, changes: &[&Change<'_>]) {
@@ -238,18 +304,21 @@ fn changed_of(layer: &Layer) -> Vec<(String, u64)> {
     }
 }
 
-/// Reads a JSON file. Missing → `None` silently; unreadable → logged, moved aside, `None`.
-fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
+/// Reads a JSON file (the three outcomes of the module comment).
+fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Read<T> {
     let text = match fs::read_to_string(path) {
         Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
-        Err(e) => {
-            log::warn!("settingsReadFailed: {}: {e}", path.display());
-            return None;
+        // A file in place of one of its folders: no file can be there either.
+        Err(e)
+            if e.kind() == std::io::ErrorKind::NotFound
+                || e.kind() == std::io::ErrorKind::NotADirectory =>
+        {
+            return Read::Missing
         }
+        Err(e) => return Read::Failed(e.to_string()),
     };
     match serde_json::from_str(&text) {
-        Ok(value) => Some(value),
+        Ok(value) => Read::Found(value),
         Err(e) => {
             let aside = path.with_extension("json.unreadable");
             log::warn!(
@@ -257,10 +326,12 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
                 path.display(),
                 aside.display()
             );
-            if let Err(e) = fs::rename(path, &aside) {
-                log::warn!("settingsReadFailed: could not move {}: {e}", path.display());
+            match fs::rename(path, &aside) {
+                Ok(()) => Read::Missing,
+                Err(not_moved) => Read::Failed(format!(
+                    "not valid JSON ({e}) and not moved aside ({not_moved})"
+                )),
             }
-            None
         }
     }
 }
@@ -269,7 +340,7 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<T> {
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), ErrorCode> {
     let mut bytes = serde_json::to_vec_pretty(value).map_err(write_failed)?;
     bytes.push(b'\n');
-    write_atomic(path, &bytes).map_err(write_failed)
+    crate::write_atomic(path, &bytes).map_err(write_failed)
 }
 
 fn write_failed(e: impl std::fmt::Display) -> ErrorCode {
@@ -278,26 +349,11 @@ fn write_failed(e: impl std::fmt::Display) -> ErrorCode {
     }
 }
 
-/// Writes a temporary file next to `path`, flushes it to disk, then renames it over `path`
-/// (a replace on every OS): a crash leaves either the old file or the new one, never half.
-pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir)?;
-    }
-    let tmp = path.with_extension("json.tmp");
-    {
-        let mut file = fs::File::create(&tmp)?;
-        file.write_all(bytes)?;
-        file.sync_all()?;
-    }
-    fs::rename(&tmp, path)
-}
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
-    use super::{write_atomic, Change, FileId, Store};
+    use super::{Change, FileId, Store};
     use crate::settings::test_dir::TestDir;
     use crate::settings::{ConsoleId, GameId};
 
@@ -403,16 +459,6 @@ mod tests {
     }
 
     #[test]
-    fn atomic_write_replaces_and_leaves_no_temporary_file() {
-        let dir = TestDir::new("store-atomic");
-        let path = dir.path("a/b/file.json");
-        write_atomic(&path, b"first").unwrap();
-        write_atomic(&path, b"second").unwrap();
-        assert_eq!(dir.read("a/b/file.json"), "second");
-        assert!(!dir.path("a/b/file.json.tmp").exists());
-    }
-
-    #[test]
     fn a_failed_write_changes_nothing_in_memory() {
         let dir = TestDir::new("store-failed-write");
         // A file where the synced folder should be: creating global.json inside it fails.
@@ -424,5 +470,82 @@ mod tests {
             Err(crate::ErrorCode::SettingsWriteFailed { .. })
         ));
         assert_eq!(s.get(&FileId::Global, false, "video.scale"), None);
+    }
+
+    /// Puts a folder (with a file inside) where `rel` should be a file: reading it fails on
+    /// every OS (Windows: access denied; Linux and Android: is a directory).
+    fn make_unreadable(dir: &TestDir, rel: &str) {
+        dir.write(&format!("{rel}/inside.txt"), "kept");
+    }
+
+    #[test]
+    fn an_unreadable_file_is_never_written_and_writes_are_refused() {
+        let dir = TestDir::new("store-read-failed");
+        make_unreadable(&dir, "synced/global.json");
+        let mut s = store(&dir);
+        // Reads fall back to the defaults.
+        assert_eq!(s.get(&FileId::Global, false, "video.scale"), None);
+        for _ in 0..2 {
+            let result = s.apply(&FileId::Global, &[set("video.scale", false, json!("fill"))]);
+            assert!(
+                matches!(result, Err(crate::ErrorCode::SettingsReadFailed { .. })),
+                "{result:?}"
+            );
+        }
+        assert!(dir.path("synced/global.json").is_dir());
+        assert_eq!(dir.read("synced/global.json/inside.txt"), "kept");
+        // Other files are not affected.
+        s.apply(
+            &FileId::Console(ConsoleId::Gba),
+            &[set("video.scale", false, json!("fit"))],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn an_unreadable_device_file_refuses_the_whole_change() {
+        let dir = TestDir::new("store-device-read-failed");
+        make_unreadable(&dir, "local/device.json");
+        let mut s = store(&dir);
+        let result = s.apply(
+            &FileId::Global,
+            &[
+                set("video.scale", false, json!("fill")),
+                set("video.vsync", true, json!(false)),
+            ],
+        );
+        assert!(matches!(
+            result,
+            Err(crate::ErrorCode::SettingsReadFailed { .. })
+        ));
+        // Neither the synced file nor the device file was written.
+        assert!(!dir.path("synced/global.json").exists());
+        assert_eq!(dir.read("local/device.json/inside.txt"), "kept");
+        assert_eq!(s.get(&FileId::Global, false, "video.scale"), None);
+    }
+
+    #[test]
+    fn writes_resume_once_the_file_reads_again_and_nothing_is_lost() {
+        let dir = TestDir::new("store-read-recovers");
+        make_unreadable(&dir, "synced/global.json");
+        let mut s = store(&dir);
+        assert!(s
+            .apply(&FileId::Global, &[set("video.scale", false, json!("fill"))])
+            .is_err());
+        // The drive comes back / the permission is fixed: the real file is there again.
+        std::fs::remove_dir_all(dir.path("synced/global.json")).unwrap();
+        dir.write(
+            "synced/global.json",
+            r#"{ "audio.vol": 40, "future.thing": true }"#,
+        );
+        assert_eq!(s.get(&FileId::Global, false, "audio.vol"), Some(json!(40)));
+        s.apply(&FileId::Global, &[set("video.scale", false, json!("fill"))])
+            .unwrap();
+        let synced: serde_json::Value =
+            serde_json::from_str(&dir.read("synced/global.json")).unwrap();
+        assert_eq!(
+            synced,
+            json!({ "audio.vol": 40, "future.thing": true, "video.scale": "fill" })
+        );
     }
 }

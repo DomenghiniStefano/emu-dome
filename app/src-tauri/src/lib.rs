@@ -32,7 +32,9 @@ use emudome_core::input::{Button, Source};
 use emudome_core::screens::{Area, Layout, Split};
 use emudome_core::settings::{ConsoleId, GameId};
 use emudome_core::tuning::{Tuning, VideoPath};
-use emudome_core::{Command, ErrorCode, Event, Session, SessionOptions, Shared, Speed};
+use emudome_core::{
+    Closed, Command, ErrorCode, Event, Session, SessionOptions, Shared, Speed, CLOSE_TIMEOUT,
+};
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::webview::Color;
@@ -76,6 +78,12 @@ struct AppState {
     resource_dir: Option<PathBuf>,
     /// The file of the open game (its slots and thumbnails sit beside its saves).
     game_path: Mutex<Option<PathBuf>>,
+    /// The core of the open game (`mgba`, ...), named in `coreNeedsRestart`.
+    core_name: Mutex<Option<&'static str>>,
+    /// Held for the whole of closing a game: a second close (the window closing while a game
+    /// closes) waits for the first, so the app never quits before the exit writes are done.
+    /// The emulation thread never takes it.
+    closing: Mutex<()>,
     audio: audio::AudioOutput,
     /// Bench mode (`EMUDOME_BENCH`), off otherwise.
     bench: Option<Arc<bench::Bench>>,
@@ -310,6 +318,13 @@ fn open_path(
         .ok_or_else(|| ErrorCode::CoreNotFound {
             file: emudome_platform::core_file_name(core_name),
         })?;
+    // A game on this core was let go (E11, or a close that timed out): its thread may still be
+    // inside the core's module. Checked before closing the open game, which stays open.
+    if emudome_core::core_needs_restart(&core_path) {
+        return Err(ErrorCode::CoreNeedsRestart {
+            core: core_name.into(),
+        });
+    }
 
     // Close the previous game before opening another one.
     close_current(app, state);
@@ -360,6 +375,7 @@ fn open_path(
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
     *state.game_path.lock() = Some(game_path.clone());
+    *state.core_name.lock() = Some(core_name);
     core_settings::started(app, core_name, console_id, flow.core_options);
     settings::begin_session(app, console_id, game);
 
@@ -378,14 +394,53 @@ fn open_path(
     })
 }
 
-/// Ends the open game: play time, the settings session, video, the emulation thread.
+/// How a game ends.
+#[derive(Clone, Copy)]
+enum Ending {
+    /// Closed: the thread stops and writes the in-game save and, with `saves.autoexit`, the auto
+    /// quick save; waited for up to `CLOSE_TIMEOUT`, then let go.
+    Close,
+    /// E11, the core stopped answering: let go at once.
+    Abandon,
+}
+
+/// Ends the open game (`Ending::Close`): play time, the settings session, video, the emulation
+/// thread and its exit writes. Every way out goes through here: closing the game, opening
+/// another, closing the window, quitting.
 fn close_current(app: &tauri::AppHandle, state: &AppState) {
+    end_game(app, state, Ending::Close);
+}
+
+fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
+    let _closing = state.closing.lock();
     library::end_play(app);
     core_settings::stopped(app);
     settings::end_session(app);
     state.native_source(None);
     *state.current.lock() = None;
-    state.session.lock().take();
+    // Taken out first: the session lock is not held while the thread is waited for.
+    let session = state.session.lock().take();
+    let core = state.core_name.lock().take().unwrap_or_default();
+    if let Some(session) = session {
+        let closed = match ending {
+            Ending::Close => session.close(CLOSE_TIMEOUT),
+            Ending::Abandon => {
+                session.abandon();
+                Closed::Abandoned
+            }
+        };
+        if let (Ending::Close, Closed::Abandoned) = (ending, closed) {
+            // The exit writes may be missing and the core is refused until restart: say so.
+            log::warn!("the game did not close within {CLOSE_TIMEOUT:?}: let go");
+            let error = Event::Error {
+                error: ErrorCode::CoreNeedsRestart { core: core.into() },
+            };
+            if let Err(e) = app.emit("emu://event", error) {
+                log::warn!("coreNeedsRestart not sent to the interface: {e}");
+            }
+        }
+    }
+    // Cleared after the thread ended: the Saves screen refuses this game's files until then.
     state.game_path.lock().take();
 }
 
@@ -395,18 +450,43 @@ fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
 }
 
 /// E11: the core stopped answering. Lets go of its thread without waiting for it (joining a
-/// core stuck in `retro_run` never returns); the interface then offers to reopen the game.
+/// core stuck in `retro_run` never returns). The session is dead (it writes nothing more) and its
+/// core is refused until EmuDome restarts (`coreNeedsRestart`).
 #[tauri::command]
 fn abandon_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
-    library::end_play(&app);
-    core_settings::stopped(&app);
-    settings::end_session(&app);
-    state.native_source(None);
-    *state.current.lock() = None;
-    state.game_path.lock().take();
-    let session = state.session.lock().take();
-    if let Some(session) = session {
-        session.abandon();
+    end_game(&app, &state, Ending::Abandon);
+}
+
+/// Every way the window or the app ends: the open game closes first, with its exit writes.
+fn ends_the_app(event: &tauri::RunEvent) -> bool {
+    matches!(
+        event,
+        tauri::RunEvent::Exit
+            | tauri::RunEvent::ExitRequested { .. }
+            | tauri::RunEvent::WindowEvent {
+                event: WindowEvent::CloseRequested { .. },
+                ..
+            }
+    )
+}
+
+/// What the event loop does for the open game: close it when the app ends, flush its saves when
+/// the app goes to the background (Android: the process may then be killed without a word).
+fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    if ends_the_app(event) {
+        close_current(app, &state);
+        return;
+    }
+    if let tauri::RunEvent::WindowEvent { event, .. } = event {
+        if emudome_platform::is_suspend(event) {
+            // The game keeps its state; NoGame (nothing open) is fine.
+            if state.send(Command::Flush).is_ok() {
+                log::info!("in background: the open game's saves are flushed");
+            }
+        }
     }
 }
 
@@ -834,6 +914,8 @@ pub fn run() {
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
                 game_path: Mutex::new(None),
+                core_name: Mutex::new(None),
+                closing: Mutex::new(()),
                 audio,
                 bench: bench.clone(),
             });
@@ -915,10 +997,5 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")
-        .run(|app, event| {
-            // Quitting with a game open: its play time still counts.
-            if let tauri::RunEvent::Exit = event {
-                library::end_play(app);
-            }
-        });
+        .run(|app, event| on_run_event(app, &event));
 }

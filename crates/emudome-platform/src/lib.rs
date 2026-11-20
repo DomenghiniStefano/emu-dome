@@ -66,6 +66,21 @@ pub fn init_logging() {
     imp::init_logging();
 }
 
+/// Whether a window event says the app went to the background: Android's `onPause`, after which
+/// the process may be killed without any other event (Tauri's `WindowEvent::Suspended`, mobile
+/// only). The desktop has no such event: there the app ends by closing its window or quitting.
+pub fn is_suspend(event: &tauri::WindowEvent) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        matches!(event, tauri::WindowEvent::Suspended)
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = event;
+        false
+    }
+}
+
 /// The game to open at startup: the first non-flag argument on the desktop
 /// (`emudome game.gba`), the `game` extra of the launch intent on Android
 /// (`adb shell am start -n <package>/.MainActivity --es game /path/game.gba`).

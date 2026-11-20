@@ -355,11 +355,11 @@ pub async fn settings_choose_background(app: AppHandle, scope: Scope) -> Result<
     let dir = backgrounds_dir(&app).ok_or_else(|| ErrorCode::SettingsWriteFailed {
         detail: "no app data folder".into(),
     })?;
-    std::fs::create_dir_all(&dir)
-        .and_then(|()| std::fs::write(dir.join(&name), &bytes))
-        .map_err(|e| ErrorCode::SettingsWriteFailed {
+    emudome_core::write_atomic(&dir.join(&name), &bytes).map_err(|e| {
+        ErrorCode::SettingsWriteFailed {
             detail: e.to_string(),
-        })?;
+        }
+    })?;
     let state = app.state::<SettingsState>();
     let level = state
         .0

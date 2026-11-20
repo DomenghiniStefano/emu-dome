@@ -24,7 +24,7 @@ Conventions:
 | Video | Two paths: native wgpu under a transparent webview, or canvas via `emu://frame`. Software frames only (RGBA copy) | `app/src-tauri/src/video.rs`, `NATIVE_VIDEO_DEFAULT` in `emudome-platform` |
 | Audio | cpal, linear resampling, ±0.5 % queue correction, muted when speed ≠ 1× | `app/src-tauri/src/audio.rs` |
 | Core options | `GET_VARIABLE` → `false`; `SET_VARIABLES` accepted and ignored. No `SET_CORE_OPTIONS_V2`, no `SET_HW_RENDER`, no pointer, no rumble, no sensors | `crates/emudome-core/src/callbacks.rs` |
-| Saves | `.sav` every 30 s and on exit; 3 slots in the menu, 1–9 from the controller; all in `app_data/saves`, `app_data/system` | `crates/emudome-core/src/session.rs`, `app/src-tauri/src/lib.rs` |
+| Saves | `.sav` every 30 s, on exit and when Android goes to the background; 3 slots in the menu, 1–9 from the controller; all in `app_data/saves`, `app_data/system` | `crates/emudome-core/src/session.rs`, `app/src-tauri/src/lib.rs` |
 | Interface | vue-i18n (en, it), language from the OS; design tokens in `styles.css`; no theme switch | `app/src/i18n/`, `app/src/styles.css` |
 | Settings | **None persisted.** Only env vars (`EMUDOME_VIDEO`, `EMUDOME_CORES_DIR`, `RUST_LOG`) | — |
 
