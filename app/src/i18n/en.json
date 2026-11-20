@@ -265,7 +265,13 @@
     "saveImportInvalid": "This file isn’t a save EmuDome can import ({detail}). Choose a .sav, .dsv or .duc file.",
     "saveFileFailed": "Couldn’t use the save file: {detail}. Check that the saves folder is writable and try again.",
     "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again.",
-    "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file."
+    "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file.",
+    "biosUnreadable": "Couldn’t read this file: {detail}. Check that it’s still there and choose it again.",
+    "biosWrongSize": "This file doesn’t have the right size for this row. Choose the right file.",
+    "biosOtherSlot": "This file belongs to another row of this page. Choose it there.",
+    "biosFileFailed": "Couldn’t save EmuDome’s copy of the file: {detail}. Check the free disk space and try again.",
+    "biosDsiFilesMissing": "DSi mode needs your DS and DSi system files, so the game runs as a DS. Add them in Settings › BIOS and firmware.",
+    "biosDsMenuFilesMissing": "Starting from the DS menu needs your DS system files, so the game starts directly. Add them in Settings › BIOS and firmware."
   },
   "consoleShort": {
     "gb": "GB",

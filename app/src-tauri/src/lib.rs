@@ -8,6 +8,7 @@
 
 mod audio;
 mod bench;
+mod bios;
 mod core_settings;
 mod dirs;
 mod effects;
@@ -269,8 +270,8 @@ fn open_library_game(
 /// Core options the shell always sets, per core (`GET_VARIABLE` key and value).
 /// Azahar: the software renderer, the only one that does not ask for `SET_HW_RENDER`, which the
 /// host does not implement yet (Trello #16); its default `auto` fails to load.
-/// melonDS DS: the screens where the shell cuts them, touch from the shell's pointer, built-in
-/// BIOS and firmware (`emudome_core::nds`).
+/// melonDS DS: the screens where the shell cuts them, touch from the shell's pointer
+/// (`emudome_core::nds`).
 /// The settings' core options are `emudome_core::settings::core_values` (one table per core).
 const FORCED_CORE_OPTIONS: &[(&str, &[(&str, &str)])] = &[
     ("azahar", &[("citra_graphics_api", "Software")]),
@@ -287,10 +288,17 @@ fn forced_core_options(core_name: &str) -> Vec<(String, String)> {
 }
 
 /// The options the core starts with: the settings' (console options), then the forced ones,
-/// which win.
+/// then the system files' (`emudome_core::bios`: what the files in place allow), each winning
+/// over the ones before.
 fn core_options(core_name: &str, flow: &settings::GameFlow) -> Vec<(String, String)> {
     let mut options = emudome_core::settings::core_values::pairs(&flow.core_options);
     options.extend(forced_core_options(core_name));
+    options.extend(
+        flow.bios
+            .options
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
+    );
     options
 }
 
@@ -341,7 +349,7 @@ fn open_path(
         SessionOptions {
             core_path,
             game_path: game_path.clone(),
-            system_dir: state.data_dir.join("system"),
+            system_dir: bios::system_dir(app, core_name, state.data_dir.join("system")),
             save_dir,
             autosave_every: flow.autosave_every,
             autosave_on_exit: flow.autosave_on_exit,
@@ -376,6 +384,7 @@ fn open_path(
     *state.session.lock() = Some(session);
     *state.game_path.lock() = Some(game_path.clone());
     *state.core_name.lock() = Some(core_name);
+    bios::emit_fallbacks(app, &flow.bios.fallbacks);
     core_settings::started(app, core_name, console_id, flow.core_options);
     settings::begin_session(app, console_id, game);
 
@@ -965,6 +974,8 @@ pub fn run() {
             settings::settings_session_commit,
             settings::settings_session_discard,
             effects::effects_choose_file,
+            bios::bios_choose,
+            bios::bios_status,
             settings::settings_choose_background,
             pads::gamepad_list,
             pads::gamepad_watch,
