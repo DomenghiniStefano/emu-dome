@@ -21,6 +21,10 @@ pub enum ErrorCode {
     CoreNotFound { file: String },
     /// The core or the game failed to load.
     OpenFailed { detail: String },
+    /// A game on this core stopped answering and was let go (E11): its thread may still hold
+    /// the core, so the core cannot open another game until EmuDome is restarted. `core` is the
+    /// core's name (e.g. `mgba`).
+    CoreNeedsRestart { core: String },
     /// A command that needs a running game arrived with none open.
     NoGame,
     /// The native video path does not exist on this system.
@@ -49,6 +53,9 @@ pub enum ErrorCode {
     SettingInvalidValue { key: String },
     /// A settings file could not be written.
     SettingsWriteFailed { detail: String },
+    /// A settings file is there but could not be read (permission, I/O error): it is not
+    /// written over, so the change was not saved. Writes work again once it reads.
+    SettingsReadFailed { detail: String },
     /// A library folder cannot be read now (missing, disconnected drive, no permission).
     LibraryFolderUnreachable { path: String },
     /// No game in the library has this id.
@@ -57,6 +64,9 @@ pub enum ErrorCode {
     LibraryGameUnavailable { id: String },
     /// The library database could not be written.
     LibraryWriteFailed { detail: String },
+    /// The library database is there but could not be read: it is not written over, so the
+    /// change was not saved. Writes work again once it reads.
+    LibraryReadFailed { detail: String },
     /// The chosen cover cannot be used (not an image, too large, or no icon in the ROM).
     CoverInvalid { detail: String },
     /// «Annulla il caricamento» with no load to undo in this session.

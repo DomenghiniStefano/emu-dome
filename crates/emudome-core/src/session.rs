@@ -439,7 +439,7 @@ fn emu_thread(
 
     let write_sram = |core: &LoadedCore| {
         if let Some(ram) = core.save_ram() {
-            if let Err(e) = crate::saves::write_atomic(&files.sram, ram) {
+            if let Err(e) = crate::write_atomic(&files.sram, ram) {
                 log::warn!("game save not written: {e}");
             }
         }

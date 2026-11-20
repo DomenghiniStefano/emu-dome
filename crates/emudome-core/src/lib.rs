@@ -4,6 +4,7 @@
 //! The shell (Tauri) never calls the core directly: it sends [`Command`]
 //! to the [`Session`] and reads the shared state in [`Shared`].
 
+mod atomic;
 mod callbacks;
 mod core;
 mod core_options;
@@ -27,6 +28,7 @@ pub mod settings;
 pub mod speed_audio;
 pub mod tuning;
 
+pub use atomic::write_atomic;
 pub use core::GameFiles;
 pub use error::ErrorCode;
 pub use frame::Frame;

@@ -531,6 +531,58 @@ fn an_unreadable_database_is_moved_aside() {
 }
 
 #[test]
+fn a_database_that_cannot_be_read_is_never_written_over() {
+    let dir = TestDir::new("lib-read-failed");
+    write(&dir, "roms/a.nds", &nds_rom());
+    // A folder where library.json should be: reading it fails on every OS.
+    dir.write("db/library.json/inside.txt", "kept");
+    let mut lib = Library::open(&dir.path("db"));
+    assert_eq!(lib.games().count(), 0);
+    let outcome = scan(input(&[&dir.path("roms")], &lib), &mut |_, _| {});
+    assert!(matches!(
+        lib.apply_scan(outcome, 1),
+        Err(ErrorCode::LibraryReadFailed { .. })
+    ));
+    assert!(matches!(
+        lib.save(),
+        Err(ErrorCode::LibraryReadFailed { .. })
+    ));
+    assert!(matches!(
+        lib.unlist_folder("x"),
+        Err(ErrorCode::LibraryReadFailed { .. })
+    ));
+    assert_eq!(dir.read("db/library.json/inside.txt"), "kept");
+}
+
+#[test]
+fn library_writes_resume_once_the_database_reads_again() {
+    let dir = TestDir::new("lib-read-recovers");
+    write(&dir, "roms/a.nds", &nds_rom());
+    let id = {
+        let mut lib = Library::open(&dir.path("db"));
+        run(&mut lib, &[&dir.path("roms")], 5);
+        let id = lib.games().next().unwrap().id.clone();
+        lib.add_play_time(&id, 90).unwrap();
+        id
+    };
+    let saved = dir.read("db/library.json");
+    fs::rename(dir.path("db/library.json"), dir.path("db/away.json")).unwrap();
+    dir.write("db/library.json/inside.txt", "kept");
+    let mut lib = Library::open(&dir.path("db"));
+    assert!(matches!(
+        lib.add_play_time(&id, 10),
+        Err(ErrorCode::LibraryReadFailed { .. })
+    ));
+    // The file is back: the next change reads it first, so the play time so far is kept.
+    fs::remove_dir_all(dir.path("db/library.json")).unwrap();
+    fs::rename(dir.path("db/away.json"), dir.path("db/library.json")).unwrap();
+    lib.add_play_time(&id, 10).unwrap();
+    let lib = Library::open(&dir.path("db"));
+    assert_eq!(lib.game(&id).unwrap().play_time_secs, 100);
+    assert_ne!(dir.read("db/library.json"), saved);
+}
+
+#[test]
 fn covers_are_checked() {
     let dir = TestDir::new("lib-covers");
     write(&dir, "roms/a.gba", &gba_rom("ONE", 0));

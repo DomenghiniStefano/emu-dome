@@ -4,8 +4,11 @@
 //! newer version wrote (kept). Games are never deleted: a game whose file or folder is gone is
 //! kept with `available: false`; one whose folder left `library.folders` is kept with
 //! `listed: false` (hidden from the interface), so its play time, flags and cover come back with
-//! it. Written atomically like the settings files (`settings::store::write_atomic`); a file that
-//! cannot be parsed is moved aside to `library.json.unreadable` and the library starts empty.
+//! it. Written atomically (`crate::write_atomic`). A file that cannot be parsed is moved aside
+//! to `library.json.unreadable` and the library starts empty. A file that is there but cannot be
+//! read (permission, I/O error, or not parsed and not moved aside) is never written over: the
+//! library shows empty and every change is refused with `libraryReadFailed`, each one first
+//! trying to read the file again.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -117,14 +120,53 @@ pub struct ScanReport {
 pub struct Library {
     file: PathBuf,
     db: Db,
+    /// Why the file could not be read, while it cannot: no write may replace it.
+    read_failed: Option<String>,
 }
 
 impl Library {
     /// Opens `<dir>/library.json` (empty if missing).
     pub fn open(dir: &Path) -> Self {
         let file = dir.join("library.json");
-        let db = read_db(&file).unwrap_or_default();
-        Self { file, db }
+        let mut library = Self {
+            file,
+            db: Db::default(),
+            read_failed: None,
+        };
+        library.read();
+        library
+    }
+
+    /// Reads the file into memory; on failure the library stays as it is and is marked unreadable.
+    fn read(&mut self) {
+        match read_db(&self.file) {
+            ReadDb::Found(db) => {
+                self.db = db;
+                self.read_failed = None;
+            }
+            ReadDb::Missing => self.read_failed = None,
+            ReadDb::Failed(detail) => {
+                log::warn!(
+                    "libraryReadFailed: {}: {detail}; changes are refused until it reads",
+                    self.file.display()
+                );
+                self.read_failed = Some(detail);
+            }
+        }
+    }
+
+    /// Before any change: a file that could not be read is read again, and the change is refused
+    /// (`libraryReadFailed`) while it still cannot be.
+    fn ensure_readable(&mut self) -> Result<(), ErrorCode> {
+        if self.read_failed.is_some() {
+            self.read();
+        }
+        match &self.read_failed {
+            Some(detail) => Err(ErrorCode::LibraryReadFailed {
+                detail: detail.clone(),
+            }),
+            None => Ok(()),
+        }
     }
 
     /// The games shown in the library.
@@ -147,6 +189,7 @@ impl Library {
     }
 
     fn game_mut(&mut self, id: &str) -> Result<&mut GameRecord, ErrorCode> {
+        self.ensure_readable()?;
         self.db
             .games
             .get_mut(id)
@@ -171,6 +214,7 @@ impl Library {
     /// games not found become unavailable, games of folders no longer in `library.folders`
     /// leave the library (kept on disk, unlisted). Writes the file.
     pub fn apply_scan(&mut self, scan: ScanOutcome, now_ms: u64) -> Result<ScanReport, ErrorCode> {
+        self.ensure_readable()?;
         let mut seen: BTreeMap<&str, &super::scan::Found> = BTreeMap::new();
         for found in &scan.found {
             let current = self
@@ -227,6 +271,7 @@ impl Library {
 
     /// A folder left `library.folders`: its games leave the library (kept, unlisted).
     pub fn unlist_folder(&mut self, folder: &str) -> Result<(), ErrorCode> {
+        self.ensure_readable()?;
         for game in self.db.games.values_mut() {
             if game.folder.as_deref() == Some(folder) {
                 game.listed = false;
@@ -310,13 +355,18 @@ impl Library {
     }
 
     /// Writes the file (the in-memory state stays as it is if this fails; the next write
-    /// carries it).
+    /// carries it). Refused while the file could not be read: it is never written over.
     pub fn save(&self) -> Result<(), ErrorCode> {
+        if let Some(detail) = &self.read_failed {
+            return Err(ErrorCode::LibraryReadFailed {
+                detail: detail.clone(),
+            });
+        }
         let write_failed = |e: String| ErrorCode::LibraryWriteFailed { detail: e };
         let mut bytes =
             serde_json::to_vec_pretty(&self.db).map_err(|e| write_failed(e.to_string()))?;
         bytes.push(b'\n');
-        crate::settings::write_atomic(&self.file, &bytes).map_err(|e| write_failed(e.to_string()))
+        crate::write_atomic(&self.file, &bytes).map_err(|e| write_failed(e.to_string()))
     }
 }
 
@@ -367,17 +417,29 @@ pub fn cover_colour(id: &str) -> &'static str {
     COVER_COLOURS.get(index).copied().unwrap_or("#4a4f5e")
 }
 
-fn read_db(path: &Path) -> Option<Db> {
+/// What reading `library.json` gave.
+enum ReadDb {
+    Found(Db),
+    /// No file (or a file that was not JSON, now moved aside).
+    Missing,
+    /// The file is there but could not be read: never to be written over.
+    Failed(String),
+}
+
+fn read_db(path: &Path) -> ReadDb {
     let text = match fs::read_to_string(path) {
         Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
-        Err(e) => {
-            log::warn!("libraryReadFailed: {}: {e}", path.display());
-            return None;
+        // A file in place of one of its folders: no file can be there either.
+        Err(e)
+            if e.kind() == std::io::ErrorKind::NotFound
+                || e.kind() == std::io::ErrorKind::NotADirectory =>
+        {
+            return ReadDb::Missing
         }
+        Err(e) => return ReadDb::Failed(e.to_string()),
     };
     match serde_json::from_str(&text) {
-        Ok(db) => Some(db),
+        Ok(db) => ReadDb::Found(db),
         Err(e) => {
             let aside = path.with_extension("json.unreadable");
             log::warn!(
@@ -385,10 +447,12 @@ fn read_db(path: &Path) -> Option<Db> {
                 path.display(),
                 aside.display()
             );
-            if let Err(e) = fs::rename(path, &aside) {
-                log::warn!("libraryReadFailed: could not move {}: {e}", path.display());
+            match fs::rename(path, &aside) {
+                Ok(()) => ReadDb::Missing,
+                Err(not_moved) => ReadDb::Failed(format!(
+                    "not valid JSON ({e}) and not moved aside ({not_moved})"
+                )),
             }
-            None
         }
     }
 }
