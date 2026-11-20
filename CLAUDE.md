@@ -89,6 +89,8 @@ pnpm package:windows                          # installer (from app/): only the 
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
+./scripts/check.ps1 --fast                    # on a work branch: no Android clippy, cargo test only on the
+                                              # packages changed since develop (both said skipped); never for a merge
 rustup target add aarch64-linux-android       # once: the Android clippy steps of the check
 nvm use                                       # Node from .nvmrc (engines.node in app/package.json; the check stops on another)
 cd app; pnpm install                          # frontend dependencies (pnpm only: npm refuses, see docs/decisions.md)
@@ -111,6 +113,9 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
 ```
 
 - On Windows `sh` is not on the PATH that PowerShell and pnpm see, so there use `./scripts/check.ps1`.
+- Build speed: with sccache installed, `RUSTC_WRAPPER=sccache` (user environment) shares the compiled dependencies
+  between worktrees; each worktree keeps its own `target/` (see below). The dev profile keeps line tables only
+  (`debug = true` locally for a debugger session).
 - Android build: `tauri android build` fails with "Creation symbolic link is not allowed" when Windows developer mode
   is off (the CLI symlinks the `.so` into jniLibs). Workaround: copy `libemudome_app.so` into
   `app/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/` and run `gradlew assembleArm64Debug -x rustBuildArm64Debug`.

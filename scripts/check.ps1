@@ -3,6 +3,7 @@
 # scripts/check is a POSIX sh script, the one list shared with Linux and the pre-commit hook.
 # PowerShell has no `sh` on its PATH (Git for Windows puts only Git\cmd there), so this finds
 # the sh.exe that ships with Git for Windows next to git.exe and runs the script with it.
+# Arguments go through to scripts/check (`./scripts/check.ps1 --fast`).
 # Exit code: the one of scripts/check (0 = all green).
 
 $ErrorActionPreference = 'Stop'
@@ -25,5 +26,5 @@ $check = Join-Path $PSScriptRoot 'check'
 # error record when the caller redirects it (`./scripts/check.ps1 *> log`), and under 'Stop' the
 # first one ("Compiling ...") would end this script while sh carries on unseen.
 $ErrorActionPreference = 'Continue'
-& $shPath $check
+& $shPath $check @args
 exit $LASTEXITCODE
