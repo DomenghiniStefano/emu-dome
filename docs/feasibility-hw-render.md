@@ -83,12 +83,13 @@ melonDS DS has no GLES or Vulkan renderer; OpenGL is off in its Android builds (
 
 ## The prototype
 
-`crates/hw-render-spike` (binary, `publish = false`, its own minimal libretro host; the shell is untouched). The Vulkan
+`crates/hw-render-spike` (binary, `publish = false`, its own minimal libretro host; the shell is untouched; its own Cargo
+workspace, outside the root one, so the checks never build it). The Vulkan
 half existed (2026-11-18); this round added OpenGL.
 
 ```
-cargo run --release -p hw-render-spike -- <core> <content> --opt key=value ... [--frames N] [--png out.png]
-                                            [--gl] [--no-interop]
+cargo run --release --manifest-path crates/hw-render-spike/Cargo.toml -- <core> <content> --opt key=value ...
+          [--frames N] [--png out.png] [--gl] [--no-interop]
 ```
 
 - `host.rs`: with `--gl` the host accepts `OPENGL` / `OPENGL_CORE` contexts, answers `GET_PREFERRED_HW_RENDER` with

@@ -1179,6 +1179,7 @@ dependencies = [
  "parking_lot",
  "raw-window-handle",
  "tauri",
+ "tauri-plugin-dialog",
 ]
 
 [[package]]
@@ -1926,24 +1927,6 @@ name = "httparse"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
-
-[[package]]
-name = "hw-render-spike"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "ash",
- "env_logger",
- "glow",
- "libloading 0.9.1",
- "libretro-sys",
- "log",
- "parking_lot",
- "png",
- "pollster",
- "wgpu",
- "wgpu-hal",
-]
 
 [[package]]
 name = "hyper"

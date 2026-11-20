@@ -4,9 +4,11 @@ members = [
     "crates/libretro-sys",
     "crates/emudome-core",
     "crates/emudome-platform",
-    "crates/hw-render-spike",
     "app/src-tauri",
 ]
+# The hardware-rendering spike (Trello #16) is its own workspace, with its own Cargo.lock and
+# target/: kept as a reference, never built by the checks (crates/hw-render-spike/Cargo.toml).
+exclude = ["crates/hw-render-spike"]
 
 [workspace.package]
 version = "0.0.1"

@@ -11,7 +11,7 @@
 //! `interop.rs`).
 //!
 //! ```text
-//! cargo run --release -p hw-render-spike -- <core> <content> [options]
+//! cargo run --release --manifest-path crates/hw-render-spike/Cargo.toml -- <core> <content> [options]
 //!   --opt key=value   core option answered to GET_VARIABLE (repeatable),
 //!                     e.g. --opt citra_graphics_api=Vulkan for Azahar
 //!   --frames N        frames per measured phase (default 300)
