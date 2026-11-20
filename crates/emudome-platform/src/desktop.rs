@@ -82,3 +82,7 @@ pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> O
         .inspect_err(|e| log::warn!("picked file: {e}"))
         .ok()
 }
+
+pub fn set_fullscreen(window: &tauri::Window, on: bool) -> tauri::Result<()> {
+    window.set_fullscreen(on)
+}

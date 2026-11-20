@@ -250,3 +250,8 @@ pub fn pick_file(_app: &tauri::AppHandle, _filter: &str, _extensions: &[&str]) -
     log::warn!("file picker not available on this platform yet");
     None
 }
+
+/// Tauri's mobile window has no fullscreen call; the app already fills the screen.
+pub fn set_fullscreen(_window: &tauri::Window, _on: bool) -> tauri::Result<()> {
+    Ok(())
+}

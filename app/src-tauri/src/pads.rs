@@ -49,6 +49,7 @@ pub struct PadState {
 
 /// Payload of `emu://pad-state`.
 #[derive(Clone, Debug, PartialEq, Serialize)]
+#[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
 pub struct PadStates {
     pub pads: Vec<PadState>,
 }
@@ -94,12 +95,14 @@ pub fn settings_changed() {
     CONFIG_GENERATION.fetch_add(1, Ordering::Relaxed);
 }
 
+#[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
 pub fn config_generation() -> u64 {
     CONFIG_GENERATION.load(Ordering::Relaxed)
 }
 
 /// The controller settings in force now: the open game's (with its changes «in prova»), or
 /// «Tutti i giochi» without a game. `None` while the settings are not open yet.
+#[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
 pub fn current_config(app: &AppHandle) -> Option<PadConfig> {
     let state = app.try_state::<SettingsState>()?;
     // `resolve` needs `&mut` and `from_settings` takes an `Fn`: borrow the lock per call.

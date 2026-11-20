@@ -608,9 +608,8 @@ impl AppState {
     }
 }
 
-/// A command to the running game from outside a Tauri command (the controller combos).
-/// False when there is no game, or before the state exists.
-#[cfg(desktop)]
+/// A command to the running game from outside a Tauri command (the controller combos, setting
+/// changes). False when there is no game, or before the state exists.
 fn send_command(app: &tauri::AppHandle, cmd: Command) -> bool {
     app.try_state::<AppState>()
         .is_some_and(|state| state.send(cmd).is_ok())
@@ -624,7 +623,7 @@ fn toggle_fullscreen(app: tauri::AppHandle) -> bool {
         return false;
     };
     let on = window.is_fullscreen().unwrap_or(false);
-    if let Err(e) = window.set_fullscreen(!on) {
+    if let Err(e) = emudome_platform::set_fullscreen(&window, !on) {
         log::warn!("fullscreen {}: {e}", !on);
         return on;
     }

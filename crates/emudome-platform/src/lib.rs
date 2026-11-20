@@ -221,5 +221,11 @@ pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> O
     imp::pick_file(app, filter, extensions)
 }
 
+/// Puts `window` in fullscreen or takes it out. Android has no such call (Tauri's mobile window):
+/// there the app already fills the screen, so it does nothing and succeeds.
+pub fn set_fullscreen(window: &tauri::Window, on: bool) -> tauri::Result<()> {
+    imp::set_fullscreen(window, on)
+}
+
 /// Listener of the external surface, boxed for the per-OS modules.
 pub(crate) type SurfaceListener = Box<dyn Fn(SurfaceEvent) + Send + Sync>;
