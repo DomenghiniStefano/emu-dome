@@ -138,6 +138,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
+                         close_flow.rs (closing with a game open: the state machine; pure, unit-tested)
                          bios/ (the user's own BIOS / firmware, `bios.*`: mod.rs slots, check by size + MD5
                          / firmware header / DSi footer (identification only, never a source), assess,
                          status, plan; one table per core in bios/<core>.rs with its policy (melonDS DS:
@@ -153,6 +154,7 @@ app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), 
                          bios.rs (bios_choose / bios_status, per-core system folder
                          `<app local data>/system/<core>/` for cores with a BIOS table, emu://bios-fallback)
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
+                         closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
@@ -161,7 +163,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          outside the game), library, details, saves, settings, controls, quick-menu,
                          game (GameCanvas: webview mode, TouchControls: Android overlay, the game flow),
                          first-run (FirstRun, 4 steps, once per device: marker `<app local data>/first-run/done`,
-                         src-tauri/src/first_run.rs), cover, toasts; components/ui/ (the primitives),
+                         src-tauri/src/first_run.rs), cover, toasts, closing (the loader while a game closes);
+                         components/ui/ (the primitives),
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
                          lib/settingsModel.ts, lib/cn.ts, lib/design/…),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text),
@@ -225,7 +228,19 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
-  opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place).
+  opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
+  `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below).
+- Closing with a game open (Trello #86): the window's X, a quit, `close_game` and opening another game go through
+  one pure state machine, `emudome_core::close_flow` (requested → saving → saved → finish; timeout / failed → the
+  user's «Wait» / «Close anyway»; a second request while saving is ignored, a quit turns a game close into a quit).
+  `app/src-tauri/src/closing.rs` carries it out: `CloseRequested` / `ExitRequested` are prevented while a game is
+  open, a worker waits for the session's thread (`Session::stop` / `Session::wait`, which never lets it go by
+  itself), `emu://closing` reports `phase` (`saving` / `saved` / `timeout` / `failed` / `closed`) and `purpose`
+  (`game` / `quit`), «Saved» stays `SAVED_VISIBLE` (600 ms), then the app exits (with the exit code asked for).
+  `RunEvent::Exit`, which cannot be prevented, closes what is left in place (bounded by `CLOSE_TIMEOUT`). The
+  commands that wait (`open_game`, `library_open`, `close_game`) run off the event loop (`#[tauri::command(async)]`).
+  Interface: `components/closing/` (`closing.ts` the view, `useClosing.ts`; `ClosingStrip.vue` the bottom strip
+  while saving / saved, `ClosingAsk.vue` the timeout / failure question, `ClosingOverlay.vue` places them).
 
 ## Lessons already learned (do not repeat)
 

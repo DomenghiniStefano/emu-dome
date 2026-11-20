@@ -9,6 +9,7 @@
 mod audio;
 mod bench;
 mod bios;
+mod closing;
 mod core_settings;
 mod dirs;
 mod effects;
@@ -85,6 +86,12 @@ struct AppState {
     /// closes) waits for the first, so the app never quits before the exit writes are done.
     /// The emulation thread never takes it.
     closing: Mutex<()>,
+    /// The close flow (Trello #86): the window's X, quitting, closing or switching the game
+    /// wait for the exit writes off the event loop, with progress on `emu://closing`.
+    closer: closing::Closer,
+    /// Held while a game opens: opens run off the event loop (they may wait for a close), one
+    /// at a time.
+    opening: Mutex<()>,
     audio: audio::AudioOutput,
     /// Bench mode (`EMUDOME_BENCH`), off otherwise.
     bench: Option<Arc<bench::Bench>>,
@@ -220,7 +227,8 @@ fn console_label(console: ConsoleId) -> &'static str {
 
 /// Opens a game file. A file that is in the library opens as that library game (its
 /// identity, title and play time); any other file is identified by its path for now.
-#[tauri::command]
+/// Off the event loop (`async`): it may wait for the open game's close.
+#[tauri::command(async)]
 fn open_game(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
@@ -334,8 +342,10 @@ fn open_path(
         });
     }
 
-    // Close the previous game before opening another one.
-    close_current(app, state);
+    // One open at a time; the previous game closes first, through the close flow (its
+    // progress on `emu://closing`, the user's choice if it takes too long).
+    let _opening = state.opening.lock();
+    closing::close_game(app, state)?;
 
     let console_id = console.unwrap_or(ext_console);
     let flow = settings::game_flow(app, core_name, console_id, &game);
@@ -413,15 +423,17 @@ enum Ending {
     Abandon,
 }
 
-/// Ends the open game (`Ending::Close`): play time, the settings session, video, the emulation
-/// thread and its exit writes. Every way out goes through here: closing the game, opening
-/// another, closing the window, quitting.
+/// Ends the open game in place (`Ending::Close`), bounded by `CLOSE_TIMEOUT`: only for
+/// `RunEvent::Exit`, which cannot wait (`closing::close_now`). Every other way out goes through
+/// the close flow (`closing.rs`): closing the game, opening another, the window's X, quitting.
 fn close_current(app: &tauri::AppHandle, state: &AppState) {
     end_game(app, state, Ending::Close);
 }
 
-fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
-    let _closing = state.closing.lock();
+/// Takes the open game out of the app: play time, the settings session, video; returns its
+/// session (not yet closed) and its core's name. The caller closes the session, then clears
+/// `game_path`.
+fn release_game(app: &tauri::AppHandle, state: &AppState) -> (Option<Session>, &'static str) {
     library::end_play(app);
     core_settings::stopped(app);
     settings::end_session(app);
@@ -430,6 +442,23 @@ fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
     // Taken out first: the session lock is not held while the thread is waited for.
     let session = state.session.lock().take();
     let core = state.core_name.lock().take().unwrap_or_default();
+    (session, core)
+}
+
+/// A game on `core` was let go: its exit writes may be missing and the core is refused until
+/// EmuDome restarts. Tells the interface.
+fn say_core_needs_restart(app: &tauri::AppHandle, core: &str) {
+    let error = Event::Error {
+        error: ErrorCode::CoreNeedsRestart { core: core.into() },
+    };
+    if let Err(e) = app.emit("emu://event", error) {
+        log::warn!("coreNeedsRestart not sent to the interface: {e}");
+    }
+}
+
+fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
+    let _closing = state.closing.lock();
+    let (session, core) = release_game(app, state);
     if let Some(session) = session {
         let closed = match ending {
             Ending::Close => session.close(CLOSE_TIMEOUT),
@@ -439,23 +468,22 @@ fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
             }
         };
         if let (Ending::Close, Closed::Abandoned) = (ending, closed) {
-            // The exit writes may be missing and the core is refused until restart: say so.
             log::warn!("the game did not close within {CLOSE_TIMEOUT:?}: let go");
-            let error = Event::Error {
-                error: ErrorCode::CoreNeedsRestart { core: core.into() },
-            };
-            if let Err(e) = app.emit("emu://event", error) {
-                log::warn!("coreNeedsRestart not sent to the interface: {e}");
-            }
+            say_core_needs_restart(app, core);
         }
     }
     // Cleared after the thread ended: the Saves screen refuses this game's files until then.
     state.game_path.lock().take();
 }
 
-#[tauri::command]
+/// Closes the open game (back to the library) through the close flow; returns once it is
+/// closed. Off the event loop (`async`): it waits for the exit writes and the user's choice.
+#[tauri::command(async)]
 fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
-    close_current(&app, &state);
+    // `AppClosing`: a quit arrived meanwhile; the game is closed all the same.
+    if closing::close_game(&app, &state).is_err() {
+        log::info!("the game closed while the app is exiting");
+    }
 }
 
 /// E11: the core stopped answering. Lets go of its thread without waiting for it (joining a
@@ -466,27 +494,33 @@ fn abandon_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
     end_game(&app, &state, Ending::Abandon);
 }
 
-/// Every way the window or the app ends: the open game closes first, with its exit writes.
-fn ends_the_app(event: &tauri::RunEvent) -> bool {
-    matches!(
-        event,
-        tauri::RunEvent::Exit
-            | tauri::RunEvent::ExitRequested { .. }
-            | tauri::RunEvent::WindowEvent {
-                event: WindowEvent::CloseRequested { .. },
-                ..
-            }
-    )
-}
-
-/// What the event loop does for the open game: close it when the app ends, flush its saves when
-/// the app goes to the background (Android: the process may then be killed without a word).
+/// What the event loop does for the open game: when the window closes or the app quits, the
+/// game closes first through the close flow (the event is prevented, the app exits once the
+/// exit writes are done); `Exit`, which cannot be prevented, closes what is left in place. When
+/// the app goes to the background its saves are flushed (Android: the process may then be
+/// killed without a word).
 fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
     let Some(state) = app.try_state::<AppState>() else {
         return;
     };
-    if ends_the_app(event) {
-        close_current(app, &state);
+    if let tauri::RunEvent::ExitRequested { code, api, .. } = event {
+        if !closing::request_quit(app, &state, *code) {
+            api.prevent_exit();
+        }
+        return;
+    }
+    if let tauri::RunEvent::WindowEvent {
+        event: WindowEvent::CloseRequested { api, .. },
+        ..
+    } = event
+    {
+        if !closing::request_quit(app, &state, None) {
+            api.prevent_close();
+        }
+        return;
+    }
+    if let tauri::RunEvent::Exit = event {
+        closing::close_now(app, &state);
         return;
     }
     if let tauri::RunEvent::WindowEvent { event, .. } = event {
@@ -925,6 +959,8 @@ pub fn run() {
                 game_path: Mutex::new(None),
                 core_name: Mutex::new(None),
                 closing: Mutex::new(()),
+                closer: closing::Closer::default(),
+                opening: Mutex::new(()),
                 audio,
                 bench: bench.clone(),
             });
@@ -939,6 +975,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_game,
             close_game,
+            closing::close_wait,
+            closing::close_anyway,
             abandon_game,
             list_slots,
             set_speed,
