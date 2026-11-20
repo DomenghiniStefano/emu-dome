@@ -138,10 +138,13 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
-crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS;
+crates/emudome-platform  EVERYTHING that depends on the operating system or the form factor, one module per OS
+                         (desktop.rs shared by the desktops): the main window (create_window), the file
+                         picker (pick_file), logs, core paths, the external surface;
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
-app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
+app/src-tauri            Tauri shell: window.rs (the app's names for emudome_platform::create_window),
+                         video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
                          settings.rs (settings commands, file locations, settings://changed),
                          effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
                          emu://effect-error), video.rs runs them through librashader (native path only)
@@ -174,6 +177,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     Needs Tauri's `unstable` feature (`window.add_child`).
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
+- tauri, wgpu and librashader are pinned to exact versions (`=x.y.z`, `app/src-tauri/Cargo.toml`, tauri also in
+  `emudome-platform`) and upgrade only together, as one task ending with a native-video smoke test.
 - Screen effects (`fx.*`): librashader 0.12 (its wgpu must stay our wgpu version) renders the game texture
   (`Rgba8Unorm`, the core's sRGB bytes as they are) into a texture the size of the game's rectangle; our pass mixes it
   over the plain image (`fx.fxint`, `fx.fxbright`). Rows with `needs_native_video` are disabled on Compatible (X05).
@@ -244,7 +249,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 
 ## Project rules
 
-- **No `#[cfg(target_os)]` outside `crates/emudome-platform`.** macOS exists as a stub but is **not** compiled
+- **No `#[cfg(target_os)]` outside `crates/emudome-platform`**, nor Tauri's `#[cfg(desktop)]` / `#[cfg(mobile)]`, nor a
+  `[target.…]` table in a `Cargo.toml` (the OS gate in `scripts/check`, with its temporary exceptions). macOS exists as a stub but is **not** compiled
   (no Apple license). iOS is excluded. The code must stay ready to add macOS without rewrites.
 - **Never include, download or point to Nintendo files** (games, BIOS, firmware, keys). The user adds the games only.
   The cores use their built-in open source replacements. 3DS games must be decrypted.
