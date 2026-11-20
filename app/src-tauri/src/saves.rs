@@ -186,7 +186,7 @@ pub fn thumb_response(app: &AppHandle, rest: &str) -> tauri::http::Response<Vec<
             .thumb?;
         std::fs::read(thumb).ok()
     });
-    let builder = Response::builder().header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    let builder = Response::builder();
     match bytes {
         Some(b) => builder
             .header(header::CONTENT_TYPE, "image/png")

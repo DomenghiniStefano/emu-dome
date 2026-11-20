@@ -21,6 +21,9 @@ pub enum ErrorCode {
     ConsoleNotYet { console: String, phase: u8 },
     /// The libretro core file was not found in any search directory.
     CoreNotFound { file: String },
+    /// The core file found is not the one this build ships (its sha256 differs from
+    /// `cores.lock`'s): it is not loaded. The installation is damaged or was tampered with.
+    CoreDamaged { file: String },
     /// The core or the game failed to load.
     OpenFailed { detail: String },
     /// The file opened has the extension of a console but its content is not a game of it (its

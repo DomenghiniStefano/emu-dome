@@ -10,7 +10,10 @@ use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle,
 };
 
+mod cores;
 mod cpu;
+
+pub use cores::CoreLookupError;
 
 #[cfg(target_os = "android")]
 mod android;
@@ -93,47 +96,47 @@ pub fn core_file_name(core: &str) -> String {
     imp::core_file_name(core)
 }
 
+/// Debug builds (and the `dev-core-paths` feature, for bench runs) search the development places
+/// for the cores and do not check them against `cores.lock`.
+const DEV_CORE_PATHS: bool = cfg!(any(debug_assertions, feature = "dev-core-paths"));
+
 /// Where to look for the cores, in order. The first one holding the file wins.
 ///
-/// 1. `EMUDOME_CORES_DIR`, handy in development.
-/// 2. The `cores` folder next to the executable (installation).
-/// 3. The `cores` folder in the app resources (passed by the Tauri shell).
-/// 4. `cores/` at the repo root, walking up from the current folder (development).
+/// A release build looks only in the `cores` folder of the app resources (passed by the Tauri
+/// shell). A debug build (or the `dev-core-paths` feature) also looks in `EMUDOME_CORES_DIR`
+/// (first), the `cores` folder next to the executable, `cores/` in the working directory and
+/// every folder above it (the repo root), and the system's libretro folders. Why: `cores.rs`.
 pub fn core_search_dirs(resource_dir: Option<&Path>) -> Vec<PathBuf> {
-    let mut dirs = Vec::new();
-    if let Ok(dir) = std::env::var("EMUDOME_CORES_DIR") {
-        dirs.push(PathBuf::from(dir));
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            dirs.push(parent.join("cores"));
-        }
-    }
-    if let Some(res) = resource_dir {
-        dirs.push(res.join("cores"));
-    }
-    if let Ok(mut cwd) = std::env::current_dir() {
-        loop {
-            dirs.push(cwd.join("cores"));
-            if !cwd.pop() {
-                break;
-            }
-        }
-    }
-    dirs.extend(imp::extra_core_dirs());
-    dirs
+    let debug = DEV_CORE_PATHS;
+    cores::search_dirs(cores::SearchPlaces {
+        debug,
+        env_dir: debug
+            .then(|| std::env::var_os("EMUDOME_CORES_DIR"))
+            .flatten()
+            .map(PathBuf::from),
+        exe_dir: std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(Path::to_path_buf)),
+        resource_dir: resource_dir.map(Path::to_path_buf),
+        cwd: std::env::current_dir().ok(),
+        system_dirs: imp::extra_core_dirs(),
+    })
 }
 
-/// Finds the core file by searching the candidate folders. Where the system
-/// loads libraries by name (Android: the `.so` packaged in the APK) and no folder
-/// holds the file, the bare file name is returned for the dynamic loader.
-pub fn find_core(core: &str, resource_dir: Option<&Path>) -> Option<PathBuf> {
+/// Finds the core file by searching the candidate folders ([`core_search_dirs`]). A release
+/// build accepts the file only if its sha256 is the one `cores.lock` pins for this platform
+/// (when the lock pins one). Where the system loads libraries by name (Android: the `.so`
+/// packaged in the APK) and no folder holds the file, the bare file name is returned for the
+/// dynamic loader.
+pub fn find_core(core: &str, resource_dir: Option<&Path>) -> Result<PathBuf, CoreLookupError> {
     let name = core_file_name(core);
-    core_search_dirs(resource_dir)
-        .into_iter()
-        .map(|d| d.join(&name))
-        .find(|p| p.is_file())
-        .or_else(|| imp::packaged_core(&name))
+    let verify = imp::CORES_LOCK_PLATFORM
+        .filter(|_| !DEV_CORE_PATHS)
+        .map(|platform| (cores::cores_lock(), platform));
+    cores::find_in(&core_search_dirs(resource_dir), &name, core, verify).or_else(|e| match e {
+        CoreLookupError::NotFound => imp::packaged_core(&name).ok_or(CoreLookupError::NotFound),
+        CoreLookupError::Mismatch { .. } => Err(e),
+    })
 }
 
 /// True where the native video cannot draw on Tauri's window and gets a surface of

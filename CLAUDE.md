@@ -130,7 +130,8 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
   another worktree's stale build.
 - Environment variables:
   - `EMUDOME_VIDEO=native|webview` forces the video path.
-  - `EMUDOME_CORES_DIR` tells where to look for the cores.
+  - `EMUDOME_CORES_DIR` tells where to look for the cores (debug builds only: a release loads only the cores in its
+    resource folder, each checked against `cores.lock`'s sha256, `crates/emudome-platform/src/cores.rs`).
   - `EMUDOME_THEME=dark|black|light` forces the theme (otherwise the `general.theme` setting, then the system).
   - `RUST_LOG=debug` for the logs.
 - The executable accepts a game path as an argument and opens it at startup.

@@ -7,10 +7,16 @@
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
 mod audio;
+// Bench mode only in builds with the `bench` feature (off by default, never packaged).
+#[cfg(feature = "bench")]
+mod bench;
+#[cfg(not(feature = "bench"))]
+#[path = "bench_off.rs"]
 mod bench;
 mod bios;
 mod closing;
 mod core_settings;
+mod cors;
 mod dirs;
 mod effects;
 mod first_run;
@@ -39,6 +45,7 @@ use emudome_core::{
     Closed, Command, ErrorCode, Event, GameKey, Session, SessionOptions, Shared, Speed,
     CLOSE_TIMEOUT,
 };
+use emudome_platform::CoreLookupError;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::webview::Color;
@@ -73,6 +80,10 @@ struct AppState {
     /// `None` where the native renderer cannot sit under the webview (Linux) or is off.
     renderer: Option<video::Renderer>,
     /// Why the native renderer could not start, when it was wanted.
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     native_error: Option<String>,
     video_mode: Mutex<VideoMode>,
     /// Whether the quick menu is open, set by the interface: while it is, the controllers
@@ -94,6 +105,10 @@ struct AppState {
     /// Held while a game opens: opens run off the event loop (they may wait for a close), one
     /// at a time.
     opening: Mutex<()>,
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     audio: audio::AudioOutput,
     /// Bench mode (`EMUDOME_BENCH`), off otherwise.
     bench: Option<Arc<bench::Bench>>,
@@ -157,7 +172,7 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
             .find(|s| s.slot == slot)?;
         std::fs::read(info.thumb?).ok()
     });
-    let builder = Response::builder().header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    let builder = Response::builder();
     match bytes {
         // The URL carries the save time (`?v=`): a new save is a new URL.
         Some(b) => builder
@@ -322,10 +337,13 @@ fn open_path(
     // The one-time move of old save names ends before any game reads its saves.
     migration::wait(app);
     let (core_name, _) = core_for(&game_path)?;
-    let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref())
-        .ok_or_else(|| ErrorCode::CoreNotFound {
-            file: emudome_platform::core_file_name(core_name),
-        })?;
+    let file = emudome_platform::core_file_name(core_name);
+    let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref()).map_err(
+        |e| match e {
+            CoreLookupError::NotFound => ErrorCode::CoreNotFound { file },
+            CoreLookupError::Mismatch { .. } => ErrorCode::CoreDamaged { file },
+        },
+    )?;
     // A game on this core was let go (E11, or a close that timed out): its thread may still be
     // inside the core's module. Checked before closing the open game, which stays open.
     if emudome_core::core_needs_restart(&core_path) {
@@ -604,7 +622,6 @@ fn frame_protocol(
         .and_then(|q| q.split('&').find_map(|kv| kv.strip_prefix("since=")))
         .and_then(|v| v.parse().ok());
     let builder = Response::builder()
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(
             header::ACCESS_CONTROL_EXPOSE_HEADERS,
             "x-width, x-height, x-seq",
@@ -871,8 +888,9 @@ pub fn run() {
             // `emu://cover/<id>`: covers; `emu://background/<name>`: the user's background
             // (video.surroundImg); `emu://slot/<n>`: slot thumbnails of the open game;
             // `emu://savethumb/<game>/<n>`: those of any game (Saves section); else the frame.
+            // Only the interface's own page may read them from script (`cors.rs`).
             let path = req.uri().path();
-            if let Some(id) = path.strip_prefix("/cover/") {
+            let response = if let Some(id) = path.strip_prefix("/cover/") {
                 library::cover_response(ctx.app_handle(), id)
             } else if let Some(name) = path.strip_prefix("/background/") {
                 settings::background_response(ctx.app_handle(), name)
@@ -882,7 +900,8 @@ pub fn run() {
                 slot_thumb_response(ctx.app_handle(), slot)
             } else {
                 frame_protocol(ctx.app_handle(), &req)
-            }
+            };
+            cors::allow_app(ctx.app_handle(), &req, response)
         })
         .setup(move |app| {
             let data_dir = dirs::data(app)?;
@@ -1017,6 +1036,7 @@ pub fn run() {
             set_menu_open,
             release_keys,
             bench::bench_active,
+            #[cfg(feature = "bench")]
             bench::bench_frames,
             toggle_fullscreen,
             is_fullscreen,

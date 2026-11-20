@@ -11,6 +11,9 @@ pub fn core_file_name(core: &str) -> String {
 
 const DYLIB_EXT: &str = "dylib";
 
+/// Not packaged: `cores.lock` has no macOS build.
+pub const CORES_LOCK_PLATFORM: Option<&str> = None;
+
 pub fn extra_core_dirs() -> Vec<PathBuf> {
     Vec::new()
 }

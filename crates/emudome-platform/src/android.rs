@@ -27,6 +27,9 @@ pub fn core_file_name(core: &str) -> String {
     format!("lib{core}_libretro_android.so")
 }
 
+/// The cores are loaded by name from the APK (signed as a whole): no checksum of our own.
+pub const CORES_LOCK_PLATFORM: Option<&str> = None;
+
 pub fn extra_core_dirs() -> Vec<PathBuf> {
     Vec::new()
 }

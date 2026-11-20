@@ -1146,6 +1146,7 @@ dependencies = [
  "sdl3-sys",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -1179,6 +1180,8 @@ dependencies = [
  "ndk",
  "parking_lot",
  "raw-window-handle",
+ "serde_json",
+ "sha2",
  "tauri",
  "tauri-plugin-dialog",
 ]

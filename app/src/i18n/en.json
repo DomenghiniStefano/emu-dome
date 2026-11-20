@@ -237,6 +237,7 @@
     "unsupportedFormat": "EmuDome can't open .{ext} files. Choose a GBA game (.gba, .gb, .gbc).",
     "consoleNotYet": "{console} support arrives in Phase {phase}. For now, open a GBA game.",
     "coreNotFound": "Core {file} not found. Run scripts/fetch-cores (see the README) or set EMUDOME_CORES_DIR.",
+    "coreDamaged": "Core {file} is not the one EmuDome ships, so it was not loaded. Reinstall EmuDome.",
     "openFailed": "Couldn't open the game. Check that the file is a working GBA game. Details: {detail}",
     "coreNeedsRestart": "A game on the {core} core stopped answering. Restart EmuDome to open games on this core again.",
     "noGame": "No game is open. Open one first.",

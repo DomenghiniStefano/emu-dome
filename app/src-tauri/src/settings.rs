@@ -317,22 +317,17 @@ fn backgrounds_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
         .map(|d| d.join("backgrounds"))
 }
 
-/// A file name of the backgrounds folder: no separators, no parent, not empty.
-fn background_name_ok(name: &str) -> bool {
-    !name.is_empty()
-        && !name.starts_with('.')
-        && name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
-}
-
-/// The name an image is stored under: its content's hash, so choosing the same image twice keeps
-/// one copy.
+/// The name an image is stored under: its content's sha256, so choosing the same image twice
+/// keeps one copy, on every device and Rust version (the folder and the setting sync).
+/// Images stored before 2026-11-21 keep their old name (16 hex digits of `DefaultHasher`, which
+/// changes between Rust versions): the setting still names them and they are still served.
 fn background_name(bytes: &[u8], ext: &str) -> String {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    bytes.hash(&mut h);
-    format!("{:016x}.{ext}", h.finish())
+    use sha2::{Digest, Sha256};
+    let hex: String = Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    format!("{hex}.{ext}")
 }
 
 /// «Scegli un’immagine…»: opens an image picker, copies the image into the backgrounds folder and
@@ -376,17 +371,15 @@ pub async fn settings_choose_background(app: AppHandle, scope: Scope) -> Result<
 /// `emu://background/<name>`: an image of the backgrounds folder (only names it can hold).
 pub fn background_response(app: &AppHandle, name: &str) -> tauri::http::Response<Vec<u8>> {
     use tauri::http::{header, Response, StatusCode};
-    let found = background_name_ok(name)
-        .then(|| backgrounds_dir(app))
-        .flatten()
-        .map(|dir| dir.join(name))
+    let found = backgrounds_dir(app)
+        .and_then(|dir| crate::dirs::file_in(&dir, name))
         .and_then(|file| {
             std::fs::read(&file)
                 .inspect_err(|e| log::warn!("background {}: {e}", file.display()))
                 .ok()
                 .map(|bytes| (bytes, crate::library::image_type(&file)))
         });
-    let builder = Response::builder().header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    let builder = Response::builder();
     let response = match found {
         // The name is the content's hash: it never changes.
         Some((bytes, mime)) => builder
@@ -400,23 +393,25 @@ pub fn background_response(app: &AppHandle, name: &str) -> tauri::http::Response
 
 #[cfg(test)]
 mod tests {
-    use super::{background_name, background_name_ok};
-
-    #[test]
-    fn background_names_stay_inside_the_folder() {
-        assert!(background_name_ok("0123abcd.png"));
-        assert!(!background_name_ok(""));
-        assert!(!background_name_ok("../settings/global.json"));
-        assert!(!background_name_ok("a/b.png"));
-        assert!(!background_name_ok(r"a\b.png"));
-        assert!(!background_name_ok(".hidden"));
-    }
+    use super::background_name;
+    use crate::dirs::file_name_ok;
 
     #[test]
     fn the_same_image_gets_the_same_name() {
         let a = background_name(b"abc", "png");
         assert_eq!(a, background_name(b"abc", "png"));
         assert_ne!(a, background_name(b"abd", "png"));
-        assert!(background_name_ok(&a));
+        assert!(file_name_ok(&a));
+        // Stable across Rust versions and devices: sha256("abc").
+        assert_eq!(
+            a,
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad.png"
+        );
+    }
+
+    #[test]
+    fn a_background_stored_under_its_old_name_is_still_served() {
+        // The 16-hex-digit names of `DefaultHasher` (before 2026-11-21) stay valid file names.
+        assert!(file_name_ok("0123456789abcdef.png"));
     }
 }
