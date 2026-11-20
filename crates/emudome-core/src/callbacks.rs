@@ -53,6 +53,11 @@ pub(crate) struct CallbackCtx {
 }
 
 thread_local! {
+    // An `allow`, not an `expect`: the lint fires only on targets without native thread locals.
+    #[allow(
+        clippy::missing_const_for_thread_local,
+        reason = "already const: clippy 1.95 flags it on Android, where std uses OS-keyed thread locals"
+    )]
     static CTX: RefCell<Option<CallbackCtx>> = const { RefCell::new(None) };
 }
 
