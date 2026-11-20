@@ -6,6 +6,7 @@
 // (`emu.controls.bindings`): nothing here lists default buttons.
 import { onBeforeUnmount, ref } from 'vue'
 import { i18n, t } from '@/i18n'
+import { report } from '@/lib/errors'
 import {
   emu,
   type Button,
@@ -224,7 +225,7 @@ export function useCapture(options: {
     if (device.kind === 'pad') {
       prev = new Set(options.state(device.id)?.held ?? [])
       ignored = new Set(prev)
-      void emu.controls.capture(true)
+      report(emu.controls.capture(true))
     }
     window.addEventListener('keydown', keydown, { capture: true })
     window.addEventListener('keyup', keyup, { capture: true })
@@ -237,7 +238,7 @@ export function useCapture(options: {
     window.clearInterval(timer)
     window.removeEventListener('keydown', keydown, { capture: true })
     window.removeEventListener('keyup', keyup, { capture: true })
-    if (options.device().kind === 'pad') void emu.controls.capture(false)
+    if (options.device().kind === 'pad') report(emu.controls.capture(false))
   }
 
   /** Feed every `emu://pad-state` here. */

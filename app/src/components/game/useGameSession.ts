@@ -5,6 +5,7 @@
 import { watch } from 'vue'
 import { AUTO_SLOT, emu, type GameInfo, type LibraryGame, type Speed } from '@/emu'
 import { flow, gameStarted } from './gameFlow'
+import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
 import { insetShare } from './session'
 import { NORMAL } from '@/lib/speeds'
@@ -35,7 +36,7 @@ export function useGameSession(toasts: Toasts) {
   const events = useGameEvents(state, settings, toasts, { setMenu, stopped: ending.stopped })
 
   // While the menu is open, Rust sends the controllers to the menu (emu://nav), not to the game.
-  watch(menuOpen, open => void emu.setMenuOpen(open))
+  watch(menuOpen, open => report(emu.setMenuOpen(open)))
   // The keyboard's keys follow the open game's settings, or «Tutti i giochi» without one.
   watch(
     () => game.value !== null,
@@ -71,12 +72,14 @@ export function useGameSession(toasts: Toasts) {
     }
   }
 
+  /** Opens or closes the quick menu once the core is paused or running again; a failure leaves
+   * the menu as it was and is thrown to the caller. */
   async function setMenu(open: boolean) {
     // While the game closes (#86) the quick menu does not open.
     if (!game.value || (open && flow.ending)) return
+    await emu.setPaused(open)
     menuOpen.value = open
     paused.value = false
-    await emu.setPaused(open)
   }
   const toggleMenu = () => setMenu(!menuOpen.value)
 
@@ -90,8 +93,12 @@ export function useGameSession(toasts: Toasts) {
 
   /** G11 «Riavvia»: the game starts over and resumes. */
   async function restart() {
-    await emu.reset()
-    await setMenu(false)
+    try {
+      await emu.reset()
+      await setMenu(false)
+    } catch (e) {
+      toasts.failWith(e)
+    }
   }
 
   async function setMuted(on: boolean) {
@@ -104,13 +111,17 @@ export function useGameSession(toasts: Toasts) {
   }
 
   async function toggleFullscreen() {
-    fullscreen.value = await emu.toggleFullscreen()
+    try {
+      fullscreen.value = await emu.toggleFullscreen()
+    } catch (e) {
+      toasts.failWith(e)
+    }
   }
 
   /** G09's bar: the canvas keeps clear of it by itself, the native video is told the share. */
   function setInset(px: number) {
     menuInset.value = px
-    void emu.setVideoInset(insetShare(px, window.innerHeight))
+    report(emu.setVideoInset(insetShare(px, window.innerHeight)))
   }
 
   /** F12, L3 + B (in Rust) and quick menu › Strumenti: G13 «Schermata salvata» on `screenshotSaved`. */
@@ -126,14 +137,14 @@ export function useGameSession(toasts: Toasts) {
   function setRewinding(on: boolean) {
     if (on === rewinding.value) return
     rewinding.value = on
-    void emu.rewind(on).catch(e => toasts.failWith(e))
+    report(emu.rewind(on))
   }
 
   /** Tab held: fast forward at `speed.ffval`, back to the chosen speed when let go. */
   function setTurbo(held: boolean) {
     if (held === turboHeld.value) return
     turboHeld.value = held
-    void emu.setSpeed(held ? settings.value.ffSpeed : speed.value)
+    report(emu.setSpeed(held ? settings.value.ffSpeed : speed.value))
   }
 
   return {

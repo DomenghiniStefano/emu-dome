@@ -10,7 +10,7 @@ const bridge = vi.hoisted(() => ({
   page: vi.fn(),
   set: vi.fn(),
   bindings: vi.fn(),
-  watch: vi.fn(),
+  watch: vi.fn(async () => {}),
 }))
 vi.mock('@/emu', () => ({
   emu: {

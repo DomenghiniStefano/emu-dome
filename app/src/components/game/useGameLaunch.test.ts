@@ -57,7 +57,7 @@ function setup() {
     end: vi.fn(),
     game: ref<GameInfo | null>(null),
   }
-  const toasts = { notify: vi.fn(), fail: vi.fn() }
+  const toasts = { notify: vi.fn(), fail: vi.fn(), failWith: vi.fn() }
   let launch!: ReturnType<typeof useGameLaunch>
   mount(
     defineComponent({
@@ -184,6 +184,24 @@ describe('useGameLaunch', () => {
     await launch.answerResume(false)
     expect(bridge.loadState).not.toHaveBeenCalled()
     expect(bridge.setPaused).toHaveBeenCalledWith(false)
+  })
+
+  it('a resume whose auto quick save cannot load says so and plays on', async () => {
+    const { launch, toasts } = setup()
+    bridge.loadState.mockRejectedValueOnce({ code: 'stateInvalid', params: { slot: 0 } })
+    await launch.answerResume(true)
+    expect(toasts.failWith).toHaveBeenCalledWith({ code: 'stateInvalid', params: { slot: 0 } })
+    expect(bridge.setPaused).toHaveBeenCalledWith(false)
+  })
+
+  it('E11: leaving the crash dialog ends the game even when Rust cannot let go of it', async () => {
+    const { launch, session, toasts } = setup()
+    flow.crashed = { console: 'gba', at: null, detail: '' }
+    bridge.abandonGame.mockRejectedValueOnce(new Error('ipc'))
+    await launch.crashToLibrary()
+    expect(flow.crashed).toBeNull()
+    expect(session.end).toHaveBeenCalledOnce()
+    expect(toasts.failWith).toHaveBeenCalledWith(new Error('ipc'))
   })
 
   describe('E04: the in-game save cannot be read', () => {

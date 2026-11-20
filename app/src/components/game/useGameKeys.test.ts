@@ -8,10 +8,10 @@ import { useGameKeys } from './useGameKeys'
 import type { GameSession } from './useGameSession'
 
 const bridge = vi.hoisted(() => ({
-  input: vi.fn(),
+  input: vi.fn(async () => {}),
   releaseKeys: vi.fn(async () => {}),
-  saveState: vi.fn(),
-  loadState: vi.fn(),
+  saveState: vi.fn(async () => {}),
+  loadState: vi.fn(async () => {}),
   bindings: vi.fn(),
   dispatchNav: vi.fn(),
 }))

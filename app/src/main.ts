@@ -4,6 +4,7 @@ import { i18n, startLanguage } from '@/i18n'
 import { startAppearance } from '@/lib/appearance'
 import { startTheme } from '@/lib/theme'
 import { DevRoute } from '@/lib/devRoutes'
+import { catchEverything } from '@/lib/errors'
 import '@/assets/main.css'
 import './styles.css'
 
@@ -18,5 +19,7 @@ if (import.meta.env.DEV && window.location.hash === DevRoute.Kit) {
     createApp(KitPage).use(i18n).mount('#app'),
   )
 } else {
-  createApp(App).use(i18n).mount('#app')
+  const app = createApp(App).use(i18n)
+  catchEverything(app)
+  app.mount('#app')
 }

@@ -82,8 +82,17 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
 
   async function answerResume(resume: boolean) {
     flow.resumeAsk = false
-    if (resume) await emu.loadState(AUTO_SLOT)
-    await emu.setPaused(false)
+    try {
+      if (resume) await emu.loadState(AUTO_SLOT)
+    } catch (e) {
+      toasts.failWith(e)
+    }
+    // Played on even when the auto quick save could not be loaded: the game is open.
+    try {
+      await emu.setPaused(false)
+    } catch (e) {
+      toasts.failWith(e)
+    }
   }
 
   // ---- E04: the in-game save cannot be read ----
@@ -114,18 +123,24 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
   const closeBroken = () => void takeBroken()
 
   // ---- E11: the emulator stopped ----
-  async function crashToLibrary() {
+  /** Lets go of the stopped core and leaves the game, whether or not Rust could let go: the
+   * user is never kept on the crash dialog. */
+  async function leaveCrashed() {
     flow.crashed = null
-    await emu.abandonGame()
-    session.end()
+    try {
+      await emu.abandonGame()
+    } catch (e) {
+      toasts.failWith(e)
+    } finally {
+      session.end()
+    }
   }
+  const crashToLibrary = () => leaveCrashed()
   /** «Riprendi dal salvataggio automatico»: the same game again, from its auto quick save. */
   async function crashResume() {
     const again = last
     const title = session.game.value?.title ?? ''
-    flow.crashed = null
-    await emu.abandonGame()
-    session.end()
+    await leaveCrashed()
     if (again) await start({ ...again, title }, true)
   }
   async function crashCopy() {

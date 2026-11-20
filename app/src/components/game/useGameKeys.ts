@@ -2,6 +2,7 @@
 // (nav.ts); in game the keyboard table (keyboard.ts) and the game's keys (keymap.ts).
 import { onUnmounted, watch } from 'vue'
 import { emu } from '@/emu'
+import { report } from '@/lib/errors'
 import { watchInput } from '@/lib/inputMode'
 import type { KeyAction } from '@/lib/keyboard'
 import { keymap, loadKeymap } from '@/lib/keymap'
@@ -38,7 +39,7 @@ export function useGameKeys(session: GameSession) {
   })
   function onBlur() {
     letGo()
-    if (game.value) void emu.releaseKeys()
+    if (game.value) report(emu.releaseKeys())
   }
   function onVisibility() {
     if (document.visibilityState === 'hidden') onBlur()
@@ -56,9 +57,9 @@ export function useGameKeys(session: GameSession) {
     if (!pressed || repeat) return
     switch (action) {
       case 'save':
-        return void emu.saveState(comboSlot.value)
+        return report(emu.saveState(comboSlot.value))
       case 'load':
-        return void emu.loadState(comboSlot.value)
+        return report(emu.loadState(comboSlot.value))
       case 'prev_slot':
       case 'next_slot':
         return void session.stepSlot(action === 'next_slot')
@@ -94,7 +95,7 @@ export function useGameKeys(session: GameSession) {
         // In the quick menu Esc is «back»: one level up, and from its main screen the game resumes.
         return dispatchNav('back')
       case 'openMenu':
-        return void session.setMenu(true)
+        return report(session.setMenu(true))
       case 'fullscreen':
         e.preventDefault()
         if (route.toggle) void session.toggleFullscreen()
@@ -113,7 +114,7 @@ export function useGameKeys(session: GameSession) {
         return runKey(route.action, pressed, e.repeat)
       case 'button':
         e.preventDefault()
-        if (route.send) void emu.input(route.button, pressed)
+        if (route.send) report(emu.input(route.button, pressed))
         return
       case 'none':
         return

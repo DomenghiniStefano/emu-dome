@@ -57,11 +57,14 @@ async function scanDone(added: number) {
   library.summary = { added, perConsole }
 }
 
-/** Subscribes to the library events and loads it. Returns the unlisteners. */
-export async function startLibrary(): Promise<Array<() => void>> {
-  const unlisten = [
-    await emu.library.onChanged(() => void reloadLibrary()),
-    await emu.library.onScan(e => {
+/**
+ * Subscribes to the library events and loads it. Resolves one unlistener for both; if one
+ * subscription fails, the other is stopped and the failure thrown.
+ */
+export async function startLibrary(): Promise<() => void> {
+  const subscriptions = [
+    emu.library.onChanged(() => void reloadLibrary()),
+    emu.library.onScan(e => {
       switch (e.phase) {
         case 'started':
           before = new Set(library.games.map(g => g.id))
@@ -77,8 +80,16 @@ export async function startLibrary(): Promise<Array<() => void>> {
       }
     }),
   ]
+  const settled = await Promise.allSettled(subscriptions)
+  const unlisten = settled.flatMap(r => (r.status === 'fulfilled' ? [r.value] : []))
+  const stop = () => unlisten.forEach(off => off())
+  const failed = settled.find(r => r.status === 'rejected')
+  if (failed) {
+    stop()
+    throw failed.reason
+  }
   await reloadLibrary()
-  return unlisten
+  return stop
 }
 
 /** «Scegli una cartella…»: the backend adds the folder and scans it. Errors come back as text. */

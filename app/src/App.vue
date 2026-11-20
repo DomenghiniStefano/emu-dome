@@ -15,6 +15,7 @@ import { useGameSession } from '@/components/game/useGameSession'
 import { useScreenTouch } from '@/components/game/useScreenTouch'
 import { useShellEvents } from '@/components/shell/useShellEvents'
 import { useToasts } from '@/composables/useToasts'
+import { setErrorSink, settle } from '@/lib/errors'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
 import ClosingOverlay from '@/components/closing/ClosingOverlay.vue'
@@ -53,15 +54,21 @@ useScreenTouch(
 const layout = useDeviceLayout()
 useDensity(layout.phone)
 
+// Startup: the keys and the backend's events first, so the controller works whatever fails
+// after; each step on its own, a failed one reported (lib/errors.ts) and the next still run.
+// The game given at startup waits for the video mode and the events it needs.
 onMounted(async () => {
-  void decideFirstRun()
-  await loadVideoMode()
+  setErrorSink(toast.failWith)
   keys.listen()
-  await session.loadDeviceState()
-  await events.listen()
-  await closing.listen()
-  await launch.openStartupGame()
   session.watchStats()
+  await Promise.all([
+    settle(events.listen()),
+    settle(closing.listen()),
+    settle(decideFirstRun()),
+    settle(loadVideoMode()),
+    settle(session.loadDeviceState()),
+  ])
+  await settle(launch.openStartupGame())
 })
 </script>
 
