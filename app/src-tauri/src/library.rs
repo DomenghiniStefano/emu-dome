@@ -488,6 +488,24 @@ pub(crate) fn pick_image(app: &AppHandle) -> Option<PathBuf> {
         .ok()
 }
 
+/// Any file (a BIOS dump has no fixed extension).
+#[cfg(desktop)]
+pub(crate) fn pick_any_file(app: &AppHandle) -> Option<PathBuf> {
+    use tauri_plugin_dialog::DialogExt;
+    app.dialog()
+        .file()
+        .blocking_pick_file()?
+        .into_path()
+        .inspect_err(|e| log::warn!("picked file: {e}"))
+        .ok()
+}
+
+#[cfg(mobile)]
+pub(crate) fn pick_any_file(_app: &AppHandle) -> Option<PathBuf> {
+    log::warn!("file picker not available on this platform yet");
+    None
+}
+
 #[cfg(mobile)]
 pub(crate) fn pick_folder(_app: &AppHandle) -> Option<PathBuf> {
     log::warn!("folder picker not available on this platform yet");

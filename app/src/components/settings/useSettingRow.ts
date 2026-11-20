@@ -1,7 +1,7 @@
 // The words and options of one setting row (SettingRow): its name, its description at this level
 // (why it is locked, the live data some rows show in a neutral form), its button's text and the
 // options this device offers. The state itself is settingRowModel.ts's.
-import { computed, onMounted, ref, type ComputedRef } from 'vue'
+import { computed, onMounted, ref, watch, type ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   emu,
@@ -11,6 +11,7 @@ import {
   type SettingsSchema,
 } from '@/emu'
 import { LOCALE } from '@/i18n'
+import { biosStatus, refreshBiosStatus } from '@/lib/biosStatus'
 import { FILE_PICKERS, msg, optionNotYet } from '@/lib/settingsModel'
 import {
   chosenFileName,
@@ -48,6 +49,11 @@ export function useSettingRow(props: SettingRowInput) {
     rowState(props.entry, props.row, props.schema, props.level, props.scoped),
   )
 
+  // A `bios.*` row with a picker: its status follows its value (the row reset, another file).
+  // Unknown (no backend, as in tests): the row keeps saying «built-in».
+  if (key.value.startsWith('bios.') && FILE_PICKERS[key.value])
+    watch(value, () => void refreshBiosStatus().catch(() => {}), { immediate: true })
+
   const version = ref('')
   onMounted(async () => {
     if (key.value === 'about.ver') version.value = await emu.appVersion()
@@ -61,8 +67,8 @@ export function useSettingRow(props: SettingRowInput) {
   // Rows whose description shows live data the app does not have yet get their neutral form.
   const baseDesc = computed(() => {
     const k = key.value
-    if (k.startsWith('bios.') && te(`settings.${k}.status.builtin`))
-      return t(`settings.${k}.status.builtin`)
+    const status = `settings.${k}.status.${biosStatus(k)}`
+    if (k.startsWith('bios.') && te(status)) return t(status)
     switch (k) {
       case 'cloud.acct':
         return t('settings.cloud.acct.value.signedOut')
@@ -97,8 +103,8 @@ export function useSettingRow(props: SettingRowInput) {
   const buttonText = computed(() => {
     const k = key.value
     if (k === 'cloud.acct') return t('settings.cloud.acct.value.signIn')
-    if (k.startsWith('bios.') && te(`settings.${k}.buttons.use`))
-      return t(`settings.${k}.buttons.use`)
+    const button = `settings.${k}.buttons.${biosStatus(k) === 'builtin' ? 'use' : 'replace'}`
+    if (k.startsWith('bios.') && te(button)) return t(button)
     return te(msg.button(k)) ? t(msg.button(k)) : ''
   })
 

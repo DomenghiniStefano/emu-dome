@@ -41,6 +41,8 @@ export function useShellEvents(
       emu.onHotkey(session.onHotkey),
       // A screen effect could not be used: the game shows without it.
       emu.onEffectError(toasts.failWith),
+      // A game opened without the system files a setting asked for: it runs without them.
+      emu.onBiosFallback(toasts.failWith),
       emu.onGamepadConnected(p => {
         controller.value = gamepadName(p)
         toasts.notify(t('toast.gamepadConnected', { name: gamepadName(p) }))

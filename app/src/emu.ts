@@ -108,6 +108,39 @@ export type ErrorCode =
   | { code: 'saveFileFailed'; params: { detail: string } }
   | { code: 'screenshotFailed'; params: { detail: string } }
   | { code: 'effectNotLoaded'; params: { name: string; detail: string } }
+  | { code: 'biosUnreadable'; params: { detail: string } }
+  | { code: 'biosWrongSize'; params: { size: number } }
+  | { code: 'biosOtherSlot'; params: { slot: BiosSlot } }
+  | { code: 'biosFileFailed'; params: { detail: string } }
+  | { code: 'biosDsiFilesMissing' }
+  | { code: 'biosDsMenuFilesMissing' }
+
+/** Mirror of `emudome_core::bios::Slot`: one file a core can use. */
+export type BiosSlot =
+  | 'gbaBios'
+  | 'gbBoot'
+  | 'gbcBoot'
+  | 'sgbBoot'
+  | 'dsArm7'
+  | 'dsArm9'
+  | 'dsFirmware'
+  | 'dsiArm7'
+  | 'dsiArm9'
+  | 'dsiFirmware'
+  | 'dsiNand'
+
+/**
+ * Mirror of `emudome_core::bios::Status`: what a `bios.*` row shows. `builtin`: no file, the
+ * core's replacement; `verified`: the user's file in use; `unrecognised`: a file chosen that
+ * EmuDome does not recognise, so the replacement stays in use.
+ */
+export type BiosStatus = 'builtin' | 'verified' | 'unrecognised'
+
+/** Mirror of `BiosRow` (app/src-tauri/src/bios.rs). */
+export interface BiosRow {
+  key: string
+  status: BiosStatus
+}
 
 export type EmuEvent =
   | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
@@ -722,6 +755,15 @@ export const emu = {
     /** «Aggiungi un effetto da file»: picks a `.slangp` into `fx.fxfile`; null = cancelled. */
     chooseFile: () => invoke<string | null>('effects_choose_file'),
   },
+  bios: {
+    /** A `bios.*` row's picker: checks the file and keeps it; the row's new status, null = cancelled. */
+    choose: (key: string) => invoke<BiosStatus | null>('bios_choose', { key }),
+    /** What every `bios.*` row EmuDome handles shows. */
+    status: () => invoke<BiosRow[]>('bios_status'),
+  },
+  /** A game opened without the system files a setting asked for, and fell back (`bios*Missing`). */
+  onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
+    listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
   onGamepadConnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
     listen<PadInfo>('emu://gamepad-connected', e => cb(e.payload)),
   onGamepadDisconnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
