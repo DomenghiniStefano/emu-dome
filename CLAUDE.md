@@ -108,6 +108,9 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
 ```
 
 - On Windows `sh` is not on the PATH that PowerShell and pnpm see, so there use `./scripts/check.ps1`.
+- Build speed: with sccache installed, `RUSTC_WRAPPER=sccache` (user environment) shares the compiled dependencies
+  between worktrees; each worktree keeps its own `target/` (see below). The dev profile keeps line tables only
+  (`debug = true` locally for a debugger session).
 - Android build: `tauri android build` fails with "Creation symbolic link is not allowed" when Windows developer mode
   is off (the CLI symlinks the `.so` into jniLibs). Workaround: copy `libemudome_app.so` into
   `app/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/` and run `gradlew assembleArm64Debug -x rustBuildArm64Debug`.

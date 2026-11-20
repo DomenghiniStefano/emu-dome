@@ -21,10 +21,17 @@ libretro-sys = { path = "crates/libretro-sys" }
 emudome-core = { path = "crates/emudome-core" }
 emudome-platform = { path = "crates/emudome-platform" }
 
+[profile.dev]
+# File and line in backtraces and panics, without the full debug info: a smaller target/ and
+# faster linking. Set `debug = true` locally for a session in a debugger.
+debug = "line-tables-only"
+
 [profile.dev.package."*"]
 # Dependencies (wgpu, cpal...) built optimised in debug too,
-# so the prototype runs at full speed during development.
+# so the prototype runs at full speed during development. No debug info for them: nobody
+# steps into wgpu, and it is most of what the linker reads.
 opt-level = 2
+debug = false
 
 # Lints for every crate (each crate's Cargo.toml has `[lints] workspace = true`).
 # `cargo clippy --workspace --all-targets -- -D warnings` turns them into errors; clippy.toml
