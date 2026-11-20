@@ -25,7 +25,7 @@ export type KeyRoute =
   | { kind: 'nav' }
   /** A key of the keyboard table in game, menu closed. */
   | { kind: 'shortcut'; action: KeyAction }
-  /** A game button; `send` is false for the key's repeats. */
+  /** A game button; `send` is false for the key's repeats. A release is sent in the menu too. */
   | { kind: 'button'; button: Button; send: boolean }
   | { kind: 'none' }
 
@@ -45,7 +45,12 @@ export function keyRoute(
     return { kind: 'endRewind' }
   if (action === 'menu' && pressed) return ctx.menuOpen ? { kind: 'back' } : { kind: 'openMenu' }
   if (action === 'fullscreen') return { kind: 'fullscreen', toggle: pressed && !repeat }
-  if (!ctx.inGame || ctx.menuOpen) return pressed ? { kind: 'nav' } : { kind: 'none' }
+  if (!ctx.inGame || ctx.menuOpen) {
+    if (pressed) return { kind: 'nav' }
+    // A game key let go in the menu still reaches the game: never held after resuming (#74).
+    const held = ctx.inGame ? keymap[code] : undefined
+    return held ? { kind: 'button', button: held, send: true } : { kind: 'none' }
+  }
   if (action && action !== 'menu') return { kind: 'shortcut', action }
   const button = keymap[code]
   return button ? { kind: 'button', button, send: !repeat } : { kind: 'none' }

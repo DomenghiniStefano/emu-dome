@@ -519,6 +519,11 @@ fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
         return;
     }
     if let tauri::RunEvent::WindowEvent { event, .. } = event {
+        // The window lost the focus: keys let go elsewhere never reach the page (#74). With the
+        // webview holding the focus this may not fire; the page's `blur` calls `release_keys`.
+        if matches!(event, WindowEvent::Focused(false)) {
+            state.release_keyboard();
+        }
         if emudome_platform::is_suspend(event) {
             // The game keeps its state; NoGame (nothing open) is fine.
             if state.send(Command::Flush).is_ok() {
@@ -529,6 +534,13 @@ fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
 }
 
 impl AppState {
+    /// Lets go of every keyboard button of the open game (menu opened, focus lost).
+    fn release_keyboard(&self) {
+        if let Some(shared) = self.current.lock().as_ref() {
+            shared.input.release(Source::Keyboard);
+        }
+    }
+
     /// Hands the game to the native renderer only when it is the active mode.
     fn native_source(&self, shared: Option<Arc<Shared>>) {
         if let Some(r) = &self.renderer {
@@ -677,11 +689,21 @@ fn is_fullscreen(app: tauri::AppHandle) -> bool {
 }
 
 /// The interface tells when the quick menu opens and closes, so the controllers
-/// navigate it instead of reaching the game.
-
+/// navigate it instead of reaching the game. Opening it lets go of the keyboard's buttons: a
+/// key released while the menu has the keys never reaches the game (Trello #74).
 #[tauri::command]
 fn set_menu_open(state: tauri::State<'_, AppState>, open: bool) {
     state.menu_open.store(open, Ordering::Relaxed);
+    if open {
+        state.release_keyboard();
+    }
+}
+
+/// The page lost the focus (Alt-Tab, another window): the keys held now are released
+/// elsewhere, so the game lets go of them.
+#[tauri::command]
+fn release_keys(state: tauri::State<'_, AppState>) {
+    state.release_keyboard();
 }
 
 #[tauri::command]
@@ -993,6 +1015,7 @@ pub fn run() {
             set_video_inset,
             startup_game,
             set_menu_open,
+            release_keys,
             bench::bench_active,
             bench::bench_frames,
             toggle_fullscreen,

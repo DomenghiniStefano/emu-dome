@@ -119,6 +119,12 @@ impl InputState {
         }
     }
 
+    /// Lets go of every button of `source`: the keyboard when the quick menu opens or the window
+    /// loses the focus, so a key released elsewhere is never held in the game.
+    pub fn release(&self, source: Source) {
+        self.set_mask(source, 0);
+    }
+
     /// Replaces a source's whole mask at once (handy for controllers).
     pub fn set_mask(&self, source: Source, mask: u16) {
         self.sources[source as usize].store(mask, Ordering::Relaxed);
@@ -152,7 +158,19 @@ impl InputState {
 
 #[cfg(test)]
 mod tests {
-    use super::{InputState, Pointer};
+    use super::{Button, InputState, Pointer, Source};
+
+    #[test]
+    fn releasing_a_source_lets_go_of_its_buttons_only() {
+        let input = InputState::default();
+        input.set(Source::Keyboard, Button::Right, true);
+        input.set(Source::Keyboard, Button::A, true);
+        input.set(Source::Gamepad, Button::B, true);
+        input.release(Source::Keyboard);
+        assert_eq!(input.mask(), Button::B.bit());
+        input.release(Source::Gamepad);
+        assert_eq!(input.mask(), 0);
+    }
 
     #[test]
     fn the_pointer_keeps_its_place_when_released() {
