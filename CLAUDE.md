@@ -123,6 +123,8 @@ crates/libretro-sys      libretro API types and constants (added as they are nee
 crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulation thread),
                          Command/Event, Shared (RGBA frame, audio queue, input, stats), speed, states, .sav,
                          ErrorCode (errors for the UI as code + params),
+                         atomic.rs (`write_atomic`: the one way user data is written: temp file
+                         `.<name>.<pid>-<n>.emudome-tmp`, fsync, rename, folder fsync where allowed),
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          settings/ (settings engine: schema.rs types, catalog.rs the 155 entries,
                          mod.rs levels / resolve / session, store.rs files,
@@ -158,6 +160,12 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 
 - The interface never touches the core: it calls the Tauri commands, which send `Command` to the `Session`.
   The core runs on its own thread; the libretro callbacks use a `thread_local` context.
+- Ending a game: every way out (closing the game, opening another, closing the window, quitting) goes through
+  `close_current` (`app/src-tauri/src/lib.rs`), which waits up to `CLOSE_TIMEOUT` (10 s) for the thread's exit
+  writes: the `.sav` first, then the auto quick save with `saves.autoexit`. Android going to the background
+  (`onPause`) sends `Command::Flush` (the same writes, the game keeps running). A thread that does not stop in
+  time, or is abandoned after E11, is let go: the session is dead (no file, no event, no `retro_unload_game` /
+  `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
 - **Video, two paths:**
   - **Native**: wgpu draws on the window, under a transparent child webview ("ui").
     Needs Tauri's `unstable` feature (`window.add_child`).
@@ -197,7 +205,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
   (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<id>}.json` (synced later),
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
-  kept, invalid values ignored with a `settingInvalidValue` log. Session = the quick menu's changes «in prova»:
+  kept, invalid values ignored with a `settingInvalidValue` log; a file that is there but cannot be read is never
+  written over (writes to it refused with `settingsReadFailed` until it reads again; the library does the same
+  with `libraryReadFailed`). Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
   Game identity in settings is still a hash of the ROM path, and saves are still named by the ROM's file stem: both
   are wrong and move to the library's content id (Trello #70, P0). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
