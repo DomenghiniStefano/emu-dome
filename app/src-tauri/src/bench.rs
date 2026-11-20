@@ -9,6 +9,8 @@
 //!   the time from `main` to the first game frame on screen.
 //!
 //! The window is created without taking the focus, so a bench can run while the PC is in use.
+//!
+//! Built only with the `bench` cargo feature (`bench_off.rs` otherwise).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -21,6 +23,11 @@ use serde_json::{json, Value};
 use tauri::{Emitter, Manager};
 
 use crate::{AppState, VideoMode};
+
+/// The most canvas rounds one `bench_frames` call may add (the interface sends about a second's
+/// worth: under 250 at 240 Hz), and the most the log keeps (about 24 MB): the rest is dropped.
+const MAX_FRAMES_PER_CALL: usize = 4096;
+const MAX_FRAMES: usize = 1 << 20;
 
 /// How long to wait for the first game frame before giving up.
 const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(30);
@@ -92,7 +99,13 @@ pub fn bench_frames(state: tauri::State<'_, AppState>, frames: Vec<WebviewFrame>
         log.first_drawn_unix_ms = frames.iter().find(|f| f.drawn).map(|f| f.t);
     }
     if log.recording {
-        log.frames.extend(frames);
+        let room = MAX_FRAMES
+            .saturating_sub(log.frames.len())
+            .min(MAX_FRAMES_PER_CALL);
+        if frames.len() > room {
+            log::warn!("bench: {} canvas rounds dropped", frames.len() - room);
+        }
+        log.frames.extend(frames.into_iter().take(room));
     }
 }
 

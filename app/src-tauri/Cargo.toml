@@ -12,6 +12,11 @@ workspace = true
 name = "emudome_app"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+# Bench mode (`EMUDOME_BENCH`, `bench.rs`): measures a session, writes a report and exits. Off by
+# default and in every package; `cargo build -p emudome --features bench` for a bench run.
+bench = ["emudome-platform/dev-core-paths"]
+
 [build-dependencies]
 tauri-build = { version = "2.5", features = [] }
 

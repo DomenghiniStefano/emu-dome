@@ -65,6 +65,10 @@ pub struct GpuInfo {
 }
 
 impl GpuInfo {
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     pub fn present_mode_supported(&self) -> bool {
         self.present_mode_requested == self.present_mode_used
     }
@@ -72,6 +76,10 @@ impl GpuInfo {
 
 /// One frame presented on the surface.
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(
+    not(feature = "bench"),
+    expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+)]
 pub struct Present {
     pub at: Instant,
     /// The game frame it showed (`Frame::seq`).
@@ -156,6 +164,10 @@ impl Renderer {
     }
 
     /// What the video thread measures (GPU in use, surface errors, presents in bench mode).
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     pub fn metrics(&self) -> &SharedVideoMetrics {
         &self.metrics
     }

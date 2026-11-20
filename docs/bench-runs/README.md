@@ -25,7 +25,10 @@ folders the runs created were never kept. Nothing else was changed (the files we
 
 ## Running a bench again
 
-Bench mode is off unless `EMUDOME_BENCH` is set. With it, the app opens the game given on the
+Bench mode exists only in a build with the `bench` cargo feature (off by default, never in a
+package): `cargo build -p emudome --release --features bench`. That build also looks for the cores
+the way a debug build does (`EMUDOME_CORES_DIR`, `cores/` above the working directory), unchecked
+against `cores.lock`. In it, bench mode is off unless `EMUDOME_BENCH` is set. With it, the app opens the game given on the
 command line, waits for the first frame and a warm-up, measures for the given seconds, writes the
 JSON report and exits; the window does not take the focus. The knobs are listed in
 `crates/emudome-core/src/tuning.rs`. Example (PowerShell, release build):

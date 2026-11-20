@@ -161,6 +161,10 @@ pub struct AudioMetrics {
 
 impl AudioMetrics {
     /// Starts measuring again (the bench calls it after the warm-up).
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     pub fn reset(&mut self) {
         self.stats = CallbackStats::default();
     }
@@ -203,6 +207,10 @@ impl AudioOutput {
         }
     }
 
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     pub fn metrics(&self) -> &SharedAudioMetrics {
         &self.metrics
     }

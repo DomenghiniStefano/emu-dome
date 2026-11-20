@@ -7,10 +7,16 @@
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
 mod audio;
+// Bench mode only in builds with the `bench` feature (off by default, never packaged).
+#[cfg(feature = "bench")]
+mod bench;
+#[cfg(not(feature = "bench"))]
+#[path = "bench_off.rs"]
 mod bench;
 mod bios;
 mod closing;
 mod core_settings;
+mod cors;
 mod dirs;
 mod effects;
 mod first_run;
@@ -74,6 +80,10 @@ struct AppState {
     /// `None` where the native renderer cannot sit under the webview (Linux) or is off.
     renderer: Option<video::Renderer>,
     /// Why the native renderer could not start, when it was wanted.
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     native_error: Option<String>,
     video_mode: Mutex<VideoMode>,
     /// Whether the quick menu is open, set by the interface: while it is, the controllers
@@ -95,6 +105,10 @@ struct AppState {
     /// Held while a game opens: opens run off the event loop (they may wait for a close), one
     /// at a time.
     opening: Mutex<()>,
+    #[cfg_attr(
+        not(feature = "bench"),
+        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
+    )]
     audio: audio::AudioOutput,
     /// Bench mode (`EMUDOME_BENCH`), off otherwise.
     bench: Option<Arc<bench::Bench>>,
@@ -998,6 +1012,7 @@ pub fn run() {
             startup_game,
             set_menu_open,
             bench::bench_active,
+            #[cfg(feature = "bench")]
             bench::bench_frames,
             toggle_fullscreen,
             is_fullscreen,
