@@ -36,7 +36,6 @@ import SectionPlaceholder from './SectionPlaceholder.vue'
 import { hasOwnInitialFocus, isFlush } from './shellLayout'
 import { useCoverHaze } from './useCoverHaze'
 
-defineProps<{ error: string | null }>()
 const emit = defineEmits<{
   openFile: []
   /** `slot`: a quick save to load once the game runs (Saves, V03). */
@@ -146,7 +145,6 @@ function openSaves(g: LibraryGame) {
         />
         <LibraryView
           v-else-if="section === 'library'"
-          :error="error"
           @open="(g, slot) => emit('openGame', g, slot)"
           @open-saves="openSaves"
           @details="openDetails"

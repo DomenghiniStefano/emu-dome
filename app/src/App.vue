@@ -76,11 +76,10 @@ onMounted(async () => {
   <!-- No game, first start on this device: the first run. -->
   <FirstRun v-if="!game && firstRun" @done="finishFirstRun" @error="toast.fail" />
 
-  <!-- No game: the shell (rail, sections). The launch error it can show is G02's dialog now. -->
+  <!-- No game: the shell (rail, sections). A game that cannot start is G02's dialog. -->
   <AppShell
     v-else-if="!game && firstRun === false"
     v-model="section"
-    :error="null"
     @open-file="launch.openFile()"
     @open-game="launch.openLibraryGame"
     @error="toast.fail"

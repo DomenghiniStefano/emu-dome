@@ -175,7 +175,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
       await navigator.clipboard.writeText(flow.crashed?.detail ?? '')
       toasts.notify(t('flow.detailsCopied'))
     } catch (e) {
-      toasts.fail(String(e))
+      toasts.failWith(e)
     }
   }
 

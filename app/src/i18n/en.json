@@ -925,7 +925,7 @@
         "name": "Controller shortcuts",
         "desc": "The full list, editable.",
         "value": {
-          "count": "{n} shortcuts"
+          "count": "{n} shortcut | {n} shortcuts"
         }
       },
       "lid": {
@@ -1158,7 +1158,7 @@
         "name": "Hidden games",
         "desc": "Games you removed from the library without deleting them.",
         "value": {
-          "count": "{n} games",
+          "count": "{n} game | {n} games",
           "none": "None"
         }
       },
@@ -1207,7 +1207,7 @@
         "name": "Games on Google Drive",
         "desc": "Upload a game to download it on your other devices.",
         "value": {
-          "count": "{n} games · {size}"
+          "count": "{n} game · {size} | {n} games · {size}"
         }
       },
       "sauto": {

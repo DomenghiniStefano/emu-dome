@@ -326,7 +326,7 @@ describe('useGameLaunch', () => {
 
       writeText.mockRejectedValueOnce(new Error('denied'))
       await launch.crashCopy()
-      expect(toasts.fail).toHaveBeenCalledWith('Error: denied')
+      expect(toasts.failWith).toHaveBeenCalledWith(new Error('denied'))
     })
   })
 })
