@@ -172,7 +172,7 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
             .find(|s| s.slot == slot)?;
         std::fs::read(info.thumb?).ok()
     });
-    let builder = Response::builder().header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    let builder = Response::builder();
     match bytes {
         // The URL carries the save time (`?v=`): a new save is a new URL.
         Some(b) => builder
@@ -610,7 +610,6 @@ fn frame_protocol(
         .and_then(|q| q.split('&').find_map(|kv| kv.strip_prefix("since=")))
         .and_then(|v| v.parse().ok());
     let builder = Response::builder()
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(
             header::ACCESS_CONTROL_EXPOSE_HEADERS,
             "x-width, x-height, x-seq",
@@ -867,8 +866,9 @@ pub fn run() {
             // `emu://cover/<id>`: covers; `emu://background/<name>`: the user's background
             // (video.surroundImg); `emu://slot/<n>`: slot thumbnails of the open game;
             // `emu://savethumb/<game>/<n>`: those of any game (Saves section); else the frame.
+            // Only the interface's own page may read them from script (`cors.rs`).
             let path = req.uri().path();
-            if let Some(id) = path.strip_prefix("/cover/") {
+            let response = if let Some(id) = path.strip_prefix("/cover/") {
                 library::cover_response(ctx.app_handle(), id)
             } else if let Some(name) = path.strip_prefix("/background/") {
                 settings::background_response(ctx.app_handle(), name)
@@ -878,7 +878,8 @@ pub fn run() {
                 slot_thumb_response(ctx.app_handle(), slot)
             } else {
                 frame_protocol(ctx.app_handle(), &req)
-            }
+            };
+            cors::allow_app(ctx.app_handle(), &req, response)
         })
         .setup(move |app| {
             let data_dir = dirs::data(app)?;

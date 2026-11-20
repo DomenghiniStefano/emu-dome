@@ -36,6 +36,8 @@ serde_json = "1"
 anyhow = "1"
 log = "0.4"
 parking_lot = "0.12"
+# Stable content names of the user's background images (`settings.rs`).
+sha2 = "0.10"
 wgpu = "=30.0.2"
 # Screen effects (`fx.*`): RetroArch `.slangp` presets on the native path. Its wgpu must stay
 # the same version as ours (docs/feasibility.md, 2026-11-17). MPL-2.0 OR GPL-3.0.

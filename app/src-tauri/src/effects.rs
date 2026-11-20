@@ -83,9 +83,9 @@ pub fn write_builtins(base: &Path) -> std::io::Result<PathBuf> {
 
 /// Writes the built-in presets and tells the renderer who to warn when an effect fails.
 pub fn open(app: &tauri::App) -> EffectsState {
-    let builtin_dir = app
-        .path()
-        .app_local_data_dir()
+    // `dirs::local`, so `EMUDOME_DATA_DIR` moves these too (a test run never writes the real
+    // app data).
+    let builtin_dir = crate::dirs::local(app)
         .map_err(|e| e.to_string())
         .and_then(|d| write_builtins(&d.join("effects")).map_err(|e| e.to_string()))
         .inspect_err(|e| log::error!("built-in screen effects not written: {e}"))

@@ -390,7 +390,7 @@ pub fn cover_response(app: &AppHandle, path: &str) -> tauri::http::Response<Vec<
         let game = state.lib.lock().game(&id).ok().cloned()?;
         let file = match game.cover {
             CoverKind::Icon => cache_icon(&state.covers, &game)?,
-            CoverKind::User => state.covers.join(game.user_cover.as_deref()?),
+            CoverKind::User => user_cover_file(&state.covers, game.user_cover.as_deref())?,
             CoverKind::Generated => return None,
         };
         let bytes = std::fs::read(&file)
@@ -398,7 +398,7 @@ pub fn cover_response(app: &AppHandle, path: &str) -> tauri::http::Response<Vec<
             .ok()?;
         Some((bytes, image_type(&file)))
     });
-    let builder = Response::builder().header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    let builder = Response::builder();
     let response = match found {
         // The URL changes with every cover change (`?v=`): it can be cached for good.
         Some((bytes, mime)) => builder
@@ -408,6 +408,17 @@ pub fn cover_response(app: &AppHandle, path: &str) -> tauri::http::Response<Vec<
         None => builder.status(StatusCode::NOT_FOUND).body(Vec::new()),
     };
     response.unwrap_or_else(crate::response_error)
+}
+
+/// The game's user image in the covers folder. `library.json` syncs, so its `user_cover` is
+/// untrusted: only a plain file name of the covers folder is accepted, never a path.
+fn user_cover_file(covers: &Path, user_cover: Option<&str>) -> Option<PathBuf> {
+    let name = user_cover?;
+    let file = crate::dirs::file_in(covers, name);
+    if file.is_none() {
+        log::warn!("user cover {name:?} is not a file name of the covers folder, ignored");
+    }
+    file
 }
 
 pub(crate) fn image_type(file: &Path) -> &'static str {
@@ -779,9 +790,13 @@ pub async fn library_set_cover(
         old
     };
     // The previous user image, replaced by the new one.
-    if let Some(old) = old.filter(|_| user_file.is_some()) {
-        if let Err(e) = std::fs::remove_file(state.covers.join(&old)) {
-            log::warn!("old cover {old}: {e}");
+    // Only a plain name of the covers folder: a tampered `library.json` must not delete any file.
+    let old_file = old
+        .filter(|_| user_file.is_some())
+        .and_then(|old| crate::dirs::file_in(&state.covers, &old));
+    if let Some(old) = old_file {
+        if let Err(e) = std::fs::remove_file(&old) {
+            log::warn!("old cover {}: {e}", old.display());
         }
     }
     emit_changed(&app);
@@ -813,4 +828,28 @@ pub fn library_set_name(
     state.lib.lock().set_name(&id, &name)?;
     emit_changed(&app);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::user_cover_file;
+    use std::path::Path;
+
+    #[test]
+    fn a_tampered_user_cover_never_leaves_the_covers_folder() {
+        let covers = Path::new("covers");
+        assert_eq!(
+            user_cover_file(covers, Some("gba-0a1b.user-2.png")),
+            Some(covers.join("gba-0a1b.user-2.png"))
+        );
+        assert_eq!(user_cover_file(covers, None), None);
+        for tampered in [
+            r"C:\Users\me\.ssh\id_rsa",
+            "/home/me/.ssh/id_rsa",
+            "../library.json",
+            r"..\settings\global.json",
+        ] {
+            assert_eq!(user_cover_file(covers, Some(tampered)), None, "{tampered}");
+        }
+    }
 }
