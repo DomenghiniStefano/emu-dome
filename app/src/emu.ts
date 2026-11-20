@@ -78,6 +78,7 @@ export type ErrorCode =
   | { code: 'unsupportedFormat'; params: { ext: string } }
   | { code: 'consoleNotYet'; params: { console: string; phase: number } }
   | { code: 'coreNotFound'; params: { file: string } }
+  | { code: 'coreDamaged'; params: { file: string } }
   | { code: 'openFailed'; params: { detail: string } }
   /** The file has a console's extension but is not a game of it: it has no identity. */
   | { code: 'gameUnidentified'; params: { detail: string } }

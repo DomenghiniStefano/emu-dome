@@ -13,9 +13,19 @@ build = "build.rs"
 [lints]
 workspace = true
 
+[features]
+# The development places for the cores (`EMUDOME_CORES_DIR`, `cores/` above the working
+# directory, the system's libretro folders) and no cores.lock check, in a release build too.
+# Debug builds always have them; the app's `bench` feature turns this on (bench runs are release
+# builds started from the repo). Never on in a package.
+dev-core-paths = []
+
 [dependencies]
 log = "0.4"
 raw-window-handle = "0.6"
+# The release build checks its cores against cores.lock (`cores.rs`).
+serde_json = "1"
+sha2 = "0.10"
 # `Webview::with_webview` (the Android JNI handle) and the main window ([`create_window`]:
 # `unstable` for the desktop's child webview); features unify with the app's.
 # Pinned exactly, the same version as app/src-tauri/Cargo.toml (which says why).

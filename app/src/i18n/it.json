@@ -237,6 +237,7 @@
     "unsupportedFormat": "Formato non riconosciuto: .{ext}",
     "consoleNotYet": "Il {console} arriva nella Fase {phase}.",
     "coreNotFound": "Core {file} non trovato. Esegui scripts/fetch-cores (vedi README) oppure imposta EMUDOME_CORES_DIR.",
+    "coreDamaged": "Il core {file} non è quello fornito con EmuDome, quindi non è stato caricato. Reinstalla EmuDome.",
     "openFailed": "Non riesco ad aprire il gioco. Controlla che il file sia un gioco GBA funzionante. Dettagli: {detail}",
     "coreNeedsRestart": "Un gioco sul core {core} ha smesso di rispondere. Riavvia EmuDome per aprire di nuovo i giochi con questo core.",
     "noGame": "Nessun gioco aperto",

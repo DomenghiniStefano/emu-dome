@@ -39,6 +39,7 @@ use emudome_core::{
     Closed, Command, ErrorCode, Event, GameKey, Session, SessionOptions, Shared, Speed,
     CLOSE_TIMEOUT,
 };
+use emudome_platform::CoreLookupError;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::webview::Color;
@@ -322,10 +323,13 @@ fn open_path(
     // The one-time move of old save names ends before any game reads its saves.
     migration::wait(app);
     let (core_name, _) = core_for(&game_path)?;
-    let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref())
-        .ok_or_else(|| ErrorCode::CoreNotFound {
-            file: emudome_platform::core_file_name(core_name),
-        })?;
+    let file = emudome_platform::core_file_name(core_name);
+    let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref()).map_err(
+        |e| match e {
+            CoreLookupError::NotFound => ErrorCode::CoreNotFound { file },
+            CoreLookupError::Mismatch { .. } => ErrorCode::CoreDamaged { file },
+        },
+    )?;
     // A game on this core was let go (E11, or a close that timed out): its thread may still be
     // inside the core's module. Checked before closing the open game, which stays open.
     if emudome_core::core_needs_restart(&core_path) {

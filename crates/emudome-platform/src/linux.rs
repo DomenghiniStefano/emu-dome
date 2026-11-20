@@ -10,6 +10,13 @@ pub fn core_file_name(core: &str) -> String {
 
 const DYLIB_EXT: &str = "so";
 
+/// The platform key of `cores.lock` whose checksums a release build checks its cores against.
+pub const CORES_LOCK_PLATFORM: Option<&str> = if cfg!(target_arch = "x86_64") {
+    Some("linux-x86_64")
+} else {
+    None
+};
+
 pub fn extra_core_dirs() -> Vec<PathBuf> {
     vec![
         PathBuf::from("/usr/lib/libretro"),
