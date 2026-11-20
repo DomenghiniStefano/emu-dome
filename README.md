@@ -27,7 +27,7 @@ BIOS replacements.
 
 ## Running on Windows
 
-Requirements: stable Rust, Node 20+, pnpm 12 (the frontend refuses npm), the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11),
+Requirements: stable Rust, Node 22.13+ or 24 (`.nvmrc`; `engines` in `app/package.json`, the check stops on another Node), pnpm 12 (the frontend refuses npm), the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11),
 and CMake for the SDL3 build (on PATH, or in the `CMAKE` variable; VS Build Tools 2022 ships one).
 
 ```powershell
