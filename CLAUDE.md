@@ -49,15 +49,21 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
 - Kept file names: `docs/fase0-esito.md` and `docs/combo-tasti.md` keep their Italian names (an external Cowork session
   refers to them); their content is English.
 
-## Current state: Phase 0, feasibility prototype
+## Current state: Phase 1 desktop shell, Phase 2 core work started
 
-The goal is to find out whether the video architecture holds up, before building the rest.
+Phase 0 (feasibility) is done. On `develop` now: shell and themes, settings engine and pages, library, game flow,
+quick menu, saves, controls, first run, rewind and screenshots, screen effects (librashader), appearance, and the
+melonDS DS core (#45). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+before any new feature.
+
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
 `C:\Projects\emu-dome.wt\<name>` and is merged into `develop` from the main worktree. Pushing `develop` is allowed
-(owner, 2026-11-16). No push to `main`.
+(owner, 2026-11-16). No push to `main`. **Merge rule**: `./scripts/check.ps1` green on the merge commit itself
+(not only on the branch) before `git push` of `develop`; `wip` commits are squashed before merging, never merged as
+they are.
 
-The architecture question is answered: the native video under a transparent webview holds up. The full test log,
-entry by entry, is `docs/fase0-esito.md`; in short:
+Phase 0 answered the architecture question: the native video under a transparent webview holds up. The full test
+log, entry by entry, is `docs/fase0-esito.md`; in short:
 
 - **Linux** (virtual X11, mGBA 0.10.2): windowless host 1× ≈ 59.7 FPS, 2× ≈ 120, Max ≈ 900; app in webview mode
   works. Native mode does not (the GTK surface covers the webview).
@@ -193,7 +199,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log. Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
-  Game identity is a hash of the ROM path for now (TODO, Trello #21). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
+  Game identity in settings is still a hash of the ROM path, and saves are still named by the ROM's file stem: both
+  are wrong and move to the library's content id (Trello #70, P0). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
   live in `SYNONYMS` (catalog.rs).
 - Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
@@ -242,6 +249,44 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Settings will be the strong point (Phase 1): levels Default → Global → Console → Game → Session,
   plus a "per device" axis. UI generated from a single schema in Rust. Do not write scattered settings by hand.
 
+## Engineering rules (from the 2026-11-20 audit)
+
+The audit found the code tidy where it is easy to test and fragile at the edges: exit paths, identity, shipped
+binaries, the Rust ↔ TypeScript bridge, platforms nobody compiles. Each rule below closes one of those root causes.
+Apply them to every change, including small ones, and say in the card when a rule could not be met.
+
+1. **User data is never lost.** Saves, states, settings and the library are written only through one atomic helper
+   (temp file + fsync + rename). Every way a game or the app can end flushes them: closing the game, closing the
+   window, quitting, Android going to the background, abandoning a hung game, the crash dialog. A file that could not
+   be read is never treated as empty and never overwritten. A new persisted file or a new exit path comes with a test
+   that the data survives it.
+2. **One identity per game**: the library's content id (`<console>:<hex>`). Anything stored per game (saves, states,
+   settings, covers, play time, sync) is keyed by it, never by a path or a file name.
+3. **Shipped third-party binaries are pinned and verified**: a recorded version and checksum per core and platform,
+   an explicit list of what goes in a package, its licence and source offer next to it. A change to `bundle` in
+   `tauri.conf.json` or to the Gradle `jniLibs` updates `THIRD_PARTY.md` in the same commit.
+4. **Design for the biggest console and the phone, not for GBA.** Before touching the core host, video, audio,
+   input or save paths, check the change against 3DS (multi-GB ROMs passed by path, GPU frames, states of tens of MB,
+   analog sticks, multi-threaded cores) and Android (background, process death, memory). Nothing heavy runs under a
+   lock the audio callback or the renderer also takes; no disk I/O on the emulation thread or in the audio callback.
+5. **One source of truth across the bridge.** What Rust knows (file extensions, setting keys and defaults, enums,
+   DTOs, error codes) is never typed again in TypeScript or in another Rust file: it is generated or asked for. A
+   setting the user can change is either read by the code or shown disabled with the reason.
+6. **Errors never vanish.** Every `emu.*` call has an error path that reaches the user or a deliberate, commented
+   ignore; no bare `void emu.x()`. A backend failure that changes what the user gets (video fallback, no audio
+   device, controllers unavailable, a core refusing a game) reaches the interface as an `ErrorCode`, not only the log.
+7. **Async results are applied only if they are still current**: a response to an older request (another scope,
+   another game, a newer reload) is dropped.
+8. **Green on Windows is not green.** A change to shared code is compiled for Android and Linux too; Tauri's
+   `#[cfg(desktop)]` / `#[cfg(mobile)]` and target tables in `Cargo.toml` count as OS branching and belong to
+   `crates/emudome-platform` like `#[cfg(target_os)]`.
+9. **The docs say what the code does.** A commit that changes a fact written in this file, `README.md` or
+   `THIRD_PARTY.md` updates it in the same commit; «Current state» and «Known gaps» are checked at every merge.
+
+Which of these a script will check, and when: Trello #72 (every target, the cfg gate, the merge rule), #73
+(generated bridge, i18n and `ErrorCode` parity), #74 (the lint against bare `emu.*` calls). Until then they hold
+by review (listed below).
+
 ## What is checked, and what holds only because it is read
 
 `./scripts/check.ps1` (`scripts/check`) is **the** list: the README, the pre-commit hook and this file point to it
@@ -275,6 +320,9 @@ Prettier on the staged frontend files).
   `style` binding, a look-only `phone` / `touch` prop read in `<script>` or passed down to a child.
 - Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
   tested pure functions, nothing duplicated across screens, names that say what a thing is for.
+- The nine «Engineering rules (from the 2026-11-20 audit)»; the OS gate does not see `#[cfg(desktop)]` /
+  `#[cfg(mobile)]` or `Cargo.toml` target tables yet (Trello #72), and nothing compiles Android or Linux from the
+  Windows check yet.
 
 **A rule arrives with its check, in the same commit**: a rule added here either comes with its lint / test / gate
 (seen failing once on a real violation or a fixture, its blind spots written next to it), or is added to the
@@ -374,9 +422,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   melonDS DS and Azahar have no table yet (Azahar only gets `FORCED_CORE_OPTIONS`, `app/src-tauri/src/lib.rs`).
   `perf.frameskip` is not mapped. The interface does not show `emu://core-restart` yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
-- The cores are not included in the build; the package takes them from `cores/` as a resource.
+- The cores **are** shipped: the package takes everything in `cores/` as a resource (`tauri.conf.json`), and the
+  fetch scripts download unpinned nightlies with no checksum. No build may be shared until Trello #71 (version +
+  sha256 lock, explicit bundle list, licences and source offer).
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
-  Cheats (L08) and patches (L09) have no backend yet. Screen effects (librashader) are not wired.
+  Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 
 ## Handoff with Cowork
 
