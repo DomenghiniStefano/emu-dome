@@ -109,7 +109,9 @@ run 'cargo test' cargo test --workspace
 android_target=aarch64-linux-android
 
 # The NDK folder: ANDROID_NDK_HOME, NDK_HOME or ANDROID_NDK_ROOT, else the newest one in
-# ANDROID_HOME / ANDROID_SDK_ROOT /ndk/. Prints nothing when there is none.
+# <sdk>/ndk/, the SDK being ANDROID_HOME, ANDROID_SDK_ROOT or where Android Studio puts it by
+# default (%LOCALAPPDATA%\Android\Sdk on Windows, ~/Android/Sdk on Linux). Prints nothing when
+# there is none.
 android_ndk() {
 	for dir in "${ANDROID_NDK_HOME:-}" "${NDK_HOME:-}" "${ANDROID_NDK_ROOT:-}"; do
 		if [ -n "$dir" ] && [ -d "$dir/toolchains/llvm/prebuilt" ]; then
@@ -117,7 +119,8 @@ android_ndk() {
 			return
 		fi
 	done
-	for sdk in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}"; do
+	for sdk in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" \
+		"${LOCALAPPDATA:+$LOCALAPPDATA/Android/Sdk}" "${HOME:+$HOME/Android/Sdk}"; do
 		if [ -n "$sdk" ] && [ -d "$sdk/ndk" ]; then
 			newest=$(ls -d "$sdk"/ndk/*/toolchains/llvm/prebuilt 2>/dev/null | sort -V | tail -n 1)
 			if [ -n "$newest" ]; then
@@ -146,7 +149,7 @@ if rustup target list --installed 2>/dev/null | grep -qx "$android_target"; then
 	if [ -n "$ndk" ]; then
 		run 'cargo clippy: android, workspace' android_workspace "$ndk"
 	else
-		skip 'cargo clippy: android, workspace' 'no Android NDK (set ANDROID_NDK_HOME or NDK_HOME, or install it under ANDROID_HOME/ndk/): the app builds C++ for Android (glslang-sys)'
+		skip 'cargo clippy: android, workspace' 'no Android NDK (set ANDROID_NDK_HOME or NDK_HOME, or install it under <Android SDK>/ndk/): the app builds C++ for Android (glslang-sys)'
 	fi
 else
 	skip 'cargo clippy: android' "the Rust target is not installed: rustup target add $android_target"
