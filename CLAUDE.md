@@ -86,6 +86,8 @@ pnpm package:windows                          # installer (from app/): only the 
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
+rustup target add aarch64-linux-android       # once: the Android clippy steps of the check
+nvm use                                       # Node from .nvmrc (engines.node in app/package.json; the check stops on another)
 cd app; pnpm install                          # frontend dependencies (pnpm only: npm refuses, see docs/decisions.md)
 pnpm tauri dev                                # app in development (from app/)
 pnpm lint                                     # ESLint (app/eslint.config.js)
@@ -98,6 +100,8 @@ cargo test --workspace
 cargo test -p emudome-core settings::         # one module (settings tests live in settings/tests.rs)
 cargo test -p emudome-core hotkeys::<name>    # one test
 cargo clippy --workspace --all-targets -- -D warnings
+cargo clippy --target aarch64-linux-android -p libretro-sys -p emudome-core -p emudome-platform -- -D warnings
+                                              # Android without the NDK (the whole workspace needs it: glslang-sys)
 cargo fmt --all
 cargo run -p emudome-core --example headless -- <core> tools/test-rom/emudome-test.gba   # windowless core host
 cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe (app/src-tauri/examples)
@@ -107,6 +111,11 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
 - Android build: `tauri android build` fails with "Creation symbolic link is not allowed" when Windows developer mode
   is off (the CLI symlinks the `.so` into jniLibs). Workaround: copy `libemudome_app.so` into
   `app/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/` and run `gradlew assembleArm64Debug -x rustBuildArm64Debug`.
+- Android check: the whole workspace for `aarch64-linux-android` needs the NDK (`ANDROID_NDK_HOME` / `NDK_HOME`, or
+  `ANDROID_HOME/ndk/<version>`): librashader's glslang-sys builds C++ for the target. Without it the check runs
+  the crates with no C code and says the rest is skipped. Linux is checked only by running the check on Linux (WSL).
+- `crates/hw-render-spike` is its own workspace (root `exclude`): `cargo run --release --manifest-path
+  crates/hw-render-spike/Cargo.toml -- ...`; the checks never build it.
 - The SDL3 build needs CMake. If it is not on PATH, set `CMAKE` for that command only (VS Build Tools 2022 ships one).
 - Every worktree builds in **its own** cargo target dir (the default `target/` inside it). Never share
   `CARGO_TARGET_DIR` between worktrees: workspace crates get the same artifact names everywhere and cargo can reuse
@@ -302,16 +311,21 @@ Apply them to every change, including small ones, and say in the card when a rul
 9. **The docs say what the code does.** A commit that changes a fact written in this file, `README.md` or
    `THIRD_PARTY.md` updates it in the same commit; «Current state» and «Known gaps» are checked at every merge.
 
-Which of these a script will check, and when: Trello #72 (every target, the cfg gate, the merge rule), #73
+Which of these a script will check, and when: Trello #72 (phase 1 done: Android clippy, the cfg gate with
+`desktop` / `mobile` and target tables, exact pins; still open: phase 2 moves the gate's exceptions, Linux, the merge rule), #73
 (generated bridge, i18n and `ErrorCode` parity), #74 (the lint against bare `emu.*` calls). Until then they hold
 by review (listed below).
 
 ## What is checked, and what holds only because it is read
 
 `./scripts/check.ps1` (`scripts/check`) is **the** list: the README, the pre-commit hook and this file point to it
-instead of repeating commands. No CI, by choice. It runs everything and summarizes what failed.
+instead of repeating commands. No CI, by choice. It runs everything and summarizes what failed, and what was
+skipped because this machine lacks a tool ("green, except the skipped steps above"). It first checks the Node
+version (`scripts/node-version.mjs`, against `engines.node` in `app/package.json`) and stops there on a wrong one.
 
 **Checked**: `cargo fmt`, clippy with the workspace lints (no `unwrap`, no `_ =>` on enums, no glob imports),
+clippy for Android (`aarch64-linux-android`: the crates with no C code always, the whole workspace when an NDK is
+found, else skipped),
 `cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
 `vue-tsc`, ESLint (the import style included), Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
 (`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
@@ -319,7 +333,10 @@ px / rem / em length or bracketed opacity, z-index, duration or curve in a class
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
 `components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`; the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
-no `#[cfg(target_os)]` outside `crates/emudome-platform`, `invoke` only in `app/src/emu.ts`, no emoji,
+no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
+`unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
+`lib.rs`, `library.rs`, `saves.rs` and the SDL3 table of `app/src-tauri`, moved in #72 phase 2), tauri / wgpu /
+librashader pinned with `=`, `invoke` only in `app/src/emu.ts`, no emoji,
 no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`), and the
 cores (`scripts/cores.mjs check --self-test`: `cores.lock`, the bundle lists, `cores/SOURCES.md`, the Gradle build and
 `THIRD_PARTY.md` agree; it cannot see whether a URL still serves the pinned bytes, only a fetch can).
@@ -341,9 +358,9 @@ Prettier on the staged frontend files).
   `style` binding, a look-only `phone` / `touch` prop read in `<script>` or passed down to a child.
 - Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
   tested pure functions, nothing duplicated across screens, names that say what a thing is for.
-- The nine «Engineering rules (from the 2026-11-20 audit)»; the OS gate does not see `#[cfg(desktop)]` /
-  `#[cfg(mobile)]` or `Cargo.toml` target tables yet (Trello #72), and nothing compiles Android or Linux from the
-  Windows check yet.
+- The nine «Engineering rules (from the 2026-11-20 audit)»; the OS gate cannot see a `cfg` split across lines, code
+  chosen at runtime, or a target table written as dotted keys. Linux is compiled only by running the check on Linux,
+  the whole workspace for Android only where an NDK is installed, and nothing links or runs on a device.
 
 **A rule arrives with its check, in the same commit**: a rule added here either comes with its lint / test / gate
 (seen failing once on a real violation or a fixture, its blind spots written next to it), or is added to the
