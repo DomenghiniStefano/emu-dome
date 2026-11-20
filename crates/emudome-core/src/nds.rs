@@ -8,11 +8,9 @@
 //! Touch reaches the core as `RETRO_DEVICE_POINTER` (melonDS DS's «Pointer» touch mode), mapped
 //! by [`crate::screens::pointer_at`]; the core draws no cursor of its own.
 //!
-//! BIOS and firmware: the core's built-in replacements only (FreeBIOS, generated firmware);
-//! nothing is read from the system folder. TODO(bios.*): user-supplied `bios.bds7`, `bios.bds9`,
-//! `bios.bdsfw` (and `bios.bdsi` for DSi mode) once the settings' BIOS files are wired for any
-//! console (`bios.bgba` is not wired either); then `melonds_sysfile_mode` becomes `native` when
-//! they are set, and DSi mode becomes possible.
+//! BIOS and firmware: the user's own files when every DS one is in place, else the core's built-in
+//! replacements (FreeBIOS, generated firmware); decided by `crate::bios` (`bios/melondsds.rs`),
+//! whose options are added after [`FORCED_OPTIONS`].
 
 use crate::screens::Split;
 use crate::settings::Value;
@@ -34,8 +32,6 @@ pub const FORCED_OPTIONS: &[(&str, &str)] = &[
     // Touch from the shell's pointer; no cursor drawn into the game's picture.
     ("melonds_touch_mode", "touch"),
     ("melonds_show_cursor", "disabled"),
-    // Built-in BIOS and firmware only (see the module's TODO).
-    ("melonds_sysfile_mode", "builtin"),
     // The DS user name comes from the frontend (`GET_USERNAME`, [`username`]); unanswered, the
     // core takes the OS user, which is what an empty `consoles.dsname` means.
     ("melonds_firmware_username", "guess_username"),

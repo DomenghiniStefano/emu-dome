@@ -14,6 +14,7 @@ mod session;
 
 pub mod audio;
 pub mod bindings;
+pub mod bios;
 pub mod effects;
 pub mod first_run;
 pub mod hotkeys;

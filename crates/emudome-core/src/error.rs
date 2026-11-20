@@ -8,6 +8,7 @@
 
 use serde::Serialize;
 
+use crate::bios::Slot;
 use crate::settings::Level;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -91,6 +92,19 @@ pub enum ErrorCode {
     /// The screen effect `name` (a built-in one or the user's `.slangp` file name) could not
     /// be loaded or drawn; the game shows without it.
     EffectNotLoaded { name: String, detail: String },
+    /// The chosen BIOS / firmware file cannot be read.
+    BiosUnreadable { detail: String },
+    /// The chosen file has a size the row's file never has (`size` in bytes).
+    BiosWrongSize { size: u64 },
+    /// The chosen file is the one of another BIOS / firmware row (`slot`).
+    BiosOtherSlot { slot: Slot },
+    /// EmuDome's copy of a BIOS / firmware file could not be written or deleted.
+    BiosFileFailed { detail: String },
+    /// DSi mode was asked for without the DS and DSi system files: the game runs as a DS.
+    BiosDsiFilesMissing,
+    /// Booting through the DS menu was asked for without the DS system files: the game starts
+    /// directly.
+    BiosDsMenuFilesMissing,
 }
 
 #[cfg(test)]
