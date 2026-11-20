@@ -30,6 +30,19 @@ reads the same in every file, and a move changes only the moved file's importers
 `import()` name the module the same way. Checked by ESLint (`no-restricted-imports` and
 `no-restricted-syntax` in `app/eslint.config.js`); blind spot: a path that is not a plain string literal.
 
+## Bridge calls (`emu.*`)
+
+- **Errors never vanish**: a call is awaited where its error is handled (try / catch, a dialog, a
+  row's message), or handed to `lib/errors.ts`: `report(p)` (logged and toasted), `ignore(p, why)`
+  (logged only, with the reason), `settle(p)` (awaited, reported, the sequence goes on). `main.ts`
+  installs `catchEverything` (Vue's `errorHandler`, `unhandledrejection`) as the last net. ESLint
+  refuses `void emu.x()` and a bare `emu.x()` statement; blind spots: an alias, a wrapper, a
+  `.then()` without `.catch` (`app/eslint.config.js`, fixture in `lib/errors.lint.test.ts`).
+- **Stale answers are dropped**: a load that can be overtaken (scope, game, reload) takes a token
+  from `lib/latest.ts` (`latest()`, `latestBy()`) and applies its answer, or shows its error, only
+  if still fresh. Held by review.
+- A count goes through vue-i18n's plural form (`"{n} game | {n} games"`, `t(key, { n }, n)`).
+
 ## Primitives (`components/ui/`)
 
 - All on **Reka UI**; none hand-made. One folder per primitive: `index.ts` re-exports, the parts are
