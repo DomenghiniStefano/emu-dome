@@ -7,6 +7,7 @@ import { onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { emu, type Button as GameButton } from '@/emu'
+import { report } from '@/lib/errors'
 import { dpadDirections } from './dpad'
 
 /** GB and GBC have no shoulder buttons: L/R are not drawn for them. */
@@ -21,7 +22,7 @@ function press(button: GameButton, pressed: boolean) {
   if (pressed === held.has(button)) return
   if (pressed) held.add(button)
   else held.delete(button)
-  void emu.input(button, pressed)
+  report(emu.input(button, pressed))
 }
 
 function hold(e: PointerEvent, button: GameButton) {

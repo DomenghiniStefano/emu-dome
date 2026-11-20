@@ -5,6 +5,7 @@
 import { useI18n } from 'vue-i18n'
 import { emu, type SavesMigration } from '@/emu'
 import { gamepadName } from '@/i18n/labels'
+import { report } from '@/lib/errors'
 import { usedController } from '@/lib/inputMode'
 import { loadKeymap } from '@/lib/keymap'
 import { startLibrary } from '@/lib/library'
@@ -32,7 +33,28 @@ export function useShellEvents(
     toasts.failWith(m.problem)
   }
 
+  /** Whether the move of old save names ended badly (it may have ended before the listener). */
+  async function askMigration() {
+    try {
+      tellMigration(await emu.saves.migration())
+    } catch (e) {
+      toasts.failWith(e)
+    }
+  }
+
+  /**
+   * Subscribes to every event at once: one that fails is thrown (App.vue reports it), the others
+   * are kept, the controller's above all.
+   */
   async function listen() {
+    try {
+      await subscribe()
+    } finally {
+      await askMigration()
+    }
+  }
+
+  async function subscribe() {
     await listeners.add(
       onSettingsChanged('pad.remap', () => void loadKeymap(game.value !== null)),
       onSettingsChanged(
@@ -42,7 +64,7 @@ export function useShellEvents(
       emu.onMenu(() => {
         usedController()
         showFocusRing()
-        void session.toggleMenu()
+        report(session.toggleMenu())
       }),
       emu.onNav(action => {
         usedController()
@@ -62,16 +84,10 @@ export function useShellEvents(
         toasts.notify(t('toast.gamepadDisconnected', { name: gamepadName(p) }))
       }),
       listenDragDrop(),
-      ...(await startLibrary()),
+      startLibrary(),
       emu.onEvent(session.onEmuEvent),
       emu.saves.onMigration(tellMigration),
     )
-    // It may have ended before the listener above existed.
-    try {
-      tellMigration(await emu.saves.migration())
-    } catch (e) {
-      toasts.failWith(e)
-    }
   }
 
   return { listen }

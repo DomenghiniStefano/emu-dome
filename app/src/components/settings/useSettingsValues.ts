@@ -12,6 +12,7 @@ import {
   type SettingValue,
 } from '@/emu'
 import type { ErrorSink } from '@/i18n/labels'
+import { latest, latestBy, type Fresh } from '@/lib/latest'
 import { isShown } from '@/lib/settingsModel'
 import type { PageValues } from './settingsPage'
 
@@ -28,34 +29,49 @@ export function useSettingsValues(
   const values = reactive<Record<string, PageValues>>({})
   const recent = ref<SettingRecent[]>([])
 
-  /** Runs a bridge call, reporting a failure as an error toast. */
-  async function attempt(call: () => Promise<unknown>) {
+  /** Runs a bridge call, reporting a failure as an error toast unless it is no longer `fresh`. */
+  async function attempt(call: () => Promise<unknown>, fresh: Fresh = () => true) {
     try {
       await call()
     } catch (e) {
-      onError(e)
+      if (fresh()) onError(e)
     }
   }
 
-  const loadPage = (page: string) =>
-    attempt(async () => {
+  // Rule 7: quick L1 / R1 change the scope while its pages load; an answer for an older scope,
+  // or an older load of the same page, is dropped.
+  const scopeLoads = latest()
+  const pageLoads = latestBy<string>()
+  const recentLoads = latest()
+
+  function loadPage(page: string) {
+    const ofScope = scopeLoads.now()
+    const ofPage = pageLoads.next(page)
+    const fresh = () => ofScope() && ofPage()
+    return attempt(async () => {
       const rows = await emu.settings.page(page, scope.value)
-      values[page] = Object.fromEntries(rows.map(r => [r.key, r]))
-    })
+      if (fresh()) values[page] = Object.fromEntries(rows.map(r => [r.key, r]))
+    }, fresh)
+  }
   async function loadAll() {
     if (!schema.value) return
+    scopeLoads.next()
     await Promise.all(schema.value.pages.map(loadPage))
   }
   watch(scope, () => void loadAll(), { deep: true })
 
-  const loadRecent = () =>
-    attempt(async () => {
+  function loadRecent() {
+    const fresh = recentLoads.next()
+    return attempt(async () => {
       const s = schema.value
-      recent.value = (await emu.settings.recent(RECENT)).filter(r => {
+      const rows = await emu.settings.recent(RECENT)
+      if (!fresh()) return
+      recent.value = rows.filter(r => {
         const e = byKey.value.get(r.key)
         return !!e && !!s && isShown(e, s)
       })
-    })
+    }, fresh)
+  }
 
   const set = (key: string, value: SettingValue) =>
     attempt(() => emu.settings.set(key, scope.value, value))

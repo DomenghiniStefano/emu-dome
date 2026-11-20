@@ -28,7 +28,7 @@ const sides = computed(() => props.versions.map((version, i) => ({ version, i: i
 </script>
 
 <template>
-  <FlowDialog :title="t('saves.conflict.title')" @back="emit('later')">
+  <FlowDialog :title="t('saves.conflict.title')" escape-closes @back="emit('later')">
     <p class="m-0">{{ t('saves.conflict.text', { title }) }}</p>
     <div class="mt-6 grid grid-cols-2 gap-16">
       <ConflictSide

@@ -925,7 +925,7 @@
         "name": "Scorciatoie del controller",
         "desc": "L’elenco completo, modificabile.",
         "value": {
-          "count": "{n} scorciatoie"
+          "count": "{n} scorciatoia | {n} scorciatoie"
         }
       },
       "lid": {
@@ -1158,7 +1158,7 @@
         "name": "Giochi nascosti",
         "desc": "Giochi che hai tolto dalla libreria senza cancellarli.",
         "value": {
-          "count": "{n} giochi",
+          "count": "{n} gioco | {n} giochi",
           "none": "Nessuno"
         }
       },
@@ -1207,7 +1207,7 @@
         "name": "Giochi su Google Drive",
         "desc": "Carica un gioco per scaricarlo sugli altri dispositivi.",
         "value": {
-          "count": "{n} giochi · {size}"
+          "count": "{n} gioco · {size} | {n} giochi · {size}"
         }
       },
       "sauto": {

@@ -57,7 +57,7 @@ function setup() {
     end: vi.fn(),
     game: ref<GameInfo | null>(null),
   }
-  const toasts = { notify: vi.fn(), fail: vi.fn() }
+  const toasts = { notify: vi.fn(), fail: vi.fn(), failWith: vi.fn() }
   let launch!: ReturnType<typeof useGameLaunch>
   mount(
     defineComponent({
@@ -171,6 +171,28 @@ describe('useGameLaunch', () => {
     expect(bridge.loadState).not.toHaveBeenCalled()
   })
 
+  it('a failure after the game opened is told over it, not as G02 «could not start»', async () => {
+    const { launch, session, toasts } = setup()
+    session.begin.mockRejectedValueOnce({ code: 'stateInvalid', params: { slot: 0 } })
+    await launch.openLibraryGame(minish)
+    expect(flow.startError).toBeNull()
+    expect(flow.launching).toBeNull()
+    expect(toasts.failWith).toHaveBeenCalledWith({ code: 'stateInvalid', params: { slot: 0 } })
+  })
+
+  it('a second launch while one is opening is dropped', async () => {
+    const { launch, session } = setup()
+    const first = launch.openLibraryGame(minish)
+    const second = launch.openFile('C:/roms/kirby.gba')
+    await Promise.all([first, second])
+    expect(bridge.libraryOpen).toHaveBeenCalledOnce()
+    expect(bridge.openGame).not.toHaveBeenCalled()
+    expect(session.begin).toHaveBeenCalledOnce()
+    // Once it ended, the next one opens.
+    await launch.openFile('C:/roms/kirby.gba')
+    expect(bridge.openGame).toHaveBeenCalledWith('C:/roms/kirby.gba')
+  })
+
   it('answers the resume question: from the auto quick save, or from where the game starts', async () => {
     const { launch } = setup()
     flow.resumeAsk = true
@@ -184,6 +206,24 @@ describe('useGameLaunch', () => {
     await launch.answerResume(false)
     expect(bridge.loadState).not.toHaveBeenCalled()
     expect(bridge.setPaused).toHaveBeenCalledWith(false)
+  })
+
+  it('a resume whose auto quick save cannot load says so and plays on', async () => {
+    const { launch, toasts } = setup()
+    bridge.loadState.mockRejectedValueOnce({ code: 'stateInvalid', params: { slot: 0 } })
+    await launch.answerResume(true)
+    expect(toasts.failWith).toHaveBeenCalledWith({ code: 'stateInvalid', params: { slot: 0 } })
+    expect(bridge.setPaused).toHaveBeenCalledWith(false)
+  })
+
+  it('E11: leaving the crash dialog ends the game even when Rust cannot let go of it', async () => {
+    const { launch, session, toasts } = setup()
+    flow.crashed = { console: 'gba', at: null, detail: '' }
+    bridge.abandonGame.mockRejectedValueOnce(new Error('ipc'))
+    await launch.crashToLibrary()
+    expect(flow.crashed).toBeNull()
+    expect(session.end).toHaveBeenCalledOnce()
+    expect(toasts.failWith).toHaveBeenCalledWith(new Error('ipc'))
   })
 
   describe('E04: the in-game save cannot be read', () => {
@@ -286,7 +326,7 @@ describe('useGameLaunch', () => {
 
       writeText.mockRejectedValueOnce(new Error('denied'))
       await launch.crashCopy()
-      expect(toasts.fail).toHaveBeenCalledWith('Error: denied')
+      expect(toasts.failWith).toHaveBeenCalledWith(new Error('denied'))
     })
   })
 })

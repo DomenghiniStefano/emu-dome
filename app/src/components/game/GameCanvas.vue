@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { uiZoom } from '@/lib/appearance'
 import { feColorMatrix, isColourBlindMode } from './colourBlind'
 import { emu, frameUrl, type BenchFrame } from '@/emu'
+import { ignore } from '@/lib/errors'
 
 const props = defineProps<{
   /** Quick menu G09: px at the bottom kept clear for the menu's bar; the game shrinks above. */
@@ -40,7 +41,8 @@ function benchRecord(drawn: boolean) {
 }
 function benchFlush() {
   if (!benchFrames?.length) return
-  void emu.benchFrames(benchFrames)
+  // Bench mode only, a measuring tool: a lost batch shows in its report as missing frames.
+  ignore(emu.benchFrames(benchFrames), 'bench frames not sent')
   benchFrames = []
 }
 

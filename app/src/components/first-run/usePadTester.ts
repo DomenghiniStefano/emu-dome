@@ -2,6 +2,7 @@
 import { computed, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type PadInfo, type PadState, type Pos, type RemapRow } from '@/emu'
+import { report } from '@/lib/errors'
 import { abLayout, buttonName, FACES, posName, type AbLayout } from '@/lib/controls'
 import { buttonsUsing, newlyHeld } from '@/components/controls/tester'
 import { useGlobalSettings } from '@/components/controls/useGlobalSettings'
@@ -58,7 +59,7 @@ export function usePadTester(
   function listen(on: boolean) {
     pressed.value = null
     prevHeld = new Set()
-    void emu.controls.watch(on)
+    report(emu.controls.watch(on))
     if (on) void load()
   }
 

@@ -8,15 +8,17 @@ import { useGameKeys } from './useGameKeys'
 import type { GameSession } from './useGameSession'
 
 const bridge = vi.hoisted(() => ({
-  input: vi.fn(),
-  saveState: vi.fn(),
-  loadState: vi.fn(),
+  input: vi.fn(async () => {}),
+  releaseKeys: vi.fn(async () => {}),
+  saveState: vi.fn(async () => {}),
+  loadState: vi.fn(async () => {}),
   bindings: vi.fn(),
   dispatchNav: vi.fn(),
 }))
 vi.mock('@/emu', () => ({
   emu: {
     input: bridge.input,
+    releaseKeys: bridge.releaseKeys,
     saveState: bridge.saveState,
     loadState: bridge.loadState,
     controls: { bindings: bridge.bindings },
@@ -63,6 +65,16 @@ describe('keyRoute', () => {
     expect(route('KeyX', true, false, { menuOpen: true })).toEqual({ kind: 'nav' })
     expect(route('F1', true, false, { menuOpen: true })).toEqual({ kind: 'nav' })
     expect(route('ArrowUp', false, false, { inGame: false })).toEqual({ kind: 'none' })
+  })
+
+  it('a game key let go in the menu still reaches the game; outside a game it goes nowhere', () => {
+    expect(route('KeyX', false, false, { menuOpen: true })).toEqual({
+      kind: 'button',
+      button: A,
+      send: true,
+    })
+    expect(route('KeyX', false, false, { inGame: false })).toEqual({ kind: 'none' })
+    expect(route('KeyQ', false, false, { menuOpen: true })).toEqual({ kind: 'none' })
   })
 
   it('in game the keyboard table wins over the game’s keys', () => {
@@ -209,6 +221,50 @@ describe('useGameKeys', () => {
     release('Backspace')
     expect(session.rewinding.value).toBe(false)
     wrapper.unmount()
+  })
+
+  it('a key held when the menu opens and let go there is released in the game (#74)', async () => {
+    const { session, wrapper } = setup()
+    await flush()
+    press('KeyX')
+    press('Escape')
+    session.menuOpen.value = true
+    release('KeyX')
+    expect(bridge.input.mock.calls).toEqual([
+      ['a', true],
+      ['a', false],
+    ])
+    wrapper.unmount()
+  })
+
+  it('the menu opening ends the fast forward and the rewind the keys hold', async () => {
+    const { session, wrapper } = setup()
+    press('Tab')
+    press('Backspace')
+    session.menuOpen.value = true
+    await flush()
+    expect(session.setTurbo.mock.calls).toEqual([[true], [false]])
+    expect(session.rewinding.value).toBe(false)
+    release('Tab')
+    expect(session.setTurbo).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('the window losing the focus lets go of every key; a toggled rewind stays on', () => {
+    const { session, wrapper } = setup({ rewindToggle: true })
+    press('Tab')
+    press('Backspace')
+    window.dispatchEvent(new Event('blur'))
+    expect(bridge.releaseKeys).toHaveBeenCalledOnce()
+    expect(session.setTurbo.mock.calls).toEqual([[true], [false]])
+    expect(session.rewinding.value).toBe(true)
+    wrapper.unmount()
+
+    const held = setup()
+    press('Backspace')
+    window.dispatchEvent(new Event('blur'))
+    expect(held.session.rewinding.value).toBe(false)
+    held.wrapper.unmount()
   })
 
   it('in the quick menu the game gets nothing: Esc is «back», arrows and Enter move the focus', () => {

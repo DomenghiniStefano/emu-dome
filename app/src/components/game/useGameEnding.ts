@@ -3,6 +3,7 @@
 // feeds the HUD and E12 «lento».
 import { onUnmounted } from 'vue'
 import { emu } from '@/emu'
+import { ignore, reportError } from '@/lib/errors'
 import { flow, sample } from './gameFlow'
 import { crashReport } from './session'
 import type { GameState } from './gameState'
@@ -29,6 +30,9 @@ export function useGameEnding(state: GameState) {
     const shown = Date.now()
     try {
       await emu.closeGame()
+    } catch (e) {
+      // Only the bridge can fail (`close_game` answers nothing): back to the shell all the same.
+      reportError(e)
     } finally {
       // Long enough to read, never longer than the work.
       await new Promise(r =>
@@ -52,23 +56,41 @@ export function useGameEnding(state: GameState) {
     if (!closingNow && !flow.ending) crashed()
   }
 
-  /** The stats poll: the HUD's FPS, and the E11 / E12 watchdogs while the game should run. */
+  /** One read of the stats; dropped if the game changed meanwhile. */
+  async function poll() {
+    const playing = game.value
+    if (!playing) return
+    const s = await emu.stats()
+    if (game.value !== playing) return
+    stats.value = s
+    const running =
+      !paused.value &&
+      !menuOpen.value &&
+      !flow.resumeAsk &&
+      !flow.crashed &&
+      !flow.slow &&
+      !flow.ending
+    const seen = sample(s, running)
+    if (seen === 'hang') crashed()
+    else if (seen === 'slow') flow.slow = { fps: s.emuFps, target: s.targetFps }
+  }
+
+  /**
+   * The stats poll: the HUD's FPS, and the E11 / E12 watchdogs while the game should run. One read
+   * at a time: a slow answer is not overtaken by the next tick.
+   */
   let statsTimer: number | undefined
+  let polling = false
   function watchStats() {
-    statsTimer = window.setInterval(async () => {
-      if (!game.value) return
-      const s = await emu.stats()
-      stats.value = s
-      const running =
-        !paused.value &&
-        !menuOpen.value &&
-        !flow.resumeAsk &&
-        !flow.crashed &&
-        !flow.slow &&
-        !flow.ending
-      const seen = sample(s, running)
-      if (seen === 'hang') crashed()
-      else if (seen === 'slow') flow.slow = { fps: s.emuFps, target: s.targetFps }
+    statsTimer = window.setInterval(() => {
+      if (polling) return
+      polling = true
+      // Logged only: `stats` cannot fail in Rust (it reads shared memory, a hung core included),
+      // so a failure is the bridge's, and the next tick asks again.
+      ignore(
+        poll().finally(() => (polling = false)),
+        'stats read failed',
+      )
     }, STATS_EVERY_MS)
   }
   onUnmounted(() => window.clearInterval(statsTimer))

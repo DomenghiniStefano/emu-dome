@@ -1,6 +1,7 @@
 // The DS touch screen from the mouse or a finger, while a DS game runs (see screenTouch.ts).
 import { onScopeDispose, watch, type Ref } from 'vue'
 import { emu, type VideoMode } from '@/emu'
+import { report } from '@/lib/errors'
 import { isInterfaceTarget, pointerArgs } from './screenTouch'
 
 /**
@@ -12,7 +13,7 @@ export function useScreenTouch(active: () => boolean, mode: Ref<VideoMode>, inse
 
   function send(e: PointerEvent, down: boolean) {
     const { x, y, area } = pointerArgs(e.clientX, e.clientY, window, mode.value, insetPx())
-    void emu.pointer(x, y, down, area)
+    report(emu.pointer(x, y, down, area))
   }
   function onDown(e: PointerEvent) {
     if (pressed !== null || !e.isPrimary || e.button !== 0 || isInterfaceTarget(e.target)) return
@@ -41,7 +42,7 @@ export function useScreenTouch(active: () => boolean, mode: Ref<VideoMode>, inse
     window.removeEventListener('pointercancel', onUp)
     if (pressed !== null) {
       pressed = null
-      void emu.pointer(0, 0, false, { width: 0, height: 0, inset: 0 })
+      report(emu.pointer(0, 0, false, { width: 0, height: 0, inset: 0 }))
     }
   }
 

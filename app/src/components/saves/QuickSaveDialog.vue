@@ -62,7 +62,12 @@ async function deleteIt() {
 </script>
 
 <template>
-  <FlowDialog v-if="!confirmDelete" :title="slotName(quick.slot)" @back="emit('close')">
+  <FlowDialog
+    v-if="!confirmDelete"
+    :title="slotName(quick.slot)"
+    escape-closes
+    @back="emit('close')"
+  >
     <SaveThumb :src="quick.thumbUrl" class="aspect-4/3 rounded-10" />
     <p class="m-0 tabular-nums">{{ savedLine }}</p>
     <p class="m-0 text-caption">{{ t('saves.quick.overwriteHint') }}</p>
@@ -94,6 +99,7 @@ async function deleteIt() {
     v-else
     :title="t('saves.quick.deleteTitle', { slot: quick.slot })"
     tone="danger"
+    escape-closes
     @back="confirmDelete = false"
   >
     <p class="m-0">{{ t('saves.quick.deleteText') }}</p>

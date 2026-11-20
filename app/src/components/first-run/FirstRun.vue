@@ -11,6 +11,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type PadInfo } from '@/emu'
+import { report } from '@/lib/errors'
 import { errorText, type ErrorSink } from '@/i18n/labels'
 import { focusInitial, useNavScope } from '@/nav'
 import { useFirstRunSteps } from './useFirstRunSteps'
@@ -80,7 +81,7 @@ onMounted(async () => {
   )
 })
 onBeforeUnmount(() => {
-  if (step.value === 'controller') void emu.controls.watch(false)
+  if (step.value === 'controller') report(emu.controls.watch(false))
 })
 </script>
 

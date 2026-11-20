@@ -11,6 +11,16 @@ const OTHER_FOLDER = 'Import from another folder through `@/`; `./name` is for t
 // (`\x2F` is `/`: esquery ends a regex at a bare slash).
 const RELATIVE_ELSEWHERE = '[value=/^\\.\\.\\x2F|^\\.\\x2F[^?]*\\x2F/]'
 
+// Errors never vanish (CLAUDE.md, engineering rule 6): a bridge call whose promise is dropped,
+// `void emu.x()` or a bare `emu.x()` statement, loses its failure. Hand it to `report` / `ignore`
+// (src/lib/errors.ts), or await it where the error is handled. Seen failing on its fixture in
+// src/lib/errors.lint.test.ts. Blind spots: a call through an alias (`const c = emu.controls`),
+// through a wrapper (`void load()` where `load` lets the bridge's error out), and `.then()`
+// without a `.catch`; the global handlers (lib/errors.ts `catchEverything`) still report those.
+const DROPPED_EMU_CALL = 'Hand the promise to report() / ignore() (src/lib/errors.ts) or await it.'
+const EMU_CALL =
+  "CallExpression:matches([callee.object.name='emu'], [callee.object.object.name='emu'])"
+
 export default withVueTs(
   {
     ignores: ['dist', 'node_modules', 'src-tauri'],
@@ -35,7 +45,8 @@ export default withVueTs(
     // One import style (CLAUDE.md «Interface structure»): `./name` for a file in the same folder,
     // `@/path` for anything else, so a path reads the same in every file and survives a move.
     // Covers `import` / `export … from`, `import()` and `vi.mock`. Blind spot: a path that is not
-    // a plain string literal (built at runtime, a template string).
+    // a plain string literal (built at runtime, a template string). The same rule list refuses a
+    // dropped bridge call (DROPPED_EMU_CALL above).
     files: ['src/**/*.{ts,vue}'],
     rules: {
       'no-restricted-imports': [
@@ -48,6 +59,10 @@ export default withVueTs(
         {
           selector: `CallExpression[callee.object.name='vi'][callee.property.name='mock'] > Literal${RELATIVE_ELSEWHERE}`,
           message: OTHER_FOLDER,
+        },
+        {
+          selector: `:matches(UnaryExpression[operator='void'], ExpressionStatement) > ${EMU_CALL}`,
+          message: DROPPED_EMU_CALL,
         },
       ],
     },

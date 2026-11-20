@@ -30,7 +30,6 @@ import { useLibrarySort } from './useLibrarySort'
 import { useResumePoints } from './useResumePoints'
 import LibraryEmpty from './LibraryEmpty.vue'
 
-defineProps<{ error: string | null }>()
 const emit = defineEmits<{
   /** `slot`: the quick save to load once the game runs («Riprendi»). */
   open: [game: LibraryGame, slot?: number]
@@ -104,7 +103,7 @@ const unreachable = computed(() => unreachableFolders(library.folders, library.g
 
     <LibraryEmpty
       v-if="library.loaded && library.games.length === 0"
-      :error="error ?? library.error"
+      :error="library.error"
       @choose-folder="addFolder"
       @open-file="emit('openFile')"
     />

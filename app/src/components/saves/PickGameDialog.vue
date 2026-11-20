@@ -14,7 +14,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <FlowDialog :title="t('saves.importer.pickTitle')" @back="emit('cancel')">
+  <FlowDialog :title="t('saves.importer.pickTitle')" escape-closes @back="emit('cancel')">
     <div class="flex max-h-[50vh] flex-col gap-2 overflow-auto">
       <SavesGameRow
         v-for="(g, i) in games"

@@ -663,7 +663,8 @@ export const emu = {
   listSlots: (count: number) => invoke<SlotInfo[]>('list_slots', { count }),
   setSpeed: (speed: Speed) => invoke<void>('set_speed', { speed }),
   setPaused: (paused: boolean) => invoke<void>('set_paused', { paused }),
-  /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing. */
+  /** While the menu is open the controllers navigate it (`emu://nav`) instead of playing.
+   * Opening it lets go of the keyboard's buttons. */
   setMenuOpen: (open: boolean) => invoke<void>('set_menu_open', { open }),
   /** F11 and «A schermo intero»: fullscreen on / off; resolves whether it is now on. */
   toggleFullscreen: () => invoke<boolean>('toggle_fullscreen'),
@@ -684,6 +685,8 @@ export const emu = {
   /** «Salvato nello slot N · Annulla»: the slot gets back what it held (`saveUndone`). */
   undoSave: () => invoke<void>('undo_save'),
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
+  /** The page lost the focus: the game lets go of every keyboard button. */
+  releaseKeys: () => invoke<void>('release_keys'),
   /** The DS touch screen: the pointer at (x, y) in `area`; Rust maps it to the bottom screen. */
   pointer: (x: number, y: number, pressed: boolean, area: PointerArea) =>
     invoke<void>('pointer', { x, y, pressed, area }),

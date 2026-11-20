@@ -222,7 +222,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Core options: the settings' values come from `settings::core_values` (a `CoreTable` per core: setting → core
   option, `Live` or `Restart`). A change while the game runs: live options go to the core
   (`GET_VARIABLE_UPDATE`), restart ones are listed in `emu://core-restart` (`core_settings.rs`).
-- Keyboard: for now it goes through the webview (`input` command). Controllers go through an SDL3 thread
+- Keyboard: for now it goes through the webview (`input` command). Opening the quick menu (`set_menu_open`) and the
+  window losing the focus (`WindowEvent::Focused(false)`, and the page's `blur` through `release_keys`) let go of
+  every keyboard button; the page ends the fast forward and the held rewind of its keys (`useGameKeys.ts`).
+  Controllers go through an SDL3 thread
   (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
   count as L2/R2 and d-pad.
 - **Controller routing lives in Rust**, as a pure function: `emudome_core::hotkeys::Router::step`
@@ -348,8 +351,10 @@ Apply them to every change, including small ones, and say in the card when a rul
 
 Which of these a script will check, and when: Trello #72 (phase 1 done: Android clippy, the cfg gate with
 `desktop` / `mobile` and target tables, exact pins; still open: phase 2 moves the gate's exceptions, Linux, the merge rule), #73
-(generated bridge, i18n and `ErrorCode` parity), #74 (the lint against bare `emu.*` calls). Until then they hold
-by review (listed below).
+(generated bridge, i18n and `ErrorCode` parity). Rule 6's `void emu.x()` / bare `emu.x()` is refused by ESLint
+(#74, `app/eslint.config.js`, its fixture in `app/src/lib/errors.lint.test.ts`): a call hands its promise to
+`report` / `ignore` / `settle` (`app/src/lib/errors.ts`) or awaits it, and `catchEverything` (main.ts) reports what
+escapes. Until then the others hold by review (listed below).
 
 ## What is checked, and what holds only because it is read
 
@@ -362,7 +367,7 @@ version (`scripts/node-version.mjs`, against `engines.node` in `app/package.json
 clippy for Android (`aarch64-linux-android`: the crates with no C code always, the whole workspace when an NDK is
 found, else skipped),
 `cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
-`vue-tsc`, ESLint (the import style included), Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
+`vue-tsc`, ESLint (the import style and no dropped `emu.*` call included), Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
 (`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
