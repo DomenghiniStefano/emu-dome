@@ -58,6 +58,8 @@
   --spacing-menu: 320px;
   /* A dialog's width (FlowDialog). */
   --spacing-dialog: 520px;
+  /* The card a closing game's strip grows into when saving is slow or fails (#86). */
+  --spacing-closing-card: 400px;
   /* A slider's value beside it. */
   --spacing-value: 64px;
 

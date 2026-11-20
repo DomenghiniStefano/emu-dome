@@ -15,6 +15,7 @@ mod session;
 pub mod audio;
 pub mod bindings;
 pub mod bios;
+pub mod close_flow;
 pub mod effects;
 pub mod first_run;
 pub mod game_key;
@@ -37,6 +38,6 @@ pub use error::ErrorCode;
 pub use frame::Frame;
 pub use game_key::GameKey;
 pub use session::{
-    core_needs_restart, has_auto_save, slot_infos, Closed, Command, CoreOptionInfo, Event, Session,
-    SessionOptions, Shared, SlotInfo, Speed, Stats, AUTO_SLOT, CLOSE_TIMEOUT,
+    core_needs_restart, has_auto_save, slot_infos, Closed, Command, CoreOptionInfo, Event,
+    ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, AUTO_SLOT, CLOSE_TIMEOUT,
 };

@@ -732,8 +732,9 @@ pub fn library_scan(app: AppHandle) {
     start_scan(&app);
 }
 
-/// Opens a library game and counts its play time until it closes.
-#[tauri::command]
+/// Opens a library game and counts its play time until it closes. Off the event loop (`async`):
+/// it may wait for the open game to close (`closing::close_game`).
+#[tauri::command(async)]
 pub fn library_open(
     app: AppHandle,
     app_state: State<'_, AppState>,

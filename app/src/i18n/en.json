@@ -240,6 +240,7 @@
     "openFailed": "Couldn't open the game. Check that the file is a working GBA game. Details: {detail}",
     "coreNeedsRestart": "A game on the {core} core stopped answering. Restart EmuDome to open games on this core again.",
     "noGame": "No game is open. Open one first.",
+    "appClosing": "EmuDome is closing. Open the game again when it starts.",
     "nativeVideoUnavailable": "Native video isn't available on this system. Keep using “In the webview”.",
     "webviewBackgroundFailed": "Couldn't change the interface background: {detail}. Try again.",
     "slotEmpty": "Slot {slot} is empty. Save to it first.",
@@ -1695,6 +1696,17 @@
       "mostUsedNote": "These apply to all games · for one game only, use the quick menu",
       "recent": "RECENTLY CHANGED"
     }
+  },
+  "closing": {
+    "saving": "Saving",
+    "savingHint": "· don’t turn off",
+    "saved": "Saved",
+    "timeoutTitle": "Saving is taking longer",
+    "timeoutText": "Wait for it to finish. If you close now you lose the progress since your last save.",
+    "failedTitle": "Your progress wasn’t saved",
+    "failedText": "If you close now, the progress since your last save is lost.",
+    "wait": "Wait",
+    "closeAnyway": "Close without saving"
   },
   "flow": {
     "starting": "Starting",

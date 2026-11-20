@@ -32,6 +32,8 @@ pub enum ErrorCode {
     CoreNeedsRestart { core: String },
     /// A command that needs a running game arrived with none open.
     NoGame,
+    /// EmuDome is closing (a quit arrived while a game closed): no game opens any more.
+    AppClosing,
     /// The native video path does not exist on this system.
     NativeVideoUnavailable,
     /// The webview background could not be changed when switching video mode.
