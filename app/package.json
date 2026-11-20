@@ -22,7 +22,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "sh ../scripts/check",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "package:windows": "tauri build --config src-tauri/package/windows-x86_64.json",
+    "package:linux": "tauri build --config src-tauri/package/linux-x86_64.json"
   },
   "dependencies": {
     "@lucide/vue": "^1.73.0",

@@ -101,6 +101,12 @@ else
 	printf '\n=== licences: npm\nskipped: needs pnpm (app/pnpm-lock.yaml)\n'
 fi
 
+# --- The libretro cores (CLAUDE.md, engineering rule 3): cores.lock, the bundle lists generated
+# from it (app/src-tauri/package/), cores/SOURCES.md, the Gradle build and THIRD_PARTY.md agree, and
+# tauri.conf.json lists no resource of its own. --self-test feeds every rule a broken input first.
+# Offline: it cannot see whether a URL still serves the pinned bytes (only a fetch can).
+run 'cores: lock, bundle lists, sources, docs' node scripts/cores.mjs check --self-test
+
 # --- Frontend (app/)
 run_script typecheck
 run_script test
