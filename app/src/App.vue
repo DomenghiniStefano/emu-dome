@@ -6,6 +6,7 @@ import { flow } from '@/components/game/gameFlow'
 import type { Section } from '@/components/shell/sections'
 import { useDensity } from '@/composables/useDensity'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
+import { useClosing } from '@/components/closing/useClosing'
 import { useDropTarget } from '@/components/library/useDropTarget'
 import { useFirstRun } from '@/components/first-run/useFirstRun'
 import { useGameKeys } from '@/components/game/useGameKeys'
@@ -16,6 +17,7 @@ import { useShellEvents } from '@/components/shell/useShellEvents'
 import { useToasts } from '@/composables/useToasts'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
+import ClosingOverlay from '@/components/closing/ClosingOverlay.vue'
 import FirstRun from '@/components/first-run/FirstRun.vue'
 import GameCanvas from '@/components/game/GameCanvas.vue'
 import GameFlowOverlays from '@/components/game/GameFlowOverlays.vue'
@@ -35,6 +37,7 @@ const launch = useGameLaunch(session, toast)
 const keys = useGameKeys(session)
 const drop = useDropTarget(game, toast)
 const events = useShellEvents(session, toast, drop.listen)
+const closing = useClosing(toast)
 
 // The shell's section: kept while a game is open, so closing it comes back here.
 const section = ref<Section>('library')
@@ -56,6 +59,7 @@ onMounted(async () => {
   keys.listen()
   await session.loadDeviceState()
   await events.listen()
+  await closing.listen()
   await launch.openStartupGame()
   session.watchStats()
 })
@@ -103,7 +107,7 @@ onMounted(async () => {
       @menu="session.setMenu(true)"
     />
     <QuickMenu
-      v-if="menuOpen"
+      v-if="menuOpen && !flow.ending"
       :game="game"
       :speed="speed"
       :video-mode="videoMode"
@@ -141,6 +145,13 @@ onMounted(async () => {
     @broken-use="launch.useLatestBackup"
     @broken-play="launch.playWithoutSave"
     @broken-close="launch.closeBroken"
+  />
+
+  <!-- Closing with a game open: saving, saved, or the question when it does not end well. -->
+  <ClosingOverlay
+    :view="closing.view.value"
+    @wait="closing.wait"
+    @close-anyway="closing.closeAnyway"
   />
 
   <ToastStack ref="toasts" :in-game="!!game" />

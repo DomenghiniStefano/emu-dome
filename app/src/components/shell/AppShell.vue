@@ -87,8 +87,8 @@ function pickSection(s: Section) {
 }
 /** L05 «Importa…»: the Saves section's import (V05), for this game. */
 function importFor(g: LibraryGame) {
-  savesFocus.value = g.path
-  savesImportFor.value = g.path
+  savesFocus.value = g.id
+  savesImportFor.value = g.id
   section.value = 'saves'
 }
 /** L06: the Settings section at «Solo questo gioco». */
@@ -106,7 +106,7 @@ function remapFor(g: LibraryGame) {
 
 /** L01 «Salvataggi» on a game: the Saves section, on that game. */
 function openSaves(g: LibraryGame) {
-  savesFocus.value = g.path
+  savesFocus.value = g.id
   section.value = 'saves'
 }
 </script>

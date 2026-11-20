@@ -35,6 +35,8 @@ export interface PointerArea {
 }
 
 export interface GameInfo {
+  /** The game's one identity: its saves and «Solo questo gioco» settings are named by it. */
+  id: GameId
   title: string
   console: string
   consoleId: ConsoleId
@@ -77,8 +79,11 @@ export type ErrorCode =
   | { code: 'consoleNotYet'; params: { console: string; phase: number } }
   | { code: 'coreNotFound'; params: { file: string } }
   | { code: 'openFailed'; params: { detail: string } }
+  /** The file has a console's extension but is not a game of it: it has no identity. */
+  | { code: 'gameUnidentified'; params: { detail: string } }
   | { code: 'coreNeedsRestart'; params: { core: string } }
   | { code: 'noGame' }
+  | { code: 'appClosing' }
   | { code: 'nativeVideoUnavailable' }
   | { code: 'webviewBackgroundFailed'; params: { detail: string } }
   | { code: 'slotEmpty'; params: { slot: number } }
@@ -102,12 +107,67 @@ export type ErrorCode =
   | { code: 'coverInvalid'; params: { detail: string } }
   | { code: 'nothingToUndo' }
   | { code: 'undoFailed'; params: { detail: string } }
-  | { code: 'saveUnreadable'; params: { aside: string; backupAt: number | null } }
+  | {
+      code: 'saveUnreadable'
+      /** `game`: whose in-game save it is (what `saves.restoreLatest` takes). */
+      params: { game: GameId; aside: string; backupAt: number | null }
+    }
   | { code: 'saveGameOpen' }
   | { code: 'saveImportInvalid'; params: { detail: string } }
   | { code: 'saveFileFailed'; params: { detail: string } }
+  /** The one-time move of old save names to the game key failed or could not run; tried again. */
+  | { code: 'savesMigrationFailed'; params: { detail: string } }
+  /** The move ended; `left` old files stayed where they were, listed in the file `report`. */
+  | { code: 'savesMigrationIncomplete'; params: { left: number; report: string } }
   | { code: 'screenshotFailed'; params: { detail: string } }
   | { code: 'effectNotLoaded'; params: { name: string; detail: string } }
+  | { code: 'biosUnreadable'; params: { detail: string } }
+  | { code: 'biosWrongSize'; params: { size: number } }
+  | { code: 'biosOtherSlot'; params: { slot: BiosSlot } }
+  | { code: 'biosFileFailed'; params: { detail: string } }
+  | { code: 'biosDsiFilesMissing' }
+  | { code: 'biosDsMenuFilesMissing' }
+
+/** Mirror of `emudome_core::close_flow::Phase`: what a game being closed is doing. */
+export type ClosingPhase = 'saving' | 'saved' | 'timeout' | 'failed' | 'closed'
+
+/** Mirror of `emudome_core::close_flow::Purpose`: the app quits, or only the game closes. */
+export type ClosingPurpose = 'game' | 'quit'
+
+/** Mirror of `emudome_core::close_flow::Progress`: one `emu://closing` event (Trello #86). */
+export interface ClosingProgress {
+  phase: ClosingPhase
+  purpose: ClosingPurpose
+  /** What could not be written, with `failed`. */
+  error: ErrorCode | null
+}
+
+/** Mirror of `emudome_core::bios::Slot`: one file a core can use. */
+export type BiosSlot =
+  | 'gbaBios'
+  | 'gbBoot'
+  | 'gbcBoot'
+  | 'sgbBoot'
+  | 'dsArm7'
+  | 'dsArm9'
+  | 'dsFirmware'
+  | 'dsiArm7'
+  | 'dsiArm9'
+  | 'dsiFirmware'
+  | 'dsiNand'
+
+/**
+ * Mirror of `emudome_core::bios::Status`: what a `bios.*` row shows. `builtin`: no file, the
+ * core's replacement; `verified`: the user's file in use; `unrecognised`: a file chosen that
+ * EmuDome does not recognise, so the replacement stays in use.
+ */
+export type BiosStatus = 'builtin' | 'verified' | 'unrecognised'
+
+/** Mirror of `BiosRow` (app/src-tauri/src/bios.rs). */
+export interface BiosRow {
+  key: string
+  status: BiosStatus
+}
 
 export type EmuEvent =
   | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
@@ -338,7 +398,7 @@ export interface SettingsSchema {
 export type SettingsScope =
   | { level: 'global' }
   | { level: 'console'; console: ConsoleId }
-  | { level: 'game'; console: ConsoleId; game: string }
+  | { level: 'game'; console: ConsoleId; game: GameId }
   | { level: 'session' }
 
 export interface SettingRow {
@@ -356,8 +416,8 @@ export interface SettingRecent {
   level: 'global' | 'console' | 'game'
   /** The console of a `console` level. */
   console: ConsoleId | null
-  /** The game of a `game` level (settings identity, not the library's). */
-  game: string | null
+  /** The game of a `game` level. */
+  game: GameId | null
   /** Unix ms. */
   at: number
 }
@@ -390,9 +450,10 @@ export interface CoreRestart {
 // ---- Library (mirrors of crates/emudome-core/src/library and src-tauri/src/library.rs) ----
 
 /**
- * Identity of a game, from its content (docs/feasibility.md "Game identity"), never the file
- * name: `<console>:<hex>` (SHA-1 of the file for GB/GBC/GBA, of the used size for NDS; title
- * id + version for 3DS). Opaque to the interface.
+ * The one identity of a game, from its content (docs/feasibility.md "Game identity"), never the
+ * file name: `<console>:<hex>` (SHA-1 of the file for GB/GBC/GBA, of the used size for NDS; title
+ * id + version for 3DS). Mirror of `GameKey` (crates/emudome-core/src/game_key.rs). The library,
+ * the saves, the settings and the open game all name a game by it. Opaque to the interface.
  */
 export type GameId = string
 
@@ -452,8 +513,6 @@ export interface LibraryGame {
   region: GameRegion | null
   /** The core that runs it: `mgba`, `melondsds`, `azahar` (`details.files.core.<id>`). */
   core: string
-  /** Its «Solo questo gioco» settings identity; null when the id cannot name a file. */
-  settingsGame: string | null
 }
 
 export interface LibraryFolder {
@@ -474,11 +533,11 @@ export type LibraryScanEvent =
   | { phase: 'progress'; checked: number; found: number }
   | { phase: 'done'; found: number; added: number; unreachable: string[] }
 
-// ---- Saves (mirrors of src-tauri/src/saves.rs; games named by their ROM path) ----
+// ---- Saves (mirrors of src-tauri/src/saves.rs; games named by their `GameId`) ----
 
 /** V01: what a game has saved. Mirror: `SummaryDto`. */
 export interface SavesSummary {
-  path: string
+  game: GameId
   inGame: boolean
   quickCount: number
   /** In-game save, quick saves and thumbnails. */
@@ -539,10 +598,10 @@ export interface ImportCandidate {
 /** First run S06: which files a folder import reads. Mirror: `FolderImport` (emudome_core::saves). */
 export type FolderImport = 'desmume' | 'any'
 
-/** A found save paired with its game (ROM paths). Mirror: `MatchDto` in src-tauri/src/saves.rs. */
+/** A found save paired with its game. Mirror: `MatchDto` in src-tauri/src/saves.rs. */
 export interface SaveMatch {
   file: string
-  game: string
+  game: GameId
 }
 
 /** What a chosen folder offers. Mirror: `FolderSavesDto`. */
@@ -558,6 +617,16 @@ export interface FolderSaves {
 export type FirstRunStep = 'welcome' | 'games' | 'controller' | 'ready'
 
 export type SaveExport = { kind: 'inGame' } | { kind: 'quick'; slot: number }
+
+/**
+ * The one-time move of the saves and settings named the old way to the game key. Mirror:
+ * `Status` in src-tauri/src/migration.rs; also the payload of `saves://migration`.
+ */
+export interface SavesMigration {
+  running: boolean
+  /** `savesMigrationFailed` or `savesMigrationIncomplete`, to tell the user once. */
+  problem: ErrorCode | null
+}
 
 /**
  * One round of the canvas loop in bench mode (mirror of `WebviewFrame` in
@@ -581,6 +650,13 @@ export const emu = {
   setVideoMode: (mode: VideoMode) => invoke<void>('set_video_mode', { mode }),
   openGame: (path: string) => invoke<GameInfo>('open_game', { path }),
   closeGame: () => invoke<void>('close_game'),
+  /** Closing a game took too long: keep waiting for its saves (`emu://closing`). */
+  closeWait: () => invoke<void>('close_wait'),
+  /** Closing a game took too long or a save failed: close without it (progress may be lost). */
+  closeAnyway: () => invoke<void>('close_anyway'),
+  /** Every step of closing a game, the window or the app (saving, saved, timeout, failed). */
+  onClosing: (cb: (e: ClosingProgress) => void): Promise<UnlistenFn> =>
+    listen<ClosingProgress>('emu://closing', e => cb(e.payload)),
   /** E11: let go of a core that stopped answering (does not wait for it). */
   abandonGame: () => invoke<void>('abandon_game'),
   /** The auto quick save (slot 0) and slots 1..count of the open game. */
@@ -680,25 +756,30 @@ export const emu = {
       }),
   },
   saves: {
-    summary: (paths: string[], slots: number) =>
-      invoke<SavesSummary[]>('saves_summary', { paths, slots }),
-    game: (path: string, slots: number) => invoke<GameSaves>('saves_game', { path, slots }),
+    summary: (games: GameId[], slots: number) =>
+      invoke<SavesSummary[]>('saves_summary', { games, slots }),
+    game: (game: GameId, slots: number) => invoke<GameSaves>('saves_game', { game, slots }),
     /** The current in-game save becomes a backup first. */
-    restore: (path: string, name: string) => invoke<void>('saves_restore', { path, name }),
+    restore: (game: GameId, name: string) => invoke<void>('saves_restore', { game, name }),
     /** E04: puts the newest backup back. */
-    restoreLatest: (path: string) => invoke<void>('saves_restore_latest', { path }),
-    deleteQuick: (path: string, slot: number) => invoke<void>('saves_delete_quick', { path, slot }),
+    restoreLatest: (game: GameId) => invoke<void>('saves_restore_latest', { game }),
+    deleteQuick: (game: GameId, slot: number) => invoke<void>('saves_delete_quick', { game, slot }),
     /** Opens a save dialog; resolves false if it was cancelled. */
-    export: (path: string, what: SaveExport) => invoke<boolean>('saves_export', { path, what }),
+    export: (game: GameId, what: SaveExport) => invoke<boolean>('saves_export', { game, what }),
     /** Opens a file picker and recognises the file; null = cancelled. */
     importPick: () => invoke<ImportCandidate | null>('saves_import_pick'),
     /** `file` becomes the in-game save of `game`; the current one becomes a backup first. */
-    import: (file: string, game: string) => invoke<void>('saves_import', { file, game }),
-    /** Picks a folder and pairs its saves with `games` (ROM paths) by file name; null = cancelled. */
-    importFolder: (what: FolderImport, games: string[]) =>
+    import: (file: string, game: GameId) => invoke<void>('saves_import', { file, game }),
+    /** Picks a folder and pairs its saves with the library `games` by their ROM's file name; null = cancelled. */
+    importFolder: (what: FolderImport, games: GameId[]) =>
       invoke<FolderSaves | null>('saves_import_folder', { what, games }),
     /** Imports every pair; resolves how many were imported. */
     importMany: (matches: SaveMatch[]) => invoke<number>('saves_import_many', { matches }),
+    /** Where the one-time move of old save names stands (asked once at start). */
+    migration: () => invoke<SavesMigration>('saves_migration_status'),
+    /** The one-time move ended (`saves://migration`). */
+    onMigration: (cb: (e: SavesMigration) => void): Promise<UnlistenFn> =>
+      listen<SavesMigration>('saves://migration', e => cb(e.payload)),
   },
   firstRun: {
     /** Whether to start with the first run (not done on this device, library not set up). */
@@ -722,6 +803,15 @@ export const emu = {
     /** «Aggiungi un effetto da file»: picks a `.slangp` into `fx.fxfile`; null = cancelled. */
     chooseFile: () => invoke<string | null>('effects_choose_file'),
   },
+  bios: {
+    /** A `bios.*` row's picker: checks the file and keeps it; the row's new status, null = cancelled. */
+    choose: (key: string) => invoke<BiosStatus | null>('bios_choose', { key }),
+    /** What every `bios.*` row EmuDome handles shows. */
+    status: () => invoke<BiosRow[]>('bios_status'),
+  },
+  /** A game opened without the system files a setting asked for, and fell back (`bios*Missing`). */
+  onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
+    listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
   onGamepadConnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
     listen<PadInfo>('emu://gamepad-connected', e => cb(e.payload)),
   onGamepadDisconnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>

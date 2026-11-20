@@ -70,10 +70,10 @@ describe('loadSlotCount', () => {
 
 describe('loadGameSaves', () => {
   it('asks for the setting’s slots, or the ones given', async () => {
-    await loadGameSaves({ path: '/g.gba' })
-    expect(bridge.game).toHaveBeenLastCalledWith('/g.gba', 4)
-    await loadGameSaves({ path: '/g.gba' }, 3)
-    expect(bridge.game).toHaveBeenLastCalledWith('/g.gba', 3)
+    await loadGameSaves({ id: 'gba:0a' })
+    expect(bridge.game).toHaveBeenLastCalledWith('gba:0a', 4)
+    await loadGameSaves({ id: 'gba:0a' }, 3)
+    expect(bridge.game).toHaveBeenLastCalledWith('gba:0a', 3)
   })
 })
 
@@ -86,7 +86,7 @@ describe('loadResumePoint', () => {
         { slot: 3, savedAt: null, thumbUrl: null },
       ] as GameSaves['quick']),
     )
-    expect(await loadResumePoint({ path: '/g.gba' }, 4)).toEqual({
+    expect(await loadResumePoint({ id: 'gba:0a' }, 4)).toEqual({
       slot: 2,
       thumbUrl: 'b',
       none: false,
@@ -95,7 +95,7 @@ describe('loadResumePoint', () => {
 
   it('is null when the saves cannot be read, and never throws', async () => {
     bridge.game.mockRejectedValueOnce({ code: 'io' })
-    expect(await loadResumePoint({ path: '/g.gba' }, 4)).toBeNull()
+    expect(await loadResumePoint({ id: 'gba:0a' }, 4)).toBeNull()
     expect(NOTHING_TO_RESUME.none).toBe(true)
   })
 })

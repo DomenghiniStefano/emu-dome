@@ -10,9 +10,10 @@ import {
   sortByTitle,
 } from './savesModel'
 
-const game = (title: string, path = `C:/Games/${title}.gba`) => ({ title, path }) as LibraryGame
-const summary = (path: string, s: Partial<SavesSummary> = {}): SavesSummary => ({
-  path,
+const game = (title: string, path = `C:/Games/${title}.gba`, id = `gba:${title.length}`) =>
+  ({ id, title, path }) as LibraryGame
+const summary = (game: string, s: Partial<SavesSummary> = {}): SavesSummary => ({
+  game,
   inGame: false,
   quickCount: 0,
   bytes: 0,
@@ -36,20 +37,31 @@ describe('hasSaves', () => {
 
 describe('gamesWithSaves', () => {
   it('keeps the games with saves, the most recently changed first', () => {
-    const [a, b, c] = [game('A'), game('B'), game('C')]
+    const [a, b, c] = [
+      game('A', undefined, 'gba:a'),
+      game('B', undefined, 'gba:b'),
+      game('C', undefined, 'gba:c'),
+    ]
     const summaries = {
-      [a.path]: summary(a.path, { inGame: true, lastChange: 10 }),
-      [b.path]: summary(b.path),
-      [c.path]: summary(c.path, { quickCount: 2, lastChange: 20 }),
+      [a.id]: summary(a.id, { inGame: true, lastChange: 10 }),
+      [b.id]: summary(b.id),
+      [c.id]: summary(c.id, { quickCount: 2, lastChange: 20 }),
     }
     expect(gamesWithSaves([a, b, c], summaries)).toEqual([c, a])
   })
 
+  it('keeps two games with the same file name apart: saves belong to a game id', () => {
+    const gb = game('Tetris', 'C:/gb/Tetris.gb', 'gb:01')
+    const gba = game('Tetris', 'C:/gba/Tetris.gba', 'gba:02')
+    const summaries = { [gb.id]: summary(gb.id, { inGame: true, lastChange: 1 }) }
+    expect(gamesWithSaves([gb, gba], summaries)).toEqual([gb])
+  })
+
   it('puts a game whose last change is unknown last', () => {
-    const [a, b] = [game('A'), game('B')]
+    const [a, b] = [game('A', undefined, 'gba:a'), game('B', undefined, 'gba:b')]
     const summaries = {
-      [a.path]: summary(a.path, { broken: true }),
-      [b.path]: summary(b.path, { inGame: true, lastChange: 5 }),
+      [a.id]: summary(a.id, { broken: true }),
+      [b.id]: summary(b.id, { inGame: true, lastChange: 5 }),
     }
     expect(gamesWithSaves([a, b], summaries)).toEqual([b, a])
   })

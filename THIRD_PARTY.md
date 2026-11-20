@@ -147,7 +147,7 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 permission with no condition at all (ISC without the notice requirement); the owner allowed it on
 2026-11-18, and `scripts/npm-licenses.mjs` lists it.
 
-### Rust crates (582)
+### Rust crates (583)
 
 | Crate | Version | Licence |
 | --- | --- | --- |
@@ -415,6 +415,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | mach2 | 0.6.0 | BSD-2-Clause OR MIT OR Apache-2.0 |
 | markup5ever | 0.39.0 | MIT OR Apache-2.0 |
 | markup5ever | 0.40.0 | MIT OR Apache-2.0 |
+| md-5 | 0.10.6 | MIT OR Apache-2.0 |
 | memchr | 2.8.3 | Unlicense OR MIT |
 | memoffset | 0.9.1 | MIT |
 | mime | 0.3.18 | MIT OR Apache-2.0 |

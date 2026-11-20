@@ -8,7 +8,9 @@
 
 use serde::Serialize;
 
+use crate::bios::Slot;
 use crate::settings::Level;
+use crate::GameKey;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "code", content = "params", rename_all = "camelCase")]
@@ -21,12 +23,17 @@ pub enum ErrorCode {
     CoreNotFound { file: String },
     /// The core or the game failed to load.
     OpenFailed { detail: String },
+    /// The file opened has the extension of a console but its content is not a game of it (its
+    /// header does not match): it has no identity, so it has no place for its saves.
+    GameUnidentified { detail: String },
     /// A game on this core stopped answering and was let go (E11): its thread may still hold
     /// the core, so the core cannot open another game until EmuDome is restarted. `core` is the
     /// core's name (e.g. `mgba`).
     CoreNeedsRestart { core: String },
     /// A command that needs a running game arrived with none open.
     NoGame,
+    /// EmuDome is closing (a quit arrived while a game closed): no game opens any more.
+    AppClosing,
     /// The native video path does not exist on this system.
     NativeVideoUnavailable,
     /// The webview background could not be changed when switching video mode.
@@ -73,10 +80,11 @@ pub enum ErrorCode {
     NothingToUndo,
     /// The core refused the state from before the last load.
     UndoFailed { detail: String },
-    /// E04: the in-game save cannot be used (unreadable, empty, too large). It was moved aside
-    /// as `aside`; `backup_at` is the Unix ms of the newest backup, if there is one.
+    /// E04: the in-game save of `game` cannot be used (unreadable, empty, too large). It was
+    /// moved aside as `aside`; `backup_at` is the Unix ms of the newest backup, if there is one.
     #[serde(rename_all = "camelCase")]
     SaveUnreadable {
+        game: GameKey,
         aside: String,
         backup_at: Option<u64>,
     },
@@ -86,11 +94,32 @@ pub enum ErrorCode {
     SaveImportInvalid { detail: String },
     /// A save file could not be read, written, copied or deleted.
     SaveFileFailed { detail: String },
+    /// The one-time move of the saves and settings named the old way (by ROM file name, by
+    /// path hash) to the game key could not run or stopped on an error. Nothing was lost: what
+    /// was not moved is where it was, and it is tried again at the next start.
+    SavesMigrationFailed { detail: String },
+    /// The one-time move ended, but `left` old files could not be given to one game for sure
+    /// (no library game, several with that file name, or already a file at the new place): they
+    /// stay where they were, untouched, listed in the report file `report`.
+    SavesMigrationIncomplete { left: usize, report: String },
     /// The screenshot could not be encoded or written (no frame yet, folder not writable).
     ScreenshotFailed { detail: String },
     /// The screen effect `name` (a built-in one or the user's `.slangp` file name) could not
     /// be loaded or drawn; the game shows without it.
     EffectNotLoaded { name: String, detail: String },
+    /// The chosen BIOS / firmware file cannot be read.
+    BiosUnreadable { detail: String },
+    /// The chosen file has a size the row's file never has (`size` in bytes).
+    BiosWrongSize { size: u64 },
+    /// The chosen file is the one of another BIOS / firmware row (`slot`).
+    BiosOtherSlot { slot: Slot },
+    /// EmuDome's copy of a BIOS / firmware file could not be written or deleted.
+    BiosFileFailed { detail: String },
+    /// DSi mode was asked for without the DS and DSi system files: the game runs as a DS.
+    BiosDsiFilesMissing,
+    /// Booting through the DS menu was asked for without the DS system files: the game starts
+    /// directly.
+    BiosDsMenuFilesMissing,
 }
 
 #[cfg(test)]
@@ -107,14 +136,15 @@ mod tests {
         let json = serde_json::to_value(ErrorCode::NoGame).unwrap();
         assert_eq!(json, serde_json::json!({ "code": "noGame" }));
         let json = serde_json::to_value(ErrorCode::SaveUnreadable {
-            aside: "Game.broken-1.sav".into(),
+            game: crate::GameKey::parse("gba:1a").unwrap(),
+            aside: "broken-1.sav".into(),
             backup_at: Some(5),
         })
         .unwrap();
         assert_eq!(
             json,
             serde_json::json!({ "code": "saveUnreadable",
-                "params": { "aside": "Game.broken-1.sav", "backupAt": 5 } })
+                "params": { "game": "gba:1a", "aside": "broken-1.sav", "backupAt": 5 } })
         );
     }
 }

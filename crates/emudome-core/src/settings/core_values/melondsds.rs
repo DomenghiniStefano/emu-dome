@@ -6,8 +6,8 @@
 //! (`CoreState::ApplyConfig`); the console model, firmware, boot mode and slot-2 device are set
 //! when the console is built, so they wait for the game to be opened again.
 //!
-//! Not here: the options that hold the screens where the shell cuts them, and the system files
-//! and user-name mode, which are not settings (`crate::nds::FORCED_OPTIONS`); the DS user name
+//! Not here: the options that hold the screens where the shell cuts them and the user-name mode,
+//! which are not settings (`crate::nds::FORCED_OPTIONS`); the system files (`crate::bios`); the DS user name
 //! (`consoles.dsname`) is not a core option but the frontend's answer to `GET_USERNAME`
 //! (`crate::nds::username`).
 
@@ -20,9 +20,8 @@ pub(super) static TABLE: CoreTable = CoreTable {
     core: crate::nds::CORE,
     rules: &[
         // ---- Console options, Nintendo DS ----
-        // DSi mode needs the DSi's own BIOS and NAND, which have no built-in replacement: with
-        // the built-in system files forced (`crate::nds`), «dsi» does not boot until `bios.bdsi`
-        // is wired. TODO(bios.*).
+        // DSi mode needs the DS and DSi system files, which have no built-in replacement:
+        // without them `crate::bios` runs the game as a DS (`bios/melondsds.rs`).
         Rule {
             setting: "consoles.dsmode",
             consoles: NDS,
@@ -71,8 +70,8 @@ pub(super) static TABLE: CoreTable = CoreTable {
             ]),
             apply: Apply::Live,
         },
-        // «menu» boots through the DS menu, which needs the real firmware: with the built-in one
-        // melonDS DS boots the game directly anyway.
+        // «menu» boots through the DS menu, which needs the DS system files: without them
+        // `crate::bios` boots the game directly (`bios/melondsds.rs`).
         Rule {
             setting: "cores.mdsboot",
             consoles: NDS,

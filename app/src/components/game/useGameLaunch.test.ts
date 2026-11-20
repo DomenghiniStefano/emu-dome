@@ -5,7 +5,7 @@ import type { GameInfo, LibraryGame } from '@/emu'
 import { i18n } from '@/i18n'
 import { errorText } from '@/i18n/labels'
 import { flow } from './gameFlow'
-import { launchFailure, openedPath } from './launch'
+import { launchFailure } from './launch'
 import { useGameLaunch } from './useGameLaunch'
 import type { GameSession } from './useGameSession'
 import type { Toasts } from '@/composables/useToasts'
@@ -41,7 +41,15 @@ const minish = {
   path: 'C:/roms/minish.gba',
   colour: '#2a6',
 } as LibraryGame
-const unreadable = { code: 'saveUnreadable', params: { aside: 'x.bak', backupAt: 1700 } }
+const unreadable = {
+  code: 'saveUnreadable',
+  params: { game: 'gba:01', aside: 'broken-1.sav', backupAt: 1700 },
+}
+// A file opened by its path: Rust identified it and names its key in the error.
+const kirbyUnreadable = {
+  code: 'saveUnreadable',
+  params: { game: 'gba:0c', aside: 'broken-2.sav', backupAt: 1800 },
+}
 
 function setup() {
   const session = {
@@ -80,13 +88,12 @@ beforeEach(() => {
 })
 
 describe('launch', () => {
-  it('reads the path given, or the library game’s', () => {
-    expect(openedPath({ kind: 'path', path: 'C:/a.gba' })).toBe('C:/a.gba')
-    expect(openedPath({ kind: 'library', game: minish })).toBe(minish.path)
-  })
-
   it('tells an unreadable in-game save (E04) from any other failure (G02)', () => {
-    expect(launchFailure(unreadable)).toEqual({ kind: 'saveBroken', backupAt: 1700 })
+    expect(launchFailure(unreadable)).toEqual({
+      kind: 'saveBroken',
+      game: 'gba:01',
+      backupAt: 1700,
+    })
     expect(launchFailure({ code: 'io' })).toEqual({
       kind: 'startError',
       reason: errorText({ code: 'io' }),
@@ -188,23 +195,23 @@ describe('useGameLaunch', () => {
       expect(flow.startError).toBeNull()
     })
 
-    it('«Usa il backup» restores the newest backup of that game’s file, then opens it again', async () => {
+    it('«Usa il backup» restores the newest backup of the game Rust named, then opens it again', async () => {
       const { launch, session } = setup()
       bridge.libraryOpen.mockRejectedValueOnce(unreadable)
       await launch.openLibraryGame(minish)
       await launch.useLatestBackup()
       expect(flow.saveBroken).toBeNull()
-      expect(bridge.restoreLatest).toHaveBeenCalledWith(minish.path)
+      expect(bridge.restoreLatest).toHaveBeenCalledWith(minish.id)
       expect(session.begin).toHaveBeenCalledWith(info('MINISH'), minish, false)
     })
 
     it('a backup that cannot be restored shows G02 and opens nothing', async () => {
       const { launch, session } = setup()
-      bridge.openGame.mockRejectedValueOnce(unreadable)
+      bridge.openGame.mockRejectedValueOnce(kirbyUnreadable)
       await launch.openFile('C:/roms/kirby.gba')
       bridge.restoreLatest.mockRejectedValueOnce({ code: 'io' })
       await launch.useLatestBackup()
-      expect(bridge.restoreLatest).toHaveBeenCalledWith('C:/roms/kirby.gba')
+      expect(bridge.restoreLatest).toHaveBeenCalledWith('gba:0c')
       expect(flow.startError).toEqual({ title: 'kirby', reason: errorText({ code: 'io' }) })
       expect(bridge.openGame).toHaveBeenCalledOnce()
       expect(session.begin).not.toHaveBeenCalled()

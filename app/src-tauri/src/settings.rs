@@ -3,7 +3,7 @@
 //! event, `{ key, level }`, sent after every change so any screen showing the value refreshes.
 
 use emudome_core::settings::{
-    CommitTarget, ConsoleId, Device, GameId, GameOverride, Level, PageValue, RecentChange,
+    CommitTarget, ConsoleId, Device, GameKey, GameOverride, Level, PageValue, RecentChange,
     SchemaDto, Scope, Settings, Value,
 };
 use emudome_core::speed_audio::FastAudio;
@@ -58,6 +58,7 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
         crate::effects::apply(app);
     }
     crate::core_settings::settings_changed(app, keys);
+    crate::bios::settings_changed(app, keys);
     if keys.iter().any(|k| REWIND_KEYS.contains(k)) {
         // The open game follows at once (no game: nothing to tell).
         let seconds = rewind_seconds(app, &Scope::Session);
@@ -75,7 +76,7 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
 }
 
 /// A game opened: its session of changes «in prova» starts (the previous one is dropped).
-pub fn begin_session(app: &AppHandle, console: ConsoleId, game: GameId) {
+pub fn begin_session(app: &AppHandle, console: ConsoleId, game: GameKey) {
     if let Some(state) = app.try_state::<SettingsState>() {
         let dropped = {
             let mut settings = state.0.lock();
@@ -115,6 +116,8 @@ pub struct GameFlow {
     pub core_options: Vec<emudome_core::settings::core_values::MappedOption>,
     /// The user's name on the console (`consoles.dsname` for a DS game), `None`: the OS user.
     pub username: Option<String>,
+    /// What the system files in place allow (`emudome_core::bios`).
+    pub bios: emudome_core::bios::Plan,
 }
 
 const REWIND_KEYS: [&str; 2] = ["speed.rew", "speed.rewlen"];
@@ -156,7 +159,7 @@ fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
 }
 
 /// What the game flow reads for a game of `console` run by `core` (`mgba`, ...).
-pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameId) -> GameFlow {
+pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameKey) -> GameFlow {
     let scope = Scope::Game {
         console,
         game: game.clone(),
@@ -190,6 +193,7 @@ pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameId)
             ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::N3ds => None,
         },
         fast_audio: fast_audio(app, &scope),
+        bios: crate::bios::plan(app, core, console, &read),
         core_options: emudome_core::settings::core_values::mapped(core, console, read),
     }
 }

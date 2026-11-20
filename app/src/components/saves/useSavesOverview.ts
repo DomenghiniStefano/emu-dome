@@ -13,14 +13,20 @@ export function useSavesOverview(slotCount: Ref<number>, fail: ErrorSink) {
   /** The summaries of the loaded library are known. */
   const loaded = ref(false)
 
+  // Rule 7: a load answered after a newer one started is dropped.
+  let latest = 0
+
   async function load() {
+    const request = ++latest
     try {
       const list = await emu.saves.summary(
-        library.games.map(g => g.path),
+        library.games.map(g => g.id),
         slotCount.value,
       )
-      summaries.value = Object.fromEntries(list.map(s => [s.path, s]))
+      if (request !== latest) return
+      summaries.value = Object.fromEntries(list.map(s => [s.game, s]))
     } catch (e) {
+      if (request !== latest) return
       fail(e)
     }
     loaded.value = library.loaded
@@ -29,7 +35,7 @@ export function useSavesOverview(slotCount: Ref<number>, fail: ErrorSink) {
   const withSaves = computed(() => gamesWithSaves(library.games, summaries.value))
 
   function detailOf(g: LibraryGame): string {
-    const s = summaries.value[g.path]
+    const s = summaries.value[g.id]
     if (!s) return ''
     const size = sizeLabel(s.bytes)
     return s.quickCount > 0
@@ -37,7 +43,7 @@ export function useSavesOverview(slotCount: Ref<number>, fail: ErrorSink) {
       : t('saves.metaInGame', { size })
   }
 
-  const isBroken = (g: LibraryGame) => !!summaries.value[g.path]?.broken
+  const isBroken = (g: LibraryGame) => !!summaries.value[g.id]?.broken
 
   return { loaded, withSaves, load, detailOf, isBroken }
 }

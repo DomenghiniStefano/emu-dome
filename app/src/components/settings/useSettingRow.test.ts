@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, reactive } from 'vue'
 import type { SettingEntry, SettingRow, SettingsSchema } from '@/emu'
 import { i18n } from '@/i18n'
+import { refreshBiosStatus } from '@/lib/biosStatus'
 import { useSettingRow, type SettingRowInput } from './useSettingRow'
 
-const bridge = vi.hoisted(() => ({ appVersion: vi.fn() }))
-vi.mock('@/emu', () => ({ emu: { appVersion: bridge.appVersion } }))
+const bridge = vi.hoisted(() => ({ appVersion: vi.fn(), biosStatus: vi.fn() }))
+vi.mock('@/emu', () => ({
+  emu: { appVersion: bridge.appVersion, bios: { status: bridge.biosStatus } },
+}))
 
 const t = (key: string, params: Record<string, unknown> = {}) => i18n.global.t(key, params)
 const flush = () => new Promise(r => setTimeout(r, 0))
@@ -59,10 +62,12 @@ function setup(e: SettingEntry, over: Partial<SettingRowInput> = {}) {
   return { row, props }
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
   i18n.global.locale.value = 'en'
   bridge.appVersion.mockResolvedValue('0.4.2')
+  bridge.biosStatus.mockResolvedValue([])
+  await refreshBiosStatus()
 })
 
 describe('useSettingRow', () => {
@@ -148,6 +153,29 @@ describe('useSettingRow', () => {
     expect(setup(entry('saves.import')).row.buttonText.value).toBe(
       t('settings.saves.import.button'),
     )
+  })
+
+  it('a BIOS row follows the backend’s status: verified, not recognised, back to built-in', async () => {
+    bridge.biosStatus.mockResolvedValue([{ key: 'bios.bgba', status: 'verified' }])
+    const { row, props } = setup(fileEntry('bios.bgba'))
+    await flush()
+    expect(bridge.biosStatus).toHaveBeenCalled()
+    expect(row.desc.value).toContain(t('settings.bios.bgba.status.verified'))
+    expect(row.buttonText.value).toBe(t('settings.bios.bgba.buttons.replace'))
+
+    // The row's value changes (another file): the status is read again.
+    bridge.biosStatus.mockResolvedValue([{ key: 'bios.bgba', status: 'unrecognised' }])
+    props.row = { key: 'bios.bgba', value: 'C:/mine.bin', source: 'global', changed: true }
+    await flush()
+    expect(row.desc.value).toContain(t('settings.bios.bgba.status.unrecognised'))
+    expect(row.buttonText.value).toBe(t('settings.bios.bgba.buttons.replace'))
+
+    // Reset: no file, the built-in replacement again.
+    bridge.biosStatus.mockResolvedValue([{ key: 'bios.bgba', status: 'builtin' }])
+    props.row = { key: 'bios.bgba', value: '', source: 'default', changed: false }
+    await flush()
+    expect(row.desc.value).toContain(t('settings.bios.bgba.status.builtin'))
+    expect(row.buttonText.value).toBe(t('settings.bios.bgba.buttons.use'))
   })
 
   it('lists the options this device offers, with their words and the ones not ready yet', () => {

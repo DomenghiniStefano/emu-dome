@@ -41,7 +41,7 @@ const savedLine = computed(() =>
 
 async function exportIt() {
   try {
-    if (await emu.saves.export(props.game.path, { kind: 'quick', slot: props.quick.slot }))
+    if (await emu.saves.export(props.game.id, { kind: 'quick', slot: props.quick.slot }))
       emit('notice', t('saves.exported'))
   } catch (e) {
     emit('error', errorText(e))
@@ -51,7 +51,7 @@ async function exportIt() {
 async function deleteIt() {
   // Emits before `close`: the parent unmounts this dialog on it.
   try {
-    await emu.saves.deleteQuick(props.game.path, props.quick.slot)
+    await emu.saves.deleteQuick(props.game.id, props.quick.slot)
     emit('notice', t('saves.deleted'))
   } catch (e) {
     emit('error', errorText(e))

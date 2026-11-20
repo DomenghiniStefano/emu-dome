@@ -167,8 +167,11 @@ pub struct SessionOptions {
     pub game_path: PathBuf,
     /// Folder of the BIOS and system files (empty is fine: the cores have replacements).
     pub system_dir: PathBuf,
-    /// Folder of the game saves and the slots.
+    /// The saves root: the game's own files are in its folder under it ([`GameFiles`]), which is
+    /// also the core's save directory.
     pub save_dir: PathBuf,
+    /// The game's one identity: names its saves.
+    pub game: crate::GameKey,
     /// Auto quick save this often while the game runs (`saves.autoq`; None = never).
     pub autosave_every: Option<Duration>,
     /// Auto quick save when the game closes (`saves.autoexit`).
@@ -205,12 +208,8 @@ pub struct SlotInfo {
 }
 
 /// The auto quick save and slots `1..=count` of a game.
-pub fn slot_infos(
-    save_dir: &std::path::Path,
-    game_path: &std::path::Path,
-    count: u8,
-) -> Vec<SlotInfo> {
-    let files = GameFiles::new(save_dir, game_path);
+pub fn slot_infos(save_dir: &std::path::Path, game: &crate::GameKey, count: u8) -> Vec<SlotInfo> {
+    let files = GameFiles::new(save_dir, game);
     (0..=count)
         .map(|slot| {
             let saved_at = std::fs::metadata(files.slot(slot))
@@ -257,16 +256,21 @@ impl Writer<'_> {
         !self.dead.load(Ordering::SeqCst)
     }
 
-    /// The in-game save (`.sav`); failures only logged (the next flush tries again).
-    fn sram(&self, core: &impl SaveSource) {
+    /// The in-game save (`.sav`). A failure is logged and returned: the next flush tries again,
+    /// and closing the game reports it ([`Session::wait`]).
+    fn sram(&self, core: &impl SaveSource) -> Result<(), ErrorCode> {
         if !self.alive() {
-            return;
+            return Ok(());
         }
         if let Some(ram) = core.save_ram() {
             if let Err(e) = crate::write_atomic(&self.files.sram, ram) {
                 log::warn!("game save not written: {e}");
+                return Err(ErrorCode::SaveFileFailed {
+                    detail: format!("{e:#}"),
+                });
             }
         }
+        Ok(())
     }
 
     /// The state of the game into `slot`. `Ok(false)`: not written, the session is dead.
@@ -296,17 +300,21 @@ impl Writer<'_> {
 }
 
 /// Closing the game (and [`Command::Flush`]): the in-game save first, the smallest and the one
-/// that matters most, then the auto quick save when `saves.autoexit` is on.
+/// that matters most, then the auto quick save when `saves.autoexit` is on. Both are tried; the
+/// first failure is returned.
 fn write_on_exit<C: SaveSource>(
     core: &C,
     writer: &Writer<'_>,
     autosave_on_exit: bool,
-    save_auto: impl FnOnce(&C),
-) {
-    writer.sram(core);
-    if autosave_on_exit {
-        save_auto(core);
-    }
+    save_auto: impl FnOnce(&C) -> Result<(), ErrorCode>,
+) -> Result<(), ErrorCode> {
+    let sram = writer.sram(core);
+    let auto = if autosave_on_exit {
+        save_auto(core)
+    } else {
+        Ok(())
+    };
+    sram.and(auto)
 }
 
 /// The emulation thread's events: dropped once the session is dead, so a game that was let go
@@ -364,18 +372,21 @@ fn mark_core_needs_restart(core_path: &Path) {
 }
 
 /// Whether a game has an auto quick save to resume from.
-pub fn has_auto_save(save_dir: &std::path::Path, game_path: &std::path::Path) -> bool {
-    GameFiles::new(save_dir, game_path)
-        .slot(AUTO_SLOT)
-        .is_file()
+pub fn has_auto_save(save_dir: &std::path::Path, game: &crate::GameKey) -> bool {
+    GameFiles::new(save_dir, game).slot(AUTO_SLOT).is_file()
 }
+
+/// What the emulation thread reports when it ends: its exit writes all done, or the first one
+/// that failed.
+pub type ExitWrites = Result<(), ErrorCode>;
 
 pub struct Session {
     tx: Sender<Command>,
     shared: Arc<Shared>,
     thread: Option<JoinHandle<()>>,
-    /// Disconnected when the emulation thread has ended (its sender dies with the thread).
-    done: Receiver<()>,
+    /// Receives the exit writes' outcome as the emulation thread ends; disconnected without it
+    /// when the thread panicked (its sender dies with the thread).
+    done: Receiver<ExitWrites>,
     /// Set when the session is let go: its thread writes nothing and says nothing any more.
     dead: Arc<AtomicBool>,
     core_path: PathBuf,
@@ -393,14 +404,14 @@ impl Session {
             );
         }
         std::fs::create_dir_all(&opts.system_dir).ok();
-        std::fs::create_dir_all(&opts.save_dir).ok();
+        std::fs::create_dir_all(GameFiles::new(&opts.save_dir, &opts.game).dir()).ok();
 
         let shared = Arc::new(Shared::default());
         let dead = Arc::new(AtomicBool::new(false));
         let core_path = opts.core_path.clone();
         let (tx, rx) = mpsc::channel();
         let (ready_tx, ready_rx) = mpsc::sync_channel::<Result<()>>(1);
-        let (done_tx, done) = mpsc::channel::<()>();
+        let (done_tx, done) = mpsc::channel::<ExitWrites>();
 
         let thread_shared = shared.clone();
         let outbox = Outbox {
@@ -411,9 +422,9 @@ impl Session {
         let thread = std::thread::Builder::new()
             .name("emudome-emu".into())
             .spawn(move || {
-                // Dropped when the thread ends, however it ends: `done` then disconnects.
-                let _done = done_tx;
-                emu_thread(opts, thread_shared, rx, outbox, ready_tx, &thread_dead);
+                // Sent when the thread ends; a panic drops it unsent and `done` disconnects.
+                let written = emu_thread(opts, thread_shared, rx, outbox, ready_tx, &thread_dead);
+                let _ = done_tx.send(written);
             })
             .context("cannot start the emulation thread")?;
 
@@ -445,6 +456,32 @@ impl Session {
         self.finish(timeout)
     }
 
+    /// Asks the thread to stop: it writes the in-game save and, with `saves.autoexit`, the auto
+    /// quick save, then ends. [`Session::wait`] tells when (the close flow, Trello #86).
+    pub fn stop(&self) {
+        let _ = self.tx.send(Command::Stop);
+    }
+
+    /// Waits up to `timeout` for the thread to end after [`Session::stop`]. `Some`: it ended and
+    /// was joined, with its exit writes' outcome; `None`: still running, wait again or
+    /// [`Session::abandon`]. Never lets the thread go by itself.
+    pub fn wait(&mut self, timeout: Duration) -> Option<ExitWrites> {
+        let thread = self.thread.as_ref()?;
+        let written = match self.done.recv_timeout(timeout) {
+            Ok(written) => written,
+            Err(RecvTimeoutError::Timeout) => return None,
+            Err(RecvTimeoutError::Disconnected) => Err(ErrorCode::SaveFileFailed {
+                detail: format!("the emulation thread {:?} panicked", thread.thread().name()),
+            }),
+        };
+        if let Some(thread) = self.thread.take() {
+            if thread.join().is_err() {
+                log::error!("the emulation thread panicked");
+            }
+        }
+        Some(written)
+    }
+
     /// Lets go of an emulation thread that stopped answering (E11) without waiting for it, since
     /// joining a core stuck inside `retro_run` would block forever. The session is dead from now
     /// on: if the thread ever wakes up it writes no file, sends no event and leaves the core
@@ -463,7 +500,7 @@ impl Session {
         };
         let _ = self.tx.send(Command::Stop);
         match self.done.recv_timeout(timeout) {
-            Ok(()) | Err(RecvTimeoutError::Disconnected) => {
+            Ok(_) | Err(RecvTimeoutError::Disconnected) => {
                 if thread.join().is_err() {
                     log::error!("the emulation thread panicked");
                 }
@@ -504,13 +541,16 @@ fn emu_thread(
     events: Outbox,
     ready: mpsc::SyncSender<Result<()>>,
     dead: &AtomicBool,
-) {
-    let to_c = |p: &PathBuf| CString::new(p.to_string_lossy().as_bytes()).unwrap_or_default();
+) -> ExitWrites {
+    let to_c =
+        |p: &std::path::Path| CString::new(p.to_string_lossy().as_bytes()).unwrap_or_default();
+    let files = GameFiles::new(&opts.save_dir, &opts.game);
     callbacks::install(CallbackCtx {
         shared: shared.clone(),
         pixel_format: libretro_sys::RETRO_PIXEL_FORMAT_0RGB1555,
         system_dir: to_c(&opts.system_dir),
-        save_dir: to_c(&opts.save_dir),
+        // The game's own folder: what a core writes by itself stays with the game.
+        save_dir: to_c(files.dir()),
         audio_enabled: true,
         speed_audio: SpeedAudio::new(opts.fast_audio),
         audio_out: Vec::new(),
@@ -523,18 +563,17 @@ fn emu_thread(
             .and_then(|n| CString::new(n).ok()),
     });
 
-    let started = (|| -> Result<(LoadedCore, GameFiles)> {
+    let started = (|| -> Result<LoadedCore> {
         let mut core = unsafe { LoadedCore::load(&opts.core_path)? };
         unsafe { core.load_game(&opts.game_path)? };
-        let files = GameFiles::new(&opts.save_dir, &opts.game_path);
         if let (Some(ram), Ok(data)) = (core.save_ram_mut(), std::fs::read(&files.sram)) {
             let n = ram.len().min(data.len());
             ram[..n].copy_from_slice(&data[..n]);
         }
-        Ok((core, files))
+        Ok(core)
     })();
 
-    let (core, files) = match started {
+    let core = match started {
         Ok(v) => {
             let _ = ready.send(Ok(()));
             v
@@ -542,7 +581,8 @@ fn emu_thread(
         Err(e) => {
             callbacks::clear();
             let _ = ready.send(Err(e));
-            return;
+            // Nothing was loaded: nothing to write.
+            return Ok(());
         }
     };
 
@@ -579,13 +619,15 @@ fn emu_thread(
         stats.speed = Some(Speed::Factor(1.0));
     }
     shared.audio.lock().set_rate(av.timing.sample_rate);
+    // The ROM's file name: the screenshots are named after it, for the user to browse.
+    let rom_name = opts
+        .game_path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let _ = events.send(Event::Started {
         core: format!("{} {}", core.library_name, core.library_version),
-        game: opts
-            .game_path
-            .file_stem()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_default(),
+        game: rom_name.clone(),
         fps: av.timing.fps,
         width: av.geometry.base_width,
         height: av.geometry.base_height,
@@ -615,15 +657,18 @@ fn emu_thread(
             writer.thumb(AUTO_SLOT, &shared);
             write_meta(AUTO_SLOT);
             shared.stats.lock().auto_saved_at = Some(std::time::SystemTime::now());
+            Ok(())
         }
-        Ok(false) => {}
+        Ok(false) => Ok(()),
         Err(e) => {
+            let error = ErrorCode::StateSaveFailed {
+                slot: AUTO_SLOT,
+                detail: format!("{e:#}"),
+            };
             let _ = events.send(Event::Error {
-                error: ErrorCode::StateSaveFailed {
-                    slot: AUTO_SLOT,
-                    detail: format!("{e:#}"),
-                },
+                error: error.clone(),
             });
+            Err(error)
         }
     };
 
@@ -773,8 +818,13 @@ fn emu_thread(
                 Command::Screenshot => {
                     let png = shared.frame.lock().to_png();
                     let res = png.map_err(|e| e.to_string()).and_then(|png| {
-                        crate::screenshot::write(&files, &png, std::time::SystemTime::now())
-                            .map_err(|e| e.to_string())
+                        crate::screenshot::write(
+                            &crate::screenshot::screenshots_dir(&opts.save_dir),
+                            &rom_name,
+                            &png,
+                            std::time::SystemTime::now(),
+                        )
+                        .map_err(|e| e.to_string())
                     });
                     let _ = events.send(match res {
                         Ok(path) => Event::ScreenshotSaved {
@@ -786,7 +836,8 @@ fn emu_thread(
                     });
                 }
                 Command::Flush => {
-                    write_on_exit(&core, &writer, opts.autosave_on_exit, save_auto);
+                    // Failures are logged and sent as events; the next flush tries again.
+                    let _ = write_on_exit(&core, &writer, opts.autosave_on_exit, save_auto);
                     last_sram_flush = Instant::now();
                 }
                 Command::Stop => break 'main,
@@ -819,7 +870,8 @@ fn emu_thread(
         // Auto quick save every `saves.autoq`, only while the game runs.
         if let Some(every) = opts.autosave_every {
             if last_autosave.elapsed() >= every {
-                save_auto(&core);
+                // A failure was sent as an event; the next one tries again.
+                let _ = save_auto(&core);
                 last_autosave = Instant::now();
             }
         }
@@ -838,7 +890,8 @@ fn emu_thread(
 
         // Game save every 30 s, and on exit.
         if last_sram_flush.elapsed() >= Duration::from_secs(30) {
-            writer.sram(&core);
+            // A failure was logged; the next flush tries again.
+            let _ = writer.sram(&core);
             last_sram_flush = Instant::now();
         }
 
@@ -877,12 +930,13 @@ fn emu_thread(
         log::warn!("a let-go emulation thread ended: nothing written, the core left loaded");
         std::mem::forget(core);
         callbacks::clear();
-        return;
+        return Ok(());
     }
-    write_on_exit(&core, &writer, opts.autosave_on_exit, save_auto);
+    let written = write_on_exit(&core, &writer, opts.autosave_on_exit, save_auto);
     drop(core);
     callbacks::clear();
     let _ = events.send(Event::Stopped);
+    written
 }
 
 /// The speed the audio is made at: the factor, or None at Max until it is measured.
@@ -984,8 +1038,8 @@ mod tests {
 
     use super::{
         core_needs_restart, has_auto_save, mark_core_needs_restart, slot_infos, write_on_exit,
-        Closed, Command, Event, FpsMeter, GameFiles, Outbox, SaveSource, Session, SessionOptions,
-        Shared, Writer, AUTO_SLOT,
+        Closed, Command, ErrorCode, Event, ExitWrites, FpsMeter, GameFiles, Outbox, SaveSource,
+        Session, SessionOptions, Shared, Writer, AUTO_SLOT,
     };
     use crate::settings::test_dir::TestDir;
 
@@ -1034,19 +1088,18 @@ mod tests {
 
     #[test]
     fn the_auto_quick_save_has_its_own_file() {
-        let files = GameFiles::new(Path::new("saves"), Path::new("games/Game.gba"));
-        assert!(files.slot(AUTO_SLOT).ends_with("Game.auto.state"));
-        assert!(files.slot(1).ends_with("Game.slot1.state"));
-        assert!(files.thumb(3).ends_with("Game.slot3.png"));
-        let empty = slot_infos(Path::new("no-such-dir"), Path::new("games/Game.gba"), 3);
+        let files = GameFiles::new(Path::new("saves"), &key());
+        let dir = Path::new("saves").join("gba").join("9a3e");
+        assert_eq!(files.slot(AUTO_SLOT), dir.join("auto.state"));
+        assert_eq!(files.slot(1), dir.join("slot1.state"));
+        assert_eq!(files.thumb(3), dir.join("slot3.png"));
+        assert_eq!(files.sram, dir.join("game.sav"));
+        let empty = slot_infos(Path::new("no-such-dir"), &key(), 3);
         assert_eq!(empty.len(), 4);
         assert!(empty
             .iter()
             .all(|s| s.saved_at.is_none() && s.thumb.is_none()));
-        assert!(!has_auto_save(
-            Path::new("no-such-dir"),
-            Path::new("games/Game.gba")
-        ));
+        assert!(!has_auto_save(Path::new("no-such-dir"), &key()));
     }
 
     // ---- Exit writes, dead sessions, bounded close (Trello #69) ----
@@ -1065,6 +1118,10 @@ mod tests {
         fn save_state(&self) -> anyhow::Result<Vec<u8>> {
             Ok(self.state.clone())
         }
+    }
+
+    fn key() -> crate::GameKey {
+        crate::GameKey::parse("gba:9a3e").unwrap()
     }
 
     fn stub() -> StubCore {
@@ -1086,79 +1143,141 @@ mod tests {
     #[test]
     fn closing_a_game_writes_the_in_game_save_and_the_auto_quick_save() {
         let dir = TestDir::new("session-exit");
-        let files = GameFiles::new(&dir.path("saves"), Path::new("games/Game.gba"));
+        let files = GameFiles::new(&dir.path("saves"), &key());
         let dead = AtomicBool::new(false);
         let writer = Writer {
             files: &files,
             dead: &dead,
         };
         let core = stub();
-        write_on_exit(&core, &writer, true, |c| {
+        let written = write_on_exit(&core, &writer, true, |c| {
             assert!(writer.state(c, AUTO_SLOT).unwrap());
+            Ok(())
         });
+        assert_eq!(written, Ok(()));
         assert_eq!(std::fs::read(&files.sram).unwrap(), b"battery save");
         assert_eq!(
             std::fs::read(files.slot(AUTO_SLOT)).unwrap(),
             b"emulation state"
         );
         assert_eq!(
-            files_in(&dir.path("saves")),
-            vec!["Game.auto.state".to_owned(), "Game.sav".to_owned()]
+            files_in(&dir.path("saves/gba/9a3e")),
+            vec!["auto.state".to_owned(), "game.sav".to_owned()]
         );
     }
 
     #[test]
     fn without_save_on_exit_closing_writes_only_the_in_game_save() {
         let dir = TestDir::new("session-exit-no-auto");
-        let files = GameFiles::new(&dir.path("saves"), Path::new("games/Game.gba"));
+        let files = GameFiles::new(&dir.path("saves"), &key());
         let dead = AtomicBool::new(false);
         let writer = Writer {
             files: &files,
             dead: &dead,
         };
-        write_on_exit(&stub(), &writer, false, |_| {
+        let written = write_on_exit(&stub(), &writer, false, |_| {
             panic!("the auto quick save is off")
         });
-        assert_eq!(files_in(&dir.path("saves")), vec!["Game.sav".to_owned()]);
+        assert_eq!(written, Ok(()));
+        assert_eq!(
+            files_in(&dir.path("saves/gba/9a3e")),
+            vec!["game.sav".to_owned()]
+        );
+    }
+
+    #[test]
+    fn a_failed_exit_write_is_reported_and_the_other_one_still_tried() {
+        let dir = TestDir::new("session-exit-fails");
+        // `saves` is a file: the in-game save cannot be written under it.
+        dir.write("saves", "not a folder");
+        let files = GameFiles::new(&dir.path("saves"), &key());
+        let dead = AtomicBool::new(false);
+        let writer = Writer {
+            files: &files,
+            dead: &dead,
+        };
+        let mut auto_tried = false;
+        let written = write_on_exit(&stub(), &writer, true, |_| {
+            auto_tried = true;
+            Ok(())
+        });
+        assert!(auto_tried, "the auto quick save was skipped");
+        assert!(matches!(written, Err(ErrorCode::SaveFileFailed { .. })));
+
+        // The auto quick save failing alone is reported too.
+        let ok_dir = TestDir::new("session-exit-auto-fails");
+        let files = GameFiles::new(&ok_dir.path("saves"), &key());
+        let writer = Writer {
+            files: &files,
+            dead: &dead,
+        };
+        let failed = ErrorCode::StateSaveFailed {
+            slot: AUTO_SLOT,
+            detail: "disk full".into(),
+        };
+        let written = write_on_exit(&stub(), &writer, true, |_| Err(failed.clone()));
+        assert_eq!(written, Err(failed));
+        assert_eq!(std::fs::read(&files.sram).unwrap(), b"battery save");
     }
 
     #[test]
     fn a_dead_session_writes_nothing() {
         let dir = TestDir::new("session-dead");
-        dir.write("saves/Game.sav", "the newer session's save");
-        let files = GameFiles::new(&dir.path("saves"), Path::new("games/Game.gba"));
+        dir.write("saves/gba/9a3e/game.sav", "the newer session's save");
+        let files = GameFiles::new(&dir.path("saves"), &key());
         let dead = AtomicBool::new(true);
         let writer = Writer {
             files: &files,
             dead: &dead,
         };
         let core = stub();
-        write_on_exit(&core, &writer, true, |c| {
+        let written = write_on_exit(&core, &writer, true, |c| {
             assert!(!writer.state(c, AUTO_SLOT).unwrap());
+            Ok(())
         });
+        assert_eq!(written, Ok(()));
         assert!(!writer.state(&core, 1).unwrap());
-        writer.sram(&core);
+        assert_eq!(writer.sram(&core), Ok(()));
         let shared = Shared::default();
         shared.frame.lock().width = 1;
         shared.frame.lock().height = 1;
         shared.frame.lock().rgba = vec![0; 4];
         writer.thumb(1, &shared);
-        assert_eq!(files_in(&dir.path("saves")), vec!["Game.sav".to_owned()]);
-        assert_eq!(dir.read("saves/Game.sav"), "the newer session's save");
+        assert_eq!(
+            files_in(&dir.path("saves/gba/9a3e")),
+            vec!["game.sav".to_owned()]
+        );
+        assert_eq!(
+            dir.read("saves/gba/9a3e/game.sav"),
+            "the newer session's save"
+        );
     }
 
-    /// A session around a fake emulation thread running `body` (no core).
+    /// A session around a fake emulation thread running `body` (no core), whose exit writes
+    /// succeed.
     fn fake_session(
         core_path: PathBuf,
         body: impl FnOnce(Receiver<Command>, Arc<AtomicBool>) + Send + 'static,
     ) -> Session {
+        fake_session_writing(core_path, move |rx, dead| {
+            body(rx, dead);
+            Ok(())
+        })
+    }
+
+    /// A session around a fake emulation thread running `body`, which returns its exit writes'
+    /// outcome as `emu_thread` does.
+    fn fake_session_writing(
+        core_path: PathBuf,
+        body: impl FnOnce(Receiver<Command>, Arc<AtomicBool>) -> ExitWrites + Send + 'static,
+    ) -> Session {
         let (tx, rx) = mpsc::channel();
-        let (done_tx, done) = mpsc::channel::<()>();
+        let (done_tx, done) = mpsc::channel::<ExitWrites>();
         let dead = Arc::new(AtomicBool::new(false));
         let thread_dead = dead.clone();
         let thread = std::thread::spawn(move || {
-            let _done = done_tx;
-            body(rx, thread_dead);
+            let written = body(rx, thread_dead);
+            let _ = done_tx.send(written);
         });
         Session {
             tx,
@@ -1190,9 +1309,60 @@ mod tests {
     }
 
     #[test]
+    fn waiting_reports_the_exit_writes_once_the_thread_ends() {
+        let dir = TestDir::new("session-wait-reports");
+        let mut session = fake_session_writing(dir.path("failing_libretro.dll"), |rx, _| {
+            while !matches!(rx.recv(), Ok(Command::Stop) | Err(_)) {}
+            Err(ErrorCode::SaveFileFailed {
+                detail: "disk full".into(),
+            })
+        });
+        session.stop();
+        assert_eq!(
+            session.wait(Duration::from_secs(10)),
+            Some(Err(ErrorCode::SaveFileFailed {
+                detail: "disk full".into()
+            }))
+        );
+        // Joined: waiting again has nothing left to wait for.
+        assert_eq!(session.wait(Duration::from_secs(10)), None);
+    }
+
+    #[test]
+    fn waiting_past_the_timeout_keeps_the_thread_and_can_wait_again() {
+        let dir = TestDir::new("session-wait-again");
+        let core = dir.path("slow_libretro.dll");
+        let (release_tx, release) = mpsc::channel::<()>();
+        let mut session = fake_session(core.clone(), move |rx, dead| {
+            while !matches!(rx.recv(), Ok(Command::Stop) | Err(_)) {}
+            // A slow disk: the exit writes outlast the first wait.
+            let _ = release.recv();
+            assert!(!dead.load(Ordering::SeqCst), "the thread was let go");
+        });
+        session.stop();
+        assert_eq!(session.wait(Duration::from_millis(50)), None);
+        assert!(!core_needs_restart(&core), "a wait that ran out let go");
+        release_tx.send(()).unwrap();
+        assert_eq!(session.wait(Duration::from_secs(10)), Some(Ok(())));
+    }
+
+    #[test]
+    fn a_thread_that_panics_is_reported_as_a_failed_write() {
+        let dir = TestDir::new("session-wait-panic");
+        let mut session = fake_session(dir.path("panicking_libretro.dll"), |_, _| {
+            panic!("the core crashed while writing")
+        });
+        session.stop();
+        assert!(matches!(
+            session.wait(Duration::from_secs(10)),
+            Some(Err(ErrorCode::SaveFileFailed { .. }))
+        ));
+    }
+
+    #[test]
     fn a_close_that_times_out_lets_the_thread_go_and_it_writes_nothing() {
         let dir = TestDir::new("session-close-times-out");
-        dir.write("saves/Game.sav", "the newer session's save");
+        dir.write("saves/gba/9a3e/game.sav", "the newer session's save");
         let core = dir.path("stuck_libretro.dll");
         let other_core = dir.path("other_libretro.dll");
         let save_dir = dir.path("saves");
@@ -1201,15 +1371,17 @@ mod tests {
         let session = fake_session(core.clone(), move |_rx, dead| {
             // Stuck inside `retro_run` until released, deaf to Stop.
             let _ = release.recv();
-            let files = GameFiles::new(&save_dir, Path::new("games/Game.gba"));
+            let files = GameFiles::new(&save_dir, &key());
             let writer = Writer {
                 files: &files,
                 dead: &dead,
             };
             let core = stub();
-            write_on_exit(&core, &writer, true, |c| {
+            let _ = write_on_exit(&core, &writer, true, |c| {
                 let _ = writer.state(c, AUTO_SLOT);
+                Ok(())
             });
+
             finished_tx.send(writer.alive()).unwrap();
         });
         let started = Instant::now();
@@ -1221,8 +1393,14 @@ mod tests {
         // The thread wakes up: it is dead, and writes nothing.
         release_tx.send(()).unwrap();
         assert!(!finished.recv_timeout(Duration::from_secs(5)).unwrap());
-        assert_eq!(files_in(&dir.path("saves")), vec!["Game.sav".to_owned()]);
-        assert_eq!(dir.read("saves/Game.sav"), "the newer session's save");
+        assert_eq!(
+            files_in(&dir.path("saves/gba/9a3e")),
+            vec!["game.sav".to_owned()]
+        );
+        assert_eq!(
+            dir.read("saves/gba/9a3e/game.sav"),
+            "the newer session's save"
+        );
     }
 
     #[test]
@@ -1255,6 +1433,7 @@ mod tests {
                 game_path: dir.path("Game.gba"),
                 system_dir: dir.path("system"),
                 save_dir: dir.path("saves"),
+                game: key(),
                 autosave_every: None,
                 autosave_on_exit: true,
                 resume_auto: false,

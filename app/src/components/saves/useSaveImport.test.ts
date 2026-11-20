@@ -23,9 +23,9 @@ vi.mock('@/lib/library', () => ({
   },
 }))
 
-const game = (title: string, path: string) => ({ title, path }) as LibraryGame
-const zelda = game('The Minish Cap', 'C:/roms/minish.gba')
-const mario = game('mario kart', 'C:/roms/mk.gba')
+const game = (id: string, title: string, path: string) => ({ id, title, path }) as LibraryGame
+const zelda = game('gba:01', 'The Minish Cap', 'C:/roms/minish.gba')
+const mario = game('gba:02', 'mario kart', 'C:/roms/mk.gba')
 const file = (fileName: string): ImportCandidate => ({
   path: `C:/downloads/${fileName}`,
   fileName,
@@ -55,7 +55,7 @@ describe('useSaveImport', () => {
     await importer.pickFile()
     expect(importer.target.value).toEqual(zelda)
     expect(importer.targetFound.value).toBe(true)
-    expect(bridge.game).toHaveBeenCalledWith(zelda.path, 4)
+    expect(bridge.game).toHaveBeenCalledWith(zelda.id, 4)
     expect(importer.targetSaves.value).toEqual(saves)
 
     bridge.importPick.mockResolvedValueOnce(file('Mario Kart.srm'))
@@ -74,7 +74,7 @@ describe('useSaveImport', () => {
 
   it('keeps the game chosen first (L05 «Importa…»): the file name does not change it', async () => {
     const { importer } = setup()
-    await importer.resetFor(mario.path)
+    await importer.resetFor(mario.id)
     expect(importer.target.value).toEqual(mario)
     bridge.importPick.mockResolvedValueOnce(file('minish.sav'))
     await importer.pickFile()
@@ -91,7 +91,7 @@ describe('useSaveImport', () => {
 
   it('forgets the chosen game on reset: the file name decides again', async () => {
     const { importer } = setup()
-    await importer.resetFor(mario.path)
+    await importer.resetFor(mario.id)
     importer.reset()
     bridge.importPick.mockResolvedValueOnce(file('minish.sav'))
     await importer.pickFile()
@@ -110,7 +110,7 @@ describe('useSaveImport', () => {
     bridge.importPick.mockResolvedValueOnce(file('minish.sav'))
     await importer.pickFile()
     await importer.run()
-    expect(bridge.import).toHaveBeenCalledWith('C:/downloads/minish.sav', zelda.path)
+    expect(bridge.import).toHaveBeenCalledWith('C:/downloads/minish.sav', zelda.id)
     expect(imported).toHaveBeenCalledWith(zelda)
 
     bridge.import.mockRejectedValueOnce({ code: 'io' })

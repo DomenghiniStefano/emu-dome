@@ -21,16 +21,22 @@
 //! - `--screens <prefix>`: write each screen of the frame as its own PNG (`<prefix>-top.png`,
 //!   `<prefix>-bottom.png`; `<prefix>-main.png` on one-screen consoles);
 //! - `--touch`: NDS, touch the bottom screen through the shell's path (window point → composed
-//!   rectangle → pointer value) and check what the test ROM shows (`tools/test-rom-nds`).
+//!   rectangle → pointer value) and check what the test ROM shows (`tools/test-rom-nds`);
+//! - `--set key=value` (repeatable): a text setting the BIOS rule reads (`consoles.dsmode`,
+//!   `cores.mdsboot`), as the shell would resolve it for the game.
 //!
 //! A `.nds` game runs as the shell runs it: melonDS DS's forced options and the two-screen split
-//! (`emudome_core::nds`).
+//! (`emudome_core::nds`). Every game gets the BIOS rule of its core (`emudome_core::bios`): the
+//! system folder is `<dir>/system/<core>`, as in the shell, and the files in place, the options
+//! and the fallbacks are printed. `--opt` values come last and win.
 
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
+use emudome_core::bios;
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{self, Area, Layout, ScreenId, Split};
+use emudome_core::settings::{ConsoleId, Value};
 use emudome_core::{Command, Session, SessionOptions, Speed};
 
 fn center_pixel(session: &Session) -> (u32, u32, [u8; 4], u64) {
@@ -61,6 +67,7 @@ struct Args {
     list_options: bool,
     live: Vec<(String, String)>,
     fast_audio: Option<emudome_core::speed_audio::FastAudio>,
+    sets: Vec<(String, String)>,
 }
 
 fn key_value(kv: &str) -> anyhow::Result<(String, String)> {
@@ -98,6 +105,7 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut list_options = false;
     let mut live = Vec::new();
     let mut fast_audio = None;
+    let mut sets = Vec::new();
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -120,6 +128,7 @@ fn parse_args() -> anyhow::Result<Args> {
             "--touch" => touch = true,
             "--list-options" => list_options = true,
             "--live" => live.push(key_value(&value()?)?),
+            "--set" => sets.push(key_value(&value()?)?),
             "--fast-audio" => {
                 let id = value()?;
                 fast_audio = Some(
@@ -147,6 +156,7 @@ fn parse_args() -> anyhow::Result<Args> {
         list_options,
         live,
         fast_audio,
+        sets,
     })
 }
 
@@ -255,13 +265,13 @@ fn measure_rewind(
     session: &Session,
     rx: &mpsc::Receiver<emudome_core::Event>,
     tmp: &std::path::Path,
-    rom: &str,
+    game: &emudome_core::GameKey,
     secs: u32,
 ) -> anyhow::Result<()> {
     use emudome_core::rewind;
 
     // The cost of one difference, between two states a frame apart and a second apart.
-    let files = emudome_core::GameFiles::new(&tmp.join("saves"), std::path::Path::new(rom));
+    let files = emudome_core::GameFiles::new(&tmp.join("saves"), game);
     session.send(Command::SetPaused(false));
     let mut slots = Vec::new();
     for (slot, wait) in [(7u8, 0u64), (8, 17), (9, 1000)] {
@@ -336,14 +346,49 @@ fn main() -> anyhow::Result<()> {
     } else {
         Vec::new()
     };
+    let rom = args.rom.to_lowercase();
+    let (core_name, console) = if nds {
+        (emudome_core::nds::CORE, ConsoleId::Nds)
+    } else if rom.ends_with(".gb") {
+        ("mgba", ConsoleId::Gb)
+    } else if rom.ends_with(".gbc") {
+        ("mgba", ConsoleId::Gbc)
+    } else {
+        ("mgba", ConsoleId::Gba)
+    };
+    let system_dir = bios::files::core_dir(&tmp.join("system"), core_name);
+    let in_place = bios::table(core_name)
+        .map(|t| bios::files::in_place(&system_dir, t))
+        .unwrap_or_default();
+    let setting = |key: &str| -> Option<Value> {
+        args.sets
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| Value::Text(v.clone()))
+    };
+    let plan = bios::plan(core_name, console, &in_place, &setting);
+    println!(
+        "bios: in place {in_place:?}, options {:?}, fallbacks {:?}",
+        plan.options, plan.fallbacks
+    );
+    core_options.extend(
+        plan.options
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
+    );
     core_options.extend(args.opts.iter().cloned());
+    // The game's key names its saves, as in the shell.
+    let game = emudome_core::library::identify(std::path::Path::new(&args.rom))
+        .map_err(|e| anyhow::anyhow!("{}: {e}", args.rom))?
+        .id;
     let (tx, rx) = mpsc::channel();
     let session = Session::start(
         SessionOptions {
             core_path: args.core.clone().into(),
             game_path: args.rom.clone().into(),
-            system_dir: tmp.join("system"),
+            system_dir,
             save_dir: tmp.join("saves"),
+            game: game.clone(),
             autosave_every: None,
             autosave_on_exit: false,
             resume_auto: false,
@@ -494,7 +539,7 @@ fn main() -> anyhow::Result<()> {
     println!("paused: new frames {}", center_pixel(&session).3 - s0);
 
     if let Some(secs) = args.rewind {
-        measure_rewind(&session, &rx, &tmp, &args.rom, secs)?;
+        measure_rewind(&session, &rx, &tmp, &game, secs)?;
     }
 
     drop(session);

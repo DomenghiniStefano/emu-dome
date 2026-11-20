@@ -8,6 +8,8 @@
 
 mod audio;
 mod bench;
+mod bios;
+mod closing;
 mod core_settings;
 mod dirs;
 mod effects;
@@ -16,6 +18,7 @@ mod first_run;
 #[cfg(desktop)]
 mod gamepad;
 mod library;
+mod migration;
 mod pads;
 mod saves;
 mod settings;
@@ -30,10 +33,11 @@ use std::time::{Instant, SystemTime};
 
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{Area, Layout, Split};
-use emudome_core::settings::{ConsoleId, GameId};
+use emudome_core::settings::ConsoleId;
 use emudome_core::tuning::{Tuning, VideoPath};
 use emudome_core::{
-    Closed, Command, ErrorCode, Event, Session, SessionOptions, Shared, Speed, CLOSE_TIMEOUT,
+    Closed, Command, ErrorCode, Event, GameKey, Session, SessionOptions, Shared, Speed,
+    CLOSE_TIMEOUT,
 };
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -76,14 +80,20 @@ struct AppState {
     menu_open: Arc<AtomicBool>,
     data_dir: PathBuf,
     resource_dir: Option<PathBuf>,
-    /// The file of the open game (its slots and thumbnails sit beside its saves).
-    game_path: Mutex<Option<PathBuf>>,
+    /// The key of the open game: its saves, slots and thumbnails are named by it.
+    game: Mutex<Option<GameKey>>,
     /// The core of the open game (`mgba`, ...), named in `coreNeedsRestart`.
     core_name: Mutex<Option<&'static str>>,
     /// Held for the whole of closing a game: a second close (the window closing while a game
     /// closes) waits for the first, so the app never quits before the exit writes are done.
     /// The emulation thread never takes it.
     closing: Mutex<()>,
+    /// The close flow (Trello #86): the window's X, quitting, closing or switching the game
+    /// wait for the exit writes off the event loop, with progress on `emu://closing`.
+    closer: closing::Closer,
+    /// Held while a game opens: opens run off the event loop (they may wait for a close), one
+    /// at a time.
+    opening: Mutex<()>,
     audio: audio::AudioOutput,
     /// Bench mode (`EMUDOME_BENCH`), off otherwise.
     bench: Option<Arc<bench::Bench>>,
@@ -115,7 +125,7 @@ fn unix_ms(t: std::time::SystemTime) -> Option<u64> {
 /// The auto quick save (slot 0) and slots `1..=count` of the open game.
 #[tauri::command]
 fn list_slots(state: tauri::State<'_, AppState>, count: u8) -> Vec<SlotDto> {
-    let Some(game) = state.game_path.lock().clone() else {
+    let Some(game) = state.game.lock().clone() else {
         return Vec::new();
     };
     emudome_core::slot_infos(&state.save_dir(), &game, count)
@@ -141,7 +151,7 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
     use tauri::http::{header, Response, StatusCode};
     let bytes = slot.parse::<u8>().ok().and_then(|slot| {
         let state = app.try_state::<AppState>()?;
-        let game = state.game_path.lock().clone()?;
+        let game = state.game.lock().clone()?;
         let info = emudome_core::slot_infos(&state.save_dir(), &game, slot)
             .into_iter()
             .find(|s| s.slot == slot)?;
@@ -162,6 +172,8 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GameInfo {
+    /// The game's one identity (its saves, its «Solo questo gioco» settings).
+    id: GameKey,
     title: String,
     console: String,
     console_id: ConsoleId,
@@ -217,60 +229,48 @@ fn console_label(console: ConsoleId) -> &'static str {
     }
 }
 
-/// Opens a game file. A file that is in the library opens as that library game (its
-/// identity, title and play time); any other file is identified by its path for now.
-#[tauri::command]
+/// Opens a game file. Every game is its content's key, never its path: a file of the library
+/// opens as that library game; any other file is identified first (from the library's hash
+/// cache when it knows the file unchanged, else by hashing it, holding no lock), and when its
+/// content is a library game's (a copy elsewhere) it opens as that game too.
+/// Off the event loop (`async`): it may wait for the open game's close.
+#[tauri::command(async)]
 fn open_game(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     path: String,
 ) -> Result<GameInfo, ErrorCode> {
-    if let Some((id, title, console)) = library::game_at(&app, &path) {
-        return open_library_game(&app, &state, &id, PathBuf::from(path), title, console);
+    if let Some((key, title)) = library::game_at(&app, &path) {
+        return open_library_game(&app, &state, &key, PathBuf::from(path), title);
     }
     let game_path = PathBuf::from(&path);
-    let game = GameId::from_rom_path(&game_path);
-    let console = gb_console(&game_path);
-    open_path(&app, &state, game_path, game, None, console)
-}
-
-/// A Game Boy file outside the library: its header tells Game Boy from Game Boy Color (a
-/// `.gb` file can be a Game Boy Color cartridge). None for any other file, or an unreadable
-/// header: the extension decides.
-fn gb_console(path: &Path) -> Option<ConsoleId> {
-    let ext = path.extension()?.to_string_lossy().to_lowercase();
-    if ext != "gb" && ext != "gbc" {
-        return None;
+    // An extension EmuDome does not run is refused before any hashing.
+    core_for(&game_path)?;
+    let identity = library::identify_path(&app, &game_path)?;
+    if let Some(title) = library::title_of(&app, &identity.id) {
+        return open_library_game(&app, &state, &identity.id, game_path, title);
     }
-    emudome_core::library::identify(path)
-        .ok()
-        .map(|id| id.console)
+    open_path(&app, &state, game_path, identity.id, Some(identity.title))
 }
 
-/// Opens a library game: its settings are those of its content identity, and its play time
-/// counts until it closes.
+/// Opens a library game: its play time counts until it closes.
 fn open_library_game(
     app: &tauri::AppHandle,
     state: &AppState,
-    id: &str,
+    key: &GameKey,
     game_path: PathBuf,
     title: String,
-    console: ConsoleId,
 ) -> Result<GameInfo, ErrorCode> {
-    // TODO(game identity, Trello #21): settings files saved under the path hash before the
-    // library existed are not moved to the content identity.
-    let game = emudome_core::library::settings_game_id(id)
-        .unwrap_or_else(|| GameId::from_rom_path(&game_path));
-    let info = open_path(app, state, game_path, game, Some(title), Some(console))?;
-    library::begin_play(app, id);
+    let info = open_path(app, state, game_path, key.clone(), Some(title))?;
+    library::begin_play(app, key);
     Ok(info)
 }
 
 /// Core options the shell always sets, per core (`GET_VARIABLE` key and value).
 /// Azahar: the software renderer, the only one that does not ask for `SET_HW_RENDER`, which the
 /// host does not implement yet (Trello #16); its default `auto` fails to load.
-/// melonDS DS: the screens where the shell cuts them, touch from the shell's pointer, built-in
-/// BIOS and firmware (`emudome_core::nds`).
+/// melonDS DS: the screens where the shell cuts them, touch from the shell's pointer
+/// (`emudome_core::nds`).
 /// The settings' core options are `emudome_core::settings::core_values` (one table per core).
 const FORCED_CORE_OPTIONS: &[(&str, &[(&str, &str)])] = &[
     ("azahar", &[("citra_graphics_api", "Software")]),
@@ -287,10 +287,17 @@ fn forced_core_options(core_name: &str) -> Vec<(String, String)> {
 }
 
 /// The options the core starts with: the settings' (console options), then the forced ones,
-/// which win.
+/// then the system files' (`emudome_core::bios`: what the files in place allow), each winning
+/// over the ones before.
 fn core_options(core_name: &str, flow: &settings::GameFlow) -> Vec<(String, String)> {
     let mut options = emudome_core::settings::core_values::pairs(&flow.core_options);
     options.extend(forced_core_options(core_name));
+    options.extend(
+        flow.bios
+            .options
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
+    );
     options
 }
 
@@ -303,17 +310,18 @@ fn screen_split(console: ConsoleId) -> Split {
     }
 }
 
-/// Closes the open game, then opens `game_path` with `game` as its settings identity.
-/// `title` and `console` come from the library when known (else the file name and the extension).
+/// Closes the open game, then opens `game_path` as the game `game` (its console, saves and
+/// settings). `title` comes from the library or the ROM (else the file name).
 fn open_path(
     app: &tauri::AppHandle,
     state: &AppState,
     game_path: PathBuf,
-    game: GameId,
+    game: GameKey,
     title: Option<String>,
-    console: Option<ConsoleId>,
 ) -> Result<GameInfo, ErrorCode> {
-    let (core_name, ext_console) = core_for(&game_path)?;
+    // The one-time move of old save names ends before any game reads its saves.
+    migration::wait(app);
+    let (core_name, _) = core_for(&game_path)?;
     let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref())
         .ok_or_else(|| ErrorCode::CoreNotFound {
             file: emudome_platform::core_file_name(core_name),
@@ -326,23 +334,27 @@ fn open_path(
         });
     }
 
-    // Close the previous game before opening another one.
-    close_current(app, state);
+    // One open at a time; the previous game closes first, through the close flow (its
+    // progress on `emu://closing`, the user's choice if it takes too long).
+    let _opening = state.opening.lock();
+    closing::close_game(app, state)?;
 
-    let console_id = console.unwrap_or(ext_console);
+    // The content decides (a `.gb` file can be a Game Boy Color cartridge).
+    let console_id = game.console();
     let flow = settings::game_flow(app, core_name, console_id, &game);
     let save_dir = state.save_dir();
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
-    saves::before_open(app, &save_dir, &game_path)?;
-    let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game_path);
+    saves::before_open(app, &save_dir, &game)?;
+    let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(
         SessionOptions {
             core_path,
             game_path: game_path.clone(),
-            system_dir: state.data_dir.join("system"),
+            system_dir: bios::system_dir(app, core_name, state.data_dir.join("system")),
             save_dir,
+            game: game.clone(),
             autosave_every: flow.autosave_every,
             autosave_on_exit: flow.autosave_on_exit,
             resume_auto: flow.resume == "always",
@@ -374,12 +386,14 @@ fn open_path(
     *state.current.lock() = Some(shared.clone());
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
-    *state.game_path.lock() = Some(game_path.clone());
+    *state.game.lock() = Some(game.clone());
     *state.core_name.lock() = Some(core_name);
+    bios::emit_fallbacks(app, &flow.bios.fallbacks);
     core_settings::started(app, core_name, console_id, flow.core_options);
-    settings::begin_session(app, console_id, game);
+    settings::begin_session(app, console_id, game.clone());
 
     Ok(GameInfo {
+        id: game,
         title: title.unwrap_or_else(|| {
             game_path
                 .file_stem()
@@ -404,15 +418,17 @@ enum Ending {
     Abandon,
 }
 
-/// Ends the open game (`Ending::Close`): play time, the settings session, video, the emulation
-/// thread and its exit writes. Every way out goes through here: closing the game, opening
-/// another, closing the window, quitting.
+/// Ends the open game in place (`Ending::Close`), bounded by `CLOSE_TIMEOUT`: only for
+/// `RunEvent::Exit`, which cannot wait (`closing::close_now`). Every other way out goes through
+/// the close flow (`closing.rs`): closing the game, opening another, the window's X, quitting.
 fn close_current(app: &tauri::AppHandle, state: &AppState) {
     end_game(app, state, Ending::Close);
 }
 
-fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
-    let _closing = state.closing.lock();
+/// Takes the open game out of the app: play time, the settings session, video; returns its
+/// session (not yet closed) and its core's name. The caller closes the session, then clears
+/// `game_path`.
+fn release_game(app: &tauri::AppHandle, state: &AppState) -> (Option<Session>, &'static str) {
     library::end_play(app);
     core_settings::stopped(app);
     settings::end_session(app);
@@ -421,6 +437,23 @@ fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
     // Taken out first: the session lock is not held while the thread is waited for.
     let session = state.session.lock().take();
     let core = state.core_name.lock().take().unwrap_or_default();
+    (session, core)
+}
+
+/// A game on `core` was let go: its exit writes may be missing and the core is refused until
+/// EmuDome restarts. Tells the interface.
+fn say_core_needs_restart(app: &tauri::AppHandle, core: &str) {
+    let error = Event::Error {
+        error: ErrorCode::CoreNeedsRestart { core: core.into() },
+    };
+    if let Err(e) = app.emit("emu://event", error) {
+        log::warn!("coreNeedsRestart not sent to the interface: {e}");
+    }
+}
+
+fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
+    let _closing = state.closing.lock();
+    let (session, core) = release_game(app, state);
     if let Some(session) = session {
         let closed = match ending {
             Ending::Close => session.close(CLOSE_TIMEOUT),
@@ -430,23 +463,22 @@ fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
             }
         };
         if let (Ending::Close, Closed::Abandoned) = (ending, closed) {
-            // The exit writes may be missing and the core is refused until restart: say so.
             log::warn!("the game did not close within {CLOSE_TIMEOUT:?}: let go");
-            let error = Event::Error {
-                error: ErrorCode::CoreNeedsRestart { core: core.into() },
-            };
-            if let Err(e) = app.emit("emu://event", error) {
-                log::warn!("coreNeedsRestart not sent to the interface: {e}");
-            }
+            say_core_needs_restart(app, core);
         }
     }
     // Cleared after the thread ended: the Saves screen refuses this game's files until then.
-    state.game_path.lock().take();
+    state.game.lock().take();
 }
 
-#[tauri::command]
+/// Closes the open game (back to the library) through the close flow; returns once it is
+/// closed. Off the event loop (`async`): it waits for the exit writes and the user's choice.
+#[tauri::command(async)]
 fn close_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
-    close_current(&app, &state);
+    // `AppClosing`: a quit arrived meanwhile; the game is closed all the same.
+    if closing::close_game(&app, &state).is_err() {
+        log::info!("the game closed while the app is exiting");
+    }
 }
 
 /// E11: the core stopped answering. Lets go of its thread without waiting for it (joining a
@@ -457,27 +489,33 @@ fn abandon_game(app: tauri::AppHandle, state: tauri::State<'_, AppState>) {
     end_game(&app, &state, Ending::Abandon);
 }
 
-/// Every way the window or the app ends: the open game closes first, with its exit writes.
-fn ends_the_app(event: &tauri::RunEvent) -> bool {
-    matches!(
-        event,
-        tauri::RunEvent::Exit
-            | tauri::RunEvent::ExitRequested { .. }
-            | tauri::RunEvent::WindowEvent {
-                event: WindowEvent::CloseRequested { .. },
-                ..
-            }
-    )
-}
-
-/// What the event loop does for the open game: close it when the app ends, flush its saves when
-/// the app goes to the background (Android: the process may then be killed without a word).
+/// What the event loop does for the open game: when the window closes or the app quits, the
+/// game closes first through the close flow (the event is prevented, the app exits once the
+/// exit writes are done); `Exit`, which cannot be prevented, closes what is left in place. When
+/// the app goes to the background its saves are flushed (Android: the process may then be
+/// killed without a word).
 fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
     let Some(state) = app.try_state::<AppState>() else {
         return;
     };
-    if ends_the_app(event) {
-        close_current(app, &state);
+    if let tauri::RunEvent::ExitRequested { code, api, .. } = event {
+        if !closing::request_quit(app, &state, *code) {
+            api.prevent_exit();
+        }
+        return;
+    }
+    if let tauri::RunEvent::WindowEvent {
+        event: WindowEvent::CloseRequested { api, .. },
+        ..
+    } = event
+    {
+        if !closing::request_quit(app, &state, None) {
+            api.prevent_close();
+        }
+        return;
+    }
+    if let tauri::RunEvent::Exit = event {
+        closing::close_now(app, &state);
         return;
     }
     if let tauri::RunEvent::WindowEvent { event, .. } = event {
@@ -912,14 +950,18 @@ pub fn run() {
                 menu_open,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
-                game_path: Mutex::new(None),
+                game: Mutex::new(None),
                 core_name: Mutex::new(None),
                 closing: Mutex::new(()),
+                closer: closing::Closer::default(),
+                opening: Mutex::new(()),
                 audio,
                 bench: bench.clone(),
             });
             app.manage(effects::open(app));
             effects::apply(app.handle());
+            // After the library is read, before any game opens (opening waits for it).
+            migration::start(app);
             library::startup(app.handle());
             if let Some(bench) = bench.clone() {
                 bench::spawn(app.handle().clone(), bench);
@@ -929,6 +971,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_game,
             close_game,
+            closing::close_wait,
+            closing::close_anyway,
             abandon_game,
             list_slots,
             set_speed,
@@ -964,6 +1008,8 @@ pub fn run() {
             settings::settings_session_commit,
             settings::settings_session_discard,
             effects::effects_choose_file,
+            bios::bios_choose,
+            bios::bios_status,
             settings::settings_choose_background,
             pads::gamepad_list,
             pads::gamepad_watch,
@@ -990,6 +1036,7 @@ pub fn run() {
             saves::saves_import,
             saves::saves_import_folder,
             saves::saves_import_many,
+            migration::saves_migration_status,
             first_run::first_run_show,
             first_run::first_run_steps,
             first_run::first_run_done,

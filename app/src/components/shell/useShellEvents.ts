@@ -1,8 +1,9 @@
 // The backend's events the shell follows for its whole life: settings, the controller (menu
-// button, navigation, combos, connections), the library, the core and the screen effects.
+// button, navigation, combos, connections), the library, the core, the screen effects and the
+// one-time move of old save names (told once, if it failed or left files behind).
 // Stopped on unmount.
 import { useI18n } from 'vue-i18n'
-import { emu } from '@/emu'
+import { emu, type SavesMigration } from '@/emu'
 import { gamepadName } from '@/i18n/labels'
 import { usedController } from '@/lib/inputMode'
 import { loadKeymap } from '@/lib/keymap'
@@ -21,6 +22,15 @@ export function useShellEvents(
   const { t } = useI18n()
   const { game, controller } = session
   const listeners = useListeners()
+
+  // The move ends once per start: its problem is told once, whether the event or the first
+  // question answers first.
+  let migrationTold = false
+  function tellMigration(m: SavesMigration) {
+    if (m.running || !m.problem || migrationTold) return
+    migrationTold = true
+    toasts.failWith(m.problem)
+  }
 
   async function listen() {
     await listeners.add(
@@ -41,6 +51,8 @@ export function useShellEvents(
       emu.onHotkey(session.onHotkey),
       // A screen effect could not be used: the game shows without it.
       emu.onEffectError(toasts.failWith),
+      // A game opened without the system files a setting asked for: it runs without them.
+      emu.onBiosFallback(toasts.failWith),
       emu.onGamepadConnected(p => {
         controller.value = gamepadName(p)
         toasts.notify(t('toast.gamepadConnected', { name: gamepadName(p) }))
@@ -52,7 +64,14 @@ export function useShellEvents(
       listenDragDrop(),
       ...(await startLibrary()),
       emu.onEvent(session.onEmuEvent),
+      emu.saves.onMigration(tellMigration),
     )
+    // It may have ended before the listener above existed.
+    try {
+      tellMigration(await emu.saves.migration())
+    } catch (e) {
+      toasts.failWith(e)
+    }
   }
 
   return { listen }

@@ -147,6 +147,17 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
+                         close_flow.rs (closing with a game open: the state machine; pure, unit-tested)
+                         game_key.rs (`GameKey`, the one identity of a game: the library's content id;
+                         saves in `saves/<console>/<hex>/` (`GameFiles`), settings `game/<console>-<hex>.json`)
+                         migration.rs (the one-time move of saves named by ROM file stem and settings named
+                         by path hash to the key: facts from the library only, copies in `migration-70/backup/`,
+                         `migration-70/report.json`, marker `migration-70/done`; unit-tested)
+                         bios/ (the user's own BIOS / firmware, `bios.*`: mod.rs slots, check by size + MD5
+                         / firmware header / DSi footer (identification only, never a source), assess,
+                         status, plan; one table per core in bios/<core>.rs with its policy (melonDS DS:
+                         native system files, DSi mode, DS-menu boot); files.rs probe and the copy into
+                         the core's system folder via write_atomic; pure, unit-tested)
 crates/emudome-platform  EVERYTHING that depends on the operating system or the form factor, one module per OS
                          (desktop.rs shared by the desktops): the main window (create_window), the file
                          picker (pick_file), logs, core paths, the external surface;
@@ -157,7 +168,10 @@ app/src-tauri            Tauri shell: window.rs (the app's names for emudome_pla
                          settings.rs (settings commands, file locations, settings://changed),
                          effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
                          emu://effect-error), video.rs runs them through librashader (native path only)
+                         bios.rs (bios_choose / bios_status, per-core system folder
+                         `<app local data>/system/<core>/` for cores with a BIOS table, emu://bios-fallback)
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
+                         closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
@@ -166,7 +180,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          outside the game), library, details, saves, settings, controls, quick-menu,
                          game (GameCanvas: webview mode, TouchControls: Android overlay, the game flow),
                          first-run (FirstRun, 4 steps, once per device: marker `<app local data>/first-run/done`,
-                         src-tauri/src/first_run.rs), cover, toasts; components/ui/ (the primitives),
+                         src-tauri/src/first_run.rs), cover, toasts, closing (the loader while a game closes);
+                         components/ui/ (the primitives),
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
                          lib/settingsModel.ts, lib/cn.ts, lib/design/…),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text),
@@ -220,19 +235,31 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   accepted levels, per-device flag, platform, phase, `show_if` on another row's value); the interface builds its
   pages from `settings_schema` and never lists settings by hand. Levels Default → Global → Console → Game →
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
-  (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<id>}.json` (synced later),
+  (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<console>-<hex>}.json` (synced later),
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log; a file that is there but cannot be read is never
   written over (writes to it refused with `settingsReadFailed` until it reads again; the library does the same
   with `libraryReadFailed`). Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
-  Game identity in settings is still a hash of the ROM path, and saves are still named by the ROM's file stem: both
-  are wrong and move to the library's content id (Trello #70, P0). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
+  A game is its `GameKey` everywhere (settings, saves, library, the interface's `GameId`); a file opened by its path
+  is identified first (the library's hash cache, else hashed, with no lock held). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
   live in `SYNONYMS` (catalog.rs).
 - Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
-  opened again).
+  opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
+  `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below).
+- Closing with a game open (Trello #86): the window's X, a quit, `close_game` and opening another game go through
+  one pure state machine, `emudome_core::close_flow` (requested → saving → saved → finish; timeout / failed → the
+  user's «Wait» / «Close anyway»; a second request while saving is ignored, a quit turns a game close into a quit).
+  `app/src-tauri/src/closing.rs` carries it out: `CloseRequested` / `ExitRequested` are prevented while a game is
+  open, a worker waits for the session's thread (`Session::stop` / `Session::wait`, which never lets it go by
+  itself), `emu://closing` reports `phase` (`saving` / `saved` / `timeout` / `failed` / `closed`) and `purpose`
+  (`game` / `quit`), «Saved» stays `SAVED_VISIBLE` (600 ms), then the app exits (with the exit code asked for).
+  `RunEvent::Exit`, which cannot be prevented, closes what is left in place (bounded by `CLOSE_TIMEOUT`). The
+  commands that wait (`open_game`, `library_open`, `close_game`) run off the event loop (`#[tauri::command(async)]`).
+  Interface: `components/closing/` (`closing.ts` the view, `useClosing.ts`; `ClosingStrip.vue` the bottom strip
+  while saving / saved, `ClosingAsk.vue` the timeout / failure question, `ClosingOverlay.vue` places them).
 
 ## Lessons already learned (do not repeat)
 
@@ -465,6 +492,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   URL exists upstream): packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until
   the owner picks a stable source. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock was not
   built on a device yet.
+- The game key migration (Trello #70) leaves in place, and reports, what facts cannot give to one game (a file name
+  shared by several library games, no library game, the new place already taken); the app no longer reads those.
+  The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
+  (`saves/nds/<hex>/melonDS DS/`); an existing shared `saves/melonDS DS/` is left untouched and not read any more.
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 

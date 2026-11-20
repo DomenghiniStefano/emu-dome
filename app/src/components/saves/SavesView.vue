@@ -5,15 +5,15 @@
 // No saves at all: E03. The in-game save set aside as unreadable (E04) shows as a note over the
 // backups. V06 (two versions) waits for Google Drive sync: saves/ConflictTwoUp.vue is ready for it.
 //
-// Saves are found from each library game's ROM file name (TODO(game identity, Trello #21)):
-// games opened from a file outside the library are not listed.
+// Saves are named by each library game's `GameId`: games opened from a file outside the library
+// have saves too, but are not listed here (the list is the library's).
 //
 // The parts and their logic live in saves/: this view loads, decides what is shown and passes
 // the events on. Controller / keyboard: the shell's nav scope covers this view; the dialogs open
 // their own.
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { emu, type GameSaves, type LibraryGame } from '@/emu'
+import { emu, type GameId, type GameSaves, type LibraryGame } from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
 import { errorText } from '@/i18n/labels'
 import { library } from '@/lib/library'
@@ -69,10 +69,10 @@ const rows = computed(() =>
 
 const mode = ref<'game' | 'import'>('game')
 // «Salvataggi» in «Continua a giocare» (L01) opens this section on that game.
-const selectedPath = ref<string | null>(savesFocus.value)
+const selectedId = ref<GameId | null>(savesFocus.value)
 savesFocus.value = null
 const selected = computed(
-  () => withSaves.value.find(g => g.path === selectedPath.value) ?? withSaves.value[0] ?? null,
+  () => withSaves.value.find(g => g.id === selectedId.value) ?? withSaves.value[0] ?? null,
 )
 const details = ref<GameSaves | null>(null)
 
@@ -83,9 +83,11 @@ async function loadDetails() {
     return
   }
   try {
-    details.value = await loadGameSaves(g, settings.slotCount.value)
+    const saves = await loadGameSaves(g, settings.slotCount.value)
+    // Rule 7: another game chosen meanwhile, its own load shows.
+    if (selected.value?.id === g.id) details.value = saves
   } catch (e) {
-    fail(e)
+    if (selected.value?.id === g.id) fail(e)
   }
 }
 watch(selected, () => void loadDetails())
@@ -96,7 +98,7 @@ async function refresh() {
 }
 
 function pick(g: LibraryGame) {
-  selectedPath.value = g.path
+  selectedId.value = g.id
   mode.value = 'game'
 }
 
@@ -110,7 +112,7 @@ async function exportInGame() {
   const g = selected.value
   if (!g) return
   try {
-    if (await emu.saves.export(g.path, { kind: 'inGame' })) emit('notice', t('saves.exported'))
+    if (await emu.saves.export(g.id, { kind: 'inGame' })) emit('notice', t('saves.exported'))
   } catch (e) {
     fail(e)
   }
@@ -120,7 +122,7 @@ async function restore(name: string) {
   const g = selected.value
   if (!g) return
   try {
-    await emu.saves.restore(g.path, name)
+    await emu.saves.restore(g.id, name)
     emit('notice', t('saves.restored'))
   } catch (e) {
     fail(e)
@@ -143,7 +145,7 @@ function playFromDetails(slot: number) {
 const importer = useSaveImport(settings.slotCount, fail, async g => {
   emit('notice', t('saves.imported'))
   mode.value = 'game'
-  selectedPath.value = g.path
+  selectedId.value = g.id
   await refresh()
 })
 const { candidate, target, targetFound, targetSaves, choosingGame, importing } = importer
@@ -198,7 +200,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
       <SavesGameList
         v-model:query="query"
         :rows="rows"
-        :current-path="mode === 'game' ? (selected?.path ?? null) : null"
+        :current="mode === 'game' ? (selected?.id ?? null) : null"
         @pick="pick"
         @import="startImport"
       />

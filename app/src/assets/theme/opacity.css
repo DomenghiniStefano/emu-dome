@@ -17,6 +17,8 @@
   --opacity-soft: 0.8;
   --opacity-missing: 0.45;
   --opacity-missing-label: 0.6;
+  /* The low point of a pulsing sign (the save icon while a game closes, `animate-save-pulse`). */
+  --opacity-pulse: 0.35;
 }
 
 /* The ambient haze's strength behind the shell (`ambient-strength`), per theme; Nero and

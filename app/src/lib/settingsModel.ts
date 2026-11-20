@@ -13,6 +13,7 @@ import {
   type SettingValue,
 } from '@/emu'
 import { nativeAvailable, videoMode } from './videoMode'
+import { refreshBiosStatus } from './biosStatus'
 
 let schemaPromise: Promise<SettingsSchema> | null = null
 
@@ -119,12 +120,26 @@ export function lockReason(
   return null
 }
 
+/** The `bios.*` rows with a backend (`emudome_core::bios` tables): their picker checks the file. */
+const BIOS_ROWS = ['bios.bgba', 'bios.bds7', 'bios.bds9', 'bios.bdsfw', 'bios.bdsi']
+
 /**
  * File rows that work: the picker the row's button opens, which stores the chosen file itself.
- * Resolves the path, or null when cancelled.
+ * Resolves what it chose (a path, a status), or null when cancelled.
  */
 export const FILE_PICKERS: Partial<Record<string, () => Promise<string | null>>> = {
   'fx.fxfile': () => emu.effects.chooseFile(),
+  ...Object.fromEntries(
+    BIOS_ROWS.map(key => [
+      key,
+      async () => {
+        const status = await emu.bios.choose(key)
+        // The same file picked again keeps the value: the status is read here, not on change.
+        await refreshBiosStatus()
+        return status
+      },
+    ]),
+  ),
 }
 
 /** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */

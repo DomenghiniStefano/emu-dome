@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 
 use crate::settings::ConsoleId;
+use crate::GameKey;
 
 /// The file extensions the library looks at (lowercase).
 pub const EXTENSIONS: &[&str] = &["gb", "gbc", "gba", "nds", "3ds", "cci", "cxi", "cia"];
@@ -36,8 +37,8 @@ pub const EXTENSIONS: &[&str] = &["gb", "gbc", "gba", "nds", "3ds", "cci", "cxi"
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Identity {
-    /// `<console>:<hex>`.
-    pub id: String,
+    /// `<console>:<hex>`: the game's one key.
+    pub id: GameKey,
     pub console: ConsoleId,
     /// From the header / banner / SMDH; empty when the ROM has none.
     pub title: String,
@@ -184,8 +185,12 @@ pub fn identify(path: &Path) -> Result<Identity, NotAGame> {
         Key::Known(hex) => hex,
     };
     let title = display_title(header.console, &header.title, path);
+    let id = GameKey::new(header.console, &hex).map_err(|e| {
+        log::warn!("{}: {e}", path.display());
+        NotAGame::Header("identity not made of hex digits")
+    })?;
     Ok(Identity {
-        id: format!("{}:{hex}", header.console.id()),
+        id,
         console: header.console,
         title,
         has_icon: header.icon.is_some(),
