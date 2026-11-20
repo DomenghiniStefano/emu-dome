@@ -13,7 +13,8 @@ async function refused(code: string): Promise<number> {
   return result!.messages.filter(m => m.message.includes('report() / ignore()')).length
 }
 
-describe('no dropped emu call', () => {
+// The first lint loads the TypeScript parser and the whole config: slow on a busy machine.
+describe('no dropped emu call', { timeout: 60_000 }, () => {
   it('refuses `void emu.x()` and a bare `emu.x()` statement, nested commands too', async () => {
     expect(await refused('void emu.setPaused(true)')).toBe(1)
     expect(await refused('void emu.controls.watch(false)')).toBe(1)

@@ -4,6 +4,7 @@ import { computed, ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type LibraryGame, type SavesSummary } from '@/emu'
 import { sizeLabel, type ErrorSink } from '@/i18n/labels'
+import { latest } from '@/lib/latest'
 import { library } from '@/lib/library'
 import { gamesWithSaves } from './savesModel'
 
@@ -14,19 +15,19 @@ export function useSavesOverview(slotCount: Ref<number>, fail: ErrorSink) {
   const loaded = ref(false)
 
   // Rule 7: a load answered after a newer one started is dropped.
-  let latest = 0
+  const loads = latest()
 
   async function load() {
-    const request = ++latest
+    const fresh = loads.next()
     try {
       const list = await emu.saves.summary(
         library.games.map(g => g.id),
         slotCount.value,
       )
-      if (request !== latest) return
+      if (!fresh()) return
       summaries.value = Object.fromEntries(list.map(s => [s.game, s]))
     } catch (e) {
-      if (request !== latest) return
+      if (!fresh()) return
       fail(e)
     }
     loaded.value = library.loaded

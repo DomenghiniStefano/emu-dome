@@ -4,6 +4,7 @@
 import { reactive } from 'vue'
 import { emu, type ConsoleId, type GameId, type LibraryFolder, type LibraryGame } from '@/emu'
 import { errorText } from '@/i18n/labels'
+import { latest } from '@/lib/latest'
 
 /** What L11 «N giochi aggiunti» shows after a scan that added games. */
 export interface ScanSummary {
@@ -27,14 +28,20 @@ export const library = reactive({
 
 let before: Set<GameId> | null = null
 
+// Rule 7: `library://changed` comes in bursts (a scan, play time); only the newest answer counts.
+const reloads = latest()
+
 export async function reloadLibrary() {
+  const fresh = reloads.next()
   try {
     const l = await emu.library.get()
+    if (!fresh()) return
     library.games = l.games
     library.folders = l.folders
     library.scanning = l.scanning
     library.error = null
   } catch (e) {
+    if (!fresh()) return
     library.error = errorText(e)
   }
   library.loaded = true
