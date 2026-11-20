@@ -86,6 +86,8 @@ pnpm package:windows                          # installer (from app/): only the 
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
+./scripts/check.ps1 --fast                    # on a work branch: no Android clippy, cargo test only on the
+                                              # packages changed since develop (both said skipped); never for a merge
 rustup target add aarch64-linux-android       # once: the Android clippy steps of the check
 nvm use                                       # Node from .nvmrc (engines.node in app/package.json; the check stops on another)
 cd app; pnpm install                          # frontend dependencies (pnpm only: npm refuses, see docs/decisions.md)

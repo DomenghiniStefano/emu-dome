@@ -16,9 +16,28 @@
 #
 # The gates at the end are greps over the files git sees (tracked, plus untracked files that
 # are not ignored): target/, node_modules/, dist/ and cores/ are never read.
+#
+# `--fast`: the quick pass while working on a branch. The same list, except two steps, each said
+# "skipped" with the reason so the summary never reads all green:
+# - the Android clippy steps (one more full compilation each);
+# - `cargo test` runs only the workspace packages changed since the branch left develop (committed,
+#   staged, unstaged or untracked), or all of them when a shared manifest changed. It cannot see a
+#   test of another package broken at run time by the change (clippy --all-targets still compiles
+#   every test).
+# The full check, without --fast, is what the merge rule asks for (CLAUDE.md).
 
 set -u
 cd "$(dirname "$0")/.." || exit 1
+
+fast=0
+case "${1:-}" in
+--fast) fast=1 ;;
+'') ;;
+*)
+	printf 'usage: scripts/check [--fast]\n'
+	exit 2
+	;;
+esac
 
 if [ -f app/pnpm-lock.yaml ]; then pm=pnpm; else pm=npm; fi
 
@@ -97,7 +116,45 @@ nintendo_files() {
 # --- Rust
 run 'cargo fmt' cargo fmt --all --check
 run 'cargo clippy' cargo clippy --workspace --all-targets -- -D warnings
-run 'cargo test' cargo test --workspace
+
+# For --fast: the `-p <package>` arguments of the workspace packages changed since the merge base
+# with develop, `--workspace` when a shared manifest changed (or there is no develop to compare
+# with), nothing when no Rust package changed.
+changed_packages() {
+	base=$(git merge-base HEAD develop 2>/dev/null) || {
+		printf -- '--workspace\n'
+		return
+	}
+	found=$({
+		git diff --name-only "$base"
+		git ls-files --others --exclude-standard
+	} | sed -n -E \
+		-e 's#^(Cargo\.toml|Cargo\.lock|clippy\.toml|\.cargo/.*)$#--workspace#p' \
+		-e 's#^crates/(libretro-sys|emudome-core|emudome-platform)/.*#-p \1#p' \
+		-e 's#^app/src-tauri/.*#-p emudome#p' |
+		sort -u)
+	if printf '%s\n' "$found" | grep -qx -- '--workspace'; then
+		printf -- '--workspace\n'
+	else
+		printf '%s\n' "$found" | grep -v '^$'
+	fi
+}
+
+if [ "$fast" -eq 1 ]; then
+	packages=$(changed_packages | tr '\n' ' ')
+	if [ -z "$packages" ]; then
+		skip 'cargo test' '--fast: no Rust package changed since develop'
+	else
+		# shellcheck disable=SC2086 # one argument per word
+		run "cargo test $packages" cargo test $packages
+		case "$packages" in
+		--workspace*) ;;
+		*) skipped="$skipped [cargo test: the packages not changed (--fast)]" ;;
+		esac
+	fi
+else
+	run 'cargo test' cargo test --workspace
+fi
 
 # --- The other targets (CLAUDE.md, engineering rule 8: green on Windows is not green).
 # Android: clippy for aarch64-linux-android, in two parts. The crates with no C code for the target
@@ -142,7 +199,9 @@ android_workspace() {
 		cargo clippy --workspace --target "$android_target" -- -D warnings
 }
 
-if rustup target list --installed 2>/dev/null | grep -qx "$android_target"; then
+if [ "$fast" -eq 1 ]; then
+	skip 'cargo clippy: android' '--fast: run the full check before merging'
+elif rustup target list --installed 2>/dev/null | grep -qx "$android_target"; then
 	run 'cargo clippy: android, crates without C code' \
 		cargo clippy --target "$android_target" -p libretro-sys -p emudome-core -p emudome-platform -- -D warnings
 	ndk=$(android_ndk)

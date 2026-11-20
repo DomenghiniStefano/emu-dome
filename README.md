@@ -39,7 +39,8 @@ pnpm tauri dev
 ```
 
 Every check (format, lint, types, clippy, tests, the project's gates) is one command: `./scripts/check.ps1`
-(`sh scripts/check` on Linux or Git Bash). The list lives in `scripts/check`.
+(`sh scripts/check` on Linux or Git Bash). The list lives in `scripts/check`. While working on a branch,
+`./scripts/check.ps1 --fast` skips the Android clippy steps and tests only the Rust packages changed since `develop`.
 
 Then "Open a game". The executable also accepts a game path as an argument and opens it right away. To try it without games there is `tools/test-rom/emudome-test.gba`:
 magenta screen, it turns green while A is held (X key).
