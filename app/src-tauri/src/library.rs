@@ -365,7 +365,7 @@ fn cache_icon(covers: &Path, game: &GameRecord) -> Option<PathBuf> {
         .to_png()
         .inspect_err(|e| log::warn!("icon of {}: {e}", game.id))
         .ok()?;
-    let written = std::fs::create_dir_all(covers).and_then(|()| std::fs::write(&file, png));
+    let written = emudome_core::write_atomic(&file, &png);
     match written {
         Ok(()) => Some(file),
         Err(e) => {
@@ -454,11 +454,11 @@ fn import_cover(covers: &Path, id: &str, rev: u32, source: &Path) -> Result<Stri
     let bytes = std::fs::read(source).map_err(|e| invalid(e.to_string()))?;
     let ext = image_ext(&bytes).ok_or_else(|| invalid("not a PNG, JPEG or WebP image".into()))?;
     let name = format!("{}.user-{rev}.{ext}", file_stem(id));
-    std::fs::create_dir_all(covers)
-        .and_then(|()| std::fs::write(covers.join(&name), &bytes))
-        .map_err(|e| ErrorCode::LibraryWriteFailed {
+    emudome_core::write_atomic(&covers.join(&name), &bytes).map_err(|e| {
+        ErrorCode::LibraryWriteFailed {
             detail: e.to_string(),
-        })?;
+        }
+    })?;
     Ok(name)
 }
 
