@@ -33,6 +33,6 @@ pub use core::GameFiles;
 pub use error::ErrorCode;
 pub use frame::Frame;
 pub use session::{
-    has_auto_save, slot_infos, Command, CoreOptionInfo, Event, Session, SessionOptions, Shared,
-    SlotInfo, Speed, Stats, AUTO_SLOT,
+    core_needs_restart, has_auto_save, slot_infos, Closed, Command, CoreOptionInfo, Event, Session,
+    SessionOptions, Shared, SlotInfo, Speed, Stats, AUTO_SLOT, CLOSE_TIMEOUT,
 };
