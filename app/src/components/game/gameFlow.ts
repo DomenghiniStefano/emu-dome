@@ -25,6 +25,8 @@ export const flow = reactive({
   resumeAsk: false,
   /** G14: closing (auto quick save, in-game save). */
   closing: null as null | { title: string; autosave: boolean },
+  /** The close flow runs (#86, `emu://closing`: the window, the app or the game closing). */
+  ending: false,
   /** E11: the emulator stopped. `at` = Unix ms of the last auto quick save, if any. */
   crashed: null as null | { console: ConsoleId; at: number | null; detail: string },
   /** E12: slower than normal. */

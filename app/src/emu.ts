@@ -79,6 +79,7 @@ export type ErrorCode =
   | { code: 'openFailed'; params: { detail: string } }
   | { code: 'coreNeedsRestart'; params: { core: string } }
   | { code: 'noGame' }
+  | { code: 'appClosing' }
   | { code: 'nativeVideoUnavailable' }
   | { code: 'webviewBackgroundFailed'; params: { detail: string } }
   | { code: 'slotEmpty'; params: { slot: number } }
@@ -114,6 +115,20 @@ export type ErrorCode =
   | { code: 'biosFileFailed'; params: { detail: string } }
   | { code: 'biosDsiFilesMissing' }
   | { code: 'biosDsMenuFilesMissing' }
+
+/** Mirror of `emudome_core::close_flow::Phase`: what a game being closed is doing. */
+export type ClosingPhase = 'saving' | 'saved' | 'timeout' | 'failed' | 'closed'
+
+/** Mirror of `emudome_core::close_flow::Purpose`: the app quits, or only the game closes. */
+export type ClosingPurpose = 'game' | 'quit'
+
+/** Mirror of `emudome_core::close_flow::Progress`: one `emu://closing` event (Trello #86). */
+export interface ClosingProgress {
+  phase: ClosingPhase
+  purpose: ClosingPurpose
+  /** What could not be written, with `failed`. */
+  error: ErrorCode | null
+}
 
 /** Mirror of `emudome_core::bios::Slot`: one file a core can use. */
 export type BiosSlot =
@@ -614,6 +629,13 @@ export const emu = {
   setVideoMode: (mode: VideoMode) => invoke<void>('set_video_mode', { mode }),
   openGame: (path: string) => invoke<GameInfo>('open_game', { path }),
   closeGame: () => invoke<void>('close_game'),
+  /** Closing a game took too long: keep waiting for its saves (`emu://closing`). */
+  closeWait: () => invoke<void>('close_wait'),
+  /** Closing a game took too long or a save failed: close without it (progress may be lost). */
+  closeAnyway: () => invoke<void>('close_anyway'),
+  /** Every step of closing a game, the window or the app (saving, saved, timeout, failed). */
+  onClosing: (cb: (e: ClosingProgress) => void): Promise<UnlistenFn> =>
+    listen<ClosingProgress>('emu://closing', e => cb(e.payload)),
   /** E11: let go of a core that stopped answering (does not wait for it). */
   abandonGame: () => invoke<void>('abandon_game'),
   /** The auto quick save (slot 0) and slots 1..count of the open game. */

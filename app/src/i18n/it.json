@@ -240,6 +240,7 @@
     "openFailed": "Non riesco ad aprire il gioco. Controlla che il file sia un gioco GBA funzionante. Dettagli: {detail}",
     "coreNeedsRestart": "Un gioco sul core {core} ha smesso di rispondere. Riavvia EmuDome per aprire di nuovo i giochi con questo core.",
     "noGame": "Nessun gioco aperto",
+    "appClosing": "EmuDome si sta chiudendo. Apri di nuovo il gioco quando riparte.",
     "nativeVideoUnavailable": "Il video nativo non è disponibile su questo sistema.",
     "webviewBackgroundFailed": "Non riesco a cambiare il fondo dell’interfaccia: {detail}",
     "slotEmpty": "Lo slot {slot} è vuoto. Salva prima di caricarlo.",
@@ -1692,6 +1693,17 @@
       "mostUsedNote": "Valgono per tutti i giochi · per un solo gioco usa il menu rapido",
       "recent": "MODIFICATE DI RECENTE"
     }
+  },
+  "closing": {
+    "saving": "Salvataggio in corso",
+    "savingHint": "· non spegnere",
+    "saved": "Salvato",
+    "timeoutTitle": "Il salvataggio è lento",
+    "timeoutText": "Aspetta che finisca. Se chiudi ora perdi i progressi dall’ultimo salvataggio.",
+    "failedTitle": "I tuoi progressi non sono stati salvati",
+    "failedText": "Se chiudi ora, perdi i progressi dall’ultimo salvataggio.",
+    "wait": "Aspetta",
+    "closeAnyway": "Chiudi senza salvare"
   },
   "flow": {
     "starting": "Avvio in corso",

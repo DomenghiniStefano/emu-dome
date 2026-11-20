@@ -47,9 +47,9 @@ export function useGameEnding(state: GameState) {
     flow.crashed = crashReport(game.value, stats.value, new Date())
   }
 
-  /** The core stopped: E11, unless the game is being closed on purpose. */
+  /** The core stopped: E11, unless the game is being closed on purpose (here or by the flow). */
   function stopped() {
-    if (!closingNow) crashed()
+    if (!closingNow && !flow.ending) crashed()
   }
 
   /** The stats poll: the HUD's FPS, and the E11 / E12 watchdogs while the game should run. */
@@ -60,7 +60,12 @@ export function useGameEnding(state: GameState) {
       const s = await emu.stats()
       stats.value = s
       const running =
-        !paused.value && !menuOpen.value && !flow.resumeAsk && !flow.crashed && !flow.slow
+        !paused.value &&
+        !menuOpen.value &&
+        !flow.resumeAsk &&
+        !flow.crashed &&
+        !flow.slow &&
+        !flow.ending
       const seen = sample(s, running)
       if (seen === 'hang') crashed()
       else if (seen === 'slow') flow.slow = { fps: s.emuFps, target: s.targetFps }

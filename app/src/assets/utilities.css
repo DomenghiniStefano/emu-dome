@@ -168,6 +168,21 @@
   }
 }
 
+/* The save icon while a game closes (closing/ClosingStrip.vue, #86): it fades to `opacity-pulse`
+   and back, like a console's autosave sign. Still with «Riduci le animazioni». Put it on the
+   icon's container: the strokes are flattened first, so they never overlap translucent. */
+@keyframes save-pulse {
+  50% {
+    opacity: var(--opacity-pulse);
+  }
+}
+@utility animate-save-pulse {
+  animation: save-pulse 1.1s ease-in-out infinite;
+  :root[data-motion='reduce'] & {
+    animation: none;
+  }
+}
+
 /* A game's own colour behind its details (GameDetails, board «Dettagli»): `--cover-tint` is the
    game's colour, set on the page. The header fades from a third of it to nothing, and the cover
    glows in two thirds of it. The glow's names and the fixed drop shadow under it are spec

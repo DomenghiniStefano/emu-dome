@@ -72,7 +72,8 @@ export function useGameSession(toasts: Toasts) {
   }
 
   async function setMenu(open: boolean) {
-    if (!game.value) return
+    // While the game closes (#86) the quick menu does not open.
+    if (!game.value || (open && flow.ending)) return
     menuOpen.value = open
     paused.value = false
     await emu.setPaused(open)
