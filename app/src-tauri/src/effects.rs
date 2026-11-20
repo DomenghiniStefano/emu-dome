@@ -193,7 +193,7 @@ pub fn apply(app: &AppHandle) {
 /// works shows when it is drawn (`emu://effect-error` otherwise).
 #[tauri::command]
 pub async fn effects_choose_file(app: AppHandle) -> Result<Option<String>, ErrorCode> {
-    let Some(file) = pick_preset(&app) else {
+    let Some(file) = emudome_platform::pick_file(&app, "RetroArch", &["slangp"]) else {
         return Ok(None);
     };
     let path = file.to_string_lossy().into_owned();
@@ -204,26 +204,6 @@ pub async fn effects_choose_file(app: AppHandle) -> Result<Option<String>, Error
     };
     crate::settings::emit_changed(&app, &["fx.fxfile"], level);
     Ok(Some(path))
-}
-
-#[cfg(desktop)]
-fn pick_preset(app: &AppHandle) -> Option<PathBuf> {
-    use tauri_plugin_dialog::DialogExt;
-    let picked = app
-        .dialog()
-        .file()
-        .add_filter("RetroArch", &["slangp"])
-        .blocking_pick_file()?;
-    picked
-        .into_path()
-        .inspect_err(|e| log::warn!("picked effect: {e}"))
-        .ok()
-}
-
-#[cfg(mobile)]
-fn pick_preset(_app: &AppHandle) -> Option<PathBuf> {
-    log::warn!("file picker not available on this platform yet");
-    None
 }
 
 #[cfg(test)]

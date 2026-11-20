@@ -17,7 +17,7 @@ use ndk::native_window::NativeWindow;
 use parking_lot::{Condvar, Mutex};
 use raw_window_handle::{DisplayHandle, HandleError};
 
-use crate::{ExternalSurface, SurfaceEvent, SurfaceListener};
+use crate::{ExternalSurface, SurfaceEvent, SurfaceListener, WindowOptions};
 
 pub const OS_NAME: &str = "Android";
 
@@ -226,4 +226,29 @@ extern "system" fn native_surface_destroyed(_env: JNIEnv, _class: JClass) {
     if let Some(listener) = &state.listener {
         listener(SurfaceEvent::Lost);
     }
+}
+
+pub fn create_window(
+    app: &tauri::App,
+    options: &WindowOptions,
+) -> tauri::Result<(tauri::Window, tauri::Webview)> {
+    let mut builder = tauri::WebviewWindowBuilder::new(
+        app,
+        "main",
+        tauri::WebviewUrl::App("index.html".into()),
+    )
+    .transparent(true)
+    .focused(options.focused);
+    if let Some(dir) = &options.webview_data_dir {
+        builder = builder.data_directory(dir.clone());
+    }
+    let main = builder.build()?;
+    let ui: &tauri::Webview = main.as_ref();
+    Ok((ui.window(), ui.clone()))
+}
+
+/// No file-path picker on Android yet (TODO with the SAF).
+pub fn pick_file(_app: &tauri::AppHandle, _filter: &str, _extensions: &[&str]) -> Option<PathBuf> {
+    log::warn!("file picker not available on this platform yet");
+    None
 }

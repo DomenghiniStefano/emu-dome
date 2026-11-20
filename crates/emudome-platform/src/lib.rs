@@ -193,5 +193,33 @@ pub fn attach_external_surface<R: tauri::Runtime>(
     imp::attach_external_surface(webview, Box::new(on_event));
 }
 
+/// How the main window starts ([`create_window`]).
+pub struct WindowOptions {
+    /// False in bench mode: the window appears without taking the focus.
+    pub focused: bool,
+    /// The webview's profile folder, when the data folder is not the default one
+    /// (`EMUDOME_DATA_DIR`); `None` leaves Tauri's default.
+    pub webview_data_dir: Option<PathBuf>,
+}
+
+/// Creates the main window and the interface's webview. Tauri's API differs by form factor:
+///
+/// - desktop: a bare window with the transparent "ui" child webview on top, so the native
+///   video can draw on the window underneath (Tauri's `unstable` feature);
+/// - Android: the single webview window the system gives; the native video gets a
+///   surface of its own ([`attach_external_surface`]).
+pub fn create_window(
+    app: &tauri::App,
+    options: &WindowOptions,
+) -> tauri::Result<(tauri::Window, tauri::Webview)> {
+    imp::create_window(app, options)
+}
+
+/// Asks the user for one file, offering only the extensions `extensions` (listed as `filter`).
+/// `None` when the user cancels, or where no file-path picker exists yet (Android: logged).
+pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> Option<PathBuf> {
+    imp::pick_file(app, filter, extensions)
+}
+
 /// Listener of the external surface, boxed for the per-OS modules.
 pub(crate) type SurfaceListener = Box<dyn Fn(SurfaceEvent) + Send + Sync>;
