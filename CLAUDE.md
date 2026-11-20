@@ -60,7 +60,10 @@ Git: `develop` is the integration branch, checked out in the main worktree; work
 `C:\Projects\emu-dome.wt\<name>` and is merged into `develop` from the main worktree. Pushing `develop` is allowed
 (owner, 2026-11-16). No push to `main`. **Merge rule**: `./scripts/check.ps1` green on the merge commit itself
 (not only on the branch) before `git push` of `develop`; `wip` commits are squashed before merging, never merged as
-they are.
+they are. **Checks on work branches** (owner, 2026-11-20 and 2026-11-21): only targeted ones while working (the
+touched crates' tests and clippy, typecheck, lint, the touched Vitest files), `./scripts/check.ps1 --fast` once at the
+end of a branch; the full check runs only on the merge commit into `develop`. No build only to measure or to confirm
+something already verified.
 
 Phase 0 answered the architecture question: the native video under a transparent webview holds up. The full test
 log, entry by entry, is `docs/fase0-esito.md`; in short:
