@@ -93,6 +93,45 @@ pub fn scan(input: ScanInput, progress: &mut dyn FnMut(usize, usize)) -> ScanOut
     }
 }
 
+/// The modification time of a file, Unix ms (0 when the system has none).
+fn mtime_ms(meta: &fs::Metadata) -> u64 {
+    meta.modified()
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .and_then(|d| u64::try_from(d.as_millis()).ok())
+        .unwrap_or_default()
+}
+
+/// The identity of the file at `path`, from `cached` when its size and modification time did
+/// not change, else read from the file.
+fn identify_stamped(
+    path: &Path,
+    size: u64,
+    mtime: u64,
+    cached: Option<&CacheEntry>,
+) -> Result<Identity, identity::NotAGame> {
+    match cached.filter(|c| c.size == size && c.mtime == mtime) {
+        // The display rule may have changed since the file was cached: apply it again.
+        Some(c) => {
+            let mut identity = c.identity.clone();
+            identity.title = identity::display_title(identity.console, &identity.title, path);
+            Ok(identity)
+        }
+        None => identity::identify(path),
+    }
+}
+
+/// The identity of one file (a game opened by its path), from the library's hash cache entry
+/// for that path when the file did not change, else hashed now. Takes no lock: the caller copies
+/// the cache entry out first, so hashing a large ROM never holds the library.
+pub fn identify_cached(
+    path: &Path,
+    cached: Option<&CacheEntry>,
+) -> Result<Identity, identity::NotAGame> {
+    let meta = fs::metadata(path)?;
+    identify_stamped(path, meta.len(), mtime_ms(&meta), cached)
+}
+
 struct Walker<'a> {
     old: HashCache,
     cache: HashCache,
@@ -141,30 +180,13 @@ impl Walker<'_> {
         self.checked += 1;
         let key = path.to_string_lossy().into_owned();
         let size = meta.len();
-        let mtime = meta
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-            .and_then(|d| u64::try_from(d.as_millis()).ok())
-            .unwrap_or_default();
-        let cached = self
-            .old
-            .get(&key)
-            .filter(|c| c.size == size && c.mtime == mtime)
-            .map(|c| c.identity.clone());
-        let identity = match cached {
-            // The display rule may have changed since the file was cached: apply it again.
-            Some(mut identity) => {
-                identity.title = identity::display_title(identity.console, &identity.title, path);
-                Some(identity)
+        let mtime = mtime_ms(&meta);
+        let identity = match identify_stamped(path, size, mtime, self.old.get(&key)) {
+            Ok(identity) => Some(identity),
+            Err(e) => {
+                log::info!("library scan: {} skipped: {e}", path.display());
+                None
             }
-            None => match identity::identify(path) {
-                Ok(identity) => Some(identity),
-                Err(e) => {
-                    log::info!("library scan: {} skipped: {e}", path.display());
-                    None
-                }
-            },
         };
         if let Some(identity) = identity {
             self.cache.insert(

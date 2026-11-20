@@ -33,14 +33,17 @@ const { t } = useI18n()
 const saves = ref<GameSaves | null>(null)
 
 async function load() {
+  const id = props.game.id
   try {
-    saves.value = await loadGameSaves(props.game)
+    const loaded = await loadGameSaves(props.game)
+    // Rule 7: the details show another game now; its own load shows.
+    if (props.game.id === id) saves.value = loaded
   } catch (e) {
-    emit('error', errorText(e))
+    if (props.game.id === id) emit('error', errorText(e))
   }
 }
 watch(
-  () => `${props.game.path}:${props.game.lastPlayed}`,
+  () => `${props.game.id}:${props.game.lastPlayed}`,
   () => void load(),
 )
 onMounted(load)

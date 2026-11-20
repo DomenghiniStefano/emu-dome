@@ -3,7 +3,7 @@
 //! event, `{ key, level }`, sent after every change so any screen showing the value refreshes.
 
 use emudome_core::settings::{
-    CommitTarget, ConsoleId, Device, GameId, GameOverride, Level, PageValue, RecentChange,
+    CommitTarget, ConsoleId, Device, GameKey, GameOverride, Level, PageValue, RecentChange,
     SchemaDto, Scope, Settings, Value,
 };
 use emudome_core::speed_audio::FastAudio;
@@ -76,7 +76,7 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
 }
 
 /// A game opened: its session of changes «in prova» starts (the previous one is dropped).
-pub fn begin_session(app: &AppHandle, console: ConsoleId, game: GameId) {
+pub fn begin_session(app: &AppHandle, console: ConsoleId, game: GameKey) {
     if let Some(state) = app.try_state::<SettingsState>() {
         let dropped = {
             let mut settings = state.0.lock();
@@ -159,7 +159,7 @@ fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
 }
 
 /// What the game flow reads for a game of `console` run by `core` (`mgba`, ...).
-pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameId) -> GameFlow {
+pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameKey) -> GameFlow {
     let scope = Scope::Game {
         console,
         game: game.clone(),

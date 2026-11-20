@@ -13,9 +13,9 @@ export const detailsReturn = ref<GameId | null>(null)
 /** A game's «Solo questo gioco» level. */
 export type GameScope = Extract<SettingsScope, { level: 'game' }>
 
-/** A game's «Solo questo gioco» scope; null when it has no settings identity. */
-export function gameScopeOf(g: LibraryGame): GameScope | null {
-  return g.settingsGame ? { level: 'game', console: g.console, game: g.settingsGame } : null
+/** A game's «Solo questo gioco» scope: its settings are named by its `GameId`, as everything else. */
+export function gameScopeOf(g: Pick<LibraryGame, 'id' | 'console'>): GameScope {
+  return { level: 'game', console: g.console, game: g.id }
 }
 
 /** A section opened at «Solo questo gioco» for one game. */

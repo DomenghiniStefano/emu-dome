@@ -2,10 +2,11 @@
 //!
 //! Layout (two roots, given by the shell):
 //! - synced root (`<app data>/settings`, the one Drive sync will carry):
-//!   `global.json`, `console/<console>.json`, `game/<game id>.json`;
+//!   `global.json`, `console/<console>.json`, `game/<console>-<hex>.json` (the game's key,
+//!   [`GameKey::file_stem`]);
 //! - device file (`<app local data>/settings/device.json`, never synced): the values of the
 //!   per-device entries, at every level: `{ "global": {..}, "console": { "gba": {..} },
-//!   "game": { "<game id>": {..} } }`.
+//!   "game": { "<console>-<hex>": {..} } }`.
 //!
 //! Each file is a flat JSON object `key → value`. The whole object is kept in memory and
 //! written back, so keys this version does not know (from a newer version, or from another
@@ -33,7 +34,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
 
-use super::{ConsoleId, GameId};
+use super::{ConsoleId, GameKey};
 use crate::ErrorCode;
 
 /// One level's values as stored: `key → JSON value`, unknown keys included.
@@ -47,7 +48,7 @@ pub const CHANGED_KEY: &str = "$changed";
 pub enum FileId {
     Global,
     Console(ConsoleId),
-    Game(GameId),
+    Game(GameKey),
 }
 
 /// The per-device values, by level.
@@ -69,7 +70,7 @@ impl DeviceLayers {
         match file {
             FileId::Global => Some(&self.global),
             FileId::Console(c) => self.console.get(c.id()),
-            FileId::Game(g) => self.game.get(g.as_str()),
+            FileId::Game(g) => self.game.get(&g.file_stem()),
         }
     }
 
@@ -77,7 +78,7 @@ impl DeviceLayers {
         match file {
             FileId::Global => &mut self.global,
             FileId::Console(c) => self.console.entry(c.id().to_owned()).or_default(),
-            FileId::Game(g) => self.game.entry(g.as_str().to_owned()).or_default(),
+            FileId::Game(g) => self.game.entry(g.file_stem()).or_default(),
         }
     }
 }
@@ -123,8 +124,15 @@ impl Store {
             FileId::Game(g) => self
                 .synced_dir
                 .join("game")
-                .join(format!("{}.json", g.as_str())),
+                .join(format!("{}.json", g.file_stem())),
         }
+    }
+
+    /// Drops what was read: the next use reads the files again (after something outside the
+    /// store moved them, the one-time game key migration).
+    pub fn forget(&mut self) {
+        self.synced.clear();
+        self.device = None;
     }
 
     /// The stored JSON for `key` at `file`, from the device file when `per_device`.
@@ -176,8 +184,8 @@ impl Store {
     }
 
     /// The games that have a settings file, or per-device values on this device.
-    pub fn game_ids(&mut self) -> Vec<GameId> {
-        let mut ids: Vec<GameId> = Vec::new();
+    pub fn game_ids(&mut self) -> Vec<GameKey> {
+        let mut ids: Vec<GameKey> = Vec::new();
         let dir = self.synced_dir.join("game");
         match fs::read_dir(&dir) {
             Ok(entries) => {
@@ -185,7 +193,7 @@ impl Store {
                     let path = entry.path();
                     if path.extension().is_some_and(|e| e == "json") {
                         if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                            if let Ok(id) = GameId::try_from(stem.to_owned()) {
+                            if let Some(id) = GameKey::from_file_stem(stem) {
                                 ids.push(id);
                             }
                         }
@@ -200,7 +208,7 @@ impl Store {
             .map(|d| d.game.keys().cloned().collect())
             .unwrap_or_default();
         for key in device_games {
-            if let Ok(id) = GameId::try_from(key) {
+            if let Some(id) = GameKey::from_file_stem(&key) {
                 if !ids.contains(&id) {
                     ids.push(id);
                 }
@@ -355,7 +363,7 @@ mod tests {
 
     use super::{Change, FileId, Store};
     use crate::settings::test_dir::TestDir;
-    use crate::settings::{ConsoleId, GameId};
+    use crate::settings::{ConsoleId, GameKey};
 
     fn store(dir: &TestDir) -> Store {
         Store::new(dir.path("synced"), dir.path("local/device.json"))
@@ -373,7 +381,7 @@ mod tests {
     #[test]
     fn round_trip_through_the_files() {
         let dir = TestDir::new("store-round-trip");
-        let game = FileId::Game(GameId::from_rom_path("C:/games/test.gba".as_ref()));
+        let game = FileId::Game(GameKey::parse("gba:7e57").unwrap());
         let console = FileId::Console(ConsoleId::Gba);
         {
             let mut s = store(&dir);

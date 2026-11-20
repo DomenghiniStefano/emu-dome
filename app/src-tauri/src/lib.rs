@@ -17,6 +17,7 @@ mod first_run;
 #[cfg(desktop)]
 mod gamepad;
 mod library;
+mod migration;
 mod pads;
 mod saves;
 mod settings;
@@ -31,10 +32,11 @@ use std::time::{Instant, SystemTime};
 
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{Area, Layout, Split};
-use emudome_core::settings::{ConsoleId, GameId};
+use emudome_core::settings::ConsoleId;
 use emudome_core::tuning::{Tuning, VideoPath};
 use emudome_core::{
-    Closed, Command, ErrorCode, Event, Session, SessionOptions, Shared, Speed, CLOSE_TIMEOUT,
+    Closed, Command, ErrorCode, Event, GameKey, Session, SessionOptions, Shared, Speed,
+    CLOSE_TIMEOUT,
 };
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -77,8 +79,8 @@ struct AppState {
     menu_open: Arc<AtomicBool>,
     data_dir: PathBuf,
     resource_dir: Option<PathBuf>,
-    /// The file of the open game (its slots and thumbnails sit beside its saves).
-    game_path: Mutex<Option<PathBuf>>,
+    /// The key of the open game: its saves, slots and thumbnails are named by it.
+    game: Mutex<Option<GameKey>>,
     /// The core of the open game (`mgba`, ...), named in `coreNeedsRestart`.
     core_name: Mutex<Option<&'static str>>,
     /// Held for the whole of closing a game: a second close (the window closing while a game
@@ -116,7 +118,7 @@ fn unix_ms(t: std::time::SystemTime) -> Option<u64> {
 /// The auto quick save (slot 0) and slots `1..=count` of the open game.
 #[tauri::command]
 fn list_slots(state: tauri::State<'_, AppState>, count: u8) -> Vec<SlotDto> {
-    let Some(game) = state.game_path.lock().clone() else {
+    let Some(game) = state.game.lock().clone() else {
         return Vec::new();
     };
     emudome_core::slot_infos(&state.save_dir(), &game, count)
@@ -142,7 +144,7 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
     use tauri::http::{header, Response, StatusCode};
     let bytes = slot.parse::<u8>().ok().and_then(|slot| {
         let state = app.try_state::<AppState>()?;
-        let game = state.game_path.lock().clone()?;
+        let game = state.game.lock().clone()?;
         let info = emudome_core::slot_infos(&state.save_dir(), &game, slot)
             .into_iter()
             .find(|s| s.slot == slot)?;
@@ -163,6 +165,8 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GameInfo {
+    /// The game's one identity (its saves, its «Solo questo gioco» settings).
+    id: GameKey,
     title: String,
     console: String,
     console_id: ConsoleId,
@@ -218,52 +222,39 @@ fn console_label(console: ConsoleId) -> &'static str {
     }
 }
 
-/// Opens a game file. A file that is in the library opens as that library game (its
-/// identity, title and play time); any other file is identified by its path for now.
+/// Opens a game file. Every game is its content's key, never its path: a file of the library
+/// opens as that library game; any other file is identified first (from the library's hash
+/// cache when it knows the file unchanged, else by hashing it, holding no lock), and when its
+/// content is a library game's (a copy elsewhere) it opens as that game too.
 #[tauri::command]
 fn open_game(
     app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     path: String,
 ) -> Result<GameInfo, ErrorCode> {
-    if let Some((id, title, console)) = library::game_at(&app, &path) {
-        return open_library_game(&app, &state, &id, PathBuf::from(path), title, console);
+    if let Some((key, title)) = library::game_at(&app, &path) {
+        return open_library_game(&app, &state, &key, PathBuf::from(path), title);
     }
     let game_path = PathBuf::from(&path);
-    let game = GameId::from_rom_path(&game_path);
-    let console = gb_console(&game_path);
-    open_path(&app, &state, game_path, game, None, console)
-}
-
-/// A Game Boy file outside the library: its header tells Game Boy from Game Boy Color (a
-/// `.gb` file can be a Game Boy Color cartridge). None for any other file, or an unreadable
-/// header: the extension decides.
-fn gb_console(path: &Path) -> Option<ConsoleId> {
-    let ext = path.extension()?.to_string_lossy().to_lowercase();
-    if ext != "gb" && ext != "gbc" {
-        return None;
+    // An extension EmuDome does not run is refused before any hashing.
+    core_for(&game_path)?;
+    let identity = library::identify_path(&app, &game_path)?;
+    if let Some(title) = library::title_of(&app, &identity.id) {
+        return open_library_game(&app, &state, &identity.id, game_path, title);
     }
-    emudome_core::library::identify(path)
-        .ok()
-        .map(|id| id.console)
+    open_path(&app, &state, game_path, identity.id, Some(identity.title))
 }
 
-/// Opens a library game: its settings are those of its content identity, and its play time
-/// counts until it closes.
+/// Opens a library game: its play time counts until it closes.
 fn open_library_game(
     app: &tauri::AppHandle,
     state: &AppState,
-    id: &str,
+    key: &GameKey,
     game_path: PathBuf,
     title: String,
-    console: ConsoleId,
 ) -> Result<GameInfo, ErrorCode> {
-    // TODO(game identity, Trello #21): settings files saved under the path hash before the
-    // library existed are not moved to the content identity.
-    let game = emudome_core::library::settings_game_id(id)
-        .unwrap_or_else(|| GameId::from_rom_path(&game_path));
-    let info = open_path(app, state, game_path, game, Some(title), Some(console))?;
-    library::begin_play(app, id);
+    let info = open_path(app, state, game_path, key.clone(), Some(title))?;
+    library::begin_play(app, key);
     Ok(info)
 }
 
@@ -311,17 +302,18 @@ fn screen_split(console: ConsoleId) -> Split {
     }
 }
 
-/// Closes the open game, then opens `game_path` with `game` as its settings identity.
-/// `title` and `console` come from the library when known (else the file name and the extension).
+/// Closes the open game, then opens `game_path` as the game `game` (its console, saves and
+/// settings). `title` comes from the library or the ROM (else the file name).
 fn open_path(
     app: &tauri::AppHandle,
     state: &AppState,
     game_path: PathBuf,
-    game: GameId,
+    game: GameKey,
     title: Option<String>,
-    console: Option<ConsoleId>,
 ) -> Result<GameInfo, ErrorCode> {
-    let (core_name, ext_console) = core_for(&game_path)?;
+    // The one-time move of old save names ends before any game reads its saves.
+    migration::wait(app);
+    let (core_name, _) = core_for(&game_path)?;
     let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref())
         .ok_or_else(|| ErrorCode::CoreNotFound {
             file: emudome_platform::core_file_name(core_name),
@@ -337,12 +329,13 @@ fn open_path(
     // Close the previous game before opening another one.
     close_current(app, state);
 
-    let console_id = console.unwrap_or(ext_console);
+    // The content decides (a `.gb` file can be a Game Boy Color cartridge).
+    let console_id = game.console();
     let flow = settings::game_flow(app, core_name, console_id, &game);
     let save_dir = state.save_dir();
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
-    saves::before_open(app, &save_dir, &game_path)?;
-    let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game_path);
+    saves::before_open(app, &save_dir, &game)?;
+    let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(
@@ -351,6 +344,7 @@ fn open_path(
             game_path: game_path.clone(),
             system_dir: bios::system_dir(app, core_name, state.data_dir.join("system")),
             save_dir,
+            game: game.clone(),
             autosave_every: flow.autosave_every,
             autosave_on_exit: flow.autosave_on_exit,
             resume_auto: flow.resume == "always",
@@ -382,13 +376,14 @@ fn open_path(
     *state.current.lock() = Some(shared.clone());
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
-    *state.game_path.lock() = Some(game_path.clone());
+    *state.game.lock() = Some(game.clone());
     *state.core_name.lock() = Some(core_name);
     bios::emit_fallbacks(app, &flow.bios.fallbacks);
     core_settings::started(app, core_name, console_id, flow.core_options);
-    settings::begin_session(app, console_id, game);
+    settings::begin_session(app, console_id, game.clone());
 
     Ok(GameInfo {
+        id: game,
         title: title.unwrap_or_else(|| {
             game_path
                 .file_stem()
@@ -450,7 +445,7 @@ fn end_game(app: &tauri::AppHandle, state: &AppState, ending: Ending) {
         }
     }
     // Cleared after the thread ended: the Saves screen refuses this game's files until then.
-    state.game_path.lock().take();
+    state.game.lock().take();
 }
 
 #[tauri::command]
@@ -922,7 +917,7 @@ pub fn run() {
                 menu_open,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
-                game_path: Mutex::new(None),
+                game: Mutex::new(None),
                 core_name: Mutex::new(None),
                 closing: Mutex::new(()),
                 audio,
@@ -930,6 +925,8 @@ pub fn run() {
             });
             app.manage(effects::open(app));
             effects::apply(app.handle());
+            // After the library is read, before any game opens (opening waits for it).
+            migration::start(app);
             library::startup(app.handle());
             if let Some(bench) = bench.clone() {
                 bench::spawn(app.handle().clone(), bench);
@@ -1002,6 +999,7 @@ pub fn run() {
             saves::saves_import,
             saves::saves_import_folder,
             saves::saves_import_many,
+            migration::saves_migration_status,
             first_run::first_run_show,
             first_run::first_run_steps,
             first_run::first_run_done,

@@ -3,10 +3,10 @@
 // resume question, and starting again after E11.
 import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
-import { AUTO_SLOT, emu, type LibraryGame } from '@/emu'
+import { AUTO_SLOT, emu, type GameId, type LibraryGame } from '@/emu'
 import { flow } from './gameFlow'
 import { errorText } from '@/i18n/labels'
-import { launchFailure, openedPath, type Launch } from './launch'
+import { launchFailure, type Launch } from './launch'
 import { fileTitle } from './session'
 import type { GameSession } from './useGameSession'
 import type { Toasts } from '@/composables/useToasts'
@@ -16,8 +16,9 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
 
   // The last game opened, to open it again after the emulator stopped (E11).
   let last: Launch | null = null
-  // E04: the game whose in-game save was set aside, to open again after restoring a backup.
-  let broken: Launch | null = null
+  // E04: the game whose in-game save was set aside (its key, from Rust), to open again after
+  // restoring a backup.
+  let broken: { launch: Launch; game: GameId } | null = null
 
   async function start(launch: Launch, resumeAuto = false): Promise<boolean> {
     const { opened, title, colour } = launch
@@ -33,7 +34,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     } catch (e) {
       const failure = launchFailure(e)
       if (failure.kind === 'saveBroken') {
-        broken = launch
+        broken = { launch, game: failure.game }
         flow.saveBroken = { title, backupAt: failure.backupAt }
       } else {
         flow.startError = { title, reason: failure.reason }
@@ -86,7 +87,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
   }
 
   // ---- E04: the in-game save cannot be read ----
-  function takeBroken(): Launch | null {
+  function takeBroken(): { launch: Launch; game: GameId } | null {
     const b = broken
     flow.saveBroken = null
     broken = null
@@ -97,18 +98,18 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     const b = takeBroken()
     if (!b) return
     try {
-      await emu.saves.restoreLatest(openedPath(b.opened))
+      await emu.saves.restoreLatest(b.game)
     } catch (e) {
-      flow.startError = { title: b.title, reason: errorText(e) }
+      flow.startError = { title: b.launch.title, reason: errorText(e) }
       return
     }
-    await start(b)
+    await start(b.launch)
   }
   /** «Gioca senza salvataggio»: the unreadable save is already set aside, so the game opens
    * without one. */
   async function playWithoutSave() {
     const b = takeBroken()
-    if (b) await start(b)
+    if (b) await start(b.launch)
   }
   const closeBroken = () => void takeBroken()
 

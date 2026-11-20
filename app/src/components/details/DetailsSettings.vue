@@ -42,8 +42,12 @@ async function load() {
   }
   try {
     schema.value ??= await loadSchema()
-    overrides.value = await emu.settings.gameOverrides(s)
+    const found = await emu.settings.gameOverrides(s)
+    // Rule 7: the details show another game now; its own load shows.
+    if (scope.value.game !== s.game) return
+    overrides.value = found
   } catch (e) {
+    if (scope.value.game !== s.game) return
     emit('error', errorText(e))
   }
   loaded.value = true

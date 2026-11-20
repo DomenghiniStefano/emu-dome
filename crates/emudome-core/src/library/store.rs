@@ -20,7 +20,7 @@ use serde_json::{Map, Value as Json};
 use super::identity::Identity;
 use super::scan::ScanOutcome;
 use crate::settings::ConsoleId;
-use crate::ErrorCode;
+use crate::{ErrorCode, GameKey};
 
 /// Which picture a cover shows. Mirror: `CoverKind` in app/src/emu.ts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ pub enum CoverKind {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameRecord {
-    pub id: String,
+    pub id: GameKey,
     pub console: ConsoleId,
     pub title: String,
     pub path: String,
@@ -169,18 +169,44 @@ impl Library {
         }
     }
 
+    /// `Err(libraryReadFailed)` while the file could not be read: what the library holds then is
+    /// not what the user has, so nothing may be decided from it (the game key migration waits).
+    pub fn readable(&mut self) -> Result<(), ErrorCode> {
+        self.ensure_readable()
+    }
+
     /// The games shown in the library.
     pub fn games(&self) -> impl Iterator<Item = &GameRecord> {
         self.db.games.values().filter(|g| g.listed)
     }
 
     /// A game shown in the library.
-    pub fn game(&self, id: &str) -> Result<&GameRecord, ErrorCode> {
+    pub fn game(&self, id: &GameKey) -> Result<&GameRecord, ErrorCode> {
         self.db
             .games
-            .get(id)
+            .get(id.as_str())
             .filter(|g| g.listed)
-            .ok_or_else(|| ErrorCode::LibraryGameUnknown { id: id.into() })
+            .ok_or_else(|| ErrorCode::LibraryGameUnknown { id: id.to_string() })
+    }
+
+    /// Every file this library knows the key of: each game's file (shown or not) and every
+    /// file in the hash cache (a second copy of a game, a file seen before). Facts only: what
+    /// the one-time game key migration maps old file names and path hashes with.
+    pub fn known_files(&self) -> Vec<(String, GameKey)> {
+        let records = self
+            .db
+            .games
+            .values()
+            .map(|g| (g.path.clone(), g.id.clone()));
+        let cached = self
+            .db
+            .hash_cache
+            .iter()
+            .map(|(path, c)| (path.clone(), c.identity.id.clone()));
+        let mut files: Vec<(String, GameKey)> = records.chain(cached).collect();
+        files.sort();
+        files.dedup();
+        files
     }
 
     /// The listed game whose file is `path`, if any.
@@ -188,13 +214,13 @@ impl Library {
         self.games().find(|g| g.path == path)
     }
 
-    fn game_mut(&mut self, id: &str) -> Result<&mut GameRecord, ErrorCode> {
+    fn game_mut(&mut self, id: &GameKey) -> Result<&mut GameRecord, ErrorCode> {
         self.ensure_readable()?;
         self.db
             .games
-            .get_mut(id)
+            .get_mut(id.as_str())
             .filter(|g| g.listed)
-            .ok_or_else(|| ErrorCode::LibraryGameUnknown { id: id.into() })
+            .ok_or_else(|| ErrorCode::LibraryGameUnknown { id: id.to_string() })
     }
 
     /// The hash cache, for a scan running outside the lock.
@@ -220,11 +246,11 @@ impl Library {
             let current = self
                 .db
                 .games
-                .get(&found.identity.id)
+                .get(found.identity.id.as_str())
                 .is_some_and(|g| g.path == found.path);
             // Duplicates: keep the path the game already has, else the first one found.
             if current || !seen.contains_key(found.identity.id.as_str()) {
-                seen.insert(&found.identity.id, found);
+                seen.insert(found.identity.id.as_str(), found);
             }
         }
         let folders: BTreeSet<&str> = scan.folders.iter().map(String::as_str).collect();
@@ -282,7 +308,7 @@ impl Library {
 
     pub fn set_flags(
         &mut self,
-        id: &str,
+        id: &GameKey,
         favourite: Option<bool>,
         hidden: Option<bool>,
     ) -> Result<(), ErrorCode> {
@@ -298,7 +324,7 @@ impl Library {
 
     /// «Nome mostrato» (L10). Blank, or the same as the ROM's title, goes back to the ROM's title;
     /// spaces around are dropped and a name longer than [`NAME_MAX`] is cut.
-    pub fn set_name(&mut self, id: &str, name: &str) -> Result<(), ErrorCode> {
+    pub fn set_name(&mut self, id: &GameKey, name: &str) -> Result<(), ErrorCode> {
         let game = self.game_mut(id)?;
         let name: String = name.trim().chars().take(NAME_MAX).collect();
         let name = name.trim_end();
@@ -309,7 +335,7 @@ impl Library {
     /// Changes the cover. `user_file` is the file name in the covers folder, for `User`.
     pub fn set_cover(
         &mut self,
-        id: &str,
+        id: &GameKey,
         kind: CoverKind,
         user_file: Option<String>,
     ) -> Result<(), ErrorCode> {
@@ -336,19 +362,19 @@ impl Library {
     }
 
     /// The file is not reachable now.
-    pub fn set_unavailable(&mut self, id: &str) -> Result<(), ErrorCode> {
+    pub fn set_unavailable(&mut self, id: &GameKey) -> Result<(), ErrorCode> {
         self.game_mut(id)?.available = false;
         self.save()
     }
 
     /// The game was opened now.
-    pub fn mark_played(&mut self, id: &str, now_ms: u64) -> Result<(), ErrorCode> {
+    pub fn mark_played(&mut self, id: &GameKey, now_ms: u64) -> Result<(), ErrorCode> {
         self.game_mut(id)?.last_played = Some(now_ms);
         self.save()
     }
 
     /// Adds a play stretch to the game's total.
-    pub fn add_play_time(&mut self, id: &str, secs: u64) -> Result<(), ErrorCode> {
+    pub fn add_play_time(&mut self, id: &GameKey, secs: u64) -> Result<(), ErrorCode> {
         let game = self.game_mut(id)?;
         game.play_time_secs = game.play_time_secs.saturating_add(secs);
         self.save()

@@ -39,7 +39,7 @@ const backupsLine = computed(() => {
 
 async function exportInGame() {
   try {
-    if (await emu.saves.export(props.game.path, { kind: 'inGame' }))
+    if (await emu.saves.export(props.game.id, { kind: 'inGame' }))
       emit('notice', t('saves.exported'))
   } catch (e) {
     emit('error', errorText(e))
