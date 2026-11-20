@@ -2,7 +2,7 @@
 // file name unless the game was chosen first, as from L05 «Importa…»), that game's saves (to warn
 // about the in-game save it replaces), the «Scegli il gioco» dialog, and the import itself.
 import { ref, type Ref } from 'vue'
-import { emu, type GameSaves, type ImportCandidate, type LibraryGame } from '@/emu'
+import { emu, type GameId, type GameSaves, type ImportCandidate, type LibraryGame } from '@/emu'
 import type { ErrorSink } from '@/i18n/labels'
 import { library } from '@/lib/library'
 import { loadGameSaves } from '@/components/details/gameSaves'
@@ -40,10 +40,10 @@ export function useSaveImport(
     }
   }
 
-  /** L05 «Importa…»: the import for that game (ROM path). */
-  async function resetFor(path: string) {
+  /** L05 «Importa…»: the import for that game. */
+  async function resetFor(id: GameId) {
     reset()
-    const g = library.games.find(x => x.path === path)
+    const g = library.games.find(x => x.id === id)
     if (!g) return
     targetChosen.value = true
     await setTarget(g)
@@ -76,7 +76,7 @@ export function useSaveImport(
     if (!c || !g || importing.value) return
     importing.value = true
     try {
-      await emu.saves.import(c.path, g.path)
+      await emu.saves.import(c.path, g.id)
       await imported(g)
     } catch (e) {
       fail(e)

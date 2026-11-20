@@ -8,15 +8,13 @@ export function hasSaves(s: SavesSummary | undefined): boolean {
   return !!s && (s.inGame || s.quickCount > 0 || s.broken)
 }
 
-/** V01: the games that have saves, the most recently changed first. */
+/** V01: the games that have saves (`summaries` by `GameId`), the most recently changed first. */
 export function gamesWithSaves(
   games: readonly LibraryGame[],
   summaries: Readonly<Record<string, SavesSummary>>,
 ): LibraryGame[] {
-  const lastChange = (g: LibraryGame) => summaries[g.path]?.lastChange ?? 0
-  return games
-    .filter(g => hasSaves(summaries[g.path]))
-    .sort((a, b) => lastChange(b) - lastChange(a))
+  const lastChange = (g: LibraryGame) => summaries[g.id]?.lastChange ?? 0
+  return games.filter(g => hasSaves(summaries[g.id])).sort((a, b) => lastChange(b) - lastChange(a))
 }
 
 /** V01's search: the games whose title holds the query, ignoring case; an empty query keeps all. */

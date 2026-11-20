@@ -82,6 +82,7 @@ describe('gameSettingsFrom', () => {
 
 describe('crashReport', () => {
   const game: GameInfo = {
+    id: 'gba:0a',
     title: 'Pocket Quest',
     console: 'Game Boy Advance',
     consoleId: 'gba',

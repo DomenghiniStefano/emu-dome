@@ -2,15 +2,15 @@
 //! commands the interface calls (through `app/src/emu.ts` only), the launch backup and the E04
 //! check run before a game opens, quick save thumbnails of any game on `emu://savethumb/...`.
 //!
-//! Games are named by their ROM path: the save files are found from its file name
-//! (TODO(game identity, Trello #21): from the content identity later).
+//! Games are named by their key (`GameId` in app/src/emu.ts), never by a path or a file name.
+//! Every command waits for the one-time move of the old save names first (`crate::migration`).
 
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use emudome_core::saves::{self, BackupReason, FolderImport, ImportFormat, SaveHealth};
 use emudome_core::settings::{Scope, Value};
-use emudome_core::ErrorCode;
+use emudome_core::{ErrorCode, GameKey};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
@@ -43,8 +43,8 @@ fn keep_backups(app: &AppHandle) -> usize {
 }
 
 /// Refuses to change the saves of the game that is open: its session rewrites the `.sav`.
-fn ensure_closed(state: &AppState, game: &Path) -> Result<(), ErrorCode> {
-    match state.game_path.lock().as_deref() {
+fn ensure_closed(state: &AppState, game: &GameKey) -> Result<(), ErrorCode> {
+    match state.game.lock().as_ref() {
         Some(open) if open == game => Err(ErrorCode::SaveGameOpen),
         Some(_) | None => Ok(()),
     }
@@ -54,7 +54,7 @@ fn ensure_closed(state: &AppState, game: &Path) -> Result<(), ErrorCode> {
 
 /// E04 and the launch backup, before the session reads the in-game save: a broken one is moved
 /// aside and the open refused with `saveUnreadable`; a good one is copied into the backups.
-pub fn before_open(app: &AppHandle, save_dir: &Path, game: &Path) -> Result<(), ErrorCode> {
+pub fn before_open(app: &AppHandle, save_dir: &Path, game: &GameKey) -> Result<(), ErrorCode> {
     match saves::check_in_game(save_dir, game) {
         SaveHealth::Missing => Ok(()),
         SaveHealth::Fine => {
@@ -71,10 +71,14 @@ pub fn before_open(app: &AppHandle, save_dir: &Path, game: &Path) -> Result<(), 
             Ok(())
         }
         SaveHealth::Broken(why) => {
-            log::warn!("in-game save of {} unusable: {why}", game.display());
+            log::warn!("in-game save of {game} unusable: {why}");
             let aside = saves::set_aside(save_dir, game, now_ms()).map_err(file_failed)?;
             let backup_at = saves::backups(save_dir, game).first().map(|b| b.at_ms);
-            Err(ErrorCode::SaveUnreadable { aside, backup_at })
+            Err(ErrorCode::SaveUnreadable {
+                game: game.clone(),
+                aside,
+                backup_at,
+            })
         }
     }
 }
@@ -85,7 +89,7 @@ pub fn before_open(app: &AppHandle, save_dir: &Path, game: &Path) -> Result<(), 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SummaryDto {
-    path: String,
+    game: GameKey,
     in_game: bool,
     quick_count: usize,
     /// In-game save, quick saves and thumbnails.
@@ -155,35 +159,24 @@ pub enum ExportWhat {
     Quick { slot: u8 },
 }
 
-// ---- Thumbnails of any game: emu://savethumb/<hex of the ROM path>/<slot>?v=<ms> ----
+// ---- Thumbnails of any game: emu://savethumb/<console>-<hex>/<slot>?v=<ms> ----
 
-fn hex(s: &str) -> String {
-    s.bytes().map(|b| format!("{b:02x}")).collect()
-}
-
-fn unhex(s: &str) -> Option<String> {
-    if !s.len().is_multiple_of(2) {
-        return None;
-    }
-    let bytes: Option<Vec<u8>> = (0..s.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(s.get(i..i + 2)?, 16).ok())
-        .collect();
-    String::from_utf8(bytes?).ok()
-}
-
-fn thumb_url(game: &str, slot: u8, saved_at: Option<u64>) -> String {
+fn thumb_url(game: &GameKey, slot: u8, saved_at: Option<u64>) -> String {
     emudome_platform::protocol_url(
         "emu",
-        &format!("savethumb/{}/{slot}?v={}", hex(game), saved_at.unwrap_or(0)),
+        &format!(
+            "savethumb/{}/{slot}?v={}",
+            game.file_stem(),
+            saved_at.unwrap_or(0)
+        ),
     )
 }
 
-/// `emu://savethumb/<hex path>/<slot>`.
+/// `emu://savethumb/<console>-<hex>/<slot>`.
 pub fn thumb_response(app: &AppHandle, rest: &str) -> tauri::http::Response<Vec<u8>> {
     use tauri::http::{header, Response, StatusCode};
     let bytes = rest.split_once('/').and_then(|(game, slot)| {
-        let game = PathBuf::from(unhex(game)?);
+        let game = GameKey::from_file_stem(game)?;
         let slot: u8 = slot.parse().ok()?;
         let state = app.try_state::<AppState>()?;
         let thumb = saves::game_saves(&state.save_dir(), &game, slot)
@@ -208,19 +201,25 @@ pub fn thumb_response(app: &AppHandle, rest: &str) -> tauri::http::Response<Vec<
 
 /// V01: what each game has saved, for the list.
 #[tauri::command]
-pub fn saves_summary(state: State<'_, AppState>, paths: Vec<String>, slots: u8) -> Vec<SummaryDto> {
+pub fn saves_summary(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    games: Vec<GameKey>,
+    slots: u8,
+) -> Vec<SummaryDto> {
+    crate::migration::wait(&app);
     let save_dir = state.save_dir();
-    paths
+    games
         .into_iter()
-        .map(|path| {
-            let s = saves::game_saves(&save_dir, Path::new(&path), slots);
+        .map(|game| {
+            let s = saves::game_saves(&save_dir, &game, slots);
             SummaryDto {
                 in_game: s.in_game.is_some(),
                 quick_count: s.quick.len(),
                 bytes: s.bytes(),
                 last_change: s.last_change().and_then(crate::unix_ms),
                 broken: !s.broken.is_empty(),
-                path,
+                game,
             }
         })
         .collect()
@@ -228,8 +227,14 @@ pub fn saves_summary(state: State<'_, AppState>, paths: Vec<String>, slots: u8) 
 
 /// V02: everything saved for one game.
 #[tauri::command]
-pub fn saves_game(state: State<'_, AppState>, path: String, slots: u8) -> GameSavesDto {
-    let s = saves::game_saves(&state.save_dir(), Path::new(&path), slots);
+pub fn saves_game(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    game: GameKey,
+    slots: u8,
+) -> GameSavesDto {
+    crate::migration::wait(&app);
+    let s = saves::game_saves(&state.save_dir(), &game, slots);
     GameSavesDto {
         in_game: s.in_game.map(|f| FileDto {
             size: f.size,
@@ -244,7 +249,7 @@ pub fn saves_game(state: State<'_, AppState>, path: String, slots: u8) -> GameSa
                     slot: q.slot,
                     size: q.file.size,
                     saved_at,
-                    thumb_url: q.thumb.map(|_| thumb_url(&path, q.slot, saved_at)),
+                    thumb_url: q.thumb.map(|_| thumb_url(&game, q.slot, saved_at)),
                     outdated: q.outdated,
                 }
             })
@@ -268,10 +273,10 @@ pub fn saves_game(state: State<'_, AppState>, path: String, slots: u8) -> GameSa
 pub fn saves_restore(
     app: AppHandle,
     state: State<'_, AppState>,
-    path: String,
+    game: GameKey,
     name: String,
 ) -> Result<(), ErrorCode> {
-    let game = PathBuf::from(path);
+    crate::migration::wait(&app);
     ensure_closed(&state, &game)?;
     saves::restore(
         &state.save_dir(),
@@ -288,9 +293,9 @@ pub fn saves_restore(
 pub fn saves_restore_latest(
     app: AppHandle,
     state: State<'_, AppState>,
-    path: String,
+    game: GameKey,
 ) -> Result<(), ErrorCode> {
-    let game = PathBuf::from(path);
+    crate::migration::wait(&app);
     ensure_closed(&state, &game)?;
     let save_dir = state.save_dir();
     let newest = saves::backups(&save_dir, &game)
@@ -304,11 +309,12 @@ pub fn saves_restore_latest(
 /// V03: deletes a quick save and its thumbnail.
 #[tauri::command]
 pub fn saves_delete_quick(
+    app: AppHandle,
     state: State<'_, AppState>,
-    path: String,
+    game: GameKey,
     slot: u8,
 ) -> Result<(), ErrorCode> {
-    let game = PathBuf::from(path);
+    crate::migration::wait(&app);
     ensure_closed(&state, &game)?;
     saves::delete_quick(&state.save_dir(), &game, slot).map_err(file_failed)
 }
@@ -318,24 +324,34 @@ pub fn saves_delete_quick(
 #[tauri::command]
 pub async fn saves_export(
     app: AppHandle,
-    path: String,
+    game: GameKey,
     what: ExportWhat,
 ) -> Result<bool, ErrorCode> {
+    crate::migration::wait(&app);
     let save_dir = app.state::<AppState>().save_dir();
-    let files = emudome_core::GameFiles::new(&save_dir, Path::new(&path));
+    let files = emudome_core::GameFiles::new(&save_dir, &game);
     let source = match what {
         ExportWhat::InGame => files.sram.clone(),
         ExportWhat::Quick { slot } => files.slot(slot),
     };
-    let name = source
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
+    let name = export_name(&app, &game, &what);
     let Some(dest) = pick_save_target(&app, &name) else {
         return Ok(false);
     };
     std::fs::copy(&source, &dest).map_err(file_failed)?;
     Ok(true)
+}
+
+/// The name the export dialog suggests: the ROM's file name, as other emulators name their
+/// saves (`Gioco.sav`, `Gioco.slot2.state`); the key when the game is not in the library.
+fn export_name(app: &AppHandle, game: &GameKey, what: &ExportWhat) -> String {
+    let base = crate::library::path_of(app, game)
+        .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
+        .unwrap_or_else(|| game.file_stem());
+    match what {
+        ExportWhat::InGame => format!("{base}.sav"),
+        ExportWhat::Quick { slot } => format!("{base}.slot{slot}.state"),
+    }
 }
 
 /// V05 step 1: picks a file and recognises it. `None` = cancelled.
@@ -361,23 +377,24 @@ pub async fn saves_import_pick(app: AppHandle) -> Result<Option<ImportDto>, Erro
     }))
 }
 
-/// V05 «Importa e sostituisci»: `file` becomes the in-game save of the game at `game`; the
-/// current one becomes a backup first.
+/// V05 «Importa e sostituisci»: `file` becomes the in-game save of `game`; the current one
+/// becomes a backup first.
 #[tauri::command]
 pub fn saves_import(
     app: AppHandle,
     state: State<'_, AppState>,
     file: String,
-    game: String,
+    game: GameKey,
 ) -> Result<(), ErrorCode> {
-    import_one(&app, &state, Path::new(&file), &PathBuf::from(game))
+    crate::migration::wait(&app);
+    import_one(&app, &state, Path::new(&file), &game)
 }
 
 fn import_one(
     app: &AppHandle,
     state: &AppState,
     file: &Path,
-    game: &Path,
+    game: &GameKey,
 ) -> Result<(), ErrorCode> {
     ensure_closed(state, game)?;
     let file_name = file
@@ -396,7 +413,7 @@ fn import_one(
 #[derive(Serialize, Deserialize)]
 pub struct MatchDto {
     file: String,
-    game: String,
+    game: GameKey,
 }
 
 /// What a chosen folder offers. Mirror: `FolderSaves` in app/src/emu.ts.
@@ -411,21 +428,29 @@ pub struct FolderSavesDto {
 }
 
 /// First run S06 (DeSmuME, «Un’altra cartella o un altro emulatore»): picks a folder and pairs
-/// the saves in it with `games` (ROM paths) by file name. `None` = cancelled.
+/// the saves in it with the library games `games` by the file name of their ROM, as other
+/// emulators name saves. `None` = cancelled.
 #[tauri::command]
 pub async fn saves_import_folder(
     app: AppHandle,
     what: FolderImport,
-    games: Vec<String>,
+    games: Vec<GameKey>,
 ) -> Option<FolderSavesDto> {
     let folder = crate::library::pick_folder(&app)?;
     let found = saves::find_saves(&folder, what);
-    let games: Vec<PathBuf> = games.into_iter().map(PathBuf::from).collect();
-    let matches = saves::match_saves(&found, &games)
+    let roms: Vec<(GameKey, PathBuf)> = games
         .into_iter()
-        .map(|m| MatchDto {
-            file: m.file.to_string_lossy().into_owned(),
-            game: m.game.to_string_lossy().into_owned(),
+        .filter_map(|g| Some((g.clone(), crate::library::path_of(&app, &g)?)))
+        .collect();
+    let paths: Vec<PathBuf> = roms.iter().map(|(_, p)| p.clone()).collect();
+    let matches = saves::match_saves(&found, &paths)
+        .into_iter()
+        .filter_map(|m| {
+            let (game, _) = roms.iter().find(|(_, p)| *p == m.game)?;
+            Some(MatchDto {
+                file: m.file.to_string_lossy().into_owned(),
+                game: game.clone(),
+            })
         })
         .collect();
     Some(FolderSavesDto {
@@ -443,8 +468,9 @@ pub fn saves_import_many(
     state: State<'_, AppState>,
     matches: Vec<MatchDto>,
 ) -> Result<usize, ErrorCode> {
+    crate::migration::wait(&app);
     matches.iter().try_fold(0, |done, m| {
-        import_one(&app, &state, Path::new(&m.file), Path::new(&m.game)).map(|()| done + 1)
+        import_one(&app, &state, Path::new(&m.file), &m.game).map(|()| done + 1)
     })
 }
 
@@ -488,17 +514,4 @@ fn pick_save_target(_app: &AppHandle, _name: &str) -> Option<PathBuf> {
 fn pick_import_file(_app: &AppHandle) -> Option<PathBuf> {
     log::warn!("file picker not available on this platform yet");
     None
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{hex, unhex};
-
-    #[test]
-    fn paths_survive_the_url() {
-        let p = r"C:\Giochi\Pokémon Smeraldo.gba";
-        assert_eq!(unhex(&hex(p)).as_deref(), Some(p));
-        assert_eq!(unhex("zz"), None);
-        assert_eq!(unhex("abc"), None);
-    }
 }
