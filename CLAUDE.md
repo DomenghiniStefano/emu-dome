@@ -78,8 +78,11 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
 ## Commands
 
 ```powershell
-./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar]  # downloads the cores into cores/ (not versioned; default mgba)
-./scripts/fetch-cores-android.ps1 [-Abi arm64-v8a]  # Android cores into cores/android/<abi>/ as lib*_libretro_android.so
+./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar|all]  # cores pinned by cores.lock into cores/, sha256-checked
+                                              # (default: the shipped ones; sh scripts/fetch-cores.sh [--cores ...] on Linux)
+./scripts/fetch-cores-android.ps1 [-Cores ...] [-Abi arm64-v8a]  # same, into cores/android/<abi>/ as lib*_libretro_android.so
+node scripts/cores.mjs generate               # after editing cores.lock: cores/SOURCES.md, app/src-tauri/package/*.json
+pnpm package:windows                          # installer (from app/): only the cores.lock files, verified (THIRD_PARTY.md)
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
@@ -137,7 +140,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
 crates/emudome-platform  EVERYTHING that depends on the operating system, one module per OS;
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
-                         jniLibs from cores/android/<abi>/)
+                         jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
 app/src-tauri            Tauri shell: window, video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
                          settings.rs (settings commands, file locations, settings://changed),
                          effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
@@ -311,7 +314,9 @@ duration / edge width / outline offset, no `!` override, no string variant, no r
 `components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`; the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no `#[cfg(target_os)]` outside `crates/emudome-platform`, `invoke` only in `app/src/emu.ts`, no emoji,
-no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`).
+no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`), and the
+cores (`scripts/cores.mjs check --self-test`: `cores.lock`, the bundle lists, `cores/SOURCES.md`, the Gradle build and
+`THIRD_PARTY.md` agree; it cannot see whether a URL still serves the pinned bytes, only a fetch can).
 Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,
 Prettier on the staged frontend files).
 
@@ -432,9 +437,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   melonDS DS and Azahar have no table yet (Azahar only gets `FORCED_CORE_OPTIONS`, `app/src-tauri/src/lib.rs`).
   `perf.frameskip` is not mapped. The interface does not show `emu://core-restart` yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
-- The cores **are** shipped: the package takes everything in `cores/` as a resource (`tauri.conf.json`), and the
-  fetch scripts download unpinned nightlies with no checksum. No build may be shared until Trello #71 (version +
-  sha256 lock, explicit bundle list, licences and source offer).
+- Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
+  licences and `cores/SOURCES.md`, but mGBA's pinned build comes from the libretro buildbot's `latest/` (no stable
+  URL exists upstream): packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until
+  the owner picks a stable source. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock was not
+  built on a device yet.
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 

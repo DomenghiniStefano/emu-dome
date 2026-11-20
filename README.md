@@ -31,7 +31,7 @@ Requirements: stable Rust, Node 20+, pnpm 12 (the frontend refuses npm), the [Ta
 and CMake for the SDL3 build (on PATH, or in the `CMAKE` variable; VS Build Tools 2022 ships one).
 
 ```powershell
-./scripts/fetch-cores.ps1                     # downloads mgba_libretro.dll into cores/
+./scripts/fetch-cores.ps1                     # downloads the cores pinned in cores.lock into cores/
 git config core.hooksPath scripts/git-hooks   # once per clone: the pre-commit hook
 cd app
 pnpm install

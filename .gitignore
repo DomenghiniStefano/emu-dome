@@ -4,6 +4,7 @@ app/dist/
 app/src-tauri/gen/
 cores/*
 !cores/README.md
+!cores/SOURCES.md
 *.sav
 *.state
 .DS_Store

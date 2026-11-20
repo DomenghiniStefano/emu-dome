@@ -1,0 +1,17 @@
+{
+  "build": {
+    "beforeBundleCommand": "node ../scripts/cores.mjs verify --platform linux-x86_64 --package"
+  },
+  "bundle": {
+    "active": true,
+    "resources": {
+      "../../LICENSE": "LICENSE.txt",
+      "../../cores/SOURCES.md": "cores/SOURCES.md",
+      "../../cores/mgba_libretro.so": "cores/mgba_libretro.so",
+      "../../cores/notices/linux-x86_64/mgba-LICENSE.txt": "cores/notices/mgba-LICENSE.txt",
+      "../../cores/melondsds_libretro.so": "cores/melondsds_libretro.so",
+      "../../cores/notices/linux-x86_64/melondsds-LICENSE.txt": "cores/notices/melondsds-LICENSE.txt",
+      "../../cores/notices/linux-x86_64/melondsds-bundled-LICENSES.txt": "cores/notices/melondsds-bundled-LICENSES.txt"
+    }
+  }
+}
