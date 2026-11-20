@@ -1,6 +1,7 @@
 //! Screenshots (L3 + B, F12, quick menu › Strumenti): the game's frame as a PNG at the core's
 //! native resolution, next to the saves:
-//! `<save_dir>/screenshots/<stem> <YYYY-MM-DD HH-MM-SS>.png`, the time in UTC (no time zone
+//! `<save_dir>/screenshots/<name> <YYYY-MM-DD HH-MM-SS>.png` (`<name>`: the ROM's file name,
+//! for the user to browse: screenshots are not game data and are not keyed), the time in UTC (no time zone
 //! database here; the name only has to sort and stay unique), `-2`, `-3`... when taken
 //! within the same second.
 //!
@@ -10,8 +11,6 @@
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
-
-use crate::core::GameFiles;
 
 /// The screenshots' folder, inside the save folder.
 pub fn screenshots_dir(save_dir: &Path) -> PathBuf {
@@ -45,15 +44,15 @@ fn civil_from_days(days: u64) -> (u64, u64, u64) {
     (y, m, d)
 }
 
-/// Writes `png` as a new screenshot of the game and answers its path. Never replaces a file.
-pub fn write(files: &GameFiles, png: &[u8], now: SystemTime) -> io::Result<PathBuf> {
-    let dir = screenshots_dir(files.save_dir());
-    std::fs::create_dir_all(&dir)?;
+/// Writes `png` as a new screenshot named after `name` into `dir` and answers its path. Never
+/// replaces a file.
+pub fn write(dir: &Path, name: &str, png: &[u8], now: SystemTime) -> io::Result<PathBuf> {
+    std::fs::create_dir_all(dir)?;
     let secs = now
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
-    let base = format!("{} {}", files.stem(), timestamp(secs));
+    let base = format!("{name} {}", timestamp(secs));
     for n in 1u32.. {
         let name = if n == 1 {
             format!("{base}.png")
@@ -80,11 +79,9 @@ pub fn write(files: &GameFiles, png: &[u8], now: SystemTime) -> io::Result<PathB
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
     use std::time::{Duration, UNIX_EPOCH};
 
     use super::{screenshots_dir, timestamp, write};
-    use crate::core::GameFiles;
     use crate::settings::test_dir::TestDir;
 
     #[test]
@@ -99,10 +96,10 @@ mod tests {
     #[test]
     fn screenshots_go_next_to_the_saves_and_never_replace() {
         let dir = TestDir::new("screenshot");
-        let files = GameFiles::new(&dir.path("saves"), Path::new("games/Lanterna.gba"));
+        let shots = screenshots_dir(&dir.path("saves"));
         let now = UNIX_EPOCH + Duration::from_secs(951_827_696);
-        let first = write(&files, b"one", now).unwrap();
-        let second = write(&files, b"two", now).unwrap();
+        let first = write(&shots, "Lanterna", b"one", now).unwrap();
+        let second = write(&shots, "Lanterna", b"two", now).unwrap();
         assert_eq!(
             first.parent(),
             Some(screenshots_dir(&dir.path("saves")).as_path())
