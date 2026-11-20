@@ -16,11 +16,15 @@ workspace = true
 [dependencies]
 log = "0.4"
 raw-window-handle = "0.6"
-# Only for `Webview::with_webview` (the Android JNI handle); features unify with the app's.
-tauri = { version = "2.12", default-features = false, features = ["wry"] }
+# `Webview::with_webview` (the Android JNI handle) and the main window ([`create_window`]:
+# `unstable` for the desktop's child webview); features unify with the app's.
+# Pinned exactly, the same version as app/src-tauri/Cargo.toml (which says why).
+tauri = { version = "=2.12.5", default-features = false, features = ["wry", "unstable"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 env_logger = "0.11"
+# The native file picker (`pick_file`); Android has no file-path picker yet (TODO with the SAF).
+tauri-plugin-dialog = "2.8"
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.15"

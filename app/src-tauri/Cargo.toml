@@ -18,19 +18,23 @@ tauri-build = { version = "2.5", features = [] }
 [dependencies]
 emudome-core.workspace = true
 emudome-platform.workspace = true
+# tauri, wgpu and librashader are pinned to exact versions and upgrade only together, as one task
+# that ends with a native-video smoke test (game drawn under the menu, a screen effect on):
+# librashader's wgpu must be our wgpu, and the native path leans on Tauri's `unstable` child webview.
+# The same tauri pin is in crates/emudome-platform/Cargo.toml.
 # "unstable" enables several webviews in the same window: needed to have
 # the game's native surface underneath and the transparent web interface on top.
-tauri = { version = "2.12", features = ["unstable"] }
+tauri = { version = "=2.12.5", features = ["unstable"] }
 tauri-plugin-dialog = "2.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 log = "0.4"
 parking_lot = "0.12"
-wgpu = "30"
+wgpu = "=30.0.2"
 # Screen effects (`fx.*`): RetroArch `.slangp` presets on the native path. Its wgpu must stay
 # the same version as ours (docs/feasibility.md, 2026-11-17). MPL-2.0 OR GPL-3.0.
-librashader = { version = "0.12.1", default-features = false, features = [
+librashader = { version = "=0.12.1", default-features = false, features = [
     "runtime-wgpu",
     "presets",
 ] }

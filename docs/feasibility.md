@@ -223,7 +223,8 @@ samples the core's image directly (no copy), and the picture is correct. OpenGL 
 (Vulkan is its renderer on every platform, Android included) and melonDS DS falls back to software when GL is refused.
 
 **How**: a spike crate, `crates/hw-render-spike` (binary, `publish = false`), with its own minimal libretro host so the
-shell's host is untouched. Run with `cargo run --release -p hw-render-spike -- <core> <content> --opt key=value
+shell's host is untouched. It is its own Cargo workspace, outside the root one (Trello #72): run it from the repo root
+with `cargo run --release --manifest-path crates/hw-render-spike/Cargo.toml -- <core> <content> --opt key=value
 [--frames N] [--png out.png] [--core-log] [--adapter NAME]`. Windowless: no window, no surface. The generic
 `SET_HW_RENDER` types and constants were added to `crates/libretro-sys`; the Vulkan structs of `libretro_vulkan.h`
 are in the spike (`vk_iface.rs`, with ash's handle types). Content: the same homebrew as step 0 (Craftus Reloaded 0.3,
@@ -276,7 +277,7 @@ nightly, rc3 vs rc4, and a different host); the comparison that holds is inside 
 magnitude faster than Software on this scene.
 
 Also verified: the spike type-checks for `aarch64-linux-android` (`cargo check --target aarch64-linux-android -p
-hw-render-spike`, NDK 27.1): the code has nothing Windows-specific.
+hw-render-spike`, NDK 27.1; today `--manifest-path crates/hw-render-spike/Cargo.toml` instead of `-p`): the code has nothing Windows-specific.
 
 **What does not work or is not handled** (each one stops the spike with a message rather than guessing):
 

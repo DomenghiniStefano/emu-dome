@@ -1,16 +1,27 @@
+# Not a member of the root workspace (its `exclude`): its own workspace, Cargo.lock and target/, so
+# the checks never build it. Build it from the repo root with
+# `cargo run --release --manifest-path crates/hw-render-spike/Cargo.toml -- <core> <content> ...`.
+[workspace]
+
+# The root workspace's lints, repeated here (`[lints] workspace = true` reads this table).
+[workspace.lints.clippy]
+wildcard_imports = "warn"
+wildcard_enum_match_arm = "warn"
+unwrap_used = "warn"
+
 [package]
 name = "hw-render-spike"
 description = "Feasibility spike (Trello #16): a libretro core rendering through SET_HW_RENDER (Vulkan, or desktop OpenGL) presented by wgpu, with no visible window."
-version.workspace = true
-edition.workspace = true
-license.workspace = true
+version = "0.0.1"
+edition = "2021"
+license = "GPL-3.0-or-later"
 publish = false
 
 [lints]
 workspace = true
 
 [dependencies]
-libretro-sys.workspace = true
+libretro-sys = { path = "../libretro-sys" }
 anyhow = "1"
 # Same versions as wgpu 30 resolves (one wgpu, one ash in the tree).
 ash = "0.38"

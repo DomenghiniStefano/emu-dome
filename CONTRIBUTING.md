@@ -31,7 +31,8 @@ Run every check, the licence check included:
 sh scripts/check           # Linux, Git Bash
 ```
 
-It must end with "all green". The licence check needs `cargo-deny`
+It must end with "all green" (or "green, except the skipped steps above", when a step needs a tool this
+machine lacks, such as the Android NDK: the skipped steps are listed). The licence check needs `cargo-deny`
 (`cargo install cargo-deny --locked`) and the frontend dependencies (`pnpm install` in `app/`).
 Once per clone, enable the pre-commit hook: `git config core.hooksPath scripts/git-hooks`.
 
