@@ -115,7 +115,7 @@ pub fn close_now(app: &AppHandle, state: &AppState) {
         if closing.session.close(CLOSE_TIMEOUT) == Closed::Abandoned {
             log::warn!("the closing game did not end within {CLOSE_TIMEOUT:?}: let go");
         }
-        state.game_path.lock().take();
+        state.game.lock().take();
     }
 }
 
@@ -162,7 +162,7 @@ fn start(app: &AppHandle, state: &AppState) {
     let (session, core) = crate::release_game(app, state);
     let Some(session) = session else {
         // Gone in between: nothing to wait for.
-        state.game_path.lock().take();
+        state.game.lock().take();
         after(app, Duration::ZERO, Input::Written);
         return;
     };
@@ -194,7 +194,7 @@ fn worker(app: &AppHandle) {
             Some(written) => {
                 // Cleared after the thread ended: the Saves screen refuses this game's files
                 // until then.
-                state.game_path.lock().take();
+                state.game.lock().take();
                 let input = match written {
                     Ok(()) => Input::Written,
                     Err(error) => {
@@ -221,7 +221,7 @@ fn abandon(app: &AppHandle, state: &AppState) {
     if let Some(closing) = closing {
         log::warn!("closing abandoned by the user: the last progress may be lost");
         closing.session.abandon();
-        state.game_path.lock().take();
+        state.game.lock().take();
         crate::say_core_needs_restart(app, closing.core);
     }
 }

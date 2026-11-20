@@ -37,9 +37,11 @@ async function load() {
   if (!s) return
   try {
     const page = await emu.settings.page('pad', s)
+    // Rule 7: the details show another game now; its own load shows.
+    if (scope.value.game !== s.game) return
     rows.value = Object.fromEntries(page.map(r => [r.key, r]))
   } catch (e) {
-    emit('error', errorText(e))
+    if (scope.value.game === s.game) emit('error', errorText(e))
   }
 }
 watch(scope, () => void load())

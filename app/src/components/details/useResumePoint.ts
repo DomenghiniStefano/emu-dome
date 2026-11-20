@@ -11,10 +11,12 @@ export function useResumePoint(game: Ref<LibraryGame | null>) {
   async function reload() {
     const g = game.value
     if (!g) return
-    resume.value = await loadResumePoint(g)
+    const point = await loadResumePoint(g)
+    // Rule 7: the details moved to another game meanwhile: its own reload shows.
+    if (game.value?.id === g.id) resume.value = point
   }
   watch(
-    () => `${game.value?.path}:${game.value?.lastPlayed}`,
+    () => `${game.value?.id}:${game.value?.lastPlayed}`,
     () => void reload(),
   )
 

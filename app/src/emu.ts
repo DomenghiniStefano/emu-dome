@@ -35,6 +35,8 @@ export interface PointerArea {
 }
 
 export interface GameInfo {
+  /** The game's one identity: its saves and «Solo questo gioco» settings are named by it. */
+  id: GameId
   title: string
   console: string
   consoleId: ConsoleId
@@ -77,6 +79,8 @@ export type ErrorCode =
   | { code: 'consoleNotYet'; params: { console: string; phase: number } }
   | { code: 'coreNotFound'; params: { file: string } }
   | { code: 'openFailed'; params: { detail: string } }
+  /** The file has a console's extension but is not a game of it: it has no identity. */
+  | { code: 'gameUnidentified'; params: { detail: string } }
   | { code: 'coreNeedsRestart'; params: { core: string } }
   | { code: 'noGame' }
   | { code: 'appClosing' }
@@ -103,10 +107,18 @@ export type ErrorCode =
   | { code: 'coverInvalid'; params: { detail: string } }
   | { code: 'nothingToUndo' }
   | { code: 'undoFailed'; params: { detail: string } }
-  | { code: 'saveUnreadable'; params: { aside: string; backupAt: number | null } }
+  | {
+      code: 'saveUnreadable'
+      /** `game`: whose in-game save it is (what `saves.restoreLatest` takes). */
+      params: { game: GameId; aside: string; backupAt: number | null }
+    }
   | { code: 'saveGameOpen' }
   | { code: 'saveImportInvalid'; params: { detail: string } }
   | { code: 'saveFileFailed'; params: { detail: string } }
+  /** The one-time move of old save names to the game key failed or could not run; tried again. */
+  | { code: 'savesMigrationFailed'; params: { detail: string } }
+  /** The move ended; `left` old files stayed where they were, listed in the file `report`. */
+  | { code: 'savesMigrationIncomplete'; params: { left: number; report: string } }
   | { code: 'screenshotFailed'; params: { detail: string } }
   | { code: 'effectNotLoaded'; params: { name: string; detail: string } }
   | { code: 'biosUnreadable'; params: { detail: string } }
@@ -386,7 +398,7 @@ export interface SettingsSchema {
 export type SettingsScope =
   | { level: 'global' }
   | { level: 'console'; console: ConsoleId }
-  | { level: 'game'; console: ConsoleId; game: string }
+  | { level: 'game'; console: ConsoleId; game: GameId }
   | { level: 'session' }
 
 export interface SettingRow {
@@ -404,8 +416,8 @@ export interface SettingRecent {
   level: 'global' | 'console' | 'game'
   /** The console of a `console` level. */
   console: ConsoleId | null
-  /** The game of a `game` level (settings identity, not the library's). */
-  game: string | null
+  /** The game of a `game` level. */
+  game: GameId | null
   /** Unix ms. */
   at: number
 }
@@ -438,9 +450,10 @@ export interface CoreRestart {
 // ---- Library (mirrors of crates/emudome-core/src/library and src-tauri/src/library.rs) ----
 
 /**
- * Identity of a game, from its content (docs/feasibility.md "Game identity"), never the file
- * name: `<console>:<hex>` (SHA-1 of the file for GB/GBC/GBA, of the used size for NDS; title
- * id + version for 3DS). Opaque to the interface.
+ * The one identity of a game, from its content (docs/feasibility.md "Game identity"), never the
+ * file name: `<console>:<hex>` (SHA-1 of the file for GB/GBC/GBA, of the used size for NDS; title
+ * id + version for 3DS). Mirror of `GameKey` (crates/emudome-core/src/game_key.rs). The library,
+ * the saves, the settings and the open game all name a game by it. Opaque to the interface.
  */
 export type GameId = string
 
@@ -500,8 +513,6 @@ export interface LibraryGame {
   region: GameRegion | null
   /** The core that runs it: `mgba`, `melondsds`, `azahar` (`details.files.core.<id>`). */
   core: string
-  /** Its «Solo questo gioco» settings identity; null when the id cannot name a file. */
-  settingsGame: string | null
 }
 
 export interface LibraryFolder {
@@ -522,11 +533,11 @@ export type LibraryScanEvent =
   | { phase: 'progress'; checked: number; found: number }
   | { phase: 'done'; found: number; added: number; unreachable: string[] }
 
-// ---- Saves (mirrors of src-tauri/src/saves.rs; games named by their ROM path) ----
+// ---- Saves (mirrors of src-tauri/src/saves.rs; games named by their `GameId`) ----
 
 /** V01: what a game has saved. Mirror: `SummaryDto`. */
 export interface SavesSummary {
-  path: string
+  game: GameId
   inGame: boolean
   quickCount: number
   /** In-game save, quick saves and thumbnails. */
@@ -587,10 +598,10 @@ export interface ImportCandidate {
 /** First run S06: which files a folder import reads. Mirror: `FolderImport` (emudome_core::saves). */
 export type FolderImport = 'desmume' | 'any'
 
-/** A found save paired with its game (ROM paths). Mirror: `MatchDto` in src-tauri/src/saves.rs. */
+/** A found save paired with its game. Mirror: `MatchDto` in src-tauri/src/saves.rs. */
 export interface SaveMatch {
   file: string
-  game: string
+  game: GameId
 }
 
 /** What a chosen folder offers. Mirror: `FolderSavesDto`. */
@@ -606,6 +617,16 @@ export interface FolderSaves {
 export type FirstRunStep = 'welcome' | 'games' | 'controller' | 'ready'
 
 export type SaveExport = { kind: 'inGame' } | { kind: 'quick'; slot: number }
+
+/**
+ * The one-time move of the saves and settings named the old way to the game key. Mirror:
+ * `Status` in src-tauri/src/migration.rs; also the payload of `saves://migration`.
+ */
+export interface SavesMigration {
+  running: boolean
+  /** `savesMigrationFailed` or `savesMigrationIncomplete`, to tell the user once. */
+  problem: ErrorCode | null
+}
 
 /**
  * One round of the canvas loop in bench mode (mirror of `WebviewFrame` in
@@ -735,25 +756,30 @@ export const emu = {
       }),
   },
   saves: {
-    summary: (paths: string[], slots: number) =>
-      invoke<SavesSummary[]>('saves_summary', { paths, slots }),
-    game: (path: string, slots: number) => invoke<GameSaves>('saves_game', { path, slots }),
+    summary: (games: GameId[], slots: number) =>
+      invoke<SavesSummary[]>('saves_summary', { games, slots }),
+    game: (game: GameId, slots: number) => invoke<GameSaves>('saves_game', { game, slots }),
     /** The current in-game save becomes a backup first. */
-    restore: (path: string, name: string) => invoke<void>('saves_restore', { path, name }),
+    restore: (game: GameId, name: string) => invoke<void>('saves_restore', { game, name }),
     /** E04: puts the newest backup back. */
-    restoreLatest: (path: string) => invoke<void>('saves_restore_latest', { path }),
-    deleteQuick: (path: string, slot: number) => invoke<void>('saves_delete_quick', { path, slot }),
+    restoreLatest: (game: GameId) => invoke<void>('saves_restore_latest', { game }),
+    deleteQuick: (game: GameId, slot: number) => invoke<void>('saves_delete_quick', { game, slot }),
     /** Opens a save dialog; resolves false if it was cancelled. */
-    export: (path: string, what: SaveExport) => invoke<boolean>('saves_export', { path, what }),
+    export: (game: GameId, what: SaveExport) => invoke<boolean>('saves_export', { game, what }),
     /** Opens a file picker and recognises the file; null = cancelled. */
     importPick: () => invoke<ImportCandidate | null>('saves_import_pick'),
     /** `file` becomes the in-game save of `game`; the current one becomes a backup first. */
-    import: (file: string, game: string) => invoke<void>('saves_import', { file, game }),
-    /** Picks a folder and pairs its saves with `games` (ROM paths) by file name; null = cancelled. */
-    importFolder: (what: FolderImport, games: string[]) =>
+    import: (file: string, game: GameId) => invoke<void>('saves_import', { file, game }),
+    /** Picks a folder and pairs its saves with the library `games` by their ROM's file name; null = cancelled. */
+    importFolder: (what: FolderImport, games: GameId[]) =>
       invoke<FolderSaves | null>('saves_import_folder', { what, games }),
     /** Imports every pair; resolves how many were imported. */
     importMany: (matches: SaveMatch[]) => invoke<number>('saves_import_many', { matches }),
+    /** Where the one-time move of old save names stands (asked once at start). */
+    migration: () => invoke<SavesMigration>('saves_migration_status'),
+    /** The one-time move ended (`saves://migration`). */
+    onMigration: (cb: (e: SavesMigration) => void): Promise<UnlistenFn> =>
+      listen<SavesMigration>('saves://migration', e => cb(e.payload)),
   },
   firstRun: {
     /** Whether to start with the first run (not done on this device, library not set up). */

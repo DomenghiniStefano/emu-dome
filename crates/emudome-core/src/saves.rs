@@ -3,14 +3,17 @@
 //! emulator, setting a broken save aside. Pure file work, no core: the shell calls it while the
 //! game is closed (the open session owns the `.sav` and rewrites it).
 //!
-//! Files, all keyed by the ROM file name (TODO(game identity, Trello #21): by content later):
-//! - `<save_dir>/<stem>.sav`: the in-game save («Salvataggio del gioco»);
-//! - `<save_dir>/<stem>.slotN.state` / `.auto.state` (+ `.png` thumbnail, + `.json` [`SlotMeta`]):
-//!   quick saves ([`GameFiles`]);
+//! Files, each game in its own folder named by its key ([`GameKey`], never the file name),
+//! `<game>` = `<save_dir>/<console>/<hex>` ([`GameFiles`]):
+//! - `<game>/game.sav`: the in-game save («Salvataggio del gioco»);
+//! - `<game>/slotN.state` / `auto.state` (+ `.png` thumbnail, + `.json` [`SlotMeta`]): quick saves;
+//! - `<game>/backups/<unix ms>.<reason>.sav`: backups of the in-game save;
+//! - `<game>/broken-<unix ms>.sav`: an unreadable in-game save, set aside (E04);
 //! - `<save_dir>/cores.json`: the last version seen of each core ([`CoreVersions`]), to tell
-//!   which quick saves an older core made («Potrebbe non caricarsi»);
-//! - `<save_dir>/backups/<stem>.<unix ms>.<reason>.sav`: backups of the in-game save;
-//! - `<save_dir>/<stem>.broken-<unix ms>.sav`: an unreadable in-game save, set aside (E04).
+//!   which quick saves an older core made («Potrebbe non caricarsi»).
+//!
+//! Saves written before 2026-11-20 were named by the ROM's file stem, flat in `<save_dir>`:
+//! [`crate::migration`] moves them once.
 
 use std::collections::BTreeMap;
 use std::io;
@@ -21,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::GameFiles;
 use crate::session::AUTO_SLOT;
-use crate::write_atomic;
+use crate::{write_atomic, GameKey};
 
 /// Why a backup was made (the board's «Avvio del gioco», «Prima dell’importazione», …).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -68,7 +71,7 @@ pub struct QuickSave {
 
 // ---- What wrote a quick save («Potrebbe non caricarsi») ----
 
-/// What wrote a quick save, kept beside it (`<stem>.slotN.json`). A core's states often do not
+/// What wrote a quick save, kept beside it (`slotN.json`). A core's states often do not
 /// load in another version of the same core.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -196,13 +199,12 @@ fn stamp(path: &Path) -> Option<FileStamp> {
 }
 
 fn backups_dir(files: &GameFiles) -> PathBuf {
-    files.save_dir().join("backups")
+    files.dir().join("backups")
 }
 
-/// The backup a file name stands for, when it belongs to this game.
-fn parse_backup(stem: &str, name: &str) -> Option<(u64, BackupReason)> {
-    let rest = name.strip_prefix(stem)?.strip_prefix('.')?;
-    let rest = rest.strip_suffix(".sav")?;
+/// The backup a file name stands for (`<unix ms>.<reason>.sav`).
+fn parse_backup(name: &str) -> Option<(u64, BackupReason)> {
+    let rest = name.strip_suffix(".sav")?;
     let (ms, tag) = rest.split_once('.')?;
     if ms.is_empty() || !ms.bytes().all(|b| b.is_ascii_digit()) {
         return None;
@@ -211,11 +213,9 @@ fn parse_backup(stem: &str, name: &str) -> Option<(u64, BackupReason)> {
     Some((ms.parse().ok()?, reason))
 }
 
-fn parse_broken(stem: &str, name: &str) -> Option<u64> {
-    let ms = name
-        .strip_prefix(stem)?
-        .strip_prefix(".broken-")?
-        .strip_suffix(".sav")?;
+/// The time of an in-game save set aside (`broken-<unix ms>.sav`).
+fn parse_broken(name: &str) -> Option<u64> {
+    let ms = name.strip_prefix("broken-")?.strip_suffix(".sav")?;
     if ms.is_empty() || !ms.bytes().all(|b| b.is_ascii_digit()) {
         return None;
     }
@@ -234,13 +234,13 @@ fn file_names(dir: &Path) -> Vec<String> {
 }
 
 /// The backups of a game, newest first.
-pub fn backups(save_dir: &Path, game: &Path) -> Vec<Backup> {
+pub fn backups(save_dir: &Path, game: &GameKey) -> Vec<Backup> {
     let files = GameFiles::new(save_dir, game);
     let dir = backups_dir(&files);
     let mut list: Vec<Backup> = file_names(&dir)
         .into_iter()
         .filter_map(|name| {
-            let (at_ms, reason) = parse_backup(files.stem(), &name)?;
+            let (at_ms, reason) = parse_backup(&name)?;
             let size = std::fs::metadata(dir.join(&name)).ok()?.len();
             Some(Backup {
                 name,
@@ -256,7 +256,7 @@ pub fn backups(save_dir: &Path, game: &Path) -> Vec<Backup> {
 
 /// What is saved for a game: in-game save, quick saves among the auto one and `1..=slots`,
 /// backups, saves set aside.
-pub fn game_saves(save_dir: &Path, game: &Path, slots: u8) -> GameSaves {
+pub fn game_saves(save_dir: &Path, game: &GameKey, slots: u8) -> GameSaves {
     let files = GameFiles::new(save_dir, game);
     let seen = core_versions(save_dir);
     let quick = std::iter::once(AUTO_SLOT)
@@ -273,9 +273,9 @@ pub fn game_saves(save_dir: &Path, game: &Path, slots: u8) -> GameSaves {
             })
         })
         .collect();
-    let mut broken: Vec<(u64, String)> = file_names(save_dir)
+    let mut broken: Vec<(u64, String)> = file_names(files.dir())
         .into_iter()
-        .filter_map(|name| Some((parse_broken(files.stem(), &name)?, name)))
+        .filter_map(|name| Some((parse_broken(&name)?, name)))
         .collect();
     broken.sort_by_key(|b| std::cmp::Reverse(b.0));
     GameSaves {
@@ -339,7 +339,7 @@ impl SlotContent {
 /// (`saves.backups` «0 = none») copies nothing and removes the old ones.
 pub fn backup(
     save_dir: &Path,
-    game: &Path,
+    game: &GameKey,
     reason: BackupReason,
     now_ms: u64,
     keep: usize,
@@ -371,7 +371,7 @@ pub fn backup(
         while existing.iter().any(|b| b.at_ms == at_ms) {
             at_ms += 1;
         }
-        let name = format!("{}.{at_ms}.{}.sav", files.stem(), reason.tag());
+        let name = format!("{at_ms}.{}.sav", reason.tag());
         write_atomic(&dir.join(&name), &data)?;
         Some(Backup {
             name,
@@ -385,7 +385,7 @@ pub fn backup(
 }
 
 /// Removes the backups past the `keep` newest (`saves.backups`; 0 removes them all).
-pub fn rotate(save_dir: &Path, game: &Path, keep: usize) {
+pub fn rotate(save_dir: &Path, game: &GameKey, keep: usize) {
     let files = GameFiles::new(save_dir, game);
     let dir = backups_dir(&files);
     for old in backups(save_dir, game).iter().skip(keep) {
@@ -398,13 +398,13 @@ pub fn rotate(save_dir: &Path, game: &Path, keep: usize) {
 /// Puts a backup back as the in-game save; the save it replaces becomes a backup first.
 pub fn restore(
     save_dir: &Path,
-    game: &Path,
+    game: &GameKey,
     name: &str,
     now_ms: u64,
     keep: usize,
 ) -> io::Result<()> {
     let files = GameFiles::new(save_dir, game);
-    if parse_backup(files.stem(), name).is_none() {
+    if parse_backup(name).is_none() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
             format!("{name} is not a backup of this game"),
@@ -421,19 +421,19 @@ pub fn restore(
 /// Replaces the in-game save with imported data; the current one becomes a backup first.
 pub fn import(
     save_dir: &Path,
-    game: &Path,
+    game: &GameKey,
     data: &[u8],
     now_ms: u64,
     keep: usize,
 ) -> io::Result<()> {
     let files = GameFiles::new(save_dir, game);
-    std::fs::create_dir_all(save_dir)?;
+    std::fs::create_dir_all(files.dir())?;
     backup(save_dir, game, BackupReason::Import, now_ms, keep)?;
     write_atomic(&files.sram, data)
 }
 
 /// Deletes a quick save, its thumbnail and its record.
-pub fn delete_quick(save_dir: &Path, game: &Path, slot: u8) -> io::Result<()> {
+pub fn delete_quick(save_dir: &Path, game: &GameKey, slot: u8) -> io::Result<()> {
     let files = GameFiles::new(save_dir, game);
     std::fs::remove_file(files.slot(slot))?;
     for (what, path) in [
@@ -467,7 +467,7 @@ pub enum SaveHealth {
 /// Checks the in-game save. The core reads it without telling whether it fits, so this only
 /// sees what is certainly wrong: a file that cannot be read, an empty one (an interrupted
 /// write), one larger than any cartridge save. A wrong but plausible size is not caught.
-pub fn check_in_game(save_dir: &Path, game: &Path) -> SaveHealth {
+pub fn check_in_game(save_dir: &Path, game: &GameKey) -> SaveHealth {
     let files = GameFiles::new(save_dir, game);
     let meta = match std::fs::metadata(&files.sram) {
         Ok(m) => m,
@@ -490,11 +490,12 @@ pub fn check_in_game(save_dir: &Path, game: &Path) -> SaveHealth {
     }
 }
 
-/// Moves the in-game save aside as `<stem>.broken-<ms>.sav`; returns that file name.
-pub fn set_aside(save_dir: &Path, game: &Path, now_ms: u64) -> io::Result<String> {
+/// Moves the in-game save aside as `broken-<ms>.sav`, in the game's folder; returns that file
+/// name.
+pub fn set_aside(save_dir: &Path, game: &GameKey, now_ms: u64) -> io::Result<String> {
     let files = GameFiles::new(save_dir, game);
-    let name = format!("{}.broken-{now_ms}.sav", files.stem());
-    std::fs::rename(&files.sram, save_dir.join(&name))?;
+    let name = format!("broken-{now_ms}.sav");
+    std::fs::rename(&files.sram, files.dir().join(&name))?;
     Ok(name)
 }
 
@@ -704,7 +705,7 @@ pub fn match_saves(found: &[FoundSave], games: &[PathBuf]) -> Vec<SaveMatch> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
 
     use super::{
         backup, backups, check_in_game, core_versions, delete_quick, find_saves, game_saves,
@@ -715,8 +716,12 @@ mod tests {
     };
     use crate::core::GameFiles;
     use crate::settings::test_dir::TestDir;
+    use crate::GameKey;
 
-    const GAME: &str = "games/Lanterna.gba";
+    /// The game the tests save for, and another one.
+    fn lanterna() -> GameKey {
+        GameKey::parse("gba:1a").unwrap()
+    }
 
     fn write(dir: &TestDir, rel: &str, bytes: &[u8]) {
         let path = dir.path(rel);
@@ -731,30 +736,27 @@ mod tests {
     }
 
     #[test]
-    fn backup_names_belong_to_their_game_only() {
+    fn backup_names_are_read_back() {
         assert_eq!(
-            parse_backup("Lanterna", "Lanterna.1700000000000.launch.sav"),
+            parse_backup("1700000000000.launch.sav"),
             Some((1_700_000_000_000, BackupReason::Launch))
         );
-        assert_eq!(
-            parse_backup("Lanterna", "Lanterna.2.x.123.launch.sav"),
-            None
-        );
-        assert_eq!(parse_backup("Lanterna", "Lanterna.123.other.sav"), None);
-        assert_eq!(parse_backup("Lanterna", "Lanterna 2.123.import.sav"), None);
+        assert_eq!(parse_backup("2.x.123.launch.sav"), None);
+        assert_eq!(parse_backup("123.other.sav"), None);
+        assert_eq!(parse_backup("Lanterna.123.import.sav"), None);
     }
 
     #[test]
     fn lists_what_a_game_has() {
         let dir = TestDir::new("saves-list");
         let save_dir = dir.path("saves");
-        write(&dir, "saves/Lanterna.sav", &[1; 32]);
-        write(&dir, "saves/Lanterna.auto.state", &[0; 100]);
-        write(&dir, "saves/Lanterna.slot2.state", &[0; 100]);
-        write(&dir, "saves/Lanterna.slot2.png", &[0; 10]);
-        write(&dir, "saves/Lanterna.slot9.state", &[0; 100]);
-        write(&dir, "saves/Other.sav", &[1; 32]);
-        let saves = game_saves(&save_dir, Path::new(GAME), 5);
+        write(&dir, "saves/gba/1a/game.sav", &[1; 32]);
+        write(&dir, "saves/gba/1a/auto.state", &[0; 100]);
+        write(&dir, "saves/gba/1a/slot2.state", &[0; 100]);
+        write(&dir, "saves/gba/1a/slot2.png", &[0; 10]);
+        write(&dir, "saves/gba/1a/slot9.state", &[0; 100]);
+        write(&dir, "saves/gba/2b/game.sav", &[1; 32]);
+        let saves = game_saves(&save_dir, &lanterna(), 5);
         assert_eq!(saves.in_game.as_ref().map(|f| f.size), Some(32));
         // Slot 9 is past `saves.slots`.
         let slots: Vec<u8> = saves.quick.iter().map(|q| q.slot).collect();
@@ -762,19 +764,38 @@ mod tests {
         assert!(saves.quick[1].thumb.is_some() && saves.quick[0].thumb.is_none());
         assert_eq!(saves.bytes(), 32 + 200 + 10);
         assert!(saves.last_change().is_some());
-        assert!(game_saves(&save_dir, Path::new("games/None.gba"), 5).is_empty());
+        assert!(game_saves(&save_dir, &GameKey::parse("gba:ee").unwrap(), 5).is_empty());
+    }
+
+    #[test]
+    fn two_games_never_share_a_file() {
+        // `Tetris.gb` and `Tetris.gba`: same file name, two contents, two keys.
+        let dir = TestDir::new("saves-two-games");
+        let save_dir = dir.path("saves");
+        let gb = GameKey::parse("gb:7e").unwrap();
+        let gba = GameKey::parse("gba:7e").unwrap();
+        assert_ne!(
+            GameFiles::new(&save_dir, &gb).sram,
+            GameFiles::new(&save_dir, &gba).sram
+        );
+        import(&save_dir, &gb, b"gb save", 1, 5).unwrap();
+        assert!(game_saves(&save_dir, &gba, 5).is_empty());
+        assert_eq!(
+            game_saves(&save_dir, &gb, 5).in_game.map(|f| f.size),
+            Some(7)
+        );
     }
 
     #[test]
     fn backups_skip_duplicates_and_rotate() {
         let dir = TestDir::new("saves-backup");
         let save_dir = dir.path("saves");
-        let game = Path::new(GAME);
+        let game = &lanterna();
         assert_eq!(
             backup(&save_dir, game, BackupReason::Launch, 1, 3).unwrap(),
             None
         );
-        write(&dir, "saves/Lanterna.sav", b"v1");
+        write(&dir, "saves/gba/1a/game.sav", b"v1");
         assert!(backup(&save_dir, game, BackupReason::Launch, 10, 3)
             .unwrap()
             .is_some());
@@ -783,14 +804,14 @@ mod tests {
             .unwrap()
             .is_none());
         for (i, v) in [b"v2", b"v3", b"v4"].iter().enumerate() {
-            write(&dir, "saves/Lanterna.sav", *v);
+            write(&dir, "saves/gba/1a/game.sav", *v);
             backup(&save_dir, game, BackupReason::Launch, 30 + i as u64, 3).unwrap();
         }
         let list = backups(&save_dir, game);
         let times: Vec<u64> = list.iter().map(|b| b.at_ms).collect();
         assert_eq!(times, vec![32, 31, 30]);
         // `saves.backups` = 0: no new backup, and the old ones go.
-        write(&dir, "saves/Lanterna.sav", b"v5");
+        write(&dir, "saves/gba/1a/game.sav", b"v5");
         assert!(backup(&save_dir, game, BackupReason::Launch, 40, 0)
             .unwrap()
             .is_none());
@@ -801,24 +822,24 @@ mod tests {
     fn restoring_keeps_the_replaced_save() {
         let dir = TestDir::new("saves-restore");
         let save_dir = dir.path("saves");
-        let game = Path::new(GAME);
-        write(&dir, "saves/Lanterna.sav", b"old");
+        let game = &lanterna();
+        write(&dir, "saves/gba/1a/game.sav", b"old");
         let old = backup(&save_dir, game, BackupReason::Launch, 10, 5)
             .unwrap()
             .unwrap();
-        write(&dir, "saves/Lanterna.sav", b"new");
+        write(&dir, "saves/gba/1a/game.sav", b"new");
         restore(&save_dir, game, &old.name, 20, 5).unwrap();
         assert_eq!(
-            std::fs::read(dir.path("saves/Lanterna.sav")).unwrap(),
+            std::fs::read(dir.path("saves/gba/1a/game.sav")).unwrap(),
             b"old"
         );
         let list = backups(&save_dir, game);
         assert_eq!(list[0].reason, BackupReason::Restore);
         assert_eq!(
-            std::fs::read(dir.path(&format!("saves/backups/{}", list[0].name))).unwrap(),
+            std::fs::read(dir.path(&format!("saves/gba/1a/backups/{}", list[0].name))).unwrap(),
             b"new"
         );
-        assert!(restore(&save_dir, game, "Other.10.launch.sav", 30, 5).is_err());
+        assert!(restore(&save_dir, game, "nope.sav", 30, 5).is_err());
         // keep = 1: the restored backup is the one that remains, not the one just restored from.
         restore(&save_dir, game, &old.name, 40, 1).unwrap();
         assert_eq!(backups(&save_dir, game).len(), 1);
@@ -828,7 +849,7 @@ mod tests {
     fn import_backs_up_first() {
         let dir = TestDir::new("saves-import");
         let save_dir = dir.path("saves");
-        let game = Path::new(GAME);
+        let game = &lanterna();
         import(&save_dir, game, b"fresh", 5, 5).unwrap();
         assert!(backups(&save_dir, game).is_empty());
         import(&save_dir, game, b"second", 6, 5).unwrap();
@@ -836,7 +857,7 @@ mod tests {
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].reason, BackupReason::Import);
         assert_eq!(
-            std::fs::read(dir.path("saves/Lanterna.sav")).unwrap(),
+            std::fs::read(dir.path("saves/gba/1a/game.sav")).unwrap(),
             b"second"
         );
     }
@@ -844,13 +865,13 @@ mod tests {
     #[test]
     fn a_slot_put_back_after_a_save_is_as_it_was() {
         let dir = TestDir::new("saves-slot-undo");
-        let files = GameFiles::new(&dir.path("saves"), Path::new(GAME));
-        write(&dir, "saves/Lanterna.slot2.state", b"old state");
-        write(&dir, "saves/Lanterna.slot2.png", b"old thumb");
+        let files = GameFiles::new(&dir.path("saves"), &lanterna());
+        write(&dir, "saves/gba/1a/slot2.state", b"old state");
+        write(&dir, "saves/gba/1a/slot2.png", b"old thumb");
         let before = SlotContent::read(&files, 2).unwrap();
         // A save replaces both files...
-        write(&dir, "saves/Lanterna.slot2.state", b"new state");
-        write(&dir, "saves/Lanterna.slot2.png", b"new thumb");
+        write(&dir, "saves/gba/1a/slot2.state", b"new state");
+        write(&dir, "saves/gba/1a/slot2.png", b"new thumb");
         before.restore(&files, 2).unwrap();
         assert_eq!(std::fs::read(files.slot(2)).unwrap(), b"old state");
         assert_eq!(std::fs::read(files.thumb(2)).unwrap(), b"old thumb");
@@ -859,7 +880,7 @@ mod tests {
     #[test]
     fn a_slot_that_was_empty_is_emptied_again() {
         let dir = TestDir::new("saves-slot-undo-empty");
-        let files = GameFiles::new(&dir.path("saves"), Path::new(GAME));
+        let files = GameFiles::new(&dir.path("saves"), &lanterna());
         let before = SlotContent::read(&files, 3).unwrap();
         assert_eq!(
             before,
@@ -869,8 +890,8 @@ mod tests {
                 meta: None
             }
         );
-        write(&dir, "saves/Lanterna.slot3.state", b"new state");
-        write(&dir, "saves/Lanterna.slot3.png", b"new thumb");
+        write(&dir, "saves/gba/1a/slot3.state", b"new state");
+        write(&dir, "saves/gba/1a/slot3.png", b"new thumb");
         before.restore(&files, 3).unwrap();
         assert!(!files.slot(3).exists());
         assert!(!files.thumb(3).exists());
@@ -882,14 +903,14 @@ mod tests {
     fn quick_saves_are_deleted_with_their_thumbnail() {
         let dir = TestDir::new("saves-delete");
         let save_dir = dir.path("saves");
-        write(&dir, "saves/Lanterna.slot1.state", b"s");
-        write(&dir, "saves/Lanterna.slot1.png", b"p");
-        write(&dir, "saves/Lanterna.slot1.json", b"{}");
-        delete_quick(&save_dir, Path::new(GAME), 1).unwrap();
-        assert!(!dir.path("saves/Lanterna.slot1.state").exists());
-        assert!(!dir.path("saves/Lanterna.slot1.png").exists());
-        assert!(!dir.path("saves/Lanterna.slot1.json").exists());
-        assert!(delete_quick(&save_dir, Path::new(GAME), 1).is_err());
+        write(&dir, "saves/gba/1a/slot1.state", b"s");
+        write(&dir, "saves/gba/1a/slot1.png", b"p");
+        write(&dir, "saves/gba/1a/slot1.json", b"{}");
+        delete_quick(&save_dir, &lanterna(), 1).unwrap();
+        assert!(!dir.path("saves/gba/1a/slot1.state").exists());
+        assert!(!dir.path("saves/gba/1a/slot1.png").exists());
+        assert!(!dir.path("saves/gba/1a/slot1.json").exists());
+        assert!(delete_quick(&save_dir, &lanterna(), 1).is_err());
     }
 
     fn meta(core: &str, version: &str) -> SlotMeta {
@@ -933,15 +954,15 @@ mod tests {
     fn the_saves_list_marks_the_slots_an_older_core_made() {
         let dir = TestDir::new("saves-outdated");
         let save_dir = dir.path("saves");
-        let files = GameFiles::new(&save_dir, Path::new(GAME));
-        write(&dir, "saves/Lanterna.slot1.state", b"old");
-        write(&dir, "saves/Lanterna.slot2.state", b"new");
-        write(&dir, "saves/Lanterna.slot3.state", b"no record");
+        let files = GameFiles::new(&save_dir, &lanterna());
+        write(&dir, "saves/gba/1a/slot1.state", b"old");
+        write(&dir, "saves/gba/1a/slot2.state", b"new");
+        write(&dir, "saves/gba/1a/slot3.state", b"no record");
         write_slot_meta(&files, 1, &meta("mGBA", "0.10.2")).unwrap();
         write_slot_meta(&files, 2, &meta("mGBA", "0.11.0")).unwrap();
         // Before any core version is known: nothing is outdated.
         let outdated = |dir: &std::path::Path| -> Vec<(u8, bool)> {
-            game_saves(dir, Path::new(GAME), 5)
+            game_saves(dir, &lanterna(), 5)
                 .quick
                 .iter()
                 .map(|q| (q.slot, q.outdated))
@@ -960,11 +981,11 @@ mod tests {
     #[test]
     fn undoing_a_save_puts_its_record_back_too() {
         let dir = TestDir::new("saves-slot-undo-meta");
-        let files = GameFiles::new(&dir.path("saves"), Path::new(GAME));
-        write(&dir, "saves/Lanterna.slot4.state", b"old state");
+        let files = GameFiles::new(&dir.path("saves"), &lanterna());
+        write(&dir, "saves/gba/1a/slot4.state", b"old state");
         write_slot_meta(&files, 4, &meta("mGBA", "0.10.2")).unwrap();
         let before = SlotContent::read(&files, 4).unwrap();
-        write(&dir, "saves/Lanterna.slot4.state", b"new state");
+        write(&dir, "saves/gba/1a/slot4.state", b"new state");
         write_slot_meta(&files, 4, &meta("mGBA", "0.11.0")).unwrap();
         before.restore(&files, 4).unwrap();
         assert_eq!(slot_meta(&files, 4), Some(meta("mGBA", "0.10.2")));
@@ -974,18 +995,19 @@ mod tests {
     fn a_broken_save_is_set_aside() {
         let dir = TestDir::new("saves-broken");
         let save_dir = dir.path("saves");
-        let game = Path::new(GAME);
+        let game = &lanterna();
         assert_eq!(check_in_game(&save_dir, game), SaveHealth::Missing);
-        write(&dir, "saves/Lanterna.sav", b"");
+        write(&dir, "saves/gba/1a/game.sav", b"");
         assert!(matches!(
             check_in_game(&save_dir, game),
             SaveHealth::Broken(_)
         ));
         let name = set_aside(&save_dir, game, 77).unwrap();
-        assert_eq!(name, "Lanterna.broken-77.sav");
+        assert_eq!(name, "broken-77.sav");
+        assert!(dir.path("saves/gba/1a/broken-77.sav").is_file());
         assert_eq!(check_in_game(&save_dir, game), SaveHealth::Missing);
         assert_eq!(game_saves(&save_dir, game, 3).broken, vec![name]);
-        write(&dir, "saves/Lanterna.sav", &[0xFF; 64]);
+        write(&dir, "saves/gba/1a/game.sav", &[0xFF; 64]);
         assert_eq!(check_in_game(&save_dir, game), SaveHealth::Fine);
     }
 

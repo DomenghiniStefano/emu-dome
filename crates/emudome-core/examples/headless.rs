@@ -265,13 +265,13 @@ fn measure_rewind(
     session: &Session,
     rx: &mpsc::Receiver<emudome_core::Event>,
     tmp: &std::path::Path,
-    rom: &str,
+    game: &emudome_core::GameKey,
     secs: u32,
 ) -> anyhow::Result<()> {
     use emudome_core::rewind;
 
     // The cost of one difference, between two states a frame apart and a second apart.
-    let files = emudome_core::GameFiles::new(&tmp.join("saves"), std::path::Path::new(rom));
+    let files = emudome_core::GameFiles::new(&tmp.join("saves"), game);
     session.send(Command::SetPaused(false));
     let mut slots = Vec::new();
     for (slot, wait) in [(7u8, 0u64), (8, 17), (9, 1000)] {
@@ -377,6 +377,10 @@ fn main() -> anyhow::Result<()> {
             .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
     );
     core_options.extend(args.opts.iter().cloned());
+    // The game's key names its saves, as in the shell.
+    let game = emudome_core::library::identify(std::path::Path::new(&args.rom))
+        .map_err(|e| anyhow::anyhow!("{}: {e}", args.rom))?
+        .id;
     let (tx, rx) = mpsc::channel();
     let session = Session::start(
         SessionOptions {
@@ -384,6 +388,7 @@ fn main() -> anyhow::Result<()> {
             game_path: args.rom.clone().into(),
             system_dir,
             save_dir: tmp.join("saves"),
+            game: game.clone(),
             autosave_every: None,
             autosave_on_exit: false,
             resume_auto: false,
@@ -534,7 +539,7 @@ fn main() -> anyhow::Result<()> {
     println!("paused: new frames {}", center_pixel(&session).3 - s0);
 
     if let Some(secs) = args.rewind {
-        measure_rewind(&session, &rx, &tmp, &args.rom, secs)?;
+        measure_rewind(&session, &rx, &tmp, &game, secs)?;
     }
 
     drop(session);

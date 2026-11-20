@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
 use libloading::Library;
+
+use crate::GameKey;
 use libretro_sys::symbols::{
     RetroApiVersion, RetroDeinit, RetroGetMemoryData, RetroGetMemorySize, RetroGetSystemAvInfo,
     RetroGetSystemInfo, RetroInit, RetroLoadGame, RetroReset, RetroRun, RetroSerialize,
@@ -201,23 +203,28 @@ impl Drop for LoadedCore {
     }
 }
 
-/// A game's file paths: cartridge save and slots.
+/// The files of one game, all in its own folder `<saves root>/<console>/<hex>/` (its
+/// [`GameKey`], never its file name):
+/// - `game.sav`: the in-game save (cartridge battery);
+/// - `auto.state`, `slotN.state` (+ `.png` thumbnail, + `.json` record): quick saves;
+/// - `backups/<unix ms>.<reason>.sav`, `broken-<unix ms>.sav` ([`crate::saves`]).
+///
+/// The same folder is the core's save directory for the session (`GET_SAVE_DIRECTORY`), so what
+/// a core writes by itself stays with the game too.
 pub struct GameFiles {
     pub sram: PathBuf,
-    save_dir: PathBuf,
-    stem: String,
+    dir: PathBuf,
+    root: PathBuf,
 }
 
 impl GameFiles {
-    pub fn new(save_dir: &Path, game: &Path) -> Self {
-        let stem = game
-            .file_stem()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "game".into());
+    /// The files of `game` under the saves root `saves_root`.
+    pub fn new(saves_root: &Path, game: &GameKey) -> Self {
+        let dir = saves_root.join(game.dir());
         Self {
-            sram: save_dir.join(format!("{stem}.sav")),
-            save_dir: save_dir.to_path_buf(),
-            stem,
+            sram: dir.join("game.sav"),
+            dir,
+            root: saves_root.to_path_buf(),
         }
     }
 
@@ -225,10 +232,9 @@ impl GameFiles {
     /// save («Salvataggio rapido automatico»), the others are the user's slots.
     pub fn slot(&self, slot: u8) -> PathBuf {
         if slot == crate::AUTO_SLOT {
-            return self.save_dir.join(format!("{}.auto.state", self.stem));
+            return self.dir.join("auto.state");
         }
-        self.save_dir
-            .join(format!("{}.slot{}.state", self.stem, slot))
+        self.dir.join(format!("slot{slot}.state"))
     }
 
     /// The thumbnail of a slot: the frame on screen when it was saved.
@@ -241,14 +247,13 @@ impl GameFiles {
         self.slot(slot).with_extension("json")
     }
 
-    /// The folder of the saves and slots.
-    pub fn save_dir(&self) -> &Path {
-        &self.save_dir
+    /// The game's own folder: its saves, slots, backups, and the core's save directory.
+    pub fn dir(&self) -> &Path {
+        &self.dir
     }
 
-    /// The ROM file name without extension: every file of the game starts with it.
-    /// TODO(game identity, Trello #21): two games with the same file name share their saves.
-    pub fn stem(&self) -> &str {
-        &self.stem
+    /// The saves root, shared by every game (`cores.json`, `screenshots/`).
+    pub fn root(&self) -> &Path {
+        &self.root
     }
 }

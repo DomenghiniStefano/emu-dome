@@ -6,12 +6,12 @@ use std::path::{Path, PathBuf};
 use sha1::{Digest, Sha1};
 
 use super::{
-    core_of, cover_colour, identify, read_icon, region, scan, settings_game_id, CoverKind, Library,
+    core_of, cover_colour, identify, identify_cached, read_icon, region, scan, CoverKind, Library,
     Region, ScanInput,
 };
 use crate::settings::test_dir::TestDir;
 use crate::settings::ConsoleId;
-use crate::ErrorCode;
+use crate::{ErrorCode, GameKey};
 
 // ---- Synthetic ROMs ----
 
@@ -209,7 +209,7 @@ fn gb_and_gbc_identity() {
     // CGB-only cartridge: GBC whatever the extension.
     let id = identify(&write(&dir, "c.gb", &gb_rom("COLOUR", 0xC0))).unwrap();
     assert_eq!(id.console, ConsoleId::Gbc);
-    assert!(id.id.starts_with("gbc:"));
+    assert!(id.id.as_str().starts_with("gbc:"));
     // A broken header checksum is not a game.
     let mut bad = gb_rom("HELLO", 0);
     bad[0x14D] ^= 0xFF;
@@ -374,7 +374,7 @@ fn rescan_uses_the_cache_while_size_and_mtime_hold() {
     let key = lib.games().next().unwrap().path.clone();
     // Tamper with the cached identity: a rescan that trusts the cache keeps it.
     let mut cache = lib.cache().clone();
-    cache.get_mut(&key).unwrap().identity.id = "gba:cached".into();
+    cache.get_mut(&key).unwrap().identity.id = GameKey::parse("gba:cac4ed").unwrap();
     let outcome = scan(
         ScanInput {
             folders: vec![dir.path("roms")],
@@ -383,7 +383,7 @@ fn rescan_uses_the_cache_while_size_and_mtime_hold() {
         },
         &mut |_, _| {},
     );
-    assert_eq!(outcome.found[0].identity.id, "gba:cached");
+    assert_eq!(outcome.found[0].identity.id, "gba:cac4ed");
     // A different size: identified again.
     write(
         &dir,
@@ -398,8 +398,8 @@ fn rescan_uses_the_cache_while_size_and_mtime_hold() {
         },
         &mut |_, _| {},
     );
-    assert!(outcome.found[0].identity.id.starts_with("gba:"));
-    assert_ne!(outcome.found[0].identity.id, "gba:cached");
+    assert!(outcome.found[0].identity.id.as_str().starts_with("gba:"));
+    assert_ne!(outcome.found[0].identity.id, "gba:cac4ed");
 }
 
 #[test]
@@ -594,7 +594,11 @@ fn covers_are_checked() {
         Err(ErrorCode::CoverInvalid { .. })
     ));
     assert!(matches!(
-        lib.set_cover("gba:nope", CoverKind::Generated, None),
+        lib.set_cover(
+            &GameKey::parse("gba:0e").unwrap(),
+            CoverKind::Generated,
+            None
+        ),
         Err(ErrorCode::LibraryGameUnknown { .. })
     ));
 }
@@ -609,9 +613,127 @@ fn cover_colour_is_stable_and_a_colour() {
 }
 
 #[test]
-fn library_ids_make_valid_settings_ids() {
-    let id = settings_game_id("3ds:0004000000abcd000002").unwrap();
-    assert_eq!(id.as_str(), "3ds-0004000000abcd000002");
+fn a_file_opened_by_path_uses_the_cache_only_while_it_did_not_change() {
+    let dir = TestDir::new("lib-identify-cached");
+    let rom = gba_rom("ONE", 0);
+    let path = write(&dir, "roms/a.gba", &rom);
+    let mut lib = Library::open(&dir.path("db"));
+    run(&mut lib, &[&dir.path("roms")], 0);
+    let mut entry = lib.cache().values().next().unwrap().clone();
+    // A cache entry that matches the file is trusted (no hashing).
+    entry.identity.id = GameKey::parse("gba:cac4ed").unwrap();
+    assert_eq!(
+        identify_cached(&path, Some(&entry)).unwrap().id,
+        "gba:cac4ed"
+    );
+    // A stale one (another size) is not: the content decides.
+    entry.size += 1;
+    assert_eq!(
+        identify_cached(&path, Some(&entry)).unwrap().id,
+        format!("gba:{}", sha1_hex(&rom))
+    );
+    assert_eq!(
+        identify_cached(&path, None).unwrap().id,
+        format!("gba:{}", sha1_hex(&rom))
+    );
+}
+
+#[test]
+fn a_renamed_or_moved_rom_keeps_its_key_and_so_its_saves() {
+    let dir = TestDir::new("lib-renamed");
+    let rom = gba_rom("ONE", 0);
+    let before = identify(&write(&dir, "roms/Lanterna.gba", &rom)).unwrap();
+    let after = identify(&write(&dir, "elsewhere/Lanterna (copia).gba", &rom)).unwrap();
+    assert_eq!(before.id, after.id);
+    let saves = dir.path("saves");
+    assert_eq!(
+        crate::GameFiles::new(&saves, &before.id).sram,
+        crate::GameFiles::new(&saves, &after.id).sram
+    );
+    // A different ROM with the same file name is another game.
+    let other = identify(&write(&dir, "hacks/Lanterna.gba", &gba_rom("ONE", 7))).unwrap();
+    assert_ne!(before.id, other.id);
+    // ...so the two never share a save file.
+    assert_ne!(
+        crate::GameFiles::new(&saves, &before.id).sram,
+        crate::GameFiles::new(&saves, &other.id).sram
+    );
+}
+
+#[test]
+fn opened_by_path_or_from_the_library_a_game_has_one_settings_file_and_one_save_folder() {
+    let dir = TestDir::new("lib-path-vs-library");
+    let rom = gba_rom("ONE", 0);
+    write(&dir, "roms/Lanterna.gba", &rom);
+    // The same content elsewhere, opened by its path (not in the library).
+    let outside = write(&dir, "downloads/lanterna-copy.gba", &rom);
+    let mut lib = Library::open(&dir.path("db"));
+    run(&mut lib, &[&dir.path("roms")], 0);
+    let from_library = lib.games().next().unwrap().id.clone();
+    let by_path = identify_cached(&outside, None).unwrap().id;
+    assert_eq!(from_library, by_path);
+    // A value stored while the game ran by path is the library game's value.
+    let mut settings = crate::settings::Settings::open(
+        dir.path("settings"),
+        dir.path("local/device.json"),
+        crate::settings::Device::Desktop,
+    );
+    let scope = |game: &GameKey| crate::settings::Scope::Game {
+        console: game.console(),
+        game: game.clone(),
+    };
+    settings
+        .set(
+            "video.scale",
+            &scope(&by_path),
+            crate::settings::Value::Text("fill".into()),
+        )
+        .unwrap();
+    assert_eq!(
+        settings
+            .resolve("video.scale", &scope(&from_library))
+            .unwrap()
+            .source,
+        crate::settings::Level::Game
+    );
+    assert_eq!(
+        crate::GameFiles::new(&dir.path("saves"), &by_path).dir(),
+        crate::GameFiles::new(&dir.path("saves"), &from_library).dir()
+    );
+}
+
+#[test]
+fn the_library_names_every_file_it_knows_with_its_key() {
+    let dir = TestDir::new("lib-known-files");
+    write(&dir, "roms/a.gba", &gba_rom("ONE", 0));
+    // A second copy of the same game: one record, two known files.
+    write(&dir, "roms/copy/a2.gba", &gba_rom("ONE", 0));
+    write(&dir, "roms/b.gba", &gba_rom("TWO", 1));
+    let mut lib = Library::open(&dir.path("db"));
+    run(&mut lib, &[&dir.path("roms")], 0);
+    let known = lib.known_files();
+    assert_eq!(known.len(), 3);
+    let key_of = |name: &str| {
+        known
+            .iter()
+            .find(|(p, _)| p.ends_with(name))
+            .map(|(_, k)| k.clone())
+            .unwrap()
+    };
+    assert_eq!(key_of("a.gba"), key_of("a2.gba"));
+    assert_ne!(key_of("a.gba"), key_of("b.gba"));
+    assert!(lib.readable().is_ok());
+}
+
+#[test]
+fn an_unreadable_library_says_so_before_anything_is_decided_from_it() {
+    let dir = TestDir::new("lib-readable");
+    dir.write("db/library.json/inside.txt", "kept");
+    let mut lib = Library::open(&dir.path("db"));
+    assert!(matches!(
+        lib.readable(),
+        Err(ErrorCode::LibraryReadFailed { .. })
+    ));
 }
 
 #[test]
@@ -667,7 +789,7 @@ fn the_shown_name_survives_rescans_and_blank_goes_back_to_the_rom_title() {
         super::NAME_MAX
     );
     assert!(matches!(
-        lib.set_name("gba:none", "x"),
+        lib.set_name(&GameKey::parse("gba:0e").unwrap(), "x"),
         Err(ErrorCode::LibraryGameUnknown { .. })
     ));
 }

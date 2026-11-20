@@ -22,8 +22,7 @@ pub mod schema;
 mod store;
 
 use std::collections::BTreeMap;
-use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -33,6 +32,7 @@ pub use schema::{
 };
 use store::{Change, FileId, Store};
 
+pub use crate::game_key::GameKey;
 use crate::ErrorCode;
 
 /// A console, as a settings level. Mirror: `ConsoleId` in app/src/emu.ts.
@@ -61,64 +61,19 @@ impl ConsoleId {
             ConsoleId::N3ds => "3ds",
         }
     }
-}
 
-/// A game's identity for its settings file: lowercase letters, digits and `-` only, so it is
-/// always a safe file name (checked when it comes from the interface).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(try_from = "String", into = "String")]
-pub struct GameId(String);
-
-impl GameId {
-    /// For now the identity is a hash of the ROM path.
-    /// TODO(game identity, Trello #21): the content hash / title ID once it exists; then move
-    /// the files named after the path hash.
-    pub fn from_rom_path(path: &Path) -> Self {
-        Self(format!(
-            "path-{:016x}",
-            fnv1a(path.to_string_lossy().as_bytes())
-        ))
+    /// The console of an id ([`ConsoleId::id`]).
+    pub fn from_id(id: &str) -> Option<Self> {
+        [
+            ConsoleId::Gb,
+            ConsoleId::Gbc,
+            ConsoleId::Gba,
+            ConsoleId::Nds,
+            ConsoleId::N3ds,
+        ]
+        .into_iter()
+        .find(|c| c.id() == id)
     }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl TryFrom<String> for GameId {
-    type Error = String;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let valid = !value.is_empty()
-            && value.len() <= 128
-            && value
-                .chars()
-                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
-        if valid {
-            Ok(Self(value))
-        } else {
-            Err(format!("invalid game id {value:?}"))
-        }
-    }
-}
-
-impl From<GameId> for String {
-    fn from(id: GameId) -> Self {
-        id.0
-    }
-}
-
-impl fmt::Display for GameId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-/// FNV-1a, 64 bit: stable across Rust versions and platforms (unlike `DefaultHasher`).
-fn fnv1a(bytes: &[u8]) -> u64 {
-    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, b| {
-        (hash ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3)
-    })
 }
 
 /// What the interface is looking at or changing. Mirror: `SettingsScope` in app/src/emu.ts.
@@ -131,7 +86,7 @@ pub enum Scope {
     },
     Game {
         console: ConsoleId,
-        game: GameId,
+        game: GameKey,
     },
     /// The open game with its changes «in prova».
     Session,
@@ -183,7 +138,7 @@ pub struct GameOverride {
 /// The quick menu's changes «in prova» for the open game.
 struct SessionLayer {
     console: ConsoleId,
-    game: GameId,
+    game: GameKey,
     values: BTreeMap<&'static str, Value>,
 }
 
@@ -198,7 +153,7 @@ pub struct RecentChange {
     /// The console of a Console level.
     pub console: Option<ConsoleId>,
     /// The game of a Game level.
-    pub game: Option<GameId>,
+    pub game: Option<GameKey>,
     /// Unix ms.
     pub at: u64,
 }
@@ -229,6 +184,12 @@ impl Settings {
             session: None,
             clock: now_ms,
         }
+    }
+
+    /// Reads the files again on next use: the one-time game key migration
+    /// ([`crate::migration`]) moved some of them.
+    pub fn forget_files(&mut self) {
+        self.store.forget();
     }
 
     pub fn device(&self) -> Device {
@@ -317,7 +278,7 @@ impl Settings {
     }
 
     /// A game opened: its session starts empty (any previous one is discarded).
-    pub fn begin_session(&mut self, console: ConsoleId, game: GameId) {
+    pub fn begin_session(&mut self, console: ConsoleId, game: GameKey) {
         self.session = Some(SessionLayer {
             console,
             game,
@@ -430,7 +391,7 @@ impl Settings {
 
     /// Every value stored at the Game level for `game`, in the catalogue's order, each with the
     /// value its console's games get (L06). Entries without a value are left out.
-    pub fn game_overrides(&mut self, console: ConsoleId, game: &GameId) -> Vec<GameOverride> {
+    pub fn game_overrides(&mut self, console: ConsoleId, game: &GameKey) -> Vec<GameOverride> {
         let file = FileId::Game(game.clone());
         let console_scope = Scope::Console { console };
         let mut out = Vec::new();
@@ -488,7 +449,7 @@ impl Settings {
 
     /// The levels to look at for `scope`, strongest first (Default excluded).
     fn chain(&self, scope: &Scope) -> Result<Vec<(Level, Option<FileId>)>, ErrorCode> {
-        let game_chain = |console: ConsoleId, game: &GameId| {
+        let game_chain = |console: ConsoleId, game: &GameKey| {
             vec![
                 (Level::Game, Some(FileId::Game(game.clone()))),
                 (Level::Console, Some(FileId::Console(console))),

@@ -12,11 +12,11 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use emudome_core::library::{
-    self, core_of, cover_colour, region, settings_game_id, CoverKind, GameRecord, Library, Region,
-    ScanInput, ScanReport,
+    self, core_of, cover_colour, region, CoverKind, GameRecord, Identity, Library, NotAGame,
+    Region, ScanInput, ScanReport,
 };
 use emudome_core::settings::{ConsoleId, Scope, Value};
-use emudome_core::ErrorCode;
+use emudome_core::{ErrorCode, GameKey};
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -36,7 +36,7 @@ pub struct LibraryState {
     /// Files dropped on the window, for the next scan.
     pending: Mutex<Vec<PathBuf>>,
     /// The library game being played, and since when.
-    playing: Mutex<Option<(String, Instant)>>,
+    playing: Mutex<Option<(GameKey, Instant)>>,
     watcher: Mutex<Option<notify::RecommendedWatcher>>,
 }
 
@@ -78,7 +78,8 @@ pub fn startup(app: &AppHandle) {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GameDto {
-    id: String,
+    /// The game's one identity (`GameId` in app/src/emu.ts): its saves and settings too.
+    id: GameKey,
     console: ConsoleId,
     title: String,
     path: String,
@@ -106,8 +107,6 @@ struct GameDto {
     region: Option<Region>,
     /// The core that runs it (`mgba`, `melondsds`, `azahar`).
     core: &'static str,
-    /// Its «Solo questo gioco» settings identity (`settings_game_id`).
-    settings_game: Option<String>,
 }
 
 impl GameDto {
@@ -116,7 +115,7 @@ impl GameDto {
             CoverKind::Generated => None,
             CoverKind::Icon | CoverKind::User => Some(emudome_platform::protocol_url(
                 "emu",
-                &format!("cover/{}?v={}", g.id.replace(':', "%3A"), g.cover_rev),
+                &format!("cover/{}?v={}", g.id.file_stem(), g.cover_rev),
             )),
         };
         Self {
@@ -133,7 +132,7 @@ impl GameDto {
             cover: g.cover,
             cover_url,
             has_icon: g.has_icon,
-            colour: cover_colour(&g.id),
+            colour: cover_colour(g.id.as_str()),
             favourite: g.favourite,
             hidden: g.hidden,
             // TODO(save state thumbnails): states have no thumbnail yet.
@@ -144,7 +143,6 @@ impl GameDto {
             version: g.version,
             region: region(g.code.as_deref()),
             core: core_of(g.console),
-            settings_game: settings_game_id(&g.id).map(String::from),
         }
     }
 }
@@ -338,13 +336,8 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
 
 // ---- Covers ----
 
-/// The cover file name of a game id (`:` is not allowed in Windows file names).
-fn file_stem(id: &str) -> String {
-    id.replace(':', "-")
-}
-
-fn icon_file(covers: &Path, id: &str) -> PathBuf {
-    covers.join(format!("{}.icon.png", file_stem(id)))
+fn icon_file(covers: &Path, id: &GameKey) -> PathBuf {
+    covers.join(format!("{}.icon.png", id.file_stem()))
 }
 
 /// Extracts the icon of a game into the covers folder, if it is not there yet.
@@ -389,11 +382,11 @@ fn cache_icons(state: &LibraryState) {
     }
 }
 
-/// `emu://cover/<id>`: the game's icon or user image.
+/// `emu://cover/<console>-<hex>`: the game's icon or user image.
 pub fn cover_response(app: &AppHandle, path: &str) -> tauri::http::Response<Vec<u8>> {
     use tauri::http::{header, Response, StatusCode};
-    let id = path.replace("%3A", ":").replace("%3a", ":");
     let found = app.try_state::<LibraryState>().and_then(|state| {
+        let id = GameKey::from_file_stem(path)?;
         let game = state.lib.lock().game(&id).ok().cloned()?;
         let file = match game.cover {
             CoverKind::Icon => cache_icon(&state.covers, &game)?,
@@ -443,7 +436,7 @@ pub(crate) fn image_ext(bytes: &[u8]) -> Option<&'static str> {
 }
 
 /// Copies the user's image into the covers folder; returns its file name there.
-fn import_cover(covers: &Path, id: &str, rev: u32, source: &Path) -> Result<String, ErrorCode> {
+fn import_cover(covers: &Path, id: &GameKey, rev: u32, source: &Path) -> Result<String, ErrorCode> {
     let invalid = |detail: String| ErrorCode::CoverInvalid { detail };
     let size = std::fs::metadata(source)
         .map_err(|e| invalid(e.to_string()))?
@@ -453,7 +446,7 @@ fn import_cover(covers: &Path, id: &str, rev: u32, source: &Path) -> Result<Stri
     }
     let bytes = std::fs::read(source).map_err(|e| invalid(e.to_string()))?;
     let ext = image_ext(&bytes).ok_or_else(|| invalid("not a PNG, JPEG or WebP image".into()))?;
-    let name = format!("{}.user-{rev}.{ext}", file_stem(id));
+    let name = format!("{}.user-{rev}.{ext}", id.file_stem());
     emudome_core::write_atomic(&covers.join(&name), &bytes).map_err(|e| {
         ErrorCode::LibraryWriteFailed {
             detail: e.to_string(),
@@ -570,11 +563,11 @@ pub fn refresh_watch(app: &AppHandle) {
 // ---- Play time ----
 
 /// A library game started: remember it and when, record «last played».
-pub fn begin_play(app: &AppHandle, id: &str) {
+pub fn begin_play(app: &AppHandle, id: &GameKey) {
     let Some(state) = app.try_state::<LibraryState>() else {
         return;
     };
-    *state.playing.lock() = Some((id.to_owned(), Instant::now()));
+    *state.playing.lock() = Some((id.clone(), Instant::now()));
     if let Err(e) = state.lib.lock().mark_played(id, now_ms()) {
         log::warn!("last played of {id}: {e:?}");
     }
@@ -597,12 +590,57 @@ pub fn end_play(app: &AppHandle) {
     emit_changed(app);
 }
 
-/// The library game whose file is `path`: its id, title and console.
-pub fn game_at(app: &AppHandle, path: &str) -> Option<(String, String, ConsoleId)> {
+/// The library game whose file is `path`: its key and title.
+pub fn game_at(app: &AppHandle, path: &str) -> Option<(GameKey, String)> {
     let state = app.try_state::<LibraryState>()?;
     let lib = state.lib.lock();
     lib.game_at(path)
-        .map(|g| (g.id.clone(), g.shown_title().to_owned(), g.console))
+        .map(|g| (g.id.clone(), g.shown_title().to_owned()))
+}
+
+/// The title of the library game `id`, when it is one.
+pub fn title_of(app: &AppHandle, id: &GameKey) -> Option<String> {
+    let state = app.try_state::<LibraryState>()?;
+    let lib = state.lib.lock();
+    lib.game(id).ok().map(|g| g.shown_title().to_owned())
+}
+
+/// The file of the library game `id`, when it is one.
+pub fn path_of(app: &AppHandle, id: &GameKey) -> Option<PathBuf> {
+    let state = app.try_state::<LibraryState>()?;
+    let lib = state.lib.lock();
+    lib.game(id).ok().map(|g| PathBuf::from(&g.path))
+}
+
+/// What a file opened by its path is. The library's hash cache entry for that path is copied
+/// out first, so hashing a large ROM never holds the library's lock (nor any lock the audio or
+/// the renderer takes).
+pub fn identify_path(app: &AppHandle, path: &Path) -> Result<Identity, ErrorCode> {
+    let cached = app.try_state::<LibraryState>().and_then(|state| {
+        let lib = state.lib.lock();
+        lib.cache().get(path.to_string_lossy().as_ref()).cloned()
+    });
+    library::identify_cached(path, cached.as_ref()).map_err(|e| match e {
+        NotAGame::Io(e) => ErrorCode::OpenFailed {
+            detail: format!("{}: {e}", path.display()),
+        },
+        NotAGame::Extension | NotAGame::Header(_) => ErrorCode::GameUnidentified {
+            detail: e.to_string(),
+        },
+    })
+}
+
+/// Every file the library knows the key of, for the one-time game key migration;
+/// `libraryReadFailed` while `library.json` cannot be read (nothing may be decided then).
+pub fn known_files(app: &AppHandle) -> Result<Vec<(String, GameKey)>, ErrorCode> {
+    let state = app
+        .try_state::<LibraryState>()
+        .ok_or_else(|| ErrorCode::LibraryReadFailed {
+            detail: "library not open".into(),
+        })?;
+    let mut lib = state.lib.lock();
+    lib.readable()?;
+    Ok(lib.known_files())
 }
 
 // ---- Commands ----
@@ -701,30 +739,26 @@ pub fn library_open(
     app: AppHandle,
     app_state: State<'_, AppState>,
     state: State<'_, LibraryState>,
-    id: String,
+    id: GameKey,
 ) -> Result<GameInfo, ErrorCode> {
-    let (path, title, console) = {
+    let (path, title) = {
         let lib = state.lib.lock();
         let game = lib.game(&id)?;
-        (
-            game.path.clone(),
-            game.shown_title().to_owned(),
-            game.console,
-        )
+        (game.path.clone(), game.shown_title().to_owned())
     };
     if !Path::new(&path).is_file() {
         state.lib.lock().set_unavailable(&id)?;
         emit_changed(&app);
-        return Err(ErrorCode::LibraryGameUnavailable { id });
+        return Err(ErrorCode::LibraryGameUnavailable { id: id.to_string() });
     }
-    crate::open_library_game(&app, &app_state, &id, PathBuf::from(path), title, console)
+    crate::open_library_game(&app, &app_state, &id, PathBuf::from(path), title)
 }
 
 /// Changes the cover (L12). `user` opens an image picker first: `false` if it was cancelled.
 #[tauri::command]
 pub async fn library_set_cover(
     app: AppHandle,
-    id: String,
+    id: GameKey,
     kind: CoverKind,
 ) -> Result<bool, ErrorCode> {
     let state = app.state::<LibraryState>();
@@ -759,7 +793,7 @@ pub async fn library_set_cover(
 pub fn library_set_flags(
     app: AppHandle,
     state: State<'_, LibraryState>,
-    id: String,
+    id: GameKey,
     favourite: Option<bool>,
     hidden: Option<bool>,
 ) -> Result<(), ErrorCode> {
@@ -773,7 +807,7 @@ pub fn library_set_flags(
 pub fn library_set_name(
     app: AppHandle,
     state: State<'_, LibraryState>,
-    id: String,
+    id: GameKey,
     name: String,
 ) -> Result<(), ErrorCode> {
     state.lib.lock().set_name(&id, &name)?;

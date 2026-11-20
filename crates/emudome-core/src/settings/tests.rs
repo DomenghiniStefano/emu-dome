@@ -7,7 +7,7 @@ use serde_json::json;
 
 use super::catalog::{CURRENT_PHASE, ENTRIES, GROUPS, PAGES, SECTIONS};
 use super::test_dir::TestDir;
-use super::{entry, CommitTarget, ConsoleId, GameId, Kind, Level, Scope, Settings, Value};
+use super::{entry, CommitTarget, ConsoleId, GameKey, Kind, Level, Scope, Settings, Value};
 use crate::settings::schema::Device;
 use crate::ErrorCode;
 
@@ -19,8 +19,8 @@ fn settings(dir: &TestDir) -> Settings {
     )
 }
 
-fn game() -> GameId {
-    GameId::from_rom_path("C:/games/test.gba".as_ref())
+fn game() -> GameKey {
+    GameKey::parse("gba:7e57").unwrap()
 }
 
 fn game_scope() -> Scope {
@@ -146,7 +146,7 @@ fn levels_the_entry_does_not_accept_are_skipped_when_resolving() {
     let dir = TestDir::new("skip-levels");
     // `video.fps` is global only: a value in a game file (hand-edited) is ignored.
     dir.write(
-        &format!("synced/game/{}.json", game()),
+        &format!("synced/game/{}.json", game().file_stem()),
         r#"{ "video.fps": true }"#,
     );
     let mut s = settings(&dir);
@@ -291,7 +291,7 @@ fn per_device_values_never_reach_the_synced_files() {
     let device: serde_json::Value = serde_json::from_str(&dir.read("local/device.json")).unwrap();
     assert_eq!(device["global"][key], json!(false));
     assert_eq!(device["console"]["gba"][key], json!(true));
-    assert_eq!(device["game"][game().as_str()][key], json!(false));
+    assert_eq!(device["game"][game().file_stem()][key], json!(false));
     // And it reads back from a fresh start.
     let mut fresh = settings(&dir);
     assert_eq!(
@@ -353,7 +353,7 @@ fn commit_to_the_console_saves_for_every_game_of_it() {
     );
     let other = Scope::Game {
         console: ConsoleId::Gba,
-        game: GameId::from_rom_path("C:/games/other.gba".as_ref()),
+        game: GameKey::parse("gba:0de7").unwrap(),
     };
     assert_eq!(
         value_of(&mut s, "video.scale", &other),
@@ -417,10 +417,7 @@ fn opening_another_game_starts_a_fresh_session() {
     let mut s = settings(&dir);
     s.begin_session(ConsoleId::Gba, game());
     s.set("audio.vol", &Scope::Session, Value::Int(50)).unwrap();
-    s.begin_session(
-        ConsoleId::Gba,
-        GameId::from_rom_path("C:/other.gba".as_ref()),
-    );
+    s.begin_session(ConsoleId::Gba, GameKey::parse("gba:0de8").unwrap());
     assert_eq!(
         value_of(&mut s, "audio.vol", &Scope::Session).1,
         Level::Default
@@ -459,29 +456,15 @@ fn a_page_lists_its_entries_with_source_and_changed() {
 // ---- Identity and wire format ----
 
 #[test]
-fn game_ids_are_stable_and_safe() {
-    // FNV-1a 64 of "abc".
-    assert_eq!(super::fnv1a(b"abc"), 0xe71f_a219_0541_574b);
-    assert_eq!(
-        GameId::from_rom_path("abc".as_ref()).as_str(),
-        "path-e71fa2190541574b"
-    );
-    assert!(GameId::try_from("path-0123abcd".to_owned()).is_ok());
-    for bad in ["", "../global", "a/b", "A", "x y"] {
-        assert!(GameId::try_from(bad.to_owned()).is_err(), "{bad:?}");
-    }
-}
-
-#[test]
 fn scopes_and_errors_have_the_interface_shape() {
     let scope: Scope =
-        serde_json::from_value(json!({ "level": "game", "console": "gba", "game": "path-1" }))
+        serde_json::from_value(json!({ "level": "game", "console": "gba", "game": "gba:1" }))
             .unwrap();
     assert_eq!(
         scope,
         Scope::Game {
             console: ConsoleId::Gba,
-            game: GameId::try_from("path-1".to_owned()).unwrap()
+            game: GameKey::parse("gba:1").unwrap()
         }
     );
     let scope: Scope = serde_json::from_value(json!({ "level": "session" })).unwrap();
@@ -1138,7 +1121,7 @@ fn game_overrides_list_the_game_values_with_the_console_value_beside() {
     assert_eq!(list[0].page, "video");
 
     // Another game of the same console has none.
-    let other = GameId::from_rom_path("C:/games/other.gba".as_ref());
+    let other = GameKey::parse("gba:0de7").unwrap();
     assert!(s.game_overrides(ConsoleId::Gba, &other).is_empty());
 
     // Ripristina: once reset, the value leaves the list.
@@ -1158,7 +1141,7 @@ fn gb_options(s: Settings, console: ConsoleId) -> Vec<(String, String)> {
     let s = std::cell::RefCell::new(s);
     let scope = Scope::Game {
         console,
-        game: GameId::from_rom_path("C:/games/test.gb".as_ref()),
+        game: GameKey::parse("gb:7e57").unwrap(),
     };
     super::core_values::core_options("mgba", console, |key| {
         s.borrow_mut()
@@ -1283,7 +1266,7 @@ fn gba_game_and_session_levels_reach_the_core() {
     };
     let game = Scope::Game {
         console: ConsoleId::Gba,
-        game: GameId::from_rom_path("C:/games/test.gb".as_ref()),
+        game: GameKey::parse("gb:7e57").unwrap(),
     };
     s.set("consoles.gbablend", &gba, Value::Text("on".into()))
         .unwrap();

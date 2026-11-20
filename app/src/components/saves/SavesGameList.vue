@@ -2,7 +2,7 @@
 // V01, the games that have saves: the title with «Importa…», the search, and one row per game
 // (what it has saved; «Salvataggio illeggibile» when its in-game save was set aside, E04).
 import { useI18n } from 'vue-i18n'
-import type { LibraryGame } from '@/emu'
+import type { GameId, LibraryGame } from '@/emu'
 import { Button } from '@/components/ui/button'
 import { SearchField } from '@/components/ui/search-field'
 import SavesGameRow from './SavesGameRow.vue'
@@ -18,8 +18,8 @@ export interface SavesListRow {
 
 defineProps<{
   rows: SavesListRow[]
-  /** ROM path of the game shown on the right; null while the import is. */
-  currentPath: string | null
+  /** The game shown on the right; null while the import is. */
+  current: GameId | null
 }>()
 const query = defineModel<string>('query', { required: true })
 const emit = defineEmits<{ pick: [LibraryGame]; import: [] }>()
@@ -44,8 +44,8 @@ const { t } = useI18n()
         :game="game"
         :detail="detail"
         numeric
-        :selected="game.path === currentPath"
-        :aria-current="game.path === currentPath ? 'true' : undefined"
+        :selected="game.id === current"
+        :aria-current="game.id === current ? 'true' : undefined"
         :data-nav-initial="i === 0 ? '' : undefined"
         @click="emit('pick', game)"
       >

@@ -29,7 +29,7 @@ export function useFirstRunImports(onError: ErrorSink) {
     work(async () => {
       const found = await emu.saves.importFolder(
         what,
-        library.games.map(g => g.path),
+        library.games.map(g => g.id),
       )
       if (found) imports.value = { ...imports.value, [what]: { found, imported: null } }
     })

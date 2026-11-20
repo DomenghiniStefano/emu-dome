@@ -20,10 +20,10 @@ export async function loadSlotCount(): Promise<number> {
 
 /** The game's saves; `slots` read from the setting when not given. */
 export async function loadGameSaves(
-  game: Pick<LibraryGame, 'path'>,
+  game: Pick<LibraryGame, 'id'>,
   slots?: number,
 ): Promise<GameSaves> {
-  return emu.saves.game(game.path, slots ?? (await loadSlotCount()))
+  return emu.saves.game(game.id, slots ?? (await loadSlotCount()))
 }
 
 /** Nothing saved at all: the button says «Gioca». */
@@ -32,7 +32,7 @@ export const NOTHING_TO_RESUME: ResumePoint = { slot: null, thumbUrl: null, none
 /** Where «Riprendi» picks up for `game` (L01, L04); null when its saves cannot be read (never
  * throws). Opening the game then starts from the in-game save, as «Gioca» would. */
 export async function loadResumePoint(
-  game: Pick<LibraryGame, 'path'>,
+  game: Pick<LibraryGame, 'id'>,
   slots?: number,
 ): Promise<ResumePoint | null> {
   try {
