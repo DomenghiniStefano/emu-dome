@@ -228,17 +228,15 @@ extern "system" fn native_surface_destroyed(_env: JNIEnv, _class: JClass) {
     }
 }
 
+/// `options.focused` is not used: Tauri's mobile builder has no `focused`, the activity's
+/// window is the one in front (bench mode is a desktop tool).
 pub fn create_window(
     app: &tauri::App,
     options: &WindowOptions,
 ) -> tauri::Result<(tauri::Window, tauri::Webview)> {
-    let mut builder = tauri::WebviewWindowBuilder::new(
-        app,
-        "main",
-        tauri::WebviewUrl::App("index.html".into()),
-    )
-    .transparent(true)
-    .focused(options.focused);
+    let mut builder =
+        tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
+            .transparent(true);
     if let Some(dir) = &options.webview_data_dir {
         builder = builder.data_directory(dir.clone());
     }
