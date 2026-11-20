@@ -21,5 +21,9 @@ if ($null -ne $sh) {
 }
 
 $check = Join-Path $PSScriptRoot 'check'
+# 'Stop' ends here: Windows PowerShell 5.1 turns each stderr line of a native command into an
+# error record when the caller redirects it (`./scripts/check.ps1 *> log`), and under 'Stop' the
+# first one ("Compiling ...") would end this script while sh carries on unseen.
+$ErrorActionPreference = 'Continue'
 & $shPath $check
 exit $LASTEXITCODE
