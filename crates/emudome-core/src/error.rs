@@ -24,8 +24,16 @@ pub enum ErrorCode {
     /// The core file found is not the one this build ships (its sha256 differs from
     /// `cores.lock`'s): it is not loaded. The installation is damaged or was tampered with.
     CoreDamaged { file: String },
-    /// The core or the game failed to load.
+    /// The core or the game failed to load, for a reason none of the codes below names.
     OpenFailed { detail: String },
+    /// The core file cannot be loaded or is not a libretro core EmuDome can drive (damaged,
+    /// another architecture, a function missing): reinstalling EmuDome puts the right one back.
+    CoreIncompatible { detail: String },
+    /// The game file cannot be read (moved, deleted, a disconnected drive, no permission).
+    RomUnreadable { detail: String },
+    /// The core read the game and refused it: a bad or incomplete dump, an encrypted 3DS game,
+    /// a format this core does not run.
+    CoreRefusedGame,
     /// The file opened has the extension of a console but its content is not a game of it (its
     /// header does not match): it has no identity, so it has no place for its saves.
     GameUnidentified { detail: String },
@@ -125,9 +133,60 @@ pub enum ErrorCode {
     BiosDsMenuFilesMissing,
 }
 
+impl crate::StartError {
+    /// The code the interface shows for a game that did not start on `core` (its name, e.g.
+    /// `mgba`).
+    pub fn into_code(self, core: &str) -> ErrorCode {
+        match self {
+            crate::StartError::CoreNeedsRestart => ErrorCode::CoreNeedsRestart {
+                core: core.to_owned(),
+            },
+            crate::StartError::CoreUnloadable { detail }
+            | crate::StartError::CoreIncompatible { detail } => {
+                ErrorCode::CoreIncompatible { detail }
+            }
+            crate::StartError::RomUnreadable { detail } => ErrorCode::RomUnreadable { detail },
+            crate::StartError::CoreRefusedGame => ErrorCode::CoreRefusedGame,
+            crate::StartError::ThreadFailed { detail } => ErrorCode::OpenFailed { detail },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ErrorCode;
+
+    #[test]
+    fn a_start_error_becomes_a_code_the_interface_can_explain() {
+        use crate::StartError;
+        let code = |e: StartError| e.into_code("mgba");
+        assert_eq!(
+            code(StartError::CoreNeedsRestart),
+            ErrorCode::CoreNeedsRestart {
+                core: "mgba".into()
+            }
+        );
+        assert_eq!(
+            code(StartError::CoreUnloadable { detail: "x".into() }),
+            ErrorCode::CoreIncompatible { detail: "x".into() }
+        );
+        assert_eq!(
+            code(StartError::RomUnreadable {
+                detail: "gone".into()
+            }),
+            ErrorCode::RomUnreadable {
+                detail: "gone".into()
+            }
+        );
+        assert_eq!(
+            code(StartError::CoreRefusedGame),
+            ErrorCode::CoreRefusedGame
+        );
+        assert_eq!(
+            serde_json::to_value(ErrorCode::CoreRefusedGame).unwrap(),
+            serde_json::json!({ "code": "coreRefusedGame" })
+        );
+    }
 
     #[test]
     fn serializes_as_code_and_params() {

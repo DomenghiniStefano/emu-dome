@@ -359,8 +359,9 @@ fn open_path(
         },
         tx,
     )
-    .map_err(|e| ErrorCode::OpenFailed {
-        detail: format!("{e:#}"),
+    .map_err(|e| {
+        log::warn!("{} did not start: {e}", core.name());
+        e.into_code(core.name())
     })?;
 
     // The core's events go to the interface.

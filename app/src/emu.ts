@@ -80,6 +80,9 @@ export type ErrorCode =
   | { code: 'coreNotFound'; params: { file: string } }
   | { code: 'coreDamaged'; params: { file: string } }
   | { code: 'openFailed'; params: { detail: string } }
+  | { code: 'coreIncompatible'; params: { detail: string } }
+  | { code: 'romUnreadable'; params: { detail: string } }
+  | { code: 'coreRefusedGame' }
   /** The file has a console's extension but is not a game of it: it has no identity. */
   | { code: 'gameUnidentified'; params: { detail: string } }
   | { code: 'coreNeedsRestart'; params: { core: string } }
