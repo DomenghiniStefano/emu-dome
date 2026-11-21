@@ -227,6 +227,12 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`onPause`) sends `Command::Flush` (the same writes, the game keeps running). A thread that does not stop in
   time, or is abandoned after E11, is let go: the session is dead (no file, no event, no `retro_unload_game` /
   `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
+- Writes while the game runs (quick saves, the periodic auto quick save and `.sav` flush, «Annulla» of a save,
+  screenshots) go to the session's I/O worker (`session/io.rs`, thread `emudome-io`): the emulation thread only
+  serializes and copies the bytes; the worker reads what the slot held, writes atomically, encodes the PNG and sends
+  the event. The emulation thread waits for it before reading a slot (load), before `Flush` and at the end of the
+  session, whose exit writes stay synchronous. Rewind serializes into reused buffers and encodes its differences on
+  its own thread (`emudome-rewind`); stepping back turns the newest state into the older one in place.
 - **Video, two paths:**
   - **Native**: wgpu draws on the window, under a transparent child webview ("ui").
     Needs Tauri's `unstable` feature (`window.add_child`). The device is made with the first surface and
