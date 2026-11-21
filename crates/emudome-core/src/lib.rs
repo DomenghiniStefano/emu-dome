@@ -32,6 +32,7 @@ pub mod migration;
 pub mod n3ds;
 pub mod nds;
 pub mod rewind;
+pub mod save_path;
 pub mod saves;
 pub mod screens;
 pub mod screenshot;

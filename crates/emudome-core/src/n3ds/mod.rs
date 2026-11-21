@@ -43,6 +43,22 @@ pub const FORCED_OPTIONS: &[(&str, &str)] = &[
     ("citra_use_libretro_save_path", "LibRetro Default"),
 ];
 
+/// The deepest folder and file Azahar creates under the game's folder while it loads a game
+/// (Trello #94): its emulated NAND, written in `retro_load_game`. Past the system's path limit
+/// Azahar aborts the whole process there, so the shell checks first ([`crate::save_path`]).
+///
+/// Measured 2026-11-21 on Azahar 2126.2 (commit 219d743) with Craftus Reloaded 0.3 (`.3dsx`),
+/// software renderer: the tree the headless example left under `saves/3ds/<hex>/`. The same
+/// tree for every game: the NAND's system data, not the game's. A game's own saves on the
+/// emulated SD card (`Azahar/sdmc/...`) are named by the game and created while it runs; they
+/// are not covered.
+pub const SAVE_DEPTH: crate::save_path::SaveDepth = crate::save_path::SaveDepth {
+    deepest_dir:
+        "Azahar/nand/data/00000000000000000000000000000000/extdata/00048000/F000000B/boss",
+    deepest_file:
+        "Azahar/nand/data/00000000000000000000000000000000/extdata/00048000/F000000B/user/gamecoin.dat",
+};
+
 #[cfg(test)]
 mod tests {
     use super::{FORCED_OPTIONS, SPLIT};

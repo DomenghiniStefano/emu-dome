@@ -4,6 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use emudome_core::core_profile::{CoreId, Renderer};
+use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::settings::ConsoleId;
 use emudome_core::{ErrorCode, Event, GameKey, Session, SessionOptions, VideoSetup};
 use emudome_platform::CoreLookupError;
@@ -65,6 +66,38 @@ fn refuse_encrypted(console: ConsoleId, game_path: &Path) -> Result<(), ErrorCod
         ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::Nds | ConsoleId::N3ds => {
             Ok(())
         }
+    }
+}
+
+/// Trello #94: a game whose save folder is too deep for the files its core creates there
+/// (Azahar's emulated NAND) is refused before the core loads, which would abort EmuDome. Checked
+/// before the open game closes, so a refused open leaves it running.
+fn refuse_deep_save_dir(core: CoreId, saves_root: &Path, game: &GameKey) -> Result<(), ErrorCode> {
+    let files = emudome_core::GameFiles::new(saves_root, game);
+    core.profile()
+        .check_save_dir(files.dir(), path_limits())
+        .map_err(|e| {
+            log::warn!(
+                "{}: save folder too deep: {e} (long paths: policy {:?}, this process {})",
+                core.name(),
+                emudome_platform::long_paths_policy(),
+                emudome_platform::long_paths_enabled()
+            );
+            ErrorCode::from(e)
+        })
+}
+
+/// This process's path limits (`emudome_platform`), in the core's terms.
+fn path_limits() -> PathLimits {
+    let l = emudome_platform::path_limits();
+    PathLimits {
+        dir: l.dir,
+        file: l.file,
+        unit: if l.utf16 {
+            PathUnit::Utf16
+        } else {
+            PathUnit::Byte
+        },
     }
 }
 
@@ -196,6 +229,7 @@ fn open_path(
             core: core.name().into(),
         });
     }
+    refuse_deep_save_dir(core, &state.save_dir(), &game)?;
 
     // One open at a time; the previous game closes first, through the close flow (its
     // progress on `emu://closing`, the user's choice if it takes too long).

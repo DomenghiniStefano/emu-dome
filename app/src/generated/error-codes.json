@@ -9,6 +9,7 @@
   "coreRefusedGame",
   "gameUnidentified",
   "gameEncrypted",
+  "savePathTooLong",
   "coreNeedsRestart",
   "noGame",
   "appClosing",
