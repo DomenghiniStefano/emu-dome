@@ -342,7 +342,16 @@ impl Entry {
     pub fn accepts_value(&self, value: &Value) -> bool {
         match (self.kind, value) {
             (Kind::Toggle, Value::Bool(_)) => true,
-            (Kind::Choice { options, .. }, Value::Text(id)) => options.contains(&id.as_str()),
+            // Options the device adds at run time (an audio output, a saved layout) are not in
+            // the schema: any non-empty id is taken, the device decides whether it still exists.
+            (
+                Kind::Choice {
+                    options,
+                    more_at_runtime,
+                    ..
+                },
+                Value::Text(id),
+            ) => options.contains(&id.as_str()) || (more_at_runtime && !id.trim().is_empty()),
             (Kind::Multi { options }, Value::List(ids)) => {
                 ids.iter().all(|id| options.contains(&id.as_str()))
                     && ids.iter().enumerate().all(|(i, id)| !ids[..i].contains(id))
