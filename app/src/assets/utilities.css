@@ -91,6 +91,15 @@
     outline: none !important;
   }
 }
+/* An element that holds the focus only for something off screen (the cover grid while its focused
+   tile is scrolled out of the DOM, Trello #91): no ring at all, it is not what the user sees. */
+@utility focus-ring-off {
+  :root[data-nav] &:focus,
+  :root[data-nav] &[data-nav-focus] {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+}
 @utility focus-ring-tight {
   :root[data-nav] &:focus,
   :root[data-nav] &[data-nav-focus] {

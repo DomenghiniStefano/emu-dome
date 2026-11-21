@@ -62,6 +62,7 @@ const meta = computed(() =>
         :size="ButtonSize.Area"
         class="focus-ring-none absolute inset-x-0 top-0 bottom-52 rounded-t-10 rounded-b-none"
         v-bind="{ [COVER_OF]: game.id }"
+        data-cover-part="cover"
         :aria-label="t('library.openDetails', { title: game.title })"
         @click="emit('details')"
       ></Button>
@@ -73,6 +74,7 @@ const meta = computed(() =>
           :size="ButtonSize.CoverAction"
           :fade="ButtonFade.None"
           class="focus-ring-tight min-w-0 flex-1"
+          data-cover-part="play"
           :aria-disabled="off || undefined"
           @click="emit('play')"
         >
@@ -85,6 +87,7 @@ const meta = computed(() =>
             :variant="ButtonVariant.Veil"
             :size="ButtonSize.CoverActionIcon"
             class="focus-ring-tight"
+            data-cover-part="more"
             :aria-label="t('library.moreFor', { title: game.title })"
             :title="t('library.more')"
             aria-haspopup="menu"
