@@ -1,5 +1,5 @@
 {
-  "about": "The libretro cores EmuDome fetches and ships, pinned. Read by scripts/cores.mjs (fetch, verify, generate, check) and by the Android Gradle build. Change it on purpose only: then run `node scripts/cores.mjs generate` and update THIRD_PARTY.md. Platforms: windows-x86_64, linux-x86_64 (libraries in cores/), android-arm64-v8a (cores/android/arm64-v8a/). sha256 of the downloaded archive and of every file taken from it. url_stable false: the URL serves whatever the upstream built last, so the pinned bytes stop being downloadable when it rebuilds (packaging refuses such an entry unless EMUDOME_ALLOW_UNSTABLE_CORES=1).",
+  "about": "The libretro cores EmuDome fetches and ships, pinned. Read by scripts/cores.mjs (fetch, build, verify, generate, check) and by the Android Gradle build. Change it on purpose only: then run `node scripts/cores.mjs generate` and update THIRD_PARTY.md. Platforms: windows-x86_64, linux-x86_64 (libraries in cores/), android-arm64-v8a (cores/android/arm64-v8a/). A platform entry is either downloaded (url, sha256 of the archive and of every file taken from it) or built by EmuDome from source (built: the toolchain its sha256 came from; the core's source.archive with its sha256 and its build block say what and how, scripts/core-build.mjs does it). url_stable false: the URL serves whatever the upstream built last, so the pinned bytes stop being downloadable when it rebuilds (packaging refuses such an entry unless EMUDOME_ALLOW_UNSTABLE_CORES=1).",
   "schema": 1,
   "cores": {
     "mgba": {
@@ -53,11 +53,11 @@
         },
         "android-arm64-v8a": {
           "built": {
-            "toolchain": "Android NDK 27.1.12297006, API 26, CMake 3.31.6"
+            "toolchain": "Android NDK 27.1.12297006, API 26, CMake 3.31.6-msvc6"
           },
           "library": {
             "file": "libmgba_libretro_android.so",
-            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+            "sha256": "ee99a5cd60fb99bff962f464b1a32f3af317c31b0b8f55847101a05fe289b563"
           },
           "notices": []
         }

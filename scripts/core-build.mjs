@@ -333,14 +333,27 @@ const toolchain = (platform, built, dirs) => {
       strip: null,
     }
   }
-  const prefixMap = `-ffile-prefix-map=${dirs.src}=. -ffile-prefix-map=${dirs.build}=.`
+  // No folder of this machine in the binary, so the bytes do not depend on where the build ran:
+  // -g0 (the NDK's toolchain file adds -g; the debug info is stripped anyway, but it feeds the build
+  // id the linker writes, and it names the NDK's and the work folder's paths), and the source and
+  // build folders mapped to `.` for anything else (both slash forms: Windows paths reach the
+  // compiler either way). Passed as CMAKE_C_FLAGS: the NDK's toolchain file ignores CFLAGS.
+  const reproducible = [
+    '-g0',
+    ...[dirs.src, dirs.build]
+      .flatMap(dir => [...new Set([dir, dir.replaceAll('\\', '/')])])
+      .map(dir => `-ffile-prefix-map=${dir}=.`),
+  ].join(' ')
   if (platform.startsWith('android-')) {
     const abi = platform.slice('android-'.length)
     const ndk = findNdk(pinnedNdk(built))
     const sdkCmake = newestVersionDir(androidSdk() && path.join(androidSdk(), 'cmake'))
     const cmake = findCmake([sdkCmake && path.join(sdkCmake, 'bin', exe('cmake')), 'cmake'].filter(Boolean))
-    const besideCmake = path.join(path.dirname(cmake), exe('ninja'))
-    const ninja = isFile(besideCmake) ? besideCmake : 'ninja'
+    const ninja =
+      [path.dirname(cmake), sdkCmake && path.join(sdkCmake, 'bin')]
+        .filter(Boolean)
+        .map(dir => path.join(dir, exe('ninja')))
+        .find(isFile) ?? 'ninja'
     const host = { win32: 'windows-x86_64', linux: 'linux-x86_64', darwin: 'darwin-x86_64' }[process.platform]
     const llvmStrip = path.join(ndk, 'toolchains', 'llvm', 'prebuilt', host ?? '', 'bin', exe('llvm-strip'))
     return {
@@ -353,9 +366,13 @@ const toolchain = (platform, built, dirs) => {
         `-DCMAKE_TOOLCHAIN_FILE=${path.join(ndk, 'build', 'cmake', 'android.toolchain.cmake')}`,
         `-DANDROID_ABI=${abi}`,
         `-DANDROID_PLATFORM=android-${ANDROID_API}`,
+        // 16 KB-aligned segments: Google Play requires them for apps targeting Android 15+ (the
+        // app targets SDK 37); NDK r27's switch, still loading on 4 KB-page devices.
+        '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON',
         '-DCMAKE_BUILD_TYPE=Release',
+        `-DCMAKE_C_FLAGS=${reproducible}`,
       ],
-      env: { CFLAGS: prefixMap },
+      env: {},
       extension: '.so',
       strip: file => run(llvmStrip, ['--strip-unneeded', file]),
     }
@@ -371,8 +388,9 @@ const toolchain = (platform, built, dirs) => {
         '-G',
         output('ninja', ['--version']) ? 'Ninja' : 'Unix Makefiles',
         '-DCMAKE_BUILD_TYPE=Release',
+        `-DCMAKE_C_FLAGS=${reproducible}`,
       ],
-      env: { CFLAGS: prefixMap },
+      env: {},
       extension: '.so',
       strip: file => run('strip', ['--strip-unneeded', file]),
     }
