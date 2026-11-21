@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Game details › Controlli (L07, board «Dettagli» desktop): cards for this game's controls.
 // - Controller e tastiera: whether `pad.remap` has a value of its own at «Solo questo gioco», and
-//   «Rimappa i pulsanti per questo gioco» (C02 at the Game level, `controlsFocus`).
+//   «Rimappa i pulsanti per questo gioco» (C02 at the Game level, the shell's `remapFor`).
 // - Pressione ripetuta (turbo): not built yet (`pad.turbo` has no backend), X05 with the reason.
 // - Controlli touch (telefono): customised on the phone (Phase 4).
 // - Tocco sullo schermo inferiore: Nintendo DS and 3DS games only, `pad.pointer` for this game.

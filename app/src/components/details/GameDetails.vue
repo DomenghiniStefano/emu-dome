@@ -6,8 +6,9 @@
 // reachable from here only (Cowork #40), as does «Cambia…» in L10.
 // Phone in portrait (device phone, as the settings schema tells it): the tabs as scrolling pills.
 //
-// Controller / keyboard: the shell's nav scope covers it; L1 / R1 change tab (exposed `tab`);
-// back (B, Esc) returns to the library on this game's cover (the shell does it).
+// Controller / keyboard: the shell's nav scope covers it; this view's own steps (nav.ts
+// `useNavSection`): L1 / R1 change tab, back (B, Esc) returns to the library on this game's
+// cover (the shell's route does it).
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type GameId, type LibraryGame } from '@/emu'
@@ -25,7 +26,7 @@ import { cycle } from '@/lib/cycle'
 import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './tabs'
 
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
-import { focusInitial, useEscapeBack } from '@/nav'
+import { focusInitial, useEscapeBack, useNavSection } from '@/nav'
 import { useResumePoint } from './useResumePoint'
 import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 
@@ -102,10 +103,9 @@ function step(dir: -1 | 1) {
     if (list.contains(document.activeElement)) on?.focus()
   })
 }
-defineExpose({ tab: step })
-
-// ---- Mount: the focus on «Riprendi» (or the way back), Esc goes back ----
+// ---- Mount: the focus on «Riprendi» (or the way back); B, Esc and L1 / R1 are this view's ----
 const root = ref<HTMLElement | null>(null)
+useNavSection(root, { tab: step, back: () => emit('back') })
 useEscapeBack(root, () => emit('back'))
 onMounted(async () => {
   await nextTick()

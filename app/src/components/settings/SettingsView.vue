@@ -8,13 +8,15 @@
 // «Tutti i giochi» can change are greyed at other levels, with one note after the scope sentence.
 // The level edited is useSettingsScope's, the values useSettingsValues', the choice of rows
 // settingsPage.ts's.
-// Controller: the shell's nav scope; L1 / R1 change level (exposed `tab`, called by AppShell).
+// Controller: the shell's nav scope; L1 / R1 change level (this section's own `tab`, nav.ts
+// `useNavSection`).
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Info } from '@lucide/vue'
 import type { SettingEntry, SettingRecent, SettingsSchema } from '@/emu'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
-import { settingsFocus } from '@/lib/gameDetails'
+import type { GameFocus } from '@/lib/gameDetails'
+import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
 import { loadSchema, lockReason, msg } from '@/lib/settingsModel'
 import SettingRowView from './SettingRow.vue'
@@ -38,14 +40,17 @@ import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
 import { Card, CardPad } from '@/components/ui/card'
 import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 
+const props = defineProps<{
+  /** L06 «Apri tutte le impostazioni di questo gioco»: the game this section opened for (the
+   * shell's route, read on mount). */
+  game: GameFocus | null
+}>()
 const emit = defineEmits<{ openControls: [] }>()
 const { t } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
 const page = ref(OVERVIEW)
-/** L06 «Apri tutte le impostazioni di questo gioco»: the game this section opened for. */
-const gameFocus = settingsFocus.value
-settingsFocus.value = null
+const gameFocus = props.game
 const onlyChanged = ref(false)
 const query = ref('')
 const searching = computed(() => query.value.trim() !== '')
@@ -91,7 +96,8 @@ function openRecent(r: SettingRecent) {
   scopeBar.goTo(r.level, r.console)
 }
 
-defineExpose({ tab: scopeBar.tab })
+const root = ref<HTMLElement | null>(null)
+useNavSection(root, { tab: scopeBar.tab })
 
 onMounted(async () => {
   schema.value = await loadSchema()
@@ -103,7 +109,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
 </script>
 
 <template>
-  <div v-if="schema" class="flex min-h-0 flex-1">
+  <div v-if="schema" ref="root" class="flex min-h-0 flex-1">
     <SettingsCategories
       v-model:query="query"
       :schema="schema"

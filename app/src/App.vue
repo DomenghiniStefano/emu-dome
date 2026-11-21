@@ -3,7 +3,7 @@
 // and the toasts over all of them. The logic lives in the composables; this file composes.
 import { onMounted, ref } from 'vue'
 import { flow } from '@/components/game/gameFlow'
-import type { Section } from '@/components/shell/sections'
+import { START, type Route } from '@/components/shell/route'
 import { useDensity } from '@/composables/useDensity'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useClosing } from '@/components/closing/useClosing'
@@ -44,8 +44,9 @@ const drop = useDropTarget(game, toast)
 const events = useShellEvents(session, toast, drop.listen)
 const closing = useClosing(toast)
 
-// The shell's section: kept while a game is open, so closing it comes back here.
-const section = ref<Section>('library')
+// Where the shell is (components/shell/route.ts): kept while a game is open, so closing it comes
+// back here (a game opened from its details comes back to them).
+const route = ref<Route>(START)
 // Touch screen (Android): on-screen buttons while playing.
 const touch = coarsePointer()
 // DS games: the mouse or a finger on the bottom screen is the stylus (no menu open).
@@ -82,7 +83,7 @@ onMounted(async () => {
   <!-- No game: the shell (rail, sections). A game that cannot start is G02's dialog. -->
   <AppShell
     v-else-if="!game && firstRun === false"
-    v-model="section"
+    v-model="route"
     @open-file="launch.openFile()"
     @open-game="launch.openLibraryGame"
   />

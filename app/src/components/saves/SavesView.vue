@@ -17,7 +17,6 @@ import { emu, type GameId, type GameSaves, type LibraryGame } from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { library } from '@/lib/library'
-import { savesFocus, savesImportFor } from '@/lib/savesFocus'
 import QuickSaveDialog from './QuickSaveDialog.vue'
 import { loadGameSaves } from '@/components/details/gameSaves'
 import PickGameDialog from './PickGameDialog.vue'
@@ -34,6 +33,14 @@ import { useSaveShortcut } from './useSaveShortcut'
 import { useSavesSettings } from './useSavesSettings'
 import { SectionPage } from '@/components/ui/section-page'
 
+const props = defineProps<{
+  /**
+   * Opened for one game (the shell's route, read on mount): «Salvataggi» on a «Continua a
+   * giocare» card (L01), «Mostra i backup» (L05) show it; `importing`, «Importa…» (L05), opens
+   * its import (V05).
+   */
+  arrival: { game: GameId; importing: boolean } | null
+}>()
 const emit = defineEmits<{
   openGame: [game: LibraryGame, slot: number]
   /** «Dettagli del gioco» (L04). */
@@ -64,9 +71,9 @@ const rows = computed(() =>
 // ---- V02: one game ----
 
 const mode = ref<'game' | 'import'>('game')
-// «Salvataggi» in «Continua a giocare» (L01) opens this section on that game.
-const selectedId = ref<GameId | null>(savesFocus.value)
-savesFocus.value = null
+// Read once: the shell drops the arrival after this section has mounted.
+const arrival = props.arrival
+const selectedId = ref<GameId | null>(arrival?.game ?? null)
 const selected = computed(
   () => withSaves.value.find(g => g.id === selectedId.value) ?? withSaves.value[0] ?? null,
 )
@@ -169,11 +176,9 @@ watch(
 
 onMounted(async () => {
   await settings.load()
-  const importFor = savesImportFor.value
-  savesImportFor.value = null
-  if (importFor) {
+  if (arrival?.importing) {
     mode.value = 'import'
-    await importer.resetFor(importFor)
+    await importer.resetFor(arrival.game)
   }
   await refresh()
   void shortcut.load()
