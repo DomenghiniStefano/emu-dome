@@ -6,12 +6,13 @@
 // reachable from here only (Cowork #40), as does «Cambia…» in L10.
 // Phone in portrait (device phone, as the settings schema tells it): the tabs as scrolling pills.
 //
-// Controller / keyboard: the shell's nav scope covers it; L1 / R1 change tab (exposed `tab`);
-// back (B, Esc) returns to the library on this game's cover (the shell does it).
+// Controller / keyboard: the shell's nav scope covers it; this view's own steps (nav.ts
+// `useNavSection`): L1 / R1 change tab, back (B, Esc) returns to the library on this game's
+// cover (the shell's route does it).
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type GameId, type LibraryGame } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { library } from '@/lib/library'
 import { Tabs, TabsList, TabsSize, TabsTrigger } from '@/components/ui/tabs'
 import CoverPicker from '@/components/cover/CoverPicker.vue'
@@ -25,7 +26,7 @@ import { cycle } from '@/lib/cycle'
 import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './tabs'
 
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
-import { focusInitial, useEscapeBack } from '@/nav'
+import { focusInitial, useEscapeBack, useNavSection } from '@/nav'
 import { useResumePoint } from './useResumePoint'
 import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 
@@ -42,11 +43,10 @@ const emit = defineEmits<{
   settings: [LibraryGame]
   /** L07: button remapping (C02) at «Solo questo gioco». */
   remap: [LibraryGame]
-  error: [string]
-  notice: [string]
 }>()
 
 const { t } = useI18n()
+const failWith = useErrorSink()
 
 const game = computed(() => library.games.find(g => g.id === props.id) ?? null)
 // The game left the library (its folder removed): back to the grid.
@@ -62,7 +62,7 @@ function play() {
   const g = game.value
   if (!g) return
   if (!g.available) {
-    emit('error', errorText({ code: 'libraryGameUnavailable', params: { id: g.id } }))
+    failWith({ code: 'libraryGameUnavailable', params: { id: g.id } })
     return
   }
   emit('play', g, resume.value?.slot ?? undefined)
@@ -74,7 +74,7 @@ async function setFlags(flags: { favourite?: boolean; hidden?: boolean }) {
   try {
     await emu.library.setFlags(g.id, flags)
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 
@@ -103,10 +103,9 @@ function step(dir: -1 | 1) {
     if (list.contains(document.activeElement)) on?.focus()
   })
 }
-defineExpose({ tab: step })
-
-// ---- Mount: the focus on «Riprendi» (or the way back), Esc goes back ----
+// ---- Mount: the focus on «Riprendi» (or the way back); B, Esc and L1 / R1 are this view's ----
 const root = ref<HTMLElement | null>(null)
+useNavSection(root, { tab: step, back: () => emit('back') })
 useEscapeBack(root, () => emit('back'))
 onMounted(async () => {
   await nextTick()
@@ -159,28 +158,23 @@ onMounted(async () => {
         @backups="emit('backups', game!)"
         @import="emit('import', game!)"
         @changed="reloadResume"
-        @error="text => emit('error', text)"
-        @notice="text => emit('notice', text)"
       />
       <DetailsSettings
         v-else-if="current === 'settings'"
         :game="game"
         :phone="phone"
         @open="emit('settings', game!)"
-        @error="text => emit('error', text)"
       />
       <DetailsControls
         v-else-if="current === 'controls'"
         :game="game"
         @remap="emit('remap', game!)"
-        @error="text => emit('error', text)"
       />
       <DetailsFiles
         v-else-if="current === 'files'"
         :game="game"
         :device="device"
         @cover="pickingCover = true"
-        @error="text => emit('error', text)"
       />
       <NotBuiltPanel v-else :tab="current" />
     </SectionPage>

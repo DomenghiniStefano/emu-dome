@@ -15,9 +15,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type GameId, type GameSaves, type LibraryGame } from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { library } from '@/lib/library'
-import { savesFocus, savesImportFor } from '@/lib/savesFocus'
 import QuickSaveDialog from './QuickSaveDialog.vue'
 import { loadGameSaves } from '@/components/details/gameSaves'
 import PickGameDialog from './PickGameDialog.vue'
@@ -34,20 +33,24 @@ import { useSaveShortcut } from './useSaveShortcut'
 import { useSavesSettings } from './useSavesSettings'
 import { SectionPage } from '@/components/ui/section-page'
 
+const props = defineProps<{
+  /**
+   * Opened for one game (the shell's route, read on mount): «Salvataggi» on a «Continua a
+   * giocare» card (L01), «Mostra i backup» (L05) show it; `importing`, «Importa…» (L05), opens
+   * its import (V05).
+   */
+  arrival: { game: GameId; importing: boolean } | null
+}>()
 const emit = defineEmits<{
   openGame: [game: LibraryGame, slot: number]
   /** «Dettagli del gioco» (L04). */
   openDetails: [LibraryGame]
   openLibrary: []
-  error: [string]
-  notice: [string]
 }>()
 
 const { t } = useI18n()
-
-function fail(e: unknown) {
-  emit('error', errorText(e))
-}
+const toasts = useToasts()
+const fail = useErrorSink()
 
 const settings = useSavesSettings(fail)
 const shortcut = useSaveShortcut(fail)
@@ -68,9 +71,9 @@ const rows = computed(() =>
 // ---- V02: one game ----
 
 const mode = ref<'game' | 'import'>('game')
-// «Salvataggi» in «Continua a giocare» (L01) opens this section on that game.
-const selectedId = ref<GameId | null>(savesFocus.value)
-savesFocus.value = null
+// Read once: the shell drops the arrival after this section has mounted.
+const arrival = props.arrival
+const selectedId = ref<GameId | null>(arrival?.game ?? null)
 const selected = computed(
   () => withSaves.value.find(g => g.id === selectedId.value) ?? withSaves.value[0] ?? null,
 )
@@ -112,7 +115,7 @@ async function exportInGame() {
   const g = selected.value
   if (!g) return
   try {
-    if (await emu.saves.export(g.id, { kind: 'inGame' })) emit('notice', t('saves.exported'))
+    if (await emu.saves.export(g.id, { kind: 'inGame' })) toasts.notify(t('saves.exported'))
   } catch (e) {
     fail(e)
   }
@@ -123,7 +126,7 @@ async function restore(name: string) {
   if (!g) return
   try {
     await emu.saves.restore(g.id, name)
-    emit('notice', t('saves.restored'))
+    toasts.notify(t('saves.restored'))
   } catch (e) {
     fail(e)
   }
@@ -143,7 +146,7 @@ function playFromDetails(slot: number) {
 // ---- V05: import ----
 
 const importer = useSaveImport(settings.slotCount, fail, async g => {
-  emit('notice', t('saves.imported'))
+  toasts.notify(t('saves.imported'))
   mode.value = 'game'
   selectedId.value = g.id
   await refresh()
@@ -173,11 +176,9 @@ watch(
 
 onMounted(async () => {
   await settings.load()
-  const importFor = savesImportFor.value
-  savesImportFor.value = null
-  if (importFor) {
+  if (arrival?.importing) {
     mode.value = 'import'
-    await importer.resetFor(importFor)
+    await importer.resetFor(arrival.game)
   }
   await refresh()
   void shortcut.load()
@@ -241,8 +242,6 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
       @close="quickDetails.close"
       @play="playFromDetails"
       @changed="refresh"
-      @error="text => emit('error', text)"
-      @notice="text => emit('notice', text)"
     />
 
     <!-- V05: «Scegli un altro gioco…» -->

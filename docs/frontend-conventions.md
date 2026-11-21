@@ -15,7 +15,7 @@ the EmuDome Design System artifact linked from `CLAUDE.md`.
   `cover/GameCover.vue`, `saves/SlotTile.vue`). Features today: `controls`, `cover`, `details`,
   `first-run`, `game`, `library`, `quick-menu`, `saves`, `settings`, `shell`, `toasts`.
 - `composables/`: the `useX` functions used by two or more features or by the app root (`useDensity`,
-  `useDeviceLayout`, `useListeners`, `useSettingsChanged`, `useToasts`); `lib/`: plain modules and
+  `useDeviceLayout`, `useListeners`, `useSettingsChanged`, `useToasts` with `useErrorSink`); `lib/`: plain modules and
   helpers shared the same way (`cn`, `cycle`, `design/`, `settingsModel`, `controls`, `theme`…). A
   module only one feature uses moves into that feature's folder.
 - The root holds the app's wiring only: `main.ts`, `App.vue`, `emu.ts` (the only file that calls
@@ -40,6 +40,10 @@ reads the same in every file, and a move changes only the moved file's importers
   installs `catchEverything` (Vue's `errorHandler`, `unhandledrejection`) as the last net. ESLint
   refuses `void emu.x()` and a bare `emu.x()` statement; blind spots: an alias, a wrapper, a
   `.then()` without `.catch` (`app/eslint.config.js`, fixture in `lib/errors.lint.test.ts`).
+- **No error relays**: a component that does not show a failure itself sends it to `useErrorSink()`
+  (logged, then a toast) and a notice to `useToasts().notify`; both are `provide`d once by App.vue
+  (`composables/useToasts.ts`). No `error` / `notice` emits passed up from parent to parent. The toast
+  list lives in the composable, so a toast pushed before the stack mounts is shown once it does.
 - **Stale answers are dropped**: a load that can be overtaken (scope, game, reload) takes a token
   from `lib/latest.ts` (`latest()`, `latestBy()`) and applies its answer, or shows its error, only
   if still fresh. Held by review.
@@ -53,6 +57,11 @@ reads the same in every file, and a move changes only the moved file's importers
   with `cva`. A screen passes the constant (`:variant="ButtonVariant.Primary"`), never a string.
 - A screen never restyles a primitive (no extra colours, sizes or `!` overrides on it): a missing look
   is a new variant, added to the Kit page first.
+- Widgets with a role (dialog, popover, menu, radio group, checkbox, select, switch, tabs) are always
+  the primitive: Dialog, Popover, DropdownMenu, RadioGroup, Checkbox, Select, Switch, Tabs. RadioGroup and
+  Checkbox are behaviour only: each item is `as-child` on the screen's Card or Button, which keeps its
+  look. Popover and DropdownMenu hang from the screen's own button (`anchor`) and the screen holds
+  `open`, so A and a click toggle them the same way. Checked by `hand-role` (below).
 
 ## Kit page (`kit/`)
 
@@ -106,6 +115,18 @@ when it changes structure (what is rendered, `v-if`).
 
 - Every screen calls `useNavScope(root, { back })` and marks its first element `data-nav-initial`;
   every menu works with d-pad / A / B as well as mouse and keyboard.
+- Scopes form a tree that follows the component tree (provide / inject): the steps go down to the newest
+  shown child at each level, so a child wins over its parent whatever the mount order. A part of a
+  screen with its own `back` / `tab` (the shell's Settings, Controls, a game's details) calls
+  `useNavSection(root, { back, tab })`: it does not hold the focus, and a step it leaves (its handler
+  returns `false`, or it has none) bubbles to the screen; bubbling stops at a scope, so a screen behind
+  a dialog gets nothing. Never drive a child's steps through a template ref.
+- A step looks in the focused element's scroll container first and in the whole scope only when nothing
+  is there in that direction; disabled, `aria-disabled`, `inert` and `visibility:hidden` elements are
+  never landed on. Entering a radio group lands on its chosen radio.
+- Where the shell is, is one typed `Route` (`components/shell/route.ts`) held by App.vue and passed as
+  props; a section reads what it was opened for (its arrival) once, on mount. No module-level refs a
+  screen reads and clears.
 - Steps from `emu://nav` (the controller, routed in Rust) and the arrows / Enter move the focus
   spatially; `confirm` clicks; `back` calls the scope's `back`. The focus ring shows only while moving
   without the mouse (`data-nav` on `<html>`).
@@ -143,6 +164,7 @@ class fires too.
 | `numeric-scale` | bare-number utilities the theme cannot reset: `opacity-40`, `z-5`, `duration-300`, `border-2`, `outline-offset-2`, `ring-2`, `scale-95` | layout counts are allowed on purpose (`grid-cols-3`, `aspect-3/2`, `rotate-90`) |
 | `important` | `w-48!`, `!w-48` | in scripts and `.ts`, a `!` class with no `-` or `:` (`flex!`) |
 | `look-only-prop` | a `phone` / `touch` prop used only in `:class` | a prop read in `<script>`, passed down, or of another name |
+| `hand-role` | `role="dialog"`, `alertdialog`, `radio`, `radiogroup`, `checkbox`, `menu`, `menuitem`, `listbox`, `option`, `switch`, `tab`, `tablist` (static or `:role`) outside `components/ui`; the files not moved yet are in `HAND_ROLES_PENDING` with the reason | a role set from a script, a render function, a `:role` built from a variable |
 
 Allowed by construction: values built only from tokens (`calc(100%+var(--spacing-6))`, grid templates
 of `fr` / `minmax` / `auto` / `var`), keywords (`text-[length:inherit]`), property lists
@@ -153,7 +175,8 @@ The rest of Tailwind's default palette and scales (`text-red-500`, `rounded-lg`,
 `text-sm`, `md:`) generates nothing after the theme reset, so no rule is needed for it.
 
 Other gates on the frontend: `scripts/visible-text.mjs` (hardcoded text in templates), `invoke` only in
-`emu.ts`, no emoji, `vue-tsc`, ESLint, Prettier, Vitest.
+`emu.ts`, no emoji, `vue-tsc` (strict, with `noUncheckedIndexedAccess`: an index read is
+`T | undefined` until checked), ESLint, Prettier, Vitest.
 
 ## What only review holds
 

@@ -11,7 +11,7 @@
 import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { type Button as GameButton, type PadFamily, type PadState, type SettingRow } from '@/emu'
-import { errorText, type ErrorSink } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import type { GameFocus } from '@/lib/gameDetails'
 import {
   abLayout,
@@ -44,9 +44,8 @@ const props = defineProps<{
   /** Opened from a game's details (L07): its «Solo questo gioco», chosen on arrival. */
   game?: GameFocus | null
 }>()
-const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
-const failWith: ErrorSink = e => emit('error', errorText(e))
+const failWith = useErrorSink()
 
 // ---- The table at the level being edited ----
 const {

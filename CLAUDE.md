@@ -283,8 +283,17 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   The interface tells Rust the menu is open with the `set_menu_open` command.
 - Navigation in the interface: `app/src/nav.ts`. A screen calls `useNavScope(root, { back, autofocus })`
   and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
-  move the focus spatially (nearest element in that direction), confirm clicks, back calls `back`.
-  The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
+  move the focus spatially (nearest element in that direction, looked for in the focused element's scroll
+  container first; disabled, `aria-disabled`, `inert` and `visibility:hidden` elements skipped), confirm clicks,
+  back calls `back`. Scopes are a tree that follows the component tree (provide / inject): the steps go to the
+  newest shown child at each level, whatever the mount order. A part of a screen with steps of its own (the
+  shell's sections) calls `useNavSection(root, { back, tab })`: the focus still moves across the whole screen,
+  and `back` / `tab` bubble up to the screen when the section returns `false` (or has none), never past a
+  scope. The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
+- The shell's place is one typed `Route` (`components/shell/route.ts`: section, the game whose details show,
+  the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
+  refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
+  `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
 - **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 155 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default,
   accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
@@ -447,7 +456,8 @@ found, else skipped),
 (`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
-`components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`; the rows and what each cannot see are in
+`components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`, no hand-written widget role (`dialog`,
+`radio`, `menu`…) outside `components/ui` except the shrinking list `HAND_ROLES_PENDING`; the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
 `unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
@@ -478,7 +488,8 @@ key of the wrong kind.
 - A new reader of a setting marks it wired (`.not_wired()` removed in catalog.rs): the test lists the unwired ones,
   it cannot see a reader that is missing.
 - Every menu is fully usable with the controller: a new screen registers `useNavScope` (`app/src/nav.ts`)
-  and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the screens are not.
+  and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the scope tree and the primitives'
+  keys too (`nav.test.ts`, `components/ui/nav.test.ts`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
 - What the conventions scanner cannot see: a length in % / vh / vw, an icon size passed as a prop (`:size="14"`), a
@@ -528,8 +539,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - **Primitives** in `app/src/components/ui/<name>/`, all on **Reka UI** (one standard, no hand-made ones):
   `index.ts` re-exports, `variants.ts` holds the variants as `as const` constants (`ButtonVariant.Primary`, never
   `variant="primary"`), the parts are `.vue` files. Today: Button, Card, Chip, Tabs, Segmented, Slider, Select,
-  Switch, Dialog, Input, Heading, Badge, Kbd, Progress, EmptyState, LinkRow, StatTile, SectionPage,
-  LabelledBlock. A screen never restyles a primitive; a missing look is a new variant.
+  Switch, Dialog, Popover, DropdownMenu, RadioGroup, Checkbox, Input, Heading, Badge, Kbd, Progress, EmptyState,
+  LinkRow, StatTile, SectionPage, LabelledBlock. RadioGroup and Checkbox have no look of their own: their items are
+  `as-child` on the screen's Card or Button. A screen never restyles a primitive; a missing look is a new variant.
 - **Every visual value is a token**: colours, borders (width and colour, `theme/border.css`), margins, paddings, gaps,
   radius, shadows, opacity. Where a value has a role it has a role name (`radius-control`, `spacing-card-pad`,
   `spacing-section-x`…), so changing it everywhere is one edit. Values Cowork has not decided yet are tokens under a
@@ -539,8 +551,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
 - **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
   by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its
-  ends nav.ts moves spatially. Select and Dialog take B while open and give the focus back on close. Tested in
-  Vitest (`components/ui/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
+  ends nav.ts moves spatially. Select, Dialog, Popover and DropdownMenu take B while open; a menu item owns Enter
+  (its arrows stay nav.ts's, inside the menu's scope); entering a radio group lands on its chosen radio. Tested in Vitest
+  (`components/ui/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
 - **Kit page** (`app/src/kit/`, `#kit`, development only, not in the build): every primitive in every state, the
   three themes, the five accents. A new primitive or variant is added there first.
 - **Where a file goes** (`app/src/`), by what owns it:

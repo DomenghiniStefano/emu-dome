@@ -5,15 +5,15 @@
 // (`library.sort`, Global) and the L03 panel, the cover grid. Around it: E01 banners for folders
 // that are not reachable (their games stay, faded), the scan progress, L11 «N giochi aggiunti»
 // after a scan. A cover's click opens its game details (L04, #34); back from the details focuses
-// the cover again (`detailsReturn`). No games at all: L02 (LibraryEmpty).
+// the cover again (`returnTo`, from the shell's route). No games at all: L02 (LibraryEmpty).
 //
 // Controller / keyboard: the shell's nav scope covers this view; L03 and «…» open their own.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import { errorText, type ErrorSink } from '@/i18n/labels'
-import type { LibraryGame } from '@/emu'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
+import type { GameId, LibraryGame } from '@/emu'
 import { chooseFolder, library, replaceFolder } from '@/lib/library'
 import ContinuePlaying from './ContinuePlaying.vue'
 import CoverGrid from './CoverGrid.vue'
@@ -30,6 +30,10 @@ import { useLibrarySort } from './useLibrarySort'
 import { useResumePoints } from './useResumePoints'
 import LibraryEmpty from './LibraryEmpty.vue'
 
+const props = defineProps<{
+  /** Back from this game's details: its cover takes the first focus (read on mount). */
+  returnTo: GameId | null
+}>()
 const emit = defineEmits<{
   /** `slot`: the quick save to load once the game runs («Riprendi»). */
   open: [game: LibraryGame, slot?: number]
@@ -38,15 +42,14 @@ const emit = defineEmits<{
   /** L04: the game's details. */
   details: [LibraryGame]
   openFile: []
-  error: [string]
 }>()
 
 const { t } = useI18n()
-const reportError = (text: string) => emit('error', text)
-const failWith: ErrorSink = e => reportError(errorText(e))
+const toasts = useToasts()
+const failWith = useErrorSink()
 
 const root = ref<HTMLElement | null>(null)
-useLibraryFocus(root)
+useLibraryFocus(root, props.returnTo)
 
 const { sort, setSort, resetSort } = useLibrarySort(failWith)
 const { show, consoleFilter, chips, games, filtering, toggleShow, clearShow, clearFilters } =
@@ -77,11 +80,11 @@ const resumeGame = (g: LibraryGame) => open(g, resume.value[g.id]?.slot ?? undef
 
 async function addFolder() {
   const failed = await chooseFolder()
-  if (failed) reportError(failed)
+  if (failed) toasts.fail(failed)
 }
 async function replace(path: string) {
   const failed = await replaceFolder(path)
-  if (failed) reportError(failed)
+  if (failed) toasts.fail(failed)
 }
 const unreachable = computed(() => unreachableFolders(library.folders, library.games))
 </script>

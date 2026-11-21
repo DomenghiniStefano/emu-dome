@@ -12,7 +12,7 @@ defineProps<{
   rows: Record<string, SettingRow>
   schema: SettingsSchema | null
 }>()
-const emit = defineEmits<{ set: [SettingKey, SettingValue]; error: [string] }>()
+const emit = defineEmits<{ set: [SettingKey, SettingValue] }>()
 
 const { t } = useI18n()
 const initial = { [FocusMark.SubInitial]: '' }
@@ -26,7 +26,6 @@ const initial = { [FocusMark.SubInitial]: '' }
       :rows="rows"
       :schema="schema"
       @set="(key, v) => emit('set', key, v)"
-      @error="text => emit('error', text)"
     />
   </MenuList>
   <p class="m-0 text-caption text-ink-muted">{{ t('qm.speedsAlsoIn') }}</p>

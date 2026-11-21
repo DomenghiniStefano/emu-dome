@@ -16,6 +16,7 @@ import { shiftLightness } from '@/lib/colour'
 import { insetShare } from './session'
 import { backgroundUrl, emu, type LibraryGame, type SettingValue, type VideoMode } from '@/emu'
 import {
+  AURORA,
   BUILTIN_BACKGROUNDS,
   coverBackground,
   holeClipPath,
@@ -77,7 +78,7 @@ const background = computed<string | null>(() => {
       return c ? coverBackground(c[0], shiftLightness(c[0], -0.22)) : SURROUND_CARDS.cover
     }
     case 'builtin':
-      return BUILTIN_BACKGROUNDS[builtin.value] ?? BUILTIN_BACKGROUNDS.aurora
+      return BUILTIN_BACKGROUNDS[builtin.value] ?? AURORA
     case 'image':
       return image.value ? `center / cover no-repeat url("${image.value}"), #000` : null
     default:

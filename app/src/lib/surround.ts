@@ -3,9 +3,12 @@
 // hole where the game is (the native surface shows through), in webview mode it sits under the
 // canvas. Everything here is EmuDome's own: CSS gradients and a generated grid, no images.
 
+/** The first built-in background, and the one used for an unknown `video.surroundSet`. */
+export const AURORA = 'linear-gradient(135deg, #5b3f8c 0%, #245f7a 100%)'
+
 /** The built-in backgrounds (`video.surroundSet`), exactly as the board's cards draw them. */
 export const BUILTIN_BACKGROUNDS: Record<string, string> = {
-  aurora: 'linear-gradient(135deg, #5b3f8c 0%, #245f7a 100%)',
+  aurora: AURORA,
   sunset: 'linear-gradient(135deg, #8a3b2f 0%, #7a2f5a 100%)',
   night: 'linear-gradient(135deg, #0f1a33 0%, #1f3f6b 100%)',
   forest: 'linear-gradient(135deg, #1c3324 0%, #3d6b3a 100%)',
@@ -14,11 +17,11 @@ export const BUILTIN_BACKGROUNDS: Record<string, string> = {
 }
 
 /** The preview of each `video.surround` card (board), shown in the settings pages. */
-export const SURROUND_CARDS: Record<string, string> = {
+export const SURROUND_CARDS = {
   black: '#000',
   cover: 'radial-gradient(70% 90% at 30% 20%, #2f5d8a 0%, #12202e 70%)',
   blur: 'radial-gradient(60% 80% at 50% 40%, #5f8fc4 0%, #3d6b3a 60%, #1e2129 100%)',
-  builtin: BUILTIN_BACKGROUNDS.aurora,
+  builtin: AURORA,
   image: 'repeating-linear-gradient(45deg, #1e2129 0 8px, #262a33 8px 16px)',
 }
 

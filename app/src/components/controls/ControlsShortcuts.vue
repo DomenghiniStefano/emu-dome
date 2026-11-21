@@ -19,7 +19,7 @@ import {
   type SettingsSchema,
 } from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
-import { errorText, type ErrorSink } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { combosList, comboText, hotkeyName, keyName, posName, useCapture } from '@/lib/controls'
 import type { CaptureDevice } from '@/lib/controls'
 import { KEYBOARD_SHORTCUTS } from '@/lib/keyboard'
@@ -40,9 +40,8 @@ const props = defineProps<{
   schema: SettingsSchema
   globalRows: Record<string, SettingRow>
 }>()
-const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
-const failWith: ErrorSink = e => emit('error', errorText(e))
+const failWith = useErrorSink()
 const settings = useGlobalSettings(failWith)
 
 /** The keyboard has no controller shortcuts: the names are those of a generic pad. */
@@ -126,7 +125,6 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
           :scoped="false"
           @set="v => settings.set('pad.mod', v)"
           @reset="settings.reset('pad.mod')"
-          @error="onError"
         />
         <p class="m-0 px-16 text-caption-tall text-ink-muted">
           {{ t('controls.modNote') }}

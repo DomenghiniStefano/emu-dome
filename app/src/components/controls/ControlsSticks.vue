@@ -12,7 +12,7 @@ import { Card, CardVariant } from '@/components/ui/card'
 import SettingRowView from '@/components/settings/SettingRow.vue'
 import LiveStick from './LiveStick.vue'
 import { axisUnit } from './stick'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { useGlobalSettings } from './useGlobalSettings'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
 
@@ -22,10 +22,8 @@ const props = defineProps<{
   schema: SettingsSchema
   globalRows: Record<string, SettingRow>
 }>()
-const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
-const onError = (text: string) => emit('error', text)
-const settings = useGlobalSettings(e => onError(errorText(e)))
+const settings = useGlobalSettings(useErrorSink())
 
 const GROUPS: { id: string; keys: string[] }[] = [
   { id: 'sticks', keys: ['pad.dead', 'pad.stickdpad', 'pad.trig', 'pad.rumble'] },
@@ -66,7 +64,6 @@ const axes = computed(() => {
           :scoped="false"
           @set="v => settings.set(e.key, v)"
           @reset="settings.reset(e.key)"
-          @error="onError"
         />
       </Card>
     </section>

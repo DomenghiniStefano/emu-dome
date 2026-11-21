@@ -10,6 +10,14 @@ export function pageZoom(): number {
   return parseFloat(getComputedStyle(document.documentElement).zoom) || 1
 }
 
+/**
+ * A length token (`--spacing-8`) in CSS px, for the offsets Floating UI takes as numbers (a
+ * popover's or a menu's distance from its button), so they stay design tokens.
+ */
+export function tokenPx(name: string): number {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0
+}
+
 /** A Floating UI reference for `el` measured in the zoomed page's CSS px. */
 export function zoomedReference(el: HTMLElement) {
   return {

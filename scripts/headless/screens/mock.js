@@ -88,6 +88,8 @@
     synonyms: [],
     mostUsed: true,
     needsNativeVideo: false,
+    // `SettingEntry.unsupportedConsoles` (#78): always present in the generated type.
+    unsupportedConsoles: [],
     ...extra,
   });
   const choice = (style, options) => ({

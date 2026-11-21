@@ -8,7 +8,7 @@ defineProps<{
   rows: Record<string, SettingRow>
   schema: SettingsSchema
 }>()
-const emit = defineEmits<{ set: [SettingKey, SettingValue]; error: [string] }>()
+const emit = defineEmits<{ set: [SettingKey, SettingValue] }>()
 </script>
 
 <template>
@@ -23,6 +23,5 @@ const emit = defineEmits<{ set: [SettingKey, SettingValue]; error: [string] }>()
     :scoped="false"
     compact
     @set="v => emit('set', e.key, v)"
-    @error="text => emit('error', text)"
   />
 </template>

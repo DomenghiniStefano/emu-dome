@@ -3,11 +3,15 @@ import type { DialogTitleProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import { DialogTitle } from 'reka-ui'
 import { cn } from '@/lib/cn'
-import type { DialogTone } from './variants'
+import type { DialogTitleSize, DialogTone } from './variants'
 import { dialogTitleVariants } from './variants'
 
 const props = defineProps<
-  DialogTitleProps & { tone?: DialogTone; class?: HTMLAttributes['class'] }
+  DialogTitleProps & {
+    tone?: DialogTone
+    size?: DialogTitleSize
+    class?: HTMLAttributes['class']
+  }
 >()
 </script>
 
@@ -16,7 +20,7 @@ const props = defineProps<
     data-slot="dialog-title"
     :as="props.as"
     :as-child="props.asChild"
-    :class="cn(dialogTitleVariants({ tone }), props.class)"
+    :class="cn(dialogTitleVariants({ tone, size }), props.class)"
   >
     <slot />
   </DialogTitle>

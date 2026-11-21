@@ -9,24 +9,25 @@ import { Card, CardVariant } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { StatTile } from '@/components/ui/stat-tile'
 import { emu } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { consoleCounts, countByConsole } from '@/lib/consoleCounts'
 import { chooseFolder, library } from '@/lib/library'
 import StepLayout from './StepLayout.vue'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
 
-const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
+const toasts = useToasts()
+const failWith = useErrorSink()
 
 async function addFolder() {
   const failed = await chooseFolder()
-  if (failed) emit('error', failed)
+  if (failed) toasts.fail(failed)
 }
 async function removeFolder(path: string) {
   try {
     await emu.library.removeFolder(path)
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 

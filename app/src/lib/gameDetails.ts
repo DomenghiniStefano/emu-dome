@@ -1,14 +1,7 @@
-// Game details (L04–L10, #34): which game the Library section shows the details of, and the
-// jumps from there to another section for that one game. Kept outside the components, so closing
-// a game opened from its details comes back to them, and a section opened for a game takes the
-// game on mount (then clears it).
-import { ref } from 'vue'
-import type { GameId, GameSaves, LibraryGame, SettingsScope } from '@/emu'
-
-/** The game whose details the Library section shows; null = the grid. */
-export const detailsOf = ref<GameId | null>(null)
-/** The cover the grid focuses when it comes back from the details. */
-export const detailsReturn = ref<GameId | null>(null)
+// Game details (L04–L10, #34): what several features share about one game: its «Solo questo
+// gioco» scope, a section opened for it, where «Riprendi» picks up. Which game the details show,
+// and the jumps from there to another section, are the shell's route (components/shell/route.ts).
+import type { GameSaves, LibraryGame, SettingsScope } from '@/emu'
 
 /** A game's «Solo questo gioco» level. */
 export type GameScope = Extract<SettingsScope, { level: 'game' }>
@@ -23,10 +16,6 @@ export interface GameFocus {
   scope: GameScope
   title: string
 }
-/** L06 «Apri tutte le impostazioni di questo gioco»: the Settings section takes it. */
-export const settingsFocus = ref<GameFocus | null>(null)
-/** L07 «Rimappa i pulsanti per questo gioco»: the Controls section (C02) takes it. */
-export const controlsFocus = ref<GameFocus | null>(null)
 
 /** Where «Riprendi» picks up (L01 «Continua a giocare», L04). */
 export interface ResumePoint {

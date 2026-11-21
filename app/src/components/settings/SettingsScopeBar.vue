@@ -2,11 +2,13 @@
 // «Stai cambiando le impostazioni di:» (ScopeSelector), fixed at the top of a page while it
 // scrolls: the levels as cards («Tutti i giochi», «Giochi <console> ▾» with its console menu,
 // «Solo questo gioco» when opened for a game), «Mostra solo le impostazioni modificate», and the
-// sentence saying what a change does at the level chosen.
-import { computed } from 'vue'
+// sentence saying what a change does at the level chosen. The levels are a RadioGroup: the arrows
+// along the row choose, A / a click choose the one focused.
+import { computed, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Disc3, Gamepad2, Layers } from '@lucide/vue'
 import { Card, CardVariant } from '@/components/ui/card'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Switch } from '@/components/ui/switch'
 import type { ConsoleId, SettingLevel } from '@/emu'
 import type { GameFocus } from '@/lib/gameDetails'
@@ -30,6 +32,31 @@ const { t } = useI18n()
 // One column per level, as Tailwind's own classes (repeat(n, minmax(0, 1fr))).
 const COLUMNS: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' }
 const columns = computed(() => COLUMNS[props.levels.length] ?? 'grid-cols-1')
+
+const ICONS: Record<EditLevel, Component> = { global: Layers, console: Gamepad2, game: Disc3 }
+
+/** The levels offered: a console's only with a console in context, a game's only for a game. */
+const shown = computed(() =>
+  (['global', 'console', 'game'] as const).filter(
+    l =>
+      l === 'global' ||
+      (l === 'console' && props.levels.includes('console') && props.contextConsole !== null) ||
+      (l === 'game' && props.levels.includes('game') && props.gameFocus !== null),
+  ),
+)
+
+/** The line under a level's name. */
+function sub(l: EditLevel): string {
+  if (l === 'console' && props.contextConsole)
+    return t('settingsUi.scope.consoleSub', { short: t(`consoleShort.${props.contextConsole}`) })
+  if (l === 'game' && props.gameFocus) return props.gameFocus.title
+  return t('settingsUi.scope.globalSub')
+}
+
+function choose(value: unknown) {
+  const l = shown.value.find(x => x === value)
+  if (l) emit('level', l)
+}
 
 /** What a change does at the level chosen. */
 const line = computed(() => {
@@ -58,70 +85,39 @@ const line = computed(() => {
         <Switch v-model="onlyChanged" class="data-[state=checked]:shadow-none" />
       </label>
     </div>
-    <div
+    <RadioGroup
+      :model-value="effective"
       class="grid gap-8"
       :class="columns"
-      role="radiogroup"
       :aria-label="t('settingsUi.scopeTitle')"
+      @update:model-value="choose"
     >
-      <Card
-        as="button"
-        :variant="CardVariant.RaisedAccent"
-        :selected="effective === 'global'"
-        class="min-h-level flex-row items-start gap-10 px-12"
-        role="radio"
-        :aria-checked="effective === 'global'"
-        @click="emit('level', 'global')"
-      >
-        <Layers :size="20" :stroke-width="1.75" aria-hidden="true" />
-        <span class="flex flex-col gap-2">
-          <span class="font-semibold">{{ levelName('global') }}</span>
-          <span class="text-caption text-ink-muted">{{ t('settingsUi.scope.globalSub') }}</span>
-        </span>
-      </Card>
-      <!-- «Giochi <console> ▾»: picking a console also selects this level -->
-      <Card
-        v-if="levels.includes('console') && contextConsole"
-        :variant="CardVariant.RaisedAccent"
-        :selected="effective === 'console'"
-        class="min-h-level flex-row items-start gap-10 px-12"
-        role="radio"
-        :aria-checked="effective === 'console'"
-        @click="emit('level', 'console')"
-      >
-        <Gamepad2 :size="20" :stroke-width="1.75" aria-hidden="true" />
-        <span class="flex flex-col gap-2">
-          <SettingSelect
-            in-title
-            :label="t('settingsUi.scope.consolePick')"
-            :value="contextConsole"
-            :options="consoleOptions"
-            @pick="id => emit('pickConsole', id)"
-            @click.stop
-          />
-          <span class="text-caption text-ink-muted">
-            {{ t('settingsUi.scope.consoleSub', { short: t(`consoleShort.${contextConsole}`) }) }}
+      <RadioGroupItem v-for="l in shown" :key="l" :value="l">
+        <!-- «Giochi <console> ▾» holds the console's own menu: a card, not a button around it;
+             picking a console also selects this level. -->
+        <Card
+          :as="l === 'console' ? 'div' : 'button'"
+          :variant="CardVariant.RaisedAccent"
+          :selected="effective === l"
+          class="min-h-level flex-row items-start gap-10 px-12"
+        >
+          <component :is="ICONS[l]" :size="20" :stroke-width="1.75" aria-hidden="true" />
+          <span class="flex flex-col gap-2">
+            <SettingSelect
+              v-if="l === 'console' && contextConsole"
+              in-title
+              :label="t('settingsUi.scope.consolePick')"
+              :value="contextConsole"
+              :options="consoleOptions"
+              @pick="id => emit('pickConsole', id)"
+              @click.stop
+            />
+            <span v-else class="font-semibold">{{ levelName(l) }}</span>
+            <span class="text-caption text-ink-muted">{{ sub(l) }}</span>
           </span>
-        </span>
-      </Card>
-      <!-- «Solo questo gioco»: only when opened from a game's details (L06) -->
-      <Card
-        v-if="levels.includes('game') && gameFocus"
-        as="button"
-        :variant="CardVariant.RaisedAccent"
-        :selected="effective === 'game'"
-        class="min-h-level flex-row items-start gap-10 px-12"
-        role="radio"
-        :aria-checked="effective === 'game'"
-        @click="emit('level', 'game')"
-      >
-        <Disc3 :size="20" :stroke-width="1.75" aria-hidden="true" />
-        <span class="flex flex-col gap-2">
-          <span class="font-semibold">{{ levelName('game') }}</span>
-          <span class="text-caption text-ink-muted">{{ gameFocus.title }}</span>
-        </span>
-      </Card>
-    </div>
+        </Card>
+      </RadioGroupItem>
+    </RadioGroup>
     <div class="text-ink-muted">{{ line }} {{ lockedNote }}</div>
   </div>
 </template>

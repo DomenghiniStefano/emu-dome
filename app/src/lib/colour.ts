@@ -71,21 +71,22 @@ export function oklchToHex({ l, c, h }: Oklch): string {
 
 /** WCAG relative luminance. */
 export function luminance(hex: string): number {
-  const [r, g, b] = parseHex(hex).map(toLinear)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  const [r, g, b] = parseHex(hex)
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
 }
 
 /** WCAG contrast ratio of two opaque colours (1..21). */
 export function contrast(a: string, b: string): number {
-  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p)
-  return (x + 0.05) / (y + 0.05)
+  const [la, lb] = [luminance(a), luminance(b)]
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
 }
 
 /** `top` at `alpha` (0..1) over the opaque `bottom`, in sRGB as browsers blend. */
 export function over(top: string, alpha: number, bottom: string): string {
-  const t = parseHex(top)
-  const b = parseHex(bottom)
-  return toHex(t.map((v, i) => v * alpha + b[i] * (1 - alpha)) as Rgb)
+  const [tr, tg, tb] = parseHex(top)
+  const [br, bg, bb] = parseHex(bottom)
+  const mix = (t: number, b: number) => t * alpha + b * (1 - alpha)
+  return toHex([mix(tr, br), mix(tg, bg), mix(tb, bb)])
 }
 
 /** The colour with its OKLCH lightness at most `max` (cover colours: ≤ 0.72, design system). */
