@@ -1,23 +1,42 @@
-// `general.accent` (T02 «Colore d’accento»): the five swatches of the schema, each turned into the
-// accent tokens of styles.css for every theme. The default swatch keeps the design system's
-// values exactly; the others take the same shape in OKLCH (same lightness steps from the fill to
-// hover, deep and crown), then:
-// - the fill is darkened until white text on it (`on-accent`) reaches 4.5:1;
+// `general.accent` (T02 «Colore d’accento»): the swatches of the schema, each turned into the
+// accent tokens of colors.css for every theme. The default swatch (amber, the app icon's) is
+// written in colors.css; every other swatch is computed here by the same rules, and
+// accent.test.ts holds the default's values in colors.css to them:
+// - the fill is the swatch, and the text on it (`on-accent`) is white or DARK_ON_ACCENT, whichever
+//   reads at 4.5:1 on the fill and on its hover shade (white first); only if neither does is the
+//   fill darkened until white does;
+// - hover, deep and crown take the shape of the design system's first ramp (VIOLET_RAMP: the
+//   same OKLCH lightness steps from the fill), except the default's deep and crown, which are the
+//   icon's own (Cowork, colors.css);
 // - `accent-text` and `focus-ring` are moved in lightness per theme until they reach 4.5:1 on
 //   every surface of that theme, including a selected chip (`accent-soft` over `surface-raised`).
 // Pure: appearance.ts writes the result into the page.
+import catalog from '@/generated/settings-catalog.json'
 import { contrast, hexToOklch, oklchToHex, over, untilContrast } from './colour'
 import type { Theme } from '@/emu'
 
-/** The design system's accent (styles.css :root), the default swatch of `general.accent`. */
-export const DEFAULT_ACCENT = '#7152f7'
-const BASE = { hover: '#6544ee', deep: '#5a3fdc', crown: '#8a70ff' }
+/** `general.accent` in the settings catalogue (Rust, generated): its default and its swatches. */
+const ENTRY = catalog.colours['general.accent']
+
+/** The default swatch of `general.accent`, whose tokens colors.css already holds. */
+export const DEFAULT_ACCENT = ENTRY.default
+/** The swatches of `general.accent`, in the schema's order. */
+export const ACCENT_SWATCHES: readonly string[] = ENTRY.swatches
+
+/**
+ * The shape every swatch's shades take: the design system's first accent (GameDome's violet) and
+ * its hover, deep and crown, read as OKLCH lightness steps from the fill. Only the lightness is
+ * taken: the violet swatch itself gets shades close to, not equal to, these.
+ */
+const VIOLET_RAMP = { fill: '#7152f7', hover: '#6544ee', deep: '#5a3fdc', crown: '#8a70ff' }
 
 /** Text contrast the design system asks for (README «Colore»). */
 export const MIN_TEXT = 4.5
 const WHITE = '#ffffff'
+/** Text on a light accent (amber): the Scuro ground (`--bg`). */
+export const DARK_ON_ACCENT = '#0e0f13'
 
-/** The surfaces accent text sits on, per theme (styles.css), and the alpha of `accent-soft`. */
+/** The surfaces accent text sits on, per theme (colors.css), and the alpha of `accent-soft`. */
 export const SURFACES: Record<Theme, { list: string[]; raised: string; soft: number }> = {
   dark: { list: ['#0e0f13', '#16181e', '#1e2129', '#262a33'], raised: '#1e2129', soft: 0x2e / 255 },
   black: {
@@ -34,16 +53,29 @@ export const SURFACES: Record<Theme, { list: string[]; raised: string; soft: num
 
 export type AccentTokens = Record<string, string>
 
-/** Shades of `fill` at the default accent's lightness steps (hue and chroma kept where they fit). */
+/** Shade of `fill` at one step of VIOLET_RAMP (hue and chroma kept where they fit). */
 function shade(fill: string, like: string): string {
-  const d = hexToOklch(like).l - hexToOklch(DEFAULT_ACCENT).l
+  const d = hexToOklch(like).l - hexToOklch(VIOLET_RAMP.fill).l
   const c = hexToOklch(fill)
   return oklchToHex({ ...c, l: Math.min(1, Math.max(0, c.l + d)) })
 }
 
-/** The fill used for main buttons: the swatch, darkened until white text on it reads at 4.5:1. */
-export function accentFill(swatch: string): string {
-  return contrast(WHITE, swatch) >= MIN_TEXT ? swatch : untilContrast(swatch, [WHITE], MIN_TEXT, -1)
+/** The hover fill of a main button whose fill is `fill`. */
+export const accentHover = (fill: string) => shade(fill, VIOLET_RAMP.hover)
+
+/** Whether `text` reads at 4.5:1 on `fill` and on its hover shade (a main button's two fills). */
+function readsOn(text: string, fill: string): boolean {
+  return [fill, accentHover(fill)].every(bg => contrast(text, bg) >= MIN_TEXT)
+}
+
+/**
+ * A main button's fill and the text on it: the swatch kept, with white or DARK_ON_ACCENT text,
+ * whichever reads (white first); if neither does, the swatch darkened until white text reads on
+ * it (and so on its darker hover).
+ */
+export function accentFill(swatch: string): { fill: string; on: string } {
+  for (const on of [WHITE, DARK_ON_ACCENT]) if (readsOn(on, swatch)) return { fill: swatch, on }
+  return { fill: untilContrast(swatch, [WHITE], MIN_TEXT, -1), on: WHITE }
 }
 
 /** `accent-text` for one theme: readable on every surface and on a selected chip. */
@@ -53,21 +85,16 @@ export function accentText(swatch: string, theme: Theme): string {
   return untilContrast(swatch, grounds, MIN_TEXT, theme === 'light' ? -1 : 1)
 }
 
-/**
- * The tokens to override for `swatch`, per theme; null for the default accent (styles.css already
- * holds the design system's values) or a value that is not a colour.
- */
-export function accentTokens(swatch: string): Record<Theme, AccentTokens> | null {
-  const hex = swatch.trim().toLowerCase()
-  if (hex === DEFAULT_ACCENT || !/^#[0-9a-f]{6}$/.test(hex)) return null
-  const fill = accentFill(hex)
+/** Every accent token of `hex` (`#rrggbb`, lowercase), per theme, by the rules above. */
+export function computeAccentTokens(hex: string): Record<Theme, AccentTokens> {
+  const { fill, on } = accentFill(hex)
   const fills: AccentTokens = {
     '--violet': hex,
     '--accent': fill,
-    '--accent-hover': shade(fill, BASE.hover),
-    '--accent-deep': shade(fill, BASE.deep),
-    '--accent-crown': shade(fill, BASE.crown),
-    '--on-accent': WHITE,
+    '--accent-hover': accentHover(fill),
+    '--accent-deep': shade(fill, VIOLET_RAMP.deep),
+    '--accent-crown': shade(fill, VIOLET_RAMP.crown),
+    '--on-accent': on,
   }
   const per = (theme: Theme): AccentTokens => {
     const text = accentText(hex, theme)
@@ -82,4 +109,14 @@ export function accentTokens(swatch: string): Record<Theme, AccentTokens> | null
     }
   }
   return { dark: per('dark'), black: per('black'), light: per('light') }
+}
+
+/**
+ * The tokens to override for `swatch`, per theme; null for the default accent (colors.css already
+ * holds its values) or a value that is not a colour.
+ */
+export function accentTokens(swatch: string): Record<Theme, AccentTokens> | null {
+  const hex = swatch.trim().toLowerCase()
+  if (hex === DEFAULT_ACCENT || !/^#[0-9a-f]{6}$/.test(hex)) return null
+  return computeAccentTokens(hex)
 }

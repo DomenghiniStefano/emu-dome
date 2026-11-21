@@ -17,6 +17,7 @@ import {
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
+import { ACCENT_SWATCHES } from '@/lib/accent'
 </script>
 
 <template>
@@ -450,7 +451,7 @@ import KitState from '@/kit/KitState.vue'
     <KitState label="Swatch · IconSmall: the chosen one ringed, a disabled one">
       <div class="flex gap-10" role="radiogroup" aria-label="Accent">
         <Button
-          v-for="(c, i) in ['#7152f7', '#2f7ae5', '#1f9d8a']"
+          v-for="(c, i) in ACCENT_SWATCHES.slice(0, 3)"
           :key="c"
           :variant="ButtonVariant.Swatch"
           :size="ButtonSize.IconSmall"

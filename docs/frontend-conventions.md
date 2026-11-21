@@ -100,7 +100,10 @@ initial`): a value that is not a token generates no class. Preflight is off; the
 - Compound looks (glass, glows, gradients, focus rings drawn inside a frame) are named utilities in
   `assets/utilities.css`, written through the tokens.
 - Themes (Scuro / Nero / Chiaro) and the runtime accent are CSS variables (`theme.ts`, `appearance.ts`,
-  `accent.ts`); classes point at them, so a theme change needs no class.
+  `accent.ts`); classes point at them, so a theme change needs no class. The default accent (amber)
+  is written in `colors.css`, every other swatch computed by `accent.ts`'s rules; `accent.test.ts`
+  holds the default's values to the same rules, so a change to one shows in the other. Text on the
+  accent is `on-accent` (white or dark per swatch), never a fixed white.
 - `cn()` (`lib/cn.ts`) merges classes; it learns the token names from the theme CSS itself
   (`lib/design/themeKeys.ts`), so `cn('text-label', 'text-ink')` keeps both.
 

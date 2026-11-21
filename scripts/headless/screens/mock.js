@@ -150,9 +150,10 @@
       "general",
       {
         type: "colour",
-        swatches: ["#7152f7", "#3b82f6", "#14b8a6", "#f97316", "#ec4899"],
+        // As catalog.rs (Trello #96): amber, the icon's, first and default.
+        swatches: ["#faa40f", "#7152f7", "#2f7ae5", "#1f9d8a", "#c2417a"],
       },
-      "#7152f7",
+      "#faa40f",
     ),
     entry(
       "general.ui",
@@ -1021,6 +1022,9 @@
       if (cmd === "settings_page")
         return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);
       if (cmd === "library_scan") return null;
+      // The shell asks both at start (useShellEvents.ts): nothing moving, nothing broken.
+      if (cmd === "saves_migration_status") return { running: false, problem: null };
+      if (cmd === "diagnostics") return [];
       if (scenario.saves && cmd.startsWith("saves_")) {
         const a = savesAnswer(cmd, args);
         if (a !== undefined) return JSON.parse(JSON.stringify(a));

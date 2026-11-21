@@ -402,7 +402,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - **The Rust ↔ TypeScript contract** (Trello #73): the bridge's types are generated from the Rust types by ts-rs
   (`#[derive(TS)]`, MIT) into `app/src/generated/` (core types; the shell's DTOs in `generated/app/`), with
   `SettingKey` (the catalogue's keys), `HotkeyId` and `Button` from Rust lists, and the fixtures
-  `error-codes.json` / `settings-catalog.json` / `keyboard-shortcuts.json` (read by `lib/keyboard.ts`). `emu.ts` only re-exports them. The files are committed; the contract
+  `error-codes.json` / `settings-catalog.json` (its `colours`: a colour entry's swatches and default, read by
+  `lib/accent.ts`) / `keyboard-shortcuts.json` (read by `lib/keyboard.ts`). `emu.ts` only re-exports them. The files are committed; the contract
   test of each crate (`cargo test -p emudome-core contract`, `cargo test -p emudome contract`) fails when they are
   stale, and `EMUDOME_BLESS=1` writes them again. `app/src/i18n/parity.test.ts` holds the fixtures against the
   message files. `session::Speed` / `Event` are typed through shadow types in `contract.rs` (session.rs untouched),
@@ -617,7 +618,9 @@ review-only list above. A rule in neither place is the thing this section exists
   https://claude.ai/artifact/TEz4yQgd1w27HRQLt4beAy. Its tokens live in `app/src/assets/theme/` (see below).
 - Modern console style, dark theme:
   - neutral graphite, the colour comes from the covers;
-  - purple (`accent`) only on the main action;
+  - amber (`accent`, the app icon's #faa40f, dark text on it; `general.accent` offers four other
+    swatches) only on the main action. For these colours the repo's tokens (`colors.css`,
+    `lib/accent.ts`) are the reference, not the design system artifact (owner, 2026-11-21);
   - glass for panels and menus;
   - Lucide icons, no emoji.
 - In game **no interface**: everything goes through the quick menu (Esc / Home button).

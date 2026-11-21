@@ -30,15 +30,19 @@
   --ink: #eceef3;
   --ink-muted: #a4a8b5;
   --ink-faint: #6b6f7b;
-  --violet: #7c5cff;
-  --accent: #7152f7;
-  --accent-hover: #6544ee;
-  --accent-deep: #5a3fdc;
-  --accent-crown: #8a70ff;
-  --on-accent: #ffffff;
-  --accent-text: #a593ff;
-  --accent-soft: #7c5cff2e;
-  --focus-ring: #a593ff;
+  /* The default accent: amber, the app icon's (Trello #96). `--violet` is the swatch itself (the
+     name is historical: glows, tints and edges mix it). Crown and deep are the icon's (Cowork);
+     every other value is what accent.ts computes for this swatch, as for any other, and
+     accent.test.ts holds them to it. Text on amber is dark: white would be 2:1. */
+  --violet: #faa40f;
+  --accent: #faa40f;
+  --accent-hover: #eb9903;
+  --accent-deep: #cd860c;
+  --accent-crown: #ffc847;
+  --on-accent: #0e0f13;
+  --accent-text: #faa40f;
+  --accent-soft: #faa40f2e;
+  --focus-ring: #faa40f;
   --success: #3ed68e;
   --warning: #f5a524;
   --danger: #ff7a7a;
@@ -82,10 +86,11 @@
      - game-scrim: the paused game behind the menu (the design system's `scene-scrim` is not
        decided yet);
      - grip: the handle of the phone's sheet;
-     - on-accent-edge: a key hint's edge on the main action's accent fill. */
+     - on-accent-edge: a key hint's edge on the main action's accent fill, half of the text on
+       it (`--on-accent`: white or dark, accent.ts), so it follows the accent. */
   --game-scrim: #00000099;
   --grip: #ffffff33;
-  --on-accent-edge: #ffffff80;
+  --on-accent-edge: color-mix(in srgb, var(--on-accent) 50%, transparent);
 }
 
 /* Nero: true black for OLED screens. */
@@ -116,9 +121,9 @@
   --ink: #17181c;
   --ink-muted: #5d606a;
   --ink-faint: #9a9ca3;
-  --accent-text: #5a3ce6;
-  --accent-soft: #7c5cff1f;
-  --focus-ring: #6a48ff;
+  --accent-text: #966002;
+  --accent-soft: #faa40f1f;
+  --focus-ring: #966002;
   --success: #0f7a54;
   --warning: #9a5800;
   --danger: #c42b3a;

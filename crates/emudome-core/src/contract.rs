@@ -6,7 +6,8 @@
 //! - `error-codes.json`: every [`crate::ErrorCode`] code, read from its generated type. A Vitest
 //!   test (`app/src/i18n/parity.test.ts`) holds it against `errors.<code>` in both message files.
 //! - `settings-catalog.json`: pages, groups, sections, keys and option ids of the catalogue, which
-//!   the same Vitest test holds against the `settings.*` texts.
+//!   the same Vitest test holds against the `settings.*` texts, and the colour entries' swatches
+//!   and default (`colours`: the default accent of `app/src/lib/accent.ts`, the swatches' names).
 //! - `keyboard-shortcuts.json`: the keyboard's fixed keys ([`crate::keyboard::KEYBOARD_SHORTCUTS`]:
 //!   `code`, `action`, `status`), which the interface lists (C01, C03).
 //!
@@ -377,7 +378,7 @@ mod tests {
 
     use super::{check_generated, generated_dir, EventShape, Generated, SpeedShape, BLESS};
     use crate::settings::catalog::{ENTRIES, GROUPS, PAGES, SECTIONS};
-    use crate::settings::Kind;
+    use crate::settings::{DefaultValue, Kind};
     use crate::{ErrorCode, Event, Speed};
 
     /// The core's files: those at the top of `generated/` (the shell's are in `app/`).
@@ -420,7 +421,34 @@ mod tests {
                 json!({ "key": e.key, "page": e.page(), "kind": kind, "options": options })
             })
             .collect();
+        // The colour entries' swatches and default (`general.accent`): the interface needs them
+        // before any settings call (accent.ts: which swatch colors.css already holds).
+        let colours: serde_json::Map<String, Json> = ENTRIES
+            .iter()
+            .filter_map(|e| match e.kind {
+                Kind::Colour { swatches } => {
+                    let default = if let DefaultValue::Text(t) = e.default {
+                        Some(t)
+                    } else {
+                        None
+                    };
+                    let colour = json!({ "default": default, "swatches": swatches });
+                    Some((e.key.to_owned(), colour))
+                }
+                Kind::Toggle
+                | Kind::Choice { .. }
+                | Kind::Multi { .. }
+                | Kind::Slider { .. }
+                | Kind::File
+                | Kind::Folders
+                | Kind::Text
+                | Kind::Action { .. }
+                | Kind::Apply { .. }
+                | Kind::Bindings { .. } => None,
+            })
+            .collect();
         json!({
+            "colours": colours,
             "pages": PAGES,
             "groups": GROUPS.iter().map(|g| g.id).collect::<Vec<_>>(),
             "sections": SECTIONS

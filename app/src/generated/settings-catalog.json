@@ -1,4 +1,16 @@
 {
+  "colours": {
+    "general.accent": {
+      "default": "#faa40f",
+      "swatches": [
+        "#faa40f",
+        "#7152f7",
+        "#2f7ae5",
+        "#1f9d8a",
+        "#c2417a"
+      ]
+    }
+  },
   "entries": [
     {
       "key": "video.scale",
