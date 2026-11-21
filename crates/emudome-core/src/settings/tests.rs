@@ -301,6 +301,137 @@ fn per_device_values_never_reach_the_synced_files() {
     );
 }
 
+// ---- Sync rules (before Drive sync, #20 / #31) ----
+//
+// What the synced files carry and who wins, as the engine does it today. Rules not decided yet
+// are tested as today's behaviour and named `today_…`: changing one is a decision, made by
+// changing its test.
+
+/// A portable entry and a per-device one, for the rules below.
+const PORTABLE: &str = "video.scale";
+const PER_DEVICE: &str = "video.vsync";
+
+#[test]
+fn sync_rule_portable_values_are_in_the_synced_files_at_every_level_and_never_in_device_json() {
+    let dir = TestDir::new("sync-portable");
+    assert!(!entry(PORTABLE).unwrap().per_device);
+    let mut s = settings(&dir);
+    s.set(PORTABLE, &Scope::Global, option(PORTABLE, 1))
+        .unwrap();
+    s.set(PORTABLE, &console_scope(), option(PORTABLE, 2))
+        .unwrap();
+    s.set(PORTABLE, &game_scope(), option(PORTABLE, 0)).unwrap();
+    // A per-device value too, so device.json exists.
+    s.set(PER_DEVICE, &Scope::Global, Value::Bool(false))
+        .unwrap();
+
+    let global: serde_json::Value = serde_json::from_str(&dir.read("synced/global.json")).unwrap();
+    let console: serde_json::Value =
+        serde_json::from_str(&dir.read("synced/console/gba.json")).unwrap();
+    let game_file: serde_json::Value =
+        serde_json::from_str(&dir.read(&format!("synced/game/{}.json", game().file_stem())))
+            .unwrap();
+    for (file, i) in [(&global, 1), (&console, 2), (&game_file, 0)] {
+        assert_eq!(
+            serde_json::to_value(option(PORTABLE, i)).unwrap(),
+            file[PORTABLE]
+        );
+        // Each synced file says its layout and when its values changed.
+        assert_eq!(file["$schema"], json!(1));
+        assert!(file["$changed"][PORTABLE].is_u64());
+    }
+    assert!(!dir.read("local/device.json").contains(PORTABLE));
+}
+
+#[test]
+fn sync_rule_the_stronger_level_wins_whichever_file_it_is_in() {
+    let dir = TestDir::new("sync-precedence");
+    let mut s = settings(&dir);
+    s.begin_session(ConsoleId::Gba, game());
+    // Per-device: Global and Game in device.json; the Game value wins for the game.
+    s.set(PER_DEVICE, &Scope::Global, Value::Bool(false))
+        .unwrap();
+    s.set(PER_DEVICE, &game_scope(), Value::Bool(true)).unwrap();
+    assert_eq!(
+        value_of(&mut s, PER_DEVICE, &Scope::Session),
+        (Some(Value::Bool(true)), Level::Game)
+    );
+    // Portable: the console's synced file over the global one.
+    s.set(PORTABLE, &Scope::Global, option(PORTABLE, 1))
+        .unwrap();
+    s.set(PORTABLE, &console_scope(), option(PORTABLE, 2))
+        .unwrap();
+    assert_eq!(
+        value_of(&mut s, PORTABLE, &Scope::Session),
+        (Some(option(PORTABLE, 2)), Level::Console)
+    );
+}
+
+#[test]
+fn sync_rule_today_a_per_device_value_found_in_a_synced_file_is_ignored() {
+    // A per-device entry is per-device on every OS today (`Entry::per_device` is one flag): a
+    // value of it in a synced file (another version, a hand edit) is never read on any device,
+    // and kept in the file as an unknown key.
+    let dir = TestDir::new("sync-device-in-synced");
+    dir.write(
+        "synced/global.json",
+        &format!(r#"{{ "{PER_DEVICE}": false, "{PORTABLE}": "fill" }}"#),
+    );
+    let mut s = settings(&dir);
+    let (value, level) = value_of(&mut s, PER_DEVICE, &Scope::Global);
+    assert_eq!(level, Level::Default);
+    assert_eq!(value, Some(Value::Bool(true)));
+    s.set(PORTABLE, &Scope::Global, option(PORTABLE, 1))
+        .unwrap();
+    assert!(dir.read("synced/global.json").contains(PER_DEVICE));
+}
+
+#[test]
+fn sync_rule_today_a_portable_value_found_in_device_json_is_ignored() {
+    let dir = TestDir::new("sync-portable-in-device");
+    dir.write(
+        "local/device.json",
+        &format!(r#"{{ "global": {{ "{PORTABLE}": "fill" }} }}"#),
+    );
+    let mut s = settings(&dir);
+    let (_, level) = value_of(&mut s, PORTABLE, &Scope::Global);
+    assert_eq!(level, Level::Default);
+}
+
+#[test]
+fn sync_rule_today_a_synced_file_changed_elsewhere_wins_whole_no_merge_yet() {
+    // Today the last write of a file wins as a whole: a file changed by another device replaces
+    // what this one read; a value set here before it, and not written again, is gone. The merge
+    // by `$changed` times is the sync's work (#20 / #31), not the engine's yet.
+    let dir = TestDir::new("sync-last-write");
+    let mut s = settings(&dir);
+    s.set(PORTABLE, &Scope::Global, option(PORTABLE, 1))
+        .unwrap();
+    s.set("audio.vol", &Scope::Global, Value::Int(40)).unwrap();
+    // The other device's file: only `audio.vol`, newer.
+    dir.write(
+        "synced/global.json",
+        r#"{ "$schema": 1, "audio.vol": 70, "$changed": { "audio.vol": 99999999999999 } }"#,
+    );
+    assert_eq!(
+        value_of(&mut s, "audio.vol", &Scope::Global),
+        (Some(Value::Int(70)), Level::Global)
+    );
+    assert_eq!(value_of(&mut s, PORTABLE, &Scope::Global).1, Level::Default);
+}
+
+#[test]
+fn sync_rule_per_device_values_keep_their_change_times_on_this_device() {
+    let dir = TestDir::new("sync-device-times");
+    let mut s = settings(&dir);
+    s.set(PER_DEVICE, &console_scope(), Value::Bool(false))
+        .unwrap();
+    let device: serde_json::Value = serde_json::from_str(&dir.read("local/device.json")).unwrap();
+    assert!(device["console"]["gba"]["$changed"][PER_DEVICE].is_u64());
+    assert_eq!(device["$schema"], json!(1));
+    assert!(!dir.path("synced/console/gba.json").exists());
+}
+
 // ---- Session ----
 
 #[test]
