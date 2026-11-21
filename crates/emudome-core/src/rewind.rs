@@ -311,6 +311,15 @@ impl Rewind {
         }
     }
 
+    /// The core changed its frame rate (`SET_SYSTEM_AV_INFO`): the buffer keeps covering
+    /// `speed.rewlen` seconds at the new rate.
+    pub fn set_fps(&mut self, fps: f64) {
+        self.fps = fps;
+        if let (Some(s), Some(interval)) = (self.seconds, self.interval) {
+            self.buffer.set_capacity(capacity(s, self.fps, interval));
+        }
+    }
+
     /// After every frame run forwards: takes a state when one is due. `take` is called only
     /// then; `None` from it (a core without states) is skipped.
     pub fn record(&mut self, take: impl FnOnce() -> Option<Vec<u8>>) {

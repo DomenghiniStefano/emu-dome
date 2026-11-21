@@ -33,7 +33,7 @@ pub mod speed_audio;
 pub mod tuning;
 
 pub use atomic::write_atomic;
-pub use core::GameFiles;
+pub use core::{GameFiles, StartError};
 pub use error::ErrorCode;
 pub use frame::Frame;
 pub use game_key::GameKey;
