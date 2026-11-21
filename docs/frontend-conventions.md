@@ -124,6 +124,11 @@ when it changes structure (what is rendered, `v-if`).
 - A step looks in the focused element's scroll container first and in the whole scope only when nothing
   is there in that direction; disabled, `aria-disabled`, `inert` and `visibility:hidden` elements are
   never landed on. Entering a radio group lands on its chosen radio.
+- A long grid that renders only part of its items (the library's covers, `library/useCoverWindow.ts`)
+  moves the focus itself: `useNavGrid(root, step)` registers it, and a step from inside it asks `step`
+  first, which answers the element to focus, a promise of it (rendered first), or `false` to leave the
+  grid by the spatial rule. Tested in `nav.test.ts`, the cover moves in `library/coverGridNav.test.ts`,
+  in a real browser by `scripts/headless/screens/library-scale.mjs --check`.
 - Where the shell is, is one typed `Route` (`components/shell/route.ts`) held by App.vue and passed as
   props; a section reads what it was opened for (its arrival) once, on mount. No module-level refs a
   screen reads and clears.

@@ -354,6 +354,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   - the interface has the input (quick menu open, or no game): the game gets nothing, d-pad / A / B
     become `emu://nav` steps with key repeat (400 ms, then every 120 ms).
   The interface tells Rust the menu is open with the `set_menu_open` command.
+- The library's cover grid is windowed (Trello #91, `components/library/useCoverWindow.ts`, sums in
+  `coverWindow.ts`): only the rows near the screen plus 2 are in the DOM, the grid's padding stands for the rest
+  (rows measured once rendered, the others estimated), and a re-render never moves what is on screen. Inside it
+  the controller and the arrows move by row and column (`coverGridNav.ts`, registered with nav.ts's
+  `useNavGrid`), and leave it at its edges by the spatial rule; a focused tile scrolled out of the DOM parks the
+  focus on the grid (no ring) and gets it back when rendered again. Measured headless with 3005 / 10 005 mock
+  games (`scripts/headless/screens/library-scale.mjs`): a d-pad step 64 / 146 ms before, under 1 ms after.
 - Navigation in the interface: `app/src/nav.ts`. A screen calls `useNavScope(root, { back, autofocus })`
   and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
   move the focus spatially (nearest element in that direction, looked for in the focused element's scroll

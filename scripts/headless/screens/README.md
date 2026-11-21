@@ -20,6 +20,10 @@ prove that a refactor changes nothing on screen (Trello #62).
   ring shows), and `freeze` (CSS animations stopped at their first frame). Its steps can reach the
   app's own modules (`import('/src/components/game/gameFlow.ts')`) and play a backend event with the mock's
   `__emit(name, payload)` (`emu://menu` opens the quick menu as a controller).
+- `manyGames: N` adds N generated games (the `lib-many*` scenarios: 3000). `library-scale.mjs <cdp>
+  <url> [games] [--check]` loads such a library and prints the tiles in the DOM and the time per
+  d-pad step (`dispatchNav`); `--check` also checks the windowed grid (row / column moves, leaving at
+  its edges, the parked focus, back from a game's details far down, no jump while scrolling).
 - In-game scenarios set `game` in the mock: the game opens at startup (`true` for the shell's
   screens, `"gba"` / `"nds"` for the quick menu's).
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.
