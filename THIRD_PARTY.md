@@ -17,9 +17,11 @@ The cores are not in the repository (`cores/` is git-ignored, except `cores/READ
 generated `cores/SOURCES.md`). They are pinned in `cores.lock` (repo root): per core the upstream
 repository, the exact commit, the licence file at that commit, and per platform either the download
 URL with the sha256 of the archive and of every file taken from it, or (`built`) the toolchain of a
-build EmuDome makes from the core's pinned source archive, with the sha256 of the built library.
+build EmuDome makes from the core's pinned source archive, with the sha256 of the built library and
+the EmuDome GitHub release that build is published in (`built.release`).
 `scripts/fetch-cores.ps1`, `scripts/fetch-cores.sh` and `scripts/fetch-cores-android.ps1` (all
-through `scripts/cores.mjs`) download or build them, check every hash and fail, deleting the core's
+through `scripts/cores.mjs`) download them (a built core from that release; built from source only
+when the download fails, or with `-Build` / `--build`), check every hash and fail, deleting the core's
 files, on any mismatch. EmuDome loads them at run time as separate programs through the libretro
 API, unmodified.
 
@@ -41,7 +43,7 @@ API, unmodified.
 
 | Core | Console | Shipped | Upstream source, pinned | Licence | Notes |
 | --- | --- | --- | --- | --- | --- |
-| mGBA | GB, GBC, GBA | yes | https://github.com/libretro/mgba (libretro's tracking fork of https://github.com/mgba-emu/mgba), commit `7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6`, version `0.11-212-7a12d6d` | MPL-2.0 AND BSD-3-Clause | `LICENSE` at that commit is the MPL-2.0 text; source headers: "subject to the terms of the Mozilla Public License, v. 2.0". The libretro core compiles in inih (`src/third-party/inih`, BSD-3-Clause, its `LICENSE.txt` shipped as `mgba-inih-LICENSE.txt`); the other bundled libraries of mGBA's README (LZMA SDK, SQLite3, ...) are not in the libretro build. Compatible with GPL-3.0-or-later. Binaries: Windows x86_64 and Android arm64-v8a **built by EmuDome** from the source archive of that commit (`source.archive` in `cores.lock`, sha256-pinned) with `scripts/build-mgba.ps1` / `scripts/build-mgba.sh` (Trello #88), the buildbot's CMake options, unmodified; the commit is the one the libretro buildbot built on 2026-11-16 and the builds report the same version string. Linux x86_64: still the buildbot nightly of 2026-11-16 (URL not stable, see below) until it is built on Linux (Trello #92). |
+| mGBA | GB, GBC, GBA | yes | https://github.com/libretro/mgba (libretro's tracking fork of https://github.com/mgba-emu/mgba), commit `7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6`, version `0.11-212-7a12d6d` | MPL-2.0 AND BSD-3-Clause | `LICENSE` at that commit is the MPL-2.0 text; source headers: "subject to the terms of the Mozilla Public License, v. 2.0". The libretro core compiles in inih (`src/third-party/inih`, BSD-3-Clause, its `LICENSE.txt` shipped as `mgba-inih-LICENSE.txt`); the other bundled libraries of mGBA's README (LZMA SDK, SQLite3, ...) are not in the libretro build. Compatible with GPL-3.0-or-later. Binaries: Windows x86_64 and Android arm64-v8a **built by EmuDome** from the source archive of that commit (`source.archive` in `cores.lock`, sha256-pinned) with `scripts/build-mgba.ps1` / `scripts/build-mgba.sh` (Trello #88), the buildbot's CMake options, unmodified; the commit is the one the libretro buildbot built on 2026-11-16 and the builds report the same version string. Those builds are published, with the licence and the inih notice, in EmuDome's GitHub release `cores-mgba-7a12d6d` (https://github.com/DomenghiniStefano/emu-dome/releases/tag/cores-mgba-7a12d6d, Trello #95), which the fetch scripts download from. Linux x86_64: still the buildbot nightly of 2026-11-16 (URL not stable, see below) until it is built on Linux (Trello #92). |
 | melonDS DS | NDS | yes | https://github.com/JesseTG/melonds-ds, tag `v1.4.0`, commit `f394adbacb5722ee97c1b37c8064da9a25818310` (on melonDS, https://github.com/melonDS-emu/melonDS) | GPL-3.0-or-later | `LICENSE` at that commit is the GPL-3.0 text; source headers: "either version 3 of the License, or (at your option) any later version". Binaries: the upstream release assets. The release's `melondsds-LICENSE.txt` (shipped as `melondsds-bundled-LICENSES.txt`) carries the licences of what it builds in (melonDS GPL-3.0, Dolphin code under the GPL-2.0 text (Dolphin is GPL-2.0-or-later), FatFs, {fmt}, FreeBIOS, GLM, Open Sans, pcap, pntr, Slirp, teakra, Tiny AES, xxhash, zlib and more): reviewed as compatible. |
 | Azahar | 3DS | no (Phase 3) | https://github.com/azahar-emu/azahar, tag `2126.2`, commit `219d743a1e698101fe1ab8bef43e6563126c3c27`; full source with submodules: the release's `azahar-unified-source-2126.2.tar.xz` | GPL-2.0-or-later AND GPL-3.0-or-later | `license.txt` at that commit is the **GPL-2.0** text, followed by a table of icon licences (CC BY-ND 3.0 / CC0, Qt frontend icons, not in the libretro core). Source headers are mixed: "Licensed under GPLv2 or any later version" (most Citra-era files, e.g. `src/core/hle/service/service.cpp`, `src/citra_libretro/citra_libretro.cpp`) and "Licensed under GPLv3 or any later version" (e.g. `src/core/core.cpp`). The combined core can be conveyed under GPL-3.0-or-later: compatible. Binaries: the upstream release assets. Fetchable (`-Cores azahar`), not packaged yet. |
 
@@ -54,8 +56,13 @@ and the buildbot keeps only `latest/`, so its pinned bytes stopped being downloa
 2026-11-21). EmuDome builds mGBA itself from the pinned source archive (`scripts/core-build.mjs`:
 archive sha256-checked, CMake with the buildbot's options, the result installed only if its sha256 is
 the one `cores.lock` pins for that toolchain; licence and notices taken from the same archive).
-The build needs the toolchain `cores.lock` names to give the pinned bytes; where the built cores
-are hosted for other machines is still open. **Linux x86_64** keeps the buildbot nightly until it is
+The build needs the toolchain `cores.lock` names to give the pinned bytes, so the built files are
+published once in a GitHub release of this repository, `cores-<core>-<first 7 characters of the
+commit>` (Trello #95; `built.release` in `cores.lock`, which `cores.mjs check` holds to that name),
+and every other machine downloads them from there, sha256-checked like any other core. That release
+only hosts the binaries: their Corresponding Source is the pinned upstream source archive with
+EmuDome's build scripts, offered in `cores/SOURCES.md`. How a new pin is built and published:
+`docs/release.md`, «A new pin of a core EmuDome builds». **Linux x86_64** keeps the buildbot nightly until it is
 built on Linux (Trello #92): `cores.mjs verify --package` refuses that entry (`url_stable: false`)
 unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` is set for a local test package; it also lacks the inih
 notice, which only the source build installs.
