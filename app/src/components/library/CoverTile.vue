@@ -7,7 +7,7 @@
 // The cover's click area stops above the action strip, so the controller reaches «Gioca» and
 // «…» by moving down from it (nav.ts moves by rects). The ring is the frame's, so the buttons
 // inside draw none of their own (focus-ring-none / focus-ring-tight, utilities.css).
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Ellipsis, Play } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -27,6 +27,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+const more = ref<InstanceType<typeof Button> | null>(null)
+const moreEl = computed(() => (more.value?.$el as HTMLElement | undefined) ?? null)
 
 const off = computed(() => !props.game.available)
 const meta = computed(() =>
@@ -78,6 +81,7 @@ const meta = computed(() =>
         </Button>
         <div class="relative">
           <Button
+            ref="more"
             :variant="ButtonVariant.Veil"
             :size="ButtonSize.CoverActionIcon"
             class="focus-ring-tight"
@@ -93,6 +97,7 @@ const meta = computed(() =>
             v-if="menuOpen"
             :game="game"
             :items="['favourite', 'hide']"
+            :anchor="moreEl"
             @flags="f => emit('flags', f)"
             @close="emit('closeMenu')"
           />

@@ -224,12 +224,25 @@ function nearest(from: HTMLElement, rect: DOMRect, dir: Direction, within: HTMLE
   return scored.find(c => shown(c.el))?.el ?? null
 }
 
+/**
+ * Entering a radio group from outside lands on its chosen radio, as Tab does: Reka chooses the
+ * radio a keyboard arrow focuses, so landing on the nearest one would change the choice.
+ */
+function entering(to: HTMLElement | null, from: HTMLElement): HTMLElement | null {
+  if (to?.getAttribute('role') !== 'radio') return to
+  const group = to.closest('[role="radiogroup"]')
+  if (!group || group.contains(from)) return to
+  const chosen = group.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+  return chosen && !chosen.matches(':disabled, [data-disabled]') ? chosen : to
+}
+
 function move(root: HTMLElement, dir: Direction) {
   const from = current(root)
   if (!from) return focusInitial(root)
   const rect = from.getBoundingClientRect()
   const box = scrollBox(from, root)
-  focus((box && nearest(from, rect, dir, box)) ?? nearest(from, rect, dir, root))
+  const to = (box && nearest(from, rect, dir, box)) ?? nearest(from, rect, dir, root)
+  focus(entering(to, from))
 }
 
 /** Root the focus moves in now: the deepest scope receiving the steps (not a section). */
@@ -290,18 +303,22 @@ export function dispatchNav(action: NavAction) {
 //   App.vue's listener then ignores by this same rule;
 // - at the ends of a roving group (the primitives turn Reka's looping off) and on the other axis,
 //   nav.ts moves spatially as everywhere else; a slider and an open list have no ends;
-// - Enter on a tab, an option, a select field or a switch is the element's: `confirm` sends it
-//   Enter instead of a click.
+// - Enter on a tab, an option, a select field, a switch or a menu item is the element's:
+//   `confirm` sends it Enter instead of a click.
+// An open DropdownMenu's arrows are nav.ts's: its scope holds the focus and the items are moved
+// among spatially (Reka's own arrow handling did not move between our `as-child` items, measured
+// headless 2026-11-21), so a menu item owns Enter only.
 // docs/specs/2026-11-18-design-system-foundations.md, Decision 6.
 
 /** An item of a Reka roving group or a slider thumb: owns the arrows of its `data-orientation`. */
 const ROVING_ITEM = '[data-reka-collection-item][data-orientation]'
 /** An open Reka listbox (a Select's options): owns every arrow. */
 const OPEN_LIST = '[role="listbox"][data-dismissable-layer]'
-/** Reka elements that act on Enter themselves (`data-state` is Reka's). */
-const ENTER_OWNER = ['tab', 'option', 'combobox', 'switch']
-  .map(role => `[role="${role}"][data-state]`)
-  .join(', ')
+/** Reka elements that act on Enter themselves (`data-state` is Reka's; a menu item has none). */
+const ENTER_OWNER = [
+  ...['tab', 'option', 'combobox', 'switch'].map(role => `[role="${role}"][data-state]`),
+  `[role="menuitem"]`,
+].join(', ')
 
 const ARROW_KEY: Record<Direction, string> = {
   up: 'ArrowUp',

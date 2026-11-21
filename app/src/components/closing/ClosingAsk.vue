@@ -8,13 +8,16 @@ import { TriangleAlert } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { errorText } from '@/i18n/labels'
-import { useNavScope } from '@/nav'
+import { useNavScope, useNavSection } from '@/nav'
 import type { ClosingAsk } from './closing'
 
 const props = withDefaults(
   defineProps<{
     ask: ClosingAsk
-    /** Takes the focus when shown (off on the Kit page, which shows several at once). */
+    /**
+     * Takes the focus and the steps when shown. Off on the Kit page, which shows several among the
+     * other primitives: there it is a part of the page (a nav section), not a scope of its own.
+     */
     focus?: boolean
   }>(),
   { focus: true },
@@ -24,10 +27,10 @@ const { t } = useI18n()
 
 const root = ref<HTMLElement | null>(null)
 const titleId = useId()
-useNavScope(root, {
-  back: () => (props.ask.kind === 'timeout' ? emit('wait') : emit('closeAnyway')),
-  autofocus: props.focus,
-})
+const back = () => (props.ask.kind === 'timeout' ? emit('wait') : emit('closeAnyway'))
+// Read once: whether it is the app's question or a sample on the Kit page does not change.
+if (props.focus) useNavScope(root, { back, autofocus: true })
+else useNavSection(root, { back })
 </script>
 
 <template>

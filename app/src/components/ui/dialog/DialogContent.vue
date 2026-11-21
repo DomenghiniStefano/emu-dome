@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// The dialog's panel over its scrim (FlowDialog): thick glass, 520px at most, centred.
+// The dialog's panel over its scrim: thick glass, centred; 520px at most (FlowDialog), or wide
+// over a blurred screen (`DialogSize.Wide`, L12). `alert`: an alert dialog (the game flow).
 //
 // With the app's navigation:
 // - the first focus goes to the `data-nav-initial` control when there is one (else Reka's first
@@ -12,15 +13,26 @@ import { computed, nextTick, ref } from 'vue'
 import { DialogContent, DialogOverlay, DialogPortal, useForwardPropsEmits } from 'reka-ui'
 import { cn } from '@/lib/cn'
 import DialogNavScope from './DialogNavScope.vue'
+import { DialogSize, dialogContentVariants, dialogOverlayVariants } from './variants'
 
-// Attributes (a `role`, an `aria-*`) go to the panel, not to the portal around it.
+// Attributes (an `aria-*`) go to the panel, not to the portal around it.
 defineOptions({ inheritAttrs: false })
 
-const props = defineProps<DialogContentProps & { class?: HTMLAttributes['class'] }>()
+const props = withDefaults(
+  defineProps<
+    DialogContentProps & {
+      size?: DialogSize
+      /** An alert dialog (`role="alertdialog"`): the game flow's questions. */
+      alert?: boolean
+      class?: HTMLAttributes['class']
+    }
+  >(),
+  { size: DialogSize.Default, alert: false },
+)
 const emits = defineEmits<DialogContentEmits>()
 
 const delegated = computed(() => {
-  const { class: _class, ...rest } = props
+  const { class: _class, size: _size, alert: _alert, ...rest } = props
   return rest
 })
 const forwarded = useForwardPropsEmits(delegated, emits)
@@ -48,17 +60,13 @@ function onClose(e: Event) {
 
 <template>
   <DialogPortal>
-    <DialogOverlay
-      data-slot="dialog-overlay"
-      class="fixed inset-0 z-dialog grid place-items-center bg-scrim p-16"
-    >
+    <DialogOverlay data-slot="dialog-overlay" :class="dialogOverlayVariants({ size })">
       <DialogContent
         ref="content"
         data-slot="dialog-content"
         v-bind="{ ...forwarded, ...$attrs }"
-        :class="
-          cn('glass-thick flex w-full max-w-dialog flex-col gap-12 p-dialog-pad', props.class)
-        "
+        :role="alert ? 'alertdialog' : 'dialog'"
+        :class="cn(dialogContentVariants({ size }), props.class)"
         @open-auto-focus="onOpen"
         @close-auto-focus="onClose"
       >

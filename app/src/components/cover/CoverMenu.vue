@@ -3,16 +3,24 @@
 // game's actions that have a backend today, those listed in `items`. «Scegli la copertina…»
 // opens L12 and is offered from the game details only (Cowork, #40); favourite and hide go
 // through `library.setFlags`.
-// Controller / keyboard: its own nav scope while open; B / Esc / a click outside close it.
-import { ref } from 'vue'
+// On the DropdownMenu primitive, hanging from the parent's «…» button (`anchor`); open while
+// mounted (the parent shows it with `v-if`, so a grid of covers holds no closed menus), closed by
+// the parent on `close` or after an action (each action's own closing, not Reka's, so the focus
+// goes where the parent puts it).
+// Controller / keyboard: the menu's own nav scope while open, the first item focused; B / Esc / a
+// click outside close it.
 import { useI18n } from 'vue-i18n'
 import { EyeOff, Eye, ImageIcon, Star, StarOff } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { useNavScope } from '@/nav'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import type { LibraryGame } from '@/emu'
-import { useDismiss } from '@/components/library/useDismiss'
 
-const props = defineProps<{ game: LibraryGame; items: Array<'cover' | 'favourite' | 'hide'> }>()
+const props = defineProps<{
+  game: LibraryGame
+  items: Array<'cover' | 'favourite' | 'hide'>
+  /** The «…» button the menu hangs from. */
+  anchor: HTMLElement | null
+}>()
 const emit = defineEmits<{
   cover: []
   flags: [{ favourite?: boolean; hidden?: boolean }]
@@ -20,61 +28,48 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-
-const root = ref<HTMLElement | null>(null)
-useNavScope(root, { autofocus: true, escape: true, back: () => emit('close') })
-// The «…» button next to it toggles it itself.
-useDismiss(root, () => emit('close'))
 </script>
 
 <template>
-  <!-- 220px is the menu's own least width. -->
-  <div
-    ref="root"
-    class="glass-thick absolute top-[calc(100%+var(--spacing-6))] right-0 z-raised flex min-w-menu-min flex-col gap-2 p-6"
-    role="menu"
-    :aria-label="t('library.moreFor', { title: props.game.title })"
-  >
-    <Button
-      v-if="props.items.includes('cover')"
-      :variant="ButtonVariant.Menu"
-      :size="ButtonSize.MenuItem"
-      role="menuitem"
-      data-nav-initial
-      @click="emit('cover')"
+  <DropdownMenu :open="true" @update:open="o => o || emit('close')">
+    <DropdownMenuContent
+      :anchor="anchor"
+      :aria-label="t('library.moreFor', { title: props.game.title })"
     >
-      <ImageIcon :size="16" :stroke-width="1.75" aria-hidden="true" />
-      {{ t('library.menu.cover') }}
-    </Button>
-    <Button
-      v-if="props.items.includes('favourite')"
-      :variant="ButtonVariant.Menu"
-      :size="ButtonSize.MenuItem"
-      role="menuitem"
-      @click="emit('flags', { favourite: !props.game.favourite })"
-    >
-      <component
-        :is="props.game.favourite ? StarOff : Star"
-        :size="16"
-        :stroke-width="1.75"
-        aria-hidden="true"
-      />
-      {{ t(props.game.favourite ? 'library.menu.unfavourite' : 'library.menu.favourite') }}
-    </Button>
-    <Button
-      v-if="props.items.includes('hide')"
-      :variant="ButtonVariant.Menu"
-      :size="ButtonSize.MenuItem"
-      role="menuitem"
-      @click="emit('flags', { hidden: !props.game.hidden })"
-    >
-      <component
-        :is="props.game.hidden ? Eye : EyeOff"
-        :size="16"
-        :stroke-width="1.75"
-        aria-hidden="true"
-      />
-      {{ t(props.game.hidden ? 'library.menu.unhide' : 'library.menu.hide') }}
-    </Button>
-  </div>
+      <DropdownMenuItem v-if="props.items.includes('cover')" @select.prevent="emit('cover')">
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem" data-nav-initial>
+          <ImageIcon :size="16" :stroke-width="1.75" aria-hidden="true" />
+          {{ t('library.menu.cover') }}
+        </Button>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        v-if="props.items.includes('favourite')"
+        @select.prevent="emit('flags', { favourite: !props.game.favourite })"
+      >
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
+          <component
+            :is="props.game.favourite ? StarOff : Star"
+            :size="16"
+            :stroke-width="1.75"
+            aria-hidden="true"
+          />
+          {{ t(props.game.favourite ? 'library.menu.unfavourite' : 'library.menu.favourite') }}
+        </Button>
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        v-if="props.items.includes('hide')"
+        @select.prevent="emit('flags', { hidden: !props.game.hidden })"
+      >
+        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
+          <component
+            :is="props.game.hidden ? Eye : EyeOff"
+            :size="16"
+            :stroke-width="1.75"
+            aria-hidden="true"
+          />
+          {{ t(props.game.hidden ? 'library.menu.unhide' : 'library.menu.hide') }}
+        </Button>
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
 </template>

@@ -13,7 +13,11 @@ import { defineComponent, h, nextTick, ref } from 'vue'
 import { dispatchNav, keyToNav, ownsArrow, ownsEnter, useNavScope } from '@/nav'
 import { Button } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Chip } from '@/components/ui/chip'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent } from '@/components/ui/popover'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Dialog,
   DialogClose,
@@ -458,5 +462,194 @@ describe('Dialog (Reka)', () => {
     row([cancel as HTMLElement, confirm as HTMLElement])
     dispatchNav('left')
     expect(document.activeElement).toBe(cancel)
+  })
+})
+
+describe('RadioGroup (Reka)', () => {
+  const mountGroup = () => {
+    const value = ref('b')
+    screen(() =>
+      h('div', [
+        h(Button, { id: 'above' }, () => 'Above'),
+        h(
+          RadioGroup,
+          {
+            modelValue: value.value,
+            'onUpdate:modelValue': (v: unknown) => (value.value = String(v)),
+          },
+          () =>
+            ['a', 'b', 'c'].map(v =>
+              h(RadioGroupItem, { value: v, key: v }, () => h(Button, { id: v }, () => v)),
+            ),
+        ),
+      ]),
+    )
+    return value
+  }
+
+  it('is a radiogroup of radios; the arrows along it are Reka’s, past its ends nav.ts moves', async () => {
+    mountGroup()
+    await settle()
+    const [a, b, c] = all('[role="radio"]')
+    expect(one('[role="radiogroup"]')).toBeTruthy()
+    expect(b?.getAttribute('aria-checked')).toBe('true')
+    expect(ownsArrow(b as HTMLElement, 'right')).toBe(true)
+    expect(ownsArrow(c as HTMLElement, 'right')).toBe(false)
+    expect(ownsArrow(a as HTMLElement, 'left')).toBe(false)
+    expect(ownsArrow(b as HTMLElement, 'down')).toBe(false)
+  })
+
+  it('entering from outside lands on the chosen radio, not the nearest one', async () => {
+    mountGroup()
+    await settle()
+    const above = one('#above')
+    place(above, 0, 0)
+    row(all('[role="radio"]'), 40)
+    above.focus()
+    dispatchNav('down')
+    expect(document.activeElement?.id).toBe('b')
+  })
+
+  it('A chooses the radio focused, once', async () => {
+    const value = mountGroup()
+    await settle()
+    one('#c').focus()
+    dispatchNav('confirm')
+    await settle()
+    expect(value.value).toBe('c')
+  })
+})
+
+describe('Checkbox (Reka)', () => {
+  it('A toggles it once, and Enter on the keyboard too', async () => {
+    const on = ref(false)
+    screen(() =>
+      h(
+        Checkbox,
+        { modelValue: on.value, 'onUpdate:modelValue': () => (on.value = !on.value) },
+        () => h(Button, { id: 'box' }, () => 'Favourites'),
+      ),
+    )
+    await settle()
+    const box = one('#box')
+    expect(box.getAttribute('role')).toBe('checkbox')
+    box.focus()
+    dispatchNav('confirm')
+    await settle()
+    expect(on.value).toBe(true)
+    key(box, 'Enter')
+    await settle()
+    expect(on.value).toBe(false)
+  })
+})
+
+describe('Popover', () => {
+  const mountPopover = (screenBack = vi.fn()) => {
+    const open = ref(false)
+    const anchor = ref<HTMLElement | null>(null)
+    screen(
+      () =>
+        h(Popover, { open: open.value, 'onUpdate:open': (v: boolean) => (open.value = v) }, () => [
+          h(
+            Button,
+            {
+              id: 'toggle',
+              ref: (el: unknown) => (anchor.value = (el as { $el?: HTMLElement })?.$el ?? null),
+              onClick: () => (open.value = !open.value),
+            },
+            () => 'Sort',
+          ),
+          h(PopoverContent, { anchor: anchor.value, 'aria-label': 'Sort and filter' }, () => [
+            h(Button, { id: 'first' }, () => 'Recent'),
+            h(Button, { id: 'second', 'data-nav-initial': '' }, () => 'Title'),
+          ]),
+        ]),
+      screenBack,
+    )
+    return open
+  }
+
+  it('opens on A with its data-nav-initial control focused; B closes it, not the screen', async () => {
+    const screenBack = vi.fn()
+    const open = mountPopover(screenBack)
+    one('#toggle').focus()
+    dispatchNav('confirm')
+    await settle()
+    expect(open.value).toBe(true)
+    expect(one('[aria-label="Sort and filter"]').getAttribute('role')).toBe('dialog')
+    expect(document.activeElement?.id).toBe('second')
+    dispatchNav('back')
+    await settle()
+    expect(open.value).toBe(false)
+    expect(screenBack).not.toHaveBeenCalled()
+  })
+
+  it('keeps the steps inside while open', async () => {
+    mountPopover()
+    one('#toggle').focus()
+    dispatchNav('confirm')
+    await settle()
+    const toggle = one('#toggle')
+    place(toggle, 0, 0)
+    place(one('#first'), 0, 40)
+    place(one('#second'), 0, 80)
+    dispatchNav('up')
+    expect(document.activeElement?.id).toBe('first')
+    dispatchNav('up')
+    expect(document.activeElement?.id).toBe('first')
+  })
+})
+
+describe('DropdownMenu (Reka)', () => {
+  const mountMenu = (screenBack = vi.fn()) => {
+    const open = ref(true)
+    const chosen = vi.fn()
+    screen(
+      () =>
+        open.value
+          ? h(DropdownMenu, { open: true, 'onUpdate:open': (v: boolean) => (open.value = v) }, () =>
+              h(DropdownMenuContent, { anchor: null, 'aria-label': 'More' }, () =>
+                ['fav', 'hide'].map(id =>
+                  h(DropdownMenuItem, { key: id, onSelect: () => chosen(id) }, () =>
+                    h(Button, { id }, () => id),
+                  ),
+                ),
+              ),
+            )
+          : h('span'),
+      screenBack,
+    )
+    return { open, chosen }
+  }
+
+  it('is a menu of menuitems with the first one focused; the steps move among its items only', async () => {
+    mountMenu()
+    await settle()
+    expect(one('[role="menu"]')).toBeTruthy()
+    expect(all('[role="menuitem"]')).toHaveLength(2)
+    expect(document.activeElement?.id).toBe('fav')
+    place(one('#fav'), 0, 0)
+    place(one('#hide'), 0, 40)
+    dispatchNav('down')
+    expect(document.activeElement?.id).toBe('hide')
+    // Its last item: the screen behind is not reached.
+    dispatchNav('down')
+    expect(document.activeElement?.id).toBe('hide')
+  })
+
+  it('A chooses the item once (Reka’s Enter, never a second click); B closes it, not the screen', async () => {
+    const screenBack = vi.fn()
+    const { open, chosen } = mountMenu(screenBack)
+    await settle()
+    expect(ownsEnter(one('#fav'))).toBe(true)
+    dispatchNav('confirm')
+    await settle()
+    expect(chosen.mock.calls).toEqual([['fav']])
+    open.value = true
+    await settle()
+    dispatchNav('back')
+    await settle()
+    expect(open.value).toBe(false)
+    expect(screenBack).not.toHaveBeenCalled()
   })
 })
