@@ -217,7 +217,7 @@ fn run(app: &tauri::AppHandle, bench: &Bench) -> (i32, Value) {
         let wait = Duration::from_secs_f64(after).saturating_sub(first_at.elapsed());
         std::thread::sleep(wait);
         log::info!("bench: opening the quick menu");
-        let _ = app.emit("emu://menu", ());
+        let _ = app.emit(crate::events::MENU, ());
     }
     let warmup = Duration::from_secs_f64(bench.config.warmup_seconds);
     std::thread::sleep(warmup.saturating_sub(first_at.elapsed()));

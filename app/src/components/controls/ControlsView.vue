@@ -12,7 +12,7 @@
 // Controller: the shell's nav scope; this section's own steps (nav.ts `useNavSection`): L1 / R1
 // change tab one step below C01, back goes from there to C01; on C01 back is left to the shell
 // (the rail).
-// The tester and the capture field read `emu://pad-state`, watched while this section is open.
+// The tester and the capture field read `emu://gamepad-state`, watched while this section is open.
 //
 // TODO(E06, Trello): unknown controller banner and guided setup (14 buttons, saved as an SDL
 // mapping). SDL opens as gamepads only the controllers it has a mapping for, so an unknown one

@@ -767,7 +767,7 @@
   try {
     localStorage.setItem("emudome.menuHintShown", "99");
   } catch {}
-  // A scenario step fires a backend event (`emu://pad-state`, …) to the page's listeners.
+  // A scenario step fires a backend event (`emu://gamepad-state`, …) to the page's listeners.
   // `__mockEmit` (Controls) and `__emit` (the shell, the quick menu: `__emit('emu://menu')`)
   // are the same.
   window.__mockEmit = window.__emit = (event, payload = null) => {
@@ -814,7 +814,7 @@
       }
       if (cmd === "list_slots") return listSlots(args.count);
       if (cmd === "save_state")
-        setTimeout(() => window.__emit("emu://event", { type: "stateSaved", slot: args.slot }), 50);
+        setTimeout(() => window.__emit("emu://session", { type: "stateSaved", slot: args.slot }), 50);
       if (cmd === "plugin:event|unlisten") return null;
       if (cmd === "settings_page")
         return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);

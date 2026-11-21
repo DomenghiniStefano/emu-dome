@@ -53,7 +53,7 @@ pub(crate) struct CoreRestart<'a> {
 }
 
 fn emit_restart(app: &AppHandle, settings: &[&'static str]) {
-    if let Err(e) = app.emit("emu://core-restart", CoreRestart { settings }) {
+    if let Err(e) = app.emit(crate::events::CORE_RESTART, CoreRestart { settings }) {
         log::warn!("emu://core-restart: {e}");
     }
 }

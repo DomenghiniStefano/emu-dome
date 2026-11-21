@@ -2,6 +2,6 @@
 import type { ErrorCode } from "./ErrorCode";
 
 /**
- * What the emulation thread tells the interface (`session::Event`, `emu://event`).
+ * What the emulation thread tells the interface (`session::Event`, `emu://session`).
  */
 export type EmuEvent = { "type": "started", core: string, game: string, fps: number, width: number, height: number, } | { "type": "stateSaved", slot: number, } | { "type": "stateLoaded", slot: number, } | { "type": "loadUndone" } | { "type": "saveUndone", slot: number, } | { "type": "screenshotSaved", path: string, } | { "type": "error", error: ErrorCode, } | { "type": "stopped" };

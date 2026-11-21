@@ -173,7 +173,7 @@ pub fn plan(
 pub fn emit_fallbacks(app: &AppHandle, fallbacks: &[ErrorCode]) {
     for code in fallbacks {
         log::warn!("system files: {code:?}");
-        if let Err(e) = app.emit("emu://bios-fallback", code) {
+        if let Err(e) = app.emit(crate::events::BIOS_FALLBACK, code) {
             log::warn!("emu://bios-fallback: {e}");
         }
     }

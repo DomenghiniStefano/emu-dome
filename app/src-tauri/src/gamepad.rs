@@ -19,7 +19,7 @@
 //! Events to the interface:
 //! - `emu://gamepad-connected`, `emu://gamepad-disconnected`: a [`PadInfo`];
 //! - `emu://gamepad-changed`: a [`PadInfo`] whose battery charge changed;
-//! - `emu://pad-state`: a [`PadStates`], while the interface watches (`gamepad_watch`);
+//! - `emu://gamepad-state`: a [`PadStates`], while the interface watches (`gamepad_watch`);
 //! - the router's actions (`emu://menu`, `emu://nav`, `emu://hotkey`) through the shortcuts'
 //!   runner shared with the keyboard (`hotkeys.rs`).
 
@@ -67,7 +67,7 @@ use tauri::{AppHandle, Emitter};
 use crate::health::{Part, SharedHealth};
 use crate::hotkeys::{HotkeyRunner, Origin};
 use crate::pads::{self, PadInfo, PadState, PadStates, PadsState};
-use crate::CurrentShared;
+use crate::{events, CurrentShared};
 
 /// SDL's buttons by position.
 const MAP: &[(SDL_GamepadButton, Pos)] = &[
@@ -100,7 +100,7 @@ const AXES: [SDL_GamepadAxis; 6] = [
 /// How often the controllers are read.
 const POLL: Duration = Duration::from_millis(4);
 
-/// `emu://pad-state` at most this often (a stick moves at every poll).
+/// `emu://gamepad-state` at most this often (a stick moves at every poll).
 const STATE_EVERY: Duration = Duration::from_millis(16);
 
 /// An open controller. The pointer stays valid until `SDL_CloseGamepad`.
@@ -258,7 +258,7 @@ fn run(
             if kind == SDL_EVENT_GAMEPAD_ADDED {
                 let id = unsafe { event.gdevice.which };
                 if let Some(pad) = open(id, &config) {
-                    emit(&app, "emu://gamepad-connected", pad.info.clone());
+                    emit(&app, events::GAMEPAD_CONNECTED, pad.info.clone());
                     shared_pads.list.lock().push(pad.info.clone());
                     pads.push(pad);
                 }
@@ -279,7 +279,7 @@ fn run(
                                 listed.battery = battery;
                             }
                         }
-                        emit(&app, "emu://gamepad-changed", pad.info.clone());
+                        emit(&app, events::GAMEPAD_CHANGED, pad.info.clone());
                     }
                 }
             } else if kind == SDL_EVENT_GAMEPAD_REMOVED {
@@ -288,7 +288,7 @@ fn run(
                     let pad = pads.remove(i);
                     log::info!("controller disconnected: {}", pad.log_name());
                     shared_pads.list.lock().retain(|p| p.id != pad.info.id);
-                    emit(&app, "emu://gamepad-disconnected", pad.info.clone());
+                    emit(&app, events::GAMEPAD_DISCONNECTED, pad.info.clone());
                     // SAFETY: opened by `open`, closed only once.
                     unsafe { SDL_CloseGamepad(pad.raw) };
                 }
@@ -317,7 +317,7 @@ fn run(
             };
             let now = Instant::now();
             if last_state.as_ref() != Some(&states) && now - last_state_at >= STATE_EVERY {
-                emit(&app, "emu://pad-state", states.clone());
+                emit(&app, events::GAMEPAD_STATE, states.clone());
                 last_state = Some(states);
                 last_state_at = now;
             }

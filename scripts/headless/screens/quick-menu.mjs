@@ -19,7 +19,7 @@ const STATES = {
   "nds-controller": {
     mock: { slots: "full", game: "nds" },
     steps: [
-      `window.__emit('emu://event', { type: 'stateLoaded', slot: 2 })`,
+      `window.__emit('emu://session',{ type: 'stateLoaded', slot: 2 })`,
       controllerMenu,
     ],
   },

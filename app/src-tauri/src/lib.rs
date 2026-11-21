@@ -209,7 +209,7 @@ fn say_core_needs_restart(app: &tauri::AppHandle, core: &str) {
     let error = Event::Error {
         error: ErrorCode::CoreNeedsRestart { core: core.into() },
     };
-    if let Err(e) = app.emit(events::EMU_EVENT, error) {
+    if let Err(e) = app.emit(events::SESSION, error) {
         log::warn!("coreNeedsRestart not sent to the interface: {e}");
     }
 }

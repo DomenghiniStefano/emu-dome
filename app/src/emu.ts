@@ -31,6 +31,7 @@ import type { GameSaves } from '@/generated/app/GameSaves'
 import type { HotkeyEvent } from '@/generated/app/HotkeyEvent'
 import type { ImportCandidate } from '@/generated/app/ImportCandidate'
 import type { Library } from '@/generated/app/Library'
+import type { LibraryChanged } from '@/generated/app/LibraryChanged'
 import type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
 import type { PadInfo } from '@/generated/app/PadInfo'
 import type { PadState } from '@/generated/app/PadState'
@@ -103,6 +104,7 @@ export type { ImportCandidate } from '@/generated/app/ImportCandidate'
 export type { Library } from '@/generated/app/Library'
 export type { LibraryFolder } from '@/generated/app/LibraryFolder'
 export type { LibraryGame } from '@/generated/app/LibraryGame'
+export type { LibraryChanged } from '@/generated/app/LibraryChanged'
 export type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
 export type { PadInfo } from '@/generated/app/PadInfo'
 export type { PadState } from '@/generated/app/PadState'
@@ -251,8 +253,10 @@ export const emu = {
     setName: (id: GameId, name: string) => invoke<void>('library_set_name', { id, name }),
     onScan: (cb: (e: LibraryScanEvent) => void): Promise<UnlistenFn> =>
       listen<LibraryScanEvent>('library://scan', e => cb(e.payload)),
-    /** Something in the library changed (scan, cover, flags, play time): call `get` again. */
-    onChanged: (cb: () => void): Promise<UnlistenFn> => listen('library://changed', () => cb()),
+    /** What changed in the library: some games' rows (cover, flags, name, play time), or all of
+     * it (a scan, a folder removed). */
+    onChanged: (cb: (e: LibraryChanged) => void): Promise<UnlistenFn> =>
+      listen<LibraryChanged>('library://changed', e => cb(e.payload)),
     /** Files or folders dragged over the window: `over` while hovering, `drop` with the paths, `leave`. */
     onDragDrop: (
       cb: (e: { type: 'over' } | { type: 'drop'; paths: string[] } | { type: 'leave' }) => void,
@@ -299,7 +303,7 @@ export const emu = {
     done: () => invoke<void>('first_run_done'),
   },
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
-    listen<EmuEvent>('emu://event', e => cb(e.payload)),
+    listen<EmuEvent>('emu://session', e => cb(e.payload)),
   onMenu: (cb: () => void): Promise<UnlistenFn> => listen('emu://menu', () => cb()),
   onNav: (cb: (action: NavAction) => void): Promise<UnlistenFn> =>
     listen<{ action: NavAction }>('emu://nav', e => cb(e.payload.action)),
@@ -348,6 +352,6 @@ export const emu = {
     bindings: (family: PadFamily, scope: SettingsScope) =>
       invoke<ControlsBindings>('controls_bindings', { family, scope }),
     onPadState: (cb: (pads: PadState[]) => void): Promise<UnlistenFn> =>
-      listen<{ pads: PadState[] }>('emu://pad-state', e => cb(e.payload.pads)),
+      listen<{ pads: PadState[] }>('emu://gamepad-state', e => cb(e.payload.pads)),
   },
 }

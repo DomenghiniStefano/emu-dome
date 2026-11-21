@@ -172,7 +172,7 @@ enum SpeedShape {
 }
 shadow_ts!(crate::Speed => SpeedShape);
 
-/// What the emulation thread tells the interface (`session::Event`, `emu://event`).
+/// What the emulation thread tells the interface (`session::Event`, `emu://session`).
 #[derive(serde::Serialize, TS)]
 #[serde(tag = "type", rename_all = "camelCase")]
 #[ts(rename = "EmuEvent")]

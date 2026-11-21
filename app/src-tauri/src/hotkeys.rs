@@ -22,7 +22,7 @@ use tauri::{AppHandle, Emitter};
 use ts_rs::TS;
 
 use crate::pads::{self, PadsState};
-use crate::CurrentShared;
+use crate::{events, CurrentShared};
 
 /// The speed the toggles go back to. Fast forward and slow motion come from the settings
 /// (`speed.ffval`, `speed.slow`, read into `PadConfig`).
@@ -206,7 +206,7 @@ impl Runner {
 
     fn run(&mut self, action: Action, from: Origin) {
         match action {
-            Action::Nav(nav) => self.emit("emu://nav", NavEvent { action: nav }),
+            Action::Nav(nav) => self.emit(events::NAV, NavEvent { action: nav }),
             Action::Press(hotkey) => self.press(hotkey, from),
             Action::Release(hotkey) => self.release(hotkey, from),
         }
@@ -214,7 +214,7 @@ impl Runner {
 
     fn press(&mut self, hotkey: Hotkey, from: Origin) {
         match hotkey {
-            Hotkey::ToggleMenu => self.emit("emu://menu", ()),
+            Hotkey::ToggleMenu => self.emit(events::MENU, ()),
             Hotkey::SaveState => {
                 self.send(Command::SaveState(self.pads.slot()));
             }
@@ -223,25 +223,25 @@ impl Runner {
             }
             Hotkey::NextSlot | Hotkey::PreviousSlot => {
                 let slot = self.pads.step_slot(hotkey == Hotkey::NextSlot);
-                self.emit("emu://hotkey", HotkeyEvent::Slot { slot });
+                self.emit(events::HOTKEY, HotkeyEvent::Slot { slot });
             }
             Hotkey::FastForwardHold => {
                 if self.turbo_restore.is_none() {
                     let before = self.speed();
                     if self.send(Command::SetSpeed(self.fast_forward)) {
                         self.turbo_restore = Some(before);
-                        self.emit("emu://hotkey", HotkeyEvent::Turbo { held: true });
+                        self.emit(events::HOTKEY, HotkeyEvent::Turbo { held: true });
                     }
                 }
                 self.turbo_holders.press(from);
             }
             Hotkey::FastForwardToggle => self.toggle_speed(self.fast_forward),
             Hotkey::SlowMotionToggle => self.toggle_speed(self.slow_motion),
-            Hotkey::FpsOverlay => self.emit("emu://hotkey", HotkeyEvent::Fps),
+            Hotkey::FpsOverlay => self.emit(events::HOTKEY, HotkeyEvent::Fps),
             Hotkey::Pause => {
                 let paused = !self.paused();
                 if self.send(Command::SetPaused(paused)) {
-                    self.emit("emu://hotkey", HotkeyEvent::Paused { paused });
+                    self.emit(events::HOTKEY, HotkeyEvent::Paused { paused });
                 }
             }
             Hotkey::Rewind => {
@@ -265,7 +265,7 @@ impl Runner {
                 if self.turbo_holders.release(from) {
                     if let Some(before) = self.turbo_restore.take() {
                         self.send(Command::SetSpeed(before));
-                        self.emit("emu://hotkey", HotkeyEvent::Turbo { held: false });
+                        self.emit(events::HOTKEY, HotkeyEvent::Turbo { held: false });
                     }
                 }
             }
@@ -299,7 +299,7 @@ impl Runner {
             target
         };
         if self.send(Command::SetSpeed(speed)) {
-            self.emit("emu://hotkey", HotkeyEvent::Speed { speed });
+            self.emit(events::HOTKEY, HotkeyEvent::Speed { speed });
         }
     }
 

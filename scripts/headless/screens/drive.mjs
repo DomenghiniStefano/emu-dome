@@ -391,7 +391,7 @@ const button = (text) =>
   `[...document.querySelectorAll('button, [role=radio]')].find(b => b.textContent.includes(${JSON.stringify(text)}))`;
 const tab = (n) => pointerPress(`document.querySelectorAll('[role=tab]')[${n}]`);
 const padState = (held, axes = [0, 0, 0, 0, 0, 0]) =>
-  `__mockEmit('emu://pad-state', { pads: [{ id: 1, held: ${JSON.stringify(held)}, axes: ${JSON.stringify(axes)} }] })`;
+  `__mockEmit('emu://gamepad-state',{ pads: [{ id: 1, held: ${JSON.stringify(held)}, axes: ${JSON.stringify(axes)} }] })`;
 const remapChip = (n) =>
   pointerPress(
     `document.querySelectorAll('[aria-label*="Press to change it"]')[${n}]`,

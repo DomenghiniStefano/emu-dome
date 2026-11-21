@@ -125,7 +125,7 @@ fn feed(app: &AppHandle, state: &AppState, input: Input) -> bool {
         match action {
             Action::Proceed => proceed = true,
             Action::Show(progress) => {
-                if let Err(e) = app.emit("emu://closing", &progress) {
+                if let Err(e) = app.emit(crate::events::CLOSING, &progress) {
                     log::warn!("closing progress not sent to the interface: {e}");
                 }
             }

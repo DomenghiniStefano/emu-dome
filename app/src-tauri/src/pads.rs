@@ -7,7 +7,7 @@
 //! `gamepad_capture`, `controls_bindings`.
 //! Events: `emu://gamepad-connected` / `emu://gamepad-disconnected` (a [`PadInfo`]),
 //! `emu://gamepad-changed` (a [`PadInfo`] whose battery changed),
-//! `emu://pad-state` (a [`PadStates`], only while the interface watches).
+//! `emu://gamepad-state` (a [`PadStates`], only while the interface watches).
 
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
@@ -50,7 +50,7 @@ pub struct PadState {
     pub axes: [i16; 6],
 }
 
-/// Payload of `emu://pad-state`.
+/// Payload of `emu://gamepad-state`.
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
 #[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
 #[ts(export_to = "app/")]
@@ -62,7 +62,7 @@ pub struct PadStates {
 #[derive(Default)]
 pub struct Pads {
     pub list: Mutex<Vec<PadInfo>>,
-    /// The interface shows the tester: send `emu://pad-state`.
+    /// The interface shows the tester: send `emu://gamepad-state`.
     pub watch: AtomicBool,
     /// The interface is capturing a button: the router acts on nothing (no game, no menu).
     pub capture: AtomicBool,
@@ -132,7 +132,7 @@ pub fn gamepad_list(pads: State<'_, PadsState>) -> Vec<PadInfo> {
     pads.list.lock().clone()
 }
 
-/// While on, `emu://pad-state` carries every change of the controllers (tester, capture).
+/// While on, `emu://gamepad-state` carries every change of the controllers (tester, capture).
 #[tauri::command]
 pub fn gamepad_watch(pads: State<'_, PadsState>, on: bool) {
     pads.watch.store(on, Ordering::Relaxed);

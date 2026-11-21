@@ -20,6 +20,7 @@ fn generate() -> Result<Generated, String> {
     g.ts::<crate::hotkeys::HotkeyEvent>()?;
     g.ts::<crate::core_settings::CoreRestart<'static>>()?;
     g.ts::<crate::library::LibraryDto>()?;
+    g.ts::<crate::library::LibraryChanged>()?;
     g.ts::<crate::library::ScanEvent>()?;
     g.ts::<crate::migration::Status>()?;
     g.ts::<crate::saves::SummaryDto>()?;

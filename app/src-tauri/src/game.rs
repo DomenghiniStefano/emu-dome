@@ -186,7 +186,7 @@ fn open_path(
     let app_events = app.clone();
     std::thread::spawn(move || {
         for ev in rx {
-            let _ = app_events.emit(crate::events::EMU_EVENT, ev);
+            let _ = app_events.emit(crate::events::SESSION, ev);
         }
     });
 

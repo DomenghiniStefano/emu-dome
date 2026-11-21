@@ -1,12 +1,21 @@
 // The game library as the interface sees it (boards L01–L03, L11, E01): one reactive copy of
-// `emu.library.get`, refreshed on `library://changed`, plus the scan progress from
-// `library://scan`. App.vue starts it once (`startLibrary`); the screens read `library`.
+// `emu.library.get`, kept up to date by `library://changed` (the rows that changed, or the whole
+// library), plus the scan progress from `library://scan`. App.vue starts it once
+// (`startLibrary`); the screens read `library`.
 //
-// The games list is replaced as a whole on every load and never changed in place, so it is kept
+// The games list is replaced as a whole on every change and never changed in place, so it is kept
 // out of Vue's deep reactivity (`markRaw`): assigning a new list is what the screens react to, and
 // a library of thousands of games is not wrapped in proxies object by object on each change.
 import { markRaw, reactive } from 'vue'
-import { emu, type ConsoleId, type GameId, type LibraryFolder, type LibraryGame } from '@/emu'
+import {
+  emu,
+  type ConsoleId,
+  type GameId,
+  type Library,
+  type LibraryChanged,
+  type LibraryFolder,
+  type LibraryGame,
+} from '@/emu'
 import { errorText } from '@/i18n/labels'
 import { latest } from '@/lib/latest'
 
@@ -33,23 +42,40 @@ export const library = reactive({
 
 let before: Set<GameId> | null = null
 
-// Rule 7: `library://changed` comes in bursts (a scan, play time); only the newest answer counts.
+// Rule 7: only the newest answer counts; a change event is newer than any `get` still on its way.
 const reloads = latest()
+
+function apply(l: Library) {
+  library.games = markRaw(l.games)
+  library.folders = l.folders
+  library.scanning = l.scanning
+  library.error = null
+  library.loaded = true
+}
 
 export async function reloadLibrary() {
   const fresh = reloads.next()
   try {
     const l = await emu.library.get()
     if (!fresh()) return
-    library.games = markRaw(l.games)
-    library.folders = l.folders
-    library.scanning = l.scanning
-    library.error = null
+    apply(l)
   } catch (e) {
     if (!fresh()) return
     library.error = errorText(e)
+    library.loaded = true
   }
-  library.loaded = true
+}
+
+/**
+ * `library://changed`: the whole library replaces ours, or each row sent replaces the row with its
+ * id (a new list either way; ids the list does not show are left out).
+ */
+export function applyLibraryChange(change: LibraryChanged) {
+  // Any `get` still answering is older than this.
+  reloads.next()
+  if (change.kind === 'all') return apply(change.library)
+  const rows = new Map(change.games.map(g => [g.id, g]))
+  library.games = markRaw(library.games.map(g => rows.get(g.id) ?? g))
 }
 
 async function scanDone(added: number) {
@@ -75,7 +101,7 @@ async function scanDone(added: number) {
  */
 export async function startLibrary(): Promise<() => void> {
   const subscriptions = [
-    emu.library.onChanged(() => void reloadLibrary()),
+    emu.library.onChanged(applyLibraryChange),
     emu.library.onScan(e => {
       switch (e.phase) {
         case 'started':
