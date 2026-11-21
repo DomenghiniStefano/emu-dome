@@ -43,6 +43,19 @@ impl Recorded {
             .find(|(n, _)| n == name)
             .map(|(_, v)| v)
     }
+
+    /// A value of the query string, decoded.
+    pub fn query_value(&self, name: &str) -> Option<String> {
+        let query = self.target.split_once('?').map_or("", |(_, q)| q);
+        url::form_urlencoded::parse(query.as_bytes())
+            .into_owned()
+            .find(|(n, _)| n == name)
+            .map(|(_, v)| v)
+    }
+
+    pub fn json(&self) -> serde_json::Value {
+        serde_json::from_slice(&self.body).unwrap()
+    }
 }
 
 /// An answer.
@@ -68,6 +81,11 @@ impl Reply {
             headers: Vec::new(),
             body: body.to_vec(),
         }
+    }
+
+    pub fn with_header(mut self, name: &str, value: &str) -> Self {
+        self.headers.push((name.into(), value.into()));
+        self
     }
 }
 
@@ -177,4 +195,38 @@ async fn read_request(stream: &mut TcpStream, buf: &mut Vec<u8>) -> Option<Recor
         headers,
         body,
     })
+}
+
+/// A fresh folder under the system temp dir, removed when dropped (as emudome-core's).
+pub struct TestDir(std::path::PathBuf);
+
+impl TestDir {
+    pub fn new(name: &str) -> Self {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static NEXT: AtomicU32 = AtomicU32::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "emudome-sync-test-{name}-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        Self(dir)
+    }
+
+    pub fn path(&self, rel: &str) -> std::path::PathBuf {
+        self.0.join(rel)
+    }
+
+    pub fn write(&self, rel: &str, bytes: &[u8]) {
+        let path = self.path(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, bytes).unwrap();
+    }
+}
+
+impl Drop for TestDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
 }

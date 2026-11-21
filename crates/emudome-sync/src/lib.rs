@@ -9,8 +9,12 @@
 //!   redirect on `127.0.0.1:<random port>`, PKCE S256, scope `drive.file` only), the refresh
 //!   token kept in the credential store, access tokens refreshed in memory.
 //! - [`http`]: the one HTTP client (reqwest, rustls with ring, the system's root certificates).
+//! - [`drive`]: Drive as the sync sees it ([`drive::DriveApi`]), over REST v3
+//!   ([`drive::rest::RestDrive`]: multipart uploads for small files, resumable ones in chunks
+//!   for big files) and in memory for the tests ([`drive::fake::FakeDrive`]).
 
 pub mod auth;
+pub mod drive;
 mod error;
 pub mod http;
 pub mod loopback;
