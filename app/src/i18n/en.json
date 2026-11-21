@@ -272,6 +272,7 @@
     "gameUnidentified": "This file isn’t a game EmuDome can recognise: its header doesn’t match its console. Check that it’s a complete, working dump. Details: {detail}",
     "gameEncrypted": "This 3DS game is encrypted, and EmuDome plays decrypted games only. Decrypt it with your own console, then open it again.",
     "savePathTooLong": "This game can’t start: its save folder ({folder}) is too deep. The emulator needs paths of {length} characters there, and Windows allows {limit}. Turn on long paths in Windows (the “Enable Win32 long paths” policy), restart EmuDome, then open the game again.",
+    "saveFolderUnavailable": "This game can’t start: couldn’t create its save folder ({folder}). Check that EmuDome’s data folder is on a connected drive and writable, then open the game again. Details: {detail}",
     "savesMigrationFailed": "Couldn’t move your old saves to their new place. Nothing was lost: they stay where they were and EmuDome tries again at the next start. Details: {detail}",
     "savesMigrationIncomplete": "Your saves moved to their new place, but {left} old files couldn’t be matched to one game for sure and stayed where they were. See the list in {report}.",
     "dataMoveFailed": "Couldn’t copy your data to EmuDome’s new folder. Nothing was lost: for now EmuDome keeps using the old folder ({old}) and tries again at the next start. Details: {detail}",
@@ -289,6 +290,7 @@
     "videoSurfaceFailed": "Couldn’t draw on the screen ({detail}), so the game isn’t shown. Switch to another app and back, or restart EmuDome.",
     "audioUnavailable": "No sound: the audio output can’t be used ({detail}). EmuDome keeps trying; check that speakers or headphones are connected.",
     "controllersUnavailable": "Controllers can’t be used this time ({detail}). Use the keyboard, or restart EmuDome to try again.",
+    "coreSavedOutsideGame": "Your last 3DS session couldn’t reach the game’s save folder, so the emulator saved into its own folder ({folder}), shared by every 3DS game. That progress isn’t with the game’s saves. Don’t delete that folder; check that EmuDome’s data folder is writable, then open the game again.",
     "threadStopped": "Part of EmuDome stopped after an internal error ({thread}). Save from the quick menu if you can, then restart EmuDome."
   },
   "consoleShort": {

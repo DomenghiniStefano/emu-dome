@@ -51,6 +51,10 @@ pub enum ErrorCode {
         length: usize,
         limit: usize,
     },
+    /// The game's save folder (`folder`) could not be created (no permission, a file in its
+    /// place, a disconnected drive): the game does not start, since its core would write its
+    /// saves elsewhere (Azahar: its own folder, shared by every game; Trello #97).
+    SaveFolderUnavailable { folder: String, detail: String },
     /// A game on this core stopped answering and was let go (E11): its thread may still hold
     /// the core, so the core cannot open another game until EmuDome is restarted. `core` is the
     /// core's name (e.g. `mgba`).
@@ -171,6 +175,11 @@ pub enum ErrorCode {
     AudioUnavailable { detail: String },
     /// Health: the controllers cannot be used in this run (SDL did not start).
     ControllersUnavailable { detail: String },
+    /// Health: the last game on `core` (`azahar`) could not reach its save folder and wrote into
+    /// the core's own user folder (`folder`) instead, shared by every game of that core: the
+    /// progress of that session is there, not with the game's saves (Trello #97). Seen by
+    /// comparing that folder before and after the session; EmuDome never writes or deletes there.
+    CoreSavedOutsideGame { core: String, folder: String },
     /// Health: a part of EmuDome (`thread`: `video`, `audio`, `controllers`) stopped after an
     /// internal error (a panic caught in a build that unwinds; a release build aborts instead).
     ThreadStopped { thread: String },
@@ -191,6 +200,12 @@ impl crate::StartError {
             crate::StartError::RomUnreadable { detail } => ErrorCode::RomUnreadable { detail },
             crate::StartError::CoreRefusedGame => ErrorCode::CoreRefusedGame,
             crate::StartError::ThreadFailed { detail } => ErrorCode::OpenFailed { detail },
+            crate::StartError::SaveFolderUnavailable { folder, detail } => {
+                ErrorCode::SaveFolderUnavailable {
+                    folder: folder.display().to_string(),
+                    detail,
+                }
+            }
         }
     }
 }
@@ -253,6 +268,15 @@ mod tests {
         assert_eq!(
             serde_json::to_value(ErrorCode::CoreRefusedGame).unwrap(),
             serde_json::json!({ "code": "coreRefusedGame" })
+        );
+        assert_eq!(
+            serde_json::to_value(code(StartError::SaveFolderUnavailable {
+                folder: "saves/3ds/00".into(),
+                detail: "denied".into(),
+            }))
+            .unwrap(),
+            serde_json::json!({ "code": "saveFolderUnavailable",
+                "params": { "folder": "saves/3ds/00", "detail": "denied" } })
         );
     }
 

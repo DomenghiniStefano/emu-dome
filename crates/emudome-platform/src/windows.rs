@@ -21,6 +21,9 @@ pub fn extra_core_dirs() -> Vec<PathBuf> {
     Vec::new()
 }
 
+/// Azahar's default user folder: next to the executable, else Roaming AppData.
+pub const AZAHAR_LAYOUT: crate::azahar::Layout = crate::azahar::Layout::Windows;
+
 /// Game drawn natively under the transparent webview: to be verified in Phase 0.
 pub const NATIVE_VIDEO_DEFAULT: bool = true;
 

@@ -10,6 +10,7 @@ use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, WindowHandle,
 };
 
+mod azahar;
 mod cores;
 mod cpu;
 mod paths;
@@ -48,6 +49,14 @@ pub fn native_video_default() -> bool {
 /// reports; `None` where the system does not say.
 pub fn process_cpu_time() -> Option<std::time::Duration> {
     cpu::process_cpu_time()
+}
+
+/// The folders Azahar writes its whole user tree (emulated NAND, SD card, states) into when it
+/// cannot reach the save directory EmuDome gives it: its own default user folder on this system,
+/// every candidate, the one it would pick first first (Trello #97; how they were read from
+/// Azahar's source: `azahar.rs`). Only to look at: EmuDome never writes or deletes there.
+pub fn azahar_user_dirs() -> Vec<PathBuf> {
+    azahar::user_dirs(imp::AZAHAR_LAYOUT, &azahar::Places::from_env())
 }
 
 /// System name, for logs and diagnostics.

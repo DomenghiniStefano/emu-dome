@@ -173,7 +173,7 @@ fn start(app: &AppHandle, state: &AppState) {
 fn worker(app: &AppHandle) {
     let state = app.state::<AppState>();
     loop {
-        let written = {
+        let (written, after_end) = {
             let mut closing = state.closer.closing.lock();
             let Some(current) = closing.as_mut() else {
                 // Let go («Close anyway») or closed by the last resort: nothing to report.
@@ -181,11 +181,16 @@ fn worker(app: &AppHandle) {
             };
             // Once it answers, the game's files are free again (the Saves screen refused them).
             let written = current.wait(POLL);
-            if written.is_some() {
-                closing.take();
-            }
-            written
+            let after_end = match written {
+                Some(_) => closing.take().and_then(|mut ended| ended.take_after_end()),
+                None => None,
+            };
+            (written, after_end)
         };
+        // What the session left behind is looked at once its thread ended, off the lock.
+        if let Some(check) = after_end {
+            check();
+        }
         match written {
             Some(written) => {
                 let input = match written {

@@ -40,6 +40,10 @@ pub enum StartError {
     CoreRefusedGame,
     /// The emulation thread could not be started, or ended while starting.
     ThreadFailed { detail: String },
+    /// The game's save folder ([`GameFiles::dir`]) could not be created. Refused before the core
+    /// loads: a core that cannot reach it writes elsewhere (Azahar falls back to its own user
+    /// folder, shared by every game; Trello #97).
+    SaveFolderUnavailable { folder: PathBuf, detail: String },
 }
 
 impl std::fmt::Display for StartError {
@@ -54,6 +58,13 @@ impl std::fmt::Display for StartError {
             StartError::CoreRefusedGame => write!(f, "the core refused the game"),
             StartError::ThreadFailed { detail } => {
                 write!(f, "the emulation thread failed: {detail}")
+            }
+            StartError::SaveFolderUnavailable { folder, detail } => {
+                write!(
+                    f,
+                    "cannot create the save folder {}: {detail}",
+                    folder.display()
+                )
             }
         }
     }

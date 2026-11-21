@@ -272,6 +272,7 @@
     "gameUnidentified": "Questo file non è un gioco che EmuDome riconosce: la sua intestazione non corrisponde alla console. Controlla che sia un dump completo e funzionante. Dettagli: {detail}",
     "gameEncrypted": "Questo gioco 3DS è criptato ed EmuDome avvia solo giochi decriptati. Decriptalo con la tua console, poi aprilo di nuovo.",
     "savePathTooLong": "Questo gioco non può partire: la sua cartella dei salvataggi ({folder}) è troppo profonda. L’emulatore ha bisogno lì di percorsi da {length} caratteri e Windows ne accetta {limit}. Attiva i percorsi lunghi in Windows (il criterio «Abilita percorsi lunghi Win32»), riavvia EmuDome, poi apri di nuovo il gioco.",
+    "saveFolderUnavailable": "Questo gioco non può partire: non riesco a creare la sua cartella dei salvataggi ({folder}). Controlla che la cartella dei dati di EmuDome sia su un disco collegato e scrivibile, poi apri di nuovo il gioco. Dettagli: {detail}",
     "savesMigrationFailed": "Non riesco a spostare i tuoi vecchi salvataggi al loro nuovo posto. Non hai perso nulla: restano dov’erano e EmuDome riprova al prossimo avvio. Dettagli: {detail}",
     "savesMigrationIncomplete": "I tuoi salvataggi sono al loro nuovo posto, ma {left} vecchi file non si possono assegnare con certezza a un gioco e sono rimasti dov’erano. Trovi l’elenco in {report}.",
     "dataMoveFailed": "Non riesco a copiare i tuoi dati nella nuova cartella di EmuDome. Non hai perso nulla: per ora EmuDome continua a usare la vecchia cartella ({old}) e riprova al prossimo avvio. Dettagli: {detail}",
@@ -289,6 +290,7 @@
     "videoSurfaceFailed": "Non riesco a disegnare sullo schermo ({detail}), quindi il gioco non si vede. Passa a un’altra app e torna qui, oppure riavvia EmuDome.",
     "audioUnavailable": "Niente audio: non riesco a usare l’uscita audio ({detail}). EmuDome continua a riprovare; controlla che casse o cuffie siano collegate.",
     "controllersUnavailable": "Questa volta non riesco a usare i controller ({detail}). Usa la tastiera, oppure riavvia EmuDome per riprovare.",
+    "coreSavedOutsideGame": "Nell’ultima partita 3DS l’emulatore non ha raggiunto la cartella dei salvataggi del gioco, quindi ha salvato nella sua cartella ({folder}), condivisa da tutti i giochi 3DS. Quei progressi non sono con i salvataggi del gioco. Non cancellare quella cartella; controlla che la cartella dei dati di EmuDome sia scrivibile, poi apri di nuovo il gioco.",
     "threadStopped": "Una parte di EmuDome si è fermata per un errore interno ({thread}). Se puoi, salva dal menu rapido, poi riavvia EmuDome."
   },
   "consoleShort": {

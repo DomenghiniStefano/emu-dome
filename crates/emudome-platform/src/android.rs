@@ -49,6 +49,11 @@ pub fn old_data_dirs(_data: &Path, _local: &Path) -> Option<DataDirs> {
 
 pub const WEBVIEW_PROFILE_DIRS: &[&str] = &[];
 
+/// Azahar's default user folder: its libretro build on Android (`HAVE_LIBRETRO_VFS`) takes the
+/// generic POSIX branch, the working folder then the XDG data folder. Not checked on a device:
+/// an app process may have no `HOME`, and then only the working folder is looked at.
+pub const AZAHAR_LAYOUT: crate::azahar::Layout = crate::azahar::Layout::Xdg;
+
 /// Game drawn natively under the transparent webview, on the `SurfaceView`.
 pub const NATIVE_VIDEO_DEFAULT: bool = true;
 pub const EXTERNAL_SURFACE: bool = true;
