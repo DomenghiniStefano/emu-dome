@@ -135,7 +135,7 @@ pub struct Step {
 /// What a conflict shows the user. TypeScript: `CloudConflict`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(rename = "CloudConflict")]
+#[ts(export_to = "app/", rename = "CloudConflict")]
 pub struct Conflict {
     /// The file's place under `EmuDome/` (`gba/<hex>/game.sav`).
     pub path: String,
@@ -164,7 +164,7 @@ pub enum Direction {
 /// What a run did. TypeScript: `CloudOutcome`.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(rename = "CloudOutcome")]
+#[ts(export_to = "app/", rename = "CloudOutcome")]
 pub struct Outcome {
     pub pulled: Vec<String>,
     pub pushed: Vec<String>,

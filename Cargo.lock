@@ -1369,6 +1369,7 @@ dependencies = [
  "cpal",
  "emudome-core",
  "emudome-platform",
+ "emudome-sync",
  "librashader",
  "log",
  "notify",

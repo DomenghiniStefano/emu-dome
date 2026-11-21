@@ -69,7 +69,7 @@ impl Marker {
 /// Whether a game is in use, for this device. TypeScript: `CloudInUse`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
-#[ts(rename = "CloudInUse")]
+#[ts(export_to = "app/", rename = "CloudInUse")]
 pub enum InUse {
     /// Nobody plays it (or the last device stopped answering).
     Free,

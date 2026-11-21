@@ -47,6 +47,10 @@ impl SecretStore for MemoryStore {
 /// How long the user has to finish the sign-in in the browser.
 pub const SIGN_IN_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 
+/// The account name the refresh token is kept under in the system's credential store (service
+/// `it.domehub.emudome`, `emudome_platform::cloud::CREDENTIAL_SERVICE`).
+pub const REFRESH_TOKEN_ACCOUNT: &str = "google-drive";
+
 /// The account of this device.
 pub struct Auth {
     http: reqwest::Client,

@@ -70,7 +70,7 @@ impl Content {
 /// The Drive space of the account (`about.storageQuota`), in bytes. TypeScript: `DriveQuota`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(rename = "DriveQuota")]
+#[ts(export_to = "app/", rename = "DriveQuota")]
 pub struct Quota {
     /// `None`: unlimited (some Workspace accounts).
     pub limit: Option<u64>,
