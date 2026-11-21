@@ -151,6 +151,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          mod.rs levels / resolve / session, store.rs files,
                          core_values.rs settings → core options, one table per core in core_values/<core>.rs;
                          pure, unit-tested)
+                         video_sink.rs (`VideoSink`: where frames go, `VideoFrame::{Cpu, Gpu}`; today
+                         RGBA8 into `Shared::frame`), hw_render/ (`HwRenderHandler`: SET_HW_RENDER and
+                         the calls around it; today `SoftwareOnly` refuses them),
                          core_profile.rs (`CoreId` and one `CoreProfile` per core: consoles, forced
                          options, screen split, HW-render needs, save model, settings it cannot honour;
                          nothing matches a core by its name string)
@@ -176,7 +179,10 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
 app/src-tauri            Tauri shell: window.rs (the app's names for emudome_platform::create_window),
-                         video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
+                         video.rs (wgpu; `GpuService` owns instance / adapter / device for the whole run,
+                         surfaces attach and detach on it), gpu_interop.rs (the one module under wgpu:
+                         wgpu-hal / ash Vulkan interop for hardware rendering, behind `VulkanInterop`),
+                         audio.rs (cpal), gamepad.rs (SDL3), commands,
                          settings.rs (settings commands, file locations, settings://changed),
                          effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
                          emu://effect-error), video.rs runs them through librashader (native path only)
@@ -213,7 +219,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
 - **Video, two paths:**
   - **Native**: wgpu draws on the window, under a transparent child webview ("ui").
-    Needs Tauri's `unstable` feature (`window.add_child`).
+    Needs Tauri's `unstable` feature (`window.add_child`). The device is made with the first surface and
+    kept: a detach or a new surface replaces the surface only (a new device only if the GPU cannot present
+    to the new surface).
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
 - tauri, wgpu and librashader are pinned to exact versions (`=x.y.z`, `app/src-tauri/Cargo.toml`, tauri also in
