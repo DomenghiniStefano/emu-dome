@@ -10,21 +10,25 @@ from cartridges you own; 3DS games must already be decrypted by you. The cores r
 BIOS and firmware replacements; you can point EmuDome at your own dumps if you have them.
 
 > State: **Phase 1, desktop shell; Phase 2 (NDS) started.** Phase 0, the feasibility prototype, is done: a game
-> drawn natively under a transparent web interface holds up (`docs/fase0-esito.md`). 3DS is Phase 3: the Azahar
-> core runs in the windowless host with its software renderer, and is not packaged yet.
+> drawn natively under a transparent web interface holds up (`docs/fase0-esito.md`). 3DS is Phase 3, first milestone
+> done: 3DS games open in the app on the Azahar core, rendered with Vulkan on the app's own GPU device (software
+> rendering where Vulkan is not available); encrypted games are refused. Azahar is not packaged yet.
 > Full analysis: see the document "EmuDome — Analisi e integrazioni".
 
 ## What it has
 
-- A library of your games, identified by their content (not the file name), with covers and play time.
+- A library of your games, identified by their content (not the file name), with covers and play time; the cover
+  grid draws only the rows near the screen, so it stays quick with thousands of games.
 - Two video paths: **native** (wgpu draws on the window, the transparent webview sits on top; the default on
   Windows and Android) and **in the webview** (frames reach a canvas through the `emu://` protocol; the default on
   Linux). Screen effects (librashader presets) on the native path.
-- The two DS screens, with the touch screen driven by the mouse or by touch.
-- Audio with resampling and latency control; fast forward, slow motion, rewind, pause, screenshots.
+- The two DS and 3DS screens, with the touch screen driven by the mouse or by touch.
+- Audio with resampling and latency control; fast forward, slow motion, rewind (off by default on phones and for
+  3DS), pause, screenshots.
 - Keyboard and controllers (SDL3 on desktop), remappable, with L3 shortcuts; every menu works with the controller.
 - Save states in slots, the game's own saves, a quick menu (Esc or the controller's Home button).
-- Settings at several levels (global, console, game) generated from one schema; three themes.
+- Settings at several levels (global, console, game) generated from one schema; three themes and five accent
+  colours (amber by default).
 - Interface in English and Italian (vue-i18n), chosen from the system language.
 
 ## Running on Windows
@@ -46,6 +50,11 @@ pnpm tauri dev
 ```
 
 On Linux the same steps work with `sh scripts/fetch-cores.sh` and Tauri's Linux prerequisites (WebKitGTK).
+
+3DS games need the Azahar core, which the default fetch leaves out (it is not shipped yet):
+`./scripts/fetch-cores.ps1 -Cores mgba,melondsds,azahar`. On Windows, turn on long paths
+(`LongPathsEnabled`) if your data folder is deep: Azahar creates files up to 93 characters below each game's save
+folder, and EmuDome refuses to start a game whose folder would push them past the limit.
 
 Every check (format, lint, types, clippy, tests, licences, the project's gates) is one command:
 `./scripts/check.ps1` (`sh scripts/check` on Linux or Git Bash). The list lives in `scripts/check`. While working
@@ -117,8 +126,10 @@ The full log, entry by entry, is `docs/fase0-esito.md`. In short:
   surface survives background and resume. Not tested yet: audio quality and delay (the test ROM is silent),
   controllers (SDL3 is not built for Android), landscape layout.
 - **NDS** (melonDS DS, windowless, Windows, 2026-11-19): two screens, touch, 60 FPS at 1× on the test ROM, states.
-- **3DS** (Azahar, windowless, Windows, 2026-11-17): loads and runs with the software renderer, 17.4 FPS on a
-  homebrew title screen; hardware rendering through Vulkan works in a separate spike (`docs/feasibility.md`).
+- **3DS** (Azahar, windowless, Windows, 2026-11-21, homebrew): through the shell's host on the app's Vulkan
+  device, 58.7-60.3 FPS at 1× (debug build), Max 685-802, two screens and touch; software renderer 43 FPS.
+  Not tested yet in the app window (the owner's UAT), nor audio and controllers. Known Azahar crash: loading a
+  state of content without a title ID (all `.3dsx` homebrew).
 
 ## Layout
 
