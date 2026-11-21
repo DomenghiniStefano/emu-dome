@@ -205,8 +205,11 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          `context_reset` / `context_destroy` run by the session outside the callbacks),
                          core_profile.rs (`CoreId` and one `CoreProfile` per core: consoles, forced
                          options, screen split, HW-render needs and the renderer option (`Renderer`:
-                         Azahar Vulkan or Software), save model, settings it cannot honour; nothing
-                         matches a core by its name string)
+                         Azahar Vulkan or Software), save model, how deep its own files go under the
+                         game's folder (`save_depth`), settings it cannot honour; nothing matches a core
+                         by its name string)
+                         save_path.rs (#94: does a core's deepest file fit under the game's folder within
+                         the platform's `PathLimits`; checked before the core loads; pure, unit-tested)
                          contract.rs (the Rust ↔ TypeScript contract: ts-rs types and fixtures generated
                          into app/src/generated/, the staleness check; see the section of that name)
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
@@ -232,7 +235,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
 crates/emudome-platform  EVERYTHING that depends on the operating system or the form factor, one module per OS
                          (desktop.rs shared by the desktops): the main window (create_window), the file
                          picker (pick_file), logs, core paths, the external surface, the old identifier's
-                         data folders (old_data_dirs: beside the new ones on desktop, none on Android);
+                         data folders (old_data_dirs: beside the new ones on desktop, none on Android),
+                         paths.rs (how long a path this process can create: `path_limits`, Windows long
+                         paths for the process and the `LongPathsEnabled` policy, read only);
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
 app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, the per-game hooks, setup, the
@@ -446,6 +451,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   process has the focus, and the focus is in WebView2.
 - The static SDL3 build fails with MSBuild FTK1011 (260-character path limit) when the build folder's path is long.
   The repo's own `target\` is fine: one more reason never to move `CARGO_TARGET_DIR`.
+- Azahar 2126.2 creates its emulated NAND up to 93 characters under the game's folder in `retro_load_game`; past the
+  path limit (Windows without long paths: 259 for a file) it aborts the whole process, no error (Trello #94). And when
+  it cannot use its save directory at all (a folder it cannot reach, e.g. over 260 characters without long paths) it
+  silently falls back to `%APPDATA%\Azahar`, shared by every game. Hence the app's `longPathAware` manifest
+  (`app/src-tauri/windows-app-manifest.xml`, embedded by `build.rs`) and the guard before the load
+  (`CoreProfile::check_save_dir`, `savePathTooLong`). Test executables carry no manifest: on Windows they keep the
+  260 limit whatever the policy says (the headless example's `--max-path`).
 - A Windows audio device can open with 8 channels: `audio.rs` writes left/right on the first two and zeroes the rest.
 - Branches developed in parallel break each other without a textual conflict (2026-11-20: #70 renamed
   `AppState::game_path` to `game` and changed `GameFiles::new` to take a `GameKey`; #86 still used both and its merge
@@ -721,6 +733,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`.3dsx` homebrew: its pipeline cache is skipped for title 0); a core's log lines (`GET_LOG_INTERFACE`) are logged as their format
   string without the arguments (variadic C, no C shim); `GET_LANGUAGE` always answers English; `SET_MESSAGE` is
   logged, not shown; no sensors (plan in `docs/feasibility-hw-render.md`).
+  Azahar's path limit (#94) is guarded for the NAND it creates at load (measured on homebrew); the saves a retail
+  game writes on the emulated SD card while it runs (`Azahar/sdmc/Nintendo 3DS/<32>/<32>/title/...`, names chosen
+  by the game, deeper) are not covered and were not measured. The session ignores a failure to create the game's
+  folder (`create_dir_all(...).ok()` in `session.rs`): Azahar then falls back to `%APPDATA%\Azahar`.
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 
 ## Handoff with Cowork

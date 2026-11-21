@@ -321,3 +321,36 @@ Errors and fixes:
 - `hw_render.rs`: the core's image is wrapped anew every frame (Azahar recreates it on a state load).
 Proposed next step: the release `--timing 20` runs (title and world) with the GPU free, then the owner's UAT of a 3DS
 homebrew in the app (native and webview video).
+
+## 2026-11-21 16:30 · Azahar and the Windows path limit (headless, Windows)
+Trello #94 (branch `fix/azahar-path`). Azahar 2126.2 (commit 219d743), software renderer, debug build of the
+`headless` example (`--secs 1`); Craftus Reloaded 0.3 (`.3dsx`, same sha256 as above). Windows 11 with the
+`LongPathsEnabled` policy on (1, read only). The save folders were placed with an 8.3 short base path plus padding so
+the game's folder (`<dir>\saves\3ds\<40 hex>`) had an exact length; "long-path copy" is the same executable with
+`app/src-tauri/windows-app-manifest.xml` embedded by `mt.exe` (a scratch copy, as the app gets it from `build.rs`).
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless |
+| 2. FPS at 1× | not measured | runs of 1 s, only whether the game starts |
+| 3. Audio | not tested | headless |
+| 4. Controller | not tested | headless |
+| 5. Native vs webview | not tested | headless |
+
+Deepest paths under the game's folder after a run: folder
+`Azahar/nand/data/<32 zeros>/extdata/00048000/F000000B/boss` (80 characters), file
+`.../F000000B/user/gamecoin.dat` (93). No long-path manifest: a game folder of 165 characters runs, 166 aborts the
+process (illegal instruction, exit 132; the file would be 260 characters), as computed for a 259-character file limit.
+With the guard (default `--max-path 247,259`) 166 is refused before the core loads (`savePathTooLong`, length 260,
+limit 259) and 165 runs. Long-path copy (`RtlAreLongPathsEnabled` true): game folders of 166, 200, 230, 250, 259,
+260, 262, 300 and 320 characters run with the whole tree in the game's folder (35 entries).
+
+Without the manifest and with the guard bypassed (`--max-path 32762,32762`): 166 and 200 abort; 260 and 320 run, but
+Azahar cannot reach its save directory and writes its whole tree to `%APPDATA%\Azahar` instead (created by these
+runs, holding Craftus' `sdmc/craftus/options.ini`). So past 260 characters without long paths the saves would go to a
+folder shared by every game, silently; the guard refuses those too.
+
+Errors and fixes: `crates/emudome-core/src/save_path.rs` (the guard), `n3ds::SAVE_DEPTH`, `CoreProfile::save_depth`,
+`ErrorCode::SavePathTooLong`, `crates/emudome-platform/src/paths.rs` (limits, policy), `app/src-tauri/build.rs` and
+`windows-app-manifest.xml` (long-path aware app). The earlier entry's abort is now refused with a message.
+Proposed next step: the owner's UAT of a 3DS homebrew in the installed app with a deep data folder (`EMUDOME_DATA_DIR`).
