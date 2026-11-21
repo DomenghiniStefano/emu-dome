@@ -1,7 +1,7 @@
 // Backend data → text: error codes, speeds, controller names. The backend sends codes
 // and values only; every sentence comes from the message files.
 import { i18n, t } from './index'
-import type { ErrorCode, GamepadEvent, Speed } from '@/emu'
+import type { ErrorCode, GamepadEvent, Speed, StateLoadBlock } from '@/emu'
 
 const known = (key: string) => i18n.global.te(key)
 
@@ -31,6 +31,7 @@ export function errorText(e: unknown): string {
       const option = `settings.fx.fxpick.option.${e.params.name}`
       params.name = known(option) ? t(option) : e.params.name
     }
+    if (e.code === 'stateLoadUnsupported') params.reason = stateLoadBlockText(e.params.reason)
     if (e.code === 'settingLevelRefused') {
       const words = e.params.levels.map(l => t(`settingsUi.levelWord.${l}`))
       params.levels = new Intl.ListFormat(i18n.global.locale.value, {
@@ -41,6 +42,12 @@ export function errorText(e: unknown): string {
   }
   const detail = isErrorCode(e) ? e.code : e instanceof Error ? e.message : String(e)
   return t('errors.unexpected', { detail })
+}
+
+/** Why loading states is off for the open game (`GameInfo.stateLoadBlock`, Trello #93): the one
+ * text the disabled loads show and the refusal's toast says. */
+export function stateLoadBlockText(reason: StateLoadBlock): string {
+  return t(`flow.loadBlock.${reason}`)
 }
 
 /** A setting's name from its key (`settings.<key>.name`), or the key when it has none. */

@@ -20,6 +20,7 @@
   "stateSaveFailed",
   "stateLoadFailed",
   "stateInvalid",
+  "stateLoadUnsupported",
   "settingUnknown",
   "settingLevelRefused",
   "settingInvalidValue",

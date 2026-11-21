@@ -318,6 +318,7 @@ mod tests {
             app_version: "test".into(),
             core_options: Vec::new(),
             rewind_seconds: None,
+            state_load_block: None,
             split: emudome_core::screens::Split::Whole,
             username: None,
             fast_audio: emudome_core::speed_audio::FastAudio::Mute,

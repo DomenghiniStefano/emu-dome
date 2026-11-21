@@ -319,6 +319,7 @@ onBeforeUnmount(() => emit('inset', 0))
             :chosen-empty="chosenEmpty"
             :auto-chosen="autoChosen"
             :saved-slot="savedSlot"
+            :load-block="game.stateLoadBlock"
             :all="view === QuickMenuView.Slots"
             :touch="sheet"
             @pick="pick"

@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use emudome_core::core_profile::{CoreId, Renderer};
+use emudome_core::core_profile::{state_load_block, CoreId, Renderer, StateLoadBlock};
 use emudome_core::n3ds::fallback::FallbackWatch;
 use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::settings::ConsoleId;
@@ -31,6 +31,10 @@ pub(crate) struct GameInfo {
     resumable: bool,
     /// `saves.autoexit`: closing writes the auto quick save (G14 lists the step).
     autosave_on_exit: bool,
+    /// Why loading states is off for this game on the renderer it runs with (Trello #93), else
+    /// null: the interface shows every load (Carica, the resume question's «Riprendi») disabled
+    /// with this reason, and the session refuses them, rewind included.
+    state_load_block: Option<StateLoadBlock>,
 }
 
 /// Which core to use for a file, and its console, by its extension.
@@ -275,6 +279,8 @@ fn open_path(
     saves::before_open(app, &save_dir, &game)?;
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
     let (renderer, video) = game_video(app, state, core);
+    // Trello #93: on this renderer the core would crash loading a state of this game.
+    let state_load_block = state_load_block(core, renderer, &game);
     // After the previous game closed: its writes are in the "before".
     let after_end = watch_core_user_folder(app, core);
 
@@ -292,6 +298,7 @@ fn open_path(
             app_version: app.package_info().version.to_string(),
             core_options: core_options(core, renderer, &flow),
             rewind_seconds: flow.rewind_seconds,
+            state_load_block,
             // The content decides the console, the core its frame's screens.
             split: core.profile().split,
             username: flow.username.clone(),
@@ -344,6 +351,7 @@ fn open_path(
         core: core.name().into(),
         resumable,
         autosave_on_exit: flow.autosave_on_exit,
+        state_load_block,
     })
 }
 

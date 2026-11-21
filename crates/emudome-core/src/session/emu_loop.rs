@@ -17,6 +17,7 @@ use super::{
     AUTO_SLOT,
 };
 use crate::core::GameFiles;
+use crate::core_profile::StateLoadBlock;
 use crate::error::ErrorCode;
 use crate::rewind::Rewind;
 use crate::saves::SlotMeta;
@@ -117,6 +118,8 @@ pub(super) struct EmuLoop<C: Core> {
     /// next save or load. Always kept; the interface offers the load's only when `saves.undo` is
     /// on.
     undo: Option<Undo>,
+    /// Why this core would crash loading a state (Trello #93): every load and rewind refused.
+    load_block: Option<StateLoadBlock>,
 }
 
 impl<C: Core> EmuLoop<C> {
@@ -193,7 +196,12 @@ impl<C: Core> EmuLoop<C> {
             fast_audio: opts.fast_audio,
             meter: SpeedMeter::new(base_fps, now),
             paused: false,
-            rewind: Rewind::with_encoder(opts.rewind_seconds, base_fps),
+            // Rewind loads states: with loads refused it records nothing.
+            rewind: Rewind::with_encoder(
+                opts.rewind_seconds
+                    .filter(|_| opts.state_load_block.is_none()),
+                base_fps,
+            ),
             rewinding: false,
             next_frame: now,
             fps: FpsMeter::new(now),
@@ -201,8 +209,9 @@ impl<C: Core> EmuLoop<C> {
             last_autosave: now,
             pace: PaceLog::new(now),
             undo: None,
+            load_block: opts.state_load_block,
         };
-        if opts.resume_auto && lp.files.slot(AUTO_SLOT).is_file() {
+        if opts.resume_auto && lp.files.slot(AUTO_SLOT).is_file() && !lp.load_refused() {
             let event = match lp.load_undoable(AUTO_SLOT) {
                 Ok(()) => Event::StateLoaded { slot: AUTO_SLOT },
                 Err(error) => Event::Error { error },
@@ -230,6 +239,18 @@ impl<C: Core> EmuLoop<C> {
 
     fn send(&self, event: Event) {
         let _ = self.events.send(event);
+    }
+
+    /// True, and `stateLoadUnsupported` sent, when this core would crash loading a state: the
+    /// load (or rewind) asked for never reaches it.
+    fn load_refused(&self) -> bool {
+        let Some(reason) = self.load_block else {
+            return false;
+        };
+        self.send(Event::Error {
+            error: ErrorCode::StateLoadUnsupported { reason },
+        });
+        true
     }
 
     // ---- Commands ----
@@ -315,6 +336,9 @@ impl<C: Core> EmuLoop<C> {
     }
 
     fn load_state(&mut self, slot: u8) {
+        if self.load_refused() {
+            return;
+        }
         // A save still being written lands first: the load reads the new file.
         self.io.sync();
         let loaded = self.load_undoable(slot);
@@ -336,6 +360,9 @@ impl<C: Core> EmuLoop<C> {
     }
 
     fn undo_load(&mut self) {
+        if self.load_refused() {
+            return;
+        }
         let event = match self.undo.take() {
             Some(Undo::Load(data)) => match self.core.unserialize(&data) {
                 Ok(()) => Event::LoadUndone,
@@ -369,6 +396,10 @@ impl<C: Core> EmuLoop<C> {
     }
 
     fn set_rewinding(&mut self, on: bool) {
+        // Rewinding loads states; letting it go is always fine (it never started).
+        if on && self.load_refused() {
+            return;
+        }
         if on != self.rewinding {
             self.rewinding = on;
             // Silence while going back.
@@ -379,7 +410,9 @@ impl<C: Core> EmuLoop<C> {
     }
 
     fn set_rewind_length(&mut self, seconds: Option<u32>) {
-        self.rewind.set_seconds(seconds);
+        // With loads refused rewind stays off whatever `speed.rew` says.
+        self.rewind
+            .set_seconds(seconds.filter(|_| self.load_block.is_none()));
         let (states, bytes) = self.rewind.usage();
         let mut stats = self.shared.stats.lock();
         (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
@@ -705,6 +738,7 @@ mod tests {
 
     use super::{EmuLoop, Flow};
     use crate::core::GameFiles;
+    use crate::core_profile::StateLoadBlock;
     use crate::error::ErrorCode;
     use crate::session::{Command, Event, Outbox, SessionOptions, Shared, Speed, AUTO_SLOT};
     use crate::settings::test_dir::TestDir;
@@ -733,6 +767,7 @@ mod tests {
             app_version: "test".into(),
             core_options: Vec::new(),
             rewind_seconds: None,
+            state_load_block: None,
             split: crate::screens::Split::Whole,
             username: None,
             fast_audio: FastAudio::Mute,
@@ -924,6 +959,60 @@ mod tests {
         let now = r.counter();
         r.frames(1);
         assert_eq!(r.counter(), now + 1);
+    }
+
+    /// Trello #93: a core that would crash loading a state never gets one; saving still works.
+    #[test]
+    fn with_state_loads_blocked_no_load_or_rewind_reaches_the_core() {
+        let refused = ErrorCode::StateLoadUnsupported {
+            reason: StateLoadBlock::VulkanNoTitleId,
+        };
+        let mut r = rig_with("loop-load-blocked", |opts, _| {
+            opts.state_load_block = Some(StateLoadBlock::VulkanNoTitleId);
+            opts.rewind_seconds = Some(10);
+            // An auto quick save to resume from at the start: refused too.
+            opts.resume_auto = true;
+            let auto = GameFiles::new(&opts.save_dir, &opts.game).slot(AUTO_SLOT);
+            std::fs::create_dir_all(auto.parent().unwrap()).unwrap();
+            std::fs::write(&auto, 9u64.to_le_bytes()).unwrap();
+        });
+        assert_eq!(r.counter(), 0, "the auto quick save was not loaded");
+
+        // Saving works.
+        r.frames(3);
+        r.cmd(Command::SaveState(1));
+        r.frames(2);
+        r.cmd(Command::LoadState(1));
+        r.cmd(Command::LoadState(AUTO_SLOT));
+        r.cmd(Command::UndoLoad);
+        assert_eq!(r.counter(), 5);
+
+        // Rewind: nothing recorded, nothing played back, the sound stays on.
+        r.lp.rewind.sync();
+        assert_eq!(r.lp.rewind.usage().0, 0);
+        r.cmd(Command::SetRewindLength(Some(20)));
+        r.frames(2);
+        r.lp.rewind.sync();
+        assert_eq!(r.lp.rewind.usage().0, 0);
+        r.cmd(Command::Rewind(true));
+        assert!(!r.lp.shared.stats.lock().rewinding);
+        assert_eq!(r.lp.core.calls.lock().audio_enabled, None);
+        r.frames(1);
+        assert_eq!(r.counter(), 8, "the game went on forward");
+        r.cmd(Command::Rewind(false));
+
+        assert_eq!(r.lp.core.calls.lock().unserializes, 0);
+        let events = r.events();
+        assert_eq!(r.on_disk(&r.files.slot(1)), Some(3));
+        let refusals = events.iter().filter(|e| is_error(e, &refused)).count();
+        // The resume, two loads, the undo, the rewind; not its release.
+        assert_eq!(refusals, 5, "{events:?}");
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, Event::StateSaved { slot: 1 })));
+        assert!(!events
+            .iter()
+            .any(|e| matches!(e, Event::StateLoaded { .. } | Event::LoadUndone)));
     }
 
     #[test]

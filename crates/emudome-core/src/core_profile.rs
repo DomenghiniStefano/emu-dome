@@ -15,6 +15,7 @@ use crate::save_path::{PathLimits, SaveDepth, SavePathTooLong};
 use crate::screens::Split;
 use crate::settings::core_values::{self, CoreTable};
 use crate::settings::ConsoleId;
+use crate::GameKey;
 
 /// The cores EmuDome runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize)]
@@ -130,6 +131,33 @@ impl HwRender {
             && self.contexts.contains(&HwContext::Vulkan)
             && self.renderer_option.is_some_and(|o| o.vulkan.is_some())
     }
+}
+
+/// Why loading states is refused for the open game: its core would crash the whole app. Saving
+/// states stays allowed. The interface shows the loads (quick menu, resume question) disabled with
+/// the reason; the session refuses them ([`crate::ErrorCode::StateLoadUnsupported`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename = "StateLoadBlock")]
+pub enum StateLoadBlock {
+    /// Azahar 2126.2 on Vulkan, content with title ID 0 (every `.3dsx` homebrew): loading a
+    /// state crashes the process in `vk_pipeline_cache.cpp::SwitchCache` (Trello #93,
+    /// `docs/upstream/azahar-vulkan-state-load-title-id-0.md`). Rewind loads states too.
+    VulkanNoTitleId,
+}
+
+/// Whether states may be loaded (quick loads, the auto quick save, «Annulla il caricamento»,
+/// rewind) for `game` on `core` drawing with `renderer`: `None` when they may, else why not.
+/// Only Azahar on Vulkan refuses, for content Azahar gives title ID 0 ([`crate::n3ds::title_id`]);
+/// on its software renderer the same loads work. Until Azahar fixes it upstream.
+pub fn state_load_block(
+    core: CoreId,
+    renderer: Renderer,
+    game: &GameKey,
+) -> Option<StateLoadBlock> {
+    let crashes =
+        core == CoreId::Azahar && renderer == Renderer::Vulkan && crate::n3ds::title_id(game) == 0;
+    crashes.then_some(StateLoadBlock::VulkanNoTitleId)
 }
 
 /// Where a core keeps a game's progress.
@@ -339,8 +367,50 @@ static AZAHAR: CoreProfile = CoreProfile {
 
 #[cfg(test)]
 mod tests {
-    use super::{row_count, unsupported_consoles, CoreId, Renderer};
+    use super::{
+        row_count, state_load_block, unsupported_consoles, CoreId, Renderer, StateLoadBlock,
+    };
     use crate::settings::ConsoleId;
+    use crate::GameKey;
+
+    /// Trello #93: Azahar on Vulkan crashes loading a state of content with title ID 0.
+    #[test]
+    fn state_loads_are_refused_only_for_azahar_on_vulkan_without_a_title_id() {
+        let key = |text: &str| GameKey::parse(text).unwrap();
+        let homebrew = key("3ds:da39a3ee5e6b4b0d3255bfef95601890afd80709");
+        let no_program_id = key("3ds:00000000000000000000");
+        let retail = key("3ds:00040000000308000000");
+        let blocked = Some(StateLoadBlock::VulkanNoTitleId);
+        assert_eq!(
+            state_load_block(CoreId::Azahar, Renderer::Vulkan, &homebrew),
+            blocked
+        );
+        assert_eq!(
+            state_load_block(CoreId::Azahar, Renderer::Vulkan, &no_program_id),
+            blocked
+        );
+        assert_eq!(
+            state_load_block(CoreId::Azahar, Renderer::Vulkan, &retail),
+            None
+        );
+        // The software renderer loads them fine.
+        assert_eq!(
+            state_load_block(CoreId::Azahar, Renderer::Software, &homebrew),
+            None
+        );
+        // The other cores never refuse.
+        let gba = key("gba:9a3e");
+        for core in [CoreId::Mgba, CoreId::MelonDsDs] {
+            for renderer in [Renderer::Software, Renderer::Vulkan] {
+                assert_eq!(state_load_block(core, renderer, &gba), None);
+            }
+        }
+        // As the interface reads it.
+        assert_eq!(
+            serde_json::to_value(StateLoadBlock::VulkanNoTitleId).unwrap(),
+            serde_json::json!("vulkanNoTitleId")
+        );
+    }
 
     #[test]
     fn the_option_counts_were_measured_on_the_pinned_builds() {

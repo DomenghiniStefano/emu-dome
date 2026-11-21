@@ -75,6 +75,7 @@ describe('crashReport', () => {
     core: 'mgba',
     resumable: false,
     autosaveOnExit: true,
+    stateLoadBlock: null,
   }
   const now = new Date(Date.UTC(2026, 10, 18, 12, 0, 0))
   it('names the game, the frames and the time', () => {

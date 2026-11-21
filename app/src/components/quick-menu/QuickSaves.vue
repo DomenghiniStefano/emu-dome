@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // Quick saves (G07 on the main screen, G08 «Altri slot e salvataggi»): the slots to choose from,
 // Carica and Salva for the chosen one, the line a save made here leaves with its «Annulla», and on
-// G08 where the in-game save's backups are.
+// G08 where the in-game save's backups are. A game whose core cannot load states (Trello #93)
+// keeps Carica disabled with the reason.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArchiveRestore, RotateCcw, Save } from '@lucide/vue'
-import type { SlotInfo } from '@/emu'
+import type { SlotInfo, StateLoadBlock } from '@/emu'
+import { stateLoadBlockText } from '@/i18n/labels'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import PageRow from './PageRow.vue'
 import QuickSlotTile from './QuickSlotTile.vue'
@@ -21,6 +23,9 @@ const props = defineProps<{
   autoChosen: boolean
   /** The slot a save made here went to, while its «Annulla» is offered. */
   savedSlot: number | null
+  /** Why loading is off for this game (`GameInfo.stateLoadBlock`, Trello #93): Carica disabled
+   * with the reason under it; Salva still works. */
+  loadBlock: StateLoadBlock | null
   /** G08: every slot, and the backups' row. */
   all?: boolean
   touch?: boolean
@@ -72,7 +77,7 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
         :size="ButtonSize.Menu"
         :fade="ButtonFade.Dim"
         class="min-w-0"
-        :disabled="chosenEmpty"
+        :disabled="chosenEmpty || loadBlock !== null"
         @click="emit('load')"
       >
         <RotateCcw :size="18" :stroke-width="1.75" aria-hidden="true" />
@@ -95,6 +100,9 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
         {{ t('qm.saveSlot', { slot: chosen }) }}
       </Button>
     </div>
+    <span v-if="loadBlock !== null" class="text-caption text-ink-muted">
+      {{ stateLoadBlockText(loadBlock) }}
+    </span>
     <div
       v-if="savedSlot !== null"
       class="flex min-h-20 items-center gap-8 font-medium text-success"

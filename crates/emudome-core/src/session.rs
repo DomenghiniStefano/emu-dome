@@ -203,6 +203,12 @@ pub struct SessionOptions {
     pub core_options: Vec<(String, String)>,
     /// Rewind (`speed.rew`): the seconds to keep (`speed.rewlen`), `None` = off.
     pub rewind_seconds: Option<u32>,
+    /// Why loading states would crash this game's core
+    /// ([`crate::core_profile::state_load_block`]): then every load (quick loads,
+    /// `resume_auto`, [`Command::UndoLoad`]) and rewind are refused with
+    /// `stateLoadUnsupported` and never reach the core, and nothing is recorded for rewind.
+    /// `None`: loads work.
+    pub state_load_block: Option<crate::core_profile::StateLoadBlock>,
     /// How the core lays its screens out in the frame ([`crate::screens::Split`]): whole for
     /// one-screen consoles, [`crate::nds::SPLIT`] for melonDS DS with its forced options.
     pub split: crate::screens::Split,
@@ -1079,6 +1085,7 @@ mod tests {
                 app_version: "test".into(),
                 core_options: Vec::new(),
                 rewind_seconds: None,
+                state_load_block: None,
                 split: crate::screens::Split::Whole,
                 username: None,
                 fast_audio: crate::speed_audio::FastAudio::Mute,
@@ -1107,6 +1114,7 @@ mod tests {
             app_version: "test".into(),
             core_options: Vec::new(),
             rewind_seconds: None,
+            state_load_block: None,
             split: crate::screens::Split::Whole,
             username: None,
             fast_audio: crate::speed_audio::FastAudio::Mute,
@@ -1148,6 +1156,7 @@ mod tests {
             app_version: "test".into(),
             core_options: Vec::new(),
             rewind_seconds: None,
+            state_load_block: None,
             split: crate::screens::Split::Whole,
             username: None,
             fast_audio: crate::speed_audio::FastAudio::Mute,

@@ -251,6 +251,7 @@
     "stateSaveFailed": "Non riesco a scrivere lo slot {slot}: {detail}. Controlla che la cartella dei salvataggi sia scrivibile.",
     "stateLoadFailed": "Non riesco a leggere lo slot {slot}: {detail}. Riprova o usa un altro slot.",
     "stateInvalid": "Lo stato nello slot {slot} non è valido per questo gioco o questa versione del core. Salvalo di nuovo.",
+    "stateLoadUnsupported": "{reason}",
     "settingUnknown": "Impostazione sconosciuta: viene ignorata. Se succede ancora, esporta il registro da Impostazioni › Informazioni.",
     "settingLevelRefused": "Questa impostazione vale solo per {levels}: cambiala da lì.",
     "settingInvalidValue": "Valore non valido per «{name}»: torno al valore predefinito.",
@@ -1810,6 +1811,9 @@
     "resumeTitle": "Vuoi riprendere da dove avevi lasciato?",
     "resume": "Riprendi",
     "restart": "Ricomincia dal salvataggio del gioco",
+    "loadBlock": {
+      "vulkanNoTitleId": "Il caricamento è disattivato per questo gioco: con Vulkan l’emulatore 3DS si blocca quando carica lo stato di un homebrew. Puoi comunque salvare."
+    },
     "crashTitle": "Il gioco si è fermato per un errore",
     "crashText": "L’emulatore del {console} ha smesso di rispondere.",
     "crashSaved": "Il salvataggio automatico di {when} è al sicuro.",

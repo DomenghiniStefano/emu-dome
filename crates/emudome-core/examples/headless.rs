@@ -548,6 +548,8 @@ pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
             app_version: env!("CARGO_PKG_VERSION").into(),
             core_options,
             rewind_seconds: args.rewind,
+            // As the shell: loads that would crash the core are refused (Trello #93).
+            state_load_block: emudome_core::core_profile::state_load_block(core, renderer, &game),
             split: profile.split,
             username: None,
             fast_audio: args.fast_audio.unwrap_or_default(),
