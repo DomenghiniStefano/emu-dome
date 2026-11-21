@@ -3,7 +3,7 @@
 //! - Cores: `.so` files packaged in the APK (`cores/android/<abi>/`, a jniLibs folder of
 //!   the Gradle library in `android/`), loaded by file name through the dynamic loader.
 //! - Video: a `SurfaceView` under the transparent WebView (Kotlin class
-//!   `com.domenghini.emudome.platform.NativeSurface`, in `android/`). Its `Surface` reaches
+//!   `it.domehub.emudome.platform.NativeSurface`, in `android/`). Its `Surface` reaches
 //!   Rust through JNI and becomes an `ANativeWindow` for wgpu.
 //! - Logs: logcat, tag `EmuDome`.
 use std::ffi::c_void;
@@ -93,7 +93,7 @@ static SURFACE: Mutex<SurfaceState> = Mutex::new(SurfaceState {
     current: false,
 });
 
-const NATIVE_SURFACE_CLASS: &str = "com.domenghini.emudome.platform.NativeSurface";
+const NATIVE_SURFACE_CLASS: &str = "it.domehub.emudome.platform.NativeSurface";
 
 pub fn attach_external_surface<R: tauri::Runtime>(
     webview: &tauri::Webview<R>,

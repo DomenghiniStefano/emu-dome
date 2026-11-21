@@ -1,4 +1,4 @@
-package com.domenghini.emudome.platform
+package it.domehub.emudome.platform
 
 import android.app.Activity
 import android.graphics.Color
