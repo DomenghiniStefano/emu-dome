@@ -5,7 +5,8 @@
 #
 # Steps: finds the Android SDK and NDK, checks the JDK, pnpm, the Rust target and (Windows)
 # symlinks; installs the frontend dependencies if app/node_modules is missing; fetches the Android
-# cores pinned by cores.lock (sha256-checked, kept when already in place); runs
+# cores pinned by cores.lock (sha256-checked, kept when already in place; mGBA is built from its
+# pinned source when missing, with the NDK cores.lock names and git: scripts/core-build.mjs); runs
 # `pnpm tauri android build --ci --apk --split-per-abi --target aarch64` (`--debug` unless
 # -Release), which builds the frontend, the Rust library and the Gradle project in
 # app/src-tauri/gen/android; prints the APK's path and size; -Install runs `adb install -r` with

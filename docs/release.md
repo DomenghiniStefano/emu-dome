@@ -27,12 +27,15 @@ run end to end: no release exists yet.
     `EMUDOME_KEYSTORE`, `EMUDOME_KEYSTORE_PASSWORD`, `EMUDOME_KEY_ALIAS`, `EMUDOME_KEY_PASSWORD`
     (`app/src-tauri/gen/android/app/build.gradle.kts`). Google Play wants an App Bundle (AAB), which the script
     does not build yet (#44).
-- **Cores.** Packages carry only the files `cores.lock` pins (version, URL, sha256). mGBA's pinned build comes from
-  the libretro buildbot's `latest/`, which has no stable URL: packaging refuses it unless
-  `EMUDOME_ALLOW_UNSTABLE_CORES=1`, allowed for local test packages only, never for a release. A stable source for
-  mGBA is a release blocker (`CLAUDE.md`, «Known gaps»); since 2026-11-21 the Android mGBA build no longer matches
-  its pinned sha256 either, so an Android release build stops until `cores.lock` is re-pinned. Azahar is not
-  packaged (Phase 3).
+- **Cores.** Packages carry only the files `cores.lock` pins (version, URL or source build, sha256). mGBA for
+  Windows and Android is built by EmuDome from the pinned source archive (Trello #88, `scripts/build-mgba.ps1`, run
+  by the fetch scripts when the file is missing): the build is reproducible, but gives the pinned sha256 only with
+  the toolchain `cores.lock` names (Visual Studio 2022 Build Tools with MSVC 14.44, the Android NDK 27.1 and its
+  clang-cl, the Windows SDK, CMake); another toolchain is refused, and where the built cores are kept for other
+  machines is not decided yet. mGBA for Linux is still the libretro buildbot's `latest/`, which has no stable URL:
+  packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1`, allowed for local test packages only, never for a
+  release, until it is built on Linux (Trello #92, a release blocker for Linux only). Azahar is not packaged
+  (Phase 3).
 - **Signing.** No Windows code signing for now (#50): the installer is unsigned and Windows SmartScreen warns on
   first run. Android release builds are signed with the owner's keystore.
 
@@ -46,8 +49,8 @@ run end to end: no release exists yet.
    `target/`, `node_modules/` or `cores/`):
    - `./scripts/check.ps1` (Windows) / `sh scripts/check` (Linux) green in that clone;
    - the cores fetched from `cores.lock` (`./scripts/fetch-cores.ps1`, `sh scripts/fetch-cores.sh`,
-     `./scripts/fetch-cores-android.ps1`), each checked against its sha256, with no
-     `EMUDOME_ALLOW_UNSTABLE_CORES`;
+     `./scripts/fetch-cores-android.ps1`; mGBA built from source on the toolchain `cores.lock` names), each checked
+     against its sha256, with no `EMUDOME_ALLOW_UNSTABLE_CORES`;
    - Windows: `pnpm package:windows`; Linux: `pnpm package:linux` on Linux (once #44 adds its targets); Android:
      `./scripts/android-build.ps1 -Release`.
 4. Publish (decided in #50):
@@ -61,5 +64,6 @@ run end to end: no release exists yet.
 
 - How the app learns of a new version (update channel): not decided.
 - Linux packages (AppImage / deb) and the Android App Bundle: #44.
-- A stable source for the mGBA core (see «Cores» above).
+- mGBA for Linux built from source (#92), and where the built mGBA cores are hosted for machines without the
+  pinned toolchain (see «Cores» above).
 - Windows code signing: not for now (#50).
