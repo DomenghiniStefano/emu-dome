@@ -1,16 +1,27 @@
 //! Rewind (`speed.rew`, `speed.rewlen`): a ring buffer of save states taken while the game runs,
 //! played back newest first while the rewind button is held.
 //!
-//! Pure: the session hands in the states ([`Rewind::record`]) and loads what
-//! [`Rewind::step_back`] gives back; nothing here touches the core, so it is unit-tested.
+//! Nothing here touches the core: the session serializes into the buffer [`Rewind::record`] hands
+//! it and loads what [`Rewind::step_back`] shows it, so it is unit-tested.
 //!
 //! Memory: a GBA state is a few hundred KB and a second holds 60 of them, so the buffer keeps
 //! only the newest state whole and every older one as the difference from the next newer
 //! ([`encode_delta`]: XOR, then runs of zero bytes skipped). Most of a console's memory does not
 //! change between two frames, so a difference is a small fraction of a state. The oldest
 //! difference is dropped first: it is never needed to rebuild a newer state.
+//!
+//! Cost on the emulation thread (Trello #79): the states are serialized into reused buffers, the
+//! differences are encoded on a thread of their own ([`Rewind::with_encoder`]; equal stretches
+//! compared eight bytes at a time), and stepping back turns the newest state into the older one
+//! in place, with no copy of the state.
 
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
+use std::thread::JoinHandle;
+
+use parking_lot::{Condvar, Mutex};
 
 use crate::settings::keys::{Reader, SPEED_REWIND, SPEED_REWIND_LENGTH};
 use crate::settings::Value;
@@ -79,21 +90,41 @@ const MIN_ZERO_RUN: usize = 8;
 /// each pair followed by its literal bytes (`older ^ newer`). When the two have different
 /// sizes the entry is `older` whole.
 pub fn encode_delta(older: &[u8], newer: &[u8]) -> Vec<u8> {
+    let mut out = Vec::new();
+    encode_delta_into(older, newer, &mut out);
+    out
+}
+
+/// The first index from `i` where `a` and `b` differ (`a.len()` when none): equal stretches are
+/// compared eight bytes at a time.
+fn next_difference(a: &[u8], b: &[u8], mut i: usize) -> usize {
+    let len = a.len();
+    while i + 8 <= len && a[i..i + 8] == b[i..i + 8] {
+        i += 8;
+    }
+    while i < len && a[i] == b[i] {
+        i += 1;
+    }
+    i
+}
+
+/// [`encode_delta`] into `out` (cleared first), reusing its memory.
+pub fn encode_delta_into(older: &[u8], newer: &[u8], out: &mut Vec<u8>) {
+    out.clear();
     if older.len() != newer.len() {
-        let mut out = Vec::with_capacity(older.len() + 1);
+        out.reserve(older.len() + 1);
         out.push(TAG_RAW);
         out.extend_from_slice(older);
-        return out;
+        return;
     }
-    let mut out = vec![TAG_DELTA];
+    out.push(TAG_DELTA);
     let len = older.len();
     let xor = |i: usize| older[i] ^ newer[i];
     let mut i = 0;
     while i < len {
         let zeros_from = i;
-        while i < len && xor(i) == 0 {
-            i += 1;
-        }
+        // Most of a state does not change between two frames: skipped in u64 steps.
+        i = next_difference(older, newer, i);
         let zeros = i - zeros_from;
         if i == len {
             break;
@@ -115,39 +146,62 @@ pub fn encode_delta(older: &[u8], newer: &[u8]) -> Vec<u8> {
         // The zero bytes that ended the literal belong to the next skip.
         let lit_to = if run >= MIN_ZERO_RUN { i + 1 - run } else { i };
         i = lit_to;
-        write_varint(&mut out, zeros);
-        write_varint(&mut out, lit_to - lit_from);
-        out.extend((lit_from..lit_to).map(xor));
+        write_varint(out, zeros);
+        write_varint(out, lit_to - lit_from);
+        out.extend(
+            older[lit_from..lit_to]
+                .iter()
+                .zip(&newer[lit_from..lit_to])
+                .map(|(a, b)| a ^ b),
+        );
     }
-    out
+}
+
+/// Turns `state` (the newer state) into the older one, in place, with a difference made by
+/// [`encode_delta`]. False when the difference is broken or was made against a state of another
+/// size; `state` may then be half changed (the caller drops it).
+fn apply_delta(delta: &[u8], state: &mut Vec<u8>) -> bool {
+    let Some((&tag, body)) = delta.split_first() else {
+        return false;
+    };
+    if tag == TAG_RAW {
+        state.clear();
+        state.extend_from_slice(body);
+        return true;
+    }
+    if tag != TAG_DELTA {
+        return false;
+    }
+    let mut at = 0usize;
+    let mut pos = 0usize;
+    while pos < body.len() {
+        let (Some(zeros), Some(lits)) = (read_varint(body, &mut pos), read_varint(body, &mut pos))
+        else {
+            return false;
+        };
+        let Some(from) = at.checked_add(zeros) else {
+            return false;
+        };
+        let (Some(src_end), Some(dst_end)) = (pos.checked_add(lits), from.checked_add(lits)) else {
+            return false;
+        };
+        let (Some(src), Some(dst)) = (body.get(pos..src_end), state.get_mut(from..dst_end)) else {
+            return false;
+        };
+        for (d, s) in dst.iter_mut().zip(src) {
+            *d ^= s;
+        }
+        at = dst_end;
+        pos = src_end;
+    }
+    true
 }
 
 /// The older state from a difference made by [`encode_delta`] and the newer state.
 /// `None` when the difference is broken or was made against a state of another size.
 pub fn decode_delta(delta: &[u8], newer: &[u8]) -> Option<Vec<u8>> {
-    let (&tag, body) = delta.split_first()?;
-    if tag == TAG_RAW {
-        return Some(body.to_vec());
-    }
-    if tag != TAG_DELTA {
-        return None;
-    }
     let mut out = newer.to_vec();
-    let mut at = 0usize;
-    let mut pos = 0usize;
-    while pos < body.len() {
-        let zeros = read_varint(body, &mut pos)?;
-        let lits = read_varint(body, &mut pos)?;
-        at = at.checked_add(zeros)?;
-        let src = body.get(pos..pos.checked_add(lits)?)?;
-        let dst = out.get_mut(at..at.checked_add(lits)?)?;
-        for (d, s) in dst.iter_mut().zip(src) {
-            *d ^= s;
-        }
-        at += lits;
-        pos += lits;
-    }
-    Some(out)
+    apply_delta(delta, &mut out).then_some(out)
 }
 
 fn write_varint(out: &mut Vec<u8>, mut v: usize) {
@@ -191,7 +245,12 @@ pub struct RewindBuffer {
     max_bytes: usize,
     /// Bytes held by `deltas`.
     delta_bytes: usize,
+    /// Buffers of differences that were dropped, encoded into again.
+    pool: Vec<Vec<u8>>,
 }
+
+/// Buffers [`RewindBuffer::pool`] keeps at most.
+const POOL: usize = 2;
 
 impl RewindBuffer {
     pub fn new(capacity: usize, max_bytes: usize) -> Self {
@@ -217,34 +276,65 @@ impl RewindBuffer {
     }
 
     /// Adds the newest state; the oldest go when the buffer is over its capacity or its bytes.
-    pub fn push(&mut self, state: Vec<u8>) {
-        if let Some(previous) = self.newest.take() {
-            let delta = encode_delta(&previous, &state);
+    /// Returns the state it replaces as the newest (now kept as a difference): a buffer to
+    /// serialize the next state into.
+    pub fn push(&mut self, state: Vec<u8>) -> Option<Vec<u8>> {
+        let recycled = self.newest.take().inspect(|previous| {
+            let mut delta = self.pool.pop().unwrap_or_default();
+            encode_delta_into(previous, &state, &mut delta);
+            // A reused buffer much larger than this difference would hold memory nobody counts.
+            if delta.capacity() > delta.len() * 2 + 4096 {
+                delta.shrink_to_fit();
+            }
             self.delta_bytes += delta.len();
             self.deltas.push_back(delta);
-        }
+        });
         self.newest = Some(state);
         while self.deltas.len() + 1 > self.capacity || self.bytes() > self.max_bytes {
-            match self.deltas.pop_front() {
-                Some(old) => self.delta_bytes -= old.len(),
-                None => break,
+            if !self.drop_oldest() {
+                break;
             }
         }
+        recycled
     }
 
-    /// Takes the newest state out; the one before it becomes the newest.
-    pub fn pop(&mut self) -> Option<Vec<u8>> {
-        let newest = self.newest.take()?;
-        if let Some(delta) = self.deltas.pop_back() {
-            self.delta_bytes -= delta.len();
-            // A difference that does not rebuild (it cannot happen with `push`) ends the
-            // buffer: what is older would be wrong too.
-            match decode_delta(&delta, &newest) {
-                Some(older) => self.newest = Some(older),
-                None => self.clear(),
-            }
+    /// Drops the oldest difference (its buffer kept for the next encode); false when none.
+    fn drop_oldest(&mut self) -> bool {
+        let Some(old) = self.deltas.pop_front() else {
+            return false;
+        };
+        self.delta_bytes -= old.len();
+        if self.pool.len() < POOL {
+            self.pool.push(old);
         }
-        Some(newest)
+        true
+    }
+
+    /// One step back: `load` sees the newest state, which then becomes the one before it, in
+    /// place (no copy of the state). `None` when the buffer is empty.
+    pub fn step_back<R>(&mut self, load: impl FnOnce(&[u8]) -> R) -> Option<R> {
+        let newest = self.newest.as_mut()?;
+        let loaded = load(newest);
+        match self.deltas.pop_back() {
+            Some(delta) => {
+                self.delta_bytes -= delta.len();
+                // A difference that does not rebuild (it cannot happen with `push`) ends the
+                // buffer: what is older would be wrong too.
+                if !apply_delta(&delta, newest) {
+                    self.clear();
+                }
+                if self.pool.len() < POOL {
+                    self.pool.push(delta);
+                }
+            }
+            None => self.newest = None,
+        }
+        Some(loaded)
+    }
+
+    /// Takes the newest state out (a copy); the one before it becomes the newest.
+    pub fn pop(&mut self) -> Option<Vec<u8>> {
+        self.step_back(<[u8]>::to_vec)
     }
 
     pub fn clear(&mut self) {
@@ -257,18 +347,111 @@ impl RewindBuffer {
     pub fn set_capacity(&mut self, capacity: usize) {
         self.capacity = capacity.max(1);
         while self.deltas.len() + 1 > self.capacity {
-            match self.deltas.pop_front() {
-                Some(old) => self.delta_bytes -= old.len(),
-                None => break,
+            if !self.drop_oldest() {
+                break;
             }
         }
     }
 }
 
+/// States handed to the encoder and not pushed yet, at most: beyond it a state is skipped
+/// (the encoder is behind, a state comes a few frames later).
+const MAX_PENDING: usize = 2;
+
+/// The buffer when the differences are encoded on their own thread.
+struct EncoderShared {
+    buffer: Mutex<RewindBuffer>,
+    /// Told after each state pushed.
+    pushed: Condvar,
+    /// States sent and not pushed yet.
+    pending: AtomicUsize,
+    /// The buffer's `len()` and `bytes()` after the last change: read every frame without the lock.
+    states: AtomicUsize,
+    bytes: AtomicUsize,
+}
+
+impl EncoderShared {
+    fn publish(&self, buffer: &RewindBuffer) {
+        self.states.store(buffer.len(), Ordering::Relaxed);
+        self.bytes.store(buffer.bytes(), Ordering::Relaxed);
+    }
+}
+
+/// The encoder thread and the way to it.
+struct Encoder {
+    shared: Arc<EncoderShared>,
+    tx: Option<Sender<Vec<u8>>>,
+    /// Buffers the encoder is done with, to serialize into again.
+    spares: Receiver<Vec<u8>>,
+    thread: Option<JoinHandle<()>>,
+}
+
+impl Encoder {
+    fn spawn() -> std::io::Result<Self> {
+        let shared = Arc::new(EncoderShared {
+            buffer: Mutex::new(RewindBuffer::new(1, MAX_BYTES)),
+            pushed: Condvar::new(),
+            pending: AtomicUsize::new(0),
+            states: AtomicUsize::new(0),
+            bytes: AtomicUsize::new(0),
+        });
+        let (tx, rx) = mpsc::channel::<Vec<u8>>();
+        let (spare_tx, spares) = mpsc::channel();
+        let worker = shared.clone();
+        let thread = std::thread::Builder::new()
+            .name("emudome-rewind".into())
+            .spawn(move || {
+                for state in rx {
+                    let mut buffer = worker.buffer.lock();
+                    let spare = buffer.push(state);
+                    worker.publish(&buffer);
+                    worker.pending.fetch_sub(1, Ordering::Release);
+                    worker.pushed.notify_all();
+                    drop(buffer);
+                    if let Some(spare) = spare {
+                        let _ = spare_tx.send(spare);
+                    }
+                }
+            })?;
+        Ok(Self {
+            shared,
+            tx: Some(tx),
+            spares,
+            thread: Some(thread),
+        })
+    }
+
+    /// The buffer once every state sent is in it.
+    fn settled(&self) -> parking_lot::MutexGuard<'_, RewindBuffer> {
+        let mut buffer = self.shared.buffer.lock();
+        while self.shared.pending.load(Ordering::Acquire) > 0 {
+            self.shared.pushed.wait(&mut buffer);
+        }
+        buffer
+    }
+}
+
+impl Drop for Encoder {
+    fn drop(&mut self) {
+        self.tx = None;
+        if let Some(thread) = self.thread.take() {
+            if thread.join().is_err() {
+                log::error!("the rewind encoder panicked");
+            }
+        }
+    }
+}
+
+/// Where the states go: encoded right here (tests, or no thread could start), or on the
+/// encoder thread.
+enum Store {
+    Inline(RewindBuffer),
+    Encoder(Encoder),
+}
+
 /// Rewind for one session: when to take a state, and the buffer of them.
-#[derive(Debug)]
 pub struct Rewind {
-    buffer: RewindBuffer,
+    store: Store,
     /// `speed.rewlen`; `None` = rewind off (`speed.rew`): nothing is recorded.
     seconds: Option<u32>,
     fps: f64,
@@ -276,17 +459,38 @@ pub struct Rewind {
     interval: Option<u32>,
     /// Frames run since the last state.
     since: u32,
+    /// The buffer the next state is serialized into.
+    spare: Vec<u8>,
 }
 
 impl Rewind {
-    /// `seconds`: `speed.rewlen`, or `None` when `speed.rew` is off.
+    /// `seconds`: `speed.rewlen`, or `None` when `speed.rew` is off. The differences are encoded
+    /// on the calling thread.
     pub fn new(seconds: Option<u32>, fps: f64) -> Self {
+        Self::with_store(Store::Inline(RewindBuffer::new(1, MAX_BYTES)), seconds, fps)
+    }
+
+    /// As [`Rewind::new`], the differences encoded on a thread of their own (the session's
+    /// choice: the emulation thread only serializes). Encoded here if the thread cannot start.
+    pub fn with_encoder(seconds: Option<u32>, fps: f64) -> Self {
+        let store = match Encoder::spawn() {
+            Ok(encoder) => Store::Encoder(encoder),
+            Err(e) => {
+                log::warn!("rewind encoder thread not started, encoding inline: {e}");
+                Store::Inline(RewindBuffer::new(1, MAX_BYTES))
+            }
+        };
+        Self::with_store(store, seconds, fps)
+    }
+
+    fn with_store(store: Store, seconds: Option<u32>, fps: f64) -> Self {
         Self {
-            buffer: RewindBuffer::new(1, MAX_BYTES),
+            store,
             seconds,
             fps,
             interval: None,
             since: 0,
+            spare: Vec::new(),
         }
     }
 
@@ -294,12 +498,28 @@ impl Rewind {
         self.seconds.is_some()
     }
 
+    /// Runs `f` on the buffer once every state sent is in it.
+    fn with_buffer<R>(&mut self, f: impl FnOnce(&mut RewindBuffer) -> R) -> R {
+        match &mut self.store {
+            Store::Inline(buffer) => f(buffer),
+            Store::Encoder(encoder) => {
+                let mut buffer = encoder.settled();
+                let r = f(&mut buffer);
+                encoder.shared.publish(&buffer);
+                r
+            }
+        }
+    }
+
     /// `speed.rew` / `speed.rewlen` changed while the game runs. Off drops every state.
     pub fn set_seconds(&mut self, seconds: Option<u32>) {
         self.seconds = seconds;
+        let fps = self.fps;
         match (seconds, self.interval) {
-            (None, _) => self.buffer.clear(),
-            (Some(s), Some(interval)) => self.buffer.set_capacity(capacity(s, self.fps, interval)),
+            (None, _) => self.with_buffer(RewindBuffer::clear),
+            (Some(s), Some(interval)) => {
+                self.with_buffer(|b| b.set_capacity(capacity(s, fps, interval)));
+            }
             (Some(_), None) => {}
         }
     }
@@ -309,13 +529,14 @@ impl Rewind {
     pub fn set_fps(&mut self, fps: f64) {
         self.fps = fps;
         if let (Some(s), Some(interval)) = (self.seconds, self.interval) {
-            self.buffer.set_capacity(capacity(s, self.fps, interval));
+            self.with_buffer(|b| b.set_capacity(capacity(s, fps, interval)));
         }
     }
 
-    /// After every frame run forwards: takes a state when one is due. `take` is called only
-    /// then; `None` from it (a core without states) is skipped.
-    pub fn record(&mut self, take: impl FnOnce() -> Option<Vec<u8>>) {
+    /// After every frame run forwards: takes a state when one is due. `take` serializes into
+    /// the buffer it is given (reused from older states) and is called only then; false from it
+    /// (a core without states) skips the state.
+    pub fn record(&mut self, take: impl FnOnce(&mut Vec<u8>) -> bool) {
         let Some(seconds) = self.seconds else {
             return;
         };
@@ -323,34 +544,73 @@ impl Rewind {
         if self.since < self.interval.unwrap_or(1) {
             return;
         }
+        if let Store::Encoder(encoder) = &self.store {
+            // The encoder is behind: this state is skipped, the next frame tries again.
+            if encoder.shared.pending.load(Ordering::Acquire) >= MAX_PENDING {
+                return;
+            }
+            if let Ok(spare) = encoder.spares.try_recv() {
+                self.spare = spare;
+            }
+        }
         self.since = 0;
-        let Some(state) = take() else {
+        let mut state = std::mem::take(&mut self.spare);
+        if !take(&mut state) {
+            self.spare = state;
             return;
-        };
+        }
         if self.interval.is_none() {
             let interval = interval_for(state.len());
             self.interval = Some(interval);
             let capacity = capacity(seconds, self.fps, interval);
-            self.buffer.set_capacity(capacity);
+            self.with_buffer(|b| b.set_capacity(capacity));
             log::info!(
                 "rewind: {} bytes a state, one every {interval} frames, {capacity} states for {seconds} s",
                 state.len()
             );
         }
-        self.buffer.push(state);
+        match &mut self.store {
+            Store::Inline(buffer) => {
+                if let Some(spare) = buffer.push(state) {
+                    self.spare = spare;
+                }
+            }
+            Store::Encoder(encoder) => {
+                let Some(tx) = &encoder.tx else {
+                    return;
+                };
+                encoder.shared.pending.fetch_add(1, Ordering::AcqRel);
+                if tx.send(state).is_err() {
+                    // The encoder is gone (it panicked): the state is lost, nothing waits for it.
+                    encoder.shared.pending.fetch_sub(1, Ordering::AcqRel);
+                }
+            }
+        }
     }
 
-    /// One step back while rewinding: the state to load, `None` when the buffer is empty
-    /// (the game stays on its picture).
-    pub fn step_back(&mut self) -> Option<Vec<u8>> {
+    /// One step back while rewinding: `load` sees the state to go back to (`None` when the
+    /// buffer is empty: the game stays on its picture). The buffer then holds the one before it.
+    pub fn step_back<R>(&mut self, load: impl FnOnce(&[u8]) -> R) -> Option<R> {
         // Recording starts again a full interval after the rewind ends.
         self.since = 0;
-        self.buffer.pop()
+        self.with_buffer(|b| b.step_back(load))
     }
 
-    /// States held and their bytes (Stats, the headless example's `--rewind`).
+    /// Waits until every state taken is in the buffer (tests; the encoder's own pace otherwise).
+    pub fn sync(&mut self) {
+        self.with_buffer(|_| ());
+    }
+
+    /// States held and their bytes (Stats, the headless example's `--rewind`). Never waits for
+    /// the encoder: what it published after its last push.
     pub fn usage(&self) -> (usize, usize) {
-        (self.buffer.len(), self.buffer.bytes())
+        match &self.store {
+            Store::Inline(buffer) => (buffer.len(), buffer.bytes()),
+            Store::Encoder(encoder) => (
+                encoder.shared.states.load(Ordering::Relaxed),
+                encoder.shared.bytes.load(Ordering::Relaxed),
+            ),
+        }
     }
 }
 
@@ -518,9 +778,10 @@ mod tests {
         let mut taken = 0;
         let mut rw = Rewind::new(Some(1), 60.0);
         for n in 0..10 {
-            rw.record(|| {
+            rw.record(|buf| {
                 taken += 1;
-                Some(state(n, 1000))
+                *buf = state(n, 1000);
+                true
             });
         }
         // The first state at the first frame, then one every INTERVAL frames.
@@ -528,25 +789,33 @@ mod tests {
         assert_eq!(rw.usage().0, taken);
 
         let mut off = Rewind::new(None, 60.0);
-        off.record(|| panic!("no state is taken with rewind off"));
+        off.record(|_| panic!("no state is taken with rewind off"));
         assert_eq!(off.usage(), (0, 0));
         assert!(!off.enabled());
+    }
+
+    /// `take` writing state `n` of `size` bytes into the buffer it is given.
+    fn put(n: u32, size: usize) -> impl FnOnce(&mut Vec<u8>) -> bool {
+        move |buf| {
+            *buf = state(n, size);
+            true
+        }
     }
 
     #[test]
     fn rewind_holds_the_seconds_asked() {
         let mut rw = Rewind::new(Some(1), 60.0);
         for n in 0..1000 {
-            rw.record(|| Some(state(n, 1000)));
+            rw.record(put(n, 1000));
         }
         // One second at 60 fps, a state every INTERVAL frames.
         assert_eq!(rw.usage().0, capacity(1, 60.0, INTERVAL));
         rw.set_seconds(None);
         assert_eq!(rw.usage(), (0, 0));
-        rw.record(|| panic!("off"));
+        rw.record(|_| panic!("off"));
         rw.set_seconds(Some(2));
         for _ in 0..INTERVAL {
-            rw.record(|| Some(state(0, 1000)));
+            rw.record(put(0, 1000));
         }
         assert_eq!(rw.usage().0, 1);
     }
@@ -555,15 +824,87 @@ mod tests {
     fn stepping_back_restarts_the_interval() {
         let mut rw = Rewind::new(Some(10), 60.0);
         for n in 0..9 {
-            rw.record(|| Some(state(n, 100)));
+            rw.record(put(n, 100));
         }
         let held = rw.usage().0;
-        assert_eq!(rw.step_back(), Some(state(8, 100)));
+        assert_eq!(rw.step_back(<[u8]>::to_vec), Some(state(8, 100)));
         // Back to playing: the next state comes a full interval later.
-        rw.record(|| panic!("too early"));
-        rw.record(|| Some(state(99, 100)));
+        rw.record(|_| panic!("too early"));
+        rw.record(put(99, 100));
         assert_eq!(rw.usage().0, held);
         let mut empty = Rewind::new(Some(10), 60.0);
-        assert_eq!(empty.step_back(), None);
+        assert_eq!(empty.step_back(<[u8]>::to_vec), None);
+    }
+
+    /// The buffers come back: after the first few states, `take` is handed one that already
+    /// holds a state of the right size (serializing into it allocates nothing).
+    #[test]
+    fn states_are_serialized_into_reused_buffers() {
+        let mut rw = Rewind::new(Some(10), 60.0);
+        let mut reused = 0;
+        for n in 0..20 {
+            for _ in 0..INTERVAL {
+                rw.record(|buf| {
+                    reused += usize::from(buf.capacity() >= 1000);
+                    let s = state(n, 1000);
+                    buf.clear();
+                    buf.extend_from_slice(&s);
+                    true
+                });
+            }
+        }
+        assert!(reused >= 18, "{reused} of 20 reused");
+    }
+
+    /// The encoder thread gives the same buffer as encoding inline, and stepping back waits for
+    /// the states still on their way.
+    #[test]
+    fn the_encoder_thread_keeps_the_same_states() {
+        let mut inline = Rewind::new(Some(2), 60.0);
+        let mut threaded = Rewind::with_encoder(Some(2), 60.0);
+        for n in 0..300 {
+            inline.record(put(n, 4000));
+            threaded.record(put(n, 4000));
+            // Without waiting, the encoder may skip a state when it is behind: a sync per frame
+            // keeps the two in step for the comparison.
+            threaded.sync();
+        }
+        assert_eq!(threaded.usage(), inline.usage());
+        loop {
+            let a = inline.step_back(<[u8]>::to_vec);
+            let b = threaded.step_back(<[u8]>::to_vec);
+            assert_eq!(a, b);
+            if a.is_none() {
+                break;
+            }
+        }
+        assert_eq!(threaded.usage(), (0, 0));
+    }
+
+    /// Unsynced, the encoder never holds more than its few pending states and every state it
+    /// kept rebuilds.
+    #[test]
+    fn the_encoder_thread_under_load_stays_consistent() {
+        let mut rw = Rewind::with_encoder(Some(1), 60.0);
+        for n in 0..2000 {
+            rw.record(put(n, 20_000));
+        }
+        let (states, _) = {
+            rw.sync();
+            rw.usage()
+        };
+        assert!(states > 0);
+        let mut back = 0;
+        let mut last = None;
+        while let Some(s) = rw.step_back(<[u8]>::to_vec) {
+            // Newest first: each state is an older frame than the one before.
+            let n = u32::from_le_bytes([s[0], s[97], s[194], s[291]]);
+            if let Some(prev) = last {
+                assert!(n < prev, "{n} after {prev}");
+            }
+            last = Some(n);
+            back += 1;
+        }
+        assert_eq!(back, states);
     }
 }

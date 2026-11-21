@@ -3,7 +3,7 @@
 // one-time move of old save names (told once, if it failed or left files behind).
 // Stopped on unmount.
 import { useI18n } from 'vue-i18n'
-import { emu, type SavesMigration } from '@/emu'
+import { emu, type ErrorCode, type SavesMigration } from '@/emu'
 import { gamepadName } from '@/i18n/labels'
 import { report } from '@/lib/errors'
 import { usedController } from '@/lib/inputMode'
@@ -42,6 +42,27 @@ export function useShellEvents(
     }
   }
 
+  // What is not working (`emu://health`: no audio output, native video fallen back, controllers,
+  // a stopped thread): each code told once while it lasts; one that clears and comes back is
+  // told again.
+  let healthTold = new Set<string>()
+  function tellHealth(issues: ErrorCode[]) {
+    const now = new Set(issues.map(i => JSON.stringify(i)))
+    for (const issue of issues) {
+      if (!healthTold.has(JSON.stringify(issue))) toasts.failWith(issue)
+    }
+    healthTold = now
+  }
+
+  /** What was already not working before the listener (it may have been reported at start). */
+  async function askHealth() {
+    try {
+      tellHealth(await emu.diagnostics())
+    } catch (e) {
+      toasts.failWith(e)
+    }
+  }
+
   /**
    * Subscribes to every event at once: one that fails is thrown (App.vue reports it), the others
    * are kept, the controller's above all.
@@ -51,6 +72,7 @@ export function useShellEvents(
       await subscribe()
     } finally {
       await askMigration()
+      await askHealth()
     }
   }
 
@@ -75,6 +97,7 @@ export function useShellEvents(
       emu.onEffectError(toasts.failWith),
       // A game opened without the system files a setting asked for: it runs without them.
       emu.onBiosFallback(toasts.failWith),
+      emu.onHealth(tellHealth),
       emu.onGamepadConnected(p => {
         controller.value = gamepadName(p)
         toasts.notify(t('toast.gamepadConnected', { name: gamepadName(p) }))

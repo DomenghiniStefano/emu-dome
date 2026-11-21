@@ -26,6 +26,7 @@ mod first_run;
 #[cfg(desktop)]
 mod gamepad;
 mod gpu_interop;
+mod health;
 mod library;
 mod migration;
 mod pads;
@@ -56,8 +57,9 @@ use tauri::webview::Color;
 use tauri::{Emitter, Manager, WindowEvent};
 use ts_rs::TS;
 
-/// The active session, read by renderer, audio and controllers.
-pub type CurrentShared = Arc<Mutex<Option<Arc<Shared>>>>;
+/// The active session, read by renderer, audio and controllers: an `ArcSwapOption`, so the audio
+/// callback and the controller thread read it without a lock (Trello #79).
+pub type CurrentShared = Arc<arc_swap::ArcSwapOption<Shared>>;
 
 /// Where the game is drawn: native surface under the webview, or canvas in the webview.
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, TS)]
@@ -387,9 +389,9 @@ fn open_path(
 
     let shared = session.shared().clone();
     if let Some(tone) = state.bench.as_ref().and_then(|b| b.tone()) {
-        shared.audio.lock().set_test_tone(Some(tone));
+        shared.audio.set_test_tone(Some(tone));
     }
-    *state.current.lock() = Some(shared.clone());
+    state.current.store(Some(shared.clone()));
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
     *state.game.lock() = Some(game.clone());
@@ -439,7 +441,7 @@ fn release_game(app: &tauri::AppHandle, state: &AppState) -> (Option<Session>, &
     core_settings::stopped(app);
     settings::end_session(app);
     state.native_source(None);
-    *state.current.lock() = None;
+    state.current.store(None);
     // Taken out first: the session lock is not held while the thread is waited for.
     let session = state.session.lock().take();
     let core = state
@@ -547,7 +549,7 @@ fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
 impl AppState {
     /// Lets go of every keyboard button of the open game (menu opened, focus lost).
     fn release_keyboard(&self) {
-        if let Some(shared) = self.current.lock().as_ref() {
+        if let Some(shared) = self.current.load().as_ref() {
             shared.input.release(Source::Keyboard);
         }
     }
@@ -588,7 +590,7 @@ fn set_video_mode(
             detail: e.to_string(),
         })?;
     *state.video_mode.lock() = mode;
-    let current = state.current.lock().clone();
+    let current = state.current.load_full();
     state.native_source(current);
     Ok(())
 }
@@ -620,14 +622,15 @@ fn frame_protocol(
             "x-width, x-height, x-seq",
         )
         .header(header::CACHE_CONTROL, "no-store");
-    let shared = app.state::<AppState>().current.lock().clone();
+    let shared = app.state::<AppState>().current.load_full();
     let Some(shared) = shared else {
         return builder
             .status(StatusCode::NO_CONTENT)
             .body(Vec::new())
             .unwrap_or_else(response_error);
     };
-    let frame = shared.frame.lock();
+    // A clone of the frame (its pixels' `Arc`) under the lock; the copy into the response after.
+    let frame = shared.frame.lock().clone();
     if frame.rgba.is_empty() || since == Some(frame.seq) {
         return builder
             .status(StatusCode::NO_CONTENT)
@@ -639,7 +642,7 @@ fn frame_protocol(
         .header("x-width", frame.width)
         .header("x-height", frame.height)
         .header("x-seq", frame.seq)
-        .body(frame.rgba.clone())
+        .body(frame.rgba.to_vec())
         .unwrap_or_else(response_error)
 }
 
@@ -751,8 +754,7 @@ fn undo_save(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
 /// «Muto» (quick menu): silence for the open game only; the next game starts with sound.
 #[tauri::command]
 fn set_muted(state: tauri::State<'_, AppState>, muted: bool) -> Result<(), ErrorCode> {
-    let current = state.current.lock().clone();
-    let shared = current.ok_or(ErrorCode::NoGame)?;
+    let shared = state.current.load_full().ok_or(ErrorCode::NoGame)?;
     shared.muted.store(muted, Ordering::Relaxed);
     Ok(())
 }
@@ -778,7 +780,7 @@ fn reset_game(state: tauri::State<'_, AppState>) -> Result<(), ErrorCode> {
 /// Keyboard: for now it goes through the webview (which has the focus).
 #[tauri::command]
 fn input(state: tauri::State<'_, AppState>, button: Button, pressed: bool) {
-    if let Some(shared) = state.current.lock().as_ref() {
+    if let Some(shared) = state.current.load().as_ref() {
         shared.input.set(Source::Keyboard, button, pressed);
     }
 }
@@ -800,7 +802,7 @@ pub(crate) struct PointerArea {
 /// TODO(#28): the layout from the `screens.*` settings; today the default (stacked).
 #[tauri::command]
 fn pointer(state: tauri::State<'_, AppState>, x: f32, y: f32, pressed: bool, area: PointerArea) {
-    let Some(shared) = state.current.lock().clone() else {
+    let Some(shared) = state.current.load_full() else {
         return;
     };
     let at = if pressed {
@@ -822,7 +824,7 @@ fn pointer(state: tauri::State<'_, AppState>, x: f32, y: f32, pressed: bool, are
 
 #[tauri::command]
 fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
-    match state.current.lock().as_ref() {
+    match state.current.load().as_ref() {
         Some(shared) => {
             let s = shared.stats.lock();
             StatsDto {
@@ -852,6 +854,7 @@ fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
 }
 
 /// Hands the system's surface (Android's `SurfaceView` under the webview) to the renderer.
+/// A surface the renderer cannot use is reported by the renderer (`videoSurfaceFailed`).
 fn attach_surface(ui: &tauri::Webview, renderer: video::Renderer) {
     emudome_platform::attach_external_surface(ui, move |event| match event {
         emudome_platform::SurfaceEvent::Ready(surface) => {
@@ -909,8 +912,12 @@ pub fn run() {
                 },
             )?;
             let size = window.inner_size()?;
+            // What is not working, for the interface (`emu://health`, `diagnostics`).
+            let health = health::SharedHealth::default();
+            health.attach(app.handle().clone());
+            app.manage(health.clone());
 
-            let current: CurrentShared = Arc::new(Mutex::new(None));
+            let current: CurrentShared = Arc::default();
             // The native renderer is created only where it can sit under the webview:
             // where it covers the interface (Linux/GTK) the game goes into the webview's canvas.
             let native = tuning
@@ -923,16 +930,29 @@ pub fn run() {
             let mut native_error = None;
             let renderer = if native {
                 let spawned = if emudome_platform::EXTERNAL_SURFACE {
-                    video::Renderer::spawn_detached(surface)
+                    video::Renderer::spawn_detached(surface, health.clone())
                         .inspect(|r| attach_surface(&ui, r.clone()))
                 } else {
-                    video::Renderer::spawn(window.clone(), size.width, size.height, surface)
+                    video::Renderer::spawn(
+                        window.clone(),
+                        size.width,
+                        size.height,
+                        surface,
+                        health.clone(),
+                    )
                 };
                 match spawned {
                     Ok(r) => Some(r),
                     Err(e) => {
                         log::error!("native video unavailable, using the webview: {e:#}");
-                        native_error = Some(format!("{e:#}"));
+                        let detail = format!("{e:#}");
+                        health.set(
+                            health::Part::NativeVideo,
+                            Some(ErrorCode::NativeVideoFallback {
+                                detail: detail.clone(),
+                            }),
+                        );
+                        native_error = Some(detail);
                         None
                     }
                 }
@@ -950,6 +970,8 @@ pub fn run() {
                 current.clone(),
                 tuning.audio.clone(),
                 bench.as_ref().and_then(|b| b.tone()),
+                bench.is_some(),
+                health.clone(),
             );
             let menu_open = Arc::new(AtomicBool::new(false));
             let pads = pads::PadsState::default();
@@ -960,6 +982,7 @@ pub fn run() {
                 current.clone(),
                 menu_open.clone(),
                 pads,
+                health.clone(),
             );
 
             // An external surface reports its own size.
@@ -1078,6 +1101,7 @@ pub fn run() {
             first_run::first_run_show,
             first_run::first_run_steps,
             first_run::first_run_done,
+            health::diagnostics,
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")

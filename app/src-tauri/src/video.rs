@@ -23,12 +23,15 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use emudome_core::tuning::{PresentMode, VideoTuning};
-use emudome_core::Shared;
+use emudome_core::video_sink::Wake;
+use emudome_core::{ErrorCode, Shared};
 use librashader::presets::ShaderFeatures;
 use librashader::runtime::wgpu::{FilterChain, FilterChainOptions, WgpuOutputView};
 use librashader::runtime::{Size, Viewport};
 use parking_lot::Mutex;
 use serde::Serialize;
+
+use crate::health::{Part, SharedHealth};
 
 /// How the surface presents, from the tuning knobs.
 #[derive(Debug, Clone, Copy)]
@@ -137,6 +140,9 @@ enum Msg {
 #[derive(Clone)]
 pub struct Renderer {
     tx: Sender<Msg>,
+    /// Wakes the video thread for a message (the game's frames wake it through
+    /// `Shared::frame_wake`).
+    wake: Arc<Wake>,
     metrics: SharedVideoMetrics,
 }
 
@@ -149,6 +155,7 @@ impl Renderer {
         width: u32,
         height: u32,
         settings: SurfaceSettings,
+        health: SharedHealth,
     ) -> Result<Self> {
         let mut service = GpuService::new();
         let mut painter = None;
@@ -160,12 +167,12 @@ impl Renderer {
             height,
             settings,
         )?;
-        Self::start(service, Some(gpu), painter, settings)
+        Self::start(service, Some(gpu), painter, settings, health)
     }
 
     /// Starts with no surface: it arrives with [`Self::attach`].
-    pub fn spawn_detached(settings: SurfaceSettings) -> Result<Self> {
-        Self::start(GpuService::new(), None, None, settings)
+    pub fn spawn_detached(settings: SurfaceSettings, health: SharedHealth) -> Result<Self> {
+        Self::start(GpuService::new(), None, None, settings, health)
     }
 
     fn start(
@@ -173,15 +180,31 @@ impl Renderer {
         gpu: Option<Gpu>,
         painter: Option<Painter>,
         settings: SurfaceSettings,
+        health: SharedHealth,
     ) -> Result<Self> {
         let metrics = SharedVideoMetrics::default();
         metrics.lock().gpu = gpu.as_ref().map(|g| g.info.clone());
         let (tx, rx) = mpsc::channel();
-        let video = Video::new(service, gpu, painter, settings, metrics.clone());
+        let wake = Arc::new(Wake::default());
+        let video = Video::new(
+            service,
+            gpu,
+            painter,
+            settings,
+            metrics.clone(),
+            wake.clone(),
+            health.clone(),
+        );
         std::thread::Builder::new()
             .name("emudome-video".into())
-            .spawn(move || video.run(rx))?;
-        Ok(Self { tx, metrics })
+            .spawn(move || health.guard(Part::NativeVideo, || video.run(rx)))?;
+        Ok(Self { tx, wake, metrics })
+    }
+
+    fn send(&self, msg: Msg) {
+        if self.tx.send(msg).is_ok() {
+            self.wake.notify();
+        }
     }
 
     /// What the video thread measures (GPU in use, surface errors, presents in bench mode).
@@ -193,44 +216,63 @@ impl Renderer {
         &self.metrics
     }
 
+    /// The window's new size; 0 × 0 (minimized) stops drawing until it has a size again.
     pub fn resize(&self, width: u32, height: u32) {
-        let _ = self.tx.send(Msg::Resize(width, height));
+        self.send(Msg::Resize(width, height));
     }
 
     pub fn set_source(&self, shared: Option<Arc<Shared>>) {
-        let _ = self.tx.send(Msg::Source(shared));
+        self.send(Msg::Source(shared));
     }
 
     /// A new surface to draw on (it replaces the current one, if any).
     pub fn attach(&self, target: wgpu::SurfaceTarget<'static>, width: u32, height: u32) {
-        let _ = self.tx.send(Msg::Attach(target, width, height));
+        self.send(Msg::Attach(target, width, height));
     }
 
     /// Keeps the bottom `fraction` of the surface clear: the game shrinks into the rest
     /// (quick menu G09, whose bar sits at the bottom). 0 = the whole surface.
     pub fn set_inset(&self, fraction: f32) {
-        let _ = self.tx.send(Msg::Inset(fraction));
+        self.send(Msg::Inset(fraction));
     }
 
     /// The screen effect to draw the game with (`None`: the plain image). Kept across
     /// surfaces; a preset is loaded again only when its path changes.
     pub fn set_effect(&self, effect: Option<EffectSpec>) {
-        let _ = self.tx.send(Msg::Effect(effect));
+        self.send(Msg::Effect(effect));
     }
 
     /// Who is told when a preset cannot be loaded or drawn.
     pub fn on_effect_error(&self, listener: EffectListener) {
-        let _ = self.tx.send(Msg::EffectListener(listener));
+        self.send(Msg::EffectListener(listener));
     }
 
-    /// Lets go of the surface; returns once it is no longer used.
+    /// Lets go of the surface; returns once the GPU no longer uses it (Android destroys it right
+    /// after). Waits for as long as the video thread takes: a surface destroyed under a present in
+    /// flight is a crash, a slow detach only a slow pause. Returns at once if the thread is gone.
     pub fn detach(&self) {
         let (ack_tx, ack_rx) = mpsc::channel();
-        if self.tx.send(Msg::Detach(ack_tx)).is_ok() {
-            let _ = ack_rx.recv_timeout(Duration::from_secs(2));
+        let started = Instant::now();
+        self.send(Msg::Detach(ack_tx));
+        loop {
+            match ack_rx.recv_timeout(Duration::from_secs(2)) {
+                Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => return,
+                Err(mpsc::RecvTimeoutError::Timeout) => log::warn!(
+                    "native video: the surface is still in use after {:.0} s",
+                    started.elapsed().as_secs_f64()
+                ),
+            }
         }
     }
 }
+
+/// With nothing new to show, the video thread sleeps until woken, at most this long (it then
+/// looks at its messages and logs the rates).
+const IDLE_WAIT: Duration = Duration::from_millis(100);
+
+/// After a frame that could not be presented (surface outdated, lost, occluded, timed out),
+/// the next try waits this long, so a surface that keeps failing never spins a core.
+const RETRY_WAIT: Duration = Duration::from_millis(8);
 
 /// How often the video thread logs the frame rates (to measure FPS from the logs too).
 const FPS_LOG_EVERY: Duration = Duration::from_secs(10);
@@ -252,6 +294,14 @@ struct Video {
     /// See [`Renderer::set_effect`]; kept across surfaces.
     effect: Option<EffectSpec>,
     effect_listener: Option<EffectListener>,
+    /// Woken by the messages and by the game's new frames.
+    wake: Arc<Wake>,
+    /// Something changed since the last present (size, surface, game, inset, effect).
+    dirty: bool,
+    /// Frames not presented because nothing changed, since the last rate log.
+    unchanged: u32,
+    /// Where a surface that cannot be used is reported (`videoSurfaceFailed`).
+    health: SharedHealth,
 }
 
 impl Video {
@@ -261,6 +311,8 @@ impl Video {
         painter: Option<Painter>,
         settings: SurfaceSettings,
         metrics: SharedVideoMetrics,
+        wake: Arc<Wake>,
+        health: SharedHealth,
     ) -> Self {
         Self {
             service,
@@ -274,95 +326,155 @@ impl Video {
             inset: 0.0,
             effect: None,
             effect_listener: None,
+            wake,
+            dirty: true,
+            unchanged: 0,
+            health,
         }
     }
 
+    /// Whether the game has a frame the painter has not uploaded yet.
+    fn new_frame(&self) -> bool {
+        let (Some(source), Some(painter)) = (&self.source, &self.painter) else {
+            return false;
+        };
+        let frame = source.frame.lock();
+        !frame.rgba.is_empty() && frame.seq != painter.last_seq
+    }
+
+    /// Presents only when something changed (a new game frame, the size, the surface, the
+    /// game, the inset, the effect); otherwise sleeps until woken. A paused game, a menu over a
+    /// still picture, a minimized window cost no GPU work and no CPU core, and every game frame
+    /// is presented once (Trello #79; the pacing itself is `docs/video-pacing.md`).
     fn run(mut self, rx: Receiver<Msg>) {
         loop {
-            // Incoming messages; with nothing to draw, wait instead of spinning.
-            let mut msgs: Vec<Msg> = rx.try_iter().collect();
-            if (self.source.is_none() || self.gpu.is_none()) && msgs.is_empty() {
-                match rx.recv_timeout(Duration::from_millis(100)) {
-                    Ok(m) => msgs.push(m),
-                    Err(mpsc::RecvTimeoutError::Timeout) => {}
-                    Err(mpsc::RecvTimeoutError::Disconnected) => return,
+            loop {
+                match rx.try_recv() {
+                    Ok(m) => self.handle(m),
+                    Err(mpsc::TryRecvError::Empty) => break,
+                    Err(mpsc::TryRecvError::Disconnected) => return,
                 }
             }
-            for m in msgs {
-                match m {
-                    Msg::Resize(w, h) => {
-                        if let Some(gpu) = &mut self.gpu {
-                            gpu.resize(&self.service, w, h);
-                        }
-                    }
-                    Msg::Source(s) => {
-                        self.source = s;
-                        if let Some(painter) = &mut self.painter {
-                            painter.reset_game();
-                        }
-                    }
-                    Msg::Attach(target, w, h) => {
-                        // The old surface goes first; the GPU and the painter stay.
-                        self.gpu = None;
-                        match Gpu::new(
-                            &mut self.service,
-                            &mut self.painter,
-                            target,
-                            w,
-                            h,
-                            self.settings,
-                        ) {
-                            Ok(gpu) => {
-                                let mut m = self.metrics.lock();
-                                m.gpu = Some(gpu.info.clone());
-                                m.surface_error = None;
-                                self.gpu = Some(gpu);
-                            }
-                            Err(e) => {
-                                log::error!("native video: surface not usable: {e:#}");
-                                self.metrics.lock().surface_error = Some(format!("{e:#}"));
-                            }
-                        }
-                    }
-                    Msg::Detach(ack) => {
-                        // Only the surface: the device lives on for the next one.
-                        self.gpu = None;
-                        let _ = ack.send(());
-                    }
-                    Msg::Inset(fraction) => self.inset = fraction,
-                    Msg::Effect(effect) => self.effect = effect,
-                    Msg::EffectListener(listener) => self.effect_listener = Some(listener),
+            let drawable = self.gpu.as_ref().is_some_and(Gpu::drawable) && self.painter.is_some();
+            if !(drawable && (self.dirty || self.new_frame())) {
+                if drawable {
+                    self.unchanged += 1;
                 }
+                self.wake.wait(IDLE_WAIT);
+                self.log_fps();
+                continue;
             }
-            if let (Some(gpu), Some(painter)) = (&mut self.gpu, &mut self.painter) {
-                painter.sync_effect(self.effect.as_ref());
-                if let Some((preset, detail)) = painter.effect_error.take() {
-                    log::error!("screen effect {}: {detail}", preset.display());
-                    if let Some(listener) = &self.effect_listener {
-                        listener(&preset, detail);
-                    }
-                }
-                painter.upload_frame(self.source.as_deref());
-                match gpu.draw(&self.service, painter, self.inset) {
-                    Ok(()) => {
-                        self.presented += 1;
-                        let at = Instant::now();
-                        let mut m = self.metrics.lock();
-                        if painter.game.is_some() && m.first_game_present.is_none() {
-                            m.first_game_present = Some(at);
-                        }
-                        if let Some(presents) = &mut m.presents {
-                            presents.push(Present {
-                                at,
-                                seq: painter.last_seq,
-                            });
-                        }
-                    }
-                    Err(kind) => *self.metrics.lock().surface_errors.entry(kind).or_default() += 1,
-                }
+            if let Err(kind) = self.present() {
+                *self.metrics.lock().surface_errors.entry(kind).or_default() += 1;
+                // Tried again shortly (or at the next message, a resize for one), never at once.
+                self.wake.wait(RETRY_WAIT);
             }
             self.log_fps();
         }
+    }
+
+    fn handle(&mut self, m: Msg) {
+        // Every message but the listener's changes what is on screen.
+        self.dirty |= !matches!(m, Msg::EffectListener(_));
+        match m {
+            Msg::Resize(w, h) => {
+                if let Some(gpu) = &mut self.gpu {
+                    gpu.resize(&self.service, w, h);
+                }
+            }
+            Msg::Source(s) => {
+                // The new game's frames wake this thread; the old game's no longer do.
+                if let Some(old) = &self.source {
+                    old.frame_wake.lock().take();
+                }
+                if let Some(new) = &s {
+                    *new.frame_wake.lock() = Some(self.wake.clone());
+                }
+                self.source = s;
+                if let Some(painter) = &mut self.painter {
+                    painter.reset_game();
+                }
+            }
+            Msg::Attach(target, w, h) => {
+                // The old surface goes first; the GPU and the painter stay.
+                self.gpu = None;
+                match Gpu::new(
+                    &mut self.service,
+                    &mut self.painter,
+                    target,
+                    w,
+                    h,
+                    self.settings,
+                ) {
+                    Ok(gpu) => {
+                        {
+                            let mut m = self.metrics.lock();
+                            m.gpu = Some(gpu.info.clone());
+                            m.surface_error = None;
+                        }
+                        self.gpu = Some(gpu);
+                        self.health.set(Part::Surface, None);
+                    }
+                    Err(e) => {
+                        log::error!("native video: surface not usable: {e:#}");
+                        let detail = format!("{e:#}");
+                        self.metrics.lock().surface_error = Some(detail.clone());
+                        self.health.set(
+                            Part::Surface,
+                            Some(ErrorCode::VideoSurfaceFailed { detail }),
+                        );
+                    }
+                }
+            }
+            Msg::Detach(ack) => {
+                // Only the surface: the device lives on for the next one. The GPU finishes
+                // what it was given first (a present in flight), then the surface goes.
+                if let Some(d) = self.service.device() {
+                    if let Err(e) = d.device.poll(wgpu::PollType::Wait {
+                        submission_index: None,
+                        timeout: Some(Duration::from_secs(5)),
+                    }) {
+                        log::warn!("native video: the GPU did not finish before the detach: {e}");
+                    }
+                }
+                self.gpu = None;
+                let _ = ack.send(());
+            }
+            Msg::Inset(fraction) => self.inset = fraction,
+            Msg::Effect(effect) => self.effect = effect,
+            Msg::EffectListener(listener) => self.effect_listener = Some(listener),
+        }
+    }
+
+    /// Uploads the newest frame and presents; the kind of surface error when nothing was
+    /// presented (the picture stays dirty and is tried again).
+    fn present(&mut self) -> Result<(), &'static str> {
+        let (Some(gpu), Some(painter)) = (&mut self.gpu, &mut self.painter) else {
+            return Err("no surface");
+        };
+        painter.sync_effect(self.effect.as_ref());
+        if let Some((preset, detail)) = painter.effect_error.take() {
+            log::error!("screen effect {}: {detail}", preset.display());
+            if let Some(listener) = &self.effect_listener {
+                listener(&preset, detail);
+            }
+        }
+        painter.upload_frame(self.source.as_deref());
+        gpu.draw(&self.service, painter, self.inset)?;
+        self.dirty = false;
+        self.presented += 1;
+        let at = Instant::now();
+        let mut m = self.metrics.lock();
+        if painter.game.is_some() && m.first_game_present.is_none() {
+            m.first_game_present = Some(at);
+        }
+        if let Some(presents) = &mut m.presents {
+            presents.push(Present {
+                at,
+                seq: painter.last_seq,
+            });
+        }
+        Ok(())
     }
 
     fn log_fps(&mut self) {
@@ -374,14 +486,16 @@ impl Video {
             let stats = source.stats.lock();
             // `core` is the rate of the last whole second of running game; paused, it is 0.
             log::info!(
-                "fps: core {:.2}{}, presented {:.2} (target {:.2})",
+                "fps: core {:.2}{}, presented {:.2} (target {:.2}), {} idle waits",
                 stats.emu_fps,
                 if stats.paused { " (paused)" } else { "" },
                 f64::from(self.presented) / elapsed.as_secs_f64(),
                 stats.av_info.timing.fps,
+                self.unchanged,
             );
         }
         self.presented = 0;
+        self.unchanged = 0;
         self.since = Instant::now();
     }
 }
@@ -543,6 +657,8 @@ struct Gpu {
     surface: wgpu::Surface<'static>,
     config: wgpu::SurfaceConfiguration,
     info: GpuInfo,
+    /// The window has no size (minimized): nothing is drawn.
+    minimized: bool,
 }
 
 /// Draws the game, with its effect, on any texture view of the surface's format: the surface
@@ -597,12 +713,19 @@ impl Gpu {
         let adapter_info = adapter.get_info();
 
         let caps = surface.get_capabilities(adapter);
+        // A surface the adapter cannot present to lists nothing: refused, never a panic.
         let format = caps
             .formats
             .iter()
             .copied()
             .find(|f| f.is_srgb())
-            .unwrap_or(caps.formats[0]);
+            .or_else(|| caps.formats.first().copied())
+            .context("the surface offers no format to this GPU")?;
+        let alpha_mode = caps
+            .alpha_modes
+            .first()
+            .copied()
+            .context("the surface offers no alpha mode to this GPU")?;
         // The Auto modes always resolve; an explicit one the surface lacks would be a
         // validation error (a panic in wgpu): fall back to AutoVsync and say so.
         let requested = settings.present_mode;
@@ -626,7 +749,7 @@ impl Gpu {
             height: height.max(1),
             present_mode,
             desired_maximum_frame_latency: settings.frame_latency,
-            alpha_mode: caps.alpha_modes[0],
+            alpha_mode,
             color_space: wgpu::SurfaceColorSpace::Auto,
             view_formats: vec![],
         };
@@ -659,15 +782,24 @@ impl Gpu {
             surface,
             config,
             info,
+            minimized: width == 0 || height == 0,
         })
     }
 
+    /// A new size; 0 in either direction (a minimized window) stops drawing until a real size
+    /// comes, instead of presenting to a surface that answers `Outdated` every time.
     fn resize(&mut self, service: &GpuService, width: u32, height: u32) {
-        if let (true, Some(d)) = (width > 0 && height > 0, service.device()) {
+        self.minimized = width == 0 || height == 0;
+        if let (false, Some(d)) = (self.minimized, service.device()) {
             self.config.width = width;
             self.config.height = height;
             self.surface.configure(&d.device, &self.config);
         }
+    }
+
+    /// Whether there is something to draw on (not minimized).
+    fn drawable(&self) -> bool {
+        !self.minimized
     }
 
     /// Draws and presents with `painter`; when no frame was presented, the kind of surface
@@ -681,9 +813,9 @@ impl Gpu {
         let Some(d) = service.device() else {
             return Err("no device");
         };
+        // A frame not presented: the caller waits before trying again (`RETRY_WAIT`).
         let skipped = |kind: &'static str| {
             log::debug!("frame skipped: {kind}");
-            std::thread::sleep(Duration::from_millis(8));
             Err(kind)
         };
         let output = match self.surface.get_current_texture() {
@@ -691,11 +823,11 @@ impl Gpu {
             | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated => {
                 self.surface.configure(&d.device, &self.config);
-                return Err("outdated");
+                return skipped("outdated");
             }
             wgpu::CurrentSurfaceTexture::Lost => {
                 self.surface.configure(&d.device, &self.config);
-                return Err("lost");
+                return skipped("lost");
             }
             wgpu::CurrentSurfaceTexture::Timeout => return skipped("timeout"),
             wgpu::CurrentSurfaceTexture::Occluded => return skipped("occluded"),
@@ -884,12 +1016,17 @@ impl Painter {
         let Some(source) = source else {
             return;
         };
-        let frame = source.frame.lock();
-        if frame.seq == self.last_seq || frame.rgba.is_empty() {
-            return;
-        }
-        self.last_seq = frame.seq;
-        self.upload(frame.width, frame.height, &frame.rgba);
+        // The pixels' `Arc` is taken under the lock, the upload runs after it: the core's next
+        // frame never waits for `write_texture`.
+        let (width, height, rgba) = {
+            let frame = source.frame.lock();
+            if frame.seq == self.last_seq || frame.rgba.is_empty() {
+                return;
+            }
+            self.last_seq = frame.seq;
+            (frame.width, frame.height, frame.rgba.clone())
+        };
+        self.upload(width, height, &rgba);
     }
 
     /// Puts `rgba` (`w` x `h`) in the game texture.
@@ -1335,7 +1472,7 @@ mod gpu_tests {
         let frame = Frame {
             width: TARGET.0,
             height: TARGET.1,
-            rgba,
+            rgba: rgba.into(),
             seq: 0,
             split: emudome_core::screens::Split::Whole,
         };

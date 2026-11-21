@@ -243,16 +243,24 @@ impl LoadedCore {
 
     /// Full emulation state (for the slots and, later, rewind).
     pub fn save_state(&self) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        self.save_state_into(&mut buf)?;
+        Ok(buf)
+    }
+
+    /// [`Self::save_state`] into `buf`, reusing its memory (rewind takes a state every few
+    /// frames: no allocation once the buffers are there).
+    pub fn save_state_into(&self, buf: &mut Vec<u8>) -> Result<()> {
         unsafe {
             let size = (self.serialize_size)();
             if size == 0 {
                 bail!("this core does not support save states");
             }
-            let mut buf = vec![0u8; size];
+            buf.resize(size, 0);
             if !(self.serialize)(buf.as_mut_ptr() as *mut c_void, size) {
                 bail!("the core failed to save the state");
             }
-            Ok(buf)
+            Ok(())
         }
     }
 
@@ -415,6 +423,7 @@ pub(crate) struct GameStrings {
 ///
 /// The same folder is the core's save directory for the session (`GET_SAVE_DIRECTORY`), so what
 /// a core writes by itself stays with the game too.
+#[derive(Clone)]
 pub struct GameFiles {
     pub sram: PathBuf,
     dir: PathBuf,
