@@ -13,3 +13,7 @@ src-tauri
 
 # Markdown is wrapped by hand: Prettier would reflow tables and lists on every edit.
 *.md
+
+# Generated from the Rust types and the settings catalogue (crates/emudome-core/src/contract.rs),
+# compared byte for byte by a cargo test: formatting them here would make them stale.
+src/generated

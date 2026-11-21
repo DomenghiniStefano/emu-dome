@@ -2,17 +2,19 @@
 //!
 //! Serialized as `{ "code": "slotEmpty", "params": { "slot": 2 } }` (`params` is absent
 //! for codes without parameters). The interface turns each code into text through i18n
-//! (`errors.<code>` in `app/src/i18n/*.json`); the TypeScript mirror is `ErrorCode` in
-//! `app/src/emu.ts`. `detail` parameters carry technical text (English, from the OS or a
+//! (`errors.<code>` in `app/src/i18n/*.json`); the TypeScript type is generated from this enum
+//! into `app/src/generated/ErrorCode.ts`, with the list of codes in `error-codes.json`, which a
+//! Vitest test holds against both message files (`crate::contract`). `detail` parameters carry technical text (English, from the OS or a
 //! library) that the interface may show as is, never a sentence meant for the user.
 
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::bios::Slot;
 use crate::settings::Level;
 use crate::GameKey;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "code", content = "params", rename_all = "camelCase")]
 pub enum ErrorCode {
     /// The file extension belongs to no supported console.

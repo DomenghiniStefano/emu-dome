@@ -2,7 +2,7 @@
 //! `<console>:<hex>` (docs/decisions.md, «Game identity»; how the hex is made:
 //! [`crate::library::identity`]). Everything stored per game is keyed by it, never by a path or
 //! a file name: saves and quick saves ([`crate::GameFiles`]), «Solo questo gioco» settings, the
-//! library, covers, play time; the interface names games by it too (`GameId` in app/src/emu.ts).
+//! library, covers, play time; the interface names games by it too (`GameId`, generated into app/src/generated/).
 //!
 //! The same game has the same key wherever its file is and whatever it is called, so renaming or
 //! moving a ROM keeps its saves; two different ROMs with the same file name (`Tetris.gb` and
@@ -17,15 +17,17 @@ use std::fmt;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::settings::ConsoleId;
 
 /// Longest hex part accepted (SHA-1 is 40, a 3DS title id + version 20).
 const MAX_HEX: usize = 64;
 
-/// A game's identity from its content. Mirror: `GameId` in app/src/emu.ts.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// A game's identity from its content. TypeScript: `GameId` (generated), opaque text.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
 #[serde(try_from = "String", into = "String")]
+#[ts(rename = "GameId", type = "string")]
 pub struct GameKey {
     console: ConsoleId,
     /// `<console>:<hex>`, kept whole so it can be lent as a `&str`.

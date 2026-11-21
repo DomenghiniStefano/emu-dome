@@ -25,13 +25,15 @@ mod mgba;
 
 use md5::{Digest, Md5};
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::settings::{ConsoleId, Value};
 use crate::ErrorCode;
 
-/// One file a core can use.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+/// One file a core can use. TypeScript: `BiosSlot` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "BiosSlot")]
 pub enum Slot {
     /// Game Boy Advance BIOS (mGBA).
     GbaBios,

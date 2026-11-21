@@ -7,13 +7,15 @@
 //! the `perf.*`, `cores.*` and `adv.*` keys, which never change).
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 pub use crate::bindings::Table as BindingTable;
 
 /// Where a value comes from, from the weakest to the strongest.
-/// Mirror: `SettingLevel` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// TypeScript: `SettingLevel` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "SettingLevel")]
 pub enum Level {
     /// The schema's default.
     Default,

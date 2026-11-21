@@ -3,6 +3,9 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
+import type { ErrorCode } from '@/generated/ErrorCode'
+import type { GameId } from '@/generated/GameId'
+import type { SettingLevel } from '@/generated/SettingLevel'
 
 export type Speed = { kind: 'factor'; value: number } | { kind: 'max' }
 export type Button =
@@ -70,64 +73,11 @@ export interface SlotInfo {
 export const AUTO_SLOT = 0
 
 /**
- * Mirror of `emudome_core::ErrorCode` (crates/emudome-core/src/error.rs): what every
- * command rejects with and what `error` events carry. Turned into text by `errorText`
- * (src/i18n/labels.ts) through `errors.<code>`. `detail` is technical text, not a sentence.
+ * What every command rejects with and what `error` events carry (`emudome_core::ErrorCode`,
+ * generated). Turned into text by `errorText` (src/i18n/labels.ts) through `errors.<code>`;
+ * `detail` is technical text, not a sentence.
  */
-export type ErrorCode =
-  | { code: 'unsupportedFormat'; params: { ext: string } }
-  | { code: 'consoleNotYet'; params: { console: string; phase: number } }
-  | { code: 'coreNotFound'; params: { file: string } }
-  | { code: 'coreDamaged'; params: { file: string } }
-  | { code: 'openFailed'; params: { detail: string } }
-  /** The file has a console's extension but is not a game of it: it has no identity. */
-  | { code: 'gameUnidentified'; params: { detail: string } }
-  | { code: 'coreNeedsRestart'; params: { core: string } }
-  | { code: 'noGame' }
-  | { code: 'appClosing' }
-  | { code: 'nativeVideoUnavailable' }
-  | { code: 'webviewBackgroundFailed'; params: { detail: string } }
-  | { code: 'slotEmpty'; params: { slot: number } }
-  | { code: 'stateSaveFailed'; params: { slot: number; detail: string } }
-  | { code: 'stateLoadFailed'; params: { slot: number; detail: string } }
-  | { code: 'stateInvalid'; params: { slot: number } }
-  | { code: 'settingUnknown'; params: { key: string } }
-  | {
-      code: 'settingLevelRefused'
-      /** `levels`: where the setting can be stored, weakest first. */
-      params: { key: string; level: SettingLevel; levels: SettingLevel[] }
-    }
-  | { code: 'settingInvalidValue'; params: { key: string } }
-  | { code: 'settingsWriteFailed'; params: { detail: string } }
-  | { code: 'settingsReadFailed'; params: { detail: string } }
-  | { code: 'libraryFolderUnreachable'; params: { path: string } }
-  | { code: 'libraryGameUnknown'; params: { id: string } }
-  | { code: 'libraryGameUnavailable'; params: { id: string } }
-  | { code: 'libraryWriteFailed'; params: { detail: string } }
-  | { code: 'libraryReadFailed'; params: { detail: string } }
-  | { code: 'coverInvalid'; params: { detail: string } }
-  | { code: 'nothingToUndo' }
-  | { code: 'undoFailed'; params: { detail: string } }
-  | {
-      code: 'saveUnreadable'
-      /** `game`: whose in-game save it is (what `saves.restoreLatest` takes). */
-      params: { game: GameId; aside: string; backupAt: number | null }
-    }
-  | { code: 'saveGameOpen' }
-  | { code: 'saveImportInvalid'; params: { detail: string } }
-  | { code: 'saveFileFailed'; params: { detail: string } }
-  /** The one-time move of old save names to the game key failed or could not run; tried again. */
-  | { code: 'savesMigrationFailed'; params: { detail: string } }
-  /** The move ended; `left` old files stayed where they were, listed in the file `report`. */
-  | { code: 'savesMigrationIncomplete'; params: { left: number; report: string } }
-  | { code: 'screenshotFailed'; params: { detail: string } }
-  | { code: 'effectNotLoaded'; params: { name: string; detail: string } }
-  | { code: 'biosUnreadable'; params: { detail: string } }
-  | { code: 'biosWrongSize'; params: { size: number } }
-  | { code: 'biosOtherSlot'; params: { slot: BiosSlot } }
-  | { code: 'biosFileFailed'; params: { detail: string } }
-  | { code: 'biosDsiFilesMissing' }
-  | { code: 'biosDsMenuFilesMissing' }
+export type { ErrorCode } from '@/generated/ErrorCode'
 
 /** Mirror of `emudome_core::close_flow::Phase`: what a game being closed is doing. */
 export type ClosingPhase = 'saving' | 'saved' | 'timeout' | 'failed' | 'closed'
@@ -143,19 +93,8 @@ export interface ClosingProgress {
   error: ErrorCode | null
 }
 
-/** Mirror of `emudome_core::bios::Slot`: one file a core can use. */
-export type BiosSlot =
-  | 'gbaBios'
-  | 'gbBoot'
-  | 'gbcBoot'
-  | 'sgbBoot'
-  | 'dsArm7'
-  | 'dsArm9'
-  | 'dsFirmware'
-  | 'dsiArm7'
-  | 'dsiArm9'
-  | 'dsiFirmware'
-  | 'dsiNand'
+/** One file a core can use (`emudome_core::bios::Slot`, generated). */
+export type { BiosSlot } from '@/generated/BiosSlot'
 
 /**
  * Mirror of `emudome_core::bios::Status`: what a `bios.*` row shows. `builtin`: no file, the
@@ -307,7 +246,7 @@ export type HotkeyEvent =
 // ---- Settings (mirrors of crates/emudome-core/src/settings, schema.rs and mod.rs) ----
 
 /** Where a value comes from, weakest first: default, «Tutti i giochi», «Giochi <console>», «Solo questo gioco», «in prova». */
-export type SettingLevel = 'default' | 'global' | 'console' | 'game' | 'session'
+export type { SettingLevel } from '@/generated/SettingLevel'
 export type ConsoleId = 'gb' | 'gbc' | 'gba' | 'nds' | '3ds'
 export type SettingDevice = 'desktop' | 'phone'
 /** `touch`: only where there is a touch screen (for now the phone). */
@@ -452,11 +391,10 @@ export interface CoreRestart {
 
 /**
  * The one identity of a game, from its content (docs/feasibility.md "Game identity"), never the
- * file name: `<console>:<hex>` (SHA-1 of the file for GB/GBC/GBA, of the used size for NDS; title
- * id + version for 3DS). Mirror of `GameKey` (crates/emudome-core/src/game_key.rs). The library,
- * the saves, the settings and the open game all name a game by it. Opaque to the interface.
+ * file name: `<console>:<hex>` (`emudome_core::GameKey`, generated). The library, the saves, the
+ * settings and the open game all name a game by it. Opaque to the interface.
  */
-export type GameId = string
+export type { GameId } from '@/generated/GameId'
 
 /** Which picture a cover shows (L12): the user's image, the icon inside the ROM, or a generated one. */
 export type CoverKind = 'user' | 'icon' | 'generated'
