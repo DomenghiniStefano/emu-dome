@@ -149,8 +149,9 @@ Android NDK/SDK and the C toolchains are build tools. None of them is redistribu
 ## Generated tables
 
 Every crate in `Cargo.lock` (all targets: Windows, Linux, Android and the macOS/iOS crates Cargo
-resolves) and every npm package installed in `app/`, with the licence it declares. Regenerate with
-`node scripts/third-party-tables.mjs` (after `pnpm install` in `app/`) and paste the output below.
+resolves) and every npm package installed in `app/`, with the licence it declares. Written by
+`node scripts/third-party-tables.mjs --write` (after `pnpm install` in `app/`), never by hand: `scripts/check`
+regenerates them and fails when what is below differs. They run to the end of this file.
 Licences written `A/B` are the old Cargo spelling of `A OR B`.
 
 Licences found, all compatible with GPL-3.0-or-later: MIT, Apache-2.0, Apache-2.0 WITH
@@ -162,7 +163,7 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 permission with no condition at all (ISC without the notice requirement); the owner allowed it on
 2026-11-18, and `scripts/npm-licenses.mjs` lists it.
 
-### Rust crates (585)
+### Rust crates (586)
 
 | Crate | Version | Licence |
 | --- | --- | --- |
