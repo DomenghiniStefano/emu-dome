@@ -7,6 +7,8 @@
 
 use std::fmt;
 
+use emudome_core::ErrorCode;
+
 /// A sync or sign-in failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncError {
@@ -76,6 +78,94 @@ impl From<reqwest::Error> for SyncError {
             SyncError::Request(e.to_string())
         } else {
             SyncError::Offline(e.to_string())
+        }
+    }
+}
+
+impl From<SyncError> for ErrorCode {
+    /// What the interface shows. A local file that could not be read or written is the saves'
+    /// own code; a Drive file gone is a request failure (the next sync finds the folder again).
+    fn from(e: SyncError) -> Self {
+        match e {
+            SyncError::NotConfigured => ErrorCode::CloudNotConfigured,
+            SyncError::NotSignedIn => ErrorCode::CloudNotSignedIn,
+            SyncError::SignInFailed(detail) => ErrorCode::CloudSignInFailed { detail },
+            SyncError::SignInUnsupported => ErrorCode::CloudSignInUnsupported,
+            SyncError::AccessExpired => ErrorCode::CloudAccessExpired,
+            SyncError::Offline(detail) => ErrorCode::CloudOffline { detail },
+            SyncError::QuotaFull { needed, available } => {
+                ErrorCode::CloudQuotaFull { needed, available }
+            }
+            SyncError::Request(detail) | SyncError::NotFound(detail) => {
+                ErrorCode::CloudRequestFailed { detail }
+            }
+            SyncError::Local(detail) => ErrorCode::SaveFileFailed { detail },
+            SyncError::IndexReadFailed(detail) => ErrorCode::CloudIndexReadFailed { detail },
+            SyncError::Credentials(detail) => ErrorCode::CloudCredentialsUnavailable { detail },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use emudome_core::ErrorCode;
+    use serde_json::json;
+
+    use super::SyncError;
+
+    #[test]
+    fn every_failure_reaches_the_interface_as_a_code() {
+        let cases = [
+            (
+                SyncError::NotConfigured,
+                json!({ "code": "cloudNotConfigured" }),
+            ),
+            (
+                SyncError::NotSignedIn,
+                json!({ "code": "cloudNotSignedIn" }),
+            ),
+            (
+                SyncError::SignInFailed("timed out".into()),
+                json!({ "code": "cloudSignInFailed", "params": { "detail": "timed out" } }),
+            ),
+            (
+                SyncError::SignInUnsupported,
+                json!({ "code": "cloudSignInUnsupported" }),
+            ),
+            (
+                SyncError::AccessExpired,
+                json!({ "code": "cloudAccessExpired" }),
+            ),
+            (
+                SyncError::Offline("dns".into()),
+                json!({ "code": "cloudOffline", "params": { "detail": "dns" } }),
+            ),
+            (
+                SyncError::QuotaFull {
+                    needed: 10,
+                    available: 2,
+                },
+                json!({ "code": "cloudQuotaFull", "params": { "needed": 10, "available": 2 } }),
+            ),
+            (
+                SyncError::NotFound("file x".into()),
+                json!({ "code": "cloudRequestFailed", "params": { "detail": "file x" } }),
+            ),
+            (
+                SyncError::Local("disk".into()),
+                json!({ "code": "saveFileFailed", "params": { "detail": "disk" } }),
+            ),
+            (
+                SyncError::IndexReadFailed("io".into()),
+                json!({ "code": "cloudIndexReadFailed", "params": { "detail": "io" } }),
+            ),
+            (
+                SyncError::Credentials("no daemon".into()),
+                json!({ "code": "cloudCredentialsUnavailable", "params": { "detail": "no daemon" } }),
+            ),
+        ];
+        for (e, want) in cases {
+            assert_eq!(serde_json::to_value(ErrorCode::from(e)).unwrap(), want);
         }
     }
 }
