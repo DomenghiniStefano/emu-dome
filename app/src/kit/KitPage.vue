@@ -5,7 +5,7 @@
 // navigation is checked by hand. Its labels are plain text, not i18n: the page never ships
 // (scripts/check exempts src/kit/ from the visible-text gate, and from that only).
 import { ref, watch } from 'vue'
-import { accentTokens } from '@/lib/accent'
+import { ACCENT_SWATCHES, accentTokens, DEFAULT_ACCENT } from '@/lib/accent'
 import { Segmented, SegmentedItem } from '@/components/ui/segmented'
 import { dispatchNav, keyToNav, useNavScope } from '@/nav'
 import BadgeSection from '@/kit/sections/BadgeSection.vue'
@@ -33,9 +33,10 @@ const theme = ref(document.documentElement.dataset.theme ?? 'dark')
 watch(theme, t => (document.documentElement.dataset.theme = t), { immediate: true })
 
 // The swatches of `general.accent` (settings catalog), written the way appearance.ts writes the
-// user's accent, so every primitive is seen with the run-time accent tokens.
-const SWATCHES = ['#7152f7', '#2f7ae5', '#1f9d8a', '#d9622b', '#c2417a']
-const accent = ref(SWATCHES[0] ?? '')
+// user's accent, so every primitive is seen with the run-time accent tokens (none for the
+// default, which colors.css holds).
+const SWATCHES = ACCENT_SWATCHES
+const accent = ref(DEFAULT_ACCENT)
 watch(accent, swatch => {
   document.getElementById('kit-accent')?.remove()
   const tokens = accentTokens(swatch)

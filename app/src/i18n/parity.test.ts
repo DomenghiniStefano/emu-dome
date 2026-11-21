@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import codes from '@/generated/error-codes.json'
 import catalog from '@/generated/settings-catalog.json'
+import { swatchKey } from '@/components/settings/settingRowModel'
 import { msg } from '@/lib/settingsModel'
 import enMessages from './en.json'
 import itMessages from './it.json'
@@ -114,6 +115,21 @@ describe('the settings catalogue', () => {
       if (!known.has(`${prefix}.${name}`)) stray.add(`${prefix}.${name}`)
     }
     expect([...stray]).toEqual([])
+  })
+
+  it('every swatch of a colour entry has its name, and no name is left for a removed swatch', () => {
+    const keys = Object.entries(catalog.colours).flatMap(([key, c]) =>
+      c.swatches.map(hex => swatchKey(key, hex)),
+    )
+    expect(keys.length).toBeGreaterThan(0)
+    expect(missing(keys)).toEqual([])
+    const wanted = new Set(keys)
+    const stray = Object.keys(catalog.colours).flatMap(key =>
+      [...files.en.keys(), ...files.it.keys()].filter(
+        k => k.startsWith(`settings.${key}.swatch.`) && !wanted.has(k),
+      ),
+    )
+    expect(stray).toEqual([])
   })
 
   it('options without an entry option are not left behind', () => {

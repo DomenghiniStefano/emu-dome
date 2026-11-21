@@ -607,9 +607,11 @@ pub static ENTRIES: &[Entry] = &[
     e(
         "general.accent",
         Kind::Colour {
-            swatches: &["#7152f7", "#2f7ae5", "#1f9d8a", "#d9622b", "#c2417a"],
+            swatches: &["#faa40f", "#7152f7", "#2f7ae5", "#1f9d8a", "#c2417a"],
         },
-        DefaultValue::Text("#7152f7"),
+        // Amber, the app icon's colour (Trello #96). The interface reads it, and the swatches,
+        // from the generated catalogue (`app/src/generated/settings-catalog.json`, `colours`).
+        DefaultValue::Text("#faa40f"),
         G,
     ),
     seg("general.ui", &["auto", "desktop", "tv"], "auto", G)
