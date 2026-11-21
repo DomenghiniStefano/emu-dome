@@ -386,23 +386,48 @@ fn measure_rewind(
     Ok(())
 }
 
+/// The host's and the core's log lines on stderr, at `RUST_LOG`'s level (`error`, `warn`,
+/// `info`, `debug`, `trace`); nothing without it.
+struct StderrLog;
+
+impl log::Log for StderrLog {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        metadata.level() <= log::max_level()
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        if self.enabled(record.metadata()) {
+            eprintln!("[{} {}] {}", record.level(), record.target(), record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+fn init_log() {
+    let level = std::env::var("RUST_LOG")
+        .ok()
+        .and_then(|l| l.parse::<log::LevelFilter>().ok());
+    if let Some(level) = level {
+        static LOGGER: StderrLog = StderrLog;
+        if log::set_logger(&LOGGER).is_ok() {
+            log::set_max_level(level);
+        }
+    }
+}
+
 fn main() -> anyhow::Result<()> {
+    init_log();
     let args = parse_args()?;
     let tmp = args
         .dir
         .clone()
         .unwrap_or_else(|| std::env::temp_dir().join("emudome-headless"));
-    // A DS game runs as the shell runs it: melonDS DS's forced options and the split.
-    let rom = args.rom.to_lowercase();
-    let console = if rom.ends_with(".nds") {
-        ConsoleId::Nds
-    } else if rom.ends_with(".gb") {
-        ConsoleId::Gb
-    } else if rom.ends_with(".gbc") {
-        ConsoleId::Gbc
-    } else {
-        ConsoleId::Gba
-    };
+    // A game runs as the shell runs it: its core's forced options and split, by its console.
+    let console = std::path::Path::new(&args.rom)
+        .extension()
+        .and_then(|e| emudome_core::library::console_of_extension(&e.to_string_lossy()))
+        .unwrap_or(ConsoleId::Gba);
     let core = CoreId::for_console(console);
     let profile = core.profile();
     let mut core_options = profile.forced_pairs();

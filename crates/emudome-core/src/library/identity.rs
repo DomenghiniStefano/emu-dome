@@ -8,10 +8,12 @@
 //!   0x0E), `3ds:<program id, 16 hex><version, 4 hex>`. No hash: the title ID already names the
 //!   game, region and all.
 //!
+//! - 3DS homebrew (`.3dsx`): no title ID, so the SHA-1 of the whole file, as for GBA.
+//!
 //! Extensions: `gb`, `gbc`, `gba`, `nds`, `3ds` / `cci` (NCSD card image), `cxi` (a bare NCCH),
 //! `cia` (installable archive: the NCCH of content 0 when it is not encrypted, else the TMD's
-//! title ID and title version). A file whose header does not look like its console is not a
-//! game ([`NotAGame`]) and is skipped.
+//! title ID and title version), `3dsx` (homebrew, its SMDH appended when it has one). A file
+//! whose header does not look like its console is not a game ([`NotAGame`]) and is skipped.
 //!
 //! Titles: GB 0x134, GBA 0xA0, NDS banner (English, else the first non-empty language; the
 //! header's 0x00 when there is no banner), 3DS SMDH short title (same language rule).
@@ -31,7 +33,9 @@ use crate::settings::ConsoleId;
 use crate::GameKey;
 
 /// The file extensions the library looks at (lowercase).
-pub const EXTENSIONS: &[&str] = &["gb", "gbc", "gba", "nds", "3ds", "cci", "cxi", "cia"];
+pub const EXTENSIONS: &[&str] = &[
+    "gb", "gbc", "gba", "nds", "3ds", "cci", "cxi", "cia", "3dsx",
+];
 
 /// What a game is, from its content. Cached by path + size + modification time.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,6 +106,8 @@ enum Format {
     /// `.cxi`: a bare NCCH.
     Ncch,
     Cia,
+    /// `.3dsx`: homebrew.
+    Homebrew3dsx,
 }
 
 fn format_of(path: &Path) -> Option<Format> {
@@ -117,6 +123,7 @@ fn format_of_extension(ext: &str) -> Option<Format> {
         "3ds" | "cci" => Some(Format::Ncsd),
         "cxi" => Some(Format::Ncch),
         "cia" => Some(Format::Cia),
+        "3dsx" => Some(Format::Homebrew3dsx),
         _ => None,
     }
 }
@@ -134,7 +141,7 @@ pub fn console_of_extension(ext: &str) -> Option<ConsoleId> {
         Format::Gbc => ConsoleId::Gbc,
         Format::Gba => ConsoleId::Gba,
         Format::Nds => ConsoleId::Nds,
-        Format::Ncsd | Format::Ncch | Format::Cia => ConsoleId::N3ds,
+        Format::Ncsd | Format::Ncch | Format::Cia | Format::Homebrew3dsx => ConsoleId::N3ds,
     })
 }
 
@@ -226,6 +233,7 @@ fn inspect(path: &Path, file: &mut File) -> Result<Header, NotAGame> {
         Format::Ncsd => ncsd(file, len),
         Format::Ncch => ncch(file, 0, len)?.ok_or(NotAGame::Header("no NCCH magic")),
         Format::Cia => cia(file, len),
+        Format::Homebrew3dsx => homebrew_3dsx(file, len),
     }
 }
 
@@ -494,6 +502,30 @@ fn cia(file: &mut File, len: u64) -> Result<Header, NotAGame> {
         version: Some(version),
         icon,
         key: Key::Known(format!("{title_id:016x}{version:04x}")),
+    })
+}
+
+/// A `.3dsx` (3dbrew «3DSX Format»): magic `3DSX`, the header's size at 0x04; a header of 0x2C
+/// bytes or more is the extended one, with the SMDH's offset at 0x20 and its size at 0x24.
+fn homebrew_3dsx(file: &mut File, len: u64) -> Result<Header, NotAGame> {
+    if len < 0x2C {
+        return Err(NotAGame::Header("3DSX file shorter than its header"));
+    }
+    let h = read_at(file, 0, 0x2C)?;
+    if &h[..4] != b"3DSX" {
+        return Err(NotAGame::Header("no 3DSX magic"));
+    }
+    let smdh =
+        (le16(&h, 0x04) >= 0x2C && le32(&h, 0x24) >= 0x36C0).then(|| u64::from(le32(&h, 0x20)));
+    let title = smdh_title(file, smdh, len)?;
+    let icon = title.as_ref().and(smdh).map(IconAt::Smdh);
+    Ok(Header {
+        console: ConsoleId::N3ds,
+        title: title.unwrap_or_default(),
+        code: None,
+        version: None,
+        icon,
+        key: Key::Hash(len),
     })
 }
 

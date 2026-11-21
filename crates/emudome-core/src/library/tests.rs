@@ -304,6 +304,42 @@ fn smdh_icon_decodes() {
     assert_eq!(pixel(&icon, 0, 1), [0, 0, 0xFF, 0xFF]);
 }
 
+/// A `.3dsx` with the extended header and its SMDH after the code.
+fn homebrew_3dsx(with_smdh: bool) -> Vec<u8> {
+    let smdh = 0x100;
+    let mut h = vec![0u8; smdh + 0x36C0];
+    put(&mut h, 0, b"3DSX");
+    put(
+        &mut h,
+        0x04,
+        &(if with_smdh { 0x2Cu16 } else { 0x20 }).to_le_bytes(),
+    );
+    if with_smdh {
+        put(&mut h, 0x20, &(smdh as u32).to_le_bytes());
+        put(&mut h, 0x24, &0x36C0u32.to_le_bytes());
+        put(&mut h, smdh, b"SMDH");
+        put_utf16(&mut h, smdh + 0x08 + 0x200, "Homebrew Tre");
+    }
+    h
+}
+
+#[test]
+fn three_ds_homebrew_is_identified_by_its_hash_and_its_smdh() {
+    let dir = TestDir::new("lib-3dsx");
+    let rom = homebrew_3dsx(true);
+    let id = identify(&write(&dir, "game.3dsx", &rom)).unwrap();
+    assert_eq!(id.id, format!("3ds:{}", sha1_hex(&rom)));
+    assert_eq!(id.console, ConsoleId::N3ds);
+    assert_eq!(id.title, "Homebrew Tre");
+    assert!(id.has_icon);
+    // No SMDH: the file name is the title, no icon.
+    let bare = identify(&write(&dir, "Bare One.3dsx", &homebrew_3dsx(false))).unwrap();
+    assert_eq!(bare.title, "Bare One");
+    assert!(!bare.has_icon);
+    // Without the magic it is not a game.
+    assert!(identify(&write(&dir, "bad.3dsx", &[0u8; 0x100])).is_err());
+}
+
 #[test]
 fn an_encrypted_ncch_still_has_an_id_but_no_title_or_icon() {
     let dir = TestDir::new("lib-3ds-enc");
