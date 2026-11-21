@@ -118,6 +118,18 @@ pub enum ErrorCode {
     /// (no library game, several with that file name, or already a file at the new place): they
     /// stay where they were, untouched, listed in the report file `report`.
     SavesMigrationIncomplete { left: usize, report: String },
+    /// Health: the one-time copy of the data to the folders of the new app identifier (Trello
+    /// #90) did not finish. Nothing was lost: this run uses the old folder `old`, untouched, and
+    /// the copy is tried again at the next start.
+    DataMoveFailed { old: String, detail: String },
+    /// Health: the folders of the new app identifier (`new`) already held data, so the data of
+    /// the old ones (`old`) was not copied over it. The old folders stay as they are; the new
+    /// ones are used. Shown at the start that found it; `report` lists the folders.
+    DataMoveConflict {
+        old: String,
+        new: String,
+        report: String,
+    },
     /// The screenshot could not be encoded or written (no frame yet, folder not writable).
     ScreenshotFailed { detail: String },
     /// The screen effect `name` (a built-in one or the user's `.slangp` file name) could not

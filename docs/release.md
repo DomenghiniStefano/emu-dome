@@ -15,6 +15,14 @@ run end to end: no release exists yet.
   back to `1.0` / code 1); the runtime and the Windows file version would fall back to Cargo's. The Android
   `versionCode` is derived from it as `major * 1000000 + minor * 1000 + patch`, so every release must raise the
   version: Google Play refuses a code it has already seen.
+- **Identifier.** `it.domehub.emudome` (`identifier` in `tauri.conf.json`; the Android `applicationId` and
+  `namespace` in `app/src-tauri/gen/android/app/build.gradle.kts`, the generated activity's package
+  `it.domehub.emudome`, the platform library's `it.domehub.emudome.platform`). It names the data folders on every
+  OS and is the package name on Google Play, which can never change once an app is published there. It was
+  `com.domenghini.emudome` until 2026-11-21 (Trello #90): a desktop build copies the old folders once at its first
+  start (`emudome_core::data_move`, the old ones are left in place); Android data does not carry over (another
+  package's private storage cannot be read). The Android OAuth client for Drive sync (#49) is registered for
+  `it.domehub.emudome` with the debug keystore's SHA-1, and gets the release keystore's SHA-1 before a release.
 - **Packages.**
   - Windows: `pnpm package:windows` (from `app/`) builds the NSIS installer with
     `app/src-tauri/package/windows-x86_64.json`, which lists only the files of `cores.lock` and their licences;

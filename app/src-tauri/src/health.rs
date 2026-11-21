@@ -31,6 +31,8 @@ pub enum Part {
         reason = "constructed by the desktop-only gamepad module; unused where it is not compiled"
     )]
     Controllers,
+    /// The one-time copy of the data to the new app identifier's folders (`data_move.rs`).
+    DataFolder,
 }
 
 impl Part {
@@ -40,6 +42,8 @@ impl Part {
             Part::NativeVideo | Part::Surface | Part::HwRender => "video",
             Part::Audio => "audio",
             Part::Controllers => "controllers",
+            // Runs at start on the main thread, never in a guarded thread.
+            Part::DataFolder => "data",
         }
     }
 }

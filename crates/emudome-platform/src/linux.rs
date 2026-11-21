@@ -27,3 +27,6 @@ pub fn extra_core_dirs() -> Vec<PathBuf> {
 /// On Linux (GTK) the native surface covers the webview: the canvas in the webview is used.
 /// Verified in Phase 0 on X11: wgpu drawing on the window hides the interface.
 pub const NATIVE_VIDEO_DEFAULT: bool = false;
+
+/// WebKitGTK's files have no single folder name to leave out: copied with the rest (small).
+pub const WEBVIEW_PROFILE_DIRS: &[&str] = &[];

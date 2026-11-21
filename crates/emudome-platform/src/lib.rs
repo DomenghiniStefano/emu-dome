@@ -91,6 +91,29 @@ pub fn startup_game() -> Option<String> {
     imp::startup_game()
 }
 
+/// The app identifier before 2026-11-21 (Trello #90; now `it.domehub.emudome`, in
+/// `tauri.conf.json`). The system named the data folders after it.
+pub const OLD_IDENTIFIER: &str = "com.domenghini.emudome";
+
+/// The app's two data folders: the synced one and the per-device one (one folder on Linux).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DataDirs {
+    pub data: PathBuf,
+    pub local: PathBuf,
+}
+
+/// The data folders of [`OLD_IDENTIFIER`], given the current ones (`app_data_dir` and
+/// `app_local_data_dir`): on the desktop the same folders under the old name, side by side.
+/// `None` on Android: the old identifier is another package, whose private storage the new one
+/// cannot read (the data of the old app does not carry over there).
+pub fn old_data_dirs(data: &Path, local: &Path) -> Option<DataDirs> {
+    imp::old_data_dirs(data, local)
+}
+
+/// Folders at the top of the data folders that hold the webview's own profile, not the user's
+/// data: the one-time copy to the new identifier leaves them (Windows: WebView2's `EBWebView`).
+pub const WEBVIEW_PROFILE_DIRS: &[&str] = imp::WEBVIEW_PROFILE_DIRS;
+
 /// File name of a libretro core, e.g. `mgba` → `mgba_libretro.dll` on Windows.
 pub fn core_file_name(core: &str) -> String {
     imp::core_file_name(core)

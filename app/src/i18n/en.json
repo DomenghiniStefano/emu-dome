@@ -273,6 +273,8 @@
     "gameEncrypted": "This 3DS game is encrypted, and EmuDome plays decrypted games only. Decrypt it with your own console, then open it again.",
     "savesMigrationFailed": "Couldn’t move your old saves to their new place. Nothing was lost: they stay where they were and EmuDome tries again at the next start. Details: {detail}",
     "savesMigrationIncomplete": "Your saves moved to their new place, but {left} old files couldn’t be matched to one game for sure and stayed where they were. See the list in {report}.",
+    "dataMoveFailed": "Couldn’t copy your data to EmuDome’s new folder. Nothing was lost: for now EmuDome keeps using the old folder ({old}) and tries again at the next start. Details: {detail}",
+    "dataMoveConflict": "EmuDome’s new data folder ({new}) already held data, so your earlier data wasn’t copied over it. It’s still in {old}, untouched: copy what you need by hand. See {report}.",
     "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again.",
     "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file.",
     "biosUnreadable": "Couldn’t read this file: {detail}. Check that it’s still there and choose it again.",

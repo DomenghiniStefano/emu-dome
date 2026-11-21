@@ -1,4 +1,4 @@
-package com.domenghini.emudome
+package it.domehub.emudome
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge

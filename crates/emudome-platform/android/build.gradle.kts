@@ -86,7 +86,7 @@ val emudomeCores = tasks.register("emudomeCores") {
 }
 
 android {
-    namespace = "com.domenghini.emudome.platform"
+    namespace = "it.domehub.emudome.platform"
     compileSdk = 36
 
     defaultConfig {

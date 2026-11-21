@@ -61,10 +61,10 @@ android {
         }
     }
     compileSdk = 37
-    namespace = "com.domenghini.emudome"
+    namespace = "it.domehub.emudome"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "com.domenghini.emudome"
+        applicationId = "it.domehub.emudome"
         minSdk = 26
         targetSdk = 37
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()

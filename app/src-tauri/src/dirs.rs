@@ -4,13 +4,18 @@
 //! The override moves **everything** (saves, settings, library, covers, first-run marker,
 //! webview profile), so a test or bench run never touches the user's real data. Before
 //! 2026-11-18 it moved the saves only, and a test run rewrote the real `library.json`.
+//!
+//! Without the override, a run whose copy to the new app identifier's folders did not finish
+//! (`data_move.rs`, Trello #90) uses the old identifier's folders instead ([`use_old`]).
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use emudome_platform::DataDirs;
 use tauri::{AppHandle, Manager, Runtime};
 
 static OVERRIDE: OnceLock<Option<PathBuf>> = OnceLock::new();
+static OLD: OnceLock<DataDirs> = OnceLock::new();
 
 /// Sets the `EMUDOME_DATA_DIR` override, once, before anything opens its files.
 pub fn set_override(dir: Option<PathBuf>) {
@@ -23,19 +28,39 @@ fn overridden() -> Option<&'static PathBuf> {
     OVERRIDE.get().and_then(Option::as_ref)
 }
 
+/// Whether `EMUDOME_DATA_DIR` is set.
+pub fn is_overridden() -> bool {
+    overridden().is_some()
+}
+
+/// This run uses the old identifier's folders (the copy to the new ones did not finish). Set
+/// once, before anything opens its files.
+pub fn use_old(dirs: DataDirs) {
+    log::warn!(
+        "this run uses the old data folders {} and {}",
+        dirs.data.display(),
+        dirs.local.display()
+    );
+    if OLD.set(dirs).is_err() {
+        log::warn!("old data folders set twice: the first ones stay");
+    }
+}
+
 /// The synced data folder (saves, `settings/`).
 pub fn data<R: Runtime, M: Manager<R>>(app: &M) -> tauri::Result<PathBuf> {
-    match overridden() {
-        Some(dir) => Ok(dir.clone()),
-        None => app.path().app_data_dir(),
+    match (overridden(), OLD.get()) {
+        (Some(dir), _) => Ok(dir.clone()),
+        (None, Some(old)) => Ok(old.data.clone()),
+        (None, None) => app.path().app_data_dir(),
     }
 }
 
 /// The per-device data folder (library, covers, `local-settings/`, first-run marker).
 pub fn local<R: Runtime, M: Manager<R>>(app: &M) -> tauri::Result<PathBuf> {
-    match overridden() {
-        Some(dir) => Ok(dir.join("local")),
-        None => app.path().app_local_data_dir(),
+    match (overridden(), OLD.get()) {
+        (Some(dir), _) => Ok(dir.join("local")),
+        (None, Some(old)) => Ok(old.local.clone()),
+        (None, None) => app.path().app_local_data_dir(),
     }
 }
 

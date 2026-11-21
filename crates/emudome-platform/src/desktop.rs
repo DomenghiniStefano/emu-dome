@@ -1,11 +1,25 @@
 //! What the desktop systems (Windows, Linux, macOS) share: logs on stderr, the game
 //! from the command line, cores as files, no external surface (the native video
 //! draws on Tauri's window), the window with its child webview, the native file picker.
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use raw_window_handle::{DisplayHandle, HandleError, HasWindowHandle, WindowHandle};
 
-use crate::{SurfaceListener, WindowOptions};
+use crate::{DataDirs, SurfaceListener, WindowOptions, OLD_IDENTIFIER};
+
+/// The system's data folders are `<base>/<identifier>` (`%APPDATA%` and `%LOCALAPPDATA%` on
+/// Windows, `$XDG_DATA_HOME` for both on Linux, `~/Library/Application Support` on macOS): the
+/// old identifier's are beside the current ones.
+pub fn old_data_dirs(data: &Path, local: &Path) -> Option<DataDirs> {
+    let beside = |dir: &Path| {
+        let old = dir.parent()?.join(OLD_IDENTIFIER);
+        (old != dir).then_some(old)
+    };
+    Some(DataDirs {
+        data: beside(data)?,
+        local: beside(local)?,
+    })
+}
 
 pub fn init_logging() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -85,4 +99,30 @@ pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> O
 
 pub fn set_fullscreen(window: &tauri::Window, on: bool) -> tauri::Result<()> {
     window.set_fullscreen(on)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::old_data_dirs;
+    use crate::DataDirs;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn the_old_folders_are_beside_the_new_ones() {
+        let base = PathBuf::from("base");
+        assert_eq!(
+            old_data_dirs(
+                &base.join("Roaming").join("it.domehub.emudome"),
+                &base.join("Local").join("it.domehub.emudome"),
+            ),
+            Some(DataDirs {
+                data: base.join("Roaming").join("com.domenghini.emudome"),
+                local: base.join("Local").join("com.domenghini.emudome"),
+            })
+        );
+        // No parent, or already the old name: nothing to copy from.
+        assert_eq!(old_data_dirs(Path::new(""), Path::new("")), None);
+        let old = base.join("com.domenghini.emudome");
+        assert_eq!(old_data_dirs(&old, &old), None);
+    }
 }

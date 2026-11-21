@@ -19,6 +19,7 @@ pub mod close_flow;
 pub mod console;
 pub mod contract;
 pub mod core_profile;
+pub mod data_move;
 pub mod effects;
 pub mod first_run;
 pub mod game_key;

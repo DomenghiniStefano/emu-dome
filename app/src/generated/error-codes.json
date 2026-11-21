@@ -37,6 +37,8 @@
   "saveFileFailed",
   "savesMigrationFailed",
   "savesMigrationIncomplete",
+  "dataMoveFailed",
+  "dataMoveConflict",
   "screenshotFailed",
   "effectNotLoaded",
   "biosUnreadable",

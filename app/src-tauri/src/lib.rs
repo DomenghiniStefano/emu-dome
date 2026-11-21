@@ -22,6 +22,7 @@ mod commands;
 mod contract;
 mod core_settings;
 mod cors;
+mod data_move;
 mod dirs;
 mod effects;
 mod events;
@@ -301,6 +302,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| protocol::handle(ctx.app_handle(), &req))
         .setup(move |app| {
+            // First of all: it decides which data folders this run uses (Trello #90).
+            let data_move_problem = data_move::run(app);
             let data_dir = dirs::data(app)?;
             log::info!("data in {}", data_dir.display());
             let (window, ui) = window::create(
@@ -316,6 +319,9 @@ pub fn run() {
             let health = health::SharedHealth::default();
             health.attach(app.handle().clone());
             app.manage(health.clone());
+            if let Some(problem) = data_move_problem {
+                health.set(health::Part::DataFolder, Some(problem));
+            }
 
             let current: CurrentShared = Arc::default();
             // The native renderer is created only where it can sit under the webview:

@@ -20,3 +20,6 @@ pub fn extra_core_dirs() -> Vec<PathBuf> {
 
 /// Game drawn natively under the transparent webview: to be verified in Phase 0.
 pub const NATIVE_VIDEO_DEFAULT: bool = true;
+
+/// WKWebView keeps its profile outside the app's data folder.
+pub const WEBVIEW_PROFILE_DIRS: &[&str] = &[];
