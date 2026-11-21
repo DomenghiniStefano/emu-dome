@@ -14,7 +14,7 @@ pub mod identity;
 pub mod scan;
 mod store;
 
-pub use details::{console_phase_pending, core_of, open_extensions, region, Region};
+pub use details::{console_phase_pending, core_of, open_extensions, opens, region, Region};
 pub use identity::{
     console_of_extension, identify, read_icon, Icon, Identity, NotAGame, EXTENSIONS,
 };

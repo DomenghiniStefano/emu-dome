@@ -55,7 +55,8 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
 
 Phase 0 (feasibility) is done. On `develop` now: shell and themes, settings engine and pages, library, game flow,
 quick menu, saves, controls, first run, rewind and screenshots, screen effects (librashader), appearance, and the
-melonDS DS core (#45). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
+back to the CPU, encrypted games refused with E10). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
 before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
@@ -187,12 +188,15 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          compiled, and `Reader` (a value or the catalogue's default),
                          core_values.rs settings → core options, one table per core in core_values/<core>.rs;
                          pure, unit-tested)
-                         video_sink.rs (`VideoSink`: where frames go, `VideoFrame::{Cpu, Gpu}`; today
-                         RGBA8 into `Shared::frame`), hw_render/ (`HwRenderHandler`: SET_HW_RENDER and
-                         the calls around it; today `SoftwareOnly` refuses them),
+                         video_sink.rs (`VideoSink`: where frames go, `VideoFrame::{Cpu, Gpu}`; the default
+                         sink puts RGBA8 into `Shared::frame`), hw_render/ (`HwRenderHandler`: SET_HW_RENDER
+                         and the calls around it; `SoftwareOnly` refuses them, `vulkan::VulkanHandler`
+                         accepts Vulkan on the shell's device: interface table, `set_image`, queue lock;
+                         `context_reset` / `context_destroy` run by the session outside the callbacks),
                          core_profile.rs (`CoreId` and one `CoreProfile` per core: consoles, forced
-                         options, screen split, HW-render needs, save model, settings it cannot honour;
-                         nothing matches a core by its name string)
+                         options, screen split, HW-render needs and the renderer option (`Renderer`:
+                         Azahar Vulkan or Software), save model, settings it cannot honour; nothing
+                         matches a core by its name string)
                          contract.rs (the Rust ↔ TypeScript contract: ts-rs types and fixtures generated
                          into app/src/generated/, the staleness check; see the section of that name)
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
@@ -225,9 +229,14 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          hotkeys.rs (`HotkeyRunner`: the shortcuts of the pads and of the keyboard carried out,
                          one hold shared by both), tuning.rs (developer / bench knobs from the environment),
                          window.rs (the app's names for emudome_platform::create_window),
-                         video.rs (wgpu; `GpuService` owns instance / adapter / device for the whole run,
-                         surfaces attach and detach on it), gpu_interop.rs (the one module under wgpu:
-                         wgpu-hal / ash Vulkan interop for hardware rendering, behind `VulkanInterop`),
+                         video.rs (wgpu; `GpuService`, one per app, owns instance / adapter / device for
+                         the whole run: surfaces attach and detach on it, a 3DS game leases the device
+                         (`VulkanLease`) and the device is never remade under it; every submit and present
+                         holds its queue lock), gpu_interop.rs (the one module under wgpu: wgpu-hal / ash,
+                         the device opened with what a 3DS core uses (`open_device_for_cores`), the core's
+                         image as a texture, raw barriers), hw_render.rs (a Vulkan core's frames: GPU copy
+                         of the core's image into a game texture, readback into `Shared::frame`;
+                         `headless_setup` for `examples/headless_gpu.rs`),
                          audio.rs (cpal), gamepad.rs (SDL3), commands,
                          settings.rs (settings commands, file locations, settings://changed),
                          effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
@@ -658,13 +667,16 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 ## Known gaps of the prototype (intentional, for later)
 
 - Core options: every `consoles.*` / `cores.*` entry with a real mGBA option is mapped (`settings/core_values/mgba.rs`);
-  melonDS DS has a table (`core_values/melondsds.rs`); Azahar has none yet (only its forced options,
-  `core_profile.rs`). `perf.frameskip` drives mGBA only; on NDS / 3DS its row is disabled with the reason
-  (`CoreProfile::unsupported_settings`). The interface does not show `emu://core-restart` yet. The «All … options»
+  melonDS DS has a table (`core_values/melondsds.rs`); Azahar has one (`core_values/azahar.rs`: 3DS model, region,
+  internal resolution, texture filter, CPU clock, audio engine, all applied when the game opens again; not mapped:
+  `perf.shcache`, `screens.stereo`, `pad.gyro`, `bios.b3ds`, reasons in that file). `perf.frameskip` drives mGBA
+  only, `video.res3d` / `video.texf` / `perf.cpuclock` Azahar only; elsewhere their rows are disabled with the reason
+  (`CoreProfile::unsupported_settings`). The 3DS rows are phase 3, so the interface still hides them
+  (`CURRENT_PHASE`). The interface does not show `emu://core-restart` yet. The «All … options»
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 48 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 42 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
@@ -682,8 +694,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
   (`saves/nds/<hex>/melonDS DS/`); an existing shared `saves/melonDS DS/` is left untouched and not read any more.
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
-- Core host (#78): hardware rendering is refused (`hw_render::SoftwareOnly`; the seams `HwRenderHandler`,
-  `VideoSink`, `gpu_interop.rs` are in place); a core's log lines (`GET_LOG_INTERFACE`) are logged as their format
+- Core host (#78, #46): hardware rendering is Vulkan only, for Azahar (`Renderer::Vulkan` when the app's device
+  is on Vulkan, else software with `hwRenderFallback` in `emu://health`); OpenGL (melonDS DS upscaling) is refused.
+  Every Vulkan frame is read back into `Shared::frame` (the native renderer does not sample the GPU frame yet).
+  Azahar 2126.2 crashes on a state load (and with its disk shader cache off) for content without a title ID
+  (`.3dsx` homebrew: its pipeline cache is skipped for title 0); a core's log lines (`GET_LOG_INTERFACE`) are logged as their format
   string without the arguments (variadic C, no C shim); `GET_LANGUAGE` always answers English; `SET_MESSAGE` is
   logged, not shown; no sensors (plan in `docs/feasibility-hw-render.md`).
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.

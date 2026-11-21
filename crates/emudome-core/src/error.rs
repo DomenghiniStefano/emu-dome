@@ -39,6 +39,9 @@ pub enum ErrorCode {
     /// The file opened has the extension of a console but its content is not a game of it (its
     /// header does not match): it has no identity, so it has no place for its saves.
     GameUnidentified { detail: String },
+    /// E10: the 3DS game is encrypted; EmuDome plays decrypted games only (it never decrypts,
+    /// and never adds an encrypted game to the library).
+    GameEncrypted,
     /// A game on this core stopped answering and was let go (E11): its thread may still hold
     /// the core, so the core cannot open another game until EmuDome is restarted. `core` is the
     /// core's name (e.g. `mgba`).
@@ -136,6 +139,9 @@ pub enum ErrorCode {
     /// Health (`emu://health`, `diagnostics`): the native video could not start, the game is
     /// drawn in the interface's canvas instead.
     NativeVideoFallback { detail: String },
+    /// Health: a game whose core draws on the GPU (3DS) found no Vulkan device to render on
+    /// (another graphics API, no Vulkan driver): it runs with the core's software renderer.
+    HwRenderFallback { detail: String },
     /// Health: the surface the system handed over (Android's) cannot be drawn on; nothing is
     /// shown until the next one.
     VideoSurfaceFailed { detail: String },

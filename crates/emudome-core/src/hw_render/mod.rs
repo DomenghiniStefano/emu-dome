@@ -3,21 +3,25 @@
 //! The environment callback hands every hardware-rendering call to the session's
 //! [`HwRenderHandler`], so the libretro side (accepting a context, answering the Vulkan interface
 //! and the context negotiation) can be written and tested apart from the host's other answers.
-//! Today's handler is [`SoftwareOnly`]: it refuses every request, as the host did before the
-//! seam (the cores then render in software: melonDS DS falls back by itself, Azahar is forced to
-//! its software renderer by `CoreProfile::forced_options`). The 3DS work (#46 / #16) plugs a
-//! Vulkan handler in here, its GPU side in the app's `gpu_interop.rs`, and gives its frames to the
-//! session's [`crate::video_sink::VideoSink`] as [`GpuFrame`]s.
+//! The default handler is [`SoftwareOnly`]: it refuses every request (the cores then render in
+//! software: melonDS DS falls back by itself, Azahar is told to by its renderer option,
+//! `CoreProfile::hw_render`). A session whose shell has a Vulkan device gets a
+//! [`vulkan::VulkanHandler`] instead (3DS, #46 / #16): its GPU side is the app's
+//! (`gpu_interop.rs`, `hw_render.rs`), and its frames reach the session's
+//! [`crate::video_sink::VideoSink`] as [`GpuFrame`]s.
 //!
 //! A handler runs inside the environment / video callbacks with the session's callback context
-//! held: it must not call into the core from them (`context_reset` and `context_destroy` are run
-//! by the session on the emulation thread, outside any callback).
+//! held: it must not call into the core from them. `context_reset` and `context_destroy` are
+//! handed to the session ([`HwRenderHandler::context_reset`]), which calls them on the emulation
+//! thread outside any callback: right after `retro_load_game`, and before the core unloads.
+
+pub mod vulkan;
 
 use std::os::raw::{c_uint, c_void};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use libretro_sys::{
-    retro_hw_render_callback,
+    retro_hw_context_reset_t, retro_hw_render_callback,
     RETRO_ENVIRONMENT_GET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_SUPPORT,
     RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER,
     RETRO_ENVIRONMENT_SET_HW_RENDER, RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE,
@@ -45,6 +49,18 @@ pub trait HwRenderHandler: Send {
     /// `video_refresh` with `RETRO_HW_FRAME_BUFFER_VALID`: the frame the core just drew on the
     /// GPU, `None` when there is none to give (it is then dropped).
     fn hw_frame(&mut self, width: u32, height: u32) -> Option<GpuFrame>;
+
+    /// After `retro_load_game`: the core's `context_reset` to call now, when its request was
+    /// accepted (the core creates its GPU objects there; Azahar also loads the game there).
+    fn context_reset(&mut self) -> Option<retro_hw_context_reset_t> {
+        None
+    }
+
+    /// Before the core unloads: its `context_destroy` to call, when a context was accepted. The
+    /// handler lets go of the core's images first.
+    fn context_destroy(&mut self) -> Option<retro_hw_context_reset_t> {
+        None
+    }
 }
 
 /// Whether `raw` (the command as the core sent it) is a hardware-rendering call. Compared raw:

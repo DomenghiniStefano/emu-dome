@@ -19,6 +19,8 @@ pub enum Part {
     NativeVideo,
     /// The surface the renderer draws on.
     Surface,
+    /// A game whose core draws on the GPU (3DS) and the Vulkan device it renders on.
+    HwRender,
     /// The audio output.
     Audio,
     /// SDL3 controllers.
@@ -35,7 +37,7 @@ impl Part {
     /// The name `threadStopped` carries for a thread of this part.
     pub fn thread(self) -> &'static str {
         match self {
-            Part::NativeVideo | Part::Surface => "video",
+            Part::NativeVideo | Part::Surface | Part::HwRender => "video",
             Part::Audio => "audio",
             Part::Controllers => "controllers",
         }

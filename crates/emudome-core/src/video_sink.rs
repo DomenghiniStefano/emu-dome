@@ -93,6 +93,11 @@ impl Wake {
 pub trait VideoSink: Send {
     /// A new frame; `split` is how the core laid its screens out in it.
     fn frame(&mut self, frame: VideoFrame<'_>, split: Split);
+
+    /// The core is about to destroy its GPU context: let go of every reference to its images
+    /// (and wait until the GPU no longer reads them). Called on the emulation thread, before
+    /// `context_destroy`.
+    fn release(&mut self) {}
 }
 
 /// Today's sink: software frames into [`Shared::frame`] as RGBA8.
@@ -122,27 +127,40 @@ impl SharedFrameSink {
     }
 }
 
+impl SharedFrameSink {
+    /// The buffer the next frame goes into (RGBA8, `width` × `height`, no padding), for a sink
+    /// that fills it itself (a GPU sink's readback); then [`Self::publish`].
+    pub fn back_buffer(&mut self) -> &mut Vec<u8> {
+        &mut self.back
+    }
+
+    /// Swaps the back buffer in as the new frame and wakes the renderer.
+    pub fn publish(&mut self, width: u32, height: u32, split: Split) {
+        let fresh = Arc::new(std::mem::take(&mut self.back));
+        let old = {
+            let mut f = self.shared.frame.lock();
+            f.width = width;
+            f.height = height;
+            f.split = split;
+            f.seq = f.seq.wrapping_add(1);
+            std::mem::replace(&mut f.rgba, fresh)
+        };
+        if let Some(wake) = self.shared.frame_wake.lock().as_ref() {
+            wake.notify();
+        }
+        // The previous pixels, when no reader holds them any more.
+        if let Ok(buffer) = Arc::try_unwrap(old) {
+            self.back = buffer;
+        }
+    }
+}
+
 impl VideoSink for SharedFrameSink {
     fn frame(&mut self, frame: VideoFrame<'_>, split: Split) {
         match frame {
             VideoFrame::Cpu(cpu) => {
                 if crate::frame::convert_cpu(&cpu, &mut self.back) {
-                    let fresh = Arc::new(std::mem::take(&mut self.back));
-                    let old = {
-                        let mut f = self.shared.frame.lock();
-                        f.width = cpu.width;
-                        f.height = cpu.height;
-                        f.split = split;
-                        f.seq = f.seq.wrapping_add(1);
-                        std::mem::replace(&mut f.rgba, fresh)
-                    };
-                    if let Some(wake) = self.shared.frame_wake.lock().as_ref() {
-                        wake.notify();
-                    }
-                    // The previous pixels, when no reader holds them any more.
-                    if let Ok(buffer) = Arc::try_unwrap(old) {
-                        self.back = buffer;
-                    }
+                    self.publish(cpu.width, cpu.height, split);
                 } else if !self.cpu_refused.swap(true, Ordering::Relaxed) {
                     log::warn!(
                         "video: a {}×{} frame (pitch {}) larger than its buffer ({} bytes) was dropped",

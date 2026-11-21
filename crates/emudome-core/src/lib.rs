@@ -28,6 +28,7 @@ pub mod input;
 pub mod keyboard;
 pub mod library;
 pub mod migration;
+pub mod n3ds;
 pub mod nds;
 pub mod rewind;
 pub mod saves;
@@ -43,10 +44,10 @@ pub use atomic::write_atomic;
 pub use console::ConsoleId;
 pub use core::{GameFiles, StartError};
 pub use error::ErrorCode;
-pub use frame::Frame;
+pub use frame::{rgba_png, Frame};
 pub use game_key::GameKey;
 pub use session::{
     core_needs_restart, has_auto_save, slot_infos, Closed, Command, Core, CoreInfo, CoreOptionInfo,
-    Event, ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, VideoSetup,
-    AUTO_SLOT, CLOSE_TIMEOUT,
+    Event, ExitWrites, Session, SessionOptions, Shared, SinkFactory, SlotInfo, Speed, Stats,
+    VideoSetup, AUTO_SLOT, CLOSE_TIMEOUT,
 };

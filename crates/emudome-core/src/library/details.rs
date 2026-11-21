@@ -58,20 +58,29 @@ pub fn core_of(console: ConsoleId) -> &'static str {
 /// they open today.
 pub fn console_phase_pending(console: ConsoleId) -> Option<u8> {
     match console {
-        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::Nds => None,
-        ConsoleId::N3ds => Some(3),
+        // 3DS opens since #46 (Azahar on Vulkan, software where there is none).
+        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::Nds | ConsoleId::N3ds => None,
     }
 }
 
-/// The file extensions «Apri un file» offers: those of [`super::EXTENSIONS`] whose console's
-/// games open today. The one list the file picker uses (`open_extensions`).
+/// Whether a file with extension `ext` opens today: its console's games open, and its core runs
+/// that kind of file (`CoreProfile::extensions`: Azahar's libretro core runs no `.cia`).
+pub fn opens(ext: &str) -> bool {
+    super::identity::console_of_extension(ext).is_some_and(|c| {
+        console_phase_pending(c).is_none()
+            && crate::core_profile::CoreId::for_console(c)
+                .profile()
+                .extensions
+                .contains(&ext.to_lowercase().as_str())
+    })
+}
+
+/// The file extensions «Apri un file» offers: those of [`super::EXTENSIONS`] that open today
+/// ([`opens`]). The one list the file picker uses (`open_extensions`).
 pub fn open_extensions() -> Vec<&'static str> {
     super::EXTENSIONS
         .iter()
         .copied()
-        .filter(|ext| {
-            super::identity::console_of_extension(ext)
-                .is_some_and(|c| console_phase_pending(c).is_none())
-        })
+        .filter(|ext| opens(ext))
         .collect()
 }

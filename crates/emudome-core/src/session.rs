@@ -219,9 +219,14 @@ pub struct SessionOptions {
 /// The session's video seam ([`crate::video_sink`], [`crate::hw_render`]); `None` = the default.
 #[derive(Default)]
 pub struct VideoSetup {
-    pub sink: Option<Box<dyn crate::video_sink::VideoSink>>,
+    /// Makes the sink once the session's [`Shared`] exists (a GPU sink keeps its frame filled).
+    pub sink: Option<SinkFactory>,
     pub hw_render: Option<Box<dyn crate::hw_render::HwRenderHandler>>,
 }
+
+/// See [`VideoSetup::sink`].
+pub type SinkFactory =
+    Box<dyn FnOnce(&Arc<Shared>) -> Box<dyn crate::video_sink::VideoSink> + Send>;
 
 /// One quick save slot of a game, for the quick menu (G07).
 #[derive(Clone, Debug, PartialEq, Eq)]

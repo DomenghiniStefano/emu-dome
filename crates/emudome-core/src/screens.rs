@@ -68,7 +68,14 @@ pub enum Split {
     Whole,
     /// NDS: top screen above the bottom one, same width, `gap` frame rows between them.
     DsStacked { gap: u32 },
+    /// 3DS (Azahar's `default` layout): the 400 × 240 top screen above the 320 × 240 bottom
+    /// one, which is centred under it, no gap; both scaled alike when the core upscales.
+    N3dsStacked,
 }
+
+/// The 3DS top screen (width, height) and the bottom screen's width (same height), at 1×.
+const N3DS_TOP: (u32, u32) = (400, 240);
+const N3DS_BOTTOM_WIDTH: u32 = 320;
 
 impl Split {
     /// The screens inside a frame of `width` × `height`. A frame too small for the split (none
@@ -106,6 +113,38 @@ impl Split {
                     },
                 };
                 vec![screen(ScreenId::Top, 0), screen(ScreenId::Bottom, h + gap)]
+            }
+            Split::N3dsStacked => {
+                // 400 × 480 times a whole factor (Azahar's internal resolution).
+                let scale = width / N3DS_TOP.0;
+                if scale == 0 || width != N3DS_TOP.0 * scale || height != 2 * N3DS_TOP.1 * scale {
+                    return whole();
+                }
+                let (top_w, bottom_w, h) = (
+                    N3DS_TOP.0 * scale,
+                    N3DS_BOTTOM_WIDTH * scale,
+                    N3DS_TOP.1 * scale,
+                );
+                vec![
+                    SourceScreen {
+                        id: ScreenId::Top,
+                        src: PxRect {
+                            x: 0,
+                            y: 0,
+                            w: top_w,
+                            h,
+                        },
+                    },
+                    SourceScreen {
+                        id: ScreenId::Bottom,
+                        src: PxRect {
+                            x: (top_w - bottom_w) / 2,
+                            y: h,
+                            w: bottom_w,
+                            h,
+                        },
+                    },
+                ]
             }
         }
     }
@@ -558,6 +597,91 @@ mod tests {
         );
         let gap = Split::DsStacked { gap: 90 }.screens(256, 474);
         assert_eq!(gap[1].src.y, 282);
+    }
+
+    #[test]
+    fn the_3ds_frame_holds_a_wide_top_and_a_centred_bottom() {
+        let s = Split::N3dsStacked.screens(400, 480);
+        assert_eq!(
+            s.iter().map(|s| (s.id, s.src)).collect::<Vec<_>>(),
+            vec![
+                (
+                    ScreenId::Top,
+                    PxRect {
+                        x: 0,
+                        y: 0,
+                        w: 400,
+                        h: 240
+                    }
+                ),
+                (
+                    ScreenId::Bottom,
+                    PxRect {
+                        x: 40,
+                        y: 240,
+                        w: 320,
+                        h: 240
+                    }
+                ),
+            ]
+        );
+        // Upscaled 3x by the core.
+        assert_eq!(
+            Split::N3dsStacked.screens(1200, 1440)[1].src,
+            PxRect {
+                x: 120,
+                y: 720,
+                w: 960,
+                h: 720
+            }
+        );
+        // Anything else (no frame yet, another layout) is one screen.
+        for (w, h) in [(0, 0), (400, 240), (800, 480), (401, 480)] {
+            assert_eq!(Split::N3dsStacked.screens(w, h).len(), 1, "{w}x{h}");
+        }
+    }
+
+    #[test]
+    fn the_default_3ds_layout_draws_where_the_whole_frame_is_drawn() {
+        // The renderers draw the whole frame with `fit`; compose must put each screen at the
+        // same place, or touch would miss.
+        let a = area(1920.0, 1080.0);
+        let whole = fit(a, (400.0, 480.0));
+        let placed = compose(&Layout::default(), &Split::N3dsStacked.screens(400, 480), a);
+        let scale = whole.w / 400.0;
+        assert_eq!(
+            dst(&placed, ScreenId::Top),
+            rect(whole.x, whole.y, 400.0 * scale, 240.0 * scale)
+        );
+        assert_eq!(
+            dst(&placed, ScreenId::Bottom),
+            rect(
+                whole.x + 40.0 * scale,
+                whole.y + 240.0 * scale,
+                320.0 * scale,
+                240.0 * scale
+            )
+        );
+    }
+
+    #[test]
+    fn a_3ds_touch_lands_on_the_same_bottom_screen_pixel_in_azahar() {
+        // Azahar (`input/mouse_tracker.cpp`): x = (p + 0x7fff) / (0x7fff * 2) * width, then minus
+        // the bottom screen's left edge.
+        let frame = (400u32, 480u32);
+        let bottom = Split::N3dsStacked.screens(frame.0, frame.1)[1].src;
+        let azahar =
+            |v: i16, size: u32| ((f32::from(v) + 32767.0) / (32767.0 * 2.0) * size as f32) as i32;
+        for (x, y) in [(0, 0), (319, 239), (160, 120), (7, 200)] {
+            let (px, py) = pointer_value(bottom, frame, x, y);
+            assert_eq!(
+                (
+                    azahar(px, frame.0) - bottom.x as i32,
+                    azahar(py, frame.1) - bottom.y as i32
+                ),
+                (x as i32, y as i32)
+            );
+        }
     }
 
     #[test]

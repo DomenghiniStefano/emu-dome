@@ -1655,6 +1655,49 @@ fn percent_rounds_to_the_core_levels() {
 }
 
 #[test]
+fn azahar_takes_the_3ds_settings_as_its_options_when_the_game_opens() {
+    use super::core_values::{mapped, Apply};
+    let out = mapped(CoreId::Azahar, ConsoleId::N3ds, |k| match k {
+        "consoles.n3dsmodel" => Some(Value::Text("o3ds".into())),
+        "consoles.n3dsreg" => Some(Value::Text("eur".into())),
+        "video.res3d" => Some(Value::Text("3x".into())),
+        "video.texf" => Some(Value::Text("anime4k".into())),
+        "perf.cpuclock" => Some(Value::Int(150)),
+        "cores.azaudio" => Some(Value::Text("lle".into())),
+        _ => None,
+    });
+    let pairs: Vec<(&str, &str)> = out.iter().map(|o| (o.key, o.value.as_str())).collect();
+    assert_eq!(
+        pairs,
+        [
+            ("citra_is_new_3ds", "Old 3DS"),
+            ("citra_region_value", "Europe"),
+            ("citra_resolution_factor", "3"),
+            ("citra_texture_filter", "Anime4K Ultrafast"),
+            ("citra_cpu_clock_percentage", "150"),
+            ("citra_audio_emulation", "lle"),
+        ]
+    );
+    assert!(out.iter().all(|o| o.apply == Apply::Restart));
+    // The 3DS rules reach no other console, and the other cores never see them.
+    assert!(mapped(CoreId::Azahar, ConsoleId::Nds, |_| Some(Value::Text(
+        "3x".into()
+    )))
+    .is_empty());
+    for (core, console) in [
+        (CoreId::Mgba, ConsoleId::Gba),
+        (CoreId::MelonDsDs, ConsoleId::Nds),
+    ] {
+        let out = mapped(core, console, |k| match k {
+            "video.res3d" => Some(Value::Text("3x".into())),
+            "perf.cpuclock" => Some(Value::Int(150)),
+            _ => None,
+        });
+        assert!(out.is_empty(), "{core}: {out:?}");
+    }
+}
+
+#[test]
 fn a_value_of_the_wrong_kind_or_an_unknown_choice_asks_for_nothing() {
     use super::core_values::mapped;
     let out = mapped(CoreId::Mgba, ConsoleId::Gba, |k| match k {
@@ -1687,6 +1730,7 @@ fn every_core_table_matches_the_catalogue() {
                 .unwrap_or_else(|| panic!("{} is not in the catalogue", rule.setting));
             match (rule.map, &e.kind) {
                 (Map::Toggle { .. }, Kind::Toggle) => {}
+                (Map::Number { .. }, Kind::Slider { .. }) => {}
                 (Map::Percent { .. }, Kind::Slider { min, max, .. }) => {
                     assert_eq!(
                         (*min, *max),
@@ -1911,8 +1955,6 @@ fn the_entries_not_wired_yet_are_these() {
             "video.portrait",
             "video.orient",
             "video.api",
-            "video.res3d",
-            "video.texf",
             "screens.second",
             "screens.stereo",
             "audio.mic",
@@ -1942,12 +1984,8 @@ fn the_entries_not_wired_yet_are_these() {
             "cloud.sauto",
             "cloud.swifi",
             "bios.b3ds",
-            "consoles.n3dsmodel",
-            "consoles.n3dsreg",
             "perf.jit",
             "perf.shcache",
-            "perf.cpuclock",
-            "cores.azaudio",
             "adv.advon",
             "adv.inputs",
             "adv.framecnt",

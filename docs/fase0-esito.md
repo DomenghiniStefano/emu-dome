@@ -265,3 +265,59 @@ Errors and fixes: none in the measurement. Files touched: see Trello #79 (sessio
 `rewind.rs`, `audio.rs` in both crates, `video_sink.rs`, `frame.rs`, `video.rs`, `health.rs`).
 Proposed next step: the same `--timing` run on a DS game with melonDS DS, and the owner's UAT of the native video
 (CPU while paused and minimized) and of unplugging headphones during play.
+
+## 2026-11-21 15:00 · 3DS on Azahar with Vulkan through the shell's host (headless, Windows)
+Trello #46, first milestone (branch `feat/3ds-host`). Ryzen 7 9700X, RTX 3060 (NVIDIA 617.42, Vulkan 1.4), Windows 11.
+Core: Azahar 2126.2 (commit 219d743), fetched with `./scripts/fetch-cores.ps1 -Cores azahar` (sha256 as in
+`cores.lock`). Content, homebrew only, outside the repo: **Craftus Reloaded** 0.3 (RSDuck, MIT; textures CC BY-SA),
+`craftus_reloaded.3dsx`, sha256 7beb2eb124342cbc41980f401ececba3eaa53fdc33a5da92f41517544d1e0f47. Tools: `headless` (software) and the new `headless_gpu` example (same
+test, the app's GPU: Azahar renders on the app's Vulkan device, frames copied on the GPU and read back into
+`Shared::frame`). `--dir` is a short temp folder: under a long folder Azahar's NAND paths pass 248 characters and the
+core aborts the process (see Errors).
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless; the owner's UAT. Frames reach `Shared::frame` (read back), which the native renderer uploads as for a software core |
+| 2. FPS at 1× | Software: 43.1 (saturated). Vulkan: 58.7-60.3 at 1×, Max 685-802, 2× 121 (debug build, before another program used the GPU) | release numbers with a clean GPU: pending (below) |
+| 3. Audio | not tested | headless |
+| 4. Controller | not tested | touch tested: `--tap` on the bottom screen enters a Craftus world |
+| 5. Native vs webview | not tested | both read the same read-back frame today |
+
+Software renderer (release, title screen, today's develop): 1× 43.1 fps over 8 s, Max 43, 2× 45.8; `--timing 12`
+work per frame p50 22.1 ms, p90 24.5 ms, p99 48.9 ms, max 241 ms, 469 of 487 frames over 16.7 ms.
+
+Vulkan (debug build of `headless_gpu`, title screen): Azahar accepts Vulkan on the app's device (negotiation v2 read:
+it asks for Vulkan 1.1; its `create_device` is not called), `context_reset` 207-562 ms (the game is loaded there);
+picture identical to the software one; 1× 58.7 and 60.3 fps over 3 s (two runs), Max 685 and 802 fps, 2× 121. The
+frame splits into the 400×240 top and the centred 320×240 bottom screen; `--tap 110,203` then `--tap 232,168` (New
+World, Continue) enter a generated world (an in-world 3D scene).
+
+Not measured cleanly (pending: the owner was playing a game on this PC, which shares the GPU): release runs taken
+while that game ran gave 1× 50.1-56.7 fps with Max 419-440 and 2× 121, i.e. not a lack of speed but waits on a GPU busy
+with another program; the synchronous readback of those runs has since been bounded (3 ms, two buffers, a late frame
+published one frame late). To do with the GPU free: `--timing 20` on the title screen and in the world, release build.
+
+Quick save size (state file, title screen): 545 KB software, 544 KB Vulkan; slot thumbnail 17 KB. A quick save with
+Vulkan took up to ~0.5-0.65 s of the emulation thread (p99 / max of a `--timing 20` run with a save every 2 s, under the
+GPU contention above): to measure again with the GPU free. The 100 MB cloud warning is far off on this content.
+
+Rewind: not measured. Loading a state on Vulkan rebuilds Azahar's whole renderer (~170 ms seen in the log between
+the load's start and its end), so rewind playback at 60 steps per second cannot run on 3DS with Vulkan; and on content
+without a title ID (all `.3dsx` homebrew) the load crashes the process (Errors). Owner decision of 2026-11-21: rewind
+defaults off on 3DS and phones.
+
+Errors and fixes:
+- Azahar 2126.2 aborts the whole process when it cannot create its NAND folders (Windows error 206, path over 248
+  characters): seen with a save folder under the long scratch folder. In the app the path after
+  `%APPDATA%\com.domenghini.emudome\saves\` is about 130 characters for a homebrew key; not fixed (a card).
+- Azahar 2126.2 with Vulkan crashes (access violation in `azahar_libretro.dll` +0x385f5d, reading 0x650, emulation
+  thread) at the first frame after a state load, and at boot with `citra_use_disk_shader_cache=disabled`, on content
+  without a title ID. Cause read in its source (`vk_pipeline_cache.cpp`, `SwitchCache`): for title ID 0 the switch
+  is skipped and the driver pipeline cache is never created. Not ours (it crashes with the shell's copy turned off);
+  real games (non-zero title ID) take the other branch (not verified: no free homebrew with a title ID at hand).
+  `perf.shcache` is left unwired because of it.
+- `gpu_interop.rs`: the device creation looped in `push_next` (the feature structs still chained from the
+  query); fixed by clearing their `p_next`.
+- `hw_render.rs`: the core's image is wrapped anew every frame (Azahar recreates it on a state load).
+Proposed next step: the release `--timing 20` runs (title and world) with the GPU free, then the owner's UAT of a 3DS
+homebrew in the app (native and webview video).

@@ -24,6 +24,8 @@
 //!   rectangle → pointer value) and check what the test ROM shows (`tools/test-rom-nds`);
 //! - `--set key=value` (repeatable): a text setting the BIOS rule reads (`consoles.dsmode`,
 //!   `cores.mdsboot`), as the shell would resolve it for the game;
+//! - `--tap X,Y` (repeatable): after `--press-a`, touch pixel (X, Y) of the bottom screen for
+//!   200 ms, then wait a second (through the shell's pointer value for that screen);
 //! - `--timing N`: run N seconds at 1x, a quick save into slot 5 every 2 s, and print the
 //!   emulation thread's work per frame (p50 / p99 / max, frames over budget), then stop. With
 //!   `--rewind S` rewind records meanwhile, as in the app. Build with `--release` to measure.
@@ -37,7 +39,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use emudome_core::bios;
-use emudome_core::core_profile::CoreId;
+use emudome_core::core_profile::{CoreId, Renderer};
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{self, Area, Layout, ScreenId};
 use emudome_core::settings::{ConsoleId, Value};
@@ -73,6 +75,27 @@ struct Args {
     fast_audio: Option<emudome_core::speed_audio::FastAudio>,
     sets: Vec<(String, String)>,
     timing: Option<u32>,
+    taps: Vec<(u32, u32)>,
+}
+
+/// `--tap X,Y`: a touch on pixel (X, Y) of the bottom screen, as the shell would send it.
+fn tap(session: &Session, (x, y): (u32, u32)) -> anyhow::Result<()> {
+    let (frame, bottom) = {
+        let f = session.shared().frame.lock();
+        let bottom = f
+            .screens()
+            .into_iter()
+            .find(|s| s.id == ScreenId::Bottom)
+            .ok_or_else(|| anyhow::anyhow!("--tap: the frame has no bottom screen"))?;
+        ((f.width, f.height), bottom.src)
+    };
+    let pointer = screens::pointer_value(bottom, frame, x, y);
+    session.shared().input.set_pointer(Some(pointer));
+    std::thread::sleep(Duration::from_millis(200));
+    session.shared().input.set_pointer(None);
+    std::thread::sleep(Duration::from_secs(1));
+    println!("tapped bottom screen ({x}, {y}): pointer {pointer:?}");
+    Ok(())
 }
 
 /// `--timing N`: the emulation thread's work per frame over N seconds at 1x, with a quick save
@@ -160,6 +183,7 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut fast_audio = None;
     let mut sets = Vec::new();
     let mut timing = None;
+    let mut taps = Vec::new();
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -184,6 +208,13 @@ fn parse_args() -> anyhow::Result<Args> {
             "--live" => live.push(key_value(&value()?)?),
             "--set" => sets.push(key_value(&value()?)?),
             "--timing" => timing = Some(value()?.parse()?),
+            "--tap" => {
+                let xy = value()?;
+                let (x, y) = xy
+                    .split_once(',')
+                    .ok_or_else(|| anyhow::anyhow!("--tap wants X,Y, got {xy}"))?;
+                taps.push((x.trim().parse()?, y.trim().parse()?));
+            }
             "--fast-audio" => {
                 let id = value()?;
                 fast_audio = Some(
@@ -213,16 +244,13 @@ fn parse_args() -> anyhow::Result<Args> {
         fast_audio,
         sets,
         timing,
+        taps,
     })
 }
 
 fn write_png(session: &Session, path: &std::path::Path) -> anyhow::Result<()> {
-    let f = session.shared().frame.lock();
-    let file = std::io::BufWriter::new(std::fs::File::create(path)?);
-    let mut enc = png::Encoder::new(file, f.width, f.height);
-    enc.set_color(png::ColorType::Rgba);
-    enc.set_depth(png::BitDepth::Eight);
-    enc.write_header()?.write_image_data(&f.rgba)?;
+    let f = session.shared().frame.lock().clone();
+    std::fs::write(path, f.to_png()?)?;
     Ok(())
 }
 
@@ -241,11 +269,7 @@ fn write_screens(session: &Session, prefix: &str) -> anyhow::Result<()> {
             rgba.extend_from_slice(&f.rgba[row..row + (s.src.w * 4) as usize]);
         }
         let path = format!("{prefix}-{name}.png");
-        let file = std::io::BufWriter::new(std::fs::File::create(&path)?);
-        let mut enc = png::Encoder::new(file, s.src.w, s.src.h);
-        enc.set_color(png::ColorType::Rgba);
-        enc.set_depth(png::BitDepth::Eight);
-        enc.write_header()?.write_image_data(&rgba)?;
+        std::fs::write(&path, emudome_core::rgba_png(s.src.w, s.src.h, &rgba)?)?;
         println!("{name} screen {:?} written to {path}", s.src);
     }
     Ok(())
@@ -386,26 +410,65 @@ fn measure_rewind(
     Ok(())
 }
 
+/// The host's and the core's log lines on stderr, at `RUST_LOG`'s level (`error`, `warn`,
+/// `info`, `debug`, `trace`); nothing without it.
+struct StderrLog;
+
+impl log::Log for StderrLog {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        metadata.level() <= log::max_level()
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        if self.enabled(record.metadata()) {
+            eprintln!("[{} {}] {}", record.level(), record.target(), record.args());
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+fn init_log() {
+    let level = std::env::var("RUST_LOG")
+        .ok()
+        .and_then(|l| l.parse::<log::LevelFilter>().ok());
+    if let Some(level) = level {
+        static LOGGER: StderrLog = StderrLog;
+        if log::set_logger(&LOGGER).is_ok() {
+            log::set_max_level(level);
+        }
+    }
+}
+
 fn main() -> anyhow::Result<()> {
+    run(&|| None)
+}
+
+/// A host's GPU for the session, when it has one: the video setup of a Vulkan device (the app's
+/// `headless_gpu` example passes the shell's). `None`: software frames only.
+pub type GpuSetup<'a> = &'a dyn Fn() -> Option<emudome_core::VideoSetup>;
+
+/// The whole test; `gpu` gives the session a Vulkan device when the core can use one.
+pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
+    init_log();
     let args = parse_args()?;
     let tmp = args
         .dir
         .clone()
         .unwrap_or_else(|| std::env::temp_dir().join("emudome-headless"));
-    // A DS game runs as the shell runs it: melonDS DS's forced options and the split.
-    let rom = args.rom.to_lowercase();
-    let console = if rom.ends_with(".nds") {
-        ConsoleId::Nds
-    } else if rom.ends_with(".gb") {
-        ConsoleId::Gb
-    } else if rom.ends_with(".gbc") {
-        ConsoleId::Gbc
-    } else {
-        ConsoleId::Gba
-    };
+    // A game runs as the shell runs it: its core's forced options and split, by its console.
+    let console = std::path::Path::new(&args.rom)
+        .extension()
+        .and_then(|e| emudome_core::library::console_of_extension(&e.to_string_lossy()))
+        .unwrap_or(ConsoleId::Gba);
     let core = CoreId::for_console(console);
     let profile = core.profile();
-    let mut core_options = profile.forced_pairs();
+    // Vulkan when the host has a device and the core can draw with it, as in the shell.
+    let wants_gpu = profile.hw_render.renderer(true) == Renderer::Vulkan;
+    let video = if wants_gpu { gpu() } else { None };
+    let renderer = profile.hw_render.renderer(video.is_some());
+    println!("renderer: {renderer:?}");
+    let mut core_options = profile.forced_pairs(renderer);
     let system_dir = bios::files::core_dir(&tmp.join("system"), core.name());
     let in_place = bios::table(core)
         .map(|t| bios::files::in_place(&system_dir, t))
@@ -448,7 +511,7 @@ fn main() -> anyhow::Result<()> {
             split: profile.split,
             username: None,
             fast_audio: args.fast_audio.unwrap_or_default(),
-            video: Default::default(),
+            video: video.unwrap_or_default(),
         },
         tx,
     )?;
@@ -477,8 +540,19 @@ fn main() -> anyhow::Result<()> {
             .set(Source::Keyboard, Button::A, false);
     }
 
+    for xy in &args.taps {
+        tap(&session, *xy)?;
+    }
+
     if let Some(secs) = args.timing {
         measure_timing(&session, &rx, secs)?;
+        // The picture at the end of the measure.
+        if let Some(png) = &args.png {
+            write_png(&session, png)?;
+        }
+        if let Some(prefix) = &args.screens {
+            write_screens(&session, prefix)?;
+        }
         drop(session);
         return Ok(());
     }

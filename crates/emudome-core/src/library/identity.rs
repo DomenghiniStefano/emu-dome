@@ -7,17 +7,18 @@
 //! - 3DS: program ID of the NCCH (header 0x118) and its remaster version (extended header
 //!   0x0E), `3ds:<program id, 16 hex><version, 4 hex>`. No hash: the title ID already names the
 //!   game, region and all.
+//! - 3DS homebrew (`.3dsx`): no title ID, so the SHA-1 of the whole file, as for GBA.
 //!
 //! Extensions: `gb`, `gbc`, `gba`, `nds`, `3ds` / `cci` (NCSD card image), `cxi` (a bare NCCH),
-//! `cia` (installable archive: the NCCH of content 0 when it is not encrypted, else the TMD's
-//! title ID and title version). A file whose header does not look like its console is not a
-//! game ([`NotAGame`]) and is skipped.
+//! `cia` (installable archive: the NCCH of content 0), `3dsx` (homebrew, its SMDH appended when
+//! it has one). A file whose header does not look like its console is not a game
+//! ([`NotAGame`]) and is skipped; so is an encrypted 3DS game ([`NotAGame::Encrypted`], E10:
+//! EmuDome plays decrypted games only, `crate::n3ds::rom`).
 //!
 //! Titles: GB 0x134, GBA 0xA0, NDS banner (English, else the first non-empty language; the
 //! header's 0x00 when there is no banner), 3DS SMDH short title (same language rule).
 //! Icons: NDS banner 32×32 (4 bpp, 8×8 tiles, BGR555 palette, colour 0 transparent), 3DS SMDH
-//! large icon 48×48 (RGB565, 8×8 tiles in Morton order). Encrypted 3DS content has neither: the
-//! user must decrypt 3DS games anyway (CLAUDE.md).
+//! large icon 48×48 (RGB565, 8×8 tiles in Morton order).
 
 use std::fmt;
 use std::fs::File;
@@ -31,7 +32,9 @@ use crate::settings::ConsoleId;
 use crate::GameKey;
 
 /// The file extensions the library looks at (lowercase).
-pub const EXTENSIONS: &[&str] = &["gb", "gbc", "gba", "nds", "3ds", "cci", "cxi", "cia"];
+pub const EXTENSIONS: &[&str] = &[
+    "gb", "gbc", "gba", "nds", "3ds", "cci", "cxi", "cia", "3dsx",
+];
 
 /// What a game is, from its content. Cached by path + size + modification time.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,6 +59,9 @@ pub enum NotAGame {
     Extension,
     /// The header does not match the console the extension says.
     Header(&'static str),
+    /// An encrypted 3DS game (E10): EmuDome plays decrypted games only, and never adds or opens
+    /// an encrypted one (`crate::n3ds::rom`).
+    Encrypted,
     Io(io::Error),
 }
 
@@ -64,6 +70,7 @@ impl fmt::Display for NotAGame {
         match self {
             NotAGame::Extension => f.write_str("unknown extension"),
             NotAGame::Header(why) => write!(f, "bad header: {why}"),
+            NotAGame::Encrypted => f.write_str("encrypted 3DS content"),
             NotAGame::Io(e) => write!(f, "{e}"),
         }
     }
@@ -102,6 +109,8 @@ enum Format {
     /// `.cxi`: a bare NCCH.
     Ncch,
     Cia,
+    /// `.3dsx`: homebrew.
+    Homebrew3dsx,
 }
 
 fn format_of(path: &Path) -> Option<Format> {
@@ -117,6 +126,7 @@ fn format_of_extension(ext: &str) -> Option<Format> {
         "3ds" | "cci" => Some(Format::Ncsd),
         "cxi" => Some(Format::Ncch),
         "cia" => Some(Format::Cia),
+        "3dsx" => Some(Format::Homebrew3dsx),
         _ => None,
     }
 }
@@ -134,7 +144,7 @@ pub fn console_of_extension(ext: &str) -> Option<ConsoleId> {
         Format::Gbc => ConsoleId::Gbc,
         Format::Gba => ConsoleId::Gba,
         Format::Nds => ConsoleId::Nds,
-        Format::Ncsd | Format::Ncch | Format::Cia => ConsoleId::N3ds,
+        Format::Ncsd | Format::Ncch | Format::Cia | Format::Homebrew3dsx => ConsoleId::N3ds,
     })
 }
 
@@ -226,6 +236,7 @@ fn inspect(path: &Path, file: &mut File) -> Result<Header, NotAGame> {
         Format::Ncsd => ncsd(file, len),
         Format::Ncch => ncch(file, 0, len)?.ok_or(NotAGame::Header("no NCCH magic")),
         Format::Cia => cia(file, len),
+        Format::Homebrew3dsx => homebrew_3dsx(file, len),
     }
 }
 
@@ -373,53 +384,48 @@ fn nds_icon(b: &[u8]) -> Icon {
 
 // ---- 3DS ----
 
-const MEDIA_UNIT: u64 = 0x200;
+use crate::n3ds::rom::{ncch_encrypted, ncsd_game_partition, MEDIA_UNIT};
 
 fn ncsd(file: &mut File, len: u64) -> Result<Header, NotAGame> {
     if len < 0x200 {
         return Err(NotAGame::Header("NCSD file shorter than its header"));
     }
     let h = read_at(file, 0, 0x200)?;
-    if &h[0x100..0x104] != b"NCSD" {
-        return Err(NotAGame::Header("no NCSD magic"));
-    }
     // Partition table at 0x120: (offset, length) in media units; partition 0 is the game.
-    let base = u64::from(le32(&h, 0x120)) * MEDIA_UNIT;
+    let base = ncsd_game_partition(&h).ok_or(NotAGame::Header("no NCSD magic"))?;
     ncch(file, base, len)?.ok_or(NotAGame::Header("NCSD partition 0 is not an NCCH"))
 }
 
-/// The NCCH at `base`, or `None` when there is none there.
+/// The NCCH at `base`, or `None` when there is none there. An encrypted one is not a game
+/// ([`NotAGame::Encrypted`]): EmuDome never adds or opens it.
 fn ncch(file: &mut File, base: u64, len: u64) -> Result<Option<Header>, NotAGame> {
     if base + 0x200 > len {
         return Ok(None);
     }
     let h = read_at(file, base, 0x200)?;
-    if &h[0x100..0x104] != b"NCCH" {
-        return Ok(None);
+    match ncch_encrypted(&h) {
+        None => return Ok(None),
+        Some(true) => return Err(NotAGame::Encrypted),
+        Some(false) => {}
     }
     let program_id = le64(&h, 0x118);
     let unit = MEDIA_UNIT << h[0x18E].min(16);
-    let no_crypto = h[0x18F] & 0x04 != 0;
     let product = ascii(&h[0x150..0x160]);
     let mut version = None;
     let mut smdh = None;
-    if no_crypto {
-        // Extended header right after the NCCH header; SystemInfoFlags at 0x08, remaster
-        // version at 0x0E.
-        if le32(&h, 0x180) != 0 && base + 0x210 <= len {
-            version = Some(le16(&read_at(file, base + 0x200, 0x10)?, 0x0E));
-        }
-        let exefs = base + u64::from(le32(&h, 0x1A0)) * unit;
-        if le32(&h, 0x1A4) != 0 && exefs + 0x200 <= len {
-            let x = read_at(file, exefs, 0x200)?;
-            // 8 sections: name (8), offset (4), size (4); data after the 0x200 header.
-            smdh = (0..8)
-                .map(|i| &x[i * 16..i * 16 + 16])
-                .find(|s| &s[..8] == b"icon\0\0\0\0")
-                .map(|s| exefs + 0x200 + u64::from(le32(s, 8)));
-        }
-    } else {
-        log::info!("encrypted NCCH {program_id:016x}: no version, title or icon");
+    // Extended header right after the NCCH header; SystemInfoFlags at 0x08, remaster version at
+    // 0x0E.
+    if le32(&h, 0x180) != 0 && base + 0x210 <= len {
+        version = Some(le16(&read_at(file, base + 0x200, 0x10)?, 0x0E));
+    }
+    let exefs = base + u64::from(le32(&h, 0x1A0)) * unit;
+    if le32(&h, 0x1A4) != 0 && exefs + 0x200 <= len {
+        let x = read_at(file, exefs, 0x200)?;
+        // 8 sections: name (8), offset (4), size (4); data after the 0x200 header.
+        smdh = (0..8)
+            .map(|i| &x[i * 16..i * 16 + 16])
+            .find(|s| &s[..8] == b"icon\0\0\0\0")
+            .map(|s| exefs + 0x200 + u64::from(le32(s, 8)));
     }
     let title = smdh_title(file, smdh, len)?;
     let icon = title.as_ref().and(smdh).map(IconAt::Smdh);
@@ -467,33 +473,35 @@ fn cia(file: &mut File, len: u64) -> Result<Header, NotAGame> {
         return Ok(header);
     }
 
-    // Encrypted content: title ID and version from the TMD (body after the signature).
+    // No NCCH to read at content 0: the content is encrypted (with its title key, which
+    // EmuDome never has nor reads).
     if tmd + 4 > len {
         return Err(NotAGame::Header("CIA without TMD"));
     }
-    let sig_type = be32(&read_at(file, tmd, 4)?, 0);
-    let body = tmd
-        + match sig_type {
-            0x10000 | 0x10003 => 4 + 0x200 + 0x3C,
-            0x10001 | 0x10004 => 4 + 0x100 + 0x3C,
-            0x10002 | 0x10005 => 4 + 0x3C + 0x40,
-            _ => return Err(NotAGame::Header("CIA TMD signature type")),
-        };
-    if body + 0xA0 > len {
-        return Err(NotAGame::Header("CIA TMD truncated"));
+    Err(NotAGame::Encrypted)
+}
+
+/// A `.3dsx` (3dbrew «3DSX Format»): magic `3DSX`, the header's size at 0x04; a header of 0x2C
+/// bytes or more is the extended one, with the SMDH's offset at 0x20 and its size at 0x24.
+fn homebrew_3dsx(file: &mut File, len: u64) -> Result<Header, NotAGame> {
+    if len < 0x2C {
+        return Err(NotAGame::Header("3DSX file shorter than its header"));
     }
-    let b = read_at(file, body, 0xA0)?;
-    let title_id = be64(&b, 0x4C);
-    let version = u16::from_be_bytes([b[0x9C], b[0x9D]]);
-    let title = smdh_title(file, meta_smdh, len)?;
-    let icon = title.as_ref().and(meta_smdh).map(IconAt::Smdh);
+    let h = read_at(file, 0, 0x2C)?;
+    if &h[..4] != b"3DSX" {
+        return Err(NotAGame::Header("no 3DSX magic"));
+    }
+    let smdh =
+        (le16(&h, 0x04) >= 0x2C && le32(&h, 0x24) >= 0x36C0).then(|| u64::from(le32(&h, 0x20)));
+    let title = smdh_title(file, smdh, len)?;
+    let icon = title.as_ref().and(smdh).map(IconAt::Smdh);
     Ok(Header {
         console: ConsoleId::N3ds,
         title: title.unwrap_or_default(),
         code: None,
-        version: Some(version),
+        version: None,
         icon,
-        key: Key::Known(format!("{title_id:016x}{version:04x}")),
+        key: Key::Hash(len),
     })
 }
 
@@ -620,14 +628,6 @@ fn le32(b: &[u8], at: usize) -> u32 {
 
 fn le64(b: &[u8], at: usize) -> u64 {
     u64::from(le32(b, at)) | (u64::from(le32(b, at + 4)) << 32)
-}
-
-fn be32(b: &[u8], at: usize) -> u32 {
-    u32::from_be_bytes([b[at], b[at + 1], b[at + 2], b[at + 3]])
-}
-
-fn be64(b: &[u8], at: usize) -> u64 {
-    (u64::from(be32(b, at)) << 32) | u64::from(be32(b, at + 4))
 }
 
 /// A 5-bit channel (low bits of `c`) to 8 bits.

@@ -3,15 +3,16 @@
 
 use std::path::{Path, PathBuf};
 
-use emudome_core::core_profile::CoreId;
+use emudome_core::core_profile::{CoreId, Renderer};
 use emudome_core::settings::ConsoleId;
-use emudome_core::{ErrorCode, Event, GameKey, Session, SessionOptions};
+use emudome_core::{ErrorCode, Event, GameKey, Session, SessionOptions, VideoSetup};
 use emudome_platform::CoreLookupError;
 use serde::Serialize;
 use tauri::{Emitter, Manager};
 use ts_rs::TS;
 
 use crate::game_session::Opened;
+use crate::health::{Part, SharedHealth};
 use crate::{bios, closing, library, migration, saves, settings, AppState};
 
 #[derive(Serialize, TS)]
@@ -46,7 +47,25 @@ fn core_for(path: &Path) -> Result<(CoreId, ConsoleId), ErrorCode> {
             phase,
         });
     }
+    // A kind of file the console's core does not run (a 3DS `.cia`).
+    if !emudome_core::library::opens(&ext) {
+        return Err(ErrorCode::UnsupportedFormat { ext });
+    }
     Ok((CoreId::for_console(console), console))
+}
+
+/// E10: an encrypted 3DS game is refused before the core sees it (also a library game whose file
+/// was replaced since it was added). Identification only: one header flag is read.
+fn refuse_encrypted(console: ConsoleId, game_path: &Path) -> Result<(), ErrorCode> {
+    use emudome_core::n3ds::rom::{check_file, Encryption};
+    match console {
+        ConsoleId::N3ds if check_file(game_path) == Encryption::Encrypted => {
+            Err(ErrorCode::GameEncrypted)
+        }
+        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::Nds | ConsoleId::N3ds => {
+            Ok(())
+        }
+    }
 }
 
 /// The extensions «Apri un file» offers: every console whose games open today.
@@ -100,11 +119,16 @@ pub(crate) fn open_library_game(
 }
 
 /// The options the core starts with: the settings' (console options), then the ones the shell
-/// always forces (`CoreProfile::forced_options`), then the system files' (`emudome_core::bios`:
-/// what the files in place allow), each winning over the ones before.
-fn core_options(core: CoreId, flow: &settings::GameFlow) -> Vec<(String, String)> {
+/// always forces (`CoreProfile::forced_options`, the renderer's among them), then the system
+/// files' (`emudome_core::bios`: what the files in place allow), each winning over the ones
+/// before.
+fn core_options(
+    core: CoreId,
+    renderer: Renderer,
+    flow: &settings::GameFlow,
+) -> Vec<(String, String)> {
     let mut options = emudome_core::settings::core_values::pairs(&flow.core_options);
-    options.extend(core.profile().forced_pairs());
+    options.extend(core.profile().forced_pairs(renderer));
     options.extend(
         flow.bios
             .options
@@ -112,6 +136,36 @@ fn core_options(core: CoreId, flow: &settings::GameFlow) -> Vec<(String, String)
             .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
     );
     options
+}
+
+/// The renderer a game runs with, and the session's video: Vulkan on the app's device for a
+/// core that can draw with it (3DS), else software. A core that would draw on the GPU and found
+/// no Vulkan device is reported (`hwRenderFallback`) and runs in software.
+fn game_video(app: &tauri::AppHandle, state: &AppState, core: CoreId) -> (Renderer, VideoSetup) {
+    let hw = core.profile().hw_render;
+    if hw.renderer(true) != Renderer::Vulkan {
+        return (Renderer::Software, VideoSetup::default());
+    }
+    let health = app.state::<SharedHealth>();
+    match state.gpu.vulkan_lease() {
+        Ok(lease) => {
+            health.set(Part::HwRender, None);
+            (Renderer::Vulkan, crate::hw_render::video_setup(lease))
+        }
+        Err(e) => {
+            log::warn!(
+                "{}: no Vulkan device ({e:#}), software renderer",
+                core.name()
+            );
+            health.set(
+                Part::HwRender,
+                Some(ErrorCode::HwRenderFallback {
+                    detail: format!("{e:#}"),
+                }),
+            );
+            (Renderer::Software, VideoSetup::default())
+        }
+    }
 }
 
 /// Closes the open game, then opens `game_path` as the game `game` (its console, saves and
@@ -127,7 +181,8 @@ fn open_path(
 ) -> Result<GameInfo, ErrorCode> {
     // The one-time move of old save names ends before any game reads its saves.
     migration::wait(app);
-    let (core, _) = core_for(&game_path)?;
+    let (core, console) = core_for(&game_path)?;
+    refuse_encrypted(console, &game_path)?;
     let file = emudome_platform::core_file_name(core.name());
     let core_path = emudome_platform::find_core(core.name(), state.resource_dir.as_deref())
         .map_err(|e| match e {
@@ -154,6 +209,7 @@ fn open_path(
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
     saves::before_open(app, &save_dir, &game)?;
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
+    let (renderer, video) = game_video(app, state, core);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(
@@ -167,13 +223,13 @@ fn open_path(
             autosave_on_exit: flow.autosave_on_exit,
             resume_auto: flow.resume == "always",
             app_version: app.package_info().version.to_string(),
-            core_options: core_options(core, &flow),
+            core_options: core_options(core, renderer, &flow),
             rewind_seconds: flow.rewind_seconds,
             // The content decides the console, the core its frame's screens.
             split: core.profile().split,
             username: flow.username.clone(),
             fast_audio: flow.fast_audio,
-            video: Default::default(),
+            video,
         },
         tx,
     )

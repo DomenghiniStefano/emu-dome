@@ -669,6 +669,7 @@ pub fn identify_path(app: &AppHandle, path: &Path) -> Result<Identity, ErrorCode
         NotAGame::Extension | NotAGame::Header(_) => ErrorCode::GameUnidentified {
             detail: e.to_string(),
         },
+        NotAGame::Encrypted => ErrorCode::GameEncrypted,
     })
 }
 
