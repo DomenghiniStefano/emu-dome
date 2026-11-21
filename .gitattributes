@@ -11,6 +11,8 @@
 scripts/check text eol=lf
 scripts/git-hooks/* text eol=lf
 *.sh text eol=lf
+# Windows batch files (the Android project's gradlew.bat): cmd.exe misreads labels in LF files.
+*.bat text eol=crlf
 
 # Binaries: never converted.
 *.png binary
@@ -26,6 +28,8 @@ scripts/git-hooks/* text eol=lf
 *.otf binary
 *.wav binary
 *.ogg binary
+# The Gradle wrapper (app/src-tauri/gen/android/gradle/wrapper/).
+*.jar binary
 
 # Libretro cores and emulator data (cores/, *.sav and *.state are git-ignored; listed so that a
 # file added by force is still never converted).

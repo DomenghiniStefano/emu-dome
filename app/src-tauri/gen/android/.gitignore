@@ -1,0 +1,26 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+key.properties
+keystore.properties
+
+/.tauri
+/tauri.settings.gradle
+
+# EmuDome: release signing reads its keystore from outside the repository (EMUDOME_KEYSTORE, see
+# app/build.gradle.kts); a keystore must never land here, not even by mistake.
+*.jks
+*.keystore
+*.p12
