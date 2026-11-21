@@ -11,6 +11,7 @@ use raw_window_handle::{
 };
 
 mod azahar;
+pub mod cloud;
 mod content;
 mod cores;
 mod cpu;

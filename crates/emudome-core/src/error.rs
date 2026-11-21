@@ -166,6 +166,32 @@ pub enum ErrorCode {
     /// Booting through the DS menu was asked for without the DS system files: the game starts
     /// directly.
     BiosDsMenuFilesMissing,
+    /// Drive sync does not exist in this build (it was compiled without the Google OAuth client
+    /// id, a build-time value: `emudome-sync`).
+    CloudNotConfigured,
+    /// No Google account is signed in on this device.
+    CloudNotSignedIn,
+    /// The Google sign-in did not finish (refused, the browser closed, time ran out, Google
+    /// refused the code); `detail` says which.
+    CloudSignInFailed { detail: String },
+    /// Signing in to Google is not possible on this system yet (Android: Phase 4).
+    CloudSignInUnsupported,
+    /// The Google sign-in was revoked or expired: only signing in again helps.
+    CloudAccessExpired,
+    /// Google Drive could not be reached (no network, a timeout): nothing changed, the sync is
+    /// tried again later.
+    CloudOffline { detail: String },
+    /// Google Drive has no room for `needed` bytes (`available` left, 0 when Drive only said it
+    /// is full).
+    CloudQuotaFull { needed: u64, available: u64 },
+    /// Google Drive answered with an error none of the other codes names.
+    CloudRequestFailed { detail: String },
+    /// The sync index (`<app data>/sync/index.json`) is there but cannot be read: sync stops
+    /// and the file is not written over until it reads again.
+    CloudIndexReadFailed { detail: String },
+    /// The system's credential store refused (Linux without a Secret Service, a locked
+    /// keyring): the Google sign-in cannot be kept on this device.
+    CloudCredentialsUnavailable { detail: String },
     /// Health (`emu://health`, `diagnostics`): the native video could not start, the game is
     /// drawn in the interface's canvas instead.
     NativeVideoFallback { detail: String },

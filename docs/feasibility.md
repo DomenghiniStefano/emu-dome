@@ -92,6 +92,30 @@ sync index (SQLite or JSON, together with the library database).
 loopback sign-in from Tauri on Windows and Linux; `authorize()` from the Tauri Android activity; resumable upload of
 a 1 GB file with interruption; `changes.list` latency.
 
+**Done in code (2026-11-21, Trello #20, `crates/emudome-sync`)**, tested without Google (an in-memory Drive and a
+local mock HTTP server), not wired into the app's game flow yet:
+- the installed-app sign-in pieces: PKCE S256 (RFC 7636's test vector), the authorization URL (`drive.file`,
+  offline access, consent), the loopback receiver on `127.0.0.1:<port 0>` with the `state` check, the code exchange
+  and the refresh (the client secret sent when the build has one: Google's desktop clients still want it with
+  PKCE), revocation at sign-out; client id and secret are build-time values. The refresh token is kept in the
+  system's credential store (`keyring`: Windows Credential Manager; on Linux the Secret Service over zbus, pure
+  Rust: **still to verify** on a Linux desktop, and what happens without a keyring daemon: `cloudCredentialsUnavailable`);
+- Drive REST v3 behind a trait: list / find / folders / multipart and resumable uploads (chunks of 8 MiB, resumed
+  after a lost chunk by asking the session where it stands) / download / `appProperties` / server-side copy /
+  `about` quota and account / `changes.list`;
+- the sync index, the conflict rule (exhaustively tested), the «in use» marker, pull before launch and push after
+  exit for one game's folder, conflicts settled keeping the other side as a copy, with tests that every interrupted
+  pull or push leaves whole files on both sides and converges on the next run;
+- TLS: reqwest 0.12 with rustls and ring and the system's roots (reqwest 0.13's rustls pulls a CDLA-licensed crate
+  the licence check refuses). Android has no roots that way yet (Phase 4, with its sign-in).
+
+Sizes measured so far (docs/fase0-esito.md): GBA test ROM state 528 KB, `.sav` 128 KB; NDS (melonDS DS) state
+18.3 MB; 3DS (Azahar, homebrew) states 544-771 KB, zstd-compressed, so far below the 100 MB feared (a retail game:
+to measure). Everything above 5 MiB goes up resumable.
+
+Still to verify against Google (owner's UAT with `drive_probe`): the sign-in end to end, the folder visible on
+drive.google.com, a resumable upload of a large file with the network cut halfway, the quota.
+
 **Verdict**: feasible without a server. Main constraint: Drive content comes only from EmuDome uploads.
 
 ## 2026-11-17 · Game identity
