@@ -114,8 +114,11 @@ enum Format {
 }
 
 fn format_of(path: &Path) -> Option<Format> {
-    let ext = path.extension()?.to_string_lossy().to_lowercase();
-    match ext.as_str() {
+    format_of_extension(&path.extension()?.to_string_lossy())
+}
+
+fn format_of_extension(ext: &str) -> Option<Format> {
+    match ext.to_lowercase().as_str() {
         "gb" => Some(Format::Gb),
         "gbc" => Some(Format::Gbc),
         "gba" => Some(Format::Gba),
@@ -130,6 +133,18 @@ fn format_of(path: &Path) -> Option<Format> {
 /// True when the extension is one the library looks at.
 pub fn is_rom(path: &Path) -> bool {
     format_of(path).is_some()
+}
+
+/// The console a file extension belongs to (one of [`EXTENSIONS`], any case), before its
+/// content is read: a `.gb` whose header asks for a Game Boy Color is still `Gb` here.
+pub fn console_of_extension(ext: &str) -> Option<ConsoleId> {
+    Some(match format_of_extension(ext)? {
+        Format::Gb => ConsoleId::Gb,
+        Format::Gbc => ConsoleId::Gbc,
+        Format::Gba => ConsoleId::Gba,
+        Format::Nds => ConsoleId::Nds,
+        Format::Ncsd | Format::Ncch | Format::Cia => ConsoleId::N3ds,
+    })
 }
 
 /// Where the icon lives in the file.

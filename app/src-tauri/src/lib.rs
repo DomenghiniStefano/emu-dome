@@ -215,21 +215,27 @@ struct StatsDto {
 
 /// Which core to use for a file, and its console, by its extension.
 fn core_for(path: &Path) -> Result<(&'static str, ConsoleId), ErrorCode> {
+    use emudome_core::library::{console_of_extension, console_phase_pending, core_of};
     let ext = path
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
-    match ext.as_str() {
-        "gba" => Ok(("mgba", ConsoleId::Gba)),
-        "gb" => Ok(("mgba", ConsoleId::Gb)),
-        "gbc" => Ok(("mgba", ConsoleId::Gbc)),
-        "nds" => Ok((emudome_core::nds::CORE, ConsoleId::Nds)),
-        "3ds" | "cci" | "cxi" | "cia" => Err(ErrorCode::ConsoleNotYet {
-            console: "3ds".into(),
-            phase: 3,
-        }),
-        _ => Err(ErrorCode::UnsupportedFormat { ext }),
+    let Some(console) = console_of_extension(&ext) else {
+        return Err(ErrorCode::UnsupportedFormat { ext });
+    };
+    if let Some(phase) = console_phase_pending(console) {
+        return Err(ErrorCode::ConsoleNotYet {
+            console: console.id().into(),
+            phase,
+        });
     }
+    Ok((core_of(console), console))
+}
+
+/// The extensions «Apri un file» offers: every console whose games open today.
+#[tauri::command]
+fn open_extensions() -> Vec<&'static str> {
+    emudome_core::library::open_extensions()
 }
 
 /// The console's short name in `GameInfo` (a .gb file whose header asks for a Game Boy Color
@@ -1033,6 +1039,7 @@ pub fn run() {
             set_video_mode,
             set_video_inset,
             startup_game,
+            open_extensions,
             set_menu_open,
             release_keys,
             bench::bench_active,

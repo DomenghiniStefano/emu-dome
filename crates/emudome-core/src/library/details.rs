@@ -55,3 +55,25 @@ pub fn core_of(console: ConsoleId) -> &'static str {
         ConsoleId::N3ds => "azahar",
     }
 }
+
+/// The roadmap phase a console's games open in, when that is not now (`consoleNotYet`); `None`:
+/// they open today.
+pub fn console_phase_pending(console: ConsoleId) -> Option<u8> {
+    match console {
+        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::Nds => None,
+        ConsoleId::N3ds => Some(3),
+    }
+}
+
+/// The file extensions «Apri un file» offers: those of [`super::EXTENSIONS`] whose console's
+/// games open today. The one list the file picker uses (`open_extensions`).
+pub fn open_extensions() -> Vec<&'static str> {
+    super::EXTENSIONS
+        .iter()
+        .copied()
+        .filter(|ext| {
+            super::identity::console_of_extension(ext)
+                .is_some_and(|c| console_phase_pending(c).is_none())
+        })
+        .collect()
+}

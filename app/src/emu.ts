@@ -647,6 +647,8 @@ export const backgroundUrl = (name: string) =>
 
 export const emu = {
   startupGame: () => invoke<string | null>('startup_game'),
+  /** The file extensions «Apri un file» offers (every console whose games open today). */
+  openExtensions: () => invoke<string[]>('open_extensions'),
   videoMode: () => invoke<[VideoMode, boolean]>('video_mode'),
   setVideoMode: (mode: VideoMode) => invoke<void>('set_video_mode', { mode }),
   openGame: (path: string) => invoke<GameInfo>('open_game', { path }),
