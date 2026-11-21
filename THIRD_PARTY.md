@@ -138,6 +138,7 @@ with EmuDome's changes (release signing, launcher icons); `scripts/android-build
 | --- | --- | --- | --- |
 | Gradle Wrapper (`gradle/wrapper/gradle-wrapper.jar`, `gradlew`, `gradlew.bat`) | downloads and runs the Gradle version in `gradle-wrapper.properties` | Apache-2.0 | Build tool, in the repository, not in the APK. The jar carries its licence (`META-INF/LICENSE`, `SPDX-License-Identifier: Apache-2.0` in its manifest). |
 | Android Gradle Plugin, Kotlin Gradle plugin | build | Apache-2.0 | Downloaded by Gradle at build time; build tools, not in the APK. |
+| LLVM libc++ (`libc++_shared.so`) | the C++ runtime the app library links (librashader's glslang / SPIRV-Cross) | Apache-2.0 WITH LLVM-exception | Copied from the Android NDK into the APK's `lib/arm64-v8a/` by the Tauri CLI. Compatible with GPL-3.0-or-later. |
 | AndroidX (`webkit`, `appcompat`, `activity-ktx`, `lifecycle-process`), Material Components, Kotlin standard library | the app's Android side (Tauri's activity and WebView) | Apache-2.0 | Downloaded by Gradle from Google's Maven and Maven Central at build time and compiled into the APK. Versions in `app/build.gradle.kts`. Compatible with GPL-3.0-or-later. |
 
 ### Platform components (not shipped by EmuDome)
