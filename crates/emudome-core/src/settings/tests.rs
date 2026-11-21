@@ -1538,3 +1538,73 @@ fn a_choice_with_options_at_run_time_takes_any_non_empty_id() {
     ));
     assert!(!fixed.accepts_value(&Value::Text("Speakers (Realtek)".into())));
 }
+
+#[test]
+fn the_entries_not_wired_yet_are_these() {
+    // A setting the user can change is read by the code or shown disabled with the reason
+    // (X05, engineering rule 5). Wiring one (or adding one nothing reads) changes this list on
+    // purpose; `.not_wired()` in catalog.rs is the switch.
+    let unwired: Vec<&str> = ENTRIES
+        .iter()
+        .filter(|e| e.has_value() && !e.wired)
+        .map(|e| e.key)
+        .collect();
+    assert_eq!(
+        unwired,
+        [
+            "video.aspect",
+            "video.fps",
+            "video.window",
+            "video.winsize",
+            "video.portrait",
+            "video.orient",
+            "video.api",
+            "video.res3d",
+            "video.texf",
+            "screens.second",
+            "screens.stereo",
+            "audio.mic",
+            "audio.out",
+            "audio.lat",
+            "speed.ffmode",
+            "speed.runahead",
+            "saves.rtc",
+            "pad.lid",
+            "pad.gyro",
+            "touch.tport",
+            "touch.tland",
+            "touch.thapt",
+            "touch.thide",
+            "touch.tpad",
+            "general.ui",
+            "general.start",
+            "general.bgpause",
+            "general.confirmdel",
+            "general.updates",
+            "library.group",
+            "library.region",
+            "library.covers",
+            "cloud.ssaves",
+            "cloud.squick",
+            "cloud.ssettings",
+            "cloud.sauto",
+            "cloud.swifi",
+            "bios.b3ds",
+            "consoles.n3dsmodel",
+            "consoles.n3dsreg",
+            "perf.frameskip",
+            "perf.jit",
+            "perf.shcache",
+            "perf.cpuclock",
+            "cores.azaudio",
+            "adv.advon",
+            "adv.inputs",
+            "adv.framecnt",
+            "online.discord",
+        ]
+    );
+    // Actions and preset cards are carried out by the interface: none is yet.
+    for e in ENTRIES.iter().filter(|e| !e.has_value()) {
+        assert!(!e.wired, "{}", e.key);
+    }
+}

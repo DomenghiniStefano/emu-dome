@@ -31,6 +31,7 @@ const entry = (key: SettingKey, over: Partial<SettingEntry> = {}): SettingEntry 
   synonyms: [],
   mostUsed: false,
   needsNativeVideo: false,
+  wired: true,
   ...over,
 })
 const surround = entry('video.surround', {

@@ -34,4 +34,8 @@ showIf?: SettingShowIf,
 /**
  * Works only on the native (Accelerated) video path.
  */
-needsNativeVideo: boolean, };
+needsNativeVideo: boolean, 
+/**
+ * Something reads it; otherwise shown disabled with «arrives in a future update».
+ */
+wired: boolean, };

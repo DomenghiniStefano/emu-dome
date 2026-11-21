@@ -276,6 +276,11 @@ pub struct Entry {
     /// Works only on the native (Accelerated) video path: on Compatible the interface shows the
     /// row disabled with the reason (X05). The screen effects (`fx.*`).
     pub needs_native_video: bool,
+    /// Something reads the value (or, for an action, carries it out). An entry that is not wired
+    /// is shown disabled with «This arrives in a future update» (X05), so a setting the user can
+    /// change never does nothing silently (engineering rule 5). The list is held by
+    /// `settings::tests::the_entries_not_wired_yet_are_these`.
+    pub wired: bool,
 }
 
 impl Entry {
@@ -473,6 +478,8 @@ pub struct EntryDto {
     pub show_if: Option<ShowIf>,
     /// Works only on the native (Accelerated) video path.
     pub needs_native_video: bool,
+    /// Something reads it; otherwise shown disabled with «arrives in a future update».
+    pub wired: bool,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -513,6 +520,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 most_used: e.most_used,
                 show_if: e.show_if,
                 needs_native_video: e.needs_native_video,
+                wired: e.wired,
             })
             .collect(),
     }

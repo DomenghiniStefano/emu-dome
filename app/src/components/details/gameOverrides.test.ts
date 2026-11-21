@@ -25,6 +25,7 @@ const entry = (key: SettingKey, kind: SettingKind, phase = 0): SettingEntry => (
   synonyms: [],
   mostUsed: false,
   needsNativeVideo: false,
+  wired: true,
 })
 
 const filter = entry('video.filter', {

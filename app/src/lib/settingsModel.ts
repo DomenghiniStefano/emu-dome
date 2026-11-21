@@ -143,8 +143,13 @@ export const FILE_PICKERS: Partial<Record<string, () => Promise<string | null>>>
   ),
 }
 
-/** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */
+/**
+ * Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo
+ * aggiornamento». Which entries nothing reads is the catalogue's `wired` (Rust, its list held by a
+ * test); the rest is what only the interface knows: the pickers it has and the video path.
+ */
 export function notYetWired(entry: SettingEntry): boolean {
+  if (!entry.wired) return true
   // The colour-blind filter is drawn on the webview's canvas; the native video has no filter
   // pass yet (it belongs in video.rs).
   if (entry.key === 'a11y.cblind') return videoMode.value === 'native'
@@ -153,10 +158,8 @@ export function notYetWired(entry: SettingEntry): boolean {
     // whose picker the page opens at its scope (`settings_choose_background`).
     case 'file':
       return !FILE_PICKERS[entry.key] && entry.key !== 'video.surroundImg'
-    // `apply` (presets): the bundles and their confirmation are not defined yet.
     case 'action':
     case 'apply':
-      return true
     case 'toggle':
     case 'choice':
     case 'multi':
