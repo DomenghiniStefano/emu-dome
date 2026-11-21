@@ -23,6 +23,7 @@ mod first_run;
 // SDL3 is built for the desktop only: controllers on Android come later (Android input events).
 #[cfg(desktop)]
 mod gamepad;
+mod gpu_interop;
 mod library;
 mod migration;
 mod pads;
@@ -354,6 +355,7 @@ fn open_path(
             split: core.profile().split,
             username: flow.username.clone(),
             fast_audio: flow.fast_audio,
+            video: Default::default(),
         },
         tx,
     )

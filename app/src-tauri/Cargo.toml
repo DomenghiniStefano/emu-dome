@@ -39,6 +39,9 @@ parking_lot = "0.12"
 # Stable content names of the user's background images (`settings.rs`).
 sha2 = "0.10"
 wgpu = "=30.0.2"
+# The raw Vulkan types of wgpu's own backend (`gpu_interop.rs`, the one module under wgpu): the
+# same ash wgpu-hal 30 uses, one ash in the tree; it moves with wgpu. MIT OR Apache-2.0.
+ash = "=0.38.0"
 # Screen effects (`fx.*`): RetroArch `.slangp` presets on the native path. Its wgpu must stay
 # the same version as ours (docs/feasibility.md, 2026-11-17). MPL-2.0 OR GPL-3.0.
 librashader = { version = "=0.12.1", default-features = false, features = [

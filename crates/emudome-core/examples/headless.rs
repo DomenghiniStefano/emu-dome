@@ -393,6 +393,7 @@ fn main() -> anyhow::Result<()> {
             split: profile.split,
             username: None,
             fast_audio: args.fast_audio.unwrap_or_default(),
+            video: Default::default(),
         },
         tx,
     )?;

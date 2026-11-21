@@ -198,6 +198,16 @@ pub struct SessionOptions {
     pub username: Option<String>,
     /// The audio at speeds other than 1× (`audio.ff`).
     pub fast_audio: FastAudio,
+    /// Where the frames go and how hardware rendering is answered; default: today's (RGBA8 in
+    /// [`Shared::frame`], hardware rendering refused).
+    pub video: VideoSetup,
+}
+
+/// The session's video seam ([`crate::video_sink`], [`crate::hw_render`]); `None` = the default.
+#[derive(Default)]
+pub struct VideoSetup {
+    pub sink: Option<Box<dyn crate::video_sink::VideoSink>>,
+    pub hw_render: Option<Box<dyn crate::hw_render::HwRenderHandler>>,
 }
 
 /// One quick save slot of a game, for the quick menu (G07).
@@ -537,7 +547,7 @@ impl Drop for Session {
 }
 
 fn emu_thread(
-    opts: SessionOptions,
+    mut opts: SessionOptions,
     shared: Arc<Shared>,
     rx: Receiver<Command>,
     events: Outbox,
@@ -547,7 +557,7 @@ fn emu_thread(
     let to_c =
         |p: &std::path::Path| CString::new(p.to_string_lossy().as_bytes()).unwrap_or_default();
     let files = GameFiles::new(&opts.save_dir, &opts.game);
-    let ctx = CallbackCtx {
+    let mut ctx = CallbackCtx {
         audio_enabled: true,
         speed_audio: SpeedAudio::new(opts.fast_audio),
         options: CoreOptions::new(opts.core_options.iter().cloned()),
@@ -560,6 +570,13 @@ fn emu_thread(
         // The game's own folder: what a core writes by itself stays with the game.
         ..CallbackCtx::new(shared.clone(), to_c(&opts.system_dir), to_c(files.dir()))
     };
+    let VideoSetup { sink, hw_render } = std::mem::take(&mut opts.video);
+    if let Some(sink) = sink {
+        ctx.video = sink;
+    }
+    if let Some(hw) = hw_render {
+        ctx.hw = hw;
+    }
     let callbacks = match Slot::claim(ctx) {
         Ok(slot) => slot,
         Err(e) => {
@@ -1487,6 +1504,7 @@ mod tests {
                 split: crate::screens::Split::Whole,
                 username: None,
                 fast_audio: crate::speed_audio::FastAudio::Mute,
+                video: Default::default(),
             },
             events,
         );

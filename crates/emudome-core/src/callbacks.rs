@@ -21,8 +21,8 @@ use libretro_sys::{
     retro_audio_sample_batch_t, retro_audio_sample_t, retro_core_option_definition,
     retro_core_option_v2_definition, retro_core_option_value, retro_core_options_intl,
     retro_core_options_v2, retro_core_options_v2_intl, retro_environment_t, retro_game_geometry,
-    retro_game_info_ext, retro_input_poll_t, retro_input_state_t, retro_log_callback,
-    retro_message, retro_system_av_info, retro_variable, retro_video_refresh_t,
+    retro_game_info_ext, retro_hw_render_callback, retro_input_poll_t, retro_input_state_t,
+    retro_log_callback, retro_message, retro_system_av_info, retro_variable, retro_video_refresh_t,
     RETRO_DEVICE_ID_JOYPAD_MASK, RETRO_DEVICE_ID_POINTER_COUNT, RETRO_DEVICE_ID_POINTER_PRESSED,
     RETRO_DEVICE_ID_POINTER_X, RETRO_DEVICE_ID_POINTER_Y, RETRO_DEVICE_JOYPAD,
     RETRO_DEVICE_POINTER, RETRO_ENVIRONMENT_EXPERIMENTAL, RETRO_ENVIRONMENT_GET_CAN_DUPE,
@@ -34,10 +34,11 @@ use libretro_sys::{
     RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, RETRO_ENVIRONMENT_SET_CORE_OPTIONS,
     RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL,
     RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2, RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL,
-    RETRO_ENVIRONMENT_SET_GEOMETRY, RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS,
-    RETRO_ENVIRONMENT_SET_MESSAGE, RETRO_ENVIRONMENT_SET_PIXEL_FORMAT,
-    RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS, RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO,
-    RETRO_ENVIRONMENT_SET_VARIABLES, RETRO_LANGUAGE_ENGLISH, RETRO_LOG_DEBUG, RETRO_LOG_ERROR,
+    RETRO_ENVIRONMENT_SET_GEOMETRY, RETRO_ENVIRONMENT_SET_HW_RENDER,
+    RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS, RETRO_ENVIRONMENT_SET_MESSAGE,
+    RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS,
+    RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, RETRO_ENVIRONMENT_SET_VARIABLES,
+    RETRO_HW_FRAME_BUFFER_VALID, RETRO_LANGUAGE_ENGLISH, RETRO_LOG_DEBUG, RETRO_LOG_ERROR,
     RETRO_LOG_INFO, RETRO_LOG_WARN, RETRO_NUM_CORE_OPTION_VALUES_MAX, RETRO_PIXEL_FORMAT_0RGB1555,
     RETRO_PIXEL_FORMAT_RGB565, RETRO_PIXEL_FORMAT_XRGB8888,
     RETRO_SERIALIZATION_QUIRK_CORE_VARIABLE_SIZE, RETRO_SERIALIZATION_QUIRK_ENDIAN_DEPENDENT,
@@ -49,9 +50,12 @@ use parking_lot::Mutex;
 
 use crate::core::GameStrings;
 use crate::core_options::{CoreOptions, OptionDef};
+use crate::frame::bytes_per_pixel;
+use crate::hw_render::{is_hw_command, HwRenderHandler, SoftwareOnly};
 use crate::screens::Split;
 use crate::session::Shared;
 use crate::speed_audio::SpeedAudio;
+use crate::video_sink::{CpuFrame, SharedFrameSink, VideoFrame, VideoSink};
 
 pub(crate) struct CallbackCtx {
     pub shared: Arc<Shared>,
@@ -80,13 +84,17 @@ pub(crate) struct CallbackCtx {
     pub game_ext: Option<GameExt>,
     /// The strings `game_ext` points into, once the load is over.
     pub game_strings: Option<GameStrings>,
+    /// Where the frames go ([`VideoSink`]): today the RGBA8 frame in [`Shared`].
+    pub video: Box<dyn VideoSink>,
+    /// The answers to the hardware-rendering calls ([`HwRenderHandler`]): today refused.
+    pub hw: Box<dyn HwRenderHandler>,
 }
 
 impl CallbackCtx {
     /// A context for a session: everything the core may ask before and while it runs.
     pub(crate) fn new(shared: Arc<Shared>, system_dir: CString, save_dir: CString) -> Self {
         Self {
-            shared,
+            shared: shared.clone(),
             pixel_format: RETRO_PIXEL_FORMAT_0RGB1555,
             system_dir,
             save_dir,
@@ -100,6 +108,8 @@ impl CallbackCtx {
             av_change: None,
             game_ext: None,
             game_strings: None,
+            video: Box::new(SharedFrameSink::new(shared.clone())),
+            hw: Box::new(SoftwareOnly::default()),
         }
     }
 }
@@ -362,6 +372,18 @@ unsafe fn read<T: Copy>(data: *mut c_void) -> Option<T> {
 }
 
 unsafe fn environment_in(slot: &SlotState, raw: c_uint, data: *mut c_void) -> bool {
+    // Hardware rendering goes to the session's handler (`hw_render`), by the raw number.
+    if is_hw_command(raw) {
+        return slot
+            .with("hardware rendering", |c| {
+                if raw == RETRO_ENVIRONMENT_SET_HW_RENDER {
+                    c.hw.set_hw_render(data as *mut retro_hw_render_callback)
+                } else {
+                    c.hw.environment(raw, data)
+                }
+            })
+            .unwrap_or(false);
+    }
     // 44 is two commands: `SET_SERIALIZATION_QUIRKS` without the experimental flag,
     // `SET_HW_SHARED_CONTEXT` with it. Told apart before the flag is masked off.
     if raw == RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS {
@@ -620,10 +642,25 @@ unsafe extern "C" fn video_refresh<const S: usize>(
             return; // duplicated frame: the previous one stays
         }
         SLOTS[S].with("video_refresh", |c| {
-            let fmt = c.pixel_format;
-            let mut frame = c.shared.frame.lock();
-            frame.write_from_core(data as *const u8, width, height, pitch, fmt);
-            frame.split = c.split;
+            let frame = if data == RETRO_HW_FRAME_BUFFER_VALID {
+                // The frame is on the GPU: the hardware handler knows where.
+                match c.hw.hw_frame(width, height) {
+                    Some(gpu) => VideoFrame::Gpu(gpu),
+                    None => return,
+                }
+            } else {
+                // `height` rows `pitch` apart, the last one only `width` pixels long.
+                let len = (height as usize).saturating_sub(1) * pitch
+                    + width as usize * bytes_per_pixel(c.pixel_format);
+                VideoFrame::Cpu(CpuFrame {
+                    data: std::slice::from_raw_parts(data as *const u8, len),
+                    width,
+                    height,
+                    pitch,
+                    format: c.pixel_format,
+                })
+            };
+            c.video.frame(frame, c.split);
         });
     });
 }
@@ -863,6 +900,95 @@ mod tests {
                 .load(std::sync::atomic::Ordering::Relaxed),
             1 << 2
         );
+        slot.release();
+    }
+
+    /// A handler that accepts Vulkan and has a GPU frame; a sink that records what it got.
+    struct Accepting;
+    impl crate::hw_render::HwRenderHandler for Accepting {
+        unsafe fn set_hw_render(
+            &mut self,
+            request: *mut libretro_sys::retro_hw_render_callback,
+        ) -> bool {
+            !request.is_null()
+        }
+        unsafe fn environment(&mut self, _cmd: u32, _data: *mut c_void) -> bool {
+            true
+        }
+        fn hw_frame(&mut self, width: u32, height: u32) -> Option<crate::video_sink::GpuFrame> {
+            Some(crate::video_sink::GpuFrame {
+                width,
+                height,
+                image: crate::video_sink::GpuImage {
+                    handle: 7,
+                    format: 0,
+                    layout: 0,
+                },
+                sync: crate::video_sink::GpuSync::default(),
+            })
+        }
+    }
+
+    struct Recording(Arc<parking_lot::Mutex<Vec<String>>>);
+    impl crate::video_sink::VideoSink for Recording {
+        fn frame(
+            &mut self,
+            frame: crate::video_sink::VideoFrame<'_>,
+            _split: crate::screens::Split,
+        ) {
+            self.0.lock().push(match frame {
+                crate::video_sink::VideoFrame::Cpu(c) => format!("cpu {}x{}", c.width, c.height),
+                crate::video_sink::VideoFrame::Gpu(g) => {
+                    format!("gpu {}x{} #{}", g.width, g.height, g.image.handle)
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn hardware_calls_and_frames_go_to_the_sessions_handler_and_sink() {
+        let _serial = SERIAL.lock();
+        let (shared, mut ctx) = ctx();
+        let got = Arc::new(parking_lot::Mutex::new(Vec::new()));
+        ctx.video = Box::new(Recording(got.clone()));
+        ctx.hw = Box::new(Accepting);
+        let slot = Slot::claim(ctx).unwrap();
+        let cb = slot.callbacks();
+        let mut preferred = 0u32;
+        assert!(unsafe {
+            (cb.environment)(
+                libretro_sys::RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER,
+                &mut preferred as *mut _ as *mut c_void,
+            )
+        });
+        let pixels = [0u8; 4];
+        unsafe {
+            (cb.video_refresh)(libretro_sys::RETRO_HW_FRAME_BUFFER_VALID, 400, 480, 0);
+            (cb.video_refresh)(pixels.as_ptr() as *const c_void, 2, 1, 4);
+            (cb.video_refresh)(std::ptr::null(), 2, 1, 4);
+        }
+        assert_eq!(*got.lock(), ["gpu 400x480 #7", "cpu 2x1"]);
+        assert_eq!(
+            shared.frame.lock().seq,
+            0,
+            "the recording sink replaced the default"
+        );
+        slot.release();
+    }
+
+    #[test]
+    fn the_default_handler_refuses_hardware_rendering() {
+        let _serial = SERIAL.lock();
+        let (_, ctx) = ctx();
+        let slot = Slot::claim(ctx).unwrap();
+        let env = slot.callbacks().environment;
+        let mut preferred = 0u32;
+        assert!(!unsafe {
+            env(
+                libretro_sys::RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER,
+                &mut preferred as *mut _ as *mut c_void,
+            )
+        });
         slot.release();
     }
 }

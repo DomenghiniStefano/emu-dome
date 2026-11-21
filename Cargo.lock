@@ -1134,6 +1134,7 @@ name = "emudome"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "ash",
  "bytemuck",
  "cpal",
  "emudome-core",
