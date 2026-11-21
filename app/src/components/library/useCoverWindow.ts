@@ -23,6 +23,7 @@ import {
   type Ref,
 } from 'vue'
 import type { GameId, LibraryGame } from '@/emu'
+import { COVER_PARTS, type CoverCell, type CoverPart } from './coverGridNav'
 import {
   averageHeight,
   firstTrack,
@@ -50,16 +51,8 @@ export const TILE_OF = 'data-game'
 /** The attribute each focusable part of a tile carries: `cover`, `play` or `more`. */
 export const PART_ATTR = 'data-cover-part'
 
-/** The focusable parts of a tile, top to bottom, left to right. */
-export type CoverPart = 'cover' | 'play' | 'more'
-/** One focusable part of one game of the grid. */
-export interface CoverCell {
-  index: number
-  part: CoverPart
-}
-
-const PARTS: readonly string[] = ['cover', 'play', 'more'] satisfies CoverPart[]
-const isPart = (s: string | undefined): s is CoverPart => s !== undefined && PARTS.includes(s)
+const isPart = (s: string | undefined): s is CoverPart =>
+  s !== undefined && (COVER_PARTS as readonly string[]).includes(s)
 
 /** The nearest ancestor that scrolls (overflow auto / scroll), or null. */
 function scrollParent(el: HTMLElement): HTMLElement | null {
@@ -89,6 +82,10 @@ export function useCoverWindow(
   let scroller: HTMLElement | null = null
   /** The tile that had the focus when it left the DOM. */
   let parked: { id: GameId; part: CoverPart } | null = null
+  /** What the DOM shows now: its first row, that row's top (the padding), for which list. */
+  let rendered: { start: number; top: number; list: LibraryGame[]; cols: number } | null = null
+  /** A tile on screen and where it was before a re-render: the render must not move it. */
+  let hold: { id: GameId; top: number } | null = null
 
   const indexOf = computed(() => new Map(games().map((g, i) => [g.id, i])))
   const rows = computed(() => rowCount(games().length, cols.value))
@@ -204,7 +201,48 @@ export function useCoverWindow(
     if (!el || !scroller || !ready.value) return
     measureRows(el)
     const v = view(el, scroller)
-    setRange(rowsInView(layout.value, tops.value, v.top, v.top + v.height, MARGIN_ROWS))
+    // Rows measured above the first rendered one (or a new estimate for those never rendered)
+    // move it: the view is taken as moved with it, so the rows on screen stay rendered.
+    const same = rendered && rendered.list === games() && rendered.cols === cols.value
+    const shift = same && rendered ? (tops.value[rendered.start] ?? 0) - rendered.top : 0
+    const next = rowsInView(
+      layout.value,
+      tops.value,
+      v.top + shift,
+      v.top + shift + v.height,
+      MARGIN_ROWS,
+    )
+    hold = shift !== 0 || !sameRange(next, range.value) ? onScreen(el, scroller, next) : null
+    setRange(next)
+  }
+
+  /**
+   * A tile on screen that stays rendered in `next`: the focused one, else the first one in view.
+   * After the render the view is scrolled so that it is where it was (the padding above it may
+   * have changed): by hand, as WebKitGTK (Linux) has no scroll anchoring; where the browser
+   * anchored it already, the difference is 0.
+   */
+  function onScreen(el: HTMLElement, box: HTMLElement, next: RowRange) {
+    const stays = (index: number | undefined) =>
+      index !== undefined && index >= next.start * cols.value && index < next.end * cols.value
+    const tile = (child: Element | null) => {
+      const t = child?.closest(`[${TILE_OF}]`)
+      const id = t?.getAttribute(TILE_OF)
+      return t && id && stays(indexOf.value.get(id))
+        ? { id, top: t.getBoundingClientRect().top }
+        : null
+    }
+    const active = document.activeElement
+    if (active && active !== el && el.contains(active)) {
+      const focused = tile(active)
+      if (focused) return focused
+    }
+    const viewTop = box.getBoundingClientRect().top
+    for (const child of el.children) {
+      const t = tile(child)
+      if (t && t.top + (child as HTMLElement).offsetHeight > viewTop) return t
+    }
+    return null
   }
 
   let frame = 0
@@ -235,9 +273,22 @@ export function useCoverWindow(
     return cellElement(cell)
   }
 
-  // Gives the focus back to a parked tile once it is rendered again.
+  // Keeps the tile `update` held where it was, and gives the focus back to a parked tile once it
+  // is rendered again.
   onUpdated(() => {
     renderedCols = cols.value
+    const held = hold && grid.value?.querySelector(`[${TILE_OF}="${CSS.escape(hold.id)}"]`)
+    if (held && hold && scroller) {
+      const moved = held.getBoundingClientRect().top - hold.top
+      if (Math.abs(moved) >= 1) scroller.scrollTop += moved
+    }
+    hold = null
+    rendered = {
+      start: shown.value.start,
+      top: tops.value[shown.value.start] ?? 0,
+      list: games(),
+      cols: cols.value,
+    }
     const el = grid.value
     const cell = parkedCell()
     if (el && cell && document.activeElement === el)

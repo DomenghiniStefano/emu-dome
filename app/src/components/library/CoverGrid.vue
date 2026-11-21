@@ -5,10 +5,12 @@
 // Windowed (Trello #91, useCoverWindow.ts): only the rows near the screen are in the DOM, the
 // grid's padding stands for the others, so the scroll height is the whole list's. The covers
 // still load lazily (GameCover). The grid holds the focus itself (no ring) only while its
-// focused tile is scrolled out of the DOM.
+// focused tile is scrolled out of the DOM. The controller and the arrows move inside it by row and
+// column (useCoverGridNav.ts), and leave it at its edges by nav.ts's spatial rule.
 import { ref, watch } from 'vue'
 import type { GameId, LibraryGame } from '@/emu'
 import CoverTile from './CoverTile.vue'
+import { useCoverGridNav } from './useCoverGridNav'
 import { useCoverWindow } from './useCoverWindow'
 
 const props = defineProps<{
@@ -29,7 +31,9 @@ const emit = defineEmits<{
 }>()
 
 const grid = ref<HTMLElement | null>(null)
-const { visible, style } = useCoverWindow(grid, () => props.games, props.anchor)
+const win = useCoverWindow(grid, () => props.games, props.anchor)
+const { visible, style } = win
+useCoverGridNav(grid, () => props.games, win)
 
 // A «…» menu whose tile leaves the DOM closes with it.
 watch(visible, shown => {

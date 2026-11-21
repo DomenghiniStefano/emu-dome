@@ -76,6 +76,7 @@ export function coverStep(from: CoverCell, dir: Direction, g: GridShape): CoverC
     case 'right': {
       const strip = rowStrip(rowFirst, rowLast, g)
       const at = strip.findIndex(c => c.index === index && c.part === from.part)
+      if (at < 0) return null
       return strip[at + (dir === 'left' ? -1 : 1)] ?? null
     }
   }

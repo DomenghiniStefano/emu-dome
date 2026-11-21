@@ -5,7 +5,8 @@
 // not launchable.
 //
 // The cover's click area stops above the action strip, so the controller reaches «Gioca» and
-// «…» by moving down from it (nav.ts moves by rects). The ring is the frame's, so the buttons
+// «…» by moving down from it: the grid moves by row and column over the parts marked
+// `data-cover-part` (coverGridNav.ts), the same moves nav.ts's rects make. The ring is the frame's, so the buttons
 // inside draw none of their own (focus-ring-none / focus-ring-tight, utilities.css).
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

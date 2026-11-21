@@ -153,93 +153,169 @@ console.log("after the steps", JSON.stringify(await stats()));
 
 if (checking) {
   // The checks below expect the windowed grid (data-cover-part, Trello #91).
-  const cols = await js(
-    `getComputedStyle(document.querySelector('[data-game]').parentElement).gridTemplateColumns.split(' ').length`,
-  );
-  const ids = await js("[...document.querySelectorAll('[data-game]')].length");
-  check("tiles in the DOM are a window, not the list", ids < 200, true);
-  check("the first focus", first.part, "cover");
-  // 60 downs from a cover: 30 rows down, on a cover again.
-  check("down 60 steps: 30 rows down, on a cover", afterDown.part, "cover");
-  const order = await js(
-    `import('/src/components/library/useLibrarySort.ts').then(() => true)`,
-  );
-  check("app modules load", order, true);
-  // The game 30 rows below the first: the grid's order is the page's, read from the mock list
-  // through the DOM as rendered at the start (the first row) and the column count.
-  check("columns read", cols > 1, true);
-
-  // Scrolled far away with the mouse wheel: the focused tile leaves the DOM, the grid holds the
-  // focus (no ring), a step comes back to that tile's neighbour.
-  const before = await js("__at()");
-  await js(`${main}.scrollTop = ${main}.scrollHeight`);
-  await sleep(400);
-  check(
-    "scrolled away: the grid holds the focus",
+  const grid = "document.querySelector('[data-game]').parentElement";
+  const coverOf = (game) =>
+    `document.querySelector('[data-game="${game}"] [data-cover-part=cover]')`;
+  /** The focused tile's place: its left edge and its top in the scrolled content. */
+  const place = () =>
+    js(
+      `(() => { const r = document.activeElement.getBoundingClientRect(); return { left: Math.round(r.left), top: Math.round(r.top + ${main}.scrollTop) } })()`,
+    );
+  const focusFirst = async () => {
+    await js(`${main}.scrollTop = 0`);
+    await sleep(300);
     await js(
-      "document.activeElement === document.querySelector('[data-game]').parentElement",
+      "document.querySelector('[data-cover-part=cover]').focus({ preventScroll: true })",
+    );
+    await sleep(100);
+  };
+
+  check("the list is windowed", (await stats()).tiles < 200, true);
+
+  // Down by rows: two steps (cover → «Gioca» or «…» → the cover below), same column, lower.
+  await focusFirst();
+  const start = await place();
+  let ok = true;
+  let last = start.top;
+  for (let i = 0; i < 20; i++) {
+    await js("__step('down')");
+    await js("__step('down')");
+    const at = await js("__at()");
+    const p = await place();
+    if (at.part !== "cover" || p.left !== start.left || p.top <= last)
+      ok = false;
+    last = p.top;
+  }
+  check("down: 20 rows, each a cover in the same column, lower", ok, true);
+  check(
+    "down: the focused tile is in view",
+    await js(
+      `(() => { const r = document.activeElement.getBoundingClientRect(), m = ${main}.getBoundingClientRect(); return r.top >= m.top - 1 && r.bottom <= m.bottom + 1 })()`,
     ),
     true,
   );
+  await js("__step('right')");
+  check("right: the next cover", (await js("__at()")).part, "cover");
+  await js("__step('down')");
+  await js("__step('right')");
   check(
-    "scrolled away: the focused tile is out of the DOM",
-    await js(`!document.querySelector('[data-game="${before.game}"]')`),
+    "right along the strip: a «Gioca» or a «…»",
+    ["play", "more"].includes((await js("__at()")).part),
     true,
   );
-  await js(`__step('down')`);
-  await sleep(300);
-  const back = await js("__at()");
-  check(
-    "a step from the parked grid moves from that tile",
-    back.part,
-    before.part === "cover" ? "play" : "cover",
-  );
-  // Scrolling back by hand to a parked tile gives it the focus again.
-  const now = await js("__at()");
-  await js(`${main}.scrollTop = ${main}.scrollHeight`);
-  await sleep(400);
-  await js(
-    `document.querySelector('[data-game]').parentElement.focus === undefined`,
-  );
-  await js(`${main}.scrollTop = 0`);
-  await sleep(200);
-  await js(
-    `(() => { const el = document.querySelector('[data-game="${now.game}"]'); if (!el) ${main}.scrollTop = 0; return true })()`,
-  );
-  // Leaving the grid at its top edge: up from a first-row cover lands outside the grid.
-  await js(
-    `${main}.scrollTop = 0; document.querySelector('[data-cover-of]').focus({ preventScroll: true })`,
-  );
-  await sleep(300);
-  await js(`__step('up')`);
+
+  // Leaving the grid at its edges, by nav.ts's spatial rule.
+  await focusFirst();
+  await js("__step('up')");
   check(
     "up from the first row leaves the grid",
     await js(
-      "!document.activeElement.closest('[data-game]') && document.activeElement !== document.body",
+      `document.activeElement !== document.body && !${grid}.contains(document.activeElement)`,
     ),
     true,
   );
-  // Left from the first column leaves to the rail.
-  await js(
-    `document.querySelector('[data-cover-of]').focus({ preventScroll: true })`,
-  );
-  await js(`__step('left')`);
+  await focusFirst();
+  await js("__step('left')");
   check(
     "left from the first column reaches the rail",
     await js("!!document.activeElement.closest('nav')"),
     true,
   );
-  // Back from the details of a game far down: its cover gets the focus although its row was not
-  // in the DOM when the view mounted.
-  const far = await js(
-    `import('/src/lib/library.ts').then(m => m.library.games[${Number(count) - 10}].id)`,
-  );
-  await js(
-    `${main}.scrollTop = 0; import('/src/lib/library.ts').then(() => true)`,
+
+  // Scrolled away with the wheel: the focused tile leaves the DOM, the grid holds the focus
+  // (no ring), a step goes on from that tile.
+  await focusFirst();
+  const parked = await js("__at()");
+  await js(`${main}.scrollTop = ${main}.scrollHeight`);
+  await sleep(400);
+  check(
+    "scrolled away: the focused tile left the DOM",
+    await js(`!document.querySelector('[data-game="${parked.game}"]')`),
+    true,
   );
   check(
-    "a game far down is not in the DOM at the top",
-    await js(`!document.querySelector('[data-game="${far}"]')`),
+    "scrolled away: the grid holds the focus",
+    await js(`document.activeElement === ${grid}`),
+    true,
+  );
+  check(
+    "scrolled away: no ring on the grid",
+    await js(
+      `(() => { const s = getComputedStyle(${grid}); return s.outlineStyle === 'none' && s.boxShadow === 'none' })()`,
+    ),
+    true,
+  );
+  await js("__step('down')");
+  await sleep(300);
+  check(
+    "a step from the parked grid moves from that tile",
+    await js("__at()"),
+    { game: parked.game, part: "play" },
+  );
+  // Scrolling back by hand gives the focus back to the parked tile.
+  await focusFirst();
+  await js(`${main}.scrollTop = ${main}.scrollHeight`);
+  await sleep(400);
+  await js(`${main}.scrollTop = 0`);
+  await sleep(400);
+  check(
+    "scrolled back: the tile has the focus again",
+    await js("__at()"),
+    parked,
+  );
+
+  // Back from the details of a game far down: its cover gets the focus, although its row is not
+  // in the DOM when the library mounts again.
+  await js(`${main}.scrollTop = ${main}.scrollHeight`);
+  await sleep(400);
+  const far = await js(
+    `[...document.querySelectorAll('[data-game]')].at(-1).getAttribute('data-game')`,
+  );
+  await js(`${coverOf(far)}.click()`);
+  await sleep(800);
+  check(
+    "details open",
+    await js("!document.querySelector('[data-game]')"),
+    true,
+  );
+  await js(
+    `import('/src/nav.ts').then(m => m.dispatchNav('back')).then(() => true)`,
+  );
+  await sleep(1000);
+  check("back from details: its cover has the focus", await js("__at()"), {
+    game: far,
+    part: "cover",
+  });
+  check(
+    "back from details: its cover is in view",
+    await js(
+      `(() => { const r = document.activeElement.getBoundingClientRect(), m = ${main}.getBoundingClientRect(); return r.top >= m.top - 1 && r.bottom <= m.bottom + 1 })()`,
+    ),
+    true,
+  );
+  // Scrolling with the wheel up from there, into rows never measured: what is on screen moves
+  // by the scroll only (the rows measured above it do not make it jump).
+  const jumps = await js(`(async () => {
+    const box = ${main}
+    const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r)))
+    let worst = 0
+    for (let i = 0; i < 25; i++) {
+      const m = box.getBoundingClientRect()
+      const tile = [...document.querySelectorAll('[data-game]')].find(t => t.getBoundingClientRect().top > m.top + 200)
+      if (!tile) return -1
+      const id = tile.getAttribute('data-game')
+      const before = tile.getBoundingClientRect().top
+      box.scrollTop -= 600
+      const want = before + 600
+      await frame(); await frame(); await frame()
+      const now = document.querySelector('[data-game="' + id + '"]')
+      if (now) worst = Math.max(worst, Math.abs(now.getBoundingClientRect().top - want))
+    }
+    return Math.round(worst)
+  })()`);
+  check(
+    `wheel up into unmeasured rows: nothing jumps (worst ${jumps} px, 1 is rounding)`,
+    jumps >= 0 && jumps <= 1,
     true,
   );
   console.log(`checks: ${failures ? `${failures} failed` : "all passed"}`);
