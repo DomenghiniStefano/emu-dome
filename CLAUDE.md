@@ -91,6 +91,9 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
                                               # (sh scripts/android-build.sh [--install] ... on Linux / Git Bash)
 node scripts/cores.mjs generate               # after editing cores.lock: cores/SOURCES.md, app/src-tauri/package/*.json
 pnpm package:windows                          # installer (from app/): only the cores.lock files, verified (THIRD_PARTY.md)
+                                              # releases (tag on main, clean clone, where published): docs/release.md
+node scripts/third-party-tables.mjs --write   # after a dependency change (and pnpm install): THIRD_PARTY.md's tables
+node scripts/versions.mjs                     # the version agrees in Cargo.toml, app/package.json, tauri.conf.json
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
@@ -503,6 +506,9 @@ version (`scripts/node-version.mjs`, against `engines.node` in `app/package.json
 clippy for Android (`aarch64-linux-android`: the crates with no C code always, the whole workspace when an NDK is
 found, else skipped),
 `cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
+`THIRD_PARTY.md`'s generated tables equal to a fresh run of `scripts/third-party-tables.mjs --check` (blind spots: a
+stale `app/node_modules`, the spike's workspace, the hand-written sections), one version (`scripts/versions.mjs`:
+the workspace `Cargo.toml` version equal in `app/package.json` and `tauri.conf.json`, every member inheriting it),
 `vue-tsc`, ESLint (the import style and no dropped `emu.*` call included), Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
 (`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
@@ -638,7 +644,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   sync, game identity from the content, no cover scraping, positional face layout, NDS/3DS screens composed by
   EmuDome, no core of our own). Read it before designing anything they touch.
 - `docs/customization.md` (what can be customized, how, at what cost), `docs/feasibility.md` (desk checks of
-  those decisions), `docs/combo-tasti.md` (controller combos), `docs/fase0-esito.md` (Phase 0 test log).
+  those decisions), `docs/combo-tasti.md` (controller combos), `docs/fase0-esito.md` (Phase 0 test log),
+  `docs/release.md` (the version, the packages as they are, the release flow: tag on `main`, built from a clean clone).
 - Roadmap:
   - Phase 0: video, GBA, Windows and Android
   - Phase 1: desktop shell (library, settings engine, complete saves, shaders with librashader)
@@ -663,6 +670,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (2026-11-21, `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet. Since
   2026-11-21 the buildbot's Android mGBA no longer matches the pinned sha256, so the Android fetch fails for mGBA and
   a debug APK goes without it (a release build stops) until `cores.lock` is re-pinned.
+- Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet; `bundle.targets` is `["nsis"]`
+  only, so Linux gets no AppImage / deb; the Android script builds APKs, not the App Bundle Google Play wants; no
+  Windows code signing; the update channel is not decided.
 - The game key migration (Trello #70) leaves in place, and reports, what facts cannot give to one game (a file name
   shared by several library games, no library game, the new place already taken); the app no longer reads those.
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
