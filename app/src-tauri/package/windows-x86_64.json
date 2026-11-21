@@ -9,6 +9,7 @@
       "../../cores/SOURCES.md": "cores/SOURCES.md",
       "../../cores/mgba_libretro.dll": "cores/mgba_libretro.dll",
       "../../cores/notices/windows-x86_64/mgba-LICENSE.txt": "cores/notices/mgba-LICENSE.txt",
+      "../../cores/notices/windows-x86_64/mgba-inih-LICENSE.txt": "cores/notices/mgba-inih-LICENSE.txt",
       "../../cores/melondsds_libretro.dll": "cores/melondsds_libretro.dll",
       "../../cores/notices/windows-x86_64/melondsds-LICENSE.txt": "cores/notices/melondsds-LICENSE.txt",
       "../../cores/notices/windows-x86_64/melondsds-bundled-LICENSES.txt": "cores/notices/melondsds-bundled-LICENSES.txt"

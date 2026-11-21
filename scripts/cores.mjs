@@ -2,17 +2,25 @@
 // The fetch scripts (fetch-cores.ps1, fetch-cores.sh, fetch-cores-android.ps1) call this file, the
 // packaging configs (app/src-tauri/package/) call `verify`, and scripts/check calls `check`.
 //
-//   node scripts/cores.mjs fetch    [--platform P] [--cores a,b] [--lock file]
+//   node scripts/cores.mjs fetch    [--platform P] [--cores a,b] [--lock file] [--work-dir D] [--jobs N]
 //       Downloads each core's archive, checks its sha256, takes the listed files out of it, checks
 //       theirs, and writes them (temp file + rename). Also the core's licence file at the pinned
 //       commit, sha256-checked. A file already in place with the right hash is kept. On any
 //       mismatch: the core's files for that platform are deleted and the command fails.
+//       A platform entry with `built` (a core EmuDome builds from source, e.g. mGBA) is not
+//       downloaded: when its files are not in place it is built, as `build` does.
 //       Default platform: this machine's (windows-x86_64 / linux-x86_64). Default cores: the ones
 //       cores.lock ships (`ship: true`); `--cores all` for every core in the lock.
+//   node scripts/cores.mjs build    [--platform P] [--cores a,b] [--work-dir D] [--jobs N]
+//       Builds the cores cores.lock builds from source (`built` entries) for the platform, always,
+//       from the pinned source archive (scripts/core-build.mjs says how), and installs the result
+//       only if its sha256 is the one cores.lock pins. Wrapped by scripts/build-mgba.ps1 / .sh.
+//       --jobs: parallel compile jobs (default 2); --work-dir: download and build folder.
 //   node scripts/cores.mjs verify   --platform P [--cores a,b] [--package]
 //       Checks the files on disk against cores.lock, downloads nothing. --package (run by the
 //       packaging configs before bundling): the shipped cores, cores/SOURCES.md up to date, and
-//       no `url_stable: false` entry unless EMUDOME_ALLOW_UNSTABLE_CORES=1 (a local test package).
+//       no `url_stable: false` entry unless EMUDOME_ALLOW_UNSTABLE_CORES=1 (a local test package;
+//       today only mGBA for Linux, until it is built from source there, Trello #92).
 //   node scripts/cores.mjs generate
 //       Writes the files derived from cores.lock: cores/SOURCES.md (the source offer shipped next
 //       to the cores) and app/src-tauri/package/<platform>.json (the desktop bundle lists).
@@ -21,7 +29,8 @@
 //       `generate` would write, tauri.conf.json lists no resource of its own, the Gradle build
 //       reads cores.lock, the app's Android project (app/src-tauri/gen/android, versioned) is
 //       there and adds no jniLibs folder of its own (the cores reach the APK only through the
-//       platform library's Gradle build), and THIRD_PARTY.md names every core's commit.
+//       platform library's Gradle build), THIRD_PARTY.md names every core's commit, and the build
+//       scripts a built core names exist.
 //       --self-test feeds each rule a broken copy first and fails if a rule does not fire.
 //       Blind spots: it cannot tell whether a URL still serves the pinned bytes (only `fetch` can),
 //       and THIRD_PARTY.md's prose is matched by the commit hash only. The Android project rule
@@ -35,6 +44,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
+
+import { BuildFailure, buildCore } from './core-build.mjs'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const LOCK = path.join(ROOT, 'cores.lock')
@@ -111,16 +122,43 @@ const lockProblems = lock => {
     need(FILE_NAME.test(core.license?.file ?? ''), `${at}.license.file`)
     const builds = Object.entries(core.builds ?? {})
     need(builds.length > 0, `${at}.builds empty`)
+    if (builds.some(([, build]) => build.built !== undefined)) {
+      // Built from source: the archive is what is built (and the source offer), `build` how.
+      need(/^https:\/\//.test(core.source?.archive ?? ''), `${at}.source.archive: a built core needs its archive`)
+      need(Array.isArray(core.build?.cmake), `${at}.build.cmake must be a list of CMake arguments`)
+      need(typeof core.build?.target === 'string', `${at}.build.target missing`)
+      need(FILE_NAME.test(core.build?.output ?? ''), `${at}.build.output (the library's name, no extension)`)
+      need(typeof core.build?.license === 'string', `${at}.build.license (the licence file in the archive)`)
+      need(
+        Array.isArray(core.build?.scripts) && core.build.scripts.length > 0,
+        `${at}.build.scripts must list the build scripts`,
+      )
+      need(
+        core.build?.git_depth === undefined || Number.isInteger(core.build.git_depth),
+        `${at}.build.git_depth must be a whole number`,
+      )
+    }
     for (const [platform, build] of builds) {
       const bt = `${at}.builds.${platform}`
       need(PLATFORMS.includes(platform), `${bt}: unknown platform`)
-      need(/^https:\/\//.test(build.url ?? ''), `${bt}.url`)
-      need(typeof build.url_stable === 'boolean', `${bt}.url_stable must be true or false`)
-      need(!build.url_stable || !build.url.includes('/latest/'), `${bt}: a latest/ URL is not stable`)
-      need(HEX64.test(build.sha256 ?? ''), `${bt}.sha256`)
+      const isBuilt = build.built !== undefined
+      if (isBuilt) {
+        need(typeof build.built?.toolchain === 'string', `${bt}.built.toolchain missing`)
+        need(build.url === undefined && build.sha256 === undefined, `${bt}: built from source, so no url / sha256`)
+      } else {
+        need(/^https:\/\//.test(build.url ?? ''), `${bt}.url`)
+        need(typeof build.url_stable === 'boolean', `${bt}.url_stable must be true or false`)
+        need(!build.url_stable || !build.url.includes('/latest/'), `${bt}: a latest/ URL is not stable`)
+        need(HEX64.test(build.sha256 ?? ''), `${bt}.sha256`)
+      }
       for (const [i, file] of [build.library, ...(build.notices ?? [])].entries()) {
         const ft = i === 0 ? `${bt}.library` : `${bt}.notices[${i - 1}]`
-        need(typeof file?.member === 'string', `${ft}.member`)
+        // member: the file's path in the downloaded archive; for a built core, a notice's path in
+        // the source archive (its library is the build's output: no member).
+        need(
+          (isBuilt && i === 0) || (typeof file?.member === 'string' && !file.member.split('/').includes('..')),
+          `${ft}.member`,
+        )
         need(FILE_NAME.test(file?.file ?? ''), `${ft}.file`)
         need(HEX64.test(file?.sha256 ?? ''), `${ft}.sha256`)
       }
@@ -228,11 +266,43 @@ const selectCores = (lock, platform, wanted) => {
   return chosen
 }
 
-const fetchCore = async (id, core, platform) => {
+/**
+ * Builds a core cores.lock builds from source and installs its files (library, licence, notices) when the
+ * result has the pinned sha256; on any failure the core's files for the platform are removed.
+ */
+const buildAndInstall = async (id, core, platform, options) => {
+  const files = installedFiles(core, platform)
+  try {
+    await buildCore({
+      id,
+      core,
+      platform,
+      workDir: options.workDir,
+      jobs: options.jobs,
+      // Same order as installedFiles: library, licence, notices.
+      install: (library, licence, notices) => {
+        const bytes = [library, licence, ...notices]
+        files.forEach((f, i) => writeAtomic(abs(f.path), bytes[i]))
+        console.log(`${id} (${platform}): ${files.map(f => f.path).join(', ')}`)
+      },
+    })
+  } catch (error) {
+    files.filter(f => fs.existsSync(abs(f.path))).forEach(f => fs.rmSync(abs(f.path)))
+    if (error instanceof BuildFailure) fail(error.message)
+    throw error
+  }
+}
+
+const fetchCore = async (id, core, platform, options) => {
   const build = core.builds[platform]
   const files = installedFiles(core, platform)
   if (files.every(f => fileSha256(abs(f.path)) === f.sha256)) {
     console.log(`${id} (${platform}): already in place, sha256 verified`)
+    return
+  }
+  if (build.built) {
+    console.log(`${id} (${platform}): built from source by EmuDome (cores.lock), not downloaded: building it`)
+    await buildAndInstall(id, core, platform, options)
     return
   }
   if (!build.url_stable) {
@@ -264,7 +334,7 @@ const runFetch = async (lock, options) => {
   const errors = []
   for (const id of selectCores(lock, platform, options.cores)) {
     try {
-      await fetchCore(id, lock.cores[id], platform)
+      await fetchCore(id, lock.cores[id], platform, options)
     } catch (error) {
       if (!(error instanceof Failure)) throw error
       errors.push(`${id}: ${error.message}`)
@@ -274,6 +344,14 @@ const runFetch = async (lock, options) => {
     fail(`FETCH FAILED, the files of these cores were removed:\n  ${errors.join('\n  ')}`)
   }
   console.log('Done: every file matches cores.lock.')
+}
+
+const runBuild = async (lock, options) => {
+  const platform = options.platform ?? hostPlatform()
+  const ids = selectCores(lock, platform, options.cores).filter(id => lock.cores[id].builds[platform].built)
+  if (ids.length === 0) fail(`cores.lock builds no selected core from source for ${platform}`)
+  for (const id of ids) await buildAndInstall(id, lock.cores[id], platform, options)
+  console.log(`Done: ${ids.join(', ')} built for ${platform}, sha256 matching cores.lock.`)
 }
 
 const runVerify = (lock, options) => {
@@ -292,7 +370,8 @@ const runVerify = (lock, options) => {
       .forEach(d =>
         problems.push(`${path.relative(ROOT, d.file)} is out of date: run node scripts/cores.mjs generate`),
       )
-    const unstable = ids.filter(id => !lock.cores[id].builds[platform].url_stable)
+    // A built core has no URL: only a downloaded one marked url_stable false is refused.
+    const unstable = ids.filter(id => lock.cores[id].builds[platform].url_stable === false)
     if (unstable.length > 0 && process.env[ALLOW_UNSTABLE] !== '1') {
       problems.push(
         `${unstable.join(', ')}: pinned from a URL that is not stable (cores.lock url_stable false).` +
@@ -311,8 +390,15 @@ const shipped = lock => Object.entries(lock.cores).filter(([, core]) => core.shi
 const sourcesMarkdown = lock => {
   const line = (id, core) => {
     const builds = Object.entries(core.builds)
-      .map(([platform, b]) => `  - ${platform}: \`${b.library.file}\`, from ${b.url} (sha256 \`${b.sha256}\`)`)
+      .map(([platform, b]) =>
+        b.built
+          ? `  - ${platform}: \`${b.library.file}\`, built by EmuDome from the source archive above with` +
+            ` ${core.build.scripts.map(s => `\`${s}\``).join(' / ')} (${b.built.toolchain};` +
+            ` sha256 \`${b.library.sha256}\`)`
+          : `  - ${platform}: \`${b.library.file}\`, from ${b.url} (sha256 \`${b.sha256}\`)`,
+      )
       .join('\n')
+    const built = Object.values(core.builds).some(b => b.built)
     return [
       `## ${core.name} (${core.consoles})`,
       '',
@@ -323,8 +409,14 @@ const sourcesMarkdown = lock => {
       `- Source: ${core.source.repo}, commit \`${core.source.commit}\`` +
         ` (${core.source.ref}; version ${core.source.version}).`,
       core.source.archive
-        ? `  Full source with its submodules: ${core.source.archive} (sha256 \`${core.source.archive_sha256}\`).`
+        ? `  Source archive of that commit: ${core.source.archive} (sha256 \`${core.source.archive_sha256}\`).`
         : `  Download it as ${core.source.repo}/archive/${core.source.commit}.zip`,
+      ...(built
+        ? [
+            `  The build scripts and their CMake options are in ${EMUDOME_REPO}` +
+              ` (\`cores.lock\`, \`scripts/core-build.mjs\`, ${core.build.scripts.map(s => `\`${s}\``).join(', ')}).`,
+          ]
+        : []),
       `- Builds:`,
       builds,
       '',
@@ -336,9 +428,11 @@ const sourcesMarkdown = lock => {
     '<!-- Generated from cores.lock by `node scripts/cores.mjs generate`. Do not edit by hand. -->',
     '',
     'EmuDome ships these libretro cores unmodified, as separate programs it loads at run time.',
-    'Each keeps its own licence, whose text is in `notices/`. The Corresponding Source of each',
-    'binary is the upstream commit named below. If a link stops working, open an issue at',
-    `${EMUDOME_REPO}/issues and the project will provide that source.`,
+    'Some are the upstream builds, downloaded; the others EmuDome builds from the unmodified',
+    'upstream source (said per build below). Each keeps its own licence, whose text is in',
+    '`notices/`. The Corresponding Source of each binary is the upstream commit named below (and,',
+    'for a build of EmuDome, the build scripts named with it). If a link stops working, open',
+    `an issue at ${EMUDOME_REPO}/issues and the project will provide that source.`,
     '',
     ...shipped(lock).map(([id, core]) => line(id, core)),
   ].join('\n')
@@ -412,7 +506,11 @@ const checkProblems = (lock, files) => {
   const undocumented = Object.entries(lock.cores)
     .filter(([, core]) => !thirdParty.includes(core.source.commit))
     .map(([id, core]) => `THIRD_PARTY.md does not name ${id}'s commit ${core.source.commit}`)
-  return [...stale, ...ownResources, ...gradle, ...androidProject, ...undocumented]
+  const noScript = Object.entries(lock.cores)
+    .flatMap(([id, core]) => (core.build?.scripts ?? []).map(script => [id, script]))
+    .filter(([, script]) => files.read(abs(script)) === null)
+    .map(([id, script]) => `${id}: its build script ${script} (cores.lock build.scripts) does not exist`)
+  return [...stale, ...ownResources, ...gradle, ...androidProject, ...undocumented, ...noScript]
 }
 
 const disk = { read }
@@ -420,11 +518,16 @@ const disk = { read }
 /** Each rule, fed a broken copy of the real inputs, must report something. */
 const selfTest = lock => {
   const override = (file, text) => ({ read: f => (f === file ? text : read(f)) })
-  const mutated = change => {
+  // `change` gets the first core, or with `which` the first core one of whose builds passes it.
+  const mutated = (change, which = () => true) => {
     const copy = JSON.parse(JSON.stringify(lock))
-    change(Object.values(copy.cores)[0])
+    const core = Object.values(copy.cores).find(c => Object.values(c.builds).some(which))
+    if (!core) fail('self-test: cores.lock has no core this case can break')
+    change(core, Object.values(core.builds).find(which))
     return copy
   }
+  const isBuilt = build => build.built !== undefined
+  const isDownloaded = build => !isBuilt(build)
   const newCommit = 'f'.repeat(40)
   const cases = [
     ['malformed lock', mutated(core => (core.source.commit = 'abc')), disk],
@@ -448,10 +551,26 @@ const selfTest = lock => {
     ['THIRD_PARTY.md without the commits', lock, override(THIRD_PARTY, '# Third-party components\n')],
     [
       'a latest/ URL marked stable',
-      mutated(core => {
-        Object.values(core.builds)[0].url = 'https://example.org/latest/core.zip'
-        Object.values(core.builds)[0].url_stable = true
-      }),
+      mutated((core, build) => {
+        build.url = 'https://example.org/latest/core.zip'
+        build.url_stable = true
+      }, isDownloaded),
+      disk,
+    ],
+    ['a built core without its source archive', mutated(core => delete core.source.archive, isBuilt), disk],
+    ['a built core without its CMake options', mutated(core => delete core.build.cmake, isBuilt), disk],
+    [
+      'a built entry also naming a download',
+      mutated((core, build) => {
+        build.url = 'https://example.org/core.zip'
+        build.sha256 = '0'.repeat(64)
+      }, isBuilt),
+      disk,
+    ],
+    ['a built entry without its toolchain', mutated((core, build) => delete build.built.toolchain, isBuilt), disk],
+    [
+      'a built core whose build script is missing',
+      mutated(core => (core.build.scripts = ['scripts/no-such-build-script.ps1']), isBuilt),
       disk,
     ],
   ]
@@ -464,7 +583,10 @@ const runCheck = (lock, options) => {
   if (options.selfTest) selfTest(lock)
   const problems = checkProblems(lock, disk)
   if (problems.length > 0) fail(`cores check:\n  ${problems.join('\n  ')}`)
-  console.log('cores.lock, the bundle lists, cores/SOURCES.md, Gradle, the Android project and THIRD_PARTY.md agree.')
+  console.log(
+    'cores.lock, the bundle lists, cores/SOURCES.md, Gradle, the Android project, THIRD_PARTY.md' +
+      ' and the build scripts agree.',
+  )
 }
 
 // --- Entry point
@@ -477,6 +599,12 @@ const parseArgs = argv =>
       if (arg === '--platform') return { ...acc, platform: value, skip: true }
       if (arg === '--cores') return { ...acc, cores: value, skip: true }
       if (arg === '--lock') return { ...acc, lock: value, skip: true }
+      if (arg === '--work-dir') return { ...acc, workDir: value, skip: true }
+      if (arg === '--jobs') {
+        const jobs = Number(value)
+        if (!Number.isInteger(jobs) || jobs < 1) fail(`--jobs takes a whole number, not ${value}`)
+        return { ...acc, jobs, skip: true }
+      }
       if (arg === '--package') return { ...acc, package: true }
       if (arg === '--self-test') return { ...acc, selfTest: true }
       if (!acc.command) return { ...acc, command: arg }
@@ -493,11 +621,13 @@ const main = async () => {
   const lock = readLock(options.lock ? path.resolve(options.lock) : LOCK)
   const commands = {
     fetch: () => runFetch(lock, options),
+    build: () => runBuild(lock, options),
     verify: () => runVerify(lock, options),
     generate: () => runGenerate(lock),
     check: () => runCheck(lock, options),
   }
-  const command = commands[options.command] ?? fail('usage: node scripts/cores.mjs fetch|verify|generate|check')
+  const command =
+    commands[options.command] ?? fail('usage: node scripts/cores.mjs fetch|build|verify|generate|check')
   await command()
 }
 

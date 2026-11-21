@@ -1,5 +1,7 @@
-# Downloads the libretro cores for Android into cores/android/<abi>/, pinned by cores.lock: every
-# archive and file is sha256-checked, and a mismatch deletes the core's files and fails. The Gradle
+# Puts the libretro cores for Android into cores/android/<abi>/, pinned by cores.lock: every
+# archive and file is sha256-checked, and a mismatch deletes the core's files and fails. Cores
+# pinned as upstream builds are downloaded; mGBA is built from its pinned source (as
+# scripts/build-mgba.ps1 -Platform android-arm64-v8a does: the Android NDK and git). The Gradle
 # build (crates/emudome-platform/android/build.gradle.kts) packages only the files cores.lock lists.
 # Usage (PowerShell, from the repo root):
 #   ./scripts/fetch-cores-android.ps1 [-Cores mgba,melondsds,azahar|all] [-Abi arm64-v8a]
@@ -12,7 +14,9 @@ param(
     [string]$Abi = "arm64-v8a"
 )
 
-$ErrorActionPreference = "Stop"
+# Not "Stop": a build writes warnings on stderr, which Windows PowerShell 5.1 turns into a
+# terminating error when the output is redirected. The exit code says whether it worked.
+$ErrorActionPreference = "Continue"
 $script = Join-Path $PSScriptRoot "cores.mjs"
 $arguments = @($script, "fetch", "--platform", "android-$Abi")
 if ($Cores.Count -gt 0) { $arguments += @("--cores", ($Cores -join ",")) }

@@ -85,8 +85,12 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
 
 ```powershell
 ./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar|all]  # cores pinned by cores.lock into cores/, sha256-checked
-                                              # (default: the shipped ones; sh scripts/fetch-cores.sh [--cores ...] on Linux)
+                                              # (default: the shipped ones; sh scripts/fetch-cores.sh [--cores ...] on Linux);
+                                              # mGBA is built from source when missing (as build-mgba.ps1)
 ./scripts/fetch-cores-android.ps1 [-Cores ...] [-Abi arm64-v8a]  # same, into cores/android/<abi>/ as lib*_libretro_android.so
+./scripts/build-mgba.ps1 [-Platform windows-x86_64|android-arm64-v8a] [-Jobs 2]  # mGBA from the source cores.lock
+                                              # pins, installed only if its sha256 is the pinned one (scripts/core-build.mjs:
+                                              # VS 2022 Build Tools + the NDK's clang-cl, NDK for Android, git; sh build-mgba.sh)
 ./scripts/android-build.ps1 [-Install] [-Release] [-DryRun]  # the Android APK (arm64-v8a) from a clean clone: cores,
                                               # frontend, Rust, Gradle; prints the APK; -Install = adb install -r
                                               # (sh scripts/android-build.sh [--install] ... on Linux / Git Bash)
@@ -546,8 +550,9 @@ librashader pinned with `=`, `invoke` only in `app/src/emu.ts`, no emoji,
 no Nintendo files by name, no signing keystore (`*.jks`, `*.keystore`, `*.p12`, `*.pfx`) in the repo, no hardcoded
 visible text in `.vue` templates (`scripts/visible-text.mjs`), and the cores (`scripts/cores.mjs check --self-test`:
 `cores.lock`, the bundle lists, `cores/SOURCES.md`, the Gradle build and `THIRD_PARTY.md` agree, and the versioned
-Android project `app/src-tauri/gen/android` is there and adds no jniLibs folder of its own; it cannot see whether a
-URL still serves the pinned bytes, only a fetch can).
+Android project `app/src-tauri/gen/android` is there and adds no jniLibs folder of its own, and a core built from
+source names its source archive, CMake options and existing build scripts; it cannot see whether a URL still serves
+the pinned bytes, or whether a source build still gives the pinned sha256, only a fetch / build can).
 Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,
 Prettier on the staged frontend files).
 
@@ -693,12 +698,14 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
-  licences and `cores/SOURCES.md`, but mGBA's pinned build comes from the libretro buildbot's `latest/` (no stable
-  URL exists upstream): packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until
-  the owner picks a stable source. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds
-  (2026-11-21, `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet. Since
-  2026-11-21 the buildbot's Android mGBA no longer matches the pinned sha256, so the Android fetch fails for mGBA and
-  a debug APK goes without it (a release build stops) until `cores.lock` is re-pinned.
+  licences and `cores/SOURCES.md`. mGBA for Windows and Android is built by EmuDome from the pinned source archive
+  of the commit the buildbot built (Trello #88, `scripts/build-mgba.ps1`): reproducible, but only with the toolchain
+  `cores.lock` names (another one builds other bytes and is refused), and where the built cores are hosted for other
+  machines is not decided. mGBA for Linux is still the libretro buildbot's `latest/` (`url_stable: false`): packaging
+  refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until it is built on Linux (Trello
+  #92). Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
+  `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
+  source-built Android mGBA.
 - Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet; `bundle.targets` is `["nsis"]`
   only, so Linux gets no AppImage / deb; the Android script builds APKs, not the App Bundle Google Play wants; no
   Windows code signing; the update channel is not decided.
