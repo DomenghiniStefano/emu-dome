@@ -1,10 +1,13 @@
 //! A game in progress: emulation thread, frame pacing, commands.
 //!
-//! The emulation thread serializes; the writes go to the session's I/O worker ([`io`]).
+//! The emulation thread runs an [`emu_loop::EmuLoop`] on a [`Core`] (the libretro one,
+//! [`libretro`], or a fake in the tests); it serializes, the writes go to the session's I/O
+//! worker ([`io`]).
 
+mod emu_loop;
 mod io;
+mod libretro;
 
-use std::ffi::CString;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, SendError, Sender};
@@ -16,15 +19,14 @@ use anyhow::{Context, Result};
 use libretro_sys::retro_system_av_info;
 use parking_lot::Mutex;
 
+pub use emu_loop::{Core, CoreInfo};
+
 use crate::audio::AudioRing;
-use crate::callbacks::{CallbackCtx, Slot};
-use crate::core::{GameContent, GameFiles, LoadedCore, StartError};
-use crate::core_options::CoreOptions;
+use crate::core::{GameFiles, StartError};
 use crate::error::ErrorCode;
 use crate::frame::Frame;
 use crate::input::InputState;
-use crate::rewind::Rewind;
-use crate::speed_audio::{FastAudio, SpeedAudio, SpeedMeter};
+use crate::speed_audio::FastAudio;
 
 /// Emulation speed.
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -249,24 +251,6 @@ pub fn slot_infos(save_dir: &std::path::Path, game: &crate::GameKey, count: u8) 
         .collect()
 }
 
-/// The parts of a core that the saves need (a stub in the tests).
-trait SaveSource {
-    /// The game's save memory (cartridge battery).
-    fn save_ram(&self) -> Option<&[u8]>;
-    /// The full emulation state.
-    fn save_state(&self) -> Result<Vec<u8>>;
-}
-
-impl SaveSource for LoadedCore {
-    fn save_ram(&self) -> Option<&[u8]> {
-        LoadedCore::save_ram(self)
-    }
-
-    fn save_state(&self) -> Result<Vec<u8>> {
-        LoadedCore::save_state(self)
-    }
-}
-
 /// Every file the emulation thread writes goes through here, atomically
 /// ([`crate::write_atomic`]). Once the session is dead (let go because it stopped answering,
 /// [`Session::abandon`]) nothing is written any more: its files may belong to a newer session.
@@ -282,8 +266,8 @@ impl Writer<'_> {
 
     /// The in-game save (`.sav`). A failure is logged and returned: the next flush tries again,
     /// and closing the game reports it ([`Session::wait`]).
-    fn sram(&self, core: &impl SaveSource) -> Result<(), ErrorCode> {
-        match core.save_ram() {
+    fn sram(&self, core: &impl Core) -> Result<(), ErrorCode> {
+        match core.sram() {
             Some(ram) => self.sram_bytes(ram),
             None => Ok(()),
         }
@@ -304,8 +288,8 @@ impl Writer<'_> {
     }
 
     /// The state of the game into `slot`. `Ok(false)`: not written, the session is dead.
-    fn state(&self, core: &impl SaveSource, slot: u8) -> Result<bool> {
-        let data = core.save_state()?;
+    fn state(&self, core: &impl Core, slot: u8) -> Result<bool> {
+        let data = core.serialize()?;
         self.state_bytes(slot, &data)
     }
 
@@ -344,7 +328,7 @@ impl Writer<'_> {
 /// Closing the game (and [`Command::Flush`]): the in-game save first, the smallest and the one
 /// that matters most, then the auto quick save when `saves.autoexit` is on. Both are tried; the
 /// first failure is returned.
-fn write_on_exit<C: SaveSource>(
+fn write_on_exit<C: Core>(
     core: &C,
     writer: &Writer<'_>,
     autosave_on_exit: bool,
@@ -440,6 +424,27 @@ impl Session {
     /// Later events arrive on `events`.
     /// Refused when a game on the same core was let go in this run ([`core_needs_restart`]).
     pub fn start(opts: SessionOptions, events: Sender<Event>) -> Result<Self, StartError> {
+        Self::spawn(opts, events, libretro::boot)
+    }
+
+    /// [`Session::start`] on a core already made (the tests' [`crate::testing::FakeCore`]):
+    /// everything else (the thread, the files, the exit writes) is the real session's.
+    pub fn start_with<C: Core + Send + 'static>(
+        opts: SessionOptions,
+        events: Sender<Event>,
+        core: C,
+    ) -> Result<Self, StartError> {
+        Self::spawn(opts, events, move |_, _, _| Ok(core))
+    }
+
+    /// Starts the emulation thread, which makes its core with `boot` and waits for it to load.
+    fn spawn<C: Core>(
+        opts: SessionOptions,
+        events: Sender<Event>,
+        boot: impl FnOnce(&mut SessionOptions, &Arc<Shared>, &GameFiles) -> Result<C, StartError>
+            + Send
+            + 'static,
+    ) -> Result<Self, StartError> {
         if core_needs_restart(&opts.core_path) {
             return Err(StartError::CoreNeedsRestart);
         }
@@ -463,7 +468,8 @@ impl Session {
             .name("emudome-emu".into())
             .spawn(move || {
                 // Sent when the thread ends; a panic drops it unsent and `done` disconnects.
-                let written = emu_thread(opts, thread_shared, rx, outbox, ready_tx, &thread_dead);
+                let written =
+                    emu_thread(opts, thread_shared, rx, outbox, ready_tx, thread_dead, boot);
                 let _ = done_tx.send(written);
             })
             .map_err(|e| StartError::ThreadFailed {
@@ -576,211 +582,37 @@ impl Drop for Session {
     }
 }
 
-fn emu_thread(
+/// The emulation thread: makes its core with `boot`, says whether it loaded, then runs the loop
+/// until `Stop` (or until the session is let go). Returns the exit writes' outcome.
+fn emu_thread<C: Core>(
     mut opts: SessionOptions,
     shared: Arc<Shared>,
     rx: Receiver<Command>,
     events: Outbox,
     ready: mpsc::SyncSender<Result<(), StartError>>,
-    dead: &AtomicBool,
+    dead: Arc<AtomicBool>,
+    boot: impl FnOnce(&mut SessionOptions, &Arc<Shared>, &GameFiles) -> Result<C, StartError>,
 ) -> ExitWrites {
-    let to_c =
-        |p: &std::path::Path| CString::new(p.to_string_lossy().as_bytes()).unwrap_or_default();
     let files = GameFiles::new(&opts.save_dir, &opts.game);
-    let mut ctx = CallbackCtx {
-        audio_enabled: true,
-        speed_audio: SpeedAudio::new(opts.fast_audio),
-        options: CoreOptions::new(opts.core_options.iter().cloned()),
-        split: opts.split,
-        username: opts
-            .username
-            .as_deref()
-            .filter(|n| !n.is_empty())
-            .and_then(|n| CString::new(n).ok()),
-        // The game's own folder: what a core writes by itself stays with the game.
-        ..CallbackCtx::new(shared.clone(), to_c(&opts.system_dir), to_c(files.dir()))
-    };
-    let VideoSetup { sink, hw_render } = std::mem::take(&mut opts.video);
-    if let Some(sink) = sink {
-        ctx.video = sink;
-    }
-    if let Some(hw) = hw_render {
-        ctx.hw = hw;
-    }
-    let callbacks = match Slot::claim(ctx) {
-        Ok(slot) => slot,
+    let mut core = match boot(&mut opts, &shared, &files) {
+        Ok(core) => core,
         Err(e) => {
-            let _ = ready.send(Err(StartError::ThreadFailed {
-                detail: format!("{e:#}"),
-            }));
-            return Ok(());
-        }
-    };
-
-    let started = (|| -> Result<LoadedCore, StartError> {
-        let mut core = unsafe { LoadedCore::load(&opts.core_path, callbacks.callbacks())? };
-        // A `need_fullpath` core (Azahar) reads the file itself: never read into memory here.
-        let content = GameContent::read(&opts.game_path, core.need_fullpath, |p| std::fs::read(p))?;
-        callbacks.begin_game(content.info_ext(true));
-        let loaded = unsafe { core.load_game(&content) };
-        callbacks.end_game_load(content.into_strings());
-        loaded?;
-        if let (Some(ram), Ok(data)) = (core.save_ram_mut(), std::fs::read(&files.sram)) {
-            let n = ram.len().min(data.len());
-            ram[..n].copy_from_slice(&data[..n]);
-        }
-        Ok(core)
-    })();
-
-    let mut core = match started {
-        Ok(v) => {
-            let _ = ready.send(Ok(()));
-            v
-        }
-        Err(e) => {
-            // The core, if it loaded, was unloaded with the closure: the slot is free.
-            callbacks.release();
             let _ = ready.send(Err(e));
             // Nothing was loaded: nothing to write.
             return Ok(());
         }
     };
+    emu_loop::load_sram(&mut core, &files);
+    let _ = ready.send(Ok(()));
 
-    let writer = Writer {
-        files: &files,
-        dead,
-    };
-
-    // The core's version: quick saves made by another one might not load (Saves, V02).
-    let slot_meta = crate::saves::SlotMeta {
-        core: core.library_name.clone(),
-        core_version: core.library_version.clone(),
-        app_version: opts.app_version.clone(),
-    };
-    if let Err(e) =
-        crate::saves::note_core_version(&opts.save_dir, &slot_meta.core, &slot_meta.core_version)
-    {
-        log::warn!("core version not recorded: {e}");
-    }
-    // The writes while the game runs: off this thread, in the order asked.
-    let mut io = io::Io::start(io::Worker::new(
-        files.clone(),
-        events.dead.clone(),
-        events.clone(),
-        shared.clone(),
-        slot_meta.clone(),
-    ));
-    // What wrote a slot, beside it (failures only logged: the slot still loads).
-    let write_meta = |slot: u8| {
-        if !writer.alive() {
-            return;
-        }
-        if let Err(e) = crate::saves::write_slot_meta(&files, slot, &slot_meta) {
-            log::warn!("slot {slot} record not written: {e}");
-        }
-    };
-
-    // A timing set while loading is already in `av_info` (read after `retro_load_game`).
-    let _ = callbacks.take_av_change();
-    let av = core.av_info;
-    {
-        let mut stats = shared.stats.lock();
-        stats.av_info = av;
-        stats.speed = Some(Speed::Factor(1.0));
-    }
-    shared.audio.set_rate(av.timing.sample_rate);
-    // The ROM's file name: the screenshots are named after it, for the user to browse.
-    let rom_name = opts
-        .game_path
-        .file_stem()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let _ = events.send(Event::Started {
-        core: format!("{} {}", core.library_name, core.library_version),
-        game: rom_name.clone(),
-        fps: av.timing.fps,
-        width: av.geometry.base_width,
-        height: av.geometry.base_height,
-    });
-
-    let mut base_fps = if av.timing.fps > 0.0 {
-        av.timing.fps
-    } else {
-        60.0
-    };
-    let mut speed = Speed::Factor(1.0);
-    let mut fast_audio = opts.fast_audio;
-    // The speed at Max, measured for the audio.
-    let mut meter = SpeedMeter::new(base_fps, Instant::now());
-    let mut paused = false;
-    let mut rewind = Rewind::with_encoder(opts.rewind_seconds, base_fps);
-    let mut rewinding = false;
-    let mut next_frame = Instant::now();
-    let mut fps = FpsMeter::new(Instant::now());
-    let mut last_sram_flush = Instant::now();
-    let mut last_autosave = Instant::now();
-    // Pacing diagnostics (Trello #57): frames run, sleeps and resets per 10 s window, logged.
-    let mut pace = (Instant::now(), 0u32, 0u32, 0u32);
-
-    // The auto quick save written here, waited for: closing and `Command::Flush` only.
-    let save_auto = |core: &LoadedCore| match writer.state(core, AUTO_SLOT) {
-        Ok(true) => {
-            writer.thumb(AUTO_SLOT, &shared);
-            write_meta(AUTO_SLOT);
-            shared.stats.lock().auto_saved_at = Some(std::time::SystemTime::now());
-            Ok(())
-        }
-        Ok(false) => Ok(()),
-        Err(e) => {
-            let error = ErrorCode::StateSaveFailed {
-                slot: AUTO_SLOT,
-                detail: format!("{e:#}"),
-            };
-            let _ = events.send(Event::Error {
-                error: error.clone(),
-            });
-            Err(error)
-        }
-    };
-
-    // What the last save or load can go back to («Annulla»): only the newest one, until the
-    // next save or load. Always kept; the interface offers the load's only when `saves.undo`
-    // is on.
-    let mut undo: Option<Undo> = None;
-
-    // A quick save while the game runs: serialized here, written by the worker (which says
-    // `stateSaved`, or for the auto quick save records when).
-    let save_async = |core: &LoadedCore, io: &mut io::Io, slot: u8| match core.save_state() {
-        Ok(state) => {
-            let frame = shared.frame.lock().clone();
-            io.send(io::Job::Slot { slot, state, frame });
-            true
-        }
-        Err(e) => {
-            let _ = events.send(Event::Error {
-                error: ErrorCode::StateSaveFailed {
-                    slot,
-                    detail: format!("{e:#}"),
-                },
-            });
-            false
-        }
-    };
-
-    if opts.resume_auto && files.slot(AUTO_SLOT).is_file() {
-        let _ = events.send(match load_undoable(&core, &files, AUTO_SLOT, &mut undo) {
-            Ok(()) => Event::StateLoaded { slot: AUTO_SLOT },
-            Err(error) => Event::Error { error },
-        });
-    }
-
+    let mut lp = emu_loop::EmuLoop::start(core, &opts, shared, events, dead, Instant::now());
     'main: loop {
         // Let go (abandoned or a close that timed out): stop at once, writing nothing.
-        if !writer.alive() {
+        if !lp.alive() {
             break;
         }
         // Commands: paused, wait for them; otherwise check without blocking.
-        let first = if paused {
+        let first = if lp.paused() {
             match rx.recv_timeout(Duration::from_millis(50)) {
                 Ok(c) => Some(c),
                 Err(RecvTimeoutError::Timeout) => None,
@@ -795,333 +627,26 @@ fn emu_thread(
             .into_iter()
             .chain(std::iter::from_fn(|| rx.try_recv().ok()))
         {
-            if !writer.alive() {
+            if !lp.alive() || lp.command(cmd, Instant::now()) == emu_loop::Flow::Stop {
                 break 'main;
             }
-            match cmd {
-                Command::SetSpeed(s) => {
-                    log::info!("pacing: speed set to {s:?}");
-                    speed = s;
-                    meter = SpeedMeter::new(base_fps, Instant::now());
-                    callbacks.set_audio_speed(audio_speed(s));
-                    if !s.is_normal() && fast_audio == FastAudio::Mute {
-                        shared.audio.clear();
-                    }
-                    shared.stats.lock().speed = Some(s);
-                    next_frame = Instant::now();
-                    fps.restart(next_frame);
-                    pace = (next_frame, 0, 0, 0);
-                }
-                Command::SetPaused(p) => {
-                    paused = p;
-                    {
-                        // Paused, nothing runs: 0 frames/s, not the last second before it.
-                        let mut stats = shared.stats.lock();
-                        stats.paused = p;
-                        stats.emu_fps = 0.0;
-                    }
-                    next_frame = Instant::now();
-                    fps.restart(next_frame);
-                    pace = (next_frame, 0, 0, 0);
-                }
-                Command::SaveState(slot) => {
-                    // The worker keeps what the slot held; «Annulla» asks it back.
-                    if save_async(&core, &mut io, slot) {
-                        undo = Some(Undo::Save);
-                    }
-                }
-                Command::LoadState(slot) => {
-                    // A save still being written lands first: the load reads the new file.
-                    io.sync();
-                    let loaded = load_undoable(&core, &files, slot, &mut undo);
-                    if loaded.is_ok() {
-                        io.send(io::Job::ForgetUndo);
-                    }
-                    let _ = events.send(match loaded {
-                        Ok(()) => Event::StateLoaded { slot },
-                        Err(error) => Event::Error { error },
-                    });
-                }
-                Command::UndoLoad => {
-                    let _ = events.send(match undo.take() {
-                        Some(Undo::Load(data)) => match core.load_state(&data) {
-                            Ok(()) => Event::LoadUndone,
-                            Err(e) => Event::Error {
-                                error: ErrorCode::UndoFailed {
-                                    detail: format!("{e:#}"),
-                                },
-                            },
-                        },
-                        kept @ (Some(Undo::Save) | None) => {
-                            undo = kept;
-                            Event::Error {
-                                error: ErrorCode::NothingToUndo,
-                            }
-                        }
-                    });
-                }
-                Command::UndoSave => match undo.take() {
-                    // The worker puts the slot back and says `saveUndone` (or why not).
-                    Some(Undo::Save) => io.send(io::Job::UndoSave),
-                    kept @ (Some(Undo::Load(_)) | None) => {
-                        undo = kept;
-                        let _ = events.send(Event::Error {
-                            error: ErrorCode::NothingToUndo,
-                        });
-                    }
-                },
-                Command::SetCoreOption { key, value } => callbacks.set_core_option(key, value),
-                Command::Reset => unsafe { (core.reset)() },
-                Command::Rewind(on) => {
-                    if on != rewinding {
-                        rewinding = on;
-                        // Silence while going back.
-                        callbacks.set_audio_enabled(!on);
-                        shared.audio.clear();
-                        shared.stats.lock().rewinding = on;
-                    }
-                }
-                Command::SetFastAudio(policy) => {
-                    fast_audio = policy;
-                    callbacks.set_fast_audio(policy);
-                }
-                Command::SetRewindLength(seconds) => {
-                    rewind.set_seconds(seconds);
-                    let (states, bytes) = rewind.usage();
-                    let mut stats = shared.stats.lock();
-                    (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
-                }
-                Command::Screenshot => {
-                    let frame = shared.frame.lock().clone();
-                    io.send(io::Job::Screenshot {
-                        frame,
-                        dir: crate::screenshot::screenshots_dir(&opts.save_dir),
-                        name: rom_name.clone(),
-                        at: std::time::SystemTime::now(),
-                    });
-                }
-                Command::Flush => {
-                    // The process may be killed after this: waited for, after what is queued.
-                    io.sync();
-                    // Failures are logged and sent as events; the next flush tries again.
-                    let _ = write_on_exit(&core, &writer, opts.autosave_on_exit, save_auto);
-                    last_sram_flush = Instant::now();
-                }
-                Command::Stop => break 'main,
-            }
         }
-        if paused {
+        if lp.paused() {
             continue;
         }
-
-        // The input this frame reads (the core takes it again at its own `input_poll`).
-        callbacks.refresh_input();
-        if rewinding {
-            // One state back, then one frame run to show it. With nothing left the game
-            // stays on its picture (the frame count still moves: the thread is alive).
-            match rewind.step_back(|state| core.load_state(state)) {
-                Some(Ok(())) => unsafe { (core.run)() },
-                Some(Err(e)) => log::warn!("rewind: state not loaded: {e:#}"),
-                None => {}
-            }
-        } else {
-            unsafe { (core.run)() };
-            rewind.record(|buf| core.save_state_into(buf).is_ok());
-        }
-        {
-            let (states, bytes) = rewind.usage();
-            let mut stats = shared.stats.lock();
-            stats.frames += 1;
-            (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
-        }
-
-        // The core changed its timing (`SET_SYSTEM_AV_INFO`, e.g. a mode switch): pacing, the
-        // speed meter and rewind follow it from the next frame.
-        if let Some(av) = callbacks.take_av_change() {
-            core.av_info = av;
-            if let Some(new_fps) = changed_fps(base_fps, av.timing.fps) {
-                log::info!("pacing: the core changed its rate from {base_fps:.4} to {new_fps:.4}");
-                base_fps = new_fps;
-                meter = SpeedMeter::new(base_fps, Instant::now());
-                rewind.set_fps(base_fps);
-                next_frame = Instant::now();
-                fps.restart(next_frame);
-            }
-        }
-
-        // Auto quick save every `saves.autoq`, only while the game runs.
-        if let Some(every) = opts.autosave_every {
-            if last_autosave.elapsed() >= every {
-                // A failure is sent as an event; the next one tries again.
-                save_async(&core, &mut io, AUTO_SLOT);
-                last_autosave = Instant::now();
-            }
-        }
-
-        // At Max the audio follows the measured speed.
-        if speed == Speed::Max {
-            if let Some(s) = meter.frame(Instant::now()) {
-                callbacks.set_audio_speed(Some(s));
-            }
-        }
-
-        // Emulation FPS.
-        if let Some(rate) = fps.frame(Instant::now()) {
-            shared.stats.lock().emu_fps = rate;
-        }
-
-        // Game save every 30 s, and on exit.
-        if last_sram_flush.elapsed() >= Duration::from_secs(30) {
-            // Copied here, written by the worker (a failure is logged; the next flush tries
-            // again).
-            if let Some(ram) = core.save_ram() {
-                io.send(io::Job::Sram(ram.to_vec()));
-            }
-            last_sram_flush = Instant::now();
-        }
-
-        if let Some(times) = shared.frame_times.lock().as_mut() {
-            times.push(u32::try_from(work_start.elapsed().as_micros()).unwrap_or(u32::MAX));
-        }
-
+        lp.step(Instant::now());
+        lp.record_work(work_start.elapsed());
         // Pacing: at a fixed speed wait for the next frame, at Max do not.
-        if let Speed::Factor(f) = speed {
-            let period = Duration::from_secs_f64(1.0 / (base_fps * f.max(0.05) as f64));
-            next_frame += period;
-            let now = Instant::now();
-            if next_frame > now {
-                std::thread::sleep(next_frame - now);
-                pace.2 += 1;
-            } else if now - next_frame > period * 4 {
-                // Too far behind (e.g. window dragged): restart without catching up.
-                next_frame = now;
-                pace.3 += 1;
-            }
-        }
-        pace.1 += 1;
-        let window = pace.0.elapsed();
-        if window >= Duration::from_secs(10) {
-            log::info!(
-                "pacing: {:.2} frames/s over {:.1} s (speed {speed:?}, base {base_fps:.4}, {} sleeps, {} resets)",
-                f64::from(pace.1) / window.as_secs_f64(),
-                window.as_secs_f64(),
-                pace.2,
-                pace.3,
-            );
-            pace = (Instant::now(), 0, 0, 0);
+        if let Some(sleep) = lp.pace(Instant::now()) {
+            std::thread::sleep(sleep);
         }
     }
 
-    if !writer.alive() {
-        // Let go: another session may be using this core's module now (the core is refused,
-        // but the module's globals are shared), so neither files nor `retro_unload_game` /
-        // `retro_deinit`. The core stays loaded until the process ends.
-        log::warn!("a let-go emulation thread ended: nothing written, the core left loaded");
-        std::mem::forget(core);
-        callbacks.retire();
-        // Not waited for: the worker sees the session dead and writes nothing more.
-        drop(io);
+    if !lp.alive() {
+        lp.let_go();
         return Ok(());
     }
-    // What the worker still has queued lands first: the exit writes are the newest.
-    io.finish();
-    let written = write_on_exit(&core, &writer, opts.autosave_on_exit, save_auto);
-    drop(core);
-    callbacks.release();
-    let _ = events.send(Event::Stopped);
-    written
-}
-
-/// The new frame rate when the core set a usable one that differs from `base` (a zero or broken
-/// rate keeps the one in use).
-fn changed_fps(base: f64, new: f64) -> Option<f64> {
-    (new.is_finite() && new > 0.0 && (new - base).abs() > 1e-9).then_some(new)
-}
-
-/// The speed the audio is made at: the factor, or None at Max until it is measured.
-fn audio_speed(speed: Speed) -> Option<f64> {
-    match speed {
-        Speed::Factor(f) => Some(f64::from(f)),
-        Speed::Max => None,
-    }
-}
-
-/// Emulated frames per second, measured over windows of at least one second of running game.
-///
-/// Paused time is not running time: the window restarts on pause and on resume, otherwise
-/// the last value before a pause would stay on show for as long as the game is paused
-/// (Trello #57: a frozen `core 60.66` read as a game running 1.5 % fast) and the first
-/// window after it would count the pause.
-struct FpsMeter {
-    since: Instant,
-    frames: u32,
-}
-
-impl FpsMeter {
-    const WINDOW: Duration = Duration::from_secs(1);
-
-    fn new(now: Instant) -> Self {
-        Self {
-            since: now,
-            frames: 0,
-        }
-    }
-
-    /// Starts a new window with no frames (a pause, a resume, a speed change).
-    fn restart(&mut self, now: Instant) {
-        *self = Self::new(now);
-    }
-
-    /// One frame run at `now`: the rate when a window just closed.
-    fn frame(&mut self, now: Instant) -> Option<f64> {
-        self.frames += 1;
-        let elapsed = now.saturating_duration_since(self.since);
-        if elapsed < Self::WINDOW {
-            return None;
-        }
-        let fps = f64::from(self.frames) / elapsed.as_secs_f64();
-        self.restart(now);
-        Some(fps)
-    }
-}
-
-/// What «Annulla» goes back to: the newest save or load only.
-enum Undo {
-    /// The game's state from before the last load.
-    Load(Vec<u8>),
-    /// The last save: the I/O worker holds what its slot held before it.
-    Save,
-}
-
-/// [`load_slot`], keeping the state from before it in `undo` when it succeeds.
-fn load_undoable(
-    core: &LoadedCore,
-    files: &GameFiles,
-    slot: u8,
-    undo: &mut Option<Undo>,
-) -> Result<(), ErrorCode> {
-    let state = core.save_state().ok();
-    load_slot(core, files, slot)?;
-    *undo = state.map(Undo::Load);
-    Ok(())
-}
-
-/// Reads a slot and hands it to the core, telling an empty slot from a broken one.
-fn load_slot(core: &LoadedCore, files: &GameFiles, slot: u8) -> Result<(), ErrorCode> {
-    // An `if` rather than a `match`: io::ErrorKind is non-exhaustive, so a match would need
-    // the `_ =>` arm the workspace lints forbid.
-    let data = std::fs::read(files.slot(slot)).map_err(|e| {
-        if e.kind() == std::io::ErrorKind::NotFound {
-            ErrorCode::SlotEmpty { slot }
-        } else {
-            ErrorCode::StateLoadFailed {
-                slot,
-                detail: e.to_string(),
-            }
-        }
-    })?;
-    core.load_state(&data)
-        .map_err(|_| ErrorCode::StateInvalid { slot })
+    lp.finish()
 }
 
 #[cfg(test)]
@@ -1132,12 +657,14 @@ mod tests {
     use std::sync::Arc;
     use std::time::{Duration, Instant};
 
+    use super::emu_loop::FpsMeter;
     use super::{
         core_needs_restart, has_auto_save, mark_core_needs_restart, slot_infos, write_on_exit,
-        Closed, Command, ErrorCode, Event, ExitWrites, FpsMeter, GameFiles, Outbox, SaveSource,
-        Session, SessionOptions, Shared, Writer, AUTO_SLOT,
+        Closed, Command, ErrorCode, Event, ExitWrites, GameFiles, Outbox, Session, SessionOptions,
+        Shared, Writer, AUTO_SLOT,
     };
     use crate::settings::test_dir::TestDir;
+    use crate::testing::FakeCore;
 
     /// Runs `n` frames `period` apart from `start`, returning the rates the meter gave.
     fn run(meter: &mut FpsMeter, start: Instant, n: u32, period: Duration) -> Vec<f64> {
@@ -1184,7 +711,7 @@ mod tests {
 
     #[test]
     fn a_new_timing_from_the_core_changes_the_rate_only_when_usable() {
-        use super::changed_fps;
+        use super::emu_loop::changed_fps;
         assert_eq!(changed_fps(59.7275, 30.0), Some(30.0));
         assert_eq!(changed_fps(59.7275, 59.7275), None);
         assert_eq!(changed_fps(59.7275, 0.0), None);
@@ -1209,31 +736,22 @@ mod tests {
 
     // ---- Exit writes, dead sessions, bounded close (Trello #69) ----
 
-    /// A core as far as the saves go.
-    struct StubCore {
-        ram: Option<Vec<u8>>,
-        state: Vec<u8>,
-    }
-
-    impl SaveSource for StubCore {
-        fn save_ram(&self) -> Option<&[u8]> {
-            self.ram.as_deref()
-        }
-
-        fn save_state(&self) -> anyhow::Result<Vec<u8>> {
-            Ok(self.state.clone())
-        }
-    }
-
     fn key() -> crate::GameKey {
         crate::GameKey::parse("gba:9a3e").unwrap()
     }
 
-    fn stub() -> StubCore {
-        StubCore {
-            ram: Some(b"battery save".to_vec()),
-            state: b"emulation state".to_vec(),
+    /// A core at frame 7: its in-game save and its state both hold 7.
+    fn stub() -> FakeCore {
+        let mut core = FakeCore::new();
+        for _ in 0..7 {
+            crate::session::Core::run(&mut core);
         }
+        core
+    }
+
+    /// What the fake core's frame 7 looks like on disk.
+    fn seven() -> Vec<u8> {
+        7u64.to_le_bytes().to_vec()
     }
 
     fn files_in(dir: &Path) -> Vec<String> {
@@ -1260,11 +778,8 @@ mod tests {
             Ok(())
         });
         assert_eq!(written, Ok(()));
-        assert_eq!(std::fs::read(&files.sram).unwrap(), b"battery save");
-        assert_eq!(
-            std::fs::read(files.slot(AUTO_SLOT)).unwrap(),
-            b"emulation state"
-        );
+        assert_eq!(std::fs::read(&files.sram).unwrap(), seven());
+        assert_eq!(std::fs::read(files.slot(AUTO_SLOT)).unwrap(), seven());
         assert_eq!(
             files_in(&dir.path("saves/gba/9a3e")),
             vec!["auto.state".to_owned(), "game.sav".to_owned()]
@@ -1322,7 +837,7 @@ mod tests {
         };
         let written = write_on_exit(&stub(), &writer, true, |_| Err(failed.clone()));
         assert_eq!(written, Err(failed));
-        assert_eq!(std::fs::read(&files.sram).unwrap(), b"battery save");
+        assert_eq!(std::fs::read(&files.sram).unwrap(), seven());
     }
 
     #[test]
@@ -1555,6 +1070,43 @@ mod tests {
         assert!(result.is_err());
         // Refused before anything else: not even the folders were made.
         assert!(!dir.path("saves").exists());
+    }
+
+    #[test]
+    fn a_session_on_the_fake_core_runs_and_writes_its_saves_when_closed() {
+        let dir = TestDir::new("session-fake-core");
+        let (events, rx) = mpsc::channel();
+        let opts = SessionOptions {
+            core_path: dir.path("fake_libretro.dll"),
+            game_path: dir.path("Game.gba"),
+            system_dir: dir.path("system"),
+            save_dir: dir.path("saves"),
+            game: key(),
+            autosave_every: None,
+            autosave_on_exit: true,
+            resume_auto: false,
+            app_version: "test".into(),
+            core_options: Vec::new(),
+            rewind_seconds: None,
+            split: crate::screens::Split::Whole,
+            username: None,
+            fast_audio: crate::speed_audio::FastAudio::Mute,
+            video: Default::default(),
+        };
+        let session = Session::start_with(opts, events, FakeCore::new()).unwrap();
+        let started = Instant::now();
+        while session.shared().stats.lock().frames < 3 {
+            assert!(started.elapsed() < Duration::from_secs(10), "no frames");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        assert_eq!(session.close(Duration::from_secs(10)), Closed::Joined);
+        let files = GameFiles::new(&dir.path("saves"), &key());
+        let sram = FakeCore::counter(&std::fs::read(&files.sram).unwrap()).unwrap();
+        let auto = FakeCore::counter(&std::fs::read(files.slot(AUTO_SLOT)).unwrap()).unwrap();
+        assert!(sram >= 3 && sram == auto, "{sram} {auto}");
+        let events: Vec<Event> = rx.try_iter().collect();
+        assert!(matches!(events.first(), Some(Event::Started { .. })));
+        assert!(matches!(events.last(), Some(Event::Stopped)));
     }
 
     #[test]

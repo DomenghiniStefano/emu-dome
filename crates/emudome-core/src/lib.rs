@@ -34,6 +34,8 @@ pub mod screens;
 pub mod screenshot;
 pub mod settings;
 pub mod speed_audio;
+#[doc(hidden)]
+pub mod testing;
 pub mod video_sink;
 
 pub use atomic::write_atomic;
@@ -43,7 +45,7 @@ pub use error::ErrorCode;
 pub use frame::Frame;
 pub use game_key::GameKey;
 pub use session::{
-    core_needs_restart, has_auto_save, slot_infos, Closed, Command, CoreOptionInfo, Event,
-    ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, VideoSetup, AUTO_SLOT,
-    CLOSE_TIMEOUT,
+    core_needs_restart, has_auto_save, slot_infos, Closed, Command, Core, CoreInfo, CoreOptionInfo,
+    Event, ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, VideoSetup,
+    AUTO_SLOT, CLOSE_TIMEOUT,
 };
