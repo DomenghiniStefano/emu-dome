@@ -354,3 +354,35 @@ Errors and fixes: `crates/emudome-core/src/save_path.rs` (the guard), `n3ds::SAV
 `ErrorCode::SavePathTooLong`, `crates/emudome-platform/src/paths.rs` (limits, policy), `app/src-tauri/build.rs` and
 `windows-app-manifest.xml` (long-path aware app). The earlier entry's abort is now refused with a message.
 Proposed next step: the owner's UAT of a 3DS homebrew in the installed app with a deep data folder (`EMUDOME_DATA_DIR`).
+
+## 2026-11-21 18:00 · 3DS on Azahar with Vulkan: release measurements with the GPU free (#46)
+Release build of the app's `headless_gpu` example (branch `feat/3ds-host` = develop's 3DS code, bounded readback),
+Azahar 2126.2 (219d743, pinned), Craftus Reloaded 0.3 homebrew (MIT), Vulkan on the app's device, RTX 3060 /
+NVIDIA 617.42, Ryzen 7 9700X, no other program using the GPU. `--dir` a short temp folder.
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless; the frames reach `Shared::frame` through the readback |
+| 2. FPS at 1× | title screen 57.2 over 10 s (last second 60.0); in the world 59.2 over 10 s (last second 60.0); target 60.00 | the 10-s averages include the start (context reset ~0.2-0.5 s) |
+| 3. Audio | not tested | headless |
+| 4. Controller | not tested | touch by `--tap` (enters a generated world) |
+| 5. Native vs webview | not tested | |
+
+Max (unthrottled): title 1098 fps, world 551 fps. 2×: title 105.3 emulated fps; in the world 13.5 (not explained:
+Max reaches 551 there, so it is not the GPU; to look at with the speed / audio path at 2× on 3DS).
+
+Work per frame, `--timing 20` (a quick save every 2 s, µs):
+| Scene | frames | mean | p50 | p90 | p99 | p99.9 | max | > 8 ms | > 16.7 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| title | 1084 | 3578 | 1200 | 1803 | 18763 | 237607 | 271945 | 16 | 12 |
+| world | 1064 | 4875 | 1551 | 3076 | 41872 | 310504 | 323915 | 46 | 29 |
+
+The frames over 16.7 ms are mostly the quick saves: on Vulkan a state save takes ~0.24-0.32 s of the emulation thread
+(Azahar serializes with the renderer's state), so a 3DS quick save drops ~15-20 frames. Outside saves the emulation
+holds 60 fps with a p50 of 1.2-1.6 ms per frame.
+GPU tests after the readback change (`cargo test -p emudome --lib gpu -- --ignored`): 3 passed (core image as a texture,
+core image → Shared::frame, built-in effects).
+
+Errors and fixes: none in these runs.
+Proposed next step: look at the 3DS quick-save stall (serialize off the hot path is not possible: only the emulation
+thread may call the core; at least warn or pause audio) and the 2× slowdown in the world.
