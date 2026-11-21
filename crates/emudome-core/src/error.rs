@@ -136,6 +136,9 @@ pub enum ErrorCode {
     /// Health (`emu://health`, `diagnostics`): the native video could not start, the game is
     /// drawn in the interface's canvas instead.
     NativeVideoFallback { detail: String },
+    /// Health: a game whose core draws on the GPU (3DS) found no Vulkan device to render on
+    /// (another graphics API, no Vulkan driver): it runs with the core's software renderer.
+    HwRenderFallback { detail: String },
     /// Health: the surface the system handed over (Android's) cannot be drawn on; nothing is
     /// shown until the next one.
     VideoSurfaceFailed { detail: String },

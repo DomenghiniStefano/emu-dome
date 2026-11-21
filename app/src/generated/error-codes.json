@@ -45,6 +45,7 @@
   "biosDsiFilesMissing",
   "biosDsMenuFilesMissing",
   "nativeVideoFallback",
+  "hwRenderFallback",
   "videoSurfaceFailed",
   "audioUnavailable",
   "controllersUnavailable",

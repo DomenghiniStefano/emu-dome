@@ -15,11 +15,7 @@ use crate::video_sink::CpuFrame;
 
 /// RGBA8 pixels (row after row, no padding) as a PNG file: frames, thumbnails, ROM icons.
 /// Errors on an empty image or a buffer of the wrong size.
-pub(crate) fn rgba_png(
-    width: u32,
-    height: u32,
-    rgba: &[u8],
-) -> Result<Vec<u8>, png::EncodingError> {
+pub fn rgba_png(width: u32, height: u32, rgba: &[u8]) -> Result<Vec<u8>, png::EncodingError> {
     let mut out = Vec::new();
     {
         let mut encoder = png::Encoder::new(&mut out, width, height);

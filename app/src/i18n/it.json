@@ -281,6 +281,7 @@
     "biosDsiFilesMissing": "La modalità DSi richiede i tuoi file di sistema DS e DSi, quindi il gioco parte come DS. Aggiungili in Impostazioni › BIOS e firmware.",
     "biosDsMenuFilesMissing": "L’avvio dal menu del DS richiede i tuoi file di sistema DS, quindi il gioco parte direttamente. Aggiungili in Impostazioni › BIOS e firmware.",
     "nativeVideoFallback": "Il video nativo non è partito ({detail}), quindi il gioco si vede nell’interfaccia. Puoi continuare a giocare; aggiorna il driver grafico e riavvia EmuDome per riprovare.",
+    "hwRenderFallback": "I giochi 3DS non possono usare la scheda grafica ({detail}), quindi usano il renderer software, più lento. Aggiorna il driver grafico e riavvia EmuDome per riprovare.",
     "videoSurfaceFailed": "Non riesco a disegnare sullo schermo ({detail}), quindi il gioco non si vede. Passa a un’altra app e torna qui, oppure riavvia EmuDome.",
     "audioUnavailable": "Niente audio: non riesco a usare l’uscita audio ({detail}). EmuDome continua a riprovare; controlla che casse o cuffie siano collegate.",
     "controllersUnavailable": "Questa volta non riesco a usare i controller ({detail}). Usa la tastiera, oppure riavvia EmuDome per riprovare.",

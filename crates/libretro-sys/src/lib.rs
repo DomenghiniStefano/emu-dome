@@ -332,6 +332,9 @@ pub type retro_input_poll_t = unsafe extern "C" fn();
 pub type retro_input_state_t =
     unsafe extern "C" fn(port: c_uint, device: c_uint, index: c_uint, id: c_uint) -> i16;
 
+/// The Vulkan interfaces of `SET_HW_RENDER` (`libretro_vulkan.h`).
+pub mod vulkan;
+
 /// The functions every libretro core exports, loaded by name.
 pub mod symbols {
     use super::{

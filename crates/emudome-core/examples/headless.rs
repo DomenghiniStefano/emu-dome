@@ -37,7 +37,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use emudome_core::bios;
-use emudome_core::core_profile::CoreId;
+use emudome_core::core_profile::{CoreId, Renderer};
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{self, Area, Layout, ScreenId};
 use emudome_core::settings::{ConsoleId, Value};
@@ -217,12 +217,8 @@ fn parse_args() -> anyhow::Result<Args> {
 }
 
 fn write_png(session: &Session, path: &std::path::Path) -> anyhow::Result<()> {
-    let f = session.shared().frame.lock();
-    let file = std::io::BufWriter::new(std::fs::File::create(path)?);
-    let mut enc = png::Encoder::new(file, f.width, f.height);
-    enc.set_color(png::ColorType::Rgba);
-    enc.set_depth(png::BitDepth::Eight);
-    enc.write_header()?.write_image_data(&f.rgba)?;
+    let f = session.shared().frame.lock().clone();
+    std::fs::write(path, f.to_png()?)?;
     Ok(())
 }
 
@@ -241,11 +237,7 @@ fn write_screens(session: &Session, prefix: &str) -> anyhow::Result<()> {
             rgba.extend_from_slice(&f.rgba[row..row + (s.src.w * 4) as usize]);
         }
         let path = format!("{prefix}-{name}.png");
-        let file = std::io::BufWriter::new(std::fs::File::create(&path)?);
-        let mut enc = png::Encoder::new(file, s.src.w, s.src.h);
-        enc.set_color(png::ColorType::Rgba);
-        enc.set_depth(png::BitDepth::Eight);
-        enc.write_header()?.write_image_data(&rgba)?;
+        std::fs::write(&path, emudome_core::rgba_png(s.src.w, s.src.h, &rgba)?)?;
         println!("{name} screen {:?} written to {path}", s.src);
     }
     Ok(())
@@ -417,6 +409,15 @@ fn init_log() {
 }
 
 fn main() -> anyhow::Result<()> {
+    run(&|| None)
+}
+
+/// A host's GPU for the session, when it has one: the video setup of a Vulkan device (the app's
+/// `headless_gpu` example passes the shell's). `None`: software frames only.
+pub type GpuSetup<'a> = &'a dyn Fn() -> Option<emudome_core::VideoSetup>;
+
+/// The whole test; `gpu` gives the session a Vulkan device when the core can use one.
+pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
     init_log();
     let args = parse_args()?;
     let tmp = args
@@ -430,7 +431,12 @@ fn main() -> anyhow::Result<()> {
         .unwrap_or(ConsoleId::Gba);
     let core = CoreId::for_console(console);
     let profile = core.profile();
-    let mut core_options = profile.forced_pairs();
+    // Vulkan when the host has a device and the core can draw with it, as in the shell.
+    let wants_gpu = profile.hw_render.renderer(true) == Renderer::Vulkan;
+    let video = if wants_gpu { gpu() } else { None };
+    let renderer = profile.hw_render.renderer(video.is_some());
+    println!("renderer: {renderer:?}");
+    let mut core_options = profile.forced_pairs(renderer);
     let system_dir = bios::files::core_dir(&tmp.join("system"), core.name());
     let in_place = bios::table(core)
         .map(|t| bios::files::in_place(&system_dir, t))
@@ -473,7 +479,7 @@ fn main() -> anyhow::Result<()> {
             split: profile.split,
             username: None,
             fast_audio: args.fast_audio.unwrap_or_default(),
-            video: Default::default(),
+            video: video.unwrap_or_default(),
         },
         tx,
     )?;

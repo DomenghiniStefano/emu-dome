@@ -284,6 +284,22 @@ impl Slot {
         self.with(|c| c.input = c.shared.input.snapshot());
     }
 
+    /// After `retro_load_game`: the core's `context_reset`, when its hardware rendering was
+    /// accepted. The caller runs it with no slot lock held (the core calls back from it).
+    pub(crate) fn hw_context_reset(&self) -> Option<libretro_sys::retro_hw_context_reset_t> {
+        self.with(|c| c.hw.context_reset()).flatten()
+    }
+
+    /// Before the core unloads: the sink lets go of the core's images, and the core's
+    /// `context_destroy` comes back to be run with no slot lock held.
+    pub(crate) fn hw_shut_down(&self) -> Option<libretro_sys::retro_hw_context_reset_t> {
+        self.with(|c| {
+            c.video.release();
+            c.hw.context_destroy()
+        })
+        .flatten()
+    }
+
     /// The timing the core set with `SET_SYSTEM_AV_INFO` since the last call, if it did.
     pub(crate) fn take_av_change(&self) -> Option<retro_system_av_info> {
         self.with(|c| c.av_change.take()).flatten()

@@ -42,8 +42,8 @@ pub(super) fn boot(
         ..CallbackCtx::new(shared.clone(), to_c(&opts.system_dir), to_c(files.dir()))
     };
     let VideoSetup { sink, hw_render } = std::mem::take(&mut opts.video);
-    if let Some(sink) = sink {
-        ctx.video = sink;
+    if let Some(make) = sink {
+        ctx.video = make(shared);
     }
     if let Some(hw) = hw_render {
         ctx.hw = hw;
@@ -63,9 +63,22 @@ pub(super) fn boot(
         Ok(core)
     })();
     match loaded {
-        Ok(core) => {
-            // A timing set while loading is already in `av_info` (read after `retro_load_game`).
-            let _ = slot.take_av_change();
+        Ok(mut core) => {
+            // A hardware context the core asked for is ready now: the core creates its GPU
+            // objects (Azahar loads the game there). Outside the slot's lock: it calls back.
+            if let Some(reset) = slot.hw_context_reset() {
+                let started = std::time::Instant::now();
+                unsafe { reset() };
+                log::info!(
+                    "hw render: context_reset took {} ms",
+                    started.elapsed().as_millis()
+                );
+            }
+            // A timing set while loading is already in `av_info` (read after `retro_load_game`);
+            // one set in `context_reset` is taken now.
+            if let Some(av) = slot.take_av_change() {
+                core.av_info = av;
+            }
             Ok(Libretro { core, slot })
         }
         Err(e) => {
@@ -146,7 +159,12 @@ impl Core for Libretro {
             std::mem::forget(core);
             slot.retire();
         } else {
-            // `retro_unload_game` / `retro_deinit`, then the slot serves another core.
+            // The sink lets go of the core's images, the core destroys its GPU context (the
+            // device, the shell's, lives on), then `retro_unload_game` / `retro_deinit`, then
+            // the slot serves another core.
+            if let Some(destroy) = slot.hw_shut_down() {
+                unsafe { destroy() };
+            }
             drop(core);
             slot.release();
         }

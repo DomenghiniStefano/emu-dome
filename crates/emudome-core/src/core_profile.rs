@@ -79,9 +79,54 @@ pub enum HwContext {
 pub struct HwRender {
     /// The APIs it can ask for, in its order of preference; empty: software only.
     pub contexts: &'static [HwContext],
-    /// It has a software renderer the shell can force (by a forced option), used while the host
-    /// refuses `SET_HW_RENDER` (Trello #16 / #46).
+    /// It has a software renderer the shell can force (by a forced option), used where the
+    /// shell has no context for it (Trello #16 / #46).
     pub software_fallback: bool,
+    /// The core option that picks its renderer, when the shell must choose it (Azahar's default
+    /// `auto` asks for OpenGL, which the shell has no context for).
+    pub renderer_option: Option<RendererOption>,
+}
+
+/// A core option that picks the renderer: its key, and its value for each renderer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RendererOption {
+    pub key: &'static str,
+    /// The value for the Vulkan renderer, if the core has one.
+    pub vulkan: Option<&'static str>,
+    /// The value for the software renderer.
+    pub software: &'static str,
+}
+
+/// The renderer a session runs a core with, as the shell chose it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Renderer {
+    /// The core's software renderer (frames in memory).
+    Software,
+    /// Vulkan on the shell's device (`hw_render::vulkan`).
+    Vulkan,
+}
+
+impl HwRender {
+    /// The renderer to run with when the shell has a Vulkan device (`vulkan_device`): Vulkan
+    /// when the core can ask for it and the shell can tell it to, else software.
+    pub fn renderer(&self, vulkan_device: bool) -> Renderer {
+        let vulkan = vulkan_device
+            && self.contexts.contains(&HwContext::Vulkan)
+            && self.renderer_option.is_some_and(|o| o.vulkan.is_some());
+        if vulkan {
+            Renderer::Vulkan
+        } else {
+            Renderer::Software
+        }
+    }
+
+    /// Whether the core would ask for Vulkan and must be told to draw in software instead
+    /// (a shell with no Vulkan device): the shell reports it as a fallback.
+    pub fn falls_back_from_vulkan(&self, renderer: Renderer) -> bool {
+        renderer == Renderer::Software
+            && self.contexts.contains(&HwContext::Vulkan)
+            && self.renderer_option.is_some_and(|o| o.vulkan.is_some())
+    }
 }
 
 /// Where a core keeps a game's progress.
@@ -122,11 +167,21 @@ impl CoreProfile {
         core_values::table(self.id)
     }
 
-    /// Its forced options as `GET_VARIABLE` key and value pairs.
-    pub fn forced_pairs(&self) -> Vec<(String, String)> {
+    /// Its forced options as `GET_VARIABLE` key and value pairs, with the renderer option for
+    /// `renderer` when the core has one.
+    pub fn forced_pairs(&self, renderer: Renderer) -> Vec<(String, String)> {
+        let pick = self.hw_render.renderer_option.map(|o| {
+            let value = match renderer {
+                Renderer::Vulkan => o.vulkan.unwrap_or(o.software),
+                Renderer::Software => o.software,
+            };
+            (o.key, value)
+        });
         self.forced_options
             .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .copied()
+            .chain(pick)
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
             .collect()
     }
 }
@@ -150,6 +205,7 @@ static MGBA: CoreProfile = CoreProfile {
     hw_render: HwRender {
         contexts: &[],
         software_fallback: true,
+        renderer_option: None,
     },
     save_model: SaveModel::SaveRam,
     unsupported_settings: &[],
@@ -165,25 +221,32 @@ static MELONDSDS: CoreProfile = CoreProfile {
     hw_render: HwRender {
         contexts: &[HwContext::OpenGlCore],
         software_fallback: true,
+        // `cores.mdsrender` picks it (settings); OpenGL is refused, the core then draws in
+        // software by itself.
+        renderer_option: None,
     },
     save_model: SaveModel::SaveRamAndCoreFiles,
     // melonDS DS has no frameskip option (1.4.0, `config/constants.hpp`).
     unsupported_settings: &["perf.frameskip"],
 };
 
-/// Azahar: the software renderer, the only one that does not ask for `SET_HW_RENDER`, which the
-/// host refuses until #46 / #16; its default `auto` fails to load.
-const AZAHAR_FORCED_OPTIONS: &[(&str, &str)] = &[("citra_graphics_api", "Software")];
-
 static AZAHAR: CoreProfile = CoreProfile {
     id: CoreId::Azahar,
     consoles: &[ConsoleId::N3ds],
-    forced_options: AZAHAR_FORCED_OPTIONS,
+    forced_options: &[],
     // TODO(Phase 3): Azahar's two screens.
     split: Split::Whole,
     hw_render: HwRender {
         contexts: &[HwContext::Vulkan, HwContext::OpenGlCore],
         software_fallback: true,
+        // Its default `auto` asks for OpenGL, which the shell has no context for: Vulkan on the
+        // shell's device, else the software renderer (Azahar compares the values
+        // case-sensitively).
+        renderer_option: Some(RendererOption {
+            key: "citra_graphics_api",
+            vulkan: Some("Vulkan"),
+            software: "Software",
+        }),
     },
     save_model: SaveModel::CoreFiles,
     // No frameskip mapped for Azahar yet: its options are listed when Phase 3 starts.
@@ -192,7 +255,7 @@ static AZAHAR: CoreProfile = CoreProfile {
 
 #[cfg(test)]
 mod tests {
-    use super::{unsupported_consoles, CoreId};
+    use super::{unsupported_consoles, CoreId, Renderer};
     use crate::settings::ConsoleId;
 
     #[test]
@@ -213,6 +276,29 @@ mod tests {
                 serde_json::to_value(core).unwrap(),
                 serde_json::json!(core.name())
             );
+        }
+    }
+
+    #[test]
+    fn azahar_draws_with_vulkan_on_the_shells_device_else_in_software() {
+        let p = CoreId::Azahar.profile();
+        let api = |r| {
+            p.forced_pairs(r)
+                .into_iter()
+                .find(|(k, _)| k == "citra_graphics_api")
+                .map(|(_, v)| v)
+        };
+        assert_eq!(p.hw_render.renderer(true), Renderer::Vulkan);
+        assert_eq!(p.hw_render.renderer(false), Renderer::Software);
+        assert_eq!(api(Renderer::Vulkan).as_deref(), Some("Vulkan"));
+        assert_eq!(api(Renderer::Software).as_deref(), Some("Software"));
+        assert!(p.hw_render.falls_back_from_vulkan(Renderer::Software));
+        assert!(!p.hw_render.falls_back_from_vulkan(Renderer::Vulkan));
+        // The other cores never get a Vulkan renderer, nor a fallback to report.
+        for core in [CoreId::Mgba, CoreId::MelonDsDs] {
+            let h = core.profile().hw_render;
+            assert_eq!(h.renderer(true), Renderer::Software);
+            assert!(!h.falls_back_from_vulkan(Renderer::Software));
         }
     }
 
