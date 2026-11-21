@@ -26,10 +26,21 @@
 //! time travels with the value: synced with the synced files, kept on this device for the
 //! per-device entries. A reset records its time too (the value went back to the weaker level).
 //! Older versions see `$changed` as an unknown key and keep it.
+//!
+//! Every file says its layout's version under [`SCHEMA_KEY`] (`"$schema": 1`, written on each
+//! save; a file without it is version 0). A file read with an older version goes through
+//! [`migrate`] in memory before use (0 → 1 changes nothing: version 1 only adds the number); a
+//! file from a newer version is used as it is, its unknown keys kept and its number never
+//! lowered.
+//!
+//! What is in memory follows the disk: before each use, a file whose modification time or size
+//! changed since it was read (another process, sync, the user) is read again, so a change made
+//! elsewhere is neither missed nor written over by the next save.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
@@ -42,6 +53,62 @@ pub type Layer = Map<String, Json>;
 
 /// The reserved key of a layer that holds `key → Unix ms of its last change`.
 pub const CHANGED_KEY: &str = "$changed";
+
+/// The reserved top-level key of every settings file: its layout's version.
+pub const SCHEMA_KEY: &str = "$schema";
+
+/// The layout this version writes.
+pub const SCHEMA_VERSION: u64 = 1;
+
+/// The version a file's top-level object says (0 when it says none).
+fn schema_of(top: &Layer) -> u64 {
+    top.get(SCHEMA_KEY).and_then(Json::as_u64).unwrap_or(0)
+}
+
+/// The steps from each layout to the next: `MIGRATIONS[n]` turns layout `n` into `n + 1`. A
+/// layout change adds its step here and raises [`SCHEMA_VERSION`].
+const MIGRATIONS: [fn(&mut Layer); SCHEMA_VERSION as usize] = [layout_0_to_1];
+
+/// 0 → 1: the same layout; version 1 only adds `$schema`, written on the next save.
+fn layout_0_to_1(_top: &mut Layer) {}
+
+/// Brings a file's top-level object read from an older layout to [`SCHEMA_VERSION`], in memory
+/// (the file itself changes on its next save). A newer file is left as it is.
+fn migrate(top: &mut Layer) {
+    let from = usize::try_from(schema_of(top)).unwrap_or(usize::MAX);
+    for step in MIGRATIONS.iter().skip(from) {
+        step(top);
+    }
+}
+
+/// Before a save: the file says the layout it is in (a newer file keeps its number).
+fn stamp_schema(top: &mut Layer) {
+    let version = schema_of(top).max(SCHEMA_VERSION);
+    top.insert(SCHEMA_KEY.to_owned(), Json::from(version));
+}
+
+/// What a file looked like when it was read: a change of either means someone else wrote it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Stamp {
+    modified: Option<SystemTime>,
+    len: u64,
+}
+
+/// The file's stamp now; `None` when there is no file (or it cannot be looked at).
+fn stamp(path: &Path) -> Option<Stamp> {
+    let meta = fs::metadata(path).ok()?;
+    Some(Stamp {
+        modified: meta.modified().ok(),
+        len: meta.len(),
+    })
+}
+
+/// A file's content as read, and its stamp then.
+#[derive(Clone, Debug)]
+struct Cached<T> {
+    value: T,
+    stamp: Option<Stamp>,
+}
 
 /// Which file (or which part of the device file) a level lives in.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -96,9 +163,10 @@ pub struct Change<'a> {
 pub struct Store {
     synced_dir: PathBuf,
     device_file: PathBuf,
-    /// Layers read (or found missing); a file that could not be read is never here.
-    synced: HashMap<FileId, Layer>,
-    device: Option<DeviceLayers>,
+    /// Layers read (or found missing), with their file's stamp then; a file that could not be
+    /// read is never here.
+    synced: HashMap<FileId, Cached<Layer>>,
+    device: Option<Cached<DeviceLayers>>,
     /// Files whose last read failed: logged once until they read again.
     unreadable: HashSet<PathBuf>,
 }
@@ -163,13 +231,26 @@ impl Store {
         };
         if let Some(mut layer) = synced {
             apply_to(&mut layer, &synced_changes);
-            write_json(&self.synced_path(file), &layer)?;
-            self.synced.insert(file.clone(), layer);
+            stamp_schema(&mut layer);
+            let path = self.synced_path(file);
+            write_json(&path, &layer)?;
+            let stamp = stamp(&path);
+            self.synced.insert(
+                file.clone(),
+                Cached {
+                    value: layer,
+                    stamp,
+                },
+            );
         }
         if let Some(mut layers) = device {
             apply_to(layers.layer_mut(file), &device_changes);
+            stamp_schema(&mut layers.other);
             write_json(&self.device_file, &layers)?;
-            self.device = Some(layers);
+            self.device = Some(Cached {
+                value: layers,
+                stamp: stamp(&self.device_file),
+            });
         }
         Ok(())
     }
@@ -218,25 +299,69 @@ impl Store {
         ids
     }
 
-    /// The layer of `file`, read on first use. A file that cannot be read is not cached: the
-    /// next call reads it again.
+    /// The layer of `file`, read on first use and again whenever the file changed on disk since.
+    /// A file that cannot be read is not cached: the next call reads it again.
     fn synced_layer(&mut self, file: &FileId) -> Result<&Layer, ErrorCode> {
-        if !self.synced.contains_key(file) {
-            let path = self.synced_path(file);
-            let layer = self.read::<Layer>(&path)?;
-            self.synced.insert(file.clone(), layer);
+        let path = self.synced_path(file);
+        // Taken before reading: a change while it is read shows at the next use.
+        let now = stamp(&path);
+        if self.synced.get(file).is_none_or(|c| c.stamp != now) {
+            let layer = match self.read::<Layer>(&path) {
+                Ok(mut layer) => {
+                    migrate(&mut layer);
+                    layer
+                }
+                Err(e) => {
+                    self.synced.remove(file);
+                    return Err(e);
+                }
+            };
+            self.synced.insert(
+                file.clone(),
+                Cached {
+                    value: layer,
+                    stamp: now,
+                },
+            );
         }
-        Ok(self.synced.entry(file.clone()).or_default())
+        Ok(&self
+            .synced
+            .entry(file.clone())
+            .or_insert_with(|| Cached {
+                value: Layer::new(),
+                stamp: None,
+            })
+            .value)
     }
 
-    /// The per-device layers, read on first use; not cached when unreadable, as above.
+    /// The per-device layers, read on first use and again when the file changed; not cached when
+    /// unreadable, as above.
     fn device_layers(&mut self) -> Result<&DeviceLayers, ErrorCode> {
-        if self.device.is_none() {
-            let path = self.device_file.clone();
-            let layers = self.read::<DeviceLayers>(&path)?;
-            self.device = Some(layers);
+        let path = self.device_file.clone();
+        let now = stamp(&path);
+        if self.device.as_ref().is_none_or(|c| c.stamp != now) {
+            let layers = match self.read::<DeviceLayers>(&path) {
+                Ok(mut layers) => {
+                    migrate(&mut layers.other);
+                    layers
+                }
+                Err(e) => {
+                    self.device = None;
+                    return Err(e);
+                }
+            };
+            self.device = Some(Cached {
+                value: layers,
+                stamp: now,
+            });
         }
-        Ok(self.device.get_or_insert_with(DeviceLayers::default))
+        Ok(&self
+            .device
+            .get_or_insert_with(|| Cached {
+                value: DeviceLayers::default(),
+                stamp: None,
+            })
+            .value)
     }
 
     /// Reads a file: missing (or moved aside) gives the default; unreadable gives
@@ -426,13 +551,126 @@ mod tests {
             serde_json::from_str(&dir.read("synced/global.json")).unwrap();
         assert_eq!(
             synced,
-            json!({ "future.thing": [1, 2], "video.scale": "fill" })
+            json!({ "$schema": 1, "future.thing": [1, 2], "video.scale": "fill" })
         );
         let device: serde_json::Value =
             serde_json::from_str(&dir.read("local/device.json")).unwrap();
         assert_eq!(device["global"]["future.local"], json!(true));
         assert_eq!(device["global"]["video.vsync"], json!(false));
         assert_eq!(device["version"], json!(9));
+        assert_eq!(device["$schema"], json!(1));
+    }
+
+    fn json_of(dir: &TestDir, rel: &str) -> serde_json::Value {
+        serde_json::from_str(&dir.read(rel)).unwrap()
+    }
+
+    #[test]
+    fn every_save_says_its_layout_and_a_file_without_one_reads_as_layout_0() {
+        let dir = TestDir::new("store-schema");
+        // Written before #81: no `$schema`.
+        dir.write("synced/global.json", r#"{ "video.scale": "fit" }"#);
+        let mut s = store(&dir);
+        assert_eq!(
+            s.get(&FileId::Global, false, "video.scale"),
+            Some(json!("fit"))
+        );
+        // Reading changes nothing on disk...
+        assert_eq!(json_of(&dir, "synced/global.json").get("$schema"), None);
+        // ...the next save writes the layout.
+        s.apply(&FileId::Global, &[set("audio.vol", false, json!(50))])
+            .unwrap();
+        assert_eq!(json_of(&dir, "synced/global.json")["$schema"], json!(1));
+        assert_eq!(
+            json_of(&dir, "synced/global.json")["video.scale"],
+            json!("fit")
+        );
+    }
+
+    #[test]
+    fn a_newer_layout_keeps_its_number_and_its_keys() {
+        let dir = TestDir::new("store-schema-newer");
+        dir.write(
+            "synced/global.json",
+            r#"{ "$schema": 7, "future.thing": { "deep": true }, "video.scale": "fit" }"#,
+        );
+        let mut s = store(&dir);
+        s.apply(&FileId::Global, &[set("video.scale", false, json!("fill"))])
+            .unwrap();
+        assert_eq!(
+            json_of(&dir, "synced/global.json"),
+            json!({ "$schema": 7, "future.thing": { "deep": true }, "video.scale": "fill" })
+        );
+    }
+
+    #[test]
+    fn a_file_changed_on_disk_is_read_again_and_never_written_over() {
+        let dir = TestDir::new("store-mtime");
+        let mut s = store(&dir);
+        s.apply(
+            &FileId::Global,
+            &[Change {
+                key: "video.scale",
+                per_device: false,
+                value: Some(json!("fit")),
+                at: Some(1_000),
+            }],
+        )
+        .unwrap();
+        // Another process (sync, another window) writes the file: a new key, a new value, its
+        // own `$changed` record.
+        dir.write(
+            "synced/global.json",
+            r#"{ "$schema": 1, "video.scale": "stretch", "audio.vol": 30,
+                 "$changed": { "video.scale": 2000, "audio.vol": 2000 } }"#,
+        );
+        assert_eq!(
+            s.get(&FileId::Global, false, "video.scale"),
+            Some(json!("stretch"))
+        );
+        // A save now starts from what is on disk: the other process's values stay.
+        s.apply(
+            &FileId::Global,
+            &[Change {
+                key: "video.vsync",
+                per_device: false,
+                value: Some(json!(false)),
+                at: Some(3_000),
+            }],
+        )
+        .unwrap();
+        let file = json_of(&dir, "synced/global.json");
+        assert_eq!(file["video.scale"], json!("stretch"));
+        assert_eq!(file["audio.vol"], json!(30));
+        assert_eq!(file["video.vsync"], json!(false));
+        assert_eq!(
+            file["$changed"],
+            json!({ "video.scale": 2000, "audio.vol": 2000, "video.vsync": 3000 })
+        );
+    }
+
+    #[test]
+    fn the_device_file_changed_on_disk_is_read_again_too() {
+        let dir = TestDir::new("store-mtime-device");
+        let mut s = store(&dir);
+        s.apply(&FileId::Global, &[set("video.vsync", true, json!(false))])
+            .unwrap();
+        assert_eq!(
+            s.get(&FileId::Global, true, "video.vsync"),
+            Some(json!(false))
+        );
+        dir.write(
+            "local/device.json",
+            r#"{ "$schema": 1, "global": { "video.vsync": true, "video.api": "vulkan" } }"#,
+        );
+        assert_eq!(
+            s.get(&FileId::Global, true, "video.vsync"),
+            Some(json!(true))
+        );
+        assert_eq!(
+            s.get(&FileId::Global, true, "video.api"),
+            Some(json!("vulkan"))
+        );
     }
 
     #[test]
@@ -553,7 +791,7 @@ mod tests {
             serde_json::from_str(&dir.read("synced/global.json")).unwrap();
         assert_eq!(
             synced,
-            json!({ "audio.vol": 40, "future.thing": true, "video.scale": "fill" })
+            json!({ "$schema": 1, "audio.vol": 40, "future.thing": true, "video.scale": "fill" })
         );
     }
 }
