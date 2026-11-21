@@ -15,6 +15,7 @@ description = "Feasibility spike (Trello #16): a libretro core rendering through
 version = "0.0.1"
 edition = "2021"
 license = "GPL-3.0-or-later"
+repository = "https://github.com/DomenghiniStefano/emu-dome"
 publish = false
 
 [lints]

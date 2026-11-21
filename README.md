@@ -1,34 +1,38 @@
 # EmuDome
 
-One emulator for **Game Boy Advance, Nintendo DS and Nintendo 3DS**, on Windows, Linux and Android.
-Rust shell with Tauri 2 and a Vite + Vue interface; the emulation cores are interchangeable libretro libraries
-(mGBA, melonDS DS, Azahar). EmuDome is free software (GPL-3.0-or-later) and free of charge.
+One emulator for **Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS and Nintendo 3DS** (3DS in progress),
+on Windows, Linux and Android. Rust shell with Tauri 2 and a Vite + Vue interface; the emulation cores are
+interchangeable libretro libraries: mGBA (GB, GBC, GBA), melonDS DS (NDS), Azahar (3DS). EmuDome is free software
+(GPL-3.0-or-later) and free of charge.
 
 **No games, BIOS, firmware or keys.** EmuDome ships none and downloads none. You add your own games, dumped
-from cartridges you own; 3DS games must already be decrypted by you. The cores use their built-in open source
-BIOS replacements.
+from cartridges you own; 3DS games must already be decrypted by you. The cores run on their built-in open source
+BIOS and firmware replacements; you can point EmuDome at your own dumps if you have them.
 
-> State: **Phase 0, feasibility prototype.** It is meant to find out whether a game drawn natively
-> under a transparent web interface holds up, before building the rest.
+> State: **Phase 1, desktop shell; Phase 2 (NDS) started.** Phase 0, the feasibility prototype, is done: a game
+> drawn natively under a transparent web interface holds up (`docs/fase0-esito.md`). 3DS is Phase 3: the Azahar
+> core runs in the windowless host with its software renderer, and is not packaged yet.
 > Full analysis: see the document "EmuDome — Analisi e integrazioni".
 
-## What Phase 0 has
+## What it has
 
-- Loading of a libretro core (mGBA) and of a GBA game.
-- Two video paths, comparable from the quick menu:
-  - **Native**: wgpu draws on the window, the transparent webview sits on top (default on Windows and Android).
-  - **In the webview**: the frames reach a canvas through the `emu://` protocol (default on Linux).
-- Audio with resampling and latency control.
-- Keyboard and controllers (SDL3).
-- Speed 0.5×–4× and Max, turbo while holding Tab, pause.
-- States in 3 slots, automatic game save (`.sav`).
-- Quick menu with Esc or the controller's Home button.
+- A library of your games, identified by their content (not the file name), with covers and play time.
+- Two video paths: **native** (wgpu draws on the window, the transparent webview sits on top; the default on
+  Windows and Android) and **in the webview** (frames reach a canvas through the `emu://` protocol; the default on
+  Linux). Screen effects (librashader presets) on the native path.
+- The two DS screens, with the touch screen driven by the mouse or by touch.
+- Audio with resampling and latency control; fast forward, slow motion, rewind, pause, screenshots.
+- Keyboard and controllers (SDL3 on desktop), remappable, with L3 shortcuts; every menu works with the controller.
+- Save states in slots, the game's own saves, a quick menu (Esc or the controller's Home button).
+- Settings at several levels (global, console, game) generated from one schema; three themes.
 - Interface in English and Italian (vue-i18n), chosen from the system language.
 
 ## Running on Windows
 
-Requirements: stable Rust, Node 22.13+ or 24 (`.nvmrc`; `engines` in `app/package.json`, the check stops on another Node), pnpm 12 (the frontend refuses npm), the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11),
-and CMake for the SDL3 build (on PATH, or in the `CMAKE` variable; VS Build Tools 2022 ships one).
+Requirements: stable Rust; Node in the range of `engines.node` in `app/package.json` (`.nvmrc` names one, the
+check stops on another); pnpm as pinned by `packageManager` in `app/package.json` (the frontend refuses npm); the
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11); and CMake
+for the SDL3 build (on PATH, or in the `CMAKE` variable; VS Build Tools 2022 ships one).
 
 ```powershell
 ./scripts/fetch-cores.ps1                     # downloads the cores pinned in cores.lock into cores/
@@ -38,12 +42,15 @@ pnpm install
 pnpm tauri dev
 ```
 
-Every check (format, lint, types, clippy, tests, the project's gates) is one command: `./scripts/check.ps1`
-(`sh scripts/check` on Linux or Git Bash). The list lives in `scripts/check`. While working on a branch,
-`./scripts/check.ps1 --fast` skips the Android clippy steps and tests only the Rust packages changed since `develop`.
+On Linux the same steps work with `sh scripts/fetch-cores.sh` and Tauri's Linux prerequisites (WebKitGTK).
 
-Then "Open a game". The executable also accepts a game path as an argument and opens it right away. To try it without games there is `tools/test-rom/emudome-test.gba`:
-magenta screen, it turns green while A is held (X key).
+Every check (format, lint, types, clippy, tests, licences, the project's gates) is one command:
+`./scripts/check.ps1` (`sh scripts/check` on Linux or Git Bash). The list lives in `scripts/check`. While working
+on a branch, `./scripts/check.ps1 --fast` skips the Android clippy steps and tests only the Rust packages changed
+since `develop`.
+
+Then "Open a game". The executable also accepts a game path as an argument and opens it right away. To try it
+without games there is `tools/test-rom/emudome-test.gba`: magenta screen, it turns green while A is held (X key).
 
 ## Building for Android
 
@@ -56,61 +63,70 @@ For developers). Then, with the phone connected over USB and USB debugging on:
 ```
 
 `sh scripts/android-build.sh --install` does the same on Linux. The script's header lists every step; a release
-APK (`-Release`) is signed with a keystore kept outside the repository, named by environment variables (`CLAUDE.md`,
-«Commands»).
+APK (`-Release`) is signed with a keystore kept outside the repository, named by environment variables (the
+script's header, and `CLAUDE.md` «Commands»).
+
+How a release is made: `docs/release.md`.
 
 ### Controls
+
+Default keyboard keys (remappable in Controls):
 
 | Key | Function |
 | --- | --- |
 | Arrows | D-pad |
 | X / Z | A / B |
-| A / S | L / R |
+| S / A | X / Y |
+| Q / W | L / R |
+| 1 / 2 | L2 / R2 |
 | Enter / Right Shift | Start / Select |
 | Tab (held) | Fast forward |
+| Backspace (held) | Rewind |
 | F1 / F4 | Quick save / load in the current slot |
 | F2 / F3 | Previous / next slot |
 | F9 | Show FPS |
 | F11 | Full screen |
+| F12 | Screenshot |
 | Esc | Quick menu |
 
 The full list of keys and controller shortcuts: `docs/combo-tasti.md`, section 5.
 
 Controllers: positional mapping (right button = A, bottom = B), Home button = menu.
 
-## What to check (Phase 0 verdict)
+## What has been verified
 
-1. The game is visible **under** the interface: the quick menu and the toasts are on top, with the game visible around them.
-2. Resizing the window leaves no black areas or flicker.
-3. F9 shows about 59.7 FPS at 1×; 2× shows about 120.
-4. The audio does not crackle and does not lag after a few minutes.
-5. Save and load work; closing and reopening the game keeps the `.sav`.
+The full log, entry by entry, is `docs/fase0-esito.md`. In short:
 
-If item 1 does not work on Windows, switch to "In the webview" from the quick menu and compare.
-It can also be forced at startup with `EMUDOME_VIDEO=webview` (or `native`).
-
-### Already verified (Linux, virtual X11, mGBA core 0.10.2)
-
-- Windowless libretro host: loading, input, 1× ≈ 59.7 FPS, 2× ≈ 120 FPS, Max ≈ 900 FPS, states and `.sav`.
-- Full app in "In the webview" mode: game on screen, buttons, quick menu over the game, 2× speed, saving to a slot.
-- Native mode on Linux/GTK: **does not work**, the wgpu surface covers the interface. That is why the webview is the Linux default.
-- Not verified: Windows (neither mode), real audio, controllers, Android.
-
-Windows results are logged in `docs/fase0-esito.md`.
+- **Windows** (2026-11-16): native video under the quick menu (wgpu on Vulkan), 59.7 FPS at 1×, audio heard,
+  controllers through SDL3 (Steam Controller, 8BitDo). Last reported open: the window turns transparent in
+  webview mode.
+- **Linux** (virtual X11, mGBA 0.10.2): windowless host 1× ≈ 59.7 FPS, 2× ≈ 120, Max ≈ 900; the app in webview
+  mode works. Native mode does not (the GTK surface covers the webview): that is why the webview is the Linux
+  default.
+- **Android** (Galaxy A71, 2026-11-16): native video under the WebView, ≈ 59.8 FPS (Vulkan), touch controls, the
+  surface survives background and resume. Not tested yet: audio quality and delay (the test ROM is silent),
+  controllers (SDL3 is not built for Android), landscape layout.
+- **NDS** (melonDS DS, windowless, Windows, 2026-11-19): two screens, touch, 60 FPS at 1× on the test ROM, states.
+- **3DS** (Azahar, windowless, Windows, 2026-11-17): loads and runs with the software renderer, 17.4 FPS on a
+  homebrew title screen; hardware rendering through Vulkan works in a separate spike (`docs/feasibility.md`).
 
 ## Layout
 
 ```
 crates/
   libretro-sys/      libretro API types
-  emudome-core/      libretro host: core loading, emulation thread, states, speed, input, error codes
-  emudome-platform/  everything that depends on the operating system (one module per OS, macOS stub)
+  emudome-core/      libretro host and the shell's pure logic: core loading, emulation thread, states, speed,
+                     input routing, settings engine, library, saves, error codes
+  emudome-platform/  everything that depends on the operating system or the form factor (one module per OS,
+                     macOS stub; the Android Gradle library)
+  hw-render-spike/   hardware-rendering spike, its own workspace, never built by the checks
 app/
   src/               Vue interface (Vite); i18n/ holds the message files (en.json, it.json)
-  src-tauri/         Tauri shell: window, wgpu video, cpal audio, SDL3 controllers, commands
-scripts/             core downloads, scripts/check (every check), git hooks
+  src-tauri/         Tauri shell: window, wgpu video, cpal audio, SDL3 controllers, commands, packaging
+scripts/             core downloads, Android build, scripts/check (every check), git hooks
 tools/test-rom/      GBA test ROM (homebrew, made here)
 tools/test-rom-nds/  NDS test ROM (homebrew, made here: both screens, A, touch)
+docs/                decisions, specs, test logs, the release flow
 ```
 
 Windowless test of the core host alone (handy on Linux/CI):
@@ -121,9 +137,8 @@ cargo run -p emudome-core --example headless -- <core path> tools/test-rom/emudo
 
 ## Platforms
 
-Planned builds: Windows, Linux, Android. macOS and iOS are not compiled (they need the Apple
-developer license), but the system-dependent code is isolated in `emudome-platform`
-so macOS can be added without rewrites.
+Windows, Linux and Android. macOS and iOS are not compiled (they need the Apple developer license), but the
+system-dependent code is isolated in `emudome-platform` so macOS can be added without rewrites.
 
 ## Contributing and security
 
@@ -137,5 +152,5 @@ EmuDome is licensed under the GNU General Public License, version 3 **or (at you
 third-party component and its license is listed in `THIRD_PARTY.md`.
 EmuDome does not include or download Nintendo games, BIOS, firmware or keys.
 
-Nintendo, Game Boy Advance, Nintendo DS and Nintendo 3DS are trademarks of Nintendo. EmuDome is not affiliated
-with or endorsed by Nintendo.
+Nintendo, Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS and Nintendo 3DS are trademarks of Nintendo.
+EmuDome is not affiliated with or endorsed by Nintendo.

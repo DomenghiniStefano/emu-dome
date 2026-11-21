@@ -249,6 +249,16 @@ else
 	skip 'licences: npm' 'needs pnpm (app/pnpm-lock.yaml)'
 fi
 
+# THIRD_PARTY.md's generated tables (every crate and npm package with its licence) are regenerated in
+# memory and compared with the committed ones (Trello #83); the fix is printed
+# (`node scripts/third-party-tables.mjs --write`). Blind spots, in the script: a stale app/node_modules,
+# the spike's own workspace, the hand-written sections above the tables.
+if [ "$pm" = pnpm ]; then
+	run 'third-party tables' node scripts/third-party-tables.mjs --check
+else
+	skip 'third-party tables' 'needs pnpm (app/pnpm-lock.yaml)'
+fi
+
 # --- The libretro cores (CLAUDE.md, engineering rule 3): cores.lock, the bundle lists generated
 # from it (app/src-tauri/package/), cores/SOURCES.md, the Gradle build and THIRD_PARTY.md agree,
 # tauri.conf.json lists no resource of its own, and the versioned Android project
@@ -256,6 +266,11 @@ fi
 # --self-test feeds every rule a broken input first. Offline: it cannot see whether a URL still
 # serves the pinned bytes (only a fetch can).
 run 'cores: lock, bundle lists, sources, android project, docs' node scripts/cores.mjs check --self-test
+
+# --- One version (Trello #83): [workspace.package] version in Cargo.toml, copied into app/package.json and
+# tauri.conf.json (the Tauri CLI takes Android's versionName only from there), every member inheriting it.
+# --self-test feeds it broken inputs first. What it cannot see is in the script.
+run 'version in one place' node scripts/versions.mjs --self-test
 
 # --- Frontend (app/)
 run_script typecheck
