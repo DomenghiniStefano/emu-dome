@@ -22,15 +22,17 @@
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::hotkeys::{Bindings, Hotkey, DEFAULT_COMBOS, DEFAULT_MODIFIER};
 use crate::input::Button;
 use crate::session::Speed;
+use crate::settings::keys::{self, Reader, TextKey};
 use crate::settings::Value;
 
 /// A place on the controller, by position (SDL's names): the same position is the same
-/// [`Pos`] on every controller, whatever is printed on it. Mirror: `Pos` in app/src/emu.ts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// [`Pos`] on every controller, whatever is printed on it. TypeScript: `Pos` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum Pos {
     /// Bottom face button.
@@ -149,9 +151,10 @@ impl Pos {
 }
 
 /// A controller type, for the remap tables: one table per family, plus the keyboard.
-/// Mirror: `PadFamily` in app/src/emu.ts (and the button names, `controls.pos.<family>.<pos>`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// TypeScript: `PadFamily` (generated) (and the button names, `controls.pos.<family>.<pos>`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "PadFamily")]
 pub enum Family {
     Xbox,
     #[serde(rename = "playstation")]
@@ -313,9 +316,10 @@ fn parse_combo(item: &str) -> Option<(Hotkey, Option<Pos>)> {
     Some((hotkey, Some(Pos::from_id(source)?)))
 }
 
-/// Which binding list an entry holds. Mirror: `table` of the `bindings` kind in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// Which binding list an entry holds. TypeScript: `BindingTable` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "BindingTable")]
 pub enum Table {
     /// `pad.remap`.
     Remap,
@@ -412,52 +416,50 @@ impl Default for PadConfig {
 
 impl PadConfig {
     /// Builds the config from the resolved settings (`get(key)` → value, `None` for the
-    /// schema default). A value of the wrong shape falls back to the default.
+    /// schema default). A missing value or one of the wrong shape is the catalogue's default.
     pub fn from_settings(get: impl Fn(&str) -> Option<Value>) -> Self {
-        let int = |key: &str, default: u8| match get(key) {
-            Some(Value::Int(v)) => u8::try_from(v.clamp(0, 100)).unwrap_or(default),
-            Some(Value::Bool(_) | Value::Text(_) | Value::List(_)) | None => default,
+        let settings = Reader::new(get);
+        // Sliders are percentages (0..=100 in the catalogue).
+        let percent = |key| u8::try_from(settings.int(key).clamp(0, 100)).unwrap_or(u8::MAX);
+        // Every option of the speed settings is a speed (`every_speed_option_is_a_speed`); the
+        // last fallback is never reached.
+        let speed = |key: TextKey| {
+            let default = || Reader::new(|_| None).text(key);
+            Speed::from_option(&settings.text(key))
+                .or_else(|| Speed::from_option(&default()))
+                .unwrap_or(Speed::Factor(1.0))
         };
-        let text = |key: &str| match get(key) {
-            Some(Value::Text(t)) => Some(t),
-            Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
-        };
-        let list = |key: &str| match get(key) {
-            Some(Value::List(l)) => l,
-            Some(Value::Bool(_) | Value::Int(_) | Value::Text(_)) | None => Vec::new(),
-        };
-        let modifier = match text("pad.mod").as_deref() {
-            Some("r3") => Pos::R3,
-            Some("select") => Pos::Back,
-            Some(_) | None => Pos::of_button(DEFAULT_MODIFIER),
+        let modifier = match settings.text(keys::PAD_MODIFIER).as_str() {
+            "r3" => Pos::R3,
+            "select" => Pos::Back,
+            // `l3`, the default (`hotkeys::DEFAULT_MODIFIER`).
+            _ => Pos::of_button(DEFAULT_MODIFIER),
         };
         Self {
-            dead_zone: int("pad.dead", 15),
-            stick_dpad: int("pad.stickdpad", 50),
-            trigger: int("pad.trig", 50),
-            layout: if text("pad.ab").as_deref() == Some("printed") {
+            dead_zone: percent(keys::PAD_DEAD_ZONE),
+            stick_dpad: percent(keys::PAD_STICK_DPAD),
+            trigger: percent(keys::PAD_TRIGGER),
+            layout: if settings.text(keys::PAD_LAYOUT) == "printed" {
                 AbLayout::Printed
             } else {
                 AbLayout::Nintendo
             },
-            confirm_bottom: text("pad.confirm").as_deref() == Some("bottom"),
-            repeat: text("pad.repeat").unwrap_or_else(|| "normal".into()),
+            confirm_bottom: settings.text(keys::PAD_CONFIRM) == "bottom",
+            repeat: settings.text(keys::PAD_REPEAT),
             modifier,
-            combos: list("pad.combos")
+            combos: settings
+                .list(keys::PAD_COMBOS)
                 .iter()
                 .filter_map(|i| parse_combo(i))
                 .collect(),
-            remap: list("pad.remap")
+            remap: settings
+                .list(keys::PAD_REMAP)
                 .into_iter()
                 .filter(|i| parse_remap(i).is_some())
                 .collect(),
-            fast_forward: text("speed.ffval")
-                .and_then(|id| Speed::from_option(&id))
-                .unwrap_or(Speed::Factor(4.0)),
-            slow_motion: text("speed.slow")
-                .and_then(|id| Speed::from_option(&id))
-                .unwrap_or(Speed::Factor(0.5)),
-            hold_toggle: matches!(get("a11y.toggle"), Some(Value::Bool(true))),
+            fast_forward: speed(keys::SPEED_FF),
+            slow_motion: speed(keys::SPEED_SLOW),
+            hold_toggle: settings.bool(keys::A11Y_HOLD_TOGGLE),
         }
     }
 

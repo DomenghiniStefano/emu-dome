@@ -1,5 +1,6 @@
 // The quick menu's screens: the main one and the pages it opens (G07–G11, G16), and what each
 // page shows from the settings at the Session level («in prova»).
+import type { SettingKey } from '@/emu'
 
 export const QuickMenuView = {
   /** The main screen: quick saves, speed, tools, the rows to the other pages. */
@@ -45,7 +46,7 @@ export const SESSION_PAGES = ['video', 'fx', 'audio', 'speed', 'saves', 'touch']
  * The setting rows each page shows at the Session level (those the schema shows: `touch.topac`
  * is phone only and arrives in Phase 4).
  */
-export const SESSION_ROWS: Partial<Record<QuickMenuView, string[]>> = {
+export const SESSION_ROWS: Partial<Record<QuickMenuView, SettingKey[]>> = {
   [QuickMenuView.Screens]: ['video.scale', 'video.filter', 'fx.fxpick'],
   [QuickMenuView.Controls]: ['touch.topac'],
   [QuickMenuView.Speed]: ['speed.ffval', 'speed.slow', 'audio.ff'],

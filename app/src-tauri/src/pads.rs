@@ -14,17 +14,19 @@ use std::sync::Arc;
 
 use emudome_core::bindings::{default_combo, Family, PadConfig, Pos};
 use emudome_core::hotkeys::{self, Hotkey, Status};
-use emudome_core::settings::{Scope, Value};
+use emudome_core::settings::{keys, Scope, Value};
 use emudome_core::ErrorCode;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 
 /// A connected controller. Payload of `emu://gamepad-connected|disconnected|changed`.
-/// Mirror: `PadInfo` in app/src/emu.ts. `name` is `None` when SDL knows none.
-#[derive(Clone, Debug, Serialize)]
+/// TypeScript: `PadInfo` (generated). `name` is `None` when SDL knows none.
+#[derive(Clone, Debug, Serialize, TS)]
+#[ts(export_to = "app/")]
 pub struct PadInfo {
     pub id: u32,
     pub name: Option<String>,
@@ -36,8 +38,9 @@ pub struct PadInfo {
     pub battery: Option<u8>,
 }
 
-/// One pad's live state for the tester and the capture field. Mirror: `PadState`.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+/// One pad's live state for the tester and the capture field. TypeScript: `PadState` (generated).
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
+#[ts(export_to = "app/")]
 pub struct PadState {
     pub id: u32,
     /// Positions held: buttons, and the triggers past `pad.trig` (the stick is in `axes`).
@@ -48,8 +51,9 @@ pub struct PadState {
 }
 
 /// Payload of `emu://pad-state`.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, TS)]
 #[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
+#[ts(export_to = "app/")]
 pub struct PadStates {
     pub pads: Vec<PadState>,
 }
@@ -156,9 +160,11 @@ pub fn gamepad_capture(pads: State<'_, PadsState>, on: bool) {
     pads.capture.store(on, Ordering::Relaxed);
 }
 
-/// One game button in the remap table. Mirror: `RemapRow` in app/src/emu.ts.
-#[derive(Debug, Serialize)]
+/// One game button in the remap table. TypeScript: `RemapRow` (generated).
+#[derive(Debug, Serialize, TS)]
+#[ts(export_to = "app/")]
 pub struct RemapRow {
+    #[ts(as = "emudome_core::input::Button")]
     button: &'static str,
     /// A position id (controllers) or a key code (keyboard); `None` = nothing.
     source: Option<String>,
@@ -166,10 +172,12 @@ pub struct RemapRow {
     changed: bool,
 }
 
-/// One shortcut, in [`Hotkey::ALL`] order. Mirror: `ComboRow` in app/src/emu.ts.
-#[derive(Debug, Serialize)]
+/// One shortcut, in [`Hotkey::ALL`] order. TypeScript: `ComboRow` (generated).
+#[derive(Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/")]
 pub struct ComboRow {
+    #[ts(as = "emudome_core::hotkeys::Hotkey")]
     hotkey: &'static str,
     /// Position pressed with the shortcut button; `None` = no shortcut.
     pos: Option<Pos>,
@@ -180,8 +188,9 @@ pub struct ComboRow {
     to_remember: bool,
 }
 
-/// Mirror: `ControlsBindings` in app/src/emu.ts.
-#[derive(Debug, Serialize)]
+/// TypeScript: `ControlsBindings` (generated).
+#[derive(Debug, Serialize, TS)]
+#[ts(export_to = "app/")]
 pub struct ControlsBindings {
     remap: Vec<RemapRow>,
     combos: Vec<ComboRow>,
@@ -199,17 +208,7 @@ pub fn controls_bindings(
 ) -> Result<ControlsBindings, ErrorCode> {
     let mut settings = state.0.lock();
     let mut values = Vec::new();
-    for key in [
-        "pad.ab",
-        "pad.mod",
-        "pad.combos",
-        "pad.remap",
-        "pad.dead",
-        "pad.stickdpad",
-        "pad.trig",
-        "pad.confirm",
-        "pad.repeat",
-    ] {
+    for key in keys::PAD_KEYS {
         values.push((key, settings.resolve(key, &scope)?.value));
     }
     let get = |key: &str| -> Option<Value> {

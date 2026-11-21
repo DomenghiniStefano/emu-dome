@@ -22,6 +22,9 @@ tauri-build = { version = "2.5", features = [] }
 
 [dependencies]
 emudome-core.workspace = true
+# TypeScript types of the DTOs (src/contract.rs → app/src/generated/app/). MIT. Same features as
+# in emudome-core.
+ts-rs = { version = "12.0", features = ["no-serde-warnings"] }
 emudome-platform.workspace = true
 # tauri, wgpu and librashader are pinned to exact versions and upgrade only together, as one task
 # that ends with a native-video smoke test (game drawn under the menu, a screen effect on):

@@ -42,10 +42,12 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
   (`app/src/i18n/`): `en.json` is the default and the fallback, `it.json` the Italian translation (same keys).
   The language follows the OS / browser locale; anything that is not Italian gets English.
 - The Rust backend sends **structured data, never sentences**: errors are `ErrorCode` (`crates/emudome-core/src/error.rs`),
-  serialized as `{ code, params }` and mirrored in `app/src/emu.ts`; events carry codes and values
+  serialized as `{ code, params }`, its TypeScript type generated into `app/src/generated/` (see «The Rust ↔
+  TypeScript contract»); events carry codes and values
   (e.g. `emu://gamepad-connected` with `{ name }`). The interface turns them into text in `app/src/i18n/labels.ts`
-  (`errorText`, `speedLabel`, `gamepadName`). A new error = a new `ErrorCode` variant + its TypeScript mirror
-  + `errors.<code>` in **both** message files.
+  (`errorText`, `speedLabel`, `gamepadName`). A new error = a new `ErrorCode` variant, the generated files made
+  again (`EMUDOME_BLESS=1 cargo test -p emudome-core contract`) + `errors.<code>` in **both** message files: the
+  contract test and `app/src/i18n/parity.test.ts` fail until all three are there.
 - Kept file names: `docs/fase0-esito.md` and `docs/combo-tasti.md` keep their Italian names (an external Cowork session
   refers to them); their content is English.
 
@@ -104,6 +106,8 @@ node scripts/scan-conventions.mjs             # design system conventions (--sel
 cargo test --workspace
 cargo test -p emudome-core settings::         # one module (settings tests live in settings/tests.rs)
 cargo test -p emudome-core hotkeys::<name>    # one test
+EMUDOME_BLESS=1 cargo test -p emudome-core contract   # write app/src/generated/ again after a DTO / catalogue / ErrorCode
+EMUDOME_BLESS=1 cargo test -p emudome contract        # change (PowerShell: $env:EMUDOME_BLESS=1; ...); review, commit
 cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy --target aarch64-linux-android -p libretro-sys -p emudome-core -p emudome-platform -- -D warnings
                                               # Android without the NDK (the whole workspace needs it: glslang-sys)
@@ -149,6 +153,8 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          settings/ (settings engine: schema.rs types, catalog.rs the 155 entries,
                          mod.rs levels / resolve / session, store.rs files,
+                         keys.rs the keys the Rust code reads, typed and checked against the catalogue when
+                         compiled, and `Reader` (a value or the catalogue's default),
                          core_values.rs settings → core options, one table per core in core_values/<core>.rs;
                          pure, unit-tested)
                          video_sink.rs (`VideoSink`: where frames go, `VideoFrame::{Cpu, Gpu}`; today
@@ -157,6 +163,8 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          core_profile.rs (`CoreId` and one `CoreProfile` per core: consoles, forced
                          options, screen split, HW-render needs, save model, settings it cannot honour;
                          nothing matches a core by its name string)
+                         contract.rs (the Rust ↔ TypeScript contract: ts-rs types and fixtures generated
+                         into app/src/generated/, the staleness check; see the section of that name)
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
@@ -192,8 +200,10 @@ app/src-tauri            Tauri shell: window.rs (the app's names for emudome_pla
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
+                         contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
-                         emu.ts (typed bridge), nav.ts (controller/keyboard focus navigation for every screen),
+                         emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
+                         contract tests, never by hand), nav.ts (controller/keyboard focus navigation),
                          components/<feature>/ one folder per feature: shell (AppShell: rail + sections,
                          outside the game), library, details, saves, settings, controls, quick-menu,
                          game (GameCanvas: webview mode, TouchControls: Android overlay, the game flow),
@@ -260,8 +270,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
 - **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 155 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default,
-  accepted levels, per-device flag, platform, phase, `show_if` on another row's value); the interface builds its
-  pages from `settings_schema` and never lists settings by hand. Levels Default → Global → Console → Game →
+  accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
+  reads it, the unwired ones shown disabled with «arrives in a future update»); the interface builds its
+  pages from `settings_schema` and never lists settings by hand. A key the interface names is a `SettingKey`
+  (generated union); one the Rust code reads is a typed constant of `settings/keys.rs`, its default the catalogue's. Levels Default → Global → Console → Game →
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
   (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<console>-<hex>}.json` (synced later),
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
@@ -272,6 +284,16 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   A game is its `GameKey` everywhere (settings, saves, library, the interface's `GameId`); a file opened by its path
   is identified first (the library's hash cache, else hashed, with no lock held). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
   live in `SYNONYMS` (catalog.rs).
+- **The Rust ↔ TypeScript contract** (Trello #73): the bridge's types are generated from the Rust types by ts-rs
+  (`#[derive(TS)]`, MIT) into `app/src/generated/` (core types; the shell's DTOs in `generated/app/`), with
+  `SettingKey` (the catalogue's keys), `HotkeyId` and `Button` from Rust lists, and the fixtures
+  `error-codes.json` / `settings-catalog.json`. `emu.ts` only re-exports them. The files are committed; the contract
+  test of each crate (`cargo test -p emudome-core contract`, `cargo test -p emudome contract`) fails when they are
+  stale, and `EMUDOME_BLESS=1` writes them again. `app/src/i18n/parity.test.ts` holds the fixtures against the
+  message files. `session::Speed` / `Event` are typed through shadow types in `contract.rs` (session.rs untouched),
+  held to the real serialization by a test. Still by hand: the command names and argument lists in `emu.ts`, the
+  `HotkeyEvent` payload (gamepad.rs is desktop-only) and `BenchFrame` (the `bench` feature). The generated folder is
+  left out of ESLint and Prettier (compared byte for byte).
 - Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
@@ -376,8 +398,8 @@ Apply them to every change, including small ones, and say in the card when a rul
    `THIRD_PARTY.md` updates it in the same commit; «Current state» and «Known gaps» are checked at every merge.
 
 Which of these a script will check, and when: Trello #72 (phase 1 done: Android clippy, the cfg gate with
-`desktop` / `mobile` and target tables, exact pins; still open: phase 2 moves the gate's exceptions, Linux, the merge rule), #73
-(generated bridge, i18n and `ErrorCode` parity). Rule 6's `void emu.x()` / bare `emu.x()` is refused by ESLint
+`desktop` / `mobile` and target tables, exact pins; still open: phase 2 moves the gate's exceptions, Linux, the merge rule).
+Rule 5 is checked by #73 (the generated contract below; what is still typed by hand is listed there). Rule 6's `void emu.x()` / bare `emu.x()` is refused by ESLint
 (#74, `app/eslint.config.js`, its fixture in `app/src/lib/errors.lint.test.ts`): a call hands its promise to
 `report` / `ignore` / `settle` (`app/src/lib/errors.ts`) or awaits it, and `catchEverything` (main.ts) reports what
 escapes. Until then the others hold by review (listed below).
@@ -409,13 +431,24 @@ cores (`scripts/cores.mjs check --self-test`: `cores.lock`, the bundle lists, `c
 Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,
 Prettier on the staged frontend files).
 
+**Checked by the Rust ↔ TypeScript contract** (Trello #73, in `cargo test` and Vitest; see the section below): the
+bridge's types and the `SettingKey` union are generated and not stale; every `ErrorCode` has `errors.<code>` in both
+message files; en.json and it.json have the same keys, placeholders and plural cases; every catalogue key, option,
+page, section and group has its texts and no text is left for a key the catalogue lost; the keys the Rust code reads
+exist with the kind it reads (at compile time, `settings/keys.rs`); the catalogue entries nothing reads are an exact
+list in a test and shown disabled. Seen failing once on a new `ErrorCode` variant, a renamed key, a missing key and a
+key of the wrong kind.
+
 **Held only by review** (no script can see them):
-- The Rust backend sends codes and values, never sentences; a new `ErrorCode` comes with its TypeScript mirror and
-  `errors.<code>` in both message files.
+- The Rust backend sends codes and values, never sentences (the contract checks that each code has its texts, not
+  what a `detail` holds).
 - Text built in `<script>` or TypeScript (toasts, computed labels) goes through `t()`: the visible-text gate reads
   templates only.
 - Features live in the shell, not in the cores; a feature a core cannot support is shown disabled with the reason.
-- Settings come from the single schema in Rust, never written by hand.
+- Settings come from the single schema in Rust, never written by hand (keys are typed; which ones a screen picks,
+  e.g. the quick menu's rows, is still written in the interface).
+- A new reader of a setting marks it wired (`.not_wired()` removed in catalog.rs): the test lists the unwired ones,
+  it cannot see a reader that is missing.
 - Every menu is fully usable with the controller: a new screen registers `useNavScope` (`app/src/nav.ts`)
   and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
@@ -526,6 +559,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   melonDS DS has a table (`core_values/melondsds.rs`); Azahar has none yet (only its forced options,
   `core_profile.rs`). `perf.frameskip` drives mGBA only; on NDS / 3DS its row is disabled with the reason
   (`CoreProfile::unsupported_settings`). The interface does not show `emu://core-restart` yet.
+- 48 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+  list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`, but mGBA's pinned build comes from the libretro buildbot's `latest/` (no stable

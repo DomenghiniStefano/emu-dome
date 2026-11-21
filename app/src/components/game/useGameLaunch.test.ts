@@ -19,6 +19,7 @@ const bridge = vi.hoisted(() => ({
   abandonGame: vi.fn(),
   restoreLatest: vi.fn(),
   pick: vi.fn(),
+  openExtensions: vi.fn(),
 }))
 vi.mock('@/emu', () => ({
   AUTO_SLOT: 0,
@@ -26,6 +27,7 @@ vi.mock('@/emu', () => ({
     openGame: bridge.openGame,
     library: { open: bridge.libraryOpen },
     startupGame: bridge.startupGame,
+    openExtensions: bridge.openExtensions,
     setPaused: bridge.setPaused,
     loadState: bridge.loadState,
     abandonGame: bridge.abandonGame,
@@ -83,6 +85,7 @@ beforeEach(() => {
   })
   bridge.openGame.mockResolvedValue(info('MINISH'))
   bridge.libraryOpen.mockResolvedValue(info('MINISH'))
+  bridge.openExtensions.mockResolvedValue(['gb', 'gbc', 'gba', 'nds'])
   for (const f of [bridge.setPaused, bridge.loadState, bridge.abandonGame, bridge.restoreLatest])
     f.mockResolvedValue(undefined)
 })
@@ -131,6 +134,26 @@ describe('useGameLaunch', () => {
     bridge.pick.mockResolvedValueOnce('C:/roms/kirby.gba')
     await launch.openFile()
     expect(bridge.openGame).toHaveBeenCalledWith('C:/roms/kirby.gba')
+  })
+
+  it('offers the extensions Rust opens, DS games included (Trello #73)', async () => {
+    const { launch } = setup()
+    bridge.pick.mockResolvedValueOnce(null)
+    await launch.openFile()
+    expect(bridge.pick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: [expect.objectContaining({ extensions: ['gb', 'gbc', 'gba', 'nds'] })],
+      }),
+    )
+  })
+
+  it('tells the user when the list of extensions cannot be read, and opens nothing', async () => {
+    const { launch, toasts } = setup()
+    bridge.openExtensions.mockRejectedValueOnce(new Error('ipc'))
+    await launch.openFile()
+    expect(bridge.pick).not.toHaveBeenCalled()
+    expect(bridge.openGame).not.toHaveBeenCalled()
+    expect(toasts.failWith).toHaveBeenCalledOnce()
   })
 
   it('opens the game given at startup, and nothing without one', async () => {

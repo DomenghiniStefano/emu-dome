@@ -67,6 +67,7 @@ const fn e(key: &'static str, kind: Kind, default: DefaultValue, levels: Levels)
         most_used: false,
         show_if: None,
         needs_native_video: false,
+        wired: true,
     }
 }
 
@@ -159,8 +160,9 @@ const fn chips(
 }
 
 /// Cards that each apply a bundle of settings (`presets.preset`): no stored value.
+/// Not wired until the bundles exist.
 const fn apply(key: &'static str, options: &'static [&'static str], levels: Levels) -> Entry {
-    e(key, Kind::Apply { options }, DefaultValue::None, levels)
+    e(key, Kind::Apply { options }, DefaultValue::None, levels).not_wired()
 }
 
 const fn slider(
@@ -193,8 +195,9 @@ const fn file(key: &'static str, levels: Levels) -> Entry {
     e(key, Kind::File, DefaultValue::Text(""), levels)
 }
 
+/// An action is not wired until the interface carries it out.
 const fn action(key: &'static str, style: ActionStyle, levels: Levels) -> Entry {
-    e(key, Kind::Action { style }, DefaultValue::None, levels)
+    e(key, Kind::Action { style }, DefaultValue::None, levels).not_wired()
 }
 
 /// A button that does something (`act`).
@@ -307,6 +310,14 @@ impl Entry {
         }
     }
 
+    /// Nothing reads the value yet: shown disabled with the reason (X05).
+    const fn not_wired(self) -> Self {
+        Self {
+            wired: false,
+            ..self
+        }
+    }
+
     /// Ships in a later roadmap phase.
     const fn phase(self, phase: u8) -> Self {
         Self { phase, ..self }
@@ -341,7 +352,8 @@ pub static ENTRIES: &[Entry] = &[
         &["original", "4_3", "16_9"],
         "original",
         ALL,
-    ),
+    )
+    .not_wired(),
     seg("video.filter", &["none", "light", "soft"], "light", ALL),
     cards(
         "video.surround",
@@ -361,7 +373,7 @@ pub static ENTRIES: &[Entry] = &[
     slider("video.surroundDim", 40, (0, 80, 5), Unit::Percent, ALL)
         .show_unless("video.surround", &["black"]),
     sw("video.surroundAnim", false, G).show_if("video.surround", &["builtin"]),
-    sw("video.fps", false, G),
+    sw("video.fps", false, G).not_wired(),
     seg(
         "video.window",
         &["windowed", "fullscreen", "borderless"],
@@ -369,13 +381,16 @@ pub static ENTRIES: &[Entry] = &[
         G,
     )
     .device()
-    .pc(),
+    .pc()
+    .not_wired(),
     seg("video.winsize", &["1x", "2x", "3x", "4x", "free"], "3x", GC)
         .device()
-        .pc(),
+        .pc()
+        .not_wired(),
     seg("video.portrait", &["center", "top"], "top", ALL)
         .phone()
-        .phase(4),
+        .phase(4)
+        .not_wired(),
     seg(
         "video.orient",
         &["auto", "portrait", "landscape"],
@@ -383,7 +398,8 @@ pub static ENTRIES: &[Entry] = &[
         CG,
     )
     .phone()
-    .phase(4),
+    .phase(4)
+    .not_wired(),
     seg(
         "video.path",
         &["accelerated", "compatible"],
@@ -398,15 +414,19 @@ pub static ENTRIES: &[Entry] = &[
         "auto",
         G,
     )
-    .device(),
-    sel("video.res3d", &["1x", "2x", "3x", "4x"], "1x", CG).phase(2),
+    .device()
+    .not_wired(),
+    sel("video.res3d", &["1x", "2x", "3x", "4x"], "1x", CG)
+        .phase(2)
+        .not_wired(),
     sel(
         "video.texf",
         &["none", "bicubic", "scaleforce", "xbrz", "mmpx", "anime4k"],
         "none",
         CG,
     )
-    .phase(3),
+    .phase(3)
+    .not_wired(),
     // ---- Effetti schermo (fx) ----
     cards(
         "fx.fxpick",
@@ -449,30 +469,42 @@ pub static ENTRIES: &[Entry] = &[
     )
     .phase(2),
     seg("screens.swap", &["toggle", "hold"], "toggle", G).phase(2),
-    sw("screens.second", false, G).device().pc().phase(5),
+    sw("screens.second", false, G)
+        .device()
+        .pc()
+        .phase(5)
+        .not_wired(),
     sel(
         "screens.stereo",
         &["off", "side", "anaglyph", "interlaced"],
         "off",
         GM,
     )
-    .phase(3),
+    .phase(3)
+    .not_wired(),
     // ---- Audio (audio) ----
     pct("audio.vol", 80, GG).most_used(),
     seg("audio.ff", &["mute", "pitch_up", "same_pitch"], "mute", GG),
-    sel("audio.mic", &["blow", "real", "silence"], "blow", CG).phase(2),
+    sel("audio.mic", &["blow", "real", "silence"], "blow", CG)
+        .phase(2)
+        .not_wired(),
     sel_more("audio.out", &["system"], "system", G)
         .device()
-        .pc(),
-    seg("audio.lat", &["low", "balanced", "safe"], "balanced", G).device(),
+        .pc()
+        .not_wired(),
+    seg("audio.lat", &["low", "balanced", "safe"], "balanced", G)
+        .device()
+        .not_wired(),
     // ---- Velocità di gioco (speed) ----
     seg("speed.spstart", &["0.5", "1", "2"], "1", GG),
-    seg("speed.ffmode", &["hold", "toggle"], "hold", G),
+    seg("speed.ffmode", &["hold", "toggle"], "hold", G).not_wired(),
     seg("speed.ffval", &["2", "3", "4", "max"], "4", GG).most_used(),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
     sw("speed.rew", true, ALL),
     slider("speed.rewlen", 30, (10, 120, 10), Unit::Seconds, ALL).device(),
-    sel("speed.runahead", &["off", "1", "2", "3"], "off", GM).phase(5),
+    sel("speed.runahead", &["off", "1", "2", "3"], "off", GM)
+        .phase(5)
+        .not_wired(),
     // ---- Salvataggi (saves) ----
     seg("saves.slots", &["3", "5", "10"], "10", G),
     seg("saves.autoq", &["1min", "5min", "never"], "5min", ALL).most_used(),
@@ -480,7 +512,7 @@ pub static ENTRIES: &[Entry] = &[
     seg("saves.resume", &["ask", "always", "ingame"], "always", ALL),
     sw("saves.undo", true, G),
     slider("saves.backups", 5, (0, 10, 1), Unit::Copies, G),
-    seg("saves.rtc", &["real", "offset", "fixed"], "real", GM),
+    seg("saves.rtc", &["real", "offset", "fixed"], "real", GM).not_wired(),
     act("saves.import", GM),
     act("saves.savedir", G).device(),
     // ---- Controller e tastiera (pad) ----
@@ -491,7 +523,9 @@ pub static ENTRIES: &[Entry] = &[
     link("pad.turbo", ALL),
     sel("pad.mod", &["l3", "r3", "select"], "l3", G),
     bindings("pad.combos", BindingTable::Combos, ALL),
-    sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC).phase(2),
+    sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC)
+        .phase(2)
+        .not_wired(),
     slider("pad.dead", 15, (0, 50, 1), Unit::Percent, G),
     slider("pad.stickdpad", 50, (20, 90, 5), Unit::Percent, GC),
     slider("pad.trig", 50, (10, 90, 5), Unit::Percent, G),
@@ -503,7 +537,8 @@ pub static ENTRIES: &[Entry] = &[
         CG,
     )
     .options_on(&[("phone", Platform::Phone)])
-    .phase(3),
+    .phase(3)
+    .not_wired(),
     sel(
         "pad.pointer",
         &["mouse", "right_stick", "touch"],
@@ -518,10 +553,12 @@ pub static ENTRIES: &[Entry] = &[
     link("touch.tedit", ALL).phone().phase(4),
     sel_more("touch.tport", &["default"], "default", ALL)
         .phone()
-        .phase(4),
+        .phase(4)
+        .not_wired(),
     sel_more("touch.tland", &["default"], "default", ALL)
         .phone()
-        .phase(4),
+        .phase(4)
+        .not_wired(),
     link("touch.tskin", G).phone().phase(4),
     slider("touch.topac", 60, (10, 100, 5), Unit::Percent, ALL)
         .phone()
@@ -529,11 +566,13 @@ pub static ENTRIES: &[Entry] = &[
     slider("touch.thapt", 40, (0, 100, 10), Unit::Percent, G)
         .device()
         .phone()
-        .phase(4),
+        .phase(4)
+        .not_wired(),
     seg("touch.thide", &["never", "5s", "10s"], "never", G)
         .phone()
-        .phase(4),
-    sw("touch.tpad", true, G).phone().phase(4),
+        .phase(4)
+        .not_wired(),
+    sw("touch.tpad", true, G).phone().phase(4).not_wired(),
     // ---- Generale (general) ----
     sel("general.lang", &["system", "it", "en"], "system", G),
     seg(
@@ -553,11 +592,14 @@ pub static ENTRIES: &[Entry] = &[
     ),
     seg("general.ui", &["auto", "desktop", "tv"], "auto", G)
         .device()
-        .pc(),
-    seg("general.start", &["library", "last_game"], "library", G),
-    sw("general.bgpause", true, G).device(),
-    sw("general.confirmdel", true, G),
-    seg("general.updates", &["auto", "ask", "off"], "ask", G).device(),
+        .pc()
+        .not_wired(),
+    seg("general.start", &["library", "last_game"], "library", G).not_wired(),
+    sw("general.bgpause", true, G).device().not_wired(),
+    sw("general.confirmdel", true, G).not_wired(),
+    seg("general.updates", &["auto", "ask", "off"], "ask", G)
+        .device()
+        .not_wired(),
     // ---- Libreria (library) ----
     e("library.folders", Kind::Folders, DefaultValue::List(&[]), G).device(),
     sw("library.scanstart", true, G).device(),
@@ -568,24 +610,25 @@ pub static ENTRIES: &[Entry] = &[
         "last_played",
         G,
     ),
-    sw("library.group", false, G),
-    sel("library.region", &["eu_us", "us_eu", "jp"], "eu_us", G),
+    sw("library.group", false, G).not_wired(),
+    sel("library.region", &["eu_us", "us_eu", "jp"], "eu_us", G).not_wired(),
     link("library.hidden", G),
     sel(
         "library.covers",
         &["color_title", "rom_icon", "title_only"],
         "color_title",
         G,
-    ),
+    )
+    .not_wired(),
     // ---- Cloud (cloud) ----
     act("cloud.acct", G).device(),
     action("cloud.space", ActionStyle::Storage, G),
-    sw("cloud.ssaves", true, G),
-    seg("cloud.squick", &["all", "last", "none"], "all", GC),
-    sw("cloud.ssettings", true, G),
+    sw("cloud.ssaves", true, G).not_wired(),
+    seg("cloud.squick", &["all", "last", "none"], "all", GC).not_wired(),
+    sw("cloud.ssettings", true, G).not_wired(),
     link("cloud.sgames", G),
-    seg("cloud.sauto", &["game", "manual"], "game", G),
-    sw("cloud.swifi", true, G).device().phone(),
+    seg("cloud.sauto", &["game", "manual"], "game", G).not_wired(),
+    sw("cloud.swifi", true, G).device().phone().not_wired(),
     // ---- Accessibilità (a11y) ----
     slider("a11y.textsize", 100, (80, 150, 10), Unit::Percent, G).device(),
     seg("a11y.motion", &["system", "on", "off"], "system", G),
@@ -613,7 +656,7 @@ pub static ENTRIES: &[Entry] = &[
     file("bios.bds9", G).device().phase(2),
     file("bios.bdsfw", G).device().phase(2),
     file("bios.bdsi", G).device().phase(2),
-    file("bios.b3ds", G).device().phase(3),
+    file("bios.b3ds", G).device().phase(3).not_wired(),
     // ---- Opzioni per console (consoles) ----
     seg(
         "consoles.gbmodel",
@@ -648,14 +691,17 @@ pub static ENTRIES: &[Entry] = &[
         GM,
     )
     .phase(2),
-    seg("consoles.n3dsmodel", &["o3ds", "n3ds"], "n3ds", CG).phase(3),
+    seg("consoles.n3dsmodel", &["o3ds", "n3ds"], "n3ds", CG)
+        .phase(3)
+        .not_wired(),
     sel(
         "consoles.n3dsreg",
         &["auto", "jpn", "usa", "eur", "kor", "chn", "twn"],
         "auto",
         CG,
     )
-    .phase(3),
+    .phase(3)
+    .not_wired(),
     // ---- Avanzate (advanced, T14): Prestazioni, motori, Strumenti avanzati ----
     // The keys keep their `perf.` / `cores.` / `adv.` prefix (files, i18n); the page is `advanced`.
     seg(
@@ -666,11 +712,16 @@ pub static ENTRIES: &[Entry] = &[
     )
     .device()
     .on_page(ADV),
-    sw("perf.jit", true, CG).phase(2).on_page(ADV),
-    sw("perf.shcache", true, C).device().phase(3).on_page(ADV),
+    sw("perf.jit", true, CG).phase(2).on_page(ADV).not_wired(),
+    sw("perf.shcache", true, C)
+        .device()
+        .phase(3)
+        .on_page(ADV)
+        .not_wired(),
     slider("perf.cpuclock", 100, (50, 400, 25), Unit::Percent, GM)
         .phase(3)
-        .on_page(ADV),
+        .on_page(ADV)
+        .not_wired(),
     sw("cores.mgbabios", true, CG).on_page(ADV),
     sw("cores.mgbaskip", false, CG).on_page(ADV),
     sw("cores.mgbalp", false, CG).on_page(ADV),
@@ -685,11 +736,15 @@ pub static ENTRIES: &[Entry] = &[
     link("cores.mdsall", CG).phase(2).on_page(ADV),
     seg("cores.azaudio", &["hle", "lle"], "hle", CG)
         .phase(3)
-        .on_page(ADV),
+        .on_page(ADV)
+        .not_wired(),
     link("cores.azall", CG).phase(3).on_page(ADV),
-    sw("adv.advon", false, G).phase(5).on_page(ADV),
-    sw("adv.inputs", false, G).phase(5).on_page(ADV),
-    sw("adv.framecnt", false, G).phase(5).on_page(ADV),
+    sw("adv.advon", false, G).phase(5).on_page(ADV).not_wired(),
+    sw("adv.inputs", false, G).phase(5).on_page(ADV).not_wired(),
+    sw("adv.framecnt", false, G)
+        .phase(5)
+        .on_page(ADV)
+        .not_wired(),
     link("adv.movies", G).phase(5).on_page(ADV),
     link("adv.cheatsearch", G).phase(5).on_page(ADV),
     link("adv.devtools", G).pc().phase(5).on_page(ADV),
@@ -697,7 +752,11 @@ pub static ENTRIES: &[Entry] = &[
     // Empty = none («Nessuno»).
     e("online.wfc", Kind::Text, DefaultValue::Text(""), G).phase(2),
     act("online.ra", G).device().phase(5),
-    sw("online.discord", false, G).device().pc().phase(5),
+    sw("online.discord", false, G)
+        .device()
+        .pc()
+        .phase(5)
+        .not_wired(),
     // ---- Informazioni (about) ----
     info("about.ver", G),
     act("about.upd", G),

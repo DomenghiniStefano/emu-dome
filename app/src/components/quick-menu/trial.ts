@@ -1,13 +1,13 @@
 // The changes «in prova» (Session level): live in the game, listed in the menu, saved for this
 // game or its console, or undone.
-import type { SettingEntry, SettingRow } from '@/emu'
+import type { SettingEntry, SettingKey, SettingRow } from '@/emu'
 import { msg } from '@/lib/settingsModel'
 import type { Message } from '@/i18n/message'
 
 /** Each change «in prova» by its value (a choice: «Affiancati») or else by the setting's name. */
 export function trialNames(
   rows: Iterable<SettingRow>,
-  entry: (key: string) => SettingEntry | undefined,
+  entry: (key: SettingKey) => SettingEntry | undefined,
 ): string[] {
   return [...rows]
     .filter(r => r.source === 'session')

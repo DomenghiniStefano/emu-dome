@@ -29,6 +29,8 @@ const entry = (over: Partial<SettingEntry> = {}): SettingEntry => ({
   synonyms: [],
   mostUsed: false,
   needsNativeVideo: false,
+  wired: true,
+  unsupportedConsoles: [],
   ...over,
 })
 const schema: SettingsSchema = {
@@ -82,12 +84,20 @@ describe('rowState', () => {
   })
 
   it('disables a row with no backend yet without a lock reason', () => {
-    const action = entry({ key: 'fx.fxfile', kind: { type: 'action', style: 'button' } })
-    expect(rowState(action, undefined, schema, 'global', false)).toMatchObject({
-      reason: null,
-      notYet: true,
-      disabled: true,
+    // `wired: false` comes from the catalogue (Rust): every action, and values nothing reads.
+    const action = entry({
+      key: 'about.log',
+      kind: { type: 'action', style: 'button' },
+      wired: false,
     })
+    const unread = entry({ key: 'video.fps', wired: false })
+    for (const e of [action, unread])
+      expect(rowState(e, undefined, schema, 'global', false)).toMatchObject({
+        reason: null,
+        notYet: true,
+        disabled: true,
+      })
+    expect(rowState(entry(), undefined, schema, 'global', false).notYet).toBe(false)
   })
 })
 

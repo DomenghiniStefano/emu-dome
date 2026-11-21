@@ -229,7 +229,7 @@ mod tests {
             vec![ConsoleId::Nds, ConsoleId::N3ds]
         );
         assert!(unsupported_consoles("consoles.gbacc").is_empty());
-        // The interface reads it from the schema, absent where empty.
+        // The interface reads it from the schema (always present, empty for most rows).
         let schema = crate::settings::schema::schema(crate::settings::schema::Device::Desktop);
         let json = serde_json::to_value(&schema.entries).unwrap();
         let row = |key: &str| {
@@ -244,7 +244,10 @@ mod tests {
             row("perf.frameskip")["unsupportedConsoles"],
             serde_json::json!(["nds", "3ds"])
         );
-        assert!(row("consoles.gbacc").get("unsupportedConsoles").is_none());
+        assert_eq!(
+            row("consoles.gbacc")["unsupportedConsoles"],
+            serde_json::json!([])
+        );
     }
 
     #[test]

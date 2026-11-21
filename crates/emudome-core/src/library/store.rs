@@ -16,14 +16,15 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
+use ts_rs::TS;
 
 use super::identity::Identity;
 use super::scan::ScanOutcome;
 use crate::settings::ConsoleId;
 use crate::{ErrorCode, GameKey};
 
-/// Which picture a cover shows. Mirror: `CoverKind` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Which picture a cover shows. TypeScript: `CoverKind` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum CoverKind {
     /// An image the user chose (copied into the covers folder).

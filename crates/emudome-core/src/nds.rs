@@ -13,6 +13,7 @@
 //! whose options are added after [`FORCED_OPTIONS`].
 
 use crate::screens::Split;
+use crate::settings::keys::{self, Reader};
 use crate::settings::Value;
 
 /// How the frame holds the screens with [`FORCED_OPTIONS`]: 256 × 384, top then bottom.
@@ -38,10 +39,8 @@ pub const FORCED_OPTIONS: &[(&str, &str)] = &[
 /// uses the OS user name). Not a core option: melonDS DS asks the frontend for it. The DS keeps
 /// 10 characters; melonDS DS cuts the rest.
 pub fn username(value: impl Fn(&str) -> Option<Value>) -> Option<String> {
-    match value("consoles.dsname") {
-        Some(Value::Text(n)) => Some(n.trim().to_owned()).filter(|n| !n.is_empty()),
-        Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
-    }
+    let name = Reader::new(value).text(keys::CONSOLES_DS_NAME);
+    Some(name.trim().to_owned()).filter(|n| !n.is_empty())
 }
 
 #[cfg(test)]

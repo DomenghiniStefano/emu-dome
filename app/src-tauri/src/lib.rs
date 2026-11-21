@@ -15,6 +15,8 @@ mod bench;
 mod bench;
 mod bios;
 mod closing;
+#[cfg(test)]
+mod contract;
 mod core_settings;
 mod cors;
 mod dirs;
@@ -52,14 +54,16 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::webview::Color;
 use tauri::{Emitter, Manager, WindowEvent};
+use ts_rs::TS;
 
 /// The active session, read by renderer, audio and controllers.
 pub type CurrentShared = Arc<Mutex<Option<Arc<Shared>>>>;
 
 /// Where the game is drawn: native surface under the webview, or canvas in the webview.
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
-enum VideoMode {
+#[ts(export_to = "app/")]
+pub(crate) enum VideoMode {
     Native,
     Webview,
 }
@@ -122,10 +126,11 @@ impl AppState {
     }
 }
 
-/// One quick save slot for the quick menu (G07). Mirror: `SlotInfo` in app/src/emu.ts.
-#[derive(Serialize)]
+/// One quick save slot for the quick menu (G07). TypeScript: `SlotInfo` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct SlotDto {
+#[ts(export_to = "app/", rename = "SlotInfo")]
+pub(crate) struct SlotDto {
     slot: u8,
     /// Unix ms of the last save; null = empty.
     saved_at: Option<u64>,
@@ -186,9 +191,10 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
     .unwrap_or_else(response_error)
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct GameInfo {
+#[ts(export_to = "app/")]
+pub(crate) struct GameInfo {
     /// The game's one identity (its saves, its «Solo questo gioco» settings).
     id: GameKey,
     title: String,
@@ -201,9 +207,10 @@ struct GameInfo {
     autosave_on_exit: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct StatsDto {
+#[ts(export_to = "app/", rename = "Stats")]
+pub(crate) struct StatsDto {
     running: bool,
     emu_fps: f64,
     target_fps: f64,
@@ -217,21 +224,27 @@ struct StatsDto {
 
 /// Which core to use for a file, and its console, by its extension.
 fn core_for(path: &Path) -> Result<(CoreId, ConsoleId), ErrorCode> {
+    use emudome_core::library::{console_of_extension, console_phase_pending};
     let ext = path
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
-    match ext.as_str() {
-        "gba" => Ok((CoreId::Mgba, ConsoleId::Gba)),
-        "gb" => Ok((CoreId::Mgba, ConsoleId::Gb)),
-        "gbc" => Ok((CoreId::Mgba, ConsoleId::Gbc)),
-        "nds" => Ok((CoreId::MelonDsDs, ConsoleId::Nds)),
-        "3ds" | "cci" | "cxi" | "cia" => Err(ErrorCode::ConsoleNotYet {
-            console: "3ds".into(),
-            phase: 3,
-        }),
-        _ => Err(ErrorCode::UnsupportedFormat { ext }),
+    let Some(console) = console_of_extension(&ext) else {
+        return Err(ErrorCode::UnsupportedFormat { ext });
+    };
+    if let Some(phase) = console_phase_pending(console) {
+        return Err(ErrorCode::ConsoleNotYet {
+            console: console.id().into(),
+            phase,
+        });
     }
+    Ok((CoreId::for_console(console), console))
+}
+
+/// The extensions «Apri un file» offers: every console whose games open today.
+#[tauri::command]
+fn open_extensions() -> Vec<&'static str> {
+    emudome_core::library::open_extensions()
 }
 
 /// The console's short name in `GameInfo` (a .gb file whose header asks for a Game Boy Color
@@ -772,9 +785,10 @@ fn input(state: tauri::State<'_, AppState>, button: Button, pressed: bool) {
 
 /// Where a pointer position is measured (`pointer`): the window in the renderer's unit (physical
 /// pixels for the native video, CSS pixels for the webview canvas) and the bottom share (0..0.9)
-/// kept clear for the quick menu. Mirror: `PointerArea` in app/src/emu.ts.
-#[derive(serde::Deserialize)]
-struct PointerArea {
+/// kept clear for the quick menu. TypeScript: `PointerArea` (generated).
+#[derive(serde::Deserialize, TS)]
+#[ts(export_to = "app/")]
+pub(crate) struct PointerArea {
     width: f32,
     height: f32,
     inset: f32,
@@ -1013,6 +1027,7 @@ pub fn run() {
             set_video_mode,
             set_video_inset,
             startup_game,
+            open_extensions,
             set_menu_open,
             release_keys,
             bench::bench_active,

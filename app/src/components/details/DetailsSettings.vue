@@ -7,7 +7,13 @@
 // Controller / keyboard: the shell's nav scope.
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { emu, type GameOverride, type LibraryGame, type SettingsSchema } from '@/emu'
+import {
+  emu,
+  type GameOverride,
+  type LibraryGame,
+  type SettingKey,
+  type SettingsSchema,
+} from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
 import { gameScopeOf } from '@/lib/gameDetails'
 import { errorText } from '@/i18n/labels'
@@ -54,7 +60,7 @@ async function load() {
 }
 watch(scope, () => void load())
 
-async function reset(key: string) {
+async function reset(key: SettingKey) {
   const s = scope.value
   if (!s) return
   try {

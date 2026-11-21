@@ -14,8 +14,10 @@ pub mod identity;
 pub mod scan;
 mod store;
 
-pub use details::{core_of, region, Region};
-pub use identity::{identify, read_icon, Icon, Identity, NotAGame, EXTENSIONS};
+pub use details::{console_phase_pending, core_of, open_extensions, region, Region};
+pub use identity::{
+    console_of_extension, identify, read_icon, Icon, Identity, NotAGame, EXTENSIONS,
+};
 pub use scan::{identify_cached, scan, Found, ScanInput, ScanOutcome};
 pub use store::{
     cover_colour, CacheEntry, CoverKind, GameRecord, HashCache, Library, ScanReport, NAME_MAX,

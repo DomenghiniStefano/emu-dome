@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingRow } from '@/emu'
+import type { SettingKey, SettingRow } from '@/emu'
 import { hasOwnRemap, hasTouchScreen, pointerLabel, type PadRows } from './gameControls'
 import type { Translator } from '@/i18n/message'
 
@@ -7,7 +7,7 @@ import type { Translator } from '@/i18n/message'
 vi.mock('@/emu', () => ({ emu: {} }))
 
 const row = (
-  key: string,
+  key: SettingKey,
   value: SettingRow['value'],
   source: SettingRow['source'],
 ): SettingRow => ({ key, value, source, changed: true })

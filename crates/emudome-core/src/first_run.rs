@@ -5,10 +5,12 @@
 //! (only while one is connected), S06 «Tutto pronto». The ids keep the boards' numbers.
 
 use serde::Serialize;
+use ts_rs::TS;
 
-/// One step of the first run. Mirror: `FirstRunStep` in app/src/emu.ts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+/// One step of the first run. TypeScript: `FirstRunStep` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "FirstRunStep")]
 pub enum Step {
     /// S01: welcome and language.
     Welcome,

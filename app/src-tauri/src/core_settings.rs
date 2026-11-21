@@ -8,7 +8,7 @@
 //!   `GET_VARIABLE_UPDATE`, no restart);
 //! - restart options are not sent: the settings whose value waits for the game to be opened again
 //!   go to the interface as `emu://core-restart` `{ settings: [key, ...] }`, sent whenever that
-//!   list changes (an empty list: nothing waits any more). Mirror: `CoreRestart` in app/src/emu.ts.
+//!   list changes (an empty list: nothing waits any more). TypeScript: `CoreRestart` (generated).
 
 use emudome_core::core_profile::CoreId;
 use emudome_core::settings::core_values::{self, MappedOption};
@@ -16,6 +16,7 @@ use emudome_core::settings::{ConsoleId, Scope, Value};
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 
@@ -34,8 +35,10 @@ struct Running {
 static RUNNING: Mutex<Option<Running>> = Mutex::new(None);
 
 /// Payload of `emu://core-restart`.
-#[derive(Clone, Serialize)]
-struct CoreRestart<'a> {
+#[derive(Clone, Serialize, TS)]
+#[ts(export_to = "app/")]
+pub(crate) struct CoreRestart<'a> {
+    #[ts(as = "Vec<emudome_core::contract::SettingKey>")]
     settings: &'a [&'static str],
 }
 

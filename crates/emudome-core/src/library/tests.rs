@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use sha1::{Digest, Sha1};
 
 use super::{
-    core_of, cover_colour, identify, identify_cached, read_icon, region, scan, CoverKind, Library,
-    Region, ScanInput,
+    console_of_extension, core_of, cover_colour, identify, identify_cached, open_extensions,
+    read_icon, region, scan, CoverKind, Library, Region, ScanInput,
 };
 use crate::settings::test_dir::TestDir;
 use crate::settings::ConsoleId;
@@ -814,4 +814,28 @@ fn each_console_names_its_core() {
     assert_eq!(core_of(ConsoleId::Gba), "mgba");
     assert_eq!(core_of(ConsoleId::Nds), "melondsds");
     assert_eq!(core_of(ConsoleId::N3ds), "azahar");
+}
+
+#[test]
+fn every_library_extension_has_a_console() {
+    for ext in super::EXTENSIONS {
+        assert!(console_of_extension(ext).is_some(), "{ext}");
+    }
+    assert_eq!(console_of_extension("NDS"), Some(ConsoleId::Nds));
+    assert_eq!(console_of_extension("cia"), Some(ConsoleId::N3ds));
+    assert_eq!(console_of_extension("zip"), None);
+}
+
+#[test]
+fn the_file_picker_offers_every_console_that_opens_today() {
+    // Trello #73: «Apri un file» once offered GB / GBC / GBA only, while DS games opened.
+    assert_eq!(open_extensions(), ["gb", "gbc", "gba", "nds"]);
+}
+
+#[test]
+fn the_ds_core_is_the_one_the_nds_module_names() {
+    assert_eq!(
+        core_of(ConsoleId::Nds),
+        crate::core_profile::CoreId::MelonDsDs.name()
+    );
 }
