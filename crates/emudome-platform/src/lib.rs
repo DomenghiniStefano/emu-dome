@@ -12,8 +12,10 @@ use raw_window_handle::{
 
 mod cores;
 mod cpu;
+mod paths;
 
 pub use cores::CoreLookupError;
+pub use paths::{long_paths_enabled, long_paths_policy, path_limits, PathLimits};
 
 #[cfg(target_os = "android")]
 mod android;
