@@ -11,15 +11,15 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::Arc;
-use ts_rs::TS;
 
 use emudome_core::bindings::{default_combo, Family, PadConfig, Pos};
 use emudome_core::hotkeys::{self, Hotkey, Status};
-use emudome_core::settings::{Scope, Value};
+use emudome_core::settings::{keys, Scope, Value};
 use emudome_core::ErrorCode;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 
@@ -208,17 +208,7 @@ pub fn controls_bindings(
 ) -> Result<ControlsBindings, ErrorCode> {
     let mut settings = state.0.lock();
     let mut values = Vec::new();
-    for key in [
-        "pad.ab",
-        "pad.mod",
-        "pad.combos",
-        "pad.remap",
-        "pad.dead",
-        "pad.stickdpad",
-        "pad.trig",
-        "pad.confirm",
-        "pad.repeat",
-    ] {
+    for key in keys::PAD_KEYS {
         values.push((key, settings.resolve(key, &scope)?.value));
     }
     let get = |key: &str| -> Option<Value> {

@@ -14,13 +14,13 @@
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
-use ts_rs::TS;
 
 use emudome_core::migration::{self, Paths};
 use emudome_core::ErrorCode;
 use parking_lot::{Condvar, Mutex};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 

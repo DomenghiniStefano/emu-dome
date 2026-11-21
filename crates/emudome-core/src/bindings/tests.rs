@@ -256,3 +256,30 @@ fn backspace_is_rewind_and_select_moved_to_the_right_shift() {
         .iter()
         .all(|(_, key)| *key != "Backspace"));
 }
+
+#[test]
+fn every_speed_option_is_a_speed() {
+    use crate::settings::keys::{SPEED_FF, SPEED_SLOW};
+    use crate::settings::Kind;
+    for key in [SPEED_FF, SPEED_SLOW] {
+        let Kind::Choice { options, .. } = key.entry().kind else {
+            panic!("{} is a choice", key.as_str());
+        };
+        for id in options {
+            assert!(Speed::from_option(id).is_some(), "{}: {id}", key.as_str());
+        }
+    }
+}
+
+#[test]
+fn the_defaults_come_from_the_catalogue() {
+    let c = PadConfig::default();
+    assert_eq!(c.dead_zone, 15);
+    assert_eq!(c.stick_dpad, 50);
+    assert_eq!(c.trigger, 50);
+    assert_eq!(c.repeat, "normal");
+    assert_eq!(c.modifier, Pos::of_button(crate::hotkeys::DEFAULT_MODIFIER));
+    assert_eq!(c.fast_forward, Speed::Factor(4.0));
+    assert_eq!(c.slow_motion, Speed::Factor(0.5));
+    assert!(!c.hold_toggle);
+}

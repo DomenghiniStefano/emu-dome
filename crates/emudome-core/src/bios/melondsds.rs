@@ -14,7 +14,7 @@
 //!   game boots directly and [`ErrorCode::BiosDsMenuFilesMissing`] is reported.
 
 use super::{text, BiosTable, Check, Plan, Slot, SlotSpec};
-use crate::settings::{ConsoleId, Value};
+use crate::settings::{keys, ConsoleId, Value};
 use crate::ErrorCode;
 
 /// Firmware sizes the core accepts.
@@ -28,21 +28,21 @@ pub(super) static TABLE: BiosTable = BiosTable {
     slots: &[
         SlotSpec {
             slot: Slot::DsArm7,
-            setting: Some("bios.bds7"),
+            setting: Some(keys::BIOS_DS_ARM7.as_str()),
             file: "melonDS DS/bios7.bin",
             sizes: &[16 * 1024],
             check: Check::Md5(&["df692a80a5b1bc90728bc3dfc76cd948"]),
         },
         SlotSpec {
             slot: Slot::DsArm9,
-            setting: Some("bios.bds9"),
+            setting: Some(keys::BIOS_DS_ARM9.as_str()),
             file: "melonDS DS/bios9.bin",
             sizes: &[4 * 1024],
             check: Check::Md5(&["a392174eb3e572fed6447e956bde4b25"]),
         },
         SlotSpec {
             slot: Slot::DsFirmware,
-            setting: Some("bios.bdsfw"),
+            setting: Some(keys::BIOS_DS_FIRMWARE.as_str()),
             file: DS_FIRMWARE,
             sizes: FIRMWARE_SIZES,
             // DS, DS Lite, iQue DS, iQue DS Lite.
@@ -76,7 +76,7 @@ pub(super) static TABLE: BiosTable = BiosTable {
         },
         SlotSpec {
             slot: Slot::DsiNand,
-            setting: Some("bios.bdsi"),
+            setting: Some(keys::BIOS_DSI.as_str()),
             file: DSI_NAND,
             sizes: &[],
             check: Check::NandFooter,
@@ -110,17 +110,17 @@ fn policy(in_place: &[Slot], value: &dyn Fn(&str) -> Option<Value>, _: ConsoleId
             .push(("melonds_firmware_dsi_path", DSI_FIRMWARE));
         plan.options.push(("melonds_dsi_nand_path", DSI_NAND));
     } else {
-        match text(value, "consoles.dsmode").as_deref() {
-            Some("dsi") => {
+        match text(value, keys::CONSOLES_DS_MODE).as_str() {
+            "dsi" => {
                 plan.options.push(("melonds_console_mode", "ds"));
                 plan.fallbacks.push(ErrorCode::BiosDsiFilesMissing);
             }
-            Some("ds") => {}
-            // `auto` (and no value: the core's default is `auto`) would pick DSi for a DSi game.
-            Some(_) | None => plan.options.push(("melonds_console_mode", "ds")),
+            "ds" => {}
+            // `auto` (the default; the core's too) would pick DSi for a DSi game.
+            _ => plan.options.push(("melonds_console_mode", "ds")),
         }
     }
-    if !ds && text(value, "cores.mdsboot").as_deref() == Some("menu") {
+    if !ds && text(value, keys::CORES_DS_BOOT) == "menu" {
         plan.options.push(("melonds_boot_mode", "direct"));
         plan.fallbacks.push(ErrorCode::BiosDsMenuFilesMissing);
     }

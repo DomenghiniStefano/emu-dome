@@ -18,14 +18,15 @@
 
 pub(crate) mod catalog;
 pub mod core_values;
+pub mod keys;
 pub mod schema;
 mod store;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use ts_rs::TS;
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 pub use schema::{
     entry, page_entries, schema, synonyms, ActionStyle, ChoiceStyle, DefaultValue, Device, Entry,

@@ -20,9 +20,9 @@
 //! arriving while a game closes to the library turns that close into a quit.
 
 use std::time::Duration;
-use ts_rs::TS;
 
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::ErrorCode;
 

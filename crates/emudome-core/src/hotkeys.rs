@@ -23,6 +23,7 @@
 //! [`Bindings`] through [`crate::bindings::PadConfig`].
 
 use std::time::{Duration, Instant};
+
 use ts_rs::TS;
 
 use crate::input::Button;

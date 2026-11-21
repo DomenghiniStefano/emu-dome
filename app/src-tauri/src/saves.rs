@@ -7,13 +7,13 @@
 
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
-use ts_rs::TS;
 
 use emudome_core::saves::{self, BackupReason, FolderImport, ImportFormat, SaveHealth};
-use emudome_core::settings::{Scope, Value};
+use emudome_core::settings::{keys, Scope};
 use emudome_core::{ErrorCode, GameKey};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 use crate::AppState;
@@ -30,17 +30,15 @@ fn file_failed(e: impl std::fmt::Display) -> ErrorCode {
 
 /// `saves.backups`: how many backups of each in-game save to keep (0 = none).
 fn keep_backups(app: &AppHandle) -> usize {
-    let value = app.try_state::<SettingsState>().and_then(|state| {
-        let resolved = state.0.lock().resolve("saves.backups", &Scope::Global);
+    let read = |key: &str| {
+        let state = app.try_state::<SettingsState>()?;
+        let resolved = state.0.lock().resolve(key, &Scope::Global);
         resolved
-            .inspect_err(|e| log::warn!("saves.backups unavailable: {e:?}"))
+            .inspect_err(|e| log::warn!("{key} unavailable: {e:?}"))
             .ok()?
             .value
-    });
-    match value {
-        Some(Value::Int(n)) => usize::try_from(n).unwrap_or(0),
-        Some(Value::Bool(_) | Value::Text(_) | Value::List(_)) | None => 5,
-    }
+    };
+    usize::try_from(keys::Reader::new(read).int(keys::SAVES_BACKUPS)).unwrap_or(0)
 }
 
 /// Refuses to change the saves of the game that is open: its session rewrites the `.sav`.

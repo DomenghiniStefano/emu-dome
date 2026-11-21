@@ -12,13 +12,13 @@
 //!   `{ code, params }` (an `ErrorCode`), once per fallback.
 
 use std::path::{Path, PathBuf};
-use ts_rs::TS;
 
 use emudome_core::bios::{self, files, Assessment, Status};
 use emudome_core::settings::{ConsoleId, Scope, Value};
 use emudome_core::ErrorCode;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 

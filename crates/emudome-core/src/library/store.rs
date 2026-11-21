@@ -13,10 +13,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use ts_rs::TS;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
+use ts_rs::TS;
 
 use super::identity::Identity;
 use super::scan::ScanOutcome;

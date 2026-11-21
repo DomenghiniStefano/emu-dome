@@ -27,6 +27,7 @@ use md5::{Digest, Md5};
 use serde::Serialize;
 use ts_rs::TS;
 
+use crate::settings::keys::{Reader, TextKey};
 use crate::settings::{ConsoleId, Value};
 use crate::ErrorCode;
 
@@ -286,12 +287,9 @@ pub fn plan(
         .unwrap_or_default()
 }
 
-/// A text setting's value, `None` for any other kind.
-fn text(value: &dyn Fn(&str) -> Option<Value>, key: &str) -> Option<String> {
-    match value(key) {
-        Some(Value::Text(t)) => Some(t),
-        Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
-    }
+/// A text setting's value, the catalogue's default when it has none.
+fn text(value: &dyn Fn(&str) -> Option<Value>, key: TextKey) -> String {
+    Reader::new(value).text(key)
 }
 
 #[cfg(test)]

@@ -38,7 +38,6 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
-use ts_rs::TS;
 
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{Area, Layout, Split};
@@ -53,6 +52,7 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::webview::Color;
 use tauri::{Emitter, Manager, WindowEvent};
+use ts_rs::TS;
 
 /// The active session, read by renderer, audio and controllers.
 pub type CurrentShared = Arc<Mutex<Option<Arc<Shared>>>>;

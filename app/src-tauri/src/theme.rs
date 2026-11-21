@@ -58,7 +58,7 @@ pub fn resolve(override_value: Option<&str>, setting: Option<&str>, system_dark:
 pub fn theme(settings: tauri::State<'_, SettingsState>, system_dark: bool) -> Theme {
     resolve(
         std::env::var("EMUDOME_THEME").ok().as_deref(),
-        theme_setting(&settings).as_deref(),
+        Some(theme_setting(&settings).as_str()),
         system_dark,
     )
 }
