@@ -21,13 +21,15 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::core::GameFiles;
 use crate::session::AUTO_SLOT;
+use crate::settings::keys::{Reader, SAVES_AUTOSAVE};
 use crate::{write_atomic, GameKey};
 
 /// Why a backup was made (the board's «Avvio del gioco», «Prima dell’importazione», …).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum BackupReason {
     /// The game started: the save as it was before this session rewrote it.
@@ -502,7 +504,7 @@ pub fn set_aside(save_dir: &Path, game: &GameKey, now_ms: u64) -> io::Result<Str
 // ---- Import (V05) ----
 
 /// Where an imported file comes from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum ImportFormat {
     /// A plain `.sav` (mGBA, VBA, no$gba raw, melonDS, a flash cart).
@@ -603,7 +605,7 @@ fn strip_dsv(bytes: &[u8]) -> Option<&[u8]> {
 // ---- Import from a folder (first run S06: DeSmuME, another folder or emulator) ----
 
 /// Which files a folder import reads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum FolderImport {
     /// DeSmuME's `.dsv` files only.
@@ -701,6 +703,29 @@ pub fn match_saves(found: &[FoundSave], games: &[PathBuf]) -> Vec<SaveMatch> {
     matches.sort_by(|a, b| a.game.cmp(&b.game));
     matches.dedup_by(|a, b| a.game == b.game);
     matches
+}
+
+// ---- Auto quick save (`saves.autoq`) ----
+
+/// How often the auto quick save is written, from a `saves.autoq` option: `None` = never.
+/// Every option of the catalogue is listed (`every_autosave_option_has_an_interval`); an unknown
+/// one (a newer version's synced file) counts as the catalogue's default.
+pub fn autosave_every(option: &str) -> Option<std::time::Duration> {
+    use std::time::Duration;
+    match option {
+        "1min" => Some(Duration::from_secs(60)),
+        "5min" => Some(Duration::from_secs(5 * 60)),
+        "never" => None,
+        other => {
+            let default = Reader::new(|_| None).text(SAVES_AUTOSAVE);
+            log::warn!("saves.autoq: unknown option {other:?}, taken as {default:?}");
+            if other == default {
+                None
+            } else {
+                autosave_every(&default)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1131,5 +1156,29 @@ mod tests {
         assert_eq!(names(FolderImport::Desmume), ["Lanterna.dsv"]);
         assert_eq!(names(FolderImport::Any), ["Lanterna.dsv", "Volo.sav"]);
         assert!(find_saves(&dir.path("missing"), FolderImport::Any).is_empty());
+    }
+
+    #[test]
+    fn every_autosave_option_has_an_interval() {
+        use std::time::Duration;
+
+        use crate::settings::keys::SAVES_AUTOSAVE;
+        use crate::settings::Kind;
+
+        let Kind::Choice { options, .. } = SAVES_AUTOSAVE.entry().kind else {
+            panic!("saves.autoq is a choice");
+        };
+        // The three the match lists: a new option fails here until it has its interval.
+        assert_eq!(options, ["1min", "5min", "never"]);
+        assert_eq!(super::autosave_every("1min"), Some(Duration::from_secs(60)));
+        assert_eq!(
+            super::autosave_every("5min"),
+            Some(Duration::from_secs(300))
+        );
+        assert_eq!(super::autosave_every("never"), None);
+        assert_eq!(
+            super::autosave_every("soon"),
+            Some(Duration::from_secs(300))
+        );
     }
 }

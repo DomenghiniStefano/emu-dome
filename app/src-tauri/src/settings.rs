@@ -3,7 +3,7 @@
 //! event, `{ key, level }`, sent after every change so any screen showing the value refreshes.
 
 use emudome_core::settings::{
-    CommitTarget, ConsoleId, Device, GameKey, GameOverride, Level, PageValue, RecentChange,
+    keys, CommitTarget, ConsoleId, Device, GameKey, GameOverride, Level, PageValue, RecentChange,
     SchemaDto, Scope, Settings, Value,
 };
 use emudome_core::speed_audio::FastAudio;
@@ -11,13 +11,16 @@ use emudome_core::ErrorCode;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
+use ts_rs::TS;
 
 /// The engine, behind a lock: every command is short (in memory, or one small file write).
 pub struct SettingsState(pub Mutex<Settings>);
 
-/// Payload of `settings://changed`. Mirror: `SettingsChanged` in app/src/emu.ts.
-#[derive(Clone, Serialize)]
-struct Changed<'a> {
+/// Payload of `settings://changed`. TypeScript: `SettingsChanged` (generated).
+#[derive(Clone, Serialize, TS)]
+#[ts(export_to = "app/", rename = "SettingsChanged")]
+pub(crate) struct Changed<'a> {
+    #[ts(as = "emudome_core::contract::SettingKey")]
     key: &'a str,
     level: Level,
 }
@@ -64,7 +67,7 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
         let seconds = rewind_seconds(app, &Scope::Session);
         crate::send_command(app, emudome_core::Command::SetRewindLength(seconds));
     }
-    if keys.contains(&FAST_AUDIO_KEY) {
+    if keys.contains(&keys::AUDIO_FF.as_str()) {
         let policy = fast_audio(app, &Scope::Session);
         crate::send_command(app, emudome_core::Command::SetFastAudio(policy));
     }
@@ -120,31 +123,18 @@ pub struct GameFlow {
     pub bios: emudome_core::bios::Plan,
 }
 
-const REWIND_KEYS: [&str; 2] = ["speed.rew", "speed.rewlen"];
-const FAST_AUDIO_KEY: &str = "audio.ff";
+const REWIND_KEYS: [&str; 2] = [
+    keys::SPEED_REWIND.as_str(),
+    keys::SPEED_REWIND_LENGTH.as_str(),
+];
 
-/// `audio.ff` seen from `scope`; muted when it cannot be read.
-fn fast_audio(app: &AppHandle, scope: &Scope) -> FastAudio {
-    let resolved = app
-        .try_state::<SettingsState>()
-        .map(|state| state.0.lock().resolve(FAST_AUDIO_KEY, scope));
-    match resolved {
-        Some(Ok(r)) => match r.value {
-            Some(Value::Text(id)) => FastAudio::from_option(&id).unwrap_or_default(),
-            Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => FastAudio::default(),
-        },
-        Some(Err(e)) => {
-            log::warn!("{FAST_AUDIO_KEY} unavailable: {e:?}");
-            FastAudio::default()
-        }
-        None => FastAudio::default(),
-    }
-}
-
-/// `speed.rew` and `speed.rewlen` seen from `scope` (the open game's session, or the game
-/// being opened); `None` = rewind off.
-fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
-    let read = |key: &str| -> Option<Value> {
+/// A setting's value as `scope` resolves it, `None` when it has none or cannot be read (logged):
+/// what [`keys::Reader`] takes, which puts the catalogue's default in its place.
+fn resolver<'a>(
+    app: &'a AppHandle,
+    scope: &'a Scope,
+) -> impl Fn(&str) -> Option<Value> + Copy + 'a {
+    move |key| {
         let state = app.try_state::<SettingsState>()?;
         let resolved = state.0.lock().resolve(key, scope);
         match resolved {
@@ -154,8 +144,19 @@ fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
                 None
             }
         }
-    };
-    emudome_core::rewind::seconds_from_settings(read(REWIND_KEYS[0]), read(REWIND_KEYS[1]))
+    }
+}
+
+/// `audio.ff` seen from `scope`.
+fn fast_audio(app: &AppHandle, scope: &Scope) -> FastAudio {
+    let id = keys::Reader::new(resolver(app, scope)).text(keys::AUDIO_FF);
+    FastAudio::from_option(&id).unwrap_or_default()
+}
+
+/// `speed.rew` and `speed.rewlen` seen from `scope` (the open game's session, or the game
+/// being opened); `None` = rewind off.
+fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
+    emudome_core::rewind::seconds_from_settings(resolver(app, scope))
 }
 
 /// What the game flow reads for a game of `console` run by `core` (`mgba`, ...).
@@ -164,29 +165,12 @@ pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameKey
         console,
         game: game.clone(),
     };
-    let read = |key: &str| -> Option<Value> {
-        let state = app.try_state::<SettingsState>()?;
-        let resolved = state.0.lock().resolve(key, &scope);
-        match resolved {
-            Ok(r) => r.value,
-            Err(e) => {
-                log::warn!("{key} unavailable: {e:?}");
-                None
-            }
-        }
-    };
-    let text = |key: &str| match read(key) {
-        Some(Value::Text(t)) => Some(t),
-        Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
-    };
+    let read = resolver(app, &scope);
+    let settings = keys::Reader::new(&read);
     GameFlow {
-        autosave_every: match text("saves.autoq").as_deref() {
-            Some("1min") => Some(std::time::Duration::from_secs(60)),
-            Some("never") => None,
-            Some(_) | None => Some(std::time::Duration::from_secs(300)),
-        },
-        autosave_on_exit: !matches!(read("saves.autoexit"), Some(Value::Bool(false))),
-        resume: text("saves.resume").unwrap_or_else(|| "always".into()),
+        autosave_every: emudome_core::saves::autosave_every(&settings.text(keys::SAVES_AUTOSAVE)),
+        autosave_on_exit: settings.bool(keys::SAVES_AUTOSAVE_ON_EXIT),
+        resume: settings.text(keys::SAVES_RESUME),
         rewind_seconds: rewind_seconds(app, &scope),
         username: match console {
             ConsoleId::Nds => emudome_core::nds::username(read),
@@ -199,17 +183,15 @@ pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameKey
 }
 
 /// The value of `general.theme` for every game (`system`, `dark`, `black`, `light`).
-pub fn theme_setting(state: &SettingsState) -> Option<String> {
-    match state.0.lock().resolve("general.theme", &Scope::Global) {
-        Ok(resolved) => match resolved.value {
-            Some(Value::Text(id)) => Some(id),
-            Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
-        },
+pub fn theme_setting(state: &SettingsState) -> String {
+    let read = |key: &str| match state.0.lock().resolve(key, &Scope::Global) {
+        Ok(resolved) => resolved.value,
         Err(e) => {
-            log::warn!("general.theme unavailable: {e:?}");
+            log::warn!("{key} unavailable: {e:?}");
             None
         }
-    }
+    };
+    keys::Reader::new(read).text(keys::GENERAL_THEME)
 }
 
 /// The whole schema for this device: the interface builds every settings page from it.
@@ -306,7 +288,7 @@ pub fn settings_session_discard(
 // ---- «Immagine tua» (`video.surroundImg`): the user's own background around the game ----
 
 /// The one setting that holds a background image.
-const BACKGROUND_KEY: &str = "video.surroundImg";
+const BACKGROUND_KEY: &str = keys::VIDEO_SURROUND_IMG.as_str();
 
 /// Where the chosen images are copied: `<app data>/backgrounds`, beside the synced settings, so
 /// the setting (a file name there) keeps working when the original file moves.

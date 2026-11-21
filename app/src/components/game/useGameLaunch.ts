@@ -68,16 +68,25 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     }
   }
 
-  /** A file: the one given, else the one the user picks. */
+  /** A file: the one given, else the one the user picks among the extensions Rust opens. */
   async function openFile(given?: string) {
-    const path =
-      given ??
-      (await open({
-        multiple: false,
-        filters: [{ name: t('library.dialogFilter'), extensions: ['gba', 'gb', 'gbc'] }],
-      }))
+    const path = given ?? (await pickFile())
     if (typeof path !== 'string') return
     await start({ opened: { kind: 'path', path }, title: fileTitle(path), colour: null })
+  }
+
+  async function pickFile(): Promise<string | null> {
+    try {
+      const extensions = await emu.openExtensions()
+      const picked = await open({
+        multiple: false,
+        filters: [{ name: t('library.dialogFilter'), extensions }],
+      })
+      return typeof picked === 'string' ? picked : null
+    } catch (e) {
+      toasts.failWith(e)
+      return null
+    }
   }
 
   /**

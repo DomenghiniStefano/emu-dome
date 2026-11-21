@@ -1,12 +1,12 @@
 // L06: the settings a game has a value of its own for, as the tab lists them. Pure: the
 // translations come in as a `Translator`.
-import type { GameOverride, SettingEntry, SettingsSchema, SettingValue } from '@/emu'
+import type { GameOverride, SettingEntry, SettingKey, SettingsSchema, SettingValue } from '@/emu'
 import { isShown, msg } from '@/lib/settingsModel'
 import type { Translator } from '@/i18n/message'
 
 /** One setting of the game, named and with its values in words. */
 export interface OverrideRow {
-  key: string
+  key: SettingKey
   name: string
   /** The settings page it lives on. */
   where: string

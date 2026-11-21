@@ -1,6 +1,6 @@
 // G09 quick picks (Cowork on #43, from #38): each sets image size, smoothing and the screen
 // effect together, «in prova» like every other change in the quick menu.
-import type { SettingValue } from '@/emu'
+import type { SettingKey, SettingValue } from '@/emu'
 
 export const ScreenPickId = {
   Sharp: 'sharp',
@@ -11,7 +11,7 @@ export const ScreenPickId = {
 export type ScreenPickId = (typeof ScreenPickId)[keyof typeof ScreenPickId]
 
 /** The values each pick sets, by setting key. */
-export const SCREEN_PICKS: Record<ScreenPickId, Record<string, string>> = {
+export const SCREEN_PICKS: Record<ScreenPickId, Partial<Record<SettingKey, string>>> = {
   [ScreenPickId.Sharp]: { 'video.scale': 'integer', 'video.filter': 'none', 'fx.fxpick': 'none' },
   [ScreenPickId.Soft]: { 'video.scale': 'fit', 'video.filter': 'soft', 'fx.fxpick': 'soft_pixels' },
   [ScreenPickId.Lcd]: { 'video.scale': 'integer', 'video.filter': 'none', 'fx.fxpick': 'lcd' },
@@ -32,15 +32,15 @@ export interface ScreenPick {
 }
 
 export interface ScreenPickInput {
-  value: (key: string) => SettingValue | null
+  value: (key: SettingKey) => SettingValue | null
   /** The setting cannot change at the Session level (`lockReason` is not null). */
-  locked: (key: string) => boolean
+  locked: (key: SettingKey) => boolean
 }
 
 /** The picks as the bar shows them. */
 export function screenPicks(c: ScreenPickInput): ScreenPick[] {
   return Object.values(ScreenPickId).map(id => {
-    const same = Object.entries(SCREEN_PICKS[id]).map(([key, v]) => ({
+    const same = changesOf(id).map(([key, v]) => ({
       key,
       same: c.value(key) === v,
     }))
@@ -56,7 +56,10 @@ export function screenPicks(c: ScreenPickInput): ScreenPick[] {
 /** The changes a pick makes: only the values that differ from the current ones. */
 export function pickChanges(
   id: ScreenPickId,
-  value: (key: string) => SettingValue | null,
-): [string, string][] {
-  return Object.entries(SCREEN_PICKS[id]).filter(([key, v]) => value(key) !== v)
+  value: (key: SettingKey) => SettingValue | null,
+): [SettingKey, string][] {
+  return changesOf(id).filter(([key, v]) => value(key) !== v)
 }
+
+/** Every value a pick sets, by its setting. */
+const changesOf = (id: ScreenPickId) => Object.entries(SCREEN_PICKS[id]) as [SettingKey, string][]

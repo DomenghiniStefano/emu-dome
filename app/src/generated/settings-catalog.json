@@ -1,0 +1,1455 @@
+{
+  "entries": [
+    {
+      "key": "video.scale",
+      "kind": "choice",
+      "options": [
+        "fit",
+        "integer",
+        "fill"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.aspect",
+      "kind": "choice",
+      "options": [
+        "original",
+        "4_3",
+        "16_9"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.filter",
+      "kind": "choice",
+      "options": [
+        "none",
+        "light",
+        "soft"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.surround",
+      "kind": "choice",
+      "options": [
+        "black",
+        "cover",
+        "blur",
+        "builtin",
+        "image"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.surroundSet",
+      "kind": "choice",
+      "options": [
+        "aurora",
+        "sunset",
+        "night",
+        "forest",
+        "graphite",
+        "grid"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.surroundImg",
+      "kind": "file",
+      "options": [],
+      "page": "video"
+    },
+    {
+      "key": "video.surroundDim",
+      "kind": "slider",
+      "options": [],
+      "page": "video"
+    },
+    {
+      "key": "video.surroundAnim",
+      "kind": "toggle",
+      "options": [],
+      "page": "video"
+    },
+    {
+      "key": "video.fps",
+      "kind": "toggle",
+      "options": [],
+      "page": "video"
+    },
+    {
+      "key": "video.window",
+      "kind": "choice",
+      "options": [
+        "windowed",
+        "fullscreen",
+        "borderless"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.winsize",
+      "kind": "choice",
+      "options": [
+        "1x",
+        "2x",
+        "3x",
+        "4x",
+        "free"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.portrait",
+      "kind": "choice",
+      "options": [
+        "center",
+        "top"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.orient",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "portrait",
+        "landscape"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.path",
+      "kind": "choice",
+      "options": [
+        "accelerated",
+        "compatible"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.vsync",
+      "kind": "toggle",
+      "options": [],
+      "page": "video"
+    },
+    {
+      "key": "video.api",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "vulkan",
+        "d3d12",
+        "opengl"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.res3d",
+      "kind": "choice",
+      "options": [
+        "1x",
+        "2x",
+        "3x",
+        "4x"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "video.texf",
+      "kind": "choice",
+      "options": [
+        "none",
+        "bicubic",
+        "scaleforce",
+        "xbrz",
+        "mmpx",
+        "anime4k"
+      ],
+      "page": "video"
+    },
+    {
+      "key": "fx.fxpick",
+      "kind": "choice",
+      "options": [
+        "none",
+        "lcd",
+        "lcd_grid",
+        "crt",
+        "crt_curved",
+        "soft_pixels",
+        "file"
+      ],
+      "page": "fx"
+    },
+    {
+      "key": "fx.fxint",
+      "kind": "slider",
+      "options": [],
+      "page": "fx"
+    },
+    {
+      "key": "fx.fxbright",
+      "kind": "slider",
+      "options": [],
+      "page": "fx"
+    },
+    {
+      "key": "fx.fxfile",
+      "kind": "file",
+      "options": [],
+      "page": "fx"
+    },
+    {
+      "key": "screens.cycle",
+      "kind": "multi",
+      "options": [
+        "vertical",
+        "side",
+        "big_small",
+        "top_only"
+      ],
+      "page": "screens"
+    },
+    {
+      "key": "screens.custom",
+      "kind": "action",
+      "options": [],
+      "page": "screens"
+    },
+    {
+      "key": "screens.ratio",
+      "kind": "slider",
+      "options": [],
+      "page": "screens"
+    },
+    {
+      "key": "screens.gap",
+      "kind": "slider",
+      "options": [],
+      "page": "screens"
+    },
+    {
+      "key": "screens.rot",
+      "kind": "choice",
+      "options": [
+        "none",
+        "left",
+        "right",
+        "flip"
+      ],
+      "page": "screens"
+    },
+    {
+      "key": "screens.swap",
+      "kind": "choice",
+      "options": [
+        "toggle",
+        "hold"
+      ],
+      "page": "screens"
+    },
+    {
+      "key": "screens.second",
+      "kind": "toggle",
+      "options": [],
+      "page": "screens"
+    },
+    {
+      "key": "screens.stereo",
+      "kind": "choice",
+      "options": [
+        "off",
+        "side",
+        "anaglyph",
+        "interlaced"
+      ],
+      "page": "screens"
+    },
+    {
+      "key": "audio.vol",
+      "kind": "slider",
+      "options": [],
+      "page": "audio"
+    },
+    {
+      "key": "audio.ff",
+      "kind": "choice",
+      "options": [
+        "mute",
+        "pitch_up",
+        "same_pitch"
+      ],
+      "page": "audio"
+    },
+    {
+      "key": "audio.mic",
+      "kind": "choice",
+      "options": [
+        "blow",
+        "real",
+        "silence"
+      ],
+      "page": "audio"
+    },
+    {
+      "key": "audio.out",
+      "kind": "choice",
+      "options": [
+        "system"
+      ],
+      "page": "audio"
+    },
+    {
+      "key": "audio.lat",
+      "kind": "choice",
+      "options": [
+        "low",
+        "balanced",
+        "safe"
+      ],
+      "page": "audio"
+    },
+    {
+      "key": "speed.spstart",
+      "kind": "choice",
+      "options": [
+        "0.5",
+        "1",
+        "2"
+      ],
+      "page": "speed"
+    },
+    {
+      "key": "speed.ffmode",
+      "kind": "choice",
+      "options": [
+        "hold",
+        "toggle"
+      ],
+      "page": "speed"
+    },
+    {
+      "key": "speed.ffval",
+      "kind": "choice",
+      "options": [
+        "2",
+        "3",
+        "4",
+        "max"
+      ],
+      "page": "speed"
+    },
+    {
+      "key": "speed.slow",
+      "kind": "choice",
+      "options": [
+        "0.25",
+        "0.5",
+        "0.75"
+      ],
+      "page": "speed"
+    },
+    {
+      "key": "speed.rew",
+      "kind": "toggle",
+      "options": [],
+      "page": "speed"
+    },
+    {
+      "key": "speed.rewlen",
+      "kind": "slider",
+      "options": [],
+      "page": "speed"
+    },
+    {
+      "key": "speed.runahead",
+      "kind": "choice",
+      "options": [
+        "off",
+        "1",
+        "2",
+        "3"
+      ],
+      "page": "speed"
+    },
+    {
+      "key": "saves.slots",
+      "kind": "choice",
+      "options": [
+        "3",
+        "5",
+        "10"
+      ],
+      "page": "saves"
+    },
+    {
+      "key": "saves.autoq",
+      "kind": "choice",
+      "options": [
+        "1min",
+        "5min",
+        "never"
+      ],
+      "page": "saves"
+    },
+    {
+      "key": "saves.autoexit",
+      "kind": "toggle",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "saves.resume",
+      "kind": "choice",
+      "options": [
+        "ask",
+        "always",
+        "ingame"
+      ],
+      "page": "saves"
+    },
+    {
+      "key": "saves.undo",
+      "kind": "toggle",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "saves.backups",
+      "kind": "slider",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "saves.rtc",
+      "kind": "choice",
+      "options": [
+        "real",
+        "offset",
+        "fixed"
+      ],
+      "page": "saves"
+    },
+    {
+      "key": "saves.import",
+      "kind": "action",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "saves.savedir",
+      "kind": "action",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "pad.dev1",
+      "kind": "action",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.dev2",
+      "kind": "action",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.ab",
+      "kind": "choice",
+      "options": [
+        "nintendo",
+        "printed"
+      ],
+      "page": "pad"
+    },
+    {
+      "key": "pad.remap",
+      "kind": "bindings",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.turbo",
+      "kind": "action",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.mod",
+      "kind": "choice",
+      "options": [
+        "l3",
+        "r3",
+        "select"
+      ],
+      "page": "pad"
+    },
+    {
+      "key": "pad.combos",
+      "kind": "bindings",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.lid",
+      "kind": "choice",
+      "options": [
+        "l3_select",
+        "menu_only"
+      ],
+      "page": "pad"
+    },
+    {
+      "key": "pad.dead",
+      "kind": "slider",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.stickdpad",
+      "kind": "slider",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.trig",
+      "kind": "slider",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.rumble",
+      "kind": "slider",
+      "options": [],
+      "page": "pad"
+    },
+    {
+      "key": "pad.gyro",
+      "kind": "choice",
+      "options": [
+        "controller",
+        "phone",
+        "mouse",
+        "right_stick",
+        "off"
+      ],
+      "page": "pad"
+    },
+    {
+      "key": "pad.pointer",
+      "kind": "choice",
+      "options": [
+        "mouse",
+        "right_stick",
+        "touch"
+      ],
+      "page": "pad"
+    },
+    {
+      "key": "pad.confirm",
+      "kind": "choice",
+      "options": [
+        "right",
+        "bottom"
+      ],
+      "page": "pad"
+    },
+    {
+      "key": "pad.repeat",
+      "kind": "choice",
+      "options": [
+        "slow",
+        "normal",
+        "fast"
+      ],
+      "page": "pad"
+    },
+    {
+      "key": "touch.tedit",
+      "kind": "action",
+      "options": [],
+      "page": "touch"
+    },
+    {
+      "key": "touch.tport",
+      "kind": "choice",
+      "options": [
+        "default"
+      ],
+      "page": "touch"
+    },
+    {
+      "key": "touch.tland",
+      "kind": "choice",
+      "options": [
+        "default"
+      ],
+      "page": "touch"
+    },
+    {
+      "key": "touch.tskin",
+      "kind": "action",
+      "options": [],
+      "page": "touch"
+    },
+    {
+      "key": "touch.topac",
+      "kind": "slider",
+      "options": [],
+      "page": "touch"
+    },
+    {
+      "key": "touch.thapt",
+      "kind": "slider",
+      "options": [],
+      "page": "touch"
+    },
+    {
+      "key": "touch.thide",
+      "kind": "choice",
+      "options": [
+        "never",
+        "5s",
+        "10s"
+      ],
+      "page": "touch"
+    },
+    {
+      "key": "touch.tpad",
+      "kind": "toggle",
+      "options": [],
+      "page": "touch"
+    },
+    {
+      "key": "general.lang",
+      "kind": "choice",
+      "options": [
+        "system",
+        "it",
+        "en"
+      ],
+      "page": "general"
+    },
+    {
+      "key": "general.theme",
+      "kind": "choice",
+      "options": [
+        "system",
+        "dark",
+        "black",
+        "light"
+      ],
+      "page": "general"
+    },
+    {
+      "key": "general.accent",
+      "kind": "colour",
+      "options": [],
+      "page": "general"
+    },
+    {
+      "key": "general.ui",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "desktop",
+        "tv"
+      ],
+      "page": "general"
+    },
+    {
+      "key": "general.start",
+      "kind": "choice",
+      "options": [
+        "library",
+        "last_game"
+      ],
+      "page": "general"
+    },
+    {
+      "key": "general.bgpause",
+      "kind": "toggle",
+      "options": [],
+      "page": "general"
+    },
+    {
+      "key": "general.confirmdel",
+      "kind": "toggle",
+      "options": [],
+      "page": "general"
+    },
+    {
+      "key": "general.updates",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "ask",
+        "off"
+      ],
+      "page": "general"
+    },
+    {
+      "key": "library.folders",
+      "kind": "folders",
+      "options": [],
+      "page": "library"
+    },
+    {
+      "key": "library.scanstart",
+      "kind": "toggle",
+      "options": [],
+      "page": "library"
+    },
+    {
+      "key": "library.watch",
+      "kind": "toggle",
+      "options": [],
+      "page": "library"
+    },
+    {
+      "key": "library.sort",
+      "kind": "choice",
+      "options": [
+        "last_played",
+        "name",
+        "play_time",
+        "added"
+      ],
+      "page": "library"
+    },
+    {
+      "key": "library.group",
+      "kind": "toggle",
+      "options": [],
+      "page": "library"
+    },
+    {
+      "key": "library.region",
+      "kind": "choice",
+      "options": [
+        "eu_us",
+        "us_eu",
+        "jp"
+      ],
+      "page": "library"
+    },
+    {
+      "key": "library.hidden",
+      "kind": "action",
+      "options": [],
+      "page": "library"
+    },
+    {
+      "key": "library.covers",
+      "kind": "choice",
+      "options": [
+        "color_title",
+        "rom_icon",
+        "title_only"
+      ],
+      "page": "library"
+    },
+    {
+      "key": "cloud.acct",
+      "kind": "action",
+      "options": [],
+      "page": "cloud"
+    },
+    {
+      "key": "cloud.space",
+      "kind": "action",
+      "options": [],
+      "page": "cloud"
+    },
+    {
+      "key": "cloud.ssaves",
+      "kind": "toggle",
+      "options": [],
+      "page": "cloud"
+    },
+    {
+      "key": "cloud.squick",
+      "kind": "choice",
+      "options": [
+        "all",
+        "last",
+        "none"
+      ],
+      "page": "cloud"
+    },
+    {
+      "key": "cloud.ssettings",
+      "kind": "toggle",
+      "options": [],
+      "page": "cloud"
+    },
+    {
+      "key": "cloud.sgames",
+      "kind": "action",
+      "options": [],
+      "page": "cloud"
+    },
+    {
+      "key": "cloud.sauto",
+      "kind": "choice",
+      "options": [
+        "game",
+        "manual"
+      ],
+      "page": "cloud"
+    },
+    {
+      "key": "cloud.swifi",
+      "kind": "toggle",
+      "options": [],
+      "page": "cloud"
+    },
+    {
+      "key": "a11y.textsize",
+      "kind": "slider",
+      "options": [],
+      "page": "a11y"
+    },
+    {
+      "key": "a11y.motion",
+      "kind": "choice",
+      "options": [
+        "system",
+        "on",
+        "off"
+      ],
+      "page": "a11y"
+    },
+    {
+      "key": "a11y.transp",
+      "kind": "choice",
+      "options": [
+        "system",
+        "on",
+        "off"
+      ],
+      "page": "a11y"
+    },
+    {
+      "key": "a11y.toggle",
+      "kind": "toggle",
+      "options": [],
+      "page": "a11y"
+    },
+    {
+      "key": "a11y.cblind",
+      "kind": "choice",
+      "options": [
+        "none",
+        "protan",
+        "deutan",
+        "tritan"
+      ],
+      "page": "a11y"
+    },
+    {
+      "key": "presets.preset",
+      "kind": "apply",
+      "options": [
+        "faithful",
+        "performance",
+        "quality",
+        "battery"
+      ],
+      "page": "presets"
+    },
+    {
+      "key": "presets.export",
+      "kind": "action",
+      "options": [],
+      "page": "presets"
+    },
+    {
+      "key": "presets.importset",
+      "kind": "action",
+      "options": [],
+      "page": "presets"
+    },
+    {
+      "key": "bios.bgba",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bds7",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bds9",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bdsfw",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bdsi",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.b3ds",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "consoles.gbmodel",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "gb",
+        "gbc",
+        "sgb"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.gbpal",
+      "kind": "choice",
+      "options": [
+        "green",
+        "pocket",
+        "light",
+        "gbc"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.sgb",
+      "kind": "toggle",
+      "options": [],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.gbacc",
+      "kind": "choice",
+      "options": [
+        "off",
+        "gba",
+        "auto"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.gbablend",
+      "kind": "choice",
+      "options": [
+        "off",
+        "auto",
+        "on"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.solar",
+      "kind": "slider",
+      "options": [],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.dsmode",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "ds",
+        "dsi"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.dsname",
+      "kind": "text",
+      "options": [],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.dslang",
+      "kind": "choice",
+      "options": [
+        "ja",
+        "en",
+        "fr",
+        "de",
+        "it",
+        "es"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.slot2",
+      "kind": "choice",
+      "options": [
+        "none",
+        "rumble",
+        "memory",
+        "gba_game"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.n3dsmodel",
+      "kind": "choice",
+      "options": [
+        "o3ds",
+        "n3ds"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "consoles.n3dsreg",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "jpn",
+        "usa",
+        "eur",
+        "kor",
+        "chn",
+        "twn"
+      ],
+      "page": "consoles"
+    },
+    {
+      "key": "perf.frameskip",
+      "kind": "choice",
+      "options": [
+        "auto",
+        "never",
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "page": "advanced"
+    },
+    {
+      "key": "perf.jit",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "perf.shcache",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "perf.cpuclock",
+      "kind": "slider",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mgbabios",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mgbaskip",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mgbalp",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mgbaopp",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mgbaall",
+      "kind": "action",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mdsrender",
+      "kind": "choice",
+      "options": [
+        "software",
+        "opengl"
+      ],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mdsboot",
+      "kind": "choice",
+      "options": [
+        "direct",
+        "menu"
+      ],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.mdsall",
+      "kind": "action",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.azaudio",
+      "kind": "choice",
+      "options": [
+        "hle",
+        "lle"
+      ],
+      "page": "advanced"
+    },
+    {
+      "key": "cores.azall",
+      "kind": "action",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "adv.advon",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "adv.inputs",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "adv.framecnt",
+      "kind": "toggle",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "adv.movies",
+      "kind": "action",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "adv.cheatsearch",
+      "kind": "action",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "adv.devtools",
+      "kind": "action",
+      "options": [],
+      "page": "advanced"
+    },
+    {
+      "key": "online.wfc",
+      "kind": "text",
+      "options": [],
+      "page": "online"
+    },
+    {
+      "key": "online.ra",
+      "kind": "action",
+      "options": [],
+      "page": "online"
+    },
+    {
+      "key": "online.discord",
+      "kind": "toggle",
+      "options": [],
+      "page": "online"
+    },
+    {
+      "key": "about.ver",
+      "kind": "action",
+      "options": [],
+      "page": "about"
+    },
+    {
+      "key": "about.upd",
+      "kind": "action",
+      "options": [],
+      "page": "about"
+    },
+    {
+      "key": "about.emgba",
+      "kind": "action",
+      "options": [],
+      "page": "about"
+    },
+    {
+      "key": "about.emds",
+      "kind": "action",
+      "options": [],
+      "page": "about"
+    },
+    {
+      "key": "about.emaz",
+      "kind": "action",
+      "options": [],
+      "page": "about"
+    },
+    {
+      "key": "about.lic",
+      "kind": "action",
+      "options": [],
+      "page": "about"
+    },
+    {
+      "key": "about.log",
+      "kind": "action",
+      "options": [],
+      "page": "about"
+    }
+  ],
+  "groups": [
+    "game",
+    "controls",
+    "app",
+    "system"
+  ],
+  "pages": [
+    "video",
+    "fx",
+    "screens",
+    "audio",
+    "speed",
+    "saves",
+    "pad",
+    "touch",
+    "general",
+    "library",
+    "cloud",
+    "a11y",
+    "presets",
+    "bios",
+    "consoles",
+    "advanced",
+    "online",
+    "about"
+  ],
+  "sections": [
+    {
+      "id": "image",
+      "page": "video"
+    },
+    {
+      "id": "window",
+      "page": "video"
+    },
+    {
+      "id": "gpu",
+      "page": "video"
+    },
+    {
+      "id": "3d",
+      "page": "video"
+    },
+    {
+      "id": "effect",
+      "page": "fx"
+    },
+    {
+      "id": "adjust",
+      "page": "fx"
+    },
+    {
+      "id": "layout",
+      "page": "screens"
+    },
+    {
+      "id": "other",
+      "page": "screens"
+    },
+    {
+      "id": "audio",
+      "page": "audio"
+    },
+    {
+      "id": "device",
+      "page": "audio"
+    },
+    {
+      "id": "speed",
+      "page": "speed"
+    },
+    {
+      "id": "ff",
+      "page": "speed"
+    },
+    {
+      "id": "rewind",
+      "page": "speed"
+    },
+    {
+      "id": "quick",
+      "page": "saves"
+    },
+    {
+      "id": "ingame",
+      "page": "saves"
+    },
+    {
+      "id": "folder",
+      "page": "saves"
+    },
+    {
+      "id": "devices",
+      "page": "pad"
+    },
+    {
+      "id": "buttons",
+      "page": "pad"
+    },
+    {
+      "id": "shortcuts",
+      "page": "pad"
+    },
+    {
+      "id": "sticks",
+      "page": "pad"
+    },
+    {
+      "id": "menus",
+      "page": "pad"
+    },
+    {
+      "id": "layout",
+      "page": "touch"
+    },
+    {
+      "id": "behaviour",
+      "page": "touch"
+    },
+    {
+      "id": "look",
+      "page": "general"
+    },
+    {
+      "id": "behaviour",
+      "page": "general"
+    },
+    {
+      "id": "folders",
+      "page": "library"
+    },
+    {
+      "id": "view",
+      "page": "library"
+    },
+    {
+      "id": "account",
+      "page": "cloud"
+    },
+    {
+      "id": "what",
+      "page": "cloud"
+    },
+    {
+      "id": "when",
+      "page": "cloud"
+    },
+    {
+      "id": "ui",
+      "page": "a11y"
+    },
+    {
+      "id": "game",
+      "page": "a11y"
+    },
+    {
+      "id": "ready",
+      "page": "presets"
+    },
+    {
+      "id": "file",
+      "page": "presets"
+    },
+    {
+      "id": "gba",
+      "page": "bios"
+    },
+    {
+      "id": "nds",
+      "page": "bios"
+    },
+    {
+      "id": "3ds",
+      "page": "bios"
+    },
+    {
+      "id": "gb",
+      "page": "consoles"
+    },
+    {
+      "id": "gba",
+      "page": "consoles"
+    },
+    {
+      "id": "nds",
+      "page": "consoles"
+    },
+    {
+      "id": "3ds",
+      "page": "consoles"
+    },
+    {
+      "id": "perf",
+      "page": "advanced"
+    },
+    {
+      "id": "mgba",
+      "page": "advanced"
+    },
+    {
+      "id": "melonds",
+      "page": "advanced"
+    },
+    {
+      "id": "azahar",
+      "page": "advanced"
+    },
+    {
+      "id": "tools",
+      "page": "advanced"
+    },
+    {
+      "id": "online",
+      "page": "online"
+    },
+    {
+      "id": "app",
+      "page": "about"
+    },
+    {
+      "id": "engines",
+      "page": "about"
+    },
+    {
+      "id": "help",
+      "page": "about"
+    }
+  ]
+}

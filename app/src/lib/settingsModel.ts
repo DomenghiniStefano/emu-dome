@@ -5,6 +5,7 @@ import {
   emu,
   type SettingDevice,
   type SettingEntry,
+  type SettingKey,
   type SettingLevel,
   type SettingPlatform,
   type SettingRow,
@@ -34,7 +35,7 @@ export const GLOBAL: SettingsScope = { level: 'global' }
  * in the schema. Undefined when the schema has no such key. It can throw: the caller reports it.
  */
 export async function readSetting(
-  key: string,
+  key: SettingKey,
   scope: SettingsScope = GLOBAL,
 ): Promise<SettingRow | undefined> {
   const page = (await loadSchema()).entries.find(e => e.key === key)?.page
@@ -68,7 +69,7 @@ export function isShown(entry: SettingEntry, schema: SettingsSchema): boolean {
  */
 export function showIfHolds(
   entry: SettingEntry,
-  value: (key: string) => SettingValue | null | undefined,
+  value: (key: SettingKey) => SettingValue | null | undefined,
 ): boolean {
   const cond = entry.showIf
   if (!cond) return true
@@ -121,7 +122,7 @@ export function lockReason(
 }
 
 /** The `bios.*` rows with a backend (`emudome_core::bios` tables): their picker checks the file. */
-const BIOS_ROWS = ['bios.bgba', 'bios.bds7', 'bios.bds9', 'bios.bdsfw', 'bios.bdsi']
+const BIOS_ROWS: SettingKey[] = ['bios.bgba', 'bios.bds7', 'bios.bds9', 'bios.bdsfw', 'bios.bdsi']
 
 /**
  * File rows that work: the picker the row's button opens, which stores the chosen file itself.
@@ -142,8 +143,13 @@ export const FILE_PICKERS: Partial<Record<string, () => Promise<string | null>>>
   ),
 }
 
-/** Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo aggiornamento». */
+/**
+ * Rows whose control has no backend yet: shown, disabled, with «Arriva con un prossimo
+ * aggiornamento». Which entries nothing reads is the catalogue's `wired` (Rust, its list held by a
+ * test); the rest is what only the interface knows: the pickers it has and the video path.
+ */
 export function notYetWired(entry: SettingEntry): boolean {
+  if (!entry.wired) return true
   // The colour-blind filter is drawn on the webview's canvas; the native video has no filter
   // pass yet (it belongs in video.rs).
   if (entry.key === 'a11y.cblind') return videoMode.value === 'native'
@@ -152,10 +158,8 @@ export function notYetWired(entry: SettingEntry): boolean {
     // whose picker the page opens at its scope (`settings_choose_background`).
     case 'file':
       return !FILE_PICKERS[entry.key] && entry.key !== 'video.surroundImg'
-    // `apply` (presets): the bundles and their confirmation are not defined yet.
     case 'action':
     case 'apply':
-      return true
     case 'toggle':
     case 'choice':
     case 'multi':

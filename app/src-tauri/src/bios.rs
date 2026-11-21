@@ -18,6 +18,7 @@ use emudome_core::settings::{ConsoleId, Scope, Value};
 use emudome_core::ErrorCode;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 
@@ -50,9 +51,11 @@ fn chosen(app: &AppHandle, key: &str) -> bool {
     }
 }
 
-/// One wired row and its status. Mirror: `BiosRow` in app/src/emu.ts.
-#[derive(Serialize)]
+/// One wired row and its status. TypeScript: `BiosRow` (generated).
+#[derive(Serialize, TS)]
+#[ts(export_to = "app/")]
 pub struct BiosRow {
+    #[ts(as = "emudome_core::contract::SettingKey")]
     key: &'static str,
     status: Status,
 }

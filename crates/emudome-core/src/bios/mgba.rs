@@ -4,14 +4,14 @@
 //! option of its own.
 
 use super::{BiosTable, Check, Plan, Slot, SlotSpec};
-use crate::settings::{ConsoleId, Value};
+use crate::settings::{keys, ConsoleId, Value};
 
 pub(super) static TABLE: BiosTable = BiosTable {
     core: "mgba",
     slots: &[
         SlotSpec {
             slot: Slot::GbaBios,
-            setting: Some("bios.bgba"),
+            setting: Some(keys::BIOS_GBA.as_str()),
             file: "gba_bios.bin",
             sizes: &[16 * 1024],
             check: Check::Md5(&["a860e8c0b6d573d191e4ec7db1b1e4f6"]),

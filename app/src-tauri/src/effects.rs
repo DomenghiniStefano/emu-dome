@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use emudome_core::effects::{self, EffectSource};
-use emudome_core::settings::{Scope, Value};
+use emudome_core::settings::{keys, Scope, Value};
 use emudome_core::ErrorCode;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -157,20 +157,19 @@ pub fn apply(app: &AppHandle) {
                 }
             }
         };
-        [
-            read("fx.fxpick"),
-            read("fx.fxint"),
-            read("fx.fxbright"),
-            read("fx.fxfile"),
-        ]
+        // Read under the lock, decided after it.
+        [keys::FX_PICK.as_str(), keys::FX_FILE.as_str()]
+            .into_iter()
+            .chain([keys::FX_INTENSITY.as_str(), keys::FX_BRIGHTNESS.as_str()])
+            .map(|key| (key, read(key)))
+            .collect::<Vec<_>>()
     };
-    let [pick, intensity, brightness, file] = &values;
-    let choice = effects::from_settings(
-        pick.as_ref(),
-        intensity.as_ref(),
-        brightness.as_ref(),
-        file.as_ref(),
-    );
+    let choice = effects::from_settings(|key| {
+        values
+            .iter()
+            .find(|(k, _)| *k == key)
+            .and_then(|(_, v)| v.clone())
+    });
     let builtin_dir = app
         .try_state::<EffectsState>()
         .and_then(|s| s.builtin_dir.clone());
@@ -200,9 +199,13 @@ pub async fn effects_choose_file(app: AppHandle) -> Result<Option<String>, Error
     let level = {
         let state = app.state::<SettingsState>();
         let mut settings = state.0.lock();
-        settings.set("fx.fxfile", &Scope::Global, Value::Text(path.clone()))?
+        settings.set(
+            keys::FX_FILE.as_str(),
+            &Scope::Global,
+            Value::Text(path.clone()),
+        )?
     };
-    crate::settings::emit_changed(&app, &["fx.fxfile"], level);
+    crate::settings::emit_changed(&app, &[keys::FX_FILE.as_str()], level);
     Ok(Some(path))
 }
 

@@ -20,15 +20,17 @@ use emudome_core::ErrorCode;
 use parking_lot::{Condvar, Mutex};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 
 /// The longest a game or the Saves screen waits for the move.
 const WAIT_AT_MOST: Duration = Duration::from_secs(20);
 
-/// Where the move stands. Mirror: `SavesMigration` in app/src/emu.ts.
-#[derive(Clone, Debug, Default, Serialize)]
+/// Where the move stands. TypeScript: `SavesMigration` (generated).
+#[derive(Clone, Debug, Default, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "SavesMigration")]
 pub struct Status {
     pub running: bool,
     /// What the user should know: it failed, or some old files stayed where they were.

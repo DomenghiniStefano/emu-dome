@@ -7,13 +7,15 @@
 //! the `perf.*`, `cores.*` and `adv.*` keys, which never change).
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 pub use crate::bindings::Table as BindingTable;
 
 /// Where a value comes from, from the weakest to the strongest.
-/// Mirror: `SettingLevel` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// TypeScript: `SettingLevel` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "SettingLevel")]
 pub enum Level {
     /// The schema's default.
     Default,
@@ -74,8 +76,9 @@ impl Levels {
 }
 
 /// Which devices an entry exists on.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "SettingPlatform")]
 pub enum Platform {
     All,
     /// «solo PC».
@@ -86,9 +89,10 @@ pub enum Platform {
     Touch,
 }
 
-/// What this device is, from `emudome_platform`. Mirror: `SettingDevice` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// What this device is, from `emudome_platform`. TypeScript: `SettingDevice` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "SettingDevice")]
 pub enum Device {
     Desktop,
     Phone,
@@ -107,7 +111,7 @@ impl Platform {
 }
 
 /// How a single choice is shown (design kinds `seg`, `sel`, `cards`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum ChoiceStyle {
     /// Segments, few short options.
@@ -119,7 +123,7 @@ pub enum ChoiceStyle {
 }
 
 /// How an entry without a value is shown (design kinds `act`, `link`, `info`, `storage`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum ActionStyle {
     /// A button that does something.
@@ -133,8 +137,9 @@ pub enum ActionStyle {
 }
 
 /// Unit of a slider value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "SliderUnit")]
 pub enum Unit {
     Percent,
     Px,
@@ -142,13 +147,14 @@ pub enum Unit {
     Copies,
 }
 
-/// The kind of an entry and its constraints. Mirror: `SettingKind` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// The kind of an entry and its constraints. TypeScript: `SettingKind` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
     rename_all_fields = "camelCase"
 )]
+#[ts(rename = "SettingKind")]
 pub enum Kind {
     /// On / off (`sw`). Value: bool.
     Toggle,
@@ -190,9 +196,10 @@ pub enum Kind {
     Bindings { table: BindingTable },
 }
 
-/// A stored or resolved value. Mirror: `SettingValue` in app/src/emu.ts.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// A stored or resolved value. TypeScript: `SettingValue` (generated).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(untagged)]
+#[ts(rename = "SettingValue")]
 pub enum Value {
     Bool(bool),
     Int(i64),
@@ -224,9 +231,11 @@ impl DefaultValue {
 }
 
 /// When a row is shown: the value of another entry of the same page, resolved at the level being
-/// edited, is (or with `not`, is not) one of `values`. Mirror: `SettingShowIf` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// edited, is (or with `not`, is not) one of `values`. TypeScript: `SettingShowIf` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
+#[ts(rename = "SettingShowIf")]
 pub struct ShowIf {
+    #[ts(as = "crate::contract::SettingKey")]
     pub key: &'static str,
     pub values: &'static [&'static str],
     pub not: bool,
@@ -267,6 +276,11 @@ pub struct Entry {
     /// Works only on the native (Accelerated) video path: on Compatible the interface shows the
     /// row disabled with the reason (X05). The screen effects (`fx.*`).
     pub needs_native_video: bool,
+    /// Something reads the value (or, for an action, carries it out). An entry that is not wired
+    /// is shown disabled with «This arrives in a future update» (X05), so a setting the user can
+    /// change never does nothing silently (engineering rule 5). The list is held by
+    /// `settings::tests::the_entries_not_wired_yet_are_these`.
+    pub wired: bool,
 }
 
 impl Entry {
@@ -342,7 +356,16 @@ impl Entry {
     pub fn accepts_value(&self, value: &Value) -> bool {
         match (self.kind, value) {
             (Kind::Toggle, Value::Bool(_)) => true,
-            (Kind::Choice { options, .. }, Value::Text(id)) => options.contains(&id.as_str()),
+            // Options the device adds at run time (an audio output, a saved layout) are not in
+            // the schema: any non-empty id is taken, the device decides whether it still exists.
+            (
+                Kind::Choice {
+                    options,
+                    more_at_runtime,
+                    ..
+                },
+                Value::Text(id),
+            ) => options.contains(&id.as_str()) || (more_at_runtime && !id.trim().is_empty()),
             (Kind::Multi { options }, Value::List(ids)) => {
                 ids.iter().all(|id| options.contains(&id.as_str()))
                     && ids.iter().enumerate().all(|(i, id)| !ids[..i].contains(id))
@@ -392,24 +415,28 @@ pub fn page_entries(page: &str) -> impl Iterator<Item = &'static Entry> + '_ {
 }
 
 /// A group of pages in the category list («GIOCO», «CONTROLLI», …).
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize, TS)]
+#[ts(rename = "SettingPageGroup")]
 pub struct PageGroup {
     pub id: &'static str,
     pub pages: &'static [&'static str],
 }
 
 /// A heading of a settings page and the entries under it, in order.
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Serialize, TS)]
+#[ts(rename = "SettingSection")]
 pub struct Section {
     pub page: &'static str,
     /// Stable id; text `settings.sections.<page>.<id>`.
     pub id: &'static str,
+    #[ts(as = "Vec<crate::contract::SettingKey>")]
     pub keys: &'static [&'static str],
 }
 
-/// The schema as the interface reads it. Mirror: `SettingsSchema` in app/src/emu.ts.
-#[derive(Debug, Serialize)]
+/// The schema as the interface reads it. TypeScript: `SettingsSchema` (generated).
+#[derive(Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "SettingsSchema")]
 pub struct SchemaDto {
     /// This device; entries whose `platform` does not include it are not shown.
     pub device: Device,
@@ -424,9 +451,11 @@ pub struct SchemaDto {
     pub entries: Vec<EntryDto>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "SettingEntry")]
 pub struct EntryDto {
+    #[ts(as = "crate::contract::SettingKey")]
     pub key: &'static str,
     pub page: &'static str,
     pub kind: Kind,
@@ -445,9 +474,12 @@ pub struct EntryDto {
     pub most_used: bool,
     /// When the row is shown; absent: always.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub show_if: Option<ShowIf>,
     /// Works only on the native (Accelerated) video path.
     pub needs_native_video: bool,
+    /// Something reads it; otherwise shown disabled with «arrives in a future update».
+    pub wired: bool,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -488,6 +520,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 most_used: e.most_used,
                 show_if: e.show_if,
                 needs_native_video: e.needs_native_video,
+                wired: e.wired,
             })
             .collect(),
     }

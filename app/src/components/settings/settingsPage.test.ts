@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { LibraryGame, SettingEntry, SettingsSchema } from '@/emu'
+import type { LibraryGame, SettingEntry, SettingKey, SettingsSchema } from '@/emu'
 import {
   changedCount,
   effectiveLevel,
@@ -18,7 +18,7 @@ import {
 // The bridge reads Tauri's globals when it loads; these functions never call it.
 vi.mock('@/emu', () => ({ emu: {} }))
 
-const entry = (key: string, over: Partial<SettingEntry> = {}): SettingEntry => ({
+const entry = (key: SettingKey, over: Partial<SettingEntry> = {}): SettingEntry => ({
   key,
   page: key.split('.')[0] ?? '',
   kind: { type: 'toggle' },
@@ -31,6 +31,7 @@ const entry = (key: string, over: Partial<SettingEntry> = {}): SettingEntry => (
   synonyms: [],
   mostUsed: false,
   needsNativeVideo: false,
+  wired: true,
   ...over,
 })
 const surround = entry('video.surround', {
@@ -62,7 +63,7 @@ const rows = (over: Record<string, Partial<PageValues[string]>>): PageValues =>
   Object.fromEntries(
     Object.entries(over).map(([key, r]) => [
       key,
-      { key, value: false, source: 'default', changed: false, ...r },
+      { key: key as SettingKey, value: false, source: 'default', changed: false, ...r },
     ]),
   )
 const keys = (secs: { entries: SettingEntry[] }[]) => secs.map(s => s.entries.map(e => e.key))

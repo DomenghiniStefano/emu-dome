@@ -21,7 +21,9 @@ the EmuDome Design System artifact linked from `CLAUDE.md`.
 - The root holds the app's wiring only: `main.ts`, `App.vue`, `emu.ts` (the only file that calls
   `invoke`, the typed bridge to Rust), `nav.ts` (the focus navigation), `styles.css`, `i18n/`
   (messages, `Message` / `useSay`, code → text labels), `assets/` (tokens and named utilities), `kit/`
-  (the Kit page).
+  (the Kit page), `generated/` (the bridge's types and the catalogue's keys, written by the Rust
+  contract tests, never edited by hand; import them through `@/emu`, and type a setting key as
+  `SettingKey`, never `string`).
 
 ## Imports
 

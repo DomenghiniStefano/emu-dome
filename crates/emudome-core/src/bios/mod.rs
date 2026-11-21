@@ -25,13 +25,16 @@ mod mgba;
 
 use md5::{Digest, Md5};
 use serde::Serialize;
+use ts_rs::TS;
 
+use crate::settings::keys::{Reader, TextKey};
 use crate::settings::{ConsoleId, Value};
 use crate::ErrorCode;
 
-/// One file a core can use.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+/// One file a core can use. TypeScript: `BiosSlot` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "BiosSlot")]
 pub enum Slot {
     /// Game Boy Advance BIOS (mGBA).
     GbaBios,
@@ -248,9 +251,10 @@ pub fn assess<'a>(
     }
 }
 
-/// What a `bios.*` row shows. Mirror: `BiosStatus` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// What a `bios.*` row shows. TypeScript: `BiosStatus` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "BiosStatus")]
 pub enum Status {
     /// No file chosen: the core's replacement.
     Builtin,
@@ -283,12 +287,9 @@ pub fn plan(
         .unwrap_or_default()
 }
 
-/// A text setting's value, `None` for any other kind.
-fn text(value: &dyn Fn(&str) -> Option<Value>, key: &str) -> Option<String> {
-    match value(key) {
-        Some(Value::Text(t)) => Some(t),
-        Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => None,
-    }
+/// A text setting's value, the catalogue's default when it has none.
+fn text(value: &dyn Fn(&str) -> Option<Value>, key: TextKey) -> String {
+    Reader::new(value).text(key)
 }
 
 #[cfg(test)]

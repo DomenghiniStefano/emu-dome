@@ -4,11 +4,11 @@
 // that resolves after it unmounted (useListeners.ts); a module that lives as long as the app uses
 // `onSettingsChanged`.
 import { onMounted } from 'vue'
-import { emu, type SettingsChanged } from '@/emu'
+import { emu, type SettingKey, type SettingsChanged } from '@/emu'
 import { useListeners, type Unlisten } from './useListeners'
 
 /** Which changes a follower cares about: one key, a list of keys, or a test on the change. */
-export type SettingsFilter = string | readonly string[] | ((e: SettingsChanged) => boolean)
+export type SettingsFilter = SettingKey | readonly SettingKey[] | ((e: SettingsChanged) => boolean)
 
 /** Every key: for a screen that reads whole pages again on any change. */
 export const EVERY_SETTING: SettingsFilter = () => true

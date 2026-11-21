@@ -16,6 +16,7 @@ pub mod audio;
 pub mod bindings;
 pub mod bios;
 pub mod close_flow;
+pub mod contract;
 pub mod effects;
 pub mod first_run;
 pub mod game_key;

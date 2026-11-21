@@ -5,7 +5,14 @@
 // first), each opening its page at the level it was made.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { SettingEntry, SettingLevel, SettingRecent, SettingsSchema, SettingValue } from '@/emu'
+import type {
+  SettingEntry,
+  SettingKey,
+  SettingLevel,
+  SettingRecent,
+  SettingsSchema,
+  SettingValue,
+} from '@/emu'
 import { changedWhenLabel } from '@/i18n/labels'
 import { isShown, msg } from '@/lib/settingsModel'
 import SettingRowView from './SettingRow.vue'
@@ -23,8 +30,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   pick: [page: string]
   openRecent: [SettingRecent]
-  set: [key: string, value: SettingValue]
-  reset: [key: string]
+  set: [key: SettingKey, value: SettingValue]
+  reset: [key: SettingKey]
   error: [string]
 }>()
 const { t } = useI18n()

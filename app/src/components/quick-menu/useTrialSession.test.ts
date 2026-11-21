@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import type { SettingRow, SettingsChanged, SettingsSchema } from '@/emu'
+import type { SettingKey, SettingRow, SettingsChanged, SettingsSchema } from '@/emu'
 import { i18n } from '@/i18n'
 import { useTrialSession } from './useTrialSession'
 
@@ -76,7 +76,7 @@ describe('useTrialSession', () => {
     expect(bridge.page).toHaveBeenCalledWith('video', { level: 'session' })
     expect(trial.value('video.filter')).toBe('soft')
     expect(trial.value('speed.ffval')).toBe('4')
-    expect(trial.value('nothing')).toBeNull()
+    expect(trial.value('nothing' as SettingKey)).toBeNull()
   })
 
   it('titles the changes «in prova», none without any', async () => {

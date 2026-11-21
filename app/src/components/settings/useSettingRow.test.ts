@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, reactive } from 'vue'
-import type { SettingEntry, SettingRow, SettingsSchema } from '@/emu'
+import type { SettingEntry, SettingKey, SettingRow, SettingsSchema } from '@/emu'
 import { i18n } from '@/i18n'
 import { refreshBiosStatus } from '@/lib/biosStatus'
 import { useSettingRow, type SettingRowInput } from './useSettingRow'
@@ -14,7 +14,7 @@ vi.mock('@/emu', () => ({
 const t = (key: string, params: Record<string, unknown> = {}) => i18n.global.t(key, params)
 const flush = () => new Promise(r => setTimeout(r, 0))
 
-const entry = (key: string, over: Partial<SettingEntry> = {}): SettingEntry => ({
+const entry = (key: SettingKey, over: Partial<SettingEntry> = {}): SettingEntry => ({
   key,
   page: key.split('.')[0] ?? '',
   kind: { type: 'toggle' },
@@ -27,6 +27,7 @@ const entry = (key: string, over: Partial<SettingEntry> = {}): SettingEntry => (
   synonyms: [],
   mostUsed: false,
   needsNativeVideo: false,
+  wired: true,
   ...over,
 })
 const schema: SettingsSchema = {
@@ -37,8 +38,8 @@ const schema: SettingsSchema = {
   sections: [],
   entries: [],
 }
-const fileEntry = (key: string) => entry(key, { kind: { type: 'file' }, default: '' })
-const globalOnly = (key: string) => entry(key, { levels: ['default', 'global'] })
+const fileEntry = (key: SettingKey) => entry(key, { kind: { type: 'file' }, default: '' })
+const globalOnly = (key: SettingKey) => entry(key, { levels: ['default', 'global'] })
 
 function setup(e: SettingEntry, over: Partial<SettingRowInput> = {}) {
   const props = reactive<SettingRowInput>({

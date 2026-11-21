@@ -12,25 +12,18 @@
 
 use std::collections::VecDeque;
 
+use crate::settings::keys::{Reader, SPEED_REWIND, SPEED_REWIND_LENGTH};
 use crate::settings::Value;
 
-/// `speed.rewlen`'s default and range (catalog.rs), for a value of the wrong shape.
-const DEFAULT_SECONDS: u32 = 30;
-const SECONDS_RANGE: (u32, u32) = (10, 120);
-
-/// The seconds to keep from the resolved `speed.rew` and `speed.rewlen` (`None` = the schema
-/// default): `None` when rewind is off.
-pub fn seconds_from_settings(rew: Option<Value>, rewlen: Option<Value>) -> Option<u32> {
-    match rew {
-        Some(Value::Bool(false)) => return None,
-        Some(Value::Bool(true) | Value::Int(_) | Value::Text(_) | Value::List(_)) | None => {}
+/// The seconds to keep from the resolved `speed.rew` and `speed.rewlen` (`read`: a resolved
+/// value; missing or mistyped ones are the catalogue's defaults, a length out of the slider's
+/// range is held to it): `None` when rewind is off.
+pub fn seconds_from_settings(read: impl Fn(&str) -> Option<Value>) -> Option<u32> {
+    let settings = Reader::new(read);
+    if !settings.bool(SPEED_REWIND) {
+        return None;
     }
-    Some(match rewlen {
-        Some(Value::Int(v)) => u32::try_from(v)
-            .unwrap_or(DEFAULT_SECONDS)
-            .clamp(SECONDS_RANGE.0, SECONDS_RANGE.1),
-        Some(Value::Bool(_) | Value::Text(_) | Value::List(_)) | None => DEFAULT_SECONDS,
-    })
+    u32::try_from(settings.int(SPEED_REWIND_LENGTH)).ok()
 }
 
 /// A state is taken every this many emulated frames (more for very large states, see
@@ -360,27 +353,31 @@ mod tests {
     };
     use crate::settings::Value;
 
+    /// `seconds_from_settings` with `speed.rew` = `rew` and `speed.rewlen` = `len`.
+    fn seconds(rew: Option<Value>, len: Option<Value>) -> Option<u32> {
+        seconds_from_settings(|key| match key {
+            "speed.rew" => rew.clone(),
+            "speed.rewlen" => len.clone(),
+            _ => None,
+        })
+    }
+
     #[test]
     fn the_seconds_come_from_the_settings() {
-        assert_eq!(seconds_from_settings(None, None), Some(30));
+        // The catalogue's defaults: on, 30 s.
+        assert_eq!(seconds(None, None), Some(30));
         assert_eq!(
-            seconds_from_settings(Some(Value::Bool(true)), Some(Value::Int(60))),
+            seconds(Some(Value::Bool(true)), Some(Value::Int(60))),
             Some(60)
         );
         assert_eq!(
-            seconds_from_settings(Some(Value::Bool(false)), Some(Value::Int(60))),
+            seconds(Some(Value::Bool(false)), Some(Value::Int(60))),
             None
         );
         // Out of the slider's range or of the wrong shape.
-        assert_eq!(seconds_from_settings(None, Some(Value::Int(-5))), Some(30));
-        assert_eq!(
-            seconds_from_settings(None, Some(Value::Int(5000))),
-            Some(120)
-        );
-        assert_eq!(
-            seconds_from_settings(None, Some(Value::Text("x".into()))),
-            Some(30)
-        );
+        assert_eq!(seconds(None, Some(Value::Int(-5))), Some(10));
+        assert_eq!(seconds(None, Some(Value::Int(5000))), Some(120));
+        assert_eq!(seconds(None, Some(Value::Text("x".into()))), Some(30));
     }
 
     /// A fake state: mostly constant memory with a few bytes that change with `n`.

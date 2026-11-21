@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GameSaves, SettingRow, SettingsSchema } from '@/emu'
+import type { GameSaves, SettingKey, SettingRow, SettingsSchema } from '@/emu'
 import {
   DEFAULT_SLOT_COUNT,
   NOTHING_TO_RESUME,
@@ -25,7 +25,7 @@ vi.mock('@/emu', () => ({
 const schema = {
   entries: [{ key: 'saves.slots', page: 'saves' }],
 } as unknown as SettingsSchema
-const row = (key: string, value: SettingRow['value']): SettingRow => ({
+const row = (key: SettingKey, value: SettingRow['value']): SettingRow => ({
   key,
   value,
   source: 'global',
@@ -37,7 +37,7 @@ const saves = (quick: GameSaves['quick'], inGame: GameSaves['inGame'] = null) =>
 beforeEach(() => {
   vi.clearAllMocks()
   bridge.schema.mockResolvedValue(schema)
-  bridge.page.mockResolvedValue([row('saves.other', 3), row('saves.slots', 4)])
+  bridge.page.mockResolvedValue([row('saves.other' as SettingKey, 3), row('saves.slots', 4)])
   bridge.game.mockResolvedValue(saves([]))
 })
 

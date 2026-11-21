@@ -15,11 +15,12 @@ use emudome_core::library::{
     self, core_of, cover_colour, region, CoverKind, GameRecord, Identity, Library, NotAGame,
     Region, ScanInput, ScanReport,
 };
-use emudome_core::settings::{ConsoleId, Scope, Value};
+use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, GameKey};
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
+use ts_rs::TS;
 
 use crate::settings::{self as app_settings, SettingsState};
 use crate::{AppState, GameInfo};
@@ -66,18 +67,19 @@ pub fn is_set_up(app: &AppHandle) -> bool {
 
 /// At startup: a scan if `library.scanstart`, and the folder watcher if `library.watch`.
 pub fn startup(app: &AppHandle) {
-    if setting_bool(app, "library.scanstart") {
+    if settings(app).bool(keys::LIBRARY_SCAN_AT_START) {
         start_scan(app);
     }
     refresh_watch(app);
 }
 
-// ---- DTOs (mirrors in app/src/emu.ts) ----
+// ---- DTOs (TypeScript generated into app/src/generated/app/ by src/contract.rs) ----
 
-/// Mirror: `LibraryGame`.
-#[derive(Serialize)]
+/// TypeScript: `LibraryGame` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct GameDto {
+#[ts(export_to = "app/", rename = "LibraryGame")]
+pub(crate) struct GameDto {
     /// The game's one identity (`GameId` in app/src/emu.ts): its saves and settings too.
     id: GameKey,
     console: ConsoleId,
@@ -147,25 +149,28 @@ impl GameDto {
     }
 }
 
-/// Mirror: `LibraryFolder`.
-#[derive(Serialize)]
-struct FolderDto {
+/// TypeScript: `LibraryFolder` (generated).
+#[derive(Serialize, TS)]
+#[ts(export_to = "app/", rename = "LibraryFolder")]
+pub(crate) struct FolderDto {
     path: String,
     reachable: bool,
 }
 
-/// Mirror: `Library`.
-#[derive(Serialize)]
+/// TypeScript: `Library` (generated).
+#[derive(Serialize, TS)]
+#[ts(export_to = "app/", rename = "Library")]
 pub struct LibraryDto {
     games: Vec<GameDto>,
     folders: Vec<FolderDto>,
     scanning: bool,
 }
 
-/// Payload of `library://scan`. Mirror: `LibraryScanEvent`.
-#[derive(Clone, Serialize)]
+/// Payload of `library://scan`. TypeScript: `LibraryScanEvent` (generated).
+#[derive(Clone, Serialize, TS)]
 #[serde(tag = "phase", rename_all = "camelCase")]
-enum ScanEvent {
+#[ts(export_to = "app/", rename = "LibraryScanEvent")]
+pub(crate) enum ScanEvent {
     Started,
     Progress {
         checked: usize,
@@ -180,51 +185,47 @@ enum ScanEvent {
 
 // ---- Settings ----
 
-fn setting(app: &AppHandle, key: &str) -> Option<Value> {
-    let state = app.try_state::<SettingsState>()?;
-    let resolved = state.0.lock().resolve(key, &Scope::Global);
-    match resolved {
-        Ok(r) => r.value,
-        Err(e) => {
-            log::warn!("{key} unavailable: {e:?}");
-            None
+/// The library's settings at the Global level (the catalogue's default for a value that cannot
+/// be read).
+fn settings(app: &AppHandle) -> keys::Reader<impl Fn(&str) -> Option<Value> + '_> {
+    keys::Reader::new(move |key: &str| {
+        let state = app.try_state::<SettingsState>()?;
+        let resolved = state.0.lock().resolve(key, &Scope::Global);
+        match resolved {
+            Ok(r) => r.value,
+            Err(e) => {
+                log::warn!("{key} unavailable: {e:?}");
+                None
+            }
         }
-    }
-}
-
-fn setting_bool(app: &AppHandle, key: &str) -> bool {
-    matches!(setting(app, key), Some(Value::Bool(true)))
+    })
 }
 
 /// `library.folders` of this device.
 fn folders(app: &AppHandle) -> Vec<String> {
-    match setting(app, "library.folders") {
-        Some(Value::List(list)) => list,
-        Some(Value::Bool(_) | Value::Int(_) | Value::Text(_)) | None => Vec::new(),
-    }
+    settings(app).list(keys::LIBRARY_FOLDERS)
 }
 
 /// Stores `library.folders` (Global level; the entry is per device, so it goes to this
 /// device's file) and tells the interface.
 fn set_folders(app: &AppHandle, list: Vec<String>) -> Result<(), ErrorCode> {
     let state = app.state::<SettingsState>();
-    let level = state
-        .0
-        .lock()
-        .set("library.folders", &Scope::Global, Value::List(list))?;
-    app_settings::emit_changed(app, &["library.folders"], level);
+    let level = state.0.lock().set(
+        keys::LIBRARY_FOLDERS.as_str(),
+        &Scope::Global,
+        Value::List(list),
+    )?;
+    app_settings::emit_changed(app, &[keys::LIBRARY_FOLDERS.as_str()], level);
     Ok(())
 }
 
 /// A library setting changed from the settings pages.
 pub fn on_setting_changed(app: &AppHandle, key: &str) {
-    match key {
-        "library.folders" => {
-            refresh_watch(app);
-            start_scan(app);
-        }
-        "library.watch" => refresh_watch(app),
-        _ => {}
+    if key == keys::LIBRARY_FOLDERS.as_str() {
+        refresh_watch(app);
+        start_scan(app);
+    } else if key == keys::LIBRARY_WATCH.as_str() {
+        refresh_watch(app);
     }
 }
 
@@ -533,7 +534,7 @@ pub fn refresh_watch(app: &AppHandle) {
     let mut slot = state.watcher.lock();
     // Dropping the old watcher closes its channel, which ends its debounce thread.
     *slot = None;
-    if emudome_platform::PHONE || !setting_bool(app, "library.watch") {
+    if emudome_platform::PHONE || !settings(app).bool(keys::LIBRARY_WATCH) {
         return;
     }
     let (tx, rx) = mpsc::channel::<()>();

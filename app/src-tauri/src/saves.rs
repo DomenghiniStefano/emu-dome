@@ -9,10 +9,11 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use emudome_core::saves::{self, BackupReason, FolderImport, ImportFormat, SaveHealth};
-use emudome_core::settings::{Scope, Value};
+use emudome_core::settings::{keys, Scope};
 use emudome_core::{ErrorCode, GameKey};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
+use ts_rs::TS;
 
 use crate::settings::SettingsState;
 use crate::AppState;
@@ -29,17 +30,15 @@ fn file_failed(e: impl std::fmt::Display) -> ErrorCode {
 
 /// `saves.backups`: how many backups of each in-game save to keep (0 = none).
 fn keep_backups(app: &AppHandle) -> usize {
-    let value = app.try_state::<SettingsState>().and_then(|state| {
-        let resolved = state.0.lock().resolve("saves.backups", &Scope::Global);
+    let read = |key: &str| {
+        let state = app.try_state::<SettingsState>()?;
+        let resolved = state.0.lock().resolve(key, &Scope::Global);
         resolved
-            .inspect_err(|e| log::warn!("saves.backups unavailable: {e:?}"))
+            .inspect_err(|e| log::warn!("{key} unavailable: {e:?}"))
             .ok()?
             .value
-    });
-    match value {
-        Some(Value::Int(n)) => usize::try_from(n).unwrap_or(0),
-        Some(Value::Bool(_) | Value::Text(_) | Value::List(_)) | None => 5,
-    }
+    };
+    usize::try_from(keys::Reader::new(read).int(keys::SAVES_BACKUPS)).unwrap_or(0)
 }
 
 /// Refuses to change the saves of the game that is open: its session rewrites the `.sav`.
@@ -83,11 +82,12 @@ pub fn before_open(app: &AppHandle, save_dir: &Path, game: &GameKey) -> Result<(
     }
 }
 
-// ---- DTOs (mirrors in app/src/emu.ts) ----
+// ---- DTOs (TypeScript generated into app/src/generated/app/ by src/contract.rs) ----
 
-/// Mirror: `SavesSummary`. One row of V01.
-#[derive(Serialize)]
+/// TypeScript: `SavesSummary` (generated). One row of V01.
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "SavesSummary")]
 pub struct SummaryDto {
     game: GameKey,
     in_game: bool,
@@ -100,18 +100,20 @@ pub struct SummaryDto {
     broken: bool,
 }
 
-/// Mirror: `SaveFile`.
-#[derive(Serialize)]
+/// TypeScript: `SaveFile` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct FileDto {
+#[ts(export_to = "app/", rename = "SaveFile")]
+pub(crate) struct FileDto {
     size: u64,
     modified: Option<u64>,
 }
 
-/// Mirror: `QuickSave`.
-#[derive(Serialize)]
+/// TypeScript: `QuickSave` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct QuickDto {
+#[ts(export_to = "app/", rename = "QuickSave")]
+pub(crate) struct QuickDto {
     slot: u8,
     size: u64,
     saved_at: Option<u64>,
@@ -120,19 +122,21 @@ struct QuickDto {
     outdated: bool,
 }
 
-/// Mirror: `SaveBackup`.
-#[derive(Serialize)]
+/// TypeScript: `SaveBackup` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct BackupDto {
+#[ts(export_to = "app/", rename = "SaveBackup")]
+pub(crate) struct BackupDto {
     name: String,
     at: u64,
     reason: BackupReason,
     size: u64,
 }
 
-/// Mirror: `GameSaves`. V02.
-#[derive(Serialize)]
+/// TypeScript: `GameSaves` (generated). V02.
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "GameSaves")]
 pub struct GameSavesDto {
     in_game: Option<FileDto>,
     quick: Vec<QuickDto>,
@@ -140,9 +144,10 @@ pub struct GameSavesDto {
     broken: Vec<String>,
 }
 
-/// Mirror: `ImportCandidate`. The file chosen in V05, already read and recognised.
-#[derive(Serialize)]
+/// TypeScript: `ImportCandidate` (generated). The file chosen in V05, already read and recognised.
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "ImportCandidate")]
 pub struct ImportDto {
     path: String,
     file_name: String,
@@ -151,9 +156,10 @@ pub struct ImportDto {
     size: u64,
 }
 
-/// What to export. Mirror: `SaveExport`.
-#[derive(Deserialize)]
+/// What to export. TypeScript: `SaveExport` (generated).
+#[derive(Deserialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "SaveExport")]
 pub enum ExportWhat {
     InGame,
     Quick { slot: u8 },
@@ -409,16 +415,18 @@ fn import_one(
     saves::import(&state.save_dir(), game, &data, now_ms(), keep_backups(app)).map_err(file_failed)
 }
 
-/// A found save paired with its game. Mirror: `SaveMatch` in app/src/emu.ts.
-#[derive(Serialize, Deserialize)]
+/// A found save paired with its game. TypeScript: `SaveMatch` (generated).
+#[derive(Serialize, Deserialize, TS)]
+#[ts(export_to = "app/", rename = "SaveMatch")]
 pub struct MatchDto {
     file: String,
     game: GameKey,
 }
 
-/// What a chosen folder offers. Mirror: `FolderSaves` in app/src/emu.ts.
-#[derive(Serialize)]
+/// What a chosen folder offers. TypeScript: `FolderSaves` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "FolderSaves")]
 pub struct FolderSavesDto {
     folder: String,
     /// Saves found that can be imported.
