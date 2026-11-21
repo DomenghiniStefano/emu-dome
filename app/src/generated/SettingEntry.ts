@@ -9,7 +9,9 @@ import type { SettingValue } from "./SettingValue";
 
 export type SettingEntry = { key: SettingKey, page: string, kind: SettingKind, 
 /**
- * `None` for actions.
+ * The default on this device at the Global level; `None` for actions. A console's games may
+ * have another (a [`DefaultRule`] with consoles): the rows of a page (`settings_page`) carry
+ * the value resolved for the scope, this is only the fallback before they arrive.
  */
 default: SettingValue | null, 
 /**

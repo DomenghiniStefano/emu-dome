@@ -585,6 +585,159 @@ fn a_page_lists_its_entries_with_source_and_changed() {
     );
 }
 
+// ---- Defaults by device and console (Trello #89) ----
+
+fn scope_of(console: ConsoleId) -> Scope {
+    Scope::Game {
+        console,
+        game: GameKey::parse(&format!("{}:7e57", console.id())).unwrap(),
+    }
+}
+
+#[test]
+fn rewind_is_on_by_default_on_a_computer_but_for_3ds_and_off_on_a_phone() {
+    let dir = TestDir::new("rewind-defaults");
+    for (device, console, on) in [
+        (Device::Desktop, ConsoleId::Gb, true),
+        (Device::Desktop, ConsoleId::Gbc, true),
+        (Device::Desktop, ConsoleId::Gba, true),
+        (Device::Desktop, ConsoleId::Nds, true),
+        (Device::Desktop, ConsoleId::N3ds, false),
+        (Device::Phone, ConsoleId::Gb, false),
+        (Device::Phone, ConsoleId::Gbc, false),
+        (Device::Phone, ConsoleId::Gba, false),
+        (Device::Phone, ConsoleId::Nds, false),
+        (Device::Phone, ConsoleId::N3ds, false),
+    ] {
+        let mut s = Settings::open(dir.path("synced"), dir.path("local/device.json"), device);
+        let expect = (Some(Value::Bool(on)), Level::Default);
+        for scope in [Scope::Console { console }, scope_of(console)] {
+            assert_eq!(
+                value_of(&mut s, "speed.rew", &scope),
+                expect,
+                "{device:?} {console:?} {scope:?}"
+            );
+        }
+        s.begin_session(console, GameKey::parse("gba:7e57").unwrap());
+        assert_eq!(
+            value_of(&mut s, "speed.rew", &Scope::Session),
+            expect,
+            "{device:?} {console:?} session"
+        );
+        // The rows of a page: the resolved default is not «changed».
+        let row = s
+            .page("speed", &Scope::Console { console })
+            .unwrap()
+            .into_iter()
+            .find(|r| r.key == "speed.rew")
+            .unwrap();
+        assert_eq!((row.value, row.changed), (Some(Value::Bool(on)), false));
+    }
+    // The Global level has no console: the device's default.
+    let mut desktop = settings(&dir);
+    assert_eq!(
+        value_of(&mut desktop, "speed.rew", &Scope::Global),
+        (Some(Value::Bool(true)), Level::Default)
+    );
+    let mut phone = phone_settings(&dir);
+    assert_eq!(
+        value_of(&mut phone, "speed.rew", &Scope::Global),
+        (Some(Value::Bool(false)), Level::Default)
+    );
+    // The schema the interface gets says the device's default.
+    let default_of = |s: &Settings| {
+        s.schema()
+            .entries
+            .into_iter()
+            .find(|e| e.key == "speed.rew")
+            .and_then(|e| e.default)
+    };
+    assert_eq!(default_of(&desktop), Some(Value::Bool(true)));
+    assert_eq!(default_of(&phone), Some(Value::Bool(false)));
+}
+
+#[test]
+fn a_user_value_wins_over_a_default_rule_at_every_level() {
+    let dir = TestDir::new("rewind-user");
+    let mut s = phone_settings(&dir);
+    let n3ds = ConsoleId::N3ds;
+    let console = Scope::Console { console: n3ds };
+    let game = scope_of(n3ds);
+
+    // Global on: every console of the phone, 3DS included, follows it.
+    s.set("speed.rew", &Scope::Global, Value::Bool(true))
+        .unwrap();
+    assert_eq!(
+        value_of(&mut s, "speed.rew", &game),
+        (Some(Value::Bool(true)), Level::Global)
+    );
+    s.reset("speed.rew", &Scope::Global).unwrap();
+
+    // Console on, shown as changed on its page.
+    s.set("speed.rew", &console, Value::Bool(true)).unwrap();
+    assert_eq!(
+        value_of(&mut s, "speed.rew", &game),
+        (Some(Value::Bool(true)), Level::Console)
+    );
+    let row = s
+        .page("speed", &console)
+        .unwrap()
+        .into_iter()
+        .find(|r| r.key == "speed.rew")
+        .unwrap();
+    assert_eq!((row.source, row.changed), (Level::Console, true));
+    s.reset("speed.rew", &console).unwrap();
+
+    // Game on.
+    s.set("speed.rew", &game, Value::Bool(true)).unwrap();
+    assert_eq!(
+        value_of(&mut s, "speed.rew", &game),
+        (Some(Value::Bool(true)), Level::Game)
+    );
+    s.reset("speed.rew", &game).unwrap();
+
+    // Session on.
+    s.begin_session(n3ds, GameKey::parse("3ds:7e57").unwrap());
+    s.set("speed.rew", &Scope::Session, Value::Bool(true))
+        .unwrap();
+    assert_eq!(
+        value_of(&mut s, "speed.rew", &Scope::Session),
+        (Some(Value::Bool(true)), Level::Session)
+    );
+
+    // And off on a computer, where the default is on.
+    let mut desktop = settings(&dir);
+    let gba = scope_of(ConsoleId::Gba);
+    desktop.set("speed.rew", &gba, Value::Bool(false)).unwrap();
+    assert_eq!(
+        value_of(&mut desktop, "speed.rew", &gba),
+        (Some(Value::Bool(false)), Level::Game)
+    );
+}
+
+#[test]
+fn a_default_rule_holds_by_device_and_console() {
+    use super::schema::{DefaultRule, DefaultValue};
+    let phone = DefaultRule {
+        device: Some(Device::Phone),
+        consoles: &[],
+        value: DefaultValue::Bool(false),
+    };
+    assert!(phone.holds(Device::Phone, None));
+    assert!(phone.holds(Device::Phone, Some(ConsoleId::Gba)));
+    assert!(!phone.holds(Device::Desktop, Some(ConsoleId::Gba)));
+    let n3ds = DefaultRule {
+        device: None,
+        consoles: &[ConsoleId::N3ds],
+        value: DefaultValue::Bool(false),
+    };
+    assert!(n3ds.holds(Device::Desktop, Some(ConsoleId::N3ds)));
+    assert!(n3ds.holds(Device::Phone, Some(ConsoleId::N3ds)));
+    assert!(!n3ds.holds(Device::Desktop, Some(ConsoleId::Nds)));
+    // The Global level has no console: a console rule does not hold there.
+    assert!(!n3ds.holds(Device::Desktop, None));
+}
+
 // ---- Identity and wire format ----
 
 #[test]
@@ -671,6 +824,23 @@ fn every_default_is_valid_for_its_kind() {
                 e.key
             ),
             None => assert!(!e.has_value(), "{}: no default", e.key),
+        }
+        // A rule's default has the entry's kind (the typed readers rely on it) and is offered
+        // on the rule's devices.
+        for rule in e.default_rules {
+            let v = rule.value.to_value();
+            let devices: &[Device] = match rule.device {
+                Some(Device::Desktop) => &[Device::Desktop],
+                Some(Device::Phone) => &[Device::Phone],
+                None => &[Device::Desktop, Device::Phone],
+            };
+            for d in devices {
+                assert!(
+                    e.has_value() && v.as_ref().is_some_and(|v| e.accepts_value_on(v, *d)),
+                    "{}: rule default {v:?} on {d:?}",
+                    e.key
+                );
+            }
         }
     }
 }

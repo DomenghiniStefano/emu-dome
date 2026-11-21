@@ -342,8 +342,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
 - **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 155 entries on 18 pages: key
-  `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default,
-  accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
+  `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
+  (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
+  the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
   reads it, the unwired ones shown disabled with «arrives in a future update»); the interface builds its
   pages from `settings_schema` and never lists settings by hand. A key the interface names is a `SettingKey`
   (generated union); one the Rust code reads is a typed constant of `settings/keys.rs`, its default the catalogue's. Levels Default → Global → Console → Game →

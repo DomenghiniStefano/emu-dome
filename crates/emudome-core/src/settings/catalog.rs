@@ -8,9 +8,10 @@
 //! (design review of 2026-11-17, Trello #26).
 
 use super::schema::{
-    ActionStyle, BindingTable, ChoiceStyle, DefaultValue, Entry, Kind, Levels, PageGroup, Platform,
-    Section, ShowIf, Unit,
+    ActionStyle, BindingTable, ChoiceStyle, DefaultRule, DefaultValue, Device, Entry, Kind, Levels,
+    PageGroup, Platform, Section, ShowIf, Unit,
 };
+use super::ConsoleId;
 
 /// Phase the app is in: entries of later phases stay hidden.
 pub const CURRENT_PHASE: u8 = 1;
@@ -60,6 +61,7 @@ const fn e(key: &'static str, kind: Kind, default: DefaultValue, levels: Levels)
         page: key_page(key),
         kind,
         default,
+        default_rules: &[],
         levels,
         per_device: false,
         platform: Platform::All,
@@ -323,6 +325,14 @@ impl Entry {
         Self { phase, ..self }
     }
 
+    /// Another default on some devices or for some consoles, first match wins.
+    const fn defaults(self, default_rules: &'static [DefaultRule]) -> Self {
+        Self {
+            default_rules,
+            ..self
+        }
+    }
+
     /// Listed in «Usate più spesso» (T01, board Settings2, 17/11): changed at the Global level
     /// right from the first settings page.
     const fn most_used(self) -> Self {
@@ -500,7 +510,20 @@ pub static ENTRIES: &[Entry] = &[
     seg("speed.ffmode", &["hold", "toggle"], "hold", G).not_wired(),
     seg("speed.ffval", &["2", "3", "4", "max"], "4", GG).most_used(),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
-    sw("speed.rew", true, ALL),
+    // On by default for GB, GBC, GBA and NDS on a computer; off on a phone (memory, battery) and
+    // for 3DS (states of tens of MB). Owner, 2026-11-21 (Trello #89).
+    sw("speed.rew", true, ALL).defaults(&[
+        DefaultRule {
+            device: Some(Device::Phone),
+            consoles: &[],
+            value: DefaultValue::Bool(false),
+        },
+        DefaultRule {
+            device: None,
+            consoles: &[ConsoleId::N3ds],
+            value: DefaultValue::Bool(false),
+        },
+    ]),
     slider("speed.rewlen", 30, (10, 120, 10), Unit::Seconds, ALL).device(),
     sel("speed.runahead", &["off", "1", "2", "3"], "off", GM)
         .phase(5)
