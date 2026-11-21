@@ -22,8 +22,7 @@
 //! # Adding a core (extension point)
 //!
 //! 1. Write `core_values/<core>.rs` with `pub(super) static TABLE: CoreTable` (its `core` is the
-//!    name `core_for` gives the core in `app/src-tauri/src/lib.rs`: `mgba`, `melondsds`,
-//!    `azahar`).
+//!    core's [`CoreId`], `crate::core_profile`).
 //! 2. Add `mod <core>;` below and `&<core>::TABLE` to [`TABLES`].
 //! 3. Option keys and values are the core's own: list them with
 //!    `cargo run -p emudome-core --example headless -- <core file> <rom> --list-options`; the
@@ -40,6 +39,7 @@ mod melondsds;
 mod mgba;
 
 use super::{ConsoleId, Value};
+use crate::core_profile::CoreId;
 
 /// When a core takes a new value of an option.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -81,8 +81,7 @@ pub struct Rule {
 /// The rules of one core.
 #[derive(Debug)]
 pub struct CoreTable {
-    /// The core's name in the shell (`mgba`, `melondsds`, `azahar`).
-    pub core: &'static str,
+    pub core: CoreId,
     pub rules: &'static [Rule],
 }
 
@@ -101,7 +100,7 @@ pub struct MappedOption {
 }
 
 /// The table of `core`, if it has one.
-pub fn table(core: &str) -> Option<&'static CoreTable> {
+pub fn table(core: CoreId) -> Option<&'static CoreTable> {
     TABLES.iter().copied().find(|t| t.core == core)
 }
 
@@ -117,7 +116,7 @@ pub fn is_core_setting(setting: &str) -> bool {
 /// resolves a settings key for that game. A setting that cannot be read, holds a value of
 /// another kind or an unknown choice asks for nothing: the core's default stays.
 pub fn mapped(
-    core: &str,
+    core: CoreId,
     console: ConsoleId,
     mut value: impl FnMut(&str) -> Option<Value>,
 ) -> Vec<MappedOption> {
@@ -161,7 +160,7 @@ pub fn mapped(
 
 /// [`mapped`] as `GET_VARIABLE` key and value pairs, for opening a game.
 pub fn core_options(
-    core: &str,
+    core: CoreId,
     console: ConsoleId,
     value: impl FnMut(&str) -> Option<Value>,
 ) -> Vec<(String, String)> {

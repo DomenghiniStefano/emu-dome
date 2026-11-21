@@ -374,6 +374,8 @@ export interface SettingEntry {
   showIf?: SettingShowIf
   /** Works only on the Accelerated (native) video method: disabled with the reason otherwise. */
   needsNativeVideo: boolean
+  /** Consoles whose emulator has no equivalent: disabled with the reason there; absent: none. */
+  unsupportedConsoles?: ConsoleId[]
 }
 
 /** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */

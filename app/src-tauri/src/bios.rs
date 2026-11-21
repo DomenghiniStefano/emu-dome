@@ -14,6 +14,7 @@
 use std::path::{Path, PathBuf};
 
 use emudome_core::bios::{self, files, Assessment, Status};
+use emudome_core::core_profile::CoreId;
 use emudome_core::settings::{ConsoleId, Scope, Value};
 use emudome_core::ErrorCode;
 use serde::Serialize;
@@ -31,9 +32,9 @@ pub fn core_dir(app: &AppHandle, core: &str) -> Option<PathBuf> {
 /// The folder `core` gets as `GET_SYSTEM_DIRECTORY`: its own system folder when it has a BIOS
 /// table, `shared` (the folder every core got before #68) otherwise, so a core without one
 /// (Azahar keeps its own data there) is not moved.
-pub fn system_dir(app: &AppHandle, core: &str, shared: PathBuf) -> PathBuf {
+pub fn system_dir(app: &AppHandle, core: CoreId, shared: PathBuf) -> PathBuf {
     bios::table(core)
-        .and_then(|_| core_dir(app, core))
+        .and_then(|_| core_dir(app, core.name()))
         .unwrap_or(shared)
 }
 
@@ -65,7 +66,8 @@ pub fn bios_status(app: AppHandle) -> Vec<BiosRow> {
         .flat_map(|t| t.slots.iter().map(move |s| (t.core, s)))
         .filter_map(|(core, spec)| {
             let key = spec.setting?;
-            let in_place = core_dir(&app, core).is_some_and(|d| files::is_in_place(&d, spec));
+            let in_place =
+                core_dir(&app, core.name()).is_some_and(|d| files::is_in_place(&d, spec));
             Some(BiosRow {
                 key,
                 status: bios::status(chosen(&app, key), in_place),
@@ -92,7 +94,7 @@ fn choose(app: &AppHandle, key: &str, file: &Path) -> Result<Status, ErrorCode> 
         detail: e.to_string(),
     })?;
     let all = bios::TABLES.iter().flat_map(|t| t.slots.iter());
-    let dir = core_dir(app, table.core).ok_or_else(|| ErrorCode::BiosFileFailed {
+    let dir = core_dir(app, table.core.name()).ok_or_else(|| ErrorCode::BiosFileFailed {
         detail: "no app local data folder".into(),
     })?;
     let failed = |e: std::io::Error| ErrorCode::BiosFileFailed {
@@ -135,7 +137,7 @@ pub fn settings_changed(app: &AppHandle, keys: &[&str]) {
         if chosen(app, key) {
             continue;
         }
-        if let Some(dir) = core_dir(app, table.core) {
+        if let Some(dir) = core_dir(app, table.core.name()) {
             match files::remove(&dir, spec) {
                 Ok(()) => log::info!("{key}: back to the built-in replacement"),
                 Err(e) => log::warn!("{key}: copy not deleted: {e}"),
@@ -148,12 +150,12 @@ pub fn settings_changed(app: &AppHandle, keys: &[&str]) {
 /// in place and the game's settings (`read`).
 pub fn plan(
     app: &AppHandle,
-    core: &str,
+    core: CoreId,
     console: ConsoleId,
     read: &dyn Fn(&str) -> Option<Value>,
 ) -> bios::Plan {
     let in_place = bios::table(core)
-        .zip(core_dir(app, core))
+        .zip(core_dir(app, core.name()))
         .map(|(table, dir)| files::in_place(&dir, table))
         .unwrap_or_default();
     let plan = bios::plan(core, console, &in_place, read);

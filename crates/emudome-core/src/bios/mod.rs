@@ -110,8 +110,7 @@ pub type Policy = fn(&[Slot], &dyn Fn(&str) -> Option<Value>, ConsoleId) -> Plan
 /// The slots of one core and its policy.
 #[derive(Debug)]
 pub struct BiosTable {
-    /// The core's name in the shell (`mgba`, `melondsds`).
-    pub core: &'static str,
+    pub core: crate::core_profile::CoreId,
     pub slots: &'static [SlotSpec],
     pub policy: Policy,
 }
@@ -120,7 +119,7 @@ pub struct BiosTable {
 pub static TABLES: &[&BiosTable] = &[&mgba::TABLE, &melondsds::TABLE];
 
 /// The table of `core`, if it has one.
-pub fn table(core: &str) -> Option<&'static BiosTable> {
+pub fn table(core: crate::core_profile::CoreId) -> Option<&'static BiosTable> {
     TABLES.iter().copied().find(|t| t.core == core)
 }
 
@@ -273,7 +272,7 @@ pub fn status(chosen: bool, in_place: bool) -> Status {
 /// The options and fallbacks of `core` for a game of `console`, with the valid files in place
 /// (`in_place`) and the game's settings (`value`). A core without a table: nothing.
 pub fn plan(
-    core: &str,
+    core: crate::core_profile::CoreId,
     console: ConsoleId,
     in_place: &[Slot],
     value: &dyn Fn(&str) -> Option<Value>,

@@ -37,8 +37,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
+use emudome_core::core_profile::CoreId;
 use emudome_core::input::{Button, Source};
-use emudome_core::screens::{Area, Layout, Split};
+use emudome_core::screens::{Area, Layout};
 use emudome_core::settings::ConsoleId;
 use emudome_core::tuning::{Tuning, VideoPath};
 use emudome_core::{
@@ -94,7 +95,7 @@ struct AppState {
     /// The key of the open game: its saves, slots and thumbnails are named by it.
     game: Mutex<Option<GameKey>>,
     /// The core of the open game (`mgba`, ...), named in `coreNeedsRestart`.
-    core_name: Mutex<Option<&'static str>>,
+    core_name: Mutex<Option<CoreId>>,
     /// Held for the whole of closing a game: a second close (the window closing while a game
     /// closes) waits for the first, so the app never quits before the exit writes are done.
     /// The emulation thread never takes it.
@@ -214,16 +215,16 @@ struct StatsDto {
 }
 
 /// Which core to use for a file, and its console, by its extension.
-fn core_for(path: &Path) -> Result<(&'static str, ConsoleId), ErrorCode> {
+fn core_for(path: &Path) -> Result<(CoreId, ConsoleId), ErrorCode> {
     let ext = path
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
     match ext.as_str() {
-        "gba" => Ok(("mgba", ConsoleId::Gba)),
-        "gb" => Ok(("mgba", ConsoleId::Gb)),
-        "gbc" => Ok(("mgba", ConsoleId::Gbc)),
-        "nds" => Ok((emudome_core::nds::CORE, ConsoleId::Nds)),
+        "gba" => Ok((CoreId::Mgba, ConsoleId::Gba)),
+        "gb" => Ok((CoreId::Mgba, ConsoleId::Gb)),
+        "gbc" => Ok((CoreId::Mgba, ConsoleId::Gbc)),
+        "nds" => Ok((CoreId::MelonDsDs, ConsoleId::Nds)),
         "3ds" | "cci" | "cxi" | "cia" => Err(ErrorCode::ConsoleNotYet {
             console: "3ds".into(),
             phase: 3,
@@ -281,32 +282,12 @@ fn open_library_game(
     Ok(info)
 }
 
-/// Core options the shell always sets, per core (`GET_VARIABLE` key and value).
-/// Azahar: the software renderer, the only one that does not ask for `SET_HW_RENDER`, which the
-/// host does not implement yet (Trello #16); its default `auto` fails to load.
-/// melonDS DS: the screens where the shell cuts them, touch from the shell's pointer
-/// (`emudome_core::nds`).
-/// The settings' core options are `emudome_core::settings::core_values` (one table per core).
-const FORCED_CORE_OPTIONS: &[(&str, &[(&str, &str)])] = &[
-    ("azahar", &[("citra_graphics_api", "Software")]),
-    (emudome_core::nds::CORE, emudome_core::nds::FORCED_OPTIONS),
-];
-
-fn forced_core_options(core_name: &str) -> Vec<(String, String)> {
-    FORCED_CORE_OPTIONS
-        .iter()
-        .filter(|(core, _)| *core == core_name)
-        .flat_map(|(_, opts)| opts.iter())
-        .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-        .collect()
-}
-
-/// The options the core starts with: the settings' (console options), then the forced ones,
-/// then the system files' (`emudome_core::bios`: what the files in place allow), each winning
-/// over the ones before.
-fn core_options(core_name: &str, flow: &settings::GameFlow) -> Vec<(String, String)> {
+/// The options the core starts with: the settings' (console options), then the ones the shell
+/// always forces (`CoreProfile::forced_options`), then the system files' (`emudome_core::bios`:
+/// what the files in place allow), each winning over the ones before.
+fn core_options(core: CoreId, flow: &settings::GameFlow) -> Vec<(String, String)> {
     let mut options = emudome_core::settings::core_values::pairs(&flow.core_options);
-    options.extend(forced_core_options(core_name));
+    options.extend(core.profile().forced_pairs());
     options.extend(
         flow.bios
             .options
@@ -314,15 +295,6 @@ fn core_options(core_name: &str, flow: &settings::GameFlow) -> Vec<(String, Stri
             .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
     );
     options
-}
-
-/// How the console's core lays its screens out in the frame (with the forced options above).
-fn screen_split(console: ConsoleId) -> Split {
-    match console {
-        ConsoleId::Nds => emudome_core::nds::SPLIT,
-        // TODO(Phase 3): Azahar's two screens.
-        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::N3ds => Split::Whole,
-    }
 }
 
 /// Closes the open game, then opens `game_path` as the game `game` (its console, saves and
@@ -336,19 +308,18 @@ fn open_path(
 ) -> Result<GameInfo, ErrorCode> {
     // The one-time move of old save names ends before any game reads its saves.
     migration::wait(app);
-    let (core_name, _) = core_for(&game_path)?;
-    let file = emudome_platform::core_file_name(core_name);
-    let core_path = emudome_platform::find_core(core_name, state.resource_dir.as_deref()).map_err(
-        |e| match e {
+    let (core, _) = core_for(&game_path)?;
+    let file = emudome_platform::core_file_name(core.name());
+    let core_path = emudome_platform::find_core(core.name(), state.resource_dir.as_deref())
+        .map_err(|e| match e {
             CoreLookupError::NotFound => ErrorCode::CoreNotFound { file },
             CoreLookupError::Mismatch { .. } => ErrorCode::CoreDamaged { file },
-        },
-    )?;
+        })?;
     // A game on this core was let go (E11, or a close that timed out): its thread may still be
     // inside the core's module. Checked before closing the open game, which stays open.
     if emudome_core::core_needs_restart(&core_path) {
         return Err(ErrorCode::CoreNeedsRestart {
-            core: core_name.into(),
+            core: core.name().into(),
         });
     }
 
@@ -359,7 +330,7 @@ fn open_path(
 
     // The content decides (a `.gb` file can be a Game Boy Color cartridge).
     let console_id = game.console();
-    let flow = settings::game_flow(app, core_name, console_id, &game);
+    let flow = settings::game_flow(app, core, console_id, &game);
     let save_dir = state.save_dir();
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
     saves::before_open(app, &save_dir, &game)?;
@@ -370,16 +341,17 @@ fn open_path(
         SessionOptions {
             core_path,
             game_path: game_path.clone(),
-            system_dir: bios::system_dir(app, core_name, state.data_dir.join("system")),
+            system_dir: bios::system_dir(app, core, state.data_dir.join("system")),
             save_dir,
             game: game.clone(),
             autosave_every: flow.autosave_every,
             autosave_on_exit: flow.autosave_on_exit,
             resume_auto: flow.resume == "always",
             app_version: app.package_info().version.to_string(),
-            core_options: core_options(core_name, &flow),
+            core_options: core_options(core, &flow),
             rewind_seconds: flow.rewind_seconds,
-            split: screen_split(console_id),
+            // The content decides the console, the core its frame's screens.
+            split: core.profile().split,
             username: flow.username.clone(),
             fast_audio: flow.fast_audio,
         },
@@ -405,9 +377,9 @@ fn open_path(
     state.native_source(Some(shared));
     *state.session.lock() = Some(session);
     *state.game.lock() = Some(game.clone());
-    *state.core_name.lock() = Some(core_name);
+    *state.core_name.lock() = Some(core);
     bios::emit_fallbacks(app, &flow.bios.fallbacks);
-    core_settings::started(app, core_name, console_id, flow.core_options);
+    core_settings::started(app, core, console_id, flow.core_options);
     settings::begin_session(app, console_id, game.clone());
 
     Ok(GameInfo {
@@ -420,7 +392,7 @@ fn open_path(
         }),
         console: console_label(console_id).into(),
         console_id,
-        core: core_name.into(),
+        core: core.name().into(),
         resumable,
         autosave_on_exit: flow.autosave_on_exit,
     })
@@ -454,7 +426,12 @@ fn release_game(app: &tauri::AppHandle, state: &AppState) -> (Option<Session>, &
     *state.current.lock() = None;
     // Taken out first: the session lock is not held while the thread is waited for.
     let session = state.session.lock().take();
-    let core = state.core_name.lock().take().unwrap_or_default();
+    let core = state
+        .core_name
+        .lock()
+        .take()
+        .map(CoreId::name)
+        .unwrap_or_default();
     (session, core)
 }
 

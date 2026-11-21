@@ -151,6 +151,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          mod.rs levels / resolve / session, store.rs files,
                          core_values.rs settings → core options, one table per core in core_values/<core>.rs;
                          pure, unit-tested)
+                         core_profile.rs (`CoreId` and one `CoreProfile` per core: consoles, forced
+                         options, screen split, HW-render needs, save model, settings it cannot honour;
+                         nothing matches a core by its name string)
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
@@ -198,7 +201,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 ```
 
 - The interface never touches the core: it calls the Tauri commands, which send `Command` to the `Session`.
-  The core runs on its own thread; the libretro callbacks use a `thread_local` context.
+  The core runs on its own thread. The libretro callbacks find their context through the loaded core's slot
+  (`callbacks.rs`: 8 static slots, one callback set per slot), so calls from a core's own threads reach it and
+  a core let go keeps its slot, empty, forever. A `need_fullpath` core (Azahar) gets the game's path only: the
+  host never reads its file (`GameContent`, `core.rs`).
 - Ending a game: every way out (closing the game, opening another, closing the window, quitting) goes through
   `close_current` (`app/src-tauri/src/lib.rs`), which waits up to `CLOSE_TIMEOUT` (10 s) for the thread's exit
   writes: the `.sav` first, then the auto quick save with `saves.autoexit`. Android going to the background
@@ -507,8 +513,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 ## Known gaps of the prototype (intentional, for later)
 
 - Core options: every `consoles.*` / `cores.*` entry with a real mGBA option is mapped (`settings/core_values/mgba.rs`);
-  melonDS DS and Azahar have no table yet (Azahar only gets `FORCED_CORE_OPTIONS`, `app/src-tauri/src/lib.rs`).
-  `perf.frameskip` is not mapped. The interface does not show `emu://core-restart` yet.
+  melonDS DS has a table (`core_values/melondsds.rs`); Azahar has none yet (only its forced options,
+  `core_profile.rs`). `perf.frameskip` drives mGBA only; on NDS / 3DS its row is disabled with the reason
+  (`CoreProfile::unsupported_settings`). The interface does not show `emu://core-restart` yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`, but mGBA's pinned build comes from the libretro buildbot's `latest/` (no stable

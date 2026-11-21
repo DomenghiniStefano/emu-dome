@@ -3,6 +3,7 @@
 // Everything comes from the Rust schema (`emu.settings.schema`): nothing here lists settings.
 import {
   emu,
+  type ConsoleId,
   type SettingDevice,
   type SettingEntry,
   type SettingLevel,
@@ -98,14 +99,20 @@ export function pageLevels(entries: SettingEntry[]): Set<SettingLevel> {
   return out
 }
 
-/** Why a row cannot be changed here: i18n key of the reason, or null when it can. */
+/**
+ * Why a row cannot be changed here: i18n key of the reason, or null when it can. `console`: the
+ * console of the scope being edited (null at Global, or when the caller has none).
+ */
 export function lockReason(
   entry: SettingEntry,
   schema: SettingsSchema,
   level: SettingLevel,
+  console: ConsoleId | null = null,
 ): string | null {
   if (!platformIncludes(entry.platform, schema.device))
     return entry.platform === 'desktop' ? 'settingsUi.lockedDesktop' : 'settingsUi.lockedPhone'
+  // The console's emulator has no equivalent (`CoreProfile::unsupported_settings`).
+  if (console && entry.unsupportedConsoles?.includes(console)) return 'settingsUi.lockedConsole'
   // X05: the screen effects exist only on the Accelerated method.
   if (entry.needsNativeVideo && videoMode.value !== 'native')
     return nativeAvailable.value ? 'settingsUi.lockedNeedsNative' : 'qm.noNative'

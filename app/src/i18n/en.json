@@ -1666,6 +1666,7 @@
     "lockedPhone": "Only on this phone.",
     "lockedDesktop": "Only on this computer.",
     "lockedNeedsNative": "Needs the Accelerated display method: choose it in the quick menu, under “Screens and picture”.",
+    "lockedConsole": "Not available on this console: its emulator has no such option.",
     "notYet": "This arrives in a future update.",
     "emptyOnly": "No settings changed here. Every value is inherited.",
     "noResults": "No settings for “{query}”",

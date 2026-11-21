@@ -448,6 +448,10 @@ pub struct EntryDto {
     pub show_if: Option<ShowIf>,
     /// Works only on the native (Accelerated) video path.
     pub needs_native_video: bool,
+    /// Consoles whose core has no equivalent: there the interface shows the row disabled with
+    /// the reason (`crate::core_profile::unsupported_consoles`). Absent when empty.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub unsupported_consoles: Vec<super::ConsoleId>,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -488,6 +492,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 most_used: e.most_used,
                 show_if: e.show_if,
                 needs_native_video: e.needs_native_video,
+                unsupported_consoles: crate::core_profile::unsupported_consoles(e.key),
             })
             .collect(),
     }

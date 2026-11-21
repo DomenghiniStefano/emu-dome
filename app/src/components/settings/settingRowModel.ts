@@ -1,7 +1,14 @@
 // The state of one setting row (SettingRow), as pure functions: what the row shows at the level
 // being edited, and the small decisions of its controls. No i18n here: useSettingRow turns these
 // into text.
-import type { SettingEntry, SettingLevel, SettingRow, SettingsSchema, SettingValue } from '@/emu'
+import type {
+  ConsoleId,
+  SettingEntry,
+  SettingLevel,
+  SettingRow,
+  SettingsSchema,
+  SettingValue,
+} from '@/emu'
 import { lockReason, notYetWired } from '@/lib/settingsModel'
 import { BUILTIN_BACKGROUNDS, SURROUND_CARDS } from '@/lib/surround'
 
@@ -26,8 +33,9 @@ export function rowState(
   schema: SettingsSchema,
   level: SettingLevel,
   scoped: boolean,
+  console: ConsoleId | null = null,
 ): RowState {
-  const reason = lockReason(entry, schema, level)
+  const reason = lockReason(entry, schema, level, console)
   const notYet = notYetWired(entry)
   const source = row?.source
   return {

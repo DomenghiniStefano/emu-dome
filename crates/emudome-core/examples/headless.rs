@@ -25,8 +25,8 @@
 //! - `--set key=value` (repeatable): a text setting the BIOS rule reads (`consoles.dsmode`,
 //!   `cores.mdsboot`), as the shell would resolve it for the game.
 //!
-//! A `.nds` game runs as the shell runs it: melonDS DS's forced options and the two-screen split
-//! (`emudome_core::nds`). Every game gets the BIOS rule of its core (`emudome_core::bios`): the
+//! A game runs as the shell runs it: its core's forced options and screen split
+//! (`emudome_core::core_profile`). Every game gets the BIOS rule of its core (`emudome_core::bios`): the
 //! system folder is `<dir>/system/<core>`, as in the shell, and the files in place, the options
 //! and the fallbacks are printed. `--opt` values come last and win.
 
@@ -34,8 +34,9 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use emudome_core::bios;
+use emudome_core::core_profile::CoreId;
 use emudome_core::input::{Button, Source};
-use emudome_core::screens::{self, Area, Layout, ScreenId, Split};
+use emudome_core::screens::{self, Area, Layout, ScreenId};
 use emudome_core::settings::{ConsoleId, Value};
 use emudome_core::{Command, Session, SessionOptions, Speed};
 
@@ -337,27 +338,21 @@ fn main() -> anyhow::Result<()> {
         .clone()
         .unwrap_or_else(|| std::env::temp_dir().join("emudome-headless"));
     // A DS game runs as the shell runs it: melonDS DS's forced options and the split.
-    let nds = args.rom.to_lowercase().ends_with(".nds");
-    let mut core_options: Vec<(String, String)> = if nds {
-        emudome_core::nds::FORCED_OPTIONS
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
-            .collect()
-    } else {
-        Vec::new()
-    };
     let rom = args.rom.to_lowercase();
-    let (core_name, console) = if nds {
-        (emudome_core::nds::CORE, ConsoleId::Nds)
+    let console = if rom.ends_with(".nds") {
+        ConsoleId::Nds
     } else if rom.ends_with(".gb") {
-        ("mgba", ConsoleId::Gb)
+        ConsoleId::Gb
     } else if rom.ends_with(".gbc") {
-        ("mgba", ConsoleId::Gbc)
+        ConsoleId::Gbc
     } else {
-        ("mgba", ConsoleId::Gba)
+        ConsoleId::Gba
     };
-    let system_dir = bios::files::core_dir(&tmp.join("system"), core_name);
-    let in_place = bios::table(core_name)
+    let core = CoreId::for_console(console);
+    let profile = core.profile();
+    let mut core_options = profile.forced_pairs();
+    let system_dir = bios::files::core_dir(&tmp.join("system"), core.name());
+    let in_place = bios::table(core)
         .map(|t| bios::files::in_place(&system_dir, t))
         .unwrap_or_default();
     let setting = |key: &str| -> Option<Value> {
@@ -366,7 +361,7 @@ fn main() -> anyhow::Result<()> {
             .find(|(k, _)| k == key)
             .map(|(_, v)| Value::Text(v.clone()))
     };
-    let plan = bios::plan(core_name, console, &in_place, &setting);
+    let plan = bios::plan(core, console, &in_place, &setting);
     println!(
         "bios: in place {in_place:?}, options {:?}, fallbacks {:?}",
         plan.options, plan.fallbacks
@@ -395,11 +390,7 @@ fn main() -> anyhow::Result<()> {
             app_version: env!("CARGO_PKG_VERSION").into(),
             core_options,
             rewind_seconds: args.rewind,
-            split: if nds {
-                emudome_core::nds::SPLIT
-            } else {
-                Split::Whole
-            },
+            split: profile.split,
             username: None,
             fast_audio: args.fast_audio.unwrap_or_default(),
         },
@@ -452,10 +443,22 @@ fn main() -> anyhow::Result<()> {
             value: value.clone(),
         });
         std::thread::sleep(Duration::from_millis(200));
+        // Frames drawn against frames run over the next half second (frameskip taken live?).
+        let (seq0, run0) = (
+            center_pixel(&session).3,
+            session.shared().stats.lock().frames,
+        );
+        std::thread::sleep(Duration::from_millis(500));
+        let (seq1, run1) = (
+            center_pixel(&session).3,
+            session.shared().stats.lock().frames,
+        );
         println!(
-            "live {key}={value}: center pixel {:?} -> {:?}",
+            "live {key}={value}: center pixel {:?} -> {:?}, then {} frames drawn of {} run",
             before.2,
-            center_pixel(&session).2
+            center_pixel(&session).2,
+            seq1 - seq0,
+            run1 - run0
         );
     }
     if args.fast_audio.is_some() {

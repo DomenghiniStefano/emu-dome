@@ -49,9 +49,5 @@ pub fn region(code: Option<&str>) -> Option<Region> {
 /// The core that runs a console's games (its libretro file name without the suffix):
 /// `mgba`, `melondsds`, `azahar`. The interface names it with `details.files.core.<id>`.
 pub fn core_of(console: ConsoleId) -> &'static str {
-    match console {
-        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba => "mgba",
-        ConsoleId::Nds => "melondsds",
-        ConsoleId::N3ds => "azahar",
-    }
+    crate::core_profile::CoreId::for_console(console).name()
 }

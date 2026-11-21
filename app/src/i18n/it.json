@@ -1666,6 +1666,7 @@
     "lockedPhone": "Solo su questo telefono.",
     "lockedDesktop": "Solo su questo computer.",
     "lockedNeedsNative": "Richiede il metodo di visualizzazione Accelerato: sceglilo nel menu rapido, in «Schermi e immagine».",
+    "lockedConsole": "Non disponibile su questa console: il suo emulatore non ha questa opzione.",
     "notYet": "Arriva con un prossimo aggiornamento.",
     "emptyOnly": "Nessuna impostazione modificata qui. Tutti i valori sono ereditati.",
     "noResults": "Nessuna impostazione per «{query}»",

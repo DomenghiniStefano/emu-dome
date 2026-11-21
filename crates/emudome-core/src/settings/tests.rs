@@ -8,6 +8,7 @@ use serde_json::json;
 use super::catalog::{CURRENT_PHASE, ENTRIES, GROUPS, PAGES, SECTIONS};
 use super::test_dir::TestDir;
 use super::{entry, CommitTarget, ConsoleId, GameKey, Kind, Level, Scope, Settings, Value};
+use crate::core_profile::CoreId;
 use crate::settings::schema::Device;
 use crate::ErrorCode;
 
@@ -1143,7 +1144,7 @@ fn gb_options(s: Settings, console: ConsoleId) -> Vec<(String, String)> {
         console,
         game: GameKey::parse("gb:7e57").unwrap(),
     };
-    super::core_values::core_options("mgba", console, |key| {
+    super::core_values::core_options(CoreId::Mgba, console, |key| {
         s.borrow_mut()
             .resolve(key, &scope)
             .ok()
@@ -1167,6 +1168,10 @@ fn gb_defaults_become_mgba_options() {
             ("mgba_gb_colors", "DMG Green"),
             ("mgba_gb_colors_preset", "0"),
             ("mgba_sgb_borders", "ON"),
+            // perf.frameskip «auto»: mGBA's auto mode, which skips nothing without the audio
+            // buffer callback (core_values/mgba.rs).
+            ("mgba_frameskip", "auto"),
+            ("mgba_frameskip_interval", "0"),
             ("mgba_use_bios", "ON"),
             ("mgba_skip_bios", "OFF"),
             ("mgba_audio_low_pass_filter", "disabled"),
@@ -1210,7 +1215,7 @@ fn every_gb_choice_maps_to_an_mgba_value() {
             panic!("{key} is not a choice");
         };
         for id in options {
-            let out = super::core_values::core_options("mgba", ConsoleId::Gb, |k| {
+            let out = super::core_values::core_options(CoreId::Mgba, ConsoleId::Gb, |k| {
                 (k == key).then(|| Value::Text((*id).to_owned()))
             });
             assert!(!out.is_empty(), "{key}={id} has no mGBA value");
@@ -1241,6 +1246,49 @@ fn gba_gets_no_gb_options_and_gb_no_gba_options() {
 // ---- Every core's option table (core_values.rs) ----
 
 #[test]
+fn frameskip_drives_mgba_on_every_mgba_console_live() {
+    use super::core_values::{mapped, Apply};
+    let cases = [
+        ("auto", "auto", "0"),
+        ("never", "disabled", "0"),
+        ("1", "fixed_interval", "1"),
+        ("2", "fixed_interval", "2"),
+        ("3", "fixed_interval", "3"),
+        ("4", "fixed_interval", "4"),
+    ];
+    let Some(Kind::Choice { options, .. }) = entry("perf.frameskip").map(|e| e.kind) else {
+        panic!("perf.frameskip is not a choice");
+    };
+    assert_eq!(
+        options.len(),
+        cases.len(),
+        "a frameskip option without a case"
+    );
+    for console in [ConsoleId::Gb, ConsoleId::Gbc, ConsoleId::Gba] {
+        for (id, mode, interval) in cases {
+            let out: Vec<_> = mapped(CoreId::Mgba, console, |k| {
+                (k == "perf.frameskip").then(|| Value::Text(id.to_owned()))
+            });
+            let got: Vec<(&str, &str)> = out.iter().map(|o| (o.key, o.value.as_str())).collect();
+            assert_eq!(
+                got,
+                [
+                    ("mgba_frameskip", mode),
+                    ("mgba_frameskip_interval", interval)
+                ],
+                "{console:?} {id}"
+            );
+            assert!(out.iter().all(|o| o.apply == Apply::Live));
+        }
+    }
+    // melonDS DS has no equivalent: nothing is asked, and the schema marks the row.
+    assert!(mapped(CoreId::MelonDsDs, ConsoleId::Nds, |k| {
+        (k == "perf.frameskip").then(|| Value::Text("2".into()))
+    })
+    .is_empty());
+}
+
+#[test]
 fn gba_defaults_become_mgba_options() {
     let dir = TestDir::new("gba-core-defaults");
     assert_eq!(
@@ -1249,6 +1297,8 @@ fn gba_defaults_become_mgba_options() {
             ("mgba_color_correction", "Auto"),
             ("mgba_interframe_blending", "OFF"),
             ("mgba_solar_sensor_level", "5"),
+            ("mgba_frameskip", "auto"),
+            ("mgba_frameskip_interval", "0"),
             ("mgba_use_bios", "ON"),
             ("mgba_skip_bios", "OFF"),
             ("mgba_audio_low_pass_filter", "disabled"),
@@ -1288,7 +1338,7 @@ fn gba_game_and_session_levels_reach_the_core() {
 fn percent_rounds_to_the_core_levels() {
     use super::core_values::mapped;
     let level = |p: i64| {
-        mapped("mgba", ConsoleId::Gba, |k| {
+        mapped(CoreId::Mgba, ConsoleId::Gba, |k| {
             (k == "consoles.solar").then_some(Value::Int(p))
         })
         .into_iter()
@@ -1305,13 +1355,13 @@ fn percent_rounds_to_the_core_levels() {
 #[test]
 fn a_value_of_the_wrong_kind_or_an_unknown_choice_asks_for_nothing() {
     use super::core_values::mapped;
-    let out = mapped("mgba", ConsoleId::Gba, |k| match k {
+    let out = mapped(CoreId::Mgba, ConsoleId::Gba, |k| match k {
         "consoles.gbacc" => Some(Value::Text("sepia".into())),
         "cores.mgbalp" => Some(Value::Int(1)),
         _ => None,
     });
     assert!(out.is_empty(), "{out:?}");
-    assert!(mapped("nosuchcore", ConsoleId::Gba, |_| Some(Value::Bool(true))).is_empty());
+    assert!(mapped(CoreId::Azahar, ConsoleId::N3ds, |_| Some(Value::Bool(true))).is_empty());
 }
 
 #[test]
@@ -1367,7 +1417,7 @@ fn every_console_and_core_entry_with_an_mgba_option_is_mapped() {
     // The `consoles.*` and `cores.*` entries of the consoles mGBA runs that have a real mGBA
     // option. `cores.mgbaall` is a link (the full option list), not a value.
     use super::core_values::{is_core_setting, table};
-    let mapped: HashSet<&str> = table("mgba")
+    let mapped: HashSet<&str> = table(CoreId::Mgba)
         .map(|t| t.rules.iter().map(|r| r.setting).collect())
         .unwrap_or_default();
     for key in [

@@ -158,8 +158,13 @@ fn rewind_seconds(app: &AppHandle, scope: &Scope) -> Option<u32> {
     emudome_core::rewind::seconds_from_settings(read(REWIND_KEYS[0]), read(REWIND_KEYS[1]))
 }
 
-/// What the game flow reads for a game of `console` run by `core` (`mgba`, ...).
-pub fn game_flow(app: &AppHandle, core: &str, console: ConsoleId, game: &GameKey) -> GameFlow {
+/// What the game flow reads for a game of `console` run by `core`.
+pub fn game_flow(
+    app: &AppHandle,
+    core: emudome_core::core_profile::CoreId,
+    console: ConsoleId,
+    game: &GameKey,
+) -> GameFlow {
     let scope = Scope::Game {
         console,
         game: game.clone(),
