@@ -13,3 +13,7 @@ cores/*
 *.sav
 *.state
 .DS_Store
+# Local secrets (licence rule 6): .env files are never versioned; OAuth secrets live in user
+# environment variables (EMUDOME_GOOGLE_CLIENT_SECRET), read at build time.
+.env
+.env.*
