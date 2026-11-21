@@ -209,7 +209,7 @@ fn run(app: &tauri::AppHandle, bench: &Bench) -> (i32, Value) {
     log::info!("bench: first frame {first_ms:.0} ms after main");
     let first_at = Instant::now();
 
-    let Some(shared) = state.current.load_full() else {
+    let Some(shared) = state.games.current().load_full() else {
         return (2, fail(report, "error", "game closed".into()));
     };
 

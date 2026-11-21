@@ -744,15 +744,17 @@ pub fn library_scan(app: AppHandle) {
     start_scan(&app);
 }
 
-/// Opens a library game and counts its play time until it closes. Off the event loop (`async`):
-/// it may wait for the open game to close (`closing::close_game`).
-#[tauri::command(async)]
-pub fn library_open(
-    app: AppHandle,
-    app_state: State<'_, AppState>,
-    state: State<'_, LibraryState>,
-    id: GameKey,
-) -> Result<GameInfo, ErrorCode> {
+/// Opens a library game and counts its play time until it closes. Off the event loop (a
+/// blocking thread): it loads the core and the ROM, and may wait for the open game to close
+/// (`closing::close_game`).
+#[tauri::command]
+pub async fn library_open(app: AppHandle, id: GameKey) -> Result<GameInfo, ErrorCode> {
+    crate::blocking(app, move |app| open_now(app, id)).await?
+}
+
+fn open_now(app: &AppHandle, id: GameKey) -> Result<GameInfo, ErrorCode> {
+    let app_state = app.state::<AppState>();
+    let state = app.state::<LibraryState>();
     let (path, title) = {
         let lib = state.lib.lock();
         let game = lib.game(&id)?;
@@ -760,10 +762,10 @@ pub fn library_open(
     };
     if !Path::new(&path).is_file() {
         state.lib.lock().set_unavailable(&id)?;
-        emit_changed(&app);
+        emit_changed(app);
         return Err(ErrorCode::LibraryGameUnavailable { id: id.to_string() });
     }
-    crate::open_library_game(&app, &app_state, &id, PathBuf::from(path), title)
+    crate::open_library_game(app, &app_state, &id, PathBuf::from(path), title)
 }
 
 /// Changes the cover (L12). `user` opens an image picker first: `false` if it was cancelled.

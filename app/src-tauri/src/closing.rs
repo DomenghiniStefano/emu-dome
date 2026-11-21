@@ -3,38 +3,33 @@
 //! event loop, and tell the interface each step on `emu://closing` (`close_flow::Progress`).
 //!
 //! The decisions are `emudome_core::close_flow` (pure, tested there); this module only does what
-//! it returns. Locks: `flow` may be held while `session` is taken, never the other way round
-//! (the worker drops `session` before feeding the flow).
+//! it returns; the game itself is taken out and ended through `GameSession` (`game_session.rs`).
+//! Locks: `flow` may be held while the game is taken, never the other way round (the worker
+//! drops `closing` before feeding the flow).
 
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::{Duration, Instant};
 
 use emudome_core::close_flow::{Action, CloseFlow, Input, Purpose, SAVED_VISIBLE};
-use emudome_core::{Closed, ErrorCode, Session, CLOSE_TIMEOUT};
+use emudome_core::{Closed, ErrorCode, CLOSE_TIMEOUT};
 use parking_lot::{Condvar, Mutex};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::game_session::Leaving;
 use crate::AppState;
 
 /// How often the worker looks at the game's thread between its timeouts: also the longest
 /// «Close anyway» waits for the worker to hand the session over.
 const POLL: Duration = Duration::from_millis(100);
 
-/// The game being closed, held here while its thread is waited for.
-struct Closing {
-    session: Session,
-    /// Its core's name, for `coreNeedsRestart` if it is let go.
-    core: &'static str,
-}
-
 /// The close flow's state in the app (a field of `AppState`).
 pub struct Closer {
     flow: Mutex<CloseFlow>,
     /// Woken when a close finishes: the commands waiting for the game to be closed.
     finished: Condvar,
-    /// The session whose thread the worker waits for; taken by «Close anyway» and by the last
+    /// The game whose thread the worker waits for; taken by «Close anyway» and by the last
     /// resort on `RunEvent::Exit`.
-    closing: Mutex<Option<Closing>>,
+    closing: Mutex<Option<Leaving>>,
     /// When the current wait began (`WaitAgain` starts it again).
     wait_from: Mutex<Instant>,
     /// The exit code asked for (`app.exit(code)`, the bench's), used once the game is closed.
@@ -59,7 +54,7 @@ pub fn request_quit(app: &AppHandle, state: &AppState, code: Option<i32>) -> boo
     if let Some(code) = code {
         state.closer.exit_code.store(code, Ordering::SeqCst);
     }
-    let game_open = state.session.lock().is_some();
+    let game_open = state.games.is_open();
     feed(
         app,
         state,
@@ -75,7 +70,7 @@ pub fn request_quit(app: &AppHandle, state: &AppState, code: Option<i32>) -> boo
 /// exiting meanwhile. Blocks: never call it from the event loop's thread (the commands that
 /// do are `async`).
 pub fn close_game(app: &AppHandle, state: &AppState) -> Result<(), ErrorCode> {
-    let game_open = state.session.lock().is_some();
+    let game_open = state.games.is_open();
     feed(
         app,
         state,
@@ -109,13 +104,15 @@ pub fn close_anyway(app: AppHandle, state: tauri::State<'_, AppState>) {
 /// `RunEvent::Exit`, which cannot be prevented: whatever is still open closes now, in the event
 /// loop, bounded by `CLOSE_TIMEOUT` (the last resort; every other way out went through the flow).
 pub fn close_now(app: &AppHandle, state: &AppState) {
-    crate::close_current(app, state);
+    if let Some((core, Closed::Abandoned)) = state.games.close(CLOSE_TIMEOUT) {
+        log::warn!("the game did not close within {CLOSE_TIMEOUT:?}: let go");
+        crate::say_core_needs_restart(app, core.name());
+    }
     let closing = state.closer.closing.lock().take();
     if let Some(closing) = closing {
-        if closing.session.close(CLOSE_TIMEOUT) == Closed::Abandoned {
+        if closing.close(CLOSE_TIMEOUT) == Closed::Abandoned {
             log::warn!("the closing game did not end within {CLOSE_TIMEOUT:?}: let go");
         }
-        state.game.lock().take();
     }
 }
 
@@ -159,16 +156,14 @@ fn after(app: &AppHandle, delay: Duration, input: Input) {
 
 /// Takes the open game, asks its thread to stop and waits for it on a worker.
 fn start(app: &AppHandle, state: &AppState) {
-    let (session, core) = crate::release_game(app, state);
-    let Some(session) = session else {
+    let Some(leaving) = state.games.take() else {
         // Gone in between: nothing to wait for.
-        state.game.lock().take();
         after(app, Duration::ZERO, Input::Written);
         return;
     };
-    session.stop();
+    leaving.stop();
     *state.closer.wait_from.lock() = Instant::now();
-    *state.closer.closing.lock() = Some(Closing { session, core });
+    *state.closer.closing.lock() = Some(leaving);
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || worker(&app));
 }
@@ -184,7 +179,8 @@ fn worker(app: &AppHandle) {
                 // Let go («Close anyway») or closed by the last resort: nothing to report.
                 return;
             };
-            let written = current.session.wait(POLL);
+            // Once it answers, the game's files are free again (the Saves screen refused them).
+            let written = current.wait(POLL);
             if written.is_some() {
                 closing.take();
             }
@@ -192,9 +188,6 @@ fn worker(app: &AppHandle) {
         };
         match written {
             Some(written) => {
-                // Cleared after the thread ended: the Saves screen refuses this game's files
-                // until then.
-                state.game.lock().take();
                 let input = match written {
                     Ok(()) => Input::Written,
                     Err(error) => {
@@ -220,8 +213,8 @@ fn abandon(app: &AppHandle, state: &AppState) {
     let closing = state.closer.closing.lock().take();
     if let Some(closing) = closing {
         log::warn!("closing abandoned by the user: the last progress may be lost");
-        closing.session.abandon();
-        state.game.lock().take();
-        crate::say_core_needs_restart(app, closing.core);
+        let core = closing.core();
+        closing.abandon();
+        crate::say_core_needs_restart(app, core.name());
     }
 }

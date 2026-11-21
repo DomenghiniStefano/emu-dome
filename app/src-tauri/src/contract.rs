@@ -12,10 +12,10 @@ fn app_owns(path: &str) -> bool {
 fn generate() -> Result<Generated, String> {
     let mut g = Generated::new();
     g.ts::<crate::VideoMode>()?;
-    g.ts::<crate::SlotDto>()?;
-    g.ts::<crate::GameInfo>()?;
-    g.ts::<crate::StatsDto>()?;
-    g.ts::<crate::PointerArea>()?;
+    g.ts::<crate::commands::SlotDto>()?;
+    g.ts::<crate::game::GameInfo>()?;
+    g.ts::<crate::commands::StatsDto>()?;
+    g.ts::<crate::commands::PointerArea>()?;
     g.ts::<crate::bios::BiosRow>()?;
     g.ts::<crate::core_settings::CoreRestart<'static>>()?;
     g.ts::<crate::library::LibraryDto>()?;

@@ -15,7 +15,8 @@ use crate::speed_audio::FastAudio;
 /// Holds a [`FakeCore`] inside `run` until opened: a core stuck in `retro_run`.
 #[derive(Default)]
 pub struct Gate {
-    open: Mutex<bool>,
+    /// (open, a `run` is held at the gate)
+    state: Mutex<(bool, bool)>,
     changed: Condvar,
 }
 
@@ -26,14 +27,31 @@ impl Gate {
 
     /// Lets every waiting and future `run` through.
     pub fn open(&self) {
-        *self.open.lock() = true;
+        self.state.lock().0 = true;
         self.changed.notify_all();
     }
 
+    /// Waits up to `timeout` until a `run` is held at the gate (the core is stuck now); false if
+    /// none came.
+    pub fn wait_held(&self, timeout: std::time::Duration) -> bool {
+        let deadline = std::time::Instant::now() + timeout;
+        let mut state = self.state.lock();
+        while !state.1 {
+            if self.changed.wait_until(&mut state, deadline).timed_out() {
+                return state.1;
+            }
+        }
+        true
+    }
+
     fn wait(&self) {
-        let mut open = self.open.lock();
-        while !*open {
-            self.changed.wait(&mut open);
+        let mut state = self.state.lock();
+        if !state.0 {
+            state.1 = true;
+            self.changed.notify_all();
+        }
+        while !state.0 {
+            self.changed.wait(&mut state);
         }
     }
 }
