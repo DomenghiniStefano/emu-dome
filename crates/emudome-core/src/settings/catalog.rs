@@ -416,17 +416,15 @@ pub static ENTRIES: &[Entry] = &[
     )
     .device()
     .not_wired(),
-    sel("video.res3d", &["1x", "2x", "3x", "4x"], "1x", CG)
-        .phase(2)
-        .not_wired(),
+    // 3DS only (Azahar, `core_values/azahar.rs`); the other cores list them as unsupported.
+    sel("video.res3d", &["1x", "2x", "3x", "4x"], "1x", CG).phase(2),
     sel(
         "video.texf",
         &["none", "bicubic", "scaleforce", "xbrz", "mmpx", "anime4k"],
         "none",
         CG,
     )
-    .phase(3)
-    .not_wired(),
+    .phase(3),
     // ---- Effetti schermo (fx) ----
     cards(
         "fx.fxpick",
@@ -691,17 +689,14 @@ pub static ENTRIES: &[Entry] = &[
         GM,
     )
     .phase(2),
-    seg("consoles.n3dsmodel", &["o3ds", "n3ds"], "n3ds", CG)
-        .phase(3)
-        .not_wired(),
+    seg("consoles.n3dsmodel", &["o3ds", "n3ds"], "n3ds", CG).phase(3),
     sel(
         "consoles.n3dsreg",
         &["auto", "jpn", "usa", "eur", "kor", "chn", "twn"],
         "auto",
         CG,
     )
-    .phase(3)
-    .not_wired(),
+    .phase(3),
     // ---- Avanzate (advanced, T14): Prestazioni, motori, Strumenti avanzati ----
     // The keys keep their `perf.` / `cores.` / `adv.` prefix (files, i18n); the page is `advanced`.
     seg(
@@ -718,10 +713,10 @@ pub static ENTRIES: &[Entry] = &[
         .phase(3)
         .on_page(ADV)
         .not_wired(),
+    // 3DS only (Azahar); the other cores list it as unsupported.
     slider("perf.cpuclock", 100, (50, 400, 25), Unit::Percent, GM)
         .phase(3)
-        .on_page(ADV)
-        .not_wired(),
+        .on_page(ADV),
     sw("cores.mgbabios", true, CG).on_page(ADV),
     sw("cores.mgbaskip", false, CG).on_page(ADV),
     sw("cores.mgbalp", false, CG).on_page(ADV),
@@ -736,8 +731,7 @@ pub static ENTRIES: &[Entry] = &[
     link("cores.mdsall", CG).phase(2).on_page(ADV),
     seg("cores.azaudio", &["hle", "lle"], "hle", CG)
         .phase(3)
-        .on_page(ADV)
-        .not_wired(),
+        .on_page(ADV),
     link("cores.azall", CG).phase(3).on_page(ADV),
     sw("adv.advon", false, G).phase(5).on_page(ADV).not_wired(),
     sw("adv.inputs", false, G).phase(5).on_page(ADV).not_wired(),

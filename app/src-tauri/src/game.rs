@@ -47,7 +47,25 @@ fn core_for(path: &Path) -> Result<(CoreId, ConsoleId), ErrorCode> {
             phase,
         });
     }
+    // A kind of file the console's core does not run (a 3DS `.cia`).
+    if !emudome_core::library::opens(&ext) {
+        return Err(ErrorCode::UnsupportedFormat { ext });
+    }
     Ok((CoreId::for_console(console), console))
+}
+
+/// E10: an encrypted 3DS game is refused before the core sees it (also a library game whose file
+/// was replaced since it was added). Identification only: one header flag is read.
+fn refuse_encrypted(console: ConsoleId, game_path: &Path) -> Result<(), ErrorCode> {
+    use emudome_core::n3ds::rom::{check_file, Encryption};
+    match console {
+        ConsoleId::N3ds if check_file(game_path) == Encryption::Encrypted => {
+            Err(ErrorCode::GameEncrypted)
+        }
+        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::Nds | ConsoleId::N3ds => {
+            Ok(())
+        }
+    }
 }
 
 /// The extensions «Apri un file» offers: every console whose games open today.
@@ -163,7 +181,8 @@ fn open_path(
 ) -> Result<GameInfo, ErrorCode> {
     // The one-time move of old save names ends before any game reads its saves.
     migration::wait(app);
-    let (core, _) = core_for(&game_path)?;
+    let (core, console) = core_for(&game_path)?;
+    refuse_encrypted(console, &game_path)?;
     let file = emudome_platform::core_file_name(core.name());
     let core_path = emudome_platform::find_core(core.name(), state.resource_dir.as_deref())
         .map_err(|e| match e {

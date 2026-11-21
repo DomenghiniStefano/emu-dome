@@ -149,6 +149,8 @@ pub struct CoreProfile {
     pub id: CoreId,
     /// The consoles whose games it runs.
     pub consoles: &'static [ConsoleId],
+    /// The library's file extensions (`library::EXTENSIONS`, lowercase) whose files it opens.
+    pub extensions: &'static [&'static str],
     /// Core options the shell always sets (`GET_VARIABLE` key and value), after the settings'
     /// and before the system files' ([`crate::bios`]).
     pub forced_options: &'static [(&'static str, &'static str)],
@@ -200,6 +202,7 @@ pub fn unsupported_consoles(setting: &str) -> Vec<ConsoleId> {
 static MGBA: CoreProfile = CoreProfile {
     id: CoreId::Mgba,
     consoles: &[ConsoleId::Gb, ConsoleId::Gbc, ConsoleId::Gba],
+    extensions: &["gb", "gbc", "gba"],
     forced_options: &[],
     split: Split::Whole,
     hw_render: HwRender {
@@ -208,12 +211,15 @@ static MGBA: CoreProfile = CoreProfile {
         renderer_option: None,
     },
     save_model: SaveModel::SaveRam,
-    unsupported_settings: &[],
+    // 3D rendering settings (Azahar's): a 2D core has no internal resolution, texture filter
+    // or CPU clock option.
+    unsupported_settings: &["video.res3d", "video.texf", "perf.cpuclock"],
 };
 
 static MELONDSDS: CoreProfile = CoreProfile {
     id: CoreId::MelonDsDs,
     consoles: &[ConsoleId::Nds],
+    extensions: &["nds"],
     forced_options: crate::nds::FORCED_OPTIONS,
     split: crate::nds::SPLIT,
     // OpenGL renderer (`cores.mdsrender`); without a GL context it falls back to software
@@ -226,13 +232,22 @@ static MELONDSDS: CoreProfile = CoreProfile {
         renderer_option: None,
     },
     save_model: SaveModel::SaveRamAndCoreFiles,
-    // melonDS DS has no frameskip option (1.4.0, `config/constants.hpp`).
-    unsupported_settings: &["perf.frameskip"],
+    // melonDS DS has no frameskip option (1.4.0, `config/constants.hpp`), no texture filter or
+    // CPU clock; its internal resolution belongs to the OpenGL renderer the shell refuses.
+    unsupported_settings: &[
+        "perf.frameskip",
+        "video.res3d",
+        "video.texf",
+        "perf.cpuclock",
+    ],
 };
 
 static AZAHAR: CoreProfile = CoreProfile {
     id: CoreId::Azahar,
     consoles: &[ConsoleId::N3ds],
+    // Azahar 2126.2's `valid_extensions` that the library knows: no `.cia` (installable archives
+    // are installed by the standalone emulator, not run by the libretro core).
+    extensions: &["3ds", "cci", "cxi", "3dsx"],
     forced_options: crate::n3ds::FORCED_OPTIONS,
     split: crate::n3ds::SPLIT,
     hw_render: HwRender {
@@ -248,7 +263,7 @@ static AZAHAR: CoreProfile = CoreProfile {
         }),
     },
     save_model: SaveModel::CoreFiles,
-    // No frameskip mapped for Azahar yet: its options are listed when Phase 3 starts.
+    // Azahar 2126.2 has no frameskip option (`headless --list-options`).
     unsupported_settings: &["perf.frameskip"],
 };
 
@@ -276,6 +291,22 @@ mod tests {
                 serde_json::json!(core.name())
             );
         }
+    }
+
+    #[test]
+    fn each_core_opens_library_files_of_its_own_consoles() {
+        for core in CoreId::ALL {
+            let p = core.profile();
+            for ext in p.extensions {
+                assert!(crate::library::EXTENSIONS.contains(ext), "{core}: {ext}");
+                let console = crate::library::console_of_extension(ext);
+                assert!(
+                    console.is_some_and(|c| p.consoles.contains(&c)),
+                    "{core}: {ext}"
+                );
+            }
+        }
+        assert!(!CoreId::Azahar.profile().extensions.contains(&"cia"));
     }
 
     #[test]

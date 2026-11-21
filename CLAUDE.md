@@ -55,7 +55,8 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
 
 Phase 0 (feasibility) is done. On `develop` now: shell and themes, settings engine and pages, library, game flow,
 quick menu, saves, controls, first run, rewind and screenshots, screen effects (librashader), appearance, and the
-melonDS DS core (#45). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
+back to the CPU, encrypted games refused with E10). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
 before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
@@ -658,10 +659,13 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 ## Known gaps of the prototype (intentional, for later)
 
 - Core options: every `consoles.*` / `cores.*` entry with a real mGBA option is mapped (`settings/core_values/mgba.rs`);
-  melonDS DS has a table (`core_values/melondsds.rs`); Azahar has none yet (only its forced options,
-  `core_profile.rs`). `perf.frameskip` drives mGBA only; on NDS / 3DS its row is disabled with the reason
-  (`CoreProfile::unsupported_settings`). The interface does not show `emu://core-restart` yet.
-- 48 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+  melonDS DS has a table (`core_values/melondsds.rs`); Azahar has one (`core_values/azahar.rs`: 3DS model, region,
+  internal resolution, texture filter, CPU clock, audio engine, all applied when the game opens again; not mapped:
+  `perf.shcache`, `screens.stereo`, `pad.gyro`, `bios.b3ds`, reasons in that file). `perf.frameskip` drives mGBA
+  only, `video.res3d` / `video.texf` / `perf.cpuclock` Azahar only; elsewhere their rows are disabled with the reason
+  (`CoreProfile::unsupported_settings`). The 3DS rows are phase 3, so the interface still hides them
+  (`CURRENT_PHASE`). The interface does not show `emu://core-restart` yet.
+- 42 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their

@@ -39,6 +39,9 @@ pub enum ErrorCode {
     /// The file opened has the extension of a console but its content is not a game of it (its
     /// header does not match): it has no identity, so it has no place for its saves.
     GameUnidentified { detail: String },
+    /// E10: the 3DS game is encrypted; EmuDome plays decrypted games only (it never decrypts,
+    /// and never adds an encrypted game to the library).
+    GameEncrypted,
     /// A game on this core stopped answering and was let go (E11): its thread may still hold
     /// the core, so the core cannot open another game until EmuDome is restarted. `core` is the
     /// core's name (e.g. `mgba`).

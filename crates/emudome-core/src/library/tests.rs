@@ -340,16 +340,31 @@ fn three_ds_homebrew_is_identified_by_its_hash_and_its_smdh() {
     assert!(identify(&write(&dir, "bad.3dsx", &[0u8; 0x100])).is_err());
 }
 
+/// E10: an encrypted 3DS game is not a game (never added, never opened), in every container.
 #[test]
-fn an_encrypted_ncch_still_has_an_id_but_no_title_or_icon() {
+fn an_encrypted_3ds_game_is_not_a_game_and_never_added() {
     let dir = TestDir::new("lib-3ds-enc");
-    let mut rom = ncsd_rom();
-    rom[0x200 + 0x18F] = 0;
-    let id = identify(&write(&dir, "Encrypted.3ds", &rom)).unwrap();
-    assert_eq!(id.id, "3ds:0004000000abcd000000");
-    assert_eq!(id.title, "Encrypted");
-    assert!(!id.has_icon);
-    assert_eq!(read_icon(&dir.path("Encrypted.3ds")).unwrap(), None);
+    let encrypted =
+        |e: Result<super::Identity, super::NotAGame>| matches!(e, Err(super::NotAGame::Encrypted));
+    let mut card = ncsd_rom();
+    card[0x200 + 0x18F] = 0;
+    assert!(encrypted(identify(&write(&dir, "roms/Card.3ds", &card))));
+    let mut bare = ncch();
+    bare[0x18F] = 0x20; // seed crypto, NoCrypto clear
+    assert!(encrypted(identify(&write(&dir, "roms/Bare.cxi", &bare))));
+    // A CIA whose content 0 is unreadable (encrypted with its title key).
+    let mut cia = cia_rom();
+    let content = 0x2100;
+    cia[content + 0x100..content + 0x104].copy_from_slice(&[0x5A; 4]);
+    assert!(encrypted(identify(&write(&dir, "roms/Archive.cia", &cia))));
+    assert!(read_icon(&dir.path("roms/Card.3ds")).is_err());
+
+    // A scan skips them and adds the decrypted one.
+    write(&dir, "roms/Decrypted.3ds", &ncsd_rom());
+    let mut lib = Library::open(&dir.path("db"));
+    let report = run(&mut lib, &[&dir.path("roms")], 1000);
+    assert_eq!((report.found, report.added), (1, 1));
+    assert_eq!(lib.games().count(), 1);
 }
 
 // ---- Scan and store ----
@@ -865,7 +880,11 @@ fn every_library_extension_has_a_console() {
 #[test]
 fn the_file_picker_offers_every_console_that_opens_today() {
     // Trello #73: «Apri un file» once offered GB / GBC / GBA only, while DS games opened.
-    assert_eq!(open_extensions(), ["gb", "gbc", "gba", "nds"]);
+    // 3DS since #46, without `.cia` (Azahar's libretro core does not run installable archives).
+    assert_eq!(
+        open_extensions(),
+        ["gb", "gbc", "gba", "nds", "3ds", "cci", "cxi", "3dsx"]
+    );
 }
 
 #[test]

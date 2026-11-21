@@ -270,6 +270,7 @@
     "saveImportInvalid": "Questo file non è un salvataggio che EmuDome sa importare ({detail}). Scegli un file .sav, .dsv o .duc.",
     "saveFileFailed": "Non riesco a usare il file del salvataggio: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
     "gameUnidentified": "Questo file non è un gioco che EmuDome riconosce: la sua intestazione non corrisponde alla console. Controlla che sia un dump completo e funzionante. Dettagli: {detail}",
+    "gameEncrypted": "Questo gioco 3DS è criptato ed EmuDome avvia solo giochi decriptati. Decriptalo con la tua console, poi aprilo di nuovo.",
     "savesMigrationFailed": "Non riesco a spostare i tuoi vecchi salvataggi al loro nuovo posto. Non hai perso nulla: restano dov’erano e EmuDome riprova al prossimo avvio. Dettagli: {detail}",
     "savesMigrationIncomplete": "I tuoi salvataggi sono al loro nuovo posto, ma {left} vecchi file non si possono assegnare con certezza a un gioco e sono rimasti dov’erano. Trovi l’elenco in {report}.",
     "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",

@@ -13,7 +13,11 @@
 //!   stick moved it, and that stick is the C-stick only here, so no cursor shows.
 //! - Saves: Azahar keeps the emulated SD card and NAND under the frontend's save directory (the
 //!   game's own folder, `GameFiles`), never its own default location.
+//! - Encrypted games are never added to the library and are refused before the core sees them
+//!   ([`rom`], E10, `gameEncrypted`): identification only, nothing is ever decrypted.
 //! - System files: EmuDome supplies none (no firmware, no keys, no system archives).
+
+pub mod rom;
 
 use crate::screens::Split;
 

@@ -8,6 +8,7 @@
   "romUnreadable",
   "coreRefusedGame",
   "gameUnidentified",
+  "gameEncrypted",
   "coreNeedsRestart",
   "noGame",
   "appClosing",
