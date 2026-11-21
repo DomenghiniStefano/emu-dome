@@ -207,8 +207,14 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          core_profile.rs (`CoreId` and one `CoreProfile` per core: consoles, forced
                          options, screen split, HW-render needs and the renderer option (`Renderer`:
                          Azahar Vulkan or Software), save model, how deep its own files go under the
-                         game's folder (`save_depth`), settings it cannot honour; nothing matches a core
+                         game's folder (`save_depth`), settings it cannot honour, how it closes the lid
+                         (`Lid`: melonDS DS its L2 + Y chord, Azahar none); nothing matches a core
                          by its name string)
+                         screens.rs (NDS / 3DS screens composed by EmuDome, #28: `Split` cuts the frame,
+                         `compose` places each screen, `touch_at` / `pointer_value` map a touch back;
+                         `ScreenSettings` the `screens.*` values, `CustomLayout` the editor's
+                         `screens.custom`, `ScreenSession` the layout shown, the swap and the lid,
+                         `ScreenStatus` what the interface shows; pure, unit-tested)
                          save_path.rs (#94: does a core's deepest file fit under the game's folder within
                          the platform's `PathLimits`; checked before the core loads; pure, unit-tested)
                          contract.rs (the Rust ↔ TypeScript contract: ts-rs types and fixtures generated
@@ -248,7 +254,10 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          commands.rs (the one-line in-game commands, `key`), protocol.rs (the `emu://` scheme:
                          one route per resource, unknown paths 404), events.rs (every event name),
                          hotkeys.rs (`HotkeyRunner`: the shortcuts of the pads and of the keyboard carried out,
-                         one hold shared by both), tuning.rs (developer / bench knobs from the environment),
+                         one hold shared by both), screens.rs (the open game's `ScreenSession` carried out:
+                         the renderer's layout, `emu://screens`, the lid chord pressed on the core, the
+                         `screens_*` commands; the webview canvas gets its placements from
+                         `screens_placements`), tuning.rs (developer / bench knobs from the environment),
                          window.rs (the app's names for emudome_platform::create_window),
                          video.rs (wgpu; `GpuService`, one per app, owns instance / adapter / device for
                          the whole run: surfaces attach and detach on it, a 3DS game leases the device
@@ -318,6 +327,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     8 ms. A detach waits for the GPU to finish before the surface goes (Android destroys it right after). Pacing
     options (present-driven / audio-driven): `docs/video-pacing.md`.
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
+  - **Screens** (Trello #28): both paths draw each screen of the frame where `emudome_core::screens::compose`
+    puts it for the open game's layout (`screens.*`, the layout shown, swapped or not): the native renderer one
+    draw per screen (`Renderer::set_layout`), the webview canvas from `screens_placements` (it decides no
+    geometry: `GameCanvas.vue`, `screenDraw.ts`). Touch maps back through the same layout (`pointer`).
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
     lock and swaps it in; readers (texture upload, the webview's copy, PNG thumbnails and screenshots) clone the
@@ -325,7 +338,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - tauri, wgpu and librashader are pinned to exact versions (`=x.y.z`, `app/src-tauri/Cargo.toml`, tauri also in
   `emudome-platform`) and upgrade only together, as one task ending with a native-video smoke test.
 - Screen effects (`fx.*`): librashader 0.12 (its wgpu must stay our wgpu version) renders the game texture
-  (`Rgba8Unorm`, the core's sRGB bytes as they are) into a texture the size of the game's rectangle; our pass mixes it
+  (`Rgba8Unorm`, the core's sRGB bytes as they are: the whole frame, every screen) into a texture of the frame's
+  size times the largest screen's scale; our pass cuts each screen out of it like the plain image and mixes it
   over the plain image (`fx.fxint`, `fx.fxbright`). Rows with `needs_native_video` are disabled on Compatible (X05).
   GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
 - Audio: a lock-free SPSC ring (`emudome_core::audio::AudioRing`, rtrb) from the emulation thread to the cpal
@@ -414,6 +428,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `library://`, `settings://`, `saves://` theirs): `emu://session` (the session's `Event`s), `emu://gamepad-connected`,
   `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
+  `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
   `library://changed` (`LibraryChanged`: the rows that changed, or the whole library), `library://scan`,
   `saves://migration`, `emu://effect-error`,
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
@@ -719,8 +734,18 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 42 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 41 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
+- DS / 3DS screens (Trello #28): the backend is in (layouts, swap, custom layout per console or game, rotation,
+  lid, touch through the layout, both video paths); the interface for it is not (G09 cards, the C09 editor, the
+  G15 lid overlay, the quick menu's tiles: `quick-menu/tools.ts` still shows swap and lid unavailable, and
+  `screens.custom` shows as not wired until the editor exists). The lid exists on melonDS DS only (its L2 + Y
+  chord, pressed by the shell for 100 ms: the game sees Y in those frames, a paused game misses it, and the
+  shell's «closed» is its own count, not read back from the core, so a state loaded across a lid change shows
+  it the wrong way); Azahar has none (`pad.lid` unsupported on 3DS). The screen effects run once on the whole
+  frame, so a curved CRT bends the frame as the core stacks it, not each screen. `screens.gap` is in the frame's
+  pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
+  cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`. mGBA for Windows and Android is built by EmuDome from the pinned source archive
