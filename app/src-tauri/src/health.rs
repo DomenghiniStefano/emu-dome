@@ -22,6 +22,12 @@ pub enum Part {
     /// The audio output.
     Audio,
     /// SDL3 controllers.
+    // An `allow`, not an `expect`: only gamepad.rs builds it, and that module is desktop-only
+    // (SDL3 is not built for Android yet), so the variant is unused on Android alone.
+    #[allow(
+        dead_code,
+        reason = "constructed by the desktop-only gamepad module; unused where it is not compiled"
+    )]
     Controllers,
 }
 
