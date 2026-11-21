@@ -17,3 +17,5 @@ cores/*
 # environment variables (EMUDOME_GOOGLE_CLIENT_SECRET), read at build time.
 .env
 .env.*
+# Images and files other sessions (Cowork) drop in the project folder: never versioned.
+/Claude outputs/
