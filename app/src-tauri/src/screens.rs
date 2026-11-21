@@ -313,6 +313,24 @@ pub fn screens_custom(app: AppHandle, scope: Scope) -> Result<CustomLayout, Erro
     Ok(CustomLayout::from_items(&items).unwrap_or_default())
 }
 
+/// The C09 editor's «Parti da»: where `layout` puts the screens of a `console` game in an area of
+/// `width` × `height` (the whole window), as a custom layout, with the gap and the ratio `scope`
+/// resolves. Composed by `emudome_core::screens` like the game itself, so the editor decides no
+/// geometry. Empty for a one-screen console.
+#[tauri::command]
+pub fn screens_preset_custom(
+    app: AppHandle,
+    scope: Scope,
+    console: ConsoleId,
+    layout: LayoutId,
+    width: f32,
+    height: f32,
+) -> CustomLayout {
+    let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
+    let split = CoreId::for_console(console).profile().split;
+    CustomLayout::preset(&settings, layout, split, width, height)
+}
+
 /// Stores the custom layout at `scope`: `console` or `game` to save it, `session` to preview it
 /// live «in prova» (then committed or dropped with the quick menu's session, like any setting).
 /// Removing it is `settings_reset` of `screens.custom`. An invalid layout is refused with

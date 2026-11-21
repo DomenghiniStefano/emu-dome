@@ -50,13 +50,32 @@ pub enum Nav {
     Next,
     /// X: the focused item's other actions (a cover's game details, like a right click).
     More,
+    /// Select: a screen's own toggle (the C09 screens editor folds its panel).
+    Select,
+    /// The right stick pushed past `pad.stickdpad`, one step per direction, repeating like the
+    /// d-pad: a screen's second pair of arrows (the C09 editor resizes a screen with it).
+    #[serde(rename = "stickUp")]
+    StickUp,
+    #[serde(rename = "stickDown")]
+    StickDown,
+    #[serde(rename = "stickLeft")]
+    StickLeft,
+    #[serde(rename = "stickRight")]
+    StickRight,
 }
 
 impl Nav {
     fn repeats(self) -> bool {
         match self {
-            Nav::Up | Nav::Down | Nav::Left | Nav::Right => true,
-            Nav::Confirm | Nav::Back | Nav::Prev | Nav::Next | Nav::More => false,
+            Nav::Up
+            | Nav::Down
+            | Nav::Left
+            | Nav::Right
+            | Nav::StickUp
+            | Nav::StickDown
+            | Nav::StickLeft
+            | Nav::StickRight => true,
+            Nav::Confirm | Nav::Back | Nav::Prev | Nav::Next | Nav::More | Nav::Select => false,
         }
     }
 }
@@ -71,7 +90,34 @@ const NAV_BUTTONS: &[(Button, Nav)] = &[
     (Button::L, Nav::Prev),
     (Button::R, Nav::Next),
     (Button::X, Nav::More),
+    (Button::Select, Nav::Select),
 ];
+
+/// The right stick's directions while the interface has the input ([`PadInput::stick`], as
+/// d-pad bits).
+const STICK_NAV: &[(Button, Nav)] = &[
+    (Button::Up, Nav::StickUp),
+    (Button::Down, Nav::StickDown),
+    (Button::Left, Nav::StickLeft),
+    (Button::Right, Nav::StickRight),
+];
+
+/// What a repeating step is held by: a button (the d-pad, the left stick folded in) or a
+/// direction of the right stick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Held {
+    Button(Button),
+    Stick(Button),
+}
+
+impl Held {
+    fn still(self, input: &PadInput) -> bool {
+        match self {
+            Held::Button(b) => input.buttons & b.bit() != 0,
+            Held::Stick(b) => input.stick & b.bit() != 0,
+        }
+    }
+}
 
 /// A shell feature reachable from the controller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -317,6 +363,10 @@ pub struct PadInput {
     pub buttons: u16,
     /// The Guide / Home button.
     pub guide: bool,
+    /// The right stick past `pad.stickdpad`, as d-pad bits ([`Button::Up`]…): steps of its own
+    /// for the interface ([`Nav::StickUp`]…), nothing for the game (the core reads the stick
+    /// itself, as an analog).
+    pub stick: u16,
 }
 
 /// Something the shell has to do.
@@ -351,7 +401,7 @@ pub struct Router {
     /// Hold hotkeys in progress, with their button.
     holds: Vec<(Button, Hotkey)>,
     /// The held direction, and when it fires again.
-    repeat: Option<(Button, Nav, Instant)>,
+    repeat: Option<(Held, Nav, Instant)>,
     ui_had_input: bool,
 }
 
@@ -435,12 +485,24 @@ impl Router {
                 if pressed & button.bit() != 0 {
                     actions.push(Action::Nav(nav));
                     if nav.repeats() {
-                        self.repeat = Some((button, nav, now + self.bindings.repeat_delay));
+                        self.repeat =
+                            Some((Held::Button(button), nav, now + self.bindings.repeat_delay));
                     }
                 }
             }
-            if let Some((button, nav, next)) = self.repeat {
-                if held & button.bit() == 0 {
+            let stick_pushed = input.stick & !self.prev.stick;
+            for &(direction, nav) in STICK_NAV {
+                if stick_pushed & direction.bit() != 0 {
+                    actions.push(Action::Nav(nav));
+                    self.repeat = Some((
+                        Held::Stick(direction),
+                        nav,
+                        now + self.bindings.repeat_delay,
+                    ));
+                }
+            }
+            if let Some((source, nav, next)) = self.repeat {
+                if !source.still(&input) {
                     self.repeat = None;
                 } else if now >= next {
                     actions.push(Action::Nav(nav));
@@ -451,7 +513,7 @@ impl Router {
                     } else {
                         now + self.bindings.repeat_interval
                     };
-                    self.repeat = Some((button, nav, after));
+                    self.repeat = Some((source, nav, after));
                 }
             }
         }
@@ -483,7 +545,71 @@ mod tests {
     fn pad(buttons: &[Button]) -> PadInput {
         PadInput {
             buttons: buttons.iter().fold(0, |m, b| m | b.bit()),
-            guide: false,
+            ..PadInput::default()
+        }
+    }
+
+    /// The right stick pushed towards `directions` (d-pad bits), nothing else held.
+    fn stick(directions: &[Button]) -> PadInput {
+        PadInput {
+            stick: directions.iter().fold(0, |m, b| m | b.bit()),
+            ..PadInput::default()
+        }
+    }
+
+    #[test]
+    fn select_and_the_right_stick_step_the_interface_only() {
+        let mut r = router();
+        let t = Instant::now();
+        r.step(pad(&[]), true, t);
+        assert_eq!(
+            r.step(pad(&[Button::Select]), true, t).actions,
+            vec![Action::Nav(Nav::Select)]
+        );
+        // Held: no repeat.
+        assert!(r
+            .step(pad(&[Button::Select]), true, t + REPEAT_DELAY * 2)
+            .actions
+            .is_empty());
+        r.step(pad(&[]), true, t);
+        let out = r.step(stick(&[Button::Right]), true, t);
+        assert_eq!(out.actions, vec![Action::Nav(Nav::StickRight)]);
+        assert_eq!(out.game_mask, 0);
+        // The stick held repeats like the d-pad, and stops when let go.
+        assert_eq!(
+            r.step(stick(&[Button::Right]), true, t + REPEAT_DELAY)
+                .actions,
+            vec![Action::Nav(Nav::StickRight)]
+        );
+        assert!(r
+            .step(pad(&[]), true, t + REPEAT_DELAY + REPEAT_INTERVAL)
+            .actions
+            .is_empty());
+        assert_eq!(
+            r.step(stick(&[Button::Up]), true, t).actions,
+            vec![Action::Nav(Nav::StickUp)]
+        );
+        // In game the stick is the core's analog and Select the game's button: no step.
+        let mut game = router();
+        let out = game.step(stick(&[Button::Left]), false, t);
+        assert!(out.actions.is_empty());
+        assert_eq!(out.game_mask, 0);
+        let out = game.step(pad(&[Button::Select]), false, t);
+        assert!(out.actions.is_empty());
+        assert_eq!(out.game_mask, Button::Select.bit());
+    }
+
+    #[test]
+    fn the_new_steps_have_the_names_the_interface_reads() {
+        for (nav, name) in [
+            (Nav::Select, "select"),
+            (Nav::StickUp, "stickUp"),
+            (Nav::StickDown, "stickDown"),
+            (Nav::StickLeft, "stickLeft"),
+            (Nav::StickRight, "stickRight"),
+            (Nav::More, "more"),
+        ] {
+            assert_eq!(serde_json::to_value(nav).unwrap(), serde_json::json!(name));
         }
     }
 
@@ -603,8 +729,8 @@ mod tests {
         let mut r = router();
         let t = Instant::now();
         let guide = PadInput {
-            buttons: 0,
             guide: true,
+            ..PadInput::default()
         };
         assert_eq!(
             r.step(guide, false, t).actions,

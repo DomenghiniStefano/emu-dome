@@ -3,4 +3,4 @@
 /**
  * One navigation step for the interface (payload of `emu://nav`).
  */
-export type NavAction = "up" | "down" | "left" | "right" | "confirm" | "back" | "prev" | "next" | "more";
+export type NavAction = "up" | "down" | "left" | "right" | "confirm" | "back" | "prev" | "next" | "more" | "select" | "stickUp" | "stickDown" | "stickLeft" | "stickRight";

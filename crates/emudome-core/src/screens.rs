@@ -184,6 +184,16 @@ impl Split {
             }
         }
     }
+
+    /// The frame the core hands over at its own resolution (1×) for this split; `None` for one
+    /// screen, whose size depends on the console. What the editor's presets are composed from.
+    pub fn frame_at_1x(self) -> Option<(u32, u32)> {
+        match self {
+            Split::Whole => None,
+            Split::DsStacked { gap } => Some((256, 2 * 192 + gap)),
+            Split::N3dsStacked => Some((N3DS_TOP.0, 2 * N3DS_TOP.1)),
+        }
+    }
 }
 
 /// How the screens are arranged (from a [`LayoutId`]; `SecondOnly` is `top_only` swapped).
@@ -708,6 +718,59 @@ impl CustomLayout {
                 .collect(),
         )
     }
+
+    /// Where `layout` puts the screens of `split` in an area of `width` × `height` (the whole
+    /// window, no inset), as a custom layout: the C09 editor's «Parti da», so the editor never
+    /// works the geometry out again. The gap and the ratio are `settings`'; the picture is not
+    /// turned (`screens.rot` turns a custom layout as a whole on top); `custom` is the one saved.
+    /// Empty for a one-screen split or an empty area.
+    pub fn preset(
+        settings: &ScreenSettings,
+        layout: LayoutId,
+        split: Split,
+        width: f32,
+        height: f32,
+    ) -> CustomLayout {
+        if layout == LayoutId::Custom {
+            return settings.custom.clone();
+        }
+        let Some((frame_w, frame_h)) = split.frame_at_1x() else {
+            return CustomLayout::default();
+        };
+        if !(width > 0.0 && height > 0.0) {
+            return CustomLayout::default();
+        }
+        let arranged = Layout {
+            rotation: Rotation::None,
+            ..settings.layout(layout, false)
+        };
+        let area = Area {
+            width,
+            height,
+            inset: 0.0,
+        };
+        // A fraction of the area, kept inside it whatever the rounding.
+        let fraction = |start: f32, size: f32, whole: f32| {
+            let s = (start / whole).clamp(0.0, 1.0);
+            (s, (size / whole).min(1.0 - s))
+        };
+        let screens = compose(&arranged, &split.screens(frame_w, frame_h), area)
+            .into_iter()
+            .filter(|p| p.id != ScreenId::Main)
+            .map(|p| {
+                let (x, w) = fraction(p.dst.x, p.dst.w, width);
+                let (y, h) = fraction(p.dst.y, p.dst.h, height);
+                CustomScreen {
+                    id: p.id,
+                    x,
+                    y,
+                    w,
+                    h,
+                }
+            })
+            .collect();
+        CustomLayout { screens }
+    }
 }
 
 /// The `screens.*` settings of the open game (its changes «in prova» included), read once.
@@ -1101,6 +1164,55 @@ mod tests {
         assert!(entry.accepts_value(&list(CUSTOM)));
         assert!(!entry.accepts_value(&list(&["top:2,0,1,1"])));
         assert!(!entry.accepts_value(&Value::Text("top:0,0,1,1".into())));
+    }
+
+    #[test]
+    fn a_preset_is_where_the_layout_draws_the_screens() {
+        let s = ScreenSettings::default();
+        // Vertical at 1080p: the DS stack at 2x (512 x 768), centred, as `fit` places it.
+        let v = CustomLayout::preset(&s, LayoutId::Vertical, DS, 1920.0, 1080.0);
+        let near = |a: f32, b: f32| (a - b).abs() < 1e-4;
+        let top = v.screens[0];
+        assert_eq!(top.id, ScreenId::Top);
+        assert!(near(top.x, 704.0 / 1920.0) && near(top.y, 156.0 / 1080.0));
+        assert!(near(top.w, 512.0 / 1920.0) && near(top.h, 384.0 / 1080.0));
+        assert_eq!(v.screens[1].id, ScreenId::Bottom);
+        assert!(near(v.screens[1].y, (156.0 + 384.0) / 1080.0));
+        // Every preset of both consoles is a layout the editor may save, back to front.
+        for split in [DS, Split::N3dsStacked] {
+            for layout in [
+                LayoutId::Vertical,
+                LayoutId::Side,
+                LayoutId::BigSmall,
+                LayoutId::TopOnly,
+            ] {
+                let p = CustomLayout::preset(&s, layout, split, 1280.0, 720.0);
+                assert!(p.is_valid() && !p.is_empty(), "{layout:?} {split:?}");
+                assert!(CustomLayout::valid_items(&p.to_items()));
+            }
+        }
+        // Only the top screen: one rectangle.
+        let only = CustomLayout::preset(&s, LayoutId::TopOnly, DS, 1280.0, 720.0);
+        assert_eq!(only.screens.len(), 1);
+        // The settings' ratio and gap count; the rotation does not.
+        let wide = settings(&[
+            ("screens.ratio", Value::Int(50)),
+            ("screens.rot", Value::Text("left".into())),
+        ]);
+        let half = CustomLayout::preset(&wide, LayoutId::BigSmall, DS, 1280.0, 720.0);
+        assert!(near(half.screens[0].w, half.screens[1].w));
+        assert!(near(half.screens[0].y, half.screens[1].y));
+        // Custom: the one saved; one screen or no room: none.
+        let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
+        let saved = settings(&[("screens.custom", Value::List(items))]);
+        assert_eq!(
+            CustomLayout::preset(&saved, LayoutId::Custom, DS, 1280.0, 720.0),
+            saved.custom
+        );
+        assert!(CustomLayout::preset(&s, LayoutId::Side, Split::Whole, 1280.0, 720.0).is_empty());
+        assert!(CustomLayout::preset(&s, LayoutId::Side, DS, 0.0, 720.0).is_empty());
+        assert_eq!(DS.frame_at_1x(), Some((256, 384)));
+        assert_eq!(Split::N3dsStacked.frame_at_1x(), Some((400, 480)));
     }
 
     #[test]

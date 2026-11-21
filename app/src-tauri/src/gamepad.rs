@@ -165,6 +165,8 @@ impl Pad {
             input: PadInput {
                 buttons: held | config.stick_dpad_mask(axes[0], axes[1]),
                 guide,
+                // The right stick as directions too: the interface's own steps (`Nav::Stick*`).
+                stick: config.stick_dpad_mask(axes[2], axes[3]),
             },
             held,
             axes,
@@ -301,6 +303,7 @@ fn run(
             .fold(PadInput::default(), |all, r| PadInput {
                 buttons: all.buttons | r.input.buttons,
                 guide: all.guide || r.input.guide,
+                stick: all.stick | r.input.stick,
             });
 
         if shared_pads.watch.load(Ordering::Relaxed) {
