@@ -161,6 +161,12 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
     resource folder, each checked against `cores.lock`'s sha256, `crates/emudome-platform/src/cores.rs`).
   - `EMUDOME_THEME=dark|black|light` forces the theme (otherwise the `general.theme` setting, then the system).
   - `RUST_LOG=debug` for the logs.
+  - `EMUDOME_DATA_DIR=<folder>` puts every data file there (saves, settings, library, covers, webview profile) and
+    skips the one-time copy of the old identifier's folders: test and bench runs never touch the real data.
+- Data folders: Tauri's app data / app local data folders for the identifier `it.domehub.emudome` (`app/src-tauri/src/dirs.rs`).
+  Until 2026-11-21 it was `com.domenghini.emudome` (#90): a desktop build's first start copies those folders once,
+  verified, and leaves them in place (`emudome_core::data_move`); a copy that did not finish makes that run use the
+  old folders and is tried again. Android data does not carry over (another package's storage).
 - The executable accepts a game path as an argument and opens it at startup.
 - Homebrew test ROM: `tools/test-rom/emudome-test.gba`. Magenta screen, green while A is held (X key).
 
@@ -210,6 +216,10 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          migration.rs (the one-time move of saves named by ROM file stem and settings named
                          by path hash to the key: facts from the library only, copies in `migration-70/backup/`,
                          `migration-70/report.json`, marker `migration-70/done`; unit-tested)
+                         data_move.rs (the one-time copy of the old identifier's data folders to the new
+                         ones, #90: copy + fsync + size/MD5 check per file, the old folders only read, a stamp
+                         per new folder until `migration-90/done`, a new folder with data of its own never
+                         written over, `migration-90/report.json`; unit-tested)
                          bios/ (the user's own BIOS / firmware, `bios.*`: mod.rs slots, check by size + MD5
                          / firmware header / DSi footer (identification only, never a source), assess,
                          status, plan; one table per core in bios/<core>.rs with its policy (melonDS DS:
@@ -217,7 +227,8 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          the core's system folder via write_atomic; pure, unit-tested)
 crates/emudome-platform  EVERYTHING that depends on the operating system or the form factor, one module per OS
                          (desktop.rs shared by the desktops): the main window (create_window), the file
-                         picker (pick_file), logs, core paths, the external surface;
+                         picker (pick_file), logs, core paths, the external surface, the old identifier's
+                         data folders (old_data_dirs: beside the new ones on desktop, none on Android);
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
 app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, the per-game hooks, setup, the
@@ -246,6 +257,8 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
+                         dirs.rs (the data folders: Tauri's, EMUDOME_DATA_DIR, or the old identifier's for a
+                         run whose copy did not finish), data_move.rs (that copy, first thing in setup)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)

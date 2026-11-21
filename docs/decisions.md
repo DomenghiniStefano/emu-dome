@@ -11,6 +11,11 @@ The analysis and the roadmap are in the artifact linked from `CLAUDE.md`.
   `app/package.json` pins the version; `devEngines.packageManager` with `onFail: "error"` makes `npm install` refuse,
   so a second lockfile cannot appear by accident. The native packages (Tauri CLI, rolldown) come as prebuilt optional
   dependencies: no build script needs allowing.
+- App identifier `it.domehub.emudome`, was `com.domenghini.emudome` (owner, 2026-11-21, Trello #90): EmuDome is
+  published under DomeHub (domehub.it, the DomeHub Google Play account, `docs/release.md`), and Google Play never
+  lets a package name change once an app is published, so it changed before the first release. The desktop data
+  folders are named after it: a newer build copies the old ones once and leaves them in place
+  (`emudome_core::data_move`). On Android the new identifier is another app, whose data starts empty.
 
 ## Product
 

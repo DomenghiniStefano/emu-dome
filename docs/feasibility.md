@@ -65,7 +65,9 @@ returns an access token directly; on a later call it returns a new one without u
 lasts [D3]. No refresh token on the device (Google advises against storing it there) and no backend needed: the
 Kotlin plugin calls `authorize()` when the Rust side needs a token. A Credential Manager sign-in first is optional
 (it picks the default account) [D3]. Needs Play Services: devices without them get no Drive sync (**to verify**
-fallback; the loopback flow does not apply to Android).
+fallback; the loopback flow does not apply to Android). The Android OAuth client (#49) is tied to the package name
+and the signing certificate: it is registered for `it.domehub.emudome` (the identifier since 2026-11-21, #90) with
+the debug keystore's SHA-1, and the release keystore's SHA-1 is added before a release.
 
 **Drive side.** Plain Drive REST v3 from Rust (`reqwest`; generated crates such as `google-drive3` are an option):
 resumable uploads for large files (games, 3DS states), `md5Checksum` on every file to compare without downloading,

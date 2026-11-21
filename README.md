@@ -52,6 +52,13 @@ since `develop`.
 Then "Open a game". The executable also accepts a game path as an argument and opens it right away. To try it
 without games there is `tools/test-rom/emudome-test.gba`: magenta screen, it turns green while A is held (X key).
 
+Your data (saves, settings, library, covers, system files) lives in the folders named after the app identifier,
+`it.domehub.emudome`: `%APPDATA%` and `%LOCALAPPDATA%` on Windows, `~/.local/share` on Linux.
+`EMUDOME_DATA_DIR=<folder>` puts all of it in another folder instead (test runs). Builds before 2026-11-21 used
+`com.domenghini.emudome`: the first start of a newer build copies those folders to the new ones once, verifies the
+copy, and leaves the old folders as they were (remove them by hand when you are sure). Android does not carry
+over: the new identifier is a different app there, so install it fresh.
+
 ## Building for Android
 
 Requirements, on top of the above: a JDK 17, the Android SDK (platform 37, build-tools, an NDK; Android Studio
