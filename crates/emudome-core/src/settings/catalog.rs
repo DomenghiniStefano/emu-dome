@@ -1,5 +1,6 @@
 //! The static catalogue: every setting of the app, page by page, in the design's order
-//! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17).
+//! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17), plus the Game Boy,
+//! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89): 160.
 //!
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
@@ -674,10 +675,16 @@ pub static ENTRIES: &[Entry] = &[
     act("presets.export", G),
     act("presets.importset", G),
     // ---- BIOS e firmware (bios) ----
+    // The Game Boy / Color boot ROMs and the DSi BIOS and firmware: owner, 2026-11-21 (Trello #89).
+    file("bios.bgb", G).device(),
+    file("bios.bgbc", G).device(),
     file("bios.bgba", G).device(),
     file("bios.bds7", G).device().phase(2),
     file("bios.bds9", G).device().phase(2),
     file("bios.bdsfw", G).device().phase(2),
+    file("bios.bdsi7", G).device().phase(2),
+    file("bios.bdsi9", G).device().phase(2),
+    file("bios.bdsifw", G).device().phase(2),
     file("bios.bdsi", G).device().phase(2),
     file("bios.b3ds", G).device().phase(3).not_wired(),
     // ---- Opzioni per console (consoles) ----
@@ -1076,13 +1083,26 @@ pub static SECTIONS: &[Section] = &[
     },
     Section {
         page: "bios",
+        id: "gb",
+        keys: &["bios.bgb", "bios.bgbc"],
+    },
+    Section {
+        page: "bios",
         id: "gba",
         keys: &["bios.bgba"],
     },
     Section {
         page: "bios",
         id: "nds",
-        keys: &["bios.bds7", "bios.bds9", "bios.bdsfw", "bios.bdsi"],
+        keys: &[
+            "bios.bds7",
+            "bios.bds9",
+            "bios.bdsfw",
+            "bios.bdsi7",
+            "bios.bdsi9",
+            "bios.bdsifw",
+            "bios.bdsi",
+        ],
     },
     Section {
         page: "bios",
@@ -1185,8 +1205,9 @@ mod tests {
     use crate::settings::schema::{DefaultValue, Kind, Platform};
 
     #[test]
-    fn has_the_designs_155_entries_with_unique_keys_on_known_pages() {
-        assert_eq!(ENTRIES.len(), 155);
+    fn has_the_designs_entries_with_unique_keys_on_known_pages() {
+        // The design's 155, plus five BIOS rows (Trello #89).
+        assert_eq!(ENTRIES.len(), 160);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),

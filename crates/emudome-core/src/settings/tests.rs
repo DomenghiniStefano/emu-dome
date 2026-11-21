@@ -783,9 +783,10 @@ fn is_option_id(id: &str) -> bool {
 }
 
 #[test]
-fn the_catalogue_has_the_155_entries_of_the_design() {
-    // 157 of the design, less `speed.splist` and `general.qmorder` (owner, 18/11).
-    assert_eq!(ENTRIES.len(), 155);
+fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
+    // 157 of the design, less `speed.splist` and `general.qmorder` (owner, 18/11), plus the
+    // GB, GBC, DSi ARM7, DSi ARM9 and DSi firmware rows (owner, 2026-11-21, Trello #89).
+    assert_eq!(ENTRIES.len(), 160);
 }
 
 #[test]

@@ -430,6 +430,7 @@
         "file": "FILE DI IMPOSTAZIONI"
       },
       "bios": {
+        "gb": "GAME BOY E GAME BOY COLOR",
         "gba": "GAME BOY ADVANCE",
         "nds": "NINTENDO DS",
         "3ds": "NINTENDO 3DS"
@@ -1299,6 +1300,34 @@
       }
     },
     "bios": {
+      "bgb": {
+        "name": "BIOS del Game Boy",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Sostituto integrato in uso",
+          "verified": "Il tuo file · verificato",
+          "unrecognised": "Il tuo file · non riconosciuto: uso il sostituto integrato"
+        },
+        "buttons": {
+          "use": "Usa il tuo file…",
+          "replace": "Sostituisci…",
+          "reset": "Torna al sostituto integrato"
+        }
+      },
+      "bgbc": {
+        "name": "BIOS del Game Boy Color",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Sostituto integrato in uso",
+          "verified": "Il tuo file · verificato",
+          "unrecognised": "Il tuo file · non riconosciuto: uso il sostituto integrato"
+        },
+        "buttons": {
+          "use": "Usa il tuo file…",
+          "replace": "Sostituisci…",
+          "reset": "Torna al sostituto integrato"
+        }
+      },
       "bgba": {
         "name": "BIOS del Game Boy Advance",
         "desc": "{status}",
@@ -1353,6 +1382,48 @@
           "use": "Usa il tuo file…",
           "replace": "Sostituisci…",
           "reset": "Torna al sostituto integrato"
+        }
+      },
+      "bdsi7": {
+        "name": "BIOS ARM7 del Nintendo DSi",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Nessun file: la modalità DSi non è disponibile",
+          "verified": "Il tuo file · verificato",
+          "unrecognised": "Il tuo file · non riconosciuto: la modalità DSi non è disponibile"
+        },
+        "buttons": {
+          "use": "Usa il tuo file…",
+          "replace": "Sostituisci…",
+          "reset": "Rimuovi il tuo file"
+        }
+      },
+      "bdsi9": {
+        "name": "BIOS ARM9 del Nintendo DSi",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Nessun file: la modalità DSi non è disponibile",
+          "verified": "Il tuo file · verificato",
+          "unrecognised": "Il tuo file · non riconosciuto: la modalità DSi non è disponibile"
+        },
+        "buttons": {
+          "use": "Usa il tuo file…",
+          "replace": "Sostituisci…",
+          "reset": "Rimuovi il tuo file"
+        }
+      },
+      "bdsifw": {
+        "name": "Firmware del Nintendo DSi",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Nessun file: la modalità DSi non è disponibile",
+          "verified": "Il tuo file · verificato",
+          "unrecognised": "Il tuo file · non riconosciuto: la modalità DSi non è disponibile"
+        },
+        "buttons": {
+          "use": "Usa il tuo file…",
+          "replace": "Sostituisci…",
+          "reset": "Rimuovi il tuo file"
         }
       },
       "bdsi": {
