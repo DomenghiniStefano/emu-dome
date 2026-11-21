@@ -1,4 +1,5 @@
-// EmuDome's Android glue: the SurfaceView under the WebView (see ../src/android.rs).
+// EmuDome's Android glue: the SurfaceView under the WebView, the back button, games as documents
+// (see ../src/android.rs).
 // Included in the app's Gradle project by tauri-build (DEP_EMUDOME_PLATFORM_ANDROID_LIBRARY_PATH).
 import groovy.json.JsonSlurper
 import java.security.MessageDigest
@@ -110,6 +111,13 @@ android {
 }
 
 tasks.named("preBuild") { dependsOn(emudomeCores) }
+
+dependencies {
+    // SystemBridge.kt: the back dispatcher (ComponentActivity, OnBackPressedCallback). compileOnly: the app
+    // already ships AndroidX Activity (app/src-tauri/gen/android/app/build.gradle.kts, the same
+    // version), so this library adds nothing to the APK and never moves the app's version.
+    compileOnly("androidx.activity:activity:1.10.1")
+}
 
 kotlin {
     compilerOptions {

@@ -795,12 +795,14 @@ fn open_now(app: &AppHandle, id: GameKey) -> Result<GameInfo, ErrorCode> {
         let game = lib.game(&id)?;
         (game.path.clone(), game.shown_title().to_owned())
     };
-    if !Path::new(&path).is_file() {
+    // A document (`content://`, Android) is checked by opening it: its provider says.
+    if !emudome_platform::is_content_uri(&path) && !Path::new(&path).is_file() {
         state.lib.lock().set_unavailable(&id)?;
         emit_games(app, &state, &[&id]);
         return Err(ErrorCode::LibraryGameUnavailable { id: id.to_string() });
     }
-    crate::open_library_game(app, &app_state, &id, PathBuf::from(path), title)
+    let file = crate::game::GameFile::open(app, &path)?;
+    crate::open_library_game(app, &app_state, &id, file, title)
 }
 
 /// Changes the cover (L12). `user` opens an image picker first: `false` if it was cancelled.

@@ -337,9 +337,59 @@ impl Runner {
     }
 }
 
+/// What Android's back button means now: what the controller's buttons already mean, so the
+/// interface handles it where it handles them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BackRoute {
+    /// In game, the quick menu closed: the menu button (`emu://menu`) opens the quick menu.
+    Menu,
+    /// Anywhere else (the quick menu, the shell, a dialog): B (`emu://nav` back), one level up.
+    Nav,
+}
+
+pub(crate) fn back_route(game_open: bool, menu_open: bool) -> BackRoute {
+    if game_open && !menu_open {
+        BackRoute::Menu
+    } else {
+        BackRoute::Nav
+    }
+}
+
+/// Android's back button (`emudome_platform::attach_system`), on the UI thread: sent to the
+/// interface as the controller's menu button or B ([`back_route`]). The state is read without
+/// waiting: `menu_open` is an atomic, the open game a short lock.
+pub(crate) fn back_button(app: &AppHandle) {
+    use tauri::Manager;
+    let Some(state) = app.try_state::<crate::AppState>() else {
+        log::info!("back pressed before the app is set up: ignored");
+        return;
+    };
+    let route = back_route(
+        state.games.is_open(),
+        state.menu_open.load(std::sync::atomic::Ordering::Relaxed),
+    );
+    let sent = match route {
+        BackRoute::Menu => app.emit(events::MENU, ()),
+        BackRoute::Nav => app.emit(events::NAV, NavEvent { action: Nav::Back }),
+    };
+    if let Err(e) = sent {
+        log::warn!("back button ({route:?}) not delivered: {e}");
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Holders, Origin};
+    use super::{back_route, BackRoute, Holders, Origin};
+
+    #[test]
+    fn back_opens_the_quick_menu_in_game_and_is_b_everywhere_else() {
+        assert_eq!(back_route(true, false), BackRoute::Menu);
+        // In the quick menu: one level up, and from its main screen the game resumes.
+        assert_eq!(back_route(true, true), BackRoute::Nav);
+        // The shell (no game): its own back.
+        assert_eq!(back_route(false, false), BackRoute::Nav);
+        assert_eq!(back_route(false, true), BackRoute::Nav);
+    }
 
     #[test]
     fn tab_and_the_pads_combo_together_are_one_hold() {
