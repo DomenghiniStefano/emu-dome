@@ -14,7 +14,8 @@
 //   4. CMake with `build.cmake` plus the platform's toolchain (below), `--parallel <jobs>` (default 2);
 //   5. the library copied to <work>/<platform>/out/ (stripped on Linux and Android), its sha256
 //      compared with cores.lock; only a match is installed into cores/ (temp file + rename), with
-//      the licence taken from the same archive and checked against `license.sha256`. Then the
+//      the licence and the entry's `notices` (licences of code the core compiles in; `member` is a
+//      path in the archive) taken from the same archive and checked against their sha256. Then the
 //      source and build trees are removed (the archive and out/ stay); after a failure they stay.
 //
 // Toolchains (the one used is printed, and cores.lock records the one the pinned sha256 came from in
@@ -403,8 +404,9 @@ const toolchain = (platform, built, dirs) => {
 const defaultWorkDir = () => process.env.EMUDOME_CORE_BUILD_DIR || path.join(os.tmpdir(), 'emudome-cb')
 
 /**
- * Builds core `id` for `platform`. Returns the built file and its sha256, and whether it matches
- * cores.lock; `install(bytes, licence)` is called only on a match.
+ * Builds core `id` for `platform` and calls `install(library, licence, notices)` with the bytes to
+ * install, only when the library's sha256 is the one cores.lock pins (else it fails). Returns the
+ * built file, its sha256 and the toolchain used.
  */
 export const buildCore = async ({ id, core, platform, workDir, jobs = 2, install }) => {
   const build = core.builds[platform]
@@ -460,11 +462,15 @@ export const buildCore = async ({ id, core, platform, workDir, jobs = 2, install
         ' Re-pin only on purpose: update cores.lock (library.sha256, built.toolchain), then generate.',
     )
   }
-  const licence = fs.readFileSync(path.join(dirs.src, core.build.license))
-  if (sha256(licence) !== core.license.sha256) {
-    fail(`${id}: ${core.build.license} in the source archive does not match cores.lock's license.sha256`)
+  // The licence and the notices (licences of what the core compiles in) come from the same archive.
+  const fromSource = (member, expected, what) => {
+    const content = fs.readFileSync(path.join(dirs.src, ...member.split('/')))
+    if (sha256(content) !== expected) fail(`${id}: ${member} in the source archive does not match cores.lock's ${what}`)
+    return content
   }
-  install(bytes, licence)
+  const licence = fromSource(core.build.license, core.license.sha256, 'license.sha256')
+  const notices = build.notices.map((n, i) => fromSource(n.member, n.sha256, `notices[${i}].sha256`))
+  install(bytes, licence, notices)
   // Installed: the source and build trees (about 100 MB) go; the archive and out/ stay. After a
   // failure they stay, to look at.
   fs.rmSync(dirs.src, { recursive: true, force: true })

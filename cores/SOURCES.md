@@ -3,19 +3,22 @@
 <!-- Generated from cores.lock by `node scripts/cores.mjs generate`. Do not edit by hand. -->
 
 EmuDome ships these libretro cores unmodified, as separate programs it loads at run time.
-Each keeps its own licence, whose text is in `notices/`. The Corresponding Source of each
-binary is the upstream commit named below. If a link stops working, open an issue at
-https://github.com/DomenghiniStefano/emu-dome/issues and the project will provide that source.
+Some are the upstream builds, downloaded; the others EmuDome builds from the unmodified
+upstream source (said per build below). Each keeps its own licence, whose text is in
+`notices/`. The Corresponding Source of each binary is the upstream commit named below (and,
+for a build of EmuDome, the build scripts named with it). If a link stops working, open
+an issue at https://github.com/DomenghiniStefano/emu-dome/issues and the project will provide that source.
 
 ## mGBA (GB, GBC, GBA)
 
-- Licence: MPL-2.0; its text is `notices/mgba-LICENSE.txt`.
-- Source: https://github.com/libretro/mgba, commit `7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6` (master, as built by the libretro buildbot on 2026-11-16; version 0.11-212-7a12d6d).
-  Download it as https://github.com/libretro/mgba/archive/7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6.zip
+- Licence: MPL-2.0 AND BSD-3-Clause; its text is `notices/mgba-LICENSE.txt`, and the licences of what it bundles are next to it.
+- Source: https://github.com/libretro/mgba, commit `7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6` (master, at the commit the libretro buildbot built on 2026-11-16; version 0.11-212-7a12d6d).
+  Source archive of that commit: https://github.com/libretro/mgba/archive/7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6.tar.gz (sha256 `5cbf639e527fb586bf33e14d59037eab35f78f45154e0b79c784fff474c3bc37`).
+  The build scripts and their CMake options are in https://github.com/DomenghiniStefano/emu-dome (`cores.lock`, `scripts/core-build.mjs`, `scripts/build-mgba.ps1`, `scripts/build-mgba.sh`).
 - Builds:
-  - windows-x86_64: `mgba_libretro.dll`, from https://buildbot.libretro.com/nightly/windows/x86_64/latest/mgba_libretro.dll.zip (sha256 `a7ae453b739d3f9117537e8ca7275ecebd923d9035b52435f556470bf58a268f`)
+  - windows-x86_64: `mgba_libretro.dll`, built by EmuDome from the source archive above with `scripts/build-mgba.ps1` / `scripts/build-mgba.sh` (clang-cl 18.0.2 (Android NDK 27.1.12297006), MSVC 14.44.35207 libraries and linker, Windows SDK 10.0.26100.0, CMake 3.31.6-msvc6; sha256 `8fbb4137f6dd3b28f4d92c832d2d7460a9aff5009b3a7c20f75320e4ed53b66d`)
   - linux-x86_64: `mgba_libretro.so`, from https://buildbot.libretro.com/nightly/linux/x86_64/latest/mgba_libretro.so.zip (sha256 `85b8b8191b937ee1b40f14588686d7caf46c4cce70ea85c8597a741ffb113e9c`)
-  - android-arm64-v8a: `libmgba_libretro_android.so`, from https://buildbot.libretro.com/nightly/android/latest/arm64-v8a/mgba_libretro_android.so.zip (sha256 `df1dd7fe5eb28cdb071bddb45fe4f3f0127512440a41402a5e380007d693099e`)
+  - android-arm64-v8a: `libmgba_libretro_android.so`, built by EmuDome from the source archive above with `scripts/build-mgba.ps1` / `scripts/build-mgba.sh` (Android NDK 27.1.12297006, API 26, CMake 3.31.6-msvc6; sha256 `ee99a5cd60fb99bff962f464b1a32f3af317c31b0b8f55847101a05fe289b563`)
 
 ## melonDS DS (NDS)
 

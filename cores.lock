@@ -6,7 +6,7 @@
       "name": "mGBA",
       "consoles": "GB, GBC, GBA",
       "ship": true,
-      "spdx": "MPL-2.0",
+      "spdx": "MPL-2.0 AND BSD-3-Clause",
       "source": {
         "repo": "https://github.com/libretro/mgba",
         "ref": "master, at the commit the libretro buildbot built on 2026-11-16",
@@ -21,7 +21,7 @@
         "file": "mgba-LICENSE.txt"
       },
       "build": {
-        "about": "Built by EmuDome from source.archive (Trello #88): scripts/core-build.mjs, behind the scripts below. cmake: the libretro buildbot's own arguments for this core (.gitlab-ci.yml CORE_ARGS at the commit). git_depth: the commit's history is fetched this deep so the core reports the buildbot's version string (0.11-212-7a12d6d: mGBA counts the commits a 50-deep clone sees); EmuDome compares that string to tell when a quick save might not load.",
+        "about": "Built by EmuDome from source.archive (Trello #88): scripts/core-build.mjs, behind the scripts below. cmake: the libretro buildbot's own arguments for this core (.gitlab-ci.yml CORE_ARGS at the commit). git_depth: the commit's history is fetched this deep so the core reports the buildbot's version string (0.11-212-7a12d6d: mGBA counts the commits a 50-deep clone sees); EmuDome compares that string to tell when a quick save might not load. notices of a built entry: licences of code the core compiles in, taken from the source archive (member: its path there); mGBA compiles in inih (BSD-3-Clause).",
         "scripts": ["scripts/build-mgba.ps1", "scripts/build-mgba.sh"],
         "cmake": ["-DLIBMGBA_ONLY=ON", "-DBUILD_LIBRETRO=ON"],
         "target": "mgba_libretro",
@@ -38,7 +38,13 @@
             "file": "mgba_libretro.dll",
             "sha256": "8fbb4137f6dd3b28f4d92c832d2d7460a9aff5009b3a7c20f75320e4ed53b66d"
           },
-          "notices": []
+          "notices": [
+            {
+              "member": "src/third-party/inih/LICENSE.txt",
+              "file": "mgba-inih-LICENSE.txt",
+              "sha256": "9ae3b39e83e9158e44b67733baa3bb2d84e80efdcfb14a5820210a42c7abdf7f"
+            }
+          ]
         },
         "linux-x86_64": {
           "url": "https://buildbot.libretro.com/nightly/linux/x86_64/latest/mgba_libretro.so.zip",
@@ -59,7 +65,13 @@
             "file": "libmgba_libretro_android.so",
             "sha256": "ee99a5cd60fb99bff962f464b1a32f3af317c31b0b8f55847101a05fe289b563"
           },
-          "notices": []
+          "notices": [
+            {
+              "member": "src/third-party/inih/LICENSE.txt",
+              "file": "mgba-inih-LICENSE.txt",
+              "sha256": "9ae3b39e83e9158e44b67733baa3bb2d84e80efdcfb14a5820210a42c7abdf7f"
+            }
+          ]
         }
       }
     },

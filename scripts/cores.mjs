@@ -153,11 +153,15 @@ const lockProblems = lock => {
       }
       for (const [i, file] of [build.library, ...(build.notices ?? [])].entries()) {
         const ft = i === 0 ? `${bt}.library` : `${bt}.notices[${i - 1}]`
-        need(isBuilt || typeof file?.member === 'string', `${ft}.member`)
+        // member: the file's path in the downloaded archive; for a built core, a notice's path in
+        // the source archive (its library is the build's output: no member).
+        need(
+          (isBuilt && i === 0) || (typeof file?.member === 'string' && !file.member.split('/').includes('..')),
+          `${ft}.member`,
+        )
         need(FILE_NAME.test(file?.file ?? ''), `${ft}.file`)
         need(HEX64.test(file?.sha256 ?? ''), `${ft}.sha256`)
       }
-      need(!isBuilt || (build.notices ?? []).length === 0, `${bt}.notices: a built core takes its licence only`)
       need(Array.isArray(build.notices), `${bt}.notices must be a list`)
       need(
         !platform.startsWith('android-') || /^lib.+\.so$/.test(build.library?.file ?? ''),
@@ -263,7 +267,7 @@ const selectCores = (lock, platform, wanted) => {
 }
 
 /**
- * Builds a core cores.lock builds from source and installs its files (library, licence) when the
+ * Builds a core cores.lock builds from source and installs its files (library, licence, notices) when the
  * result has the pinned sha256; on any failure the core's files for the platform are removed.
  */
 const buildAndInstall = async (id, core, platform, options) => {
@@ -275,9 +279,9 @@ const buildAndInstall = async (id, core, platform, options) => {
       platform,
       workDir: options.workDir,
       jobs: options.jobs,
-      // Same order as installedFiles: library, licence (a built core has no other notice).
-      install: (library, licence) => {
-        const bytes = [library, licence]
+      // Same order as installedFiles: library, licence, notices.
+      install: (library, licence, notices) => {
+        const bytes = [library, licence, ...notices]
         files.forEach((f, i) => writeAtomic(abs(f.path), bytes[i]))
         console.log(`${id} (${platform}): ${files.map(f => f.path).join(', ')}`)
       },
