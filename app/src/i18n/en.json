@@ -1560,7 +1560,7 @@
       },
       "mgbaall": {
         "name": "All mGBA options",
-        "desc": "{n} options, grouped as in the engine.",
+        "desc": "{n} option, grouped as in the engine. | {n} options, grouped as in the engine.",
         "button": "Show"
       },
       "mdsrender": {
@@ -1581,7 +1581,7 @@
       },
       "mdsall": {
         "name": "All melonDS DS options",
-        "desc": "{n} options.",
+        "desc": "{n} option. | {n} options.",
         "button": "Show"
       },
       "azaudio": {
@@ -1594,7 +1594,7 @@
       },
       "azall": {
         "name": "All Azahar options",
-        "desc": "{n} options.",
+        "desc": "{n} option. | {n} options.",
         "button": "Show"
       }
     },

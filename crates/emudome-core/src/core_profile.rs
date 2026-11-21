@@ -114,6 +114,34 @@ pub struct CoreProfile {
     /// Settings that act through cores but have no equivalent in this one: on its consoles the
     /// interface shows them disabled with the reason (`unsupportedConsoles` in the schema).
     pub unsupported_settings: &'static [&'static str],
+    /// The settings row that opens the full list of this core's options (`cores.*all`).
+    pub options_row: &'static str,
+    /// How many options the pinned build declares, the number that row shows; `None` until
+    /// measured.
+    pub declared_options: Option<DeclaredOptions>,
+}
+
+/// The options a core declares (`SET_CORE_OPTIONS*` / `SET_VARIABLES`), counted on one build.
+/// The core tells them only once loaded, so the count is measured on the build `cores.lock`
+/// pins: `cargo run -p emudome-core --example headless -- <core library> <test rom>
+/// --list-options`, one line each. `the_option_counts_were_measured_on_the_pinned_builds` fails
+/// when the pin moves to another version, until the count is measured again.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DeclaredOptions {
+    pub count: u32,
+    /// `cores.lock`'s `source.version` of the build measured.
+    pub version: &'static str,
+}
+
+/// The number a settings row shows (`{n}` in its text): the options a core declares, on its
+/// «All … options» row. `None` for every other row, and while not measured.
+pub fn row_count(setting: &str) -> Option<u32> {
+    CoreId::ALL
+        .iter()
+        .map(|c| c.profile())
+        .find(|p| p.options_row == setting)
+        .and_then(|p| p.declared_options)
+        .map(|d| d.count)
 }
 
 impl CoreProfile {
@@ -153,6 +181,12 @@ static MGBA: CoreProfile = CoreProfile {
     },
     save_model: SaveModel::SaveRam,
     unsupported_settings: &[],
+    options_row: "cores.mgbaall",
+    // Measured 2026-11-21 (Trello #89).
+    declared_options: Some(DeclaredOptions {
+        count: 17,
+        version: "0.11-212-7a12d6d",
+    }),
 };
 
 static MELONDSDS: CoreProfile = CoreProfile {
@@ -169,6 +203,12 @@ static MELONDSDS: CoreProfile = CoreProfile {
     save_model: SaveModel::SaveRamAndCoreFiles,
     // melonDS DS has no frameskip option (1.4.0, `config/constants.hpp`).
     unsupported_settings: &["perf.frameskip"],
+    options_row: "cores.mdsall",
+    // Measured 2026-11-21 on the DS test ROM (Trello #89).
+    declared_options: Some(DeclaredOptions {
+        count: 84,
+        version: "1.4.0",
+    }),
 };
 
 /// Azahar: the software renderer, the only one that does not ask for `SET_HW_RENDER`, which the
@@ -188,12 +228,66 @@ static AZAHAR: CoreProfile = CoreProfile {
     save_model: SaveModel::CoreFiles,
     // No frameskip mapped for Azahar yet: its options are listed when Phase 3 starts.
     unsupported_settings: &["perf.frameskip"],
+    options_row: "cores.azall",
+    // TODO(Phase 3): measured when the headless host runs 3DS games (#46); its row is hidden
+    // until then (phase 3).
+    declared_options: None,
 };
 
 #[cfg(test)]
 mod tests {
-    use super::{unsupported_consoles, CoreId};
+    use super::{row_count, unsupported_consoles, CoreId};
     use crate::settings::ConsoleId;
+
+    #[test]
+    fn the_option_counts_were_measured_on_the_pinned_builds() {
+        let lock: serde_json::Value =
+            serde_json::from_str(include_str!("../../../cores.lock")).unwrap();
+        for core in CoreId::ALL {
+            let p = core.profile();
+            // The row is a link of the catalogue.
+            assert!(
+                crate::settings::schema::entry(p.options_row).is_some_and(|e| matches!(
+                    e.kind,
+                    crate::settings::Kind::Action {
+                        style: crate::settings::ActionStyle::Link
+                    }
+                )),
+                "{}",
+                p.options_row
+            );
+            if let Some(d) = p.declared_options {
+                assert_eq!(
+                    lock["cores"][core.name()]["source"]["version"],
+                    serde_json::json!(d.version),
+                    "{core}: the pin moved, measure its options again (`headless --list-options`)"
+                );
+                assert!(d.count > 0);
+            }
+        }
+    }
+
+    #[test]
+    fn the_all_options_rows_get_their_count_and_no_other_row_does() {
+        assert_eq!(row_count("cores.mgbaall"), Some(17));
+        assert_eq!(row_count("cores.mdsall"), Some(84));
+        assert_eq!(row_count("cores.azall"), None);
+        assert_eq!(row_count("video.scale"), None);
+        // In the schema the interface reads, only where there is one.
+        let schema = crate::settings::schema::schema(crate::settings::schema::Device::Desktop);
+        let json = serde_json::to_value(&schema.entries).unwrap();
+        let row = |key: &str| {
+            json.as_array()
+                .unwrap()
+                .iter()
+                .find(|e| e["key"] == key)
+                .cloned()
+                .unwrap()
+        };
+        assert_eq!(row("cores.mgbaall")["count"], serde_json::json!(17));
+        assert!(row("cores.azall").get("count").is_none());
+        assert!(row("video.scale").get("count").is_none());
+    }
 
     #[test]
     fn every_console_has_one_core_whose_profile_lists_it() {

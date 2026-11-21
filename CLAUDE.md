@@ -660,7 +660,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - Core options: every `consoles.*` / `cores.*` entry with a real mGBA option is mapped (`settings/core_values/mgba.rs`);
   melonDS DS has a table (`core_values/melondsds.rs`); Azahar has none yet (only its forced options,
   `core_profile.rs`). `perf.frameskip` drives mGBA only; on NDS / 3DS its row is disabled with the reason
-  (`CoreProfile::unsupported_settings`). The interface does not show `emu://core-restart` yet.
+  (`CoreProfile::unsupported_settings`). The interface does not show `emu://core-restart` yet. The «All … options»
+  rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
+  (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
+  test); Azahar's is not measured yet.
 - 48 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).

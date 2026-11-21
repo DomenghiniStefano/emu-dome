@@ -1560,7 +1560,7 @@
       },
       "mgbaall": {
         "name": "Tutte le opzioni di mGBA",
-        "desc": "{n} opzioni, raggruppate come nel motore.",
+        "desc": "{n} opzione, raggruppata come nel motore. | {n} opzioni, raggruppate come nel motore.",
         "button": "Mostra"
       },
       "mdsrender": {
@@ -1581,7 +1581,7 @@
       },
       "mdsall": {
         "name": "Tutte le opzioni di melonDS DS",
-        "desc": "{n} opzioni.",
+        "desc": "{n} opzione. | {n} opzioni.",
         "button": "Mostra"
       },
       "azaudio": {
@@ -1594,7 +1594,7 @@
       },
       "azall": {
         "name": "Tutte le opzioni di Azahar",
-        "desc": "{n} opzioni.",
+        "desc": "{n} opzione. | {n} opzioni.",
         "button": "Mostra"
       }
     },

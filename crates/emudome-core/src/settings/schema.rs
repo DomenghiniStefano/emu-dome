@@ -523,6 +523,12 @@ pub struct EntryDto {
     pub unsupported_consoles: Vec<super::ConsoleId>,
     /// Something reads it; otherwise shown disabled with «arrives in a future update».
     pub wired: bool,
+    /// The number the row's text shows as `{n}` (plural forms): the options a core declares, on
+    /// its «All … options» row (`crate::core_profile::row_count`). Absent elsewhere, and while
+    /// not measured.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub count: Option<u32>,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -565,6 +571,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 needs_native_video: e.needs_native_video,
                 unsupported_consoles: crate::core_profile::unsupported_consoles(e.key),
                 wired: e.wired,
+                count: crate::core_profile::row_count(e.key),
             })
             .collect(),
     }

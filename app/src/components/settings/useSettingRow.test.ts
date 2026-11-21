@@ -73,6 +73,14 @@ beforeEach(async () => {
 })
 
 describe('useSettingRow', () => {
+  it('shows the count Rust gives a row in its plural form', () => {
+    const link = { type: 'action', style: 'link' } as const
+    const many = setup(entry('cores.mgbaall', { kind: link, default: null, count: 17 })).row
+    expect(many.desc.value).toMatch(/^17 options,/)
+    const one = setup(entry('cores.mdsall', { kind: link, default: null, count: 1 })).row
+    expect(one.desc.value).toMatch(/^1 option\./)
+  })
+
   it('names the row and describes it from its messages', () => {
     const { row } = setup(entry('general.theme'))
     expect(row.name.value).toBe(t('settings.general.theme.name'))

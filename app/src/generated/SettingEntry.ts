@@ -46,4 +46,10 @@ unsupportedConsoles: Array<ConsoleId>,
 /**
  * Something reads it; otherwise shown disabled with «arrives in a future update».
  */
-wired: boolean, };
+wired: boolean, 
+/**
+ * The number the row's text shows as `{n}` (plural forms): the options a core declares, on
+ * its «All … options» row (`crate::core_profile::row_count`). Absent elsewhere, and while
+ * not measured.
+ */
+count?: number, };
