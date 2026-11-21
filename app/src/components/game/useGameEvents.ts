@@ -61,7 +61,7 @@ export function useGameEvents(
     })
   }
 
-  /** What a controller combo changed (the combo itself already ran in Rust). */
+  /** What a shortcut changed: a controller combo or a key (the shortcut itself ran in Rust). */
   function onHotkey(h: HotkeyEvent) {
     switch (h.kind) {
       case 'fps':
@@ -79,15 +79,6 @@ export function useGameEvents(
         return
       case 'paused':
         paused.value = h.paused
-    }
-  }
-
-  /** F2 / F3: the previous / next slot, the same one L3 + ← → moves. */
-  async function stepSlot(forward: boolean) {
-    try {
-      onHotkey({ kind: 'slot', slot: await emu.controls.stepSlot(forward) })
-    } catch (e) {
-      toasts.failWith(e)
     }
   }
 
@@ -118,5 +109,5 @@ export function useGameEvents(
     if (ev.type === 'stopped') game.stopped()
   }
 
-  return { reset, loadFromMenu, undoLoad, onHotkey, stepSlot, onEmuEvent }
+  return { reset, loadFromMenu, undoLoad, onHotkey, onEmuEvent }
 }

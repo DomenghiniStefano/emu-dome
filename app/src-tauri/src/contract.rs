@@ -17,6 +17,7 @@ fn generate() -> Result<Generated, String> {
     g.ts::<crate::commands::StatsDto>()?;
     g.ts::<crate::commands::PointerArea>()?;
     g.ts::<crate::bios::BiosRow>()?;
+    g.ts::<crate::hotkeys::HotkeyEvent>()?;
     g.ts::<crate::core_settings::CoreRestart<'static>>()?;
     g.ts::<crate::library::LibraryDto>()?;
     g.ts::<crate::library::ScanEvent>()?;

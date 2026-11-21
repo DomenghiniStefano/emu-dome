@@ -33,6 +33,7 @@ mod game_session;
 mod gamepad;
 mod gpu_interop;
 mod health;
+mod hotkeys;
 mod library;
 mod migration;
 mod pads;
@@ -103,6 +104,8 @@ struct AppState {
     /// Whether the quick menu is open, set by the interface: while it is, the controllers
     /// navigate the menu instead of playing (see `gamepad.rs`).
     menu_open: Arc<AtomicBool>,
+    /// The shortcuts of the controllers and of the keyboard, carried out the same way.
+    hotkeys: Arc<hotkeys::HotkeyRunner>,
     data_dir: PathBuf,
     resource_dir: Option<PathBuf>,
     /// The close flow (Trello #86): the window's X, quitting, closing or switching the game
@@ -125,11 +128,13 @@ impl AppState {
         self.data_dir.join("saves")
     }
 
-    /// Lets go of every keyboard button of the open game (menu opened, focus lost).
+    /// Lets go of every key (menu opened, focus lost): the open game's keyboard buttons, and the
+    /// keyboard's fast forward and held rewind.
     fn release_keyboard(&self) {
         if let Some(shared) = self.games.current().load().as_ref() {
             shared.input.release(Source::Keyboard);
         }
+        self.hotkeys.release_keys();
     }
 
     /// Hands the game to the native renderer only when it is the active mode.
@@ -365,12 +370,15 @@ pub fn run() {
             let menu_open = Arc::new(AtomicBool::new(false));
             let pads = pads::PadsState::default();
             app.manage(pads.clone());
+            let hotkeys =
+                hotkeys::HotkeyRunner::new(app.handle().clone(), current.clone(), pads.clone());
             #[cfg(desktop)]
             gamepad::spawn(
                 app.handle().clone(),
                 current.clone(),
                 menu_open.clone(),
                 pads,
+                hotkeys.clone(),
                 health.clone(),
             );
 
@@ -395,6 +403,7 @@ pub fn run() {
                 native_error,
                 video_mode: Mutex::new(mode),
                 menu_open,
+                hotkeys,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
                 closer: closing::Closer::default(),
@@ -430,6 +439,7 @@ pub fn run() {
             commands::rewind,
             commands::screenshot,
             commands::input,
+            commands::key,
             commands::pointer,
             commands::stats,
             commands::video_mode,

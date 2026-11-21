@@ -1,77 +1,27 @@
 // The keyboard: outside the game and in the quick menu the arrows and Enter move the focus
-// (nav.ts); in game the keyboard table (keyboard.ts) and the game's keys (keymap.ts).
-import { onUnmounted, watch } from 'vue'
+// (nav.ts); in game every key but Esc and F11 goes raw to Rust (`emu.key`), which routes it to the
+// game's buttons and the keyboard's shortcuts (crates/emudome-core/src/keyboard.rs) and carries
+// them out as the controllers' (fast forward, rewind, slots...).
+import { onUnmounted } from 'vue'
 import { emu } from '@/emu'
 import { report } from '@/lib/errors'
 import { watchInput } from '@/lib/inputMode'
-import type { KeyAction } from '@/lib/keyboard'
 import { keymap, loadKeymap } from '@/lib/keymap'
 import { keyRoute } from './keyRoute'
-import { rewindAfter } from './session'
 import { dispatchNav, keyToNav, showFocusRing } from '@/nav'
 import type { GameSession } from './useGameSession'
 
 export function useGameKeys(session: GameSession) {
-  const { game, menuOpen, comboSlot, showFps, rewinding, settings } = session
-  /** Tab is holding fast forward (the controller's turbo is Rust's). */
-  let turboKey = false
+  const { game, menuOpen } = session
 
-  /** Backspace: rewind while held, or on / off at each press with `a11y.toggle`. */
-  function rewindKey(pressed: boolean, repeat: boolean) {
-    if (repeat) return
-    session.setRewinding(rewindAfter(settings.value.rewindToggle, pressed, rewinding.value))
-  }
-
-  /**
-   * The keys held now will be let go where the game cannot see it (the menu opened, the window
-   * lost the focus): fast forward and a held rewind end here, the game's buttons in Rust
-   * (`set_menu_open`, `release_keys`). A rewind switched on with `a11y.toggle` stays on.
-   */
-  function letGo() {
-    if (turboKey) {
-      turboKey = false
-      session.setTurbo(false)
-    }
-    if (rewinding.value && !settings.value.rewindToggle) session.setRewinding(false)
-  }
-  watch(menuOpen, open => {
-    if (open) letGo()
-  })
+  /** The keys held now are let go elsewhere (Alt-Tab, another window): Rust lets go of them,
+   * ending the keyboard's fast forward and held rewind. The quick menu opening does the same in
+   * Rust (`set_menu_open`). */
   function onBlur() {
-    letGo()
     if (game.value) report(emu.releaseKeys())
   }
   function onVisibility() {
     if (document.visibilityState === 'hidden') onBlur()
-  }
-
-  /** A key of the keyboard table in game, menu closed. Tab and Backspace last while held. */
-  function runKey(action: KeyAction, pressed: boolean, repeat: boolean) {
-    if (action === 'rewind') return rewindKey(pressed, repeat)
-    if (action === 'ff_hold') {
-      if (repeat) return
-      turboKey = pressed
-      session.setTurbo(pressed)
-      return
-    }
-    if (!pressed || repeat) return
-    switch (action) {
-      case 'save':
-        return report(emu.saveState(comboSlot.value))
-      case 'load':
-        return report(emu.loadState(comboSlot.value))
-      case 'prev_slot':
-      case 'next_slot':
-        return void session.stepSlot(action === 'next_slot')
-      case 'fps':
-        showFps.value = !showFps.value
-        return
-      case 'screenshot':
-        return void session.screenshot()
-      default:
-        // Esc and F11 are handled before; reserved keys never reach here (`keyShortcut`).
-        return
-    }
   }
 
   function onKey(e: KeyboardEvent, pressed: boolean) {
@@ -80,17 +30,10 @@ export function useGameKeys(session: GameSession) {
       e.code,
       pressed,
       e.repeat,
-      {
-        inGame: !!game.value,
-        menuOpen: menuOpen.value,
-        rewindToggle: settings.value.rewindToggle,
-        rewinding: rewinding.value,
-      },
+      { inGame: !!game.value, menuOpen: menuOpen.value },
       keymap.value,
     )
     switch (route.kind) {
-      case 'endRewind':
-        return rewindKey(false, false)
       case 'back':
         // In the quick menu Esc is «back»: one level up, and from its main screen the game resumes.
         return dispatchNav('back')
@@ -109,13 +52,9 @@ export function useGameKeys(session: GameSession) {
         }
         return
       }
-      case 'shortcut':
-        e.preventDefault()
-        return runKey(route.action, pressed, e.repeat)
-      case 'button':
-        e.preventDefault()
-        if (route.send) report(emu.input(route.button, pressed))
-        return
+      case 'rust':
+        if (route.prevent) e.preventDefault()
+        return report(emu.key(e.code, pressed, e.repeat))
       case 'none':
         return
     }

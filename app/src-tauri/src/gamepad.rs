@@ -19,10 +19,9 @@
 //! Events to the interface:
 //! - `emu://gamepad-connected`, `emu://gamepad-disconnected`: a [`PadInfo`];
 //! - `emu://gamepad-changed`: a [`PadInfo`] whose battery charge changed;
-//! - `emu://menu`: open/close the quick menu (Guide, or L3 + Start);
-//! - `emu://nav`: a [`NavEvent`], one focus step in the interface;
-//! - `emu://hotkey`: a [`HotkeyEvent`], what a combo changed that the interface shows;
-//! - `emu://pad-state`: a [`PadStates`], while the interface watches (`gamepad_watch`).
+//! - `emu://pad-state`: a [`PadStates`], while the interface watches (`gamepad_watch`);
+//! - the router's actions (`emu://menu`, `emu://nav`, `emu://hotkey`) through the shortcuts'
+//!   runner shared with the keyboard (`hotkeys.rs`).
 
 use std::ffi::{c_char, c_int, CStr};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -30,9 +29,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use emudome_core::bindings::{Family, PadConfig, PadMap, Pos};
-use emudome_core::hotkeys::{Action, Hotkey, Nav, PadInput, Router};
+use emudome_core::hotkeys::{PadInput, Router};
 use emudome_core::input::{Source, Sticks};
-use emudome_core::{Command, ErrorCode, Speed};
+use emudome_core::ErrorCode;
 use sdl3_sys::error::SDL_GetError;
 use sdl3_sys::events::{
     SDL_Event, SDL_PollEvent, SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMOVED,
@@ -66,6 +65,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 use crate::health::{Part, SharedHealth};
+use crate::hotkeys::{HotkeyRunner, Origin};
 use crate::pads::{self, PadInfo, PadState, PadStates, PadsState};
 use crate::CurrentShared;
 
@@ -102,33 +102,6 @@ const POLL: Duration = Duration::from_millis(4);
 
 /// `emu://pad-state` at most this often (a stick moves at every poll).
 const STATE_EVERY: Duration = Duration::from_millis(16);
-
-/// The speed the toggles go back to. Fast forward and slow motion come from the settings
-/// (`speed.ffval`, `speed.slow`, read into [`PadConfig`]).
-const NORMAL: Speed = Speed::Factor(1.0);
-
-/// Payload of `emu://nav`: `{ action: "up" | "down" | "left" | "right" | "confirm" | "back" }`.
-#[derive(Clone, Serialize)]
-pub struct NavEvent {
-    action: Nav,
-}
-
-/// Payload of `emu://hotkey`: what a combo changed, for the interface to show.
-/// Codes and values only; the interface turns them into text.
-#[derive(Clone, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub enum HotkeyEvent {
-    /// FPS overlay on/off.
-    Fps,
-    /// The current slot changed.
-    Slot { slot: u8 },
-    /// The game speed changed (fast forward or slow motion toggled).
-    Speed { speed: Speed },
-    /// Fast forward held (true) or released (false).
-    Turbo { held: bool },
-    /// Paused or resumed without the menu.
-    Paused { paused: bool },
-}
 
 /// An open controller. The pointer stays valid until `SDL_CloseGamepad`.
 struct Pad {
@@ -206,6 +179,7 @@ pub fn spawn(
     current: CurrentShared,
     menu_open: Arc<AtomicBool>,
     pads: PadsState,
+    hotkeys: Arc<HotkeyRunner>,
     health: SharedHealth,
 ) {
     let thread_health = health.clone();
@@ -214,7 +188,7 @@ pub fn spawn(
         .spawn(move || {
             let reported = thread_health.clone();
             thread_health.guard(Part::Controllers, || {
-                run(app, current, menu_open, pads, &reported);
+                run(app, current, menu_open, pads, &hotkeys, &reported);
             });
         });
     if let Err(e) = spawned {
@@ -233,6 +207,7 @@ fn run(
     current: CurrentShared,
     menu_open: Arc<AtomicBool>,
     shared_pads: PadsState,
+    hotkeys: &HotkeyRunner,
     health: &SharedHealth,
 ) {
     // SAFETY: SDL is initialised and used by this thread only;
@@ -260,15 +235,6 @@ fn run(
     // The generation the config was read at; `None` until the settings are open.
     let mut config_at: Option<u64> = None;
     let mut router = Router::new(config.bindings());
-    let mut hotkeys = Hotkeys {
-        app: app.clone(),
-        current: current.clone(),
-        pads: shared_pads.clone(),
-        turbo_restore: None,
-        fast_forward: config.fast_forward,
-        slow_motion: config.slow_motion,
-        rewind_toggle: config.hold_toggle,
-    };
     let mut last_state: Option<PadStates> = None;
     let mut last_state_at = Instant::now();
     let mut event = SDL_Event::default();
@@ -279,9 +245,6 @@ fn run(
                 config = fresh;
                 config_at = Some(generation);
                 router.set_bindings(config.bindings());
-                hotkeys.fast_forward = config.fast_forward;
-                hotkeys.slow_motion = config.slow_motion;
-                hotkeys.rewind_toggle = config.hold_toggle;
                 for pad in &mut pads {
                     pad.map = config.pad_map(pad.info.family);
                 }
@@ -295,7 +258,7 @@ fn run(
             if kind == SDL_EVENT_GAMEPAD_ADDED {
                 let id = unsafe { event.gdevice.which };
                 if let Some(pad) = open(id, &config) {
-                    hotkeys.emit("emu://gamepad-connected", pad.info.clone());
+                    emit(&app, "emu://gamepad-connected", pad.info.clone());
                     shared_pads.list.lock().push(pad.info.clone());
                     pads.push(pad);
                 }
@@ -316,7 +279,7 @@ fn run(
                                 listed.battery = battery;
                             }
                         }
-                        hotkeys.emit("emu://gamepad-changed", pad.info.clone());
+                        emit(&app, "emu://gamepad-changed", pad.info.clone());
                     }
                 }
             } else if kind == SDL_EVENT_GAMEPAD_REMOVED {
@@ -325,7 +288,7 @@ fn run(
                     let pad = pads.remove(i);
                     log::info!("controller disconnected: {}", pad.log_name());
                     shared_pads.list.lock().retain(|p| p.id != pad.info.id);
-                    hotkeys.emit("emu://gamepad-disconnected", pad.info.clone());
+                    emit(&app, "emu://gamepad-disconnected", pad.info.clone());
                     // SAFETY: opened by `open`, closed only once.
                     unsafe { SDL_CloseGamepad(pad.raw) };
                 }
@@ -354,7 +317,7 @@ fn run(
             };
             let now = Instant::now();
             if last_state.as_ref() != Some(&states) && now - last_state_at >= STATE_EVERY {
-                hotkeys.emit("emu://pad-state", states.clone());
+                emit(&app, "emu://pad-state", states.clone());
                 last_state = Some(states);
                 last_state_at = now;
             }
@@ -390,153 +353,14 @@ fn run(
                 Sticks::default()
             });
         }
-        for action in routed.actions {
-            hotkeys.run(action);
-        }
+        hotkeys.run(routed.actions, Origin::Pads);
         std::thread::sleep(POLL);
     }
 }
 
-/// Carries out the router's actions: commands to the session, events to the interface.
-struct Hotkeys {
-    app: AppHandle,
-    current: CurrentShared,
-    /// The current slot (L3 + R1 / L3 + L1 save to and load from it), shared with F1–F4.
-    pads: PadsState,
-    /// While fast forward is held, the speed to go back to.
-    turbo_restore: Option<Speed>,
-    /// `speed.ffval` and `speed.slow` of the open game (or «Tutti i giochi»).
-    fast_forward: Speed,
-    slow_motion: Speed,
-    /// `a11y.toggle`: L3 + L2 turns rewind on and the next press off, instead of holding.
-    rewind_toggle: bool,
-}
-
-impl Hotkeys {
-    fn run(&mut self, action: Action) {
-        match action {
-            Action::Nav(nav) => self.emit("emu://nav", NavEvent { action: nav }),
-            Action::Press(hotkey) => self.press(hotkey),
-            Action::Release(hotkey) => self.release(hotkey),
-        }
-    }
-
-    fn press(&mut self, hotkey: Hotkey) {
-        match hotkey {
-            Hotkey::ToggleMenu => self.emit("emu://menu", ()),
-            Hotkey::SaveState => {
-                self.send(Command::SaveState(self.pads.slot()));
-            }
-            Hotkey::LoadState => {
-                self.send(Command::LoadState(self.pads.slot()));
-            }
-            Hotkey::NextSlot | Hotkey::PreviousSlot => {
-                let slot = self.pads.step_slot(hotkey == Hotkey::NextSlot);
-                self.emit("emu://hotkey", HotkeyEvent::Slot { slot });
-            }
-            Hotkey::FastForwardHold => {
-                if self.turbo_restore.is_none() {
-                    let before = self.speed();
-                    if self.send(Command::SetSpeed(self.fast_forward)) {
-                        self.turbo_restore = Some(before);
-                        self.emit("emu://hotkey", HotkeyEvent::Turbo { held: true });
-                    }
-                }
-            }
-            Hotkey::FastForwardToggle => self.toggle_speed(self.fast_forward),
-            Hotkey::SlowMotionToggle => self.toggle_speed(self.slow_motion),
-            Hotkey::FpsOverlay => self.emit("emu://hotkey", HotkeyEvent::Fps),
-            Hotkey::Pause => {
-                let paused = !self.paused();
-                if self.send(Command::SetPaused(paused)) {
-                    self.emit("emu://hotkey", HotkeyEvent::Paused { paused });
-                }
-            }
-            Hotkey::Rewind => {
-                let on = !(self.rewind_toggle && self.rewinding());
-                self.send(Command::Rewind(on));
-            }
-            Hotkey::Screenshot => {
-                self.send(Command::Screenshot);
-            }
-            // Reserved rows (`Hotkey::status`): the router never fires them.
-            Hotkey::SwapScreens | Hotkey::NextLayout | Hotkey::Lid => {}
-        }
-    }
-
-    fn release(&mut self, hotkey: Hotkey) {
-        match hotkey {
-            Hotkey::FastForwardHold => {
-                if let Some(before) = self.turbo_restore.take() {
-                    self.send(Command::SetSpeed(before));
-                    self.emit("emu://hotkey", HotkeyEvent::Turbo { held: false });
-                }
-            }
-            Hotkey::Rewind => {
-                if !self.rewind_toggle {
-                    self.send(Command::Rewind(false));
-                }
-            }
-            // Press-only hotkeys have nothing to undo.
-            Hotkey::ToggleMenu
-            | Hotkey::SaveState
-            | Hotkey::LoadState
-            | Hotkey::NextSlot
-            | Hotkey::PreviousSlot
-            | Hotkey::FastForwardToggle
-            | Hotkey::SlowMotionToggle
-            | Hotkey::FpsOverlay
-            | Hotkey::Pause
-            | Hotkey::Screenshot
-            | Hotkey::SwapScreens
-            | Hotkey::NextLayout
-            | Hotkey::Lid => {}
-        }
-    }
-
-    /// `target` if the game is not already at it, otherwise back to 1×.
-    fn toggle_speed(&mut self, target: Speed) {
-        let speed = if self.speed() == target {
-            NORMAL
-        } else {
-            target
-        };
-        if self.send(Command::SetSpeed(speed)) {
-            self.emit("emu://hotkey", HotkeyEvent::Speed { speed });
-        }
-    }
-
-    fn speed(&self) -> Speed {
-        self.current
-            .load()
-            .as_ref()
-            .and_then(|s| s.stats.lock().speed)
-            .unwrap_or(NORMAL)
-    }
-
-    fn rewinding(&self) -> bool {
-        self.current
-            .load()
-            .as_ref()
-            .is_some_and(|s| s.stats.lock().rewinding)
-    }
-
-    fn paused(&self) -> bool {
-        self.current
-            .load()
-            .as_ref()
-            .is_some_and(|s| s.stats.lock().paused)
-    }
-
-    /// Sends a command to the running game; false when there is none.
-    fn send(&self, cmd: Command) -> bool {
-        crate::send_command(&self.app, cmd)
-    }
-
-    fn emit<S: Serialize + Clone>(&self, name: &str, payload: S) {
-        if let Err(e) = self.app.emit(name, payload) {
-            log::warn!("{name} not delivered: {e}");
-        }
+fn emit<S: Serialize + Clone>(app: &AppHandle, name: &str, payload: S) {
+    if let Err(e) = app.emit(name, payload) {
+        log::warn!("{name} not delivered: {e}");
     }
 }
 

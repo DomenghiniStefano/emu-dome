@@ -28,6 +28,7 @@ import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
 import type { GameInfo } from '@/generated/app/GameInfo'
 import type { GameSaves } from '@/generated/app/GameSaves'
+import type { HotkeyEvent } from '@/generated/app/HotkeyEvent'
 import type { ImportCandidate } from '@/generated/app/ImportCandidate'
 import type { Library } from '@/generated/app/Library'
 import type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
@@ -46,8 +47,8 @@ import type { VideoMode } from '@/generated/app/VideoMode'
 
 // The bridge's types are generated from the Rust types (ts-rs) and the settings catalogue into
 // src/generated/ (crates/emudome-core/src/contract.rs, app/src-tauri/src/contract.rs): a `cargo
-// test` fails while they are stale. Never write one here by hand; the two below have no Rust
-// type the contract can reach yet (see their comments).
+// test` fails while they are stale. Never write one here by hand; the one below has no Rust
+// type the contract can reach yet (see its comment).
 export type { ActionStyle } from '@/generated/ActionStyle'
 export type { BackupReason } from '@/generated/BackupReason'
 export type { BindingTable } from '@/generated/BindingTable'
@@ -97,6 +98,7 @@ export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { FolderSaves } from '@/generated/app/FolderSaves'
 export type { GameInfo } from '@/generated/app/GameInfo'
 export type { GameSaves } from '@/generated/app/GameSaves'
+export type { HotkeyEvent } from '@/generated/app/HotkeyEvent'
 export type { ImportCandidate } from '@/generated/app/ImportCandidate'
 export type { Library } from '@/generated/app/Library'
 export type { LibraryFolder } from '@/generated/app/LibraryFolder'
@@ -124,18 +126,6 @@ export type GamepadEvent = Pick<PadInfo, 'name'>
 
 /** Slot 0: the auto quick save («Salvataggio rapido automatico»). */
 export const AUTO_SLOT = 0
-
-/**
- * Payload of `emu://hotkey` (`HotkeyEvent` in src-tauri/src/gamepad.rs, which is compiled on the
- * desktop only, so the contract test cannot reach it yet): what a controller combo changed that
- * the interface shows. The combos themselves run in Rust.
- */
-export type HotkeyEvent =
-  | { kind: 'fps' }
-  | { kind: 'slot'; slot: number }
-  | { kind: 'speed'; speed: Speed }
-  | { kind: 'turbo'; held: boolean }
-  | { kind: 'paused'; paused: boolean }
 
 /**
  * One round of the canvas loop in bench mode (`WebviewFrame` in src-tauri/src/bench.rs, behind
@@ -187,7 +177,7 @@ export const emu = {
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
   loadState: (slot: number) => invoke<void>('load_state', { slot }),
   reset: () => invoke<void>('reset_game'),
-  /** Backspace / L3 + L2: rewind on (held, or toggled with `a11y.toggle`) or off. */
+  /** Rewind on or off (Backspace and L3 + L2 reach it in Rust, `key` and the controllers). */
   rewind: (on: boolean) => invoke<void>('rewind', { on }),
   /** F12, L3 + B, quick menu › Strumenti: PNG next to the saves (`screenshotSaved`). */
   screenshot: () => invoke<void>('screenshot'),
@@ -195,8 +185,12 @@ export const emu = {
   undoLoad: () => invoke<void>('undo_load'),
   /** «Salvato nello slot N · Annulla»: the slot gets back what it held (`saveUndone`). */
   undoSave: () => invoke<void>('undo_save'),
+  /** A game button from the touch controls. */
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
-  /** The page lost the focus: the game lets go of every keyboard button. */
+  /** A key (`KeyboardEvent.code`) for Rust to route in game: a game button or a shortcut. */
+  key: (code: string, pressed: boolean, repeat: boolean) =>
+    invoke<void>('key', { code, pressed, repeat }),
+  /** The page lost the focus: Rust lets go of every key (game buttons, fast forward, rewind). */
   releaseKeys: () => invoke<void>('release_keys'),
   /** The DS touch screen: the pointer at (x, y) in `area`; Rust maps it to the bottom screen. */
   pointer: (x: number, y: number, pressed: boolean, area: PointerArea) =>

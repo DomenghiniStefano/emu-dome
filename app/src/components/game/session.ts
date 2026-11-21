@@ -1,6 +1,6 @@
 // Pure decisions of the game session that App.vue's composables act on (no Vue, no bridge).
 import type { ConsoleId, GameInfo, SettingValue, Speed, Stats, VideoMode } from '@/emu'
-import { FF_DEFAULT, speedFromOption } from '@/lib/speeds'
+import { modeSpeeds } from '@/components/quick-menu/speedChoices'
 
 /** The file name without folder and extension, as the title of a game outside the library. */
 export function fileTitle(path: string): string {
@@ -23,23 +23,13 @@ export function speedShown(turboHeld: boolean, speed: Speed): boolean {
   return turboHeld || speed.kind === 'max' || (speed.kind === 'factor' && speed.value !== 1)
 }
 
-/**
- * Backspace: whether rewind is on after this press or release. Held by default; with
- * `a11y.toggle` each press switches it and a release changes nothing.
- */
-export function rewindAfter(toggle: boolean, pressed: boolean, rewinding: boolean): boolean {
-  if (!toggle) return pressed
-  return pressed ? !rewinding : rewinding
-}
-
-/** The open game's settings the shell itself applies (session level, «in prova» included). */
+/** The open game's settings the shell itself shows or applies (session level, «in prova»
+ * included). Fast forward and rewind themselves run in Rust (the keys and the controllers). */
 export interface GameSettings {
-  /** `speed.ffval`: fast forward while Tab is held and on the HUD. */
+  /** `speed.ffval`, shown on the HUD while fast forward is held. */
   ffSpeed: Speed
   /** `saves.undo`: «Annulla il caricamento». */
   undoAllowed: boolean
-  /** `a11y.toggle`: Backspace switches rewind instead of holding it. */
-  rewindToggle: boolean
   /** `a11y.cblind`: the colour correction on the game. */
   colourBlind: string
 }
@@ -51,9 +41,9 @@ export function gameSettingsFrom(
 ): GameSettings {
   const of = (key: string) => rows.find(r => r.key === key)?.value
   return {
-    ffSpeed: speedFromOption(of('speed.ffval')) ?? FF_DEFAULT,
+    // The quick menu's reading of the speed options, the same one its Avanti veloce uses.
+    ffSpeed: modeSpeeds(of('speed.ffval'), of('speed.slow')).ff,
     undoAllowed: of('saves.undo') !== false,
-    rewindToggle: of('a11y.toggle') === true,
     colourBlind: String(of('a11y.cblind') ?? 'none'),
   }
 }

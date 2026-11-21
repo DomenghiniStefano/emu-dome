@@ -11,14 +11,12 @@ import type { Toasts } from '@/composables/useToasts'
 const bridge = vi.hoisted(() => ({
   loadState: vi.fn(),
   undoLoad: vi.fn(),
-  stepSlot: vi.fn(),
 }))
 vi.mock('@/emu', () => ({
   AUTO_SLOT: 0,
   emu: {
     loadState: bridge.loadState,
     undoLoad: bridge.undoLoad,
-    controls: { stepSlot: bridge.stepSlot },
     settings: { onChanged: () => Promise.resolve(() => {}) },
   },
 }))
@@ -113,14 +111,6 @@ describe('useGameEvents', () => {
     expect(state.turboHeld.value).toBe(true)
     events.onHotkey({ kind: 'paused', paused: true } as never)
     expect(state.paused.value).toBe(true)
-  })
-
-  it('F2 / F3 move the slot Rust holds', async () => {
-    const { state, events } = setup()
-    bridge.stepSlot.mockResolvedValueOnce(5)
-    await events.stepSlot(true)
-    expect(bridge.stepSlot).toHaveBeenCalledWith(true)
-    expect(state.comboSlot.value).toBe(5)
   })
 
   it('the core started gives the frame size; stopped is passed on', () => {

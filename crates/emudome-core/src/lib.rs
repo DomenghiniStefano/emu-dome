@@ -25,6 +25,7 @@ pub mod game_key;
 pub mod hotkeys;
 pub mod hw_render;
 pub mod input;
+pub mod keyboard;
 pub mod library;
 pub mod migration;
 pub mod nds;

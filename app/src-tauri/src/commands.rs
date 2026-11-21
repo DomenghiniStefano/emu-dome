@@ -210,7 +210,21 @@ pub(crate) fn reset_game(state: tauri::State<'_, AppState>) -> Result<(), ErrorC
     state.games.send(Command::Reset)
 }
 
-/// Keyboard: for now it goes through the webview (which has the focus).
+/// A key of the keyboard (`KeyboardEvent.code`), forwarded raw by the webview, which has the
+/// focus: Rust routes it (`emudome_core::keyboard`) to the game's button or a shortcut, carried
+/// out as the controllers' are (`hotkeys.rs`). The menu key, fullscreen and the menus' focus
+/// keys stay in the interface.
+#[tauri::command]
+pub(crate) fn key(state: tauri::State<'_, AppState>, code: String, pressed: bool, repeat: bool) {
+    let current = state.games.current().load_full();
+    let game_has_keys = current.is_some() && !state.menu_open.load(Ordering::Relaxed);
+    let button = state.hotkeys.key(&code, pressed, repeat, game_has_keys);
+    if let (Some((button, down)), Some(shared)) = (button, current) {
+        shared.input.set(Source::Keyboard, button, down);
+    }
+}
+
+/// A game button from the touch controls (Android's overlay).
 #[tauri::command]
 pub(crate) fn input(state: tauri::State<'_, AppState>, button: Button, pressed: bool) {
     if let Some(shared) = state.games.current().load().as_ref() {
