@@ -8,6 +8,7 @@ use super::{
     BiosTable, Check, Probe, Slot, SlotSpec, Status, Verdict, NAND_FOOTER_LEN, NAND_FOOTER_MAGIC,
     TABLES,
 };
+use crate::core_profile::CoreId;
 use crate::settings::test_dir::TestDir;
 use crate::settings::{entry, ConsoleId, Kind, Value};
 use crate::ErrorCode;
@@ -209,7 +210,12 @@ const DS_AND_DSI: &[Slot] = &[
 ];
 
 fn nds(in_place: &[Slot], pairs: &'static [(&'static str, &'static str)]) -> super::Plan {
-    plan(crate::nds::CORE, ConsoleId::Nds, in_place, &settings(pairs))
+    plan(
+        CoreId::MelonDsDs,
+        ConsoleId::Nds,
+        in_place,
+        &settings(pairs),
+    )
 }
 
 #[test]
@@ -262,10 +268,10 @@ fn the_ds_menu_without_the_ds_files_boots_directly_and_says_so() {
 
 #[test]
 fn mgba_and_unknown_cores_set_nothing() {
-    let p = plan("mgba", ConsoleId::Gba, &[], &settings(&[]));
+    let p = plan(CoreId::Mgba, ConsoleId::Gba, &[], &settings(&[]));
     assert_eq!(p, super::Plan::default());
     assert_eq!(
-        plan("azahar", ConsoleId::N3ds, &[], &settings(&[])),
+        plan(CoreId::Azahar, ConsoleId::N3ds, &[], &settings(&[])),
         super::Plan::default()
     );
 }
@@ -282,7 +288,7 @@ fn install_copies_remove_deletes_only_the_copy_and_invalid_copies_go() {
     other.file = "sub/other.bin";
     let slots: &'static [SlotSpec] = Box::leak(Box::new([good, other]));
     let table = BiosTable {
-        core: "test",
+        core: CoreId::Mgba,
         slots,
         policy: |_, _, _| super::Plan::default(),
     };

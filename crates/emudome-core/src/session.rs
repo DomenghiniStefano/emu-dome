@@ -13,8 +13,8 @@ use libretro_sys::retro_system_av_info;
 use parking_lot::Mutex;
 
 use crate::audio::AudioQueue;
-use crate::callbacks::{self, CallbackCtx};
-use crate::core::{GameFiles, LoadedCore};
+use crate::callbacks::{CallbackCtx, Slot};
+use crate::core::{GameContent, GameFiles, LoadedCore, StartError};
 use crate::core_options::CoreOptions;
 use crate::error::ErrorCode;
 use crate::frame::Frame;
@@ -149,6 +149,9 @@ pub struct Shared {
     pub muted: std::sync::atomic::AtomicBool,
     /// The options the core declared (empty until it does), sorted by key.
     pub core_options: Mutex<Vec<CoreOptionInfo>>,
+    /// What the core said its states cannot do (`SET_SERIALIZATION_QUIRKS`,
+    /// `RETRO_SERIALIZATION_QUIRK_*` bits); 0 until it says.
+    pub serialization_quirks: std::sync::atomic::AtomicU64,
 }
 
 /// One option as the running core declares it (`SET_VARIABLES` / `SET_CORE_OPTIONS*`).
@@ -195,6 +198,16 @@ pub struct SessionOptions {
     pub username: Option<String>,
     /// The audio at speeds other than 1× (`audio.ff`).
     pub fast_audio: FastAudio,
+    /// Where the frames go and how hardware rendering is answered; default: today's (RGBA8 in
+    /// [`Shared::frame`], hardware rendering refused).
+    pub video: VideoSetup,
+}
+
+/// The session's video seam ([`crate::video_sink`], [`crate::hw_render`]); `None` = the default.
+#[derive(Default)]
+pub struct VideoSetup {
+    pub sink: Option<Box<dyn crate::video_sink::VideoSink>>,
+    pub hw_render: Option<Box<dyn crate::hw_render::HwRenderHandler>>,
 }
 
 /// One quick save slot of a game, for the quick menu (G07).
@@ -396,12 +409,9 @@ impl Session {
     /// Starts the emulation thread and waits for the game to load.
     /// Later events arrive on `events`.
     /// Refused when a game on the same core was let go in this run ([`core_needs_restart`]).
-    pub fn start(opts: SessionOptions, events: Sender<Event>) -> Result<Self> {
+    pub fn start(opts: SessionOptions, events: Sender<Event>) -> Result<Self, StartError> {
         if core_needs_restart(&opts.core_path) {
-            anyhow::bail!(
-                "a game on {} was let go: restart EmuDome to use this core again",
-                opts.core_path.display()
-            );
+            return Err(StartError::CoreNeedsRestart);
         }
         std::fs::create_dir_all(&opts.system_dir).ok();
         std::fs::create_dir_all(GameFiles::new(&opts.save_dir, &opts.game).dir()).ok();
@@ -410,7 +420,7 @@ impl Session {
         let dead = Arc::new(AtomicBool::new(false));
         let core_path = opts.core_path.clone();
         let (tx, rx) = mpsc::channel();
-        let (ready_tx, ready_rx) = mpsc::sync_channel::<Result<()>>(1);
+        let (ready_tx, ready_rx) = mpsc::sync_channel::<Result<(), StartError>>(1);
         let (done_tx, done) = mpsc::channel::<ExitWrites>();
 
         let thread_shared = shared.clone();
@@ -426,11 +436,13 @@ impl Session {
                 let written = emu_thread(opts, thread_shared, rx, outbox, ready_tx, &thread_dead);
                 let _ = done_tx.send(written);
             })
-            .context("cannot start the emulation thread")?;
+            .map_err(|e| StartError::ThreadFailed {
+                detail: e.to_string(),
+            })?;
 
-        ready_rx
-            .recv()
-            .context("the emulation thread exited while starting")??;
+        ready_rx.recv().map_err(|_| StartError::ThreadFailed {
+            detail: "the emulation thread exited while starting".into(),
+        })??;
 
         Ok(Self {
             tx,
@@ -535,25 +547,19 @@ impl Drop for Session {
 }
 
 fn emu_thread(
-    opts: SessionOptions,
+    mut opts: SessionOptions,
     shared: Arc<Shared>,
     rx: Receiver<Command>,
     events: Outbox,
-    ready: mpsc::SyncSender<Result<()>>,
+    ready: mpsc::SyncSender<Result<(), StartError>>,
     dead: &AtomicBool,
 ) -> ExitWrites {
     let to_c =
         |p: &std::path::Path| CString::new(p.to_string_lossy().as_bytes()).unwrap_or_default();
     let files = GameFiles::new(&opts.save_dir, &opts.game);
-    callbacks::install(CallbackCtx {
-        shared: shared.clone(),
-        pixel_format: libretro_sys::RETRO_PIXEL_FORMAT_0RGB1555,
-        system_dir: to_c(&opts.system_dir),
-        // The game's own folder: what a core writes by itself stays with the game.
-        save_dir: to_c(files.dir()),
+    let mut ctx = CallbackCtx {
         audio_enabled: true,
         speed_audio: SpeedAudio::new(opts.fast_audio),
-        audio_out: Vec::new(),
         options: CoreOptions::new(opts.core_options.iter().cloned()),
         split: opts.split,
         username: opts
@@ -561,11 +567,34 @@ fn emu_thread(
             .as_deref()
             .filter(|n| !n.is_empty())
             .and_then(|n| CString::new(n).ok()),
-    });
+        // The game's own folder: what a core writes by itself stays with the game.
+        ..CallbackCtx::new(shared.clone(), to_c(&opts.system_dir), to_c(files.dir()))
+    };
+    let VideoSetup { sink, hw_render } = std::mem::take(&mut opts.video);
+    if let Some(sink) = sink {
+        ctx.video = sink;
+    }
+    if let Some(hw) = hw_render {
+        ctx.hw = hw;
+    }
+    let callbacks = match Slot::claim(ctx) {
+        Ok(slot) => slot,
+        Err(e) => {
+            let _ = ready.send(Err(StartError::ThreadFailed {
+                detail: format!("{e:#}"),
+            }));
+            return Ok(());
+        }
+    };
 
-    let started = (|| -> Result<LoadedCore> {
-        let mut core = unsafe { LoadedCore::load(&opts.core_path)? };
-        unsafe { core.load_game(&opts.game_path)? };
+    let started = (|| -> Result<LoadedCore, StartError> {
+        let mut core = unsafe { LoadedCore::load(&opts.core_path, callbacks.callbacks())? };
+        // A `need_fullpath` core (Azahar) reads the file itself: never read into memory here.
+        let content = GameContent::read(&opts.game_path, core.need_fullpath, |p| std::fs::read(p))?;
+        callbacks.begin_game(content.info_ext(true));
+        let loaded = unsafe { core.load_game(&content) };
+        callbacks.end_game_load(content.into_strings());
+        loaded?;
         if let (Some(ram), Ok(data)) = (core.save_ram_mut(), std::fs::read(&files.sram)) {
             let n = ram.len().min(data.len());
             ram[..n].copy_from_slice(&data[..n]);
@@ -573,13 +602,14 @@ fn emu_thread(
         Ok(core)
     })();
 
-    let core = match started {
+    let mut core = match started {
         Ok(v) => {
             let _ = ready.send(Ok(()));
             v
         }
         Err(e) => {
-            callbacks::clear();
+            // The core, if it loaded, was unloaded with the closure: the slot is free.
+            callbacks.release();
             let _ = ready.send(Err(e));
             // Nothing was loaded: nothing to write.
             return Ok(());
@@ -612,6 +642,8 @@ fn emu_thread(
         }
     };
 
+    // A timing set while loading is already in `av_info` (read after `retro_load_game`).
+    let _ = callbacks.take_av_change();
     let av = core.av_info;
     {
         let mut stats = shared.stats.lock();
@@ -633,7 +665,7 @@ fn emu_thread(
         height: av.geometry.base_height,
     });
 
-    let base_fps = if av.timing.fps > 0.0 {
+    let mut base_fps = if av.timing.fps > 0.0 {
         av.timing.fps
     } else {
         60.0
@@ -711,7 +743,7 @@ fn emu_thread(
                     log::info!("pacing: speed set to {s:?}");
                     speed = s;
                     meter = SpeedMeter::new(base_fps, Instant::now());
-                    callbacks::set_audio_speed(audio_speed(s));
+                    callbacks.set_audio_speed(audio_speed(s));
                     if !s.is_normal() && fast_audio == FastAudio::Mute {
                         shared.audio.lock().samples.clear();
                     }
@@ -794,20 +826,20 @@ fn emu_thread(
                         }
                     });
                 }
-                Command::SetCoreOption { key, value } => callbacks::set_core_option(key, value),
+                Command::SetCoreOption { key, value } => callbacks.set_core_option(key, value),
                 Command::Reset => unsafe { (core.reset)() },
                 Command::Rewind(on) => {
                     if on != rewinding {
                         rewinding = on;
                         // Silence while going back.
-                        callbacks::set_audio_enabled(!on);
+                        callbacks.set_audio_enabled(!on);
                         shared.audio.lock().samples.clear();
                         shared.stats.lock().rewinding = on;
                     }
                 }
                 Command::SetFastAudio(policy) => {
                     fast_audio = policy;
-                    callbacks::set_fast_audio(policy);
+                    callbacks.set_fast_audio(policy);
                 }
                 Command::SetRewindLength(seconds) => {
                     rewind.set_seconds(seconds);
@@ -847,6 +879,8 @@ fn emu_thread(
             continue;
         }
 
+        // The input this frame reads (the core takes it again at its own `input_poll`).
+        callbacks.refresh_input();
         if rewinding {
             // One state back, then one frame run to show it. With nothing left the game
             // stays on its picture (the frame count still moves: the thread is alive).
@@ -867,6 +901,20 @@ fn emu_thread(
             (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
         }
 
+        // The core changed its timing (`SET_SYSTEM_AV_INFO`, e.g. a mode switch): pacing, the
+        // speed meter and rewind follow it from the next frame.
+        if let Some(av) = callbacks.take_av_change() {
+            core.av_info = av;
+            if let Some(new_fps) = changed_fps(base_fps, av.timing.fps) {
+                log::info!("pacing: the core changed its rate from {base_fps:.4} to {new_fps:.4}");
+                base_fps = new_fps;
+                meter = SpeedMeter::new(base_fps, Instant::now());
+                rewind.set_fps(base_fps);
+                next_frame = Instant::now();
+                fps.restart(next_frame);
+            }
+        }
+
         // Auto quick save every `saves.autoq`, only while the game runs.
         if let Some(every) = opts.autosave_every {
             if last_autosave.elapsed() >= every {
@@ -879,7 +927,7 @@ fn emu_thread(
         // At Max the audio follows the measured speed.
         if speed == Speed::Max {
             if let Some(s) = meter.frame(Instant::now()) {
-                callbacks::set_audio_speed(Some(s));
+                callbacks.set_audio_speed(Some(s));
             }
         }
 
@@ -929,14 +977,20 @@ fn emu_thread(
         // `retro_deinit`. The core stays loaded until the process ends.
         log::warn!("a let-go emulation thread ended: nothing written, the core left loaded");
         std::mem::forget(core);
-        callbacks::clear();
+        callbacks.retire();
         return Ok(());
     }
     let written = write_on_exit(&core, &writer, opts.autosave_on_exit, save_auto);
     drop(core);
-    callbacks::clear();
+    callbacks.release();
     let _ = events.send(Event::Stopped);
     written
+}
+
+/// The new frame rate when the core set a usable one that differs from `base` (a zero or broken
+/// rate keeps the one in use).
+fn changed_fps(base: f64, new: f64) -> Option<f64> {
+    (new.is_finite() && new > 0.0 && (new - base).abs() > 1e-9).then_some(new)
 }
 
 /// The speed the audio is made at: the factor, or None at Max until it is measured.
@@ -1084,6 +1138,15 @@ mod tests {
         run(&mut stale, t0, 30, period);
         let after = run(&mut stale, resumed, 1, period);
         assert!(after.len() == 1 && after[0] < 2.0, "{after:?}");
+    }
+
+    #[test]
+    fn a_new_timing_from_the_core_changes_the_rate_only_when_usable() {
+        use super::changed_fps;
+        assert_eq!(changed_fps(59.7275, 30.0), Some(30.0));
+        assert_eq!(changed_fps(59.7275, 59.7275), None);
+        assert_eq!(changed_fps(59.7275, 0.0), None);
+        assert_eq!(changed_fps(59.7275, f64::NAN), None);
     }
 
     #[test]
@@ -1443,6 +1506,7 @@ mod tests {
                 split: crate::screens::Split::Whole,
                 username: None,
                 fast_audio: crate::speed_audio::FastAudio::Mute,
+                video: Default::default(),
             },
             events,
         );

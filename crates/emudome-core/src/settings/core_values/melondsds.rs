@@ -17,7 +17,7 @@ use crate::settings::ConsoleId;
 const NDS: &[ConsoleId] = &[ConsoleId::Nds];
 
 pub(super) static TABLE: CoreTable = CoreTable {
-    core: crate::nds::CORE,
+    core: crate::core_profile::CoreId::MelonDsDs,
     rules: &[
         // ---- Console options, Nintendo DS ----
         // DSi mode needs the DS and DSi system files, which have no built-in replacement:

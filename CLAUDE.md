@@ -157,6 +157,12 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          compiled, and `Reader` (a value or the catalogue's default),
                          core_values.rs settings → core options, one table per core in core_values/<core>.rs;
                          pure, unit-tested)
+                         video_sink.rs (`VideoSink`: where frames go, `VideoFrame::{Cpu, Gpu}`; today
+                         RGBA8 into `Shared::frame`), hw_render/ (`HwRenderHandler`: SET_HW_RENDER and
+                         the calls around it; today `SoftwareOnly` refuses them),
+                         core_profile.rs (`CoreId` and one `CoreProfile` per core: consoles, forced
+                         options, screen split, HW-render needs, save model, settings it cannot honour;
+                         nothing matches a core by its name string)
                          contract.rs (the Rust ↔ TypeScript contract: ts-rs types and fixtures generated
                          into app/src/generated/, the staleness check; see the section of that name)
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
@@ -181,7 +187,10 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
 app/src-tauri            Tauri shell: window.rs (the app's names for emudome_platform::create_window),
-                         video.rs (wgpu), audio.rs (cpal), gamepad.rs (SDL3), commands,
+                         video.rs (wgpu; `GpuService` owns instance / adapter / device for the whole run,
+                         surfaces attach and detach on it), gpu_interop.rs (the one module under wgpu:
+                         wgpu-hal / ash Vulkan interop for hardware rendering, behind `VulkanInterop`),
+                         audio.rs (cpal), gamepad.rs (SDL3), commands,
                          settings.rs (settings commands, file locations, settings://changed),
                          effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
                          emu://effect-error), video.rs runs them through librashader (native path only)
@@ -208,7 +217,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 ```
 
 - The interface never touches the core: it calls the Tauri commands, which send `Command` to the `Session`.
-  The core runs on its own thread; the libretro callbacks use a `thread_local` context.
+  The core runs on its own thread. The libretro callbacks find their context through the loaded core's slot
+  (`callbacks.rs`: 8 static slots, one callback set per slot), so calls from a core's own threads reach it and
+  a core let go keeps its slot, empty, forever. A `need_fullpath` core (Azahar) gets the game's path only: the
+  host never reads its file (`GameContent`, `core.rs`).
 - Ending a game: every way out (closing the game, opening another, closing the window, quitting) goes through
   `close_current` (`app/src-tauri/src/lib.rs`), which waits up to `CLOSE_TIMEOUT` (10 s) for the thread's exit
   writes: the `.sav` first, then the auto quick save with `saves.autoexit`. Android going to the background
@@ -217,7 +229,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
 - **Video, two paths:**
   - **Native**: wgpu draws on the window, under a transparent child webview ("ui").
-    Needs Tauri's `unstable` feature (`window.add_child`).
+    Needs Tauri's `unstable` feature (`window.add_child`). The device is made with the first surface and
+    kept: a detach or a new surface replaces the surface only (a new device only if the GPU cannot present
+    to the new surface).
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
 - tauri, wgpu and librashader are pinned to exact versions (`=x.y.z`, `app/src-tauri/Cargo.toml`, tauri also in
@@ -238,7 +252,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   every keyboard button; the page ends the fast forward and the held rewind of its keys (`useGameKeys.ts`).
   Controllers go through an SDL3 thread
   (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
-  count as L2/R2 and d-pad.
+  count as L2/R2 and d-pad. Both sticks also reach the core as `RETRO_DEVICE_ANALOG` while the game has the
+  input (`Routed::game_has_input`). The core reads a frozen `input::Snapshot`, taken before each frame and at
+  its `input_poll`, never the live state mid-frame.
 - **Controller routing lives in Rust**, as a pure function: `emudome_core::hotkeys::Router::step`
   (previous state, buttons, time → game mask + actions), unit-tested without SDL. Three modes:
   - in game: buttons go to the core, except the modifier L3, which never does;
@@ -540,9 +556,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 ## Known gaps of the prototype (intentional, for later)
 
 - Core options: every `consoles.*` / `cores.*` entry with a real mGBA option is mapped (`settings/core_values/mgba.rs`);
-  melonDS DS and Azahar have no table yet (Azahar only gets `FORCED_CORE_OPTIONS`, `app/src-tauri/src/lib.rs`).
-  `perf.frameskip` is not mapped. The interface does not show `emu://core-restart` yet.
-- 49 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+  melonDS DS has a table (`core_values/melondsds.rs`); Azahar has none yet (only its forced options,
+  `core_profile.rs`). `perf.frameskip` drives mGBA only; on NDS / 3DS its row is disabled with the reason
+  (`CoreProfile::unsupported_settings`). The interface does not show `emu://core-restart` yet.
+- 48 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
@@ -555,6 +572,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
   (`saves/nds/<hex>/melonDS DS/`); an existing shared `saves/melonDS DS/` is left untouched and not read any more.
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
+- Core host (#78): hardware rendering is refused (`hw_render::SoftwareOnly`; the seams `HwRenderHandler`,
+  `VideoSink`, `gpu_interop.rs` are in place); a core's log lines (`GET_LOG_INTERFACE`) are logged as their format
+  string without the arguments (variadic C, no C shim); `GET_LANGUAGE` always answers English; `SET_MESSAGE` is
+  logged, not shown; no sensors (plan in `docs/feasibility-hw-render.md`).
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 
 ## Handoff with Cowork

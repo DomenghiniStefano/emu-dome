@@ -9,7 +9,7 @@ const GBA: &[ConsoleId] = &[ConsoleId::Gba];
 const ALL: &[ConsoleId] = &[ConsoleId::Gb, ConsoleId::Gbc, ConsoleId::Gba];
 
 pub(super) static TABLE: CoreTable = CoreTable {
-    core: "mgba",
+    core: crate::core_profile::CoreId::Mgba,
     rules: &[
         // ---- Console options, Game Boy / Game Boy Color ----
         Rule {
@@ -102,6 +102,58 @@ pub(super) static TABLE: CoreTable = CoreTable {
                 option: "mgba_solar_sensor_level",
                 max: 10,
             },
+            apply: Apply::Live,
+        },
+        // ---- Advanced › Performance ----
+        // «auto» is mGBA's own auto frameskip, which skips only when the frontend reports its
+        // audio buffer (`SET_AUDIO_BUFFER_STATUS_CALLBACK`): EmuDome does not yet, so «auto»
+        // skips nothing today (measured headless: 60 frames drawn of 60). «N»: draw one frame,
+        // skip N (fixed interval; measured: 1 → 30 of 60). Taken while the game runs (measured
+        // with `headless --live`), though its label does not say «(Restart)» either way.
+        Rule {
+            setting: "perf.frameskip",
+            consoles: ALL,
+            map: Map::Choice(&[
+                (
+                    "auto",
+                    &[("mgba_frameskip", "auto"), ("mgba_frameskip_interval", "0")],
+                ),
+                (
+                    "never",
+                    &[
+                        ("mgba_frameskip", "disabled"),
+                        ("mgba_frameskip_interval", "0"),
+                    ],
+                ),
+                (
+                    "1",
+                    &[
+                        ("mgba_frameskip", "fixed_interval"),
+                        ("mgba_frameskip_interval", "1"),
+                    ],
+                ),
+                (
+                    "2",
+                    &[
+                        ("mgba_frameskip", "fixed_interval"),
+                        ("mgba_frameskip_interval", "2"),
+                    ],
+                ),
+                (
+                    "3",
+                    &[
+                        ("mgba_frameskip", "fixed_interval"),
+                        ("mgba_frameskip_interval", "3"),
+                    ],
+                ),
+                (
+                    "4",
+                    &[
+                        ("mgba_frameskip", "fixed_interval"),
+                        ("mgba_frameskip_interval", "4"),
+                    ],
+                ),
+            ]),
             apply: Apply::Live,
         },
         // ---- Advanced › mGBA ----

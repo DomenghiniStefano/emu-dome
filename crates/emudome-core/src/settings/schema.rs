@@ -478,6 +478,9 @@ pub struct EntryDto {
     pub show_if: Option<ShowIf>,
     /// Works only on the native (Accelerated) video path.
     pub needs_native_video: bool,
+    /// Consoles whose core has no equivalent: there the interface shows the row disabled with
+    /// the reason (`crate::core_profile::unsupported_consoles`).
+    pub unsupported_consoles: Vec<super::ConsoleId>,
     /// Something reads it; otherwise shown disabled with «arrives in a future update».
     pub wired: bool,
 }
@@ -520,6 +523,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 most_used: e.most_used,
                 show_if: e.show_if,
                 needs_native_video: e.needs_native_video,
+                unsupported_consoles: crate::core_profile::unsupported_consoles(e.key),
                 wired: e.wired,
             })
             .collect(),

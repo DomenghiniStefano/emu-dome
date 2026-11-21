@@ -4,6 +4,13 @@
 //! The surface is either Tauri's window (desktop) or one the system hands over later
 //! and may take back (Android's `SurfaceView`): [`Renderer::attach`] / [`Renderer::detach`].
 //!
+//! The GPU outlives the surfaces ([`GpuService`]): instance, adapter, device and queue are made
+//! with the first surface and kept for the whole run, so a detach (Android going to the
+//! background) or a new surface never destroys the device a running core may render with
+//! (hardware rendering, `docs/feasibility-hw-render.md`). Only a surface the current GPU cannot
+//! present to makes a new device. The painter (pipelines, game texture, effect chain) is kept
+//! too while the surface format stays the same.
+//!
 //! Screen effects ([`Renderer::set_effect`]): the game texture goes through a librashader
 //! filter chain into a texture the size of the game's rectangle, then one pass of ours mixes it
 //! over the plain image (`fx.fxint`) and brightens it (`fx.fxbright`) on the surface.
@@ -143,20 +150,34 @@ impl Renderer {
         height: u32,
         settings: SurfaceSettings,
     ) -> Result<Self> {
-        let gpu = Gpu::new(window.into(), width, height, settings)?;
-        Self::start(Some(gpu), settings)
+        let mut service = GpuService::new();
+        let mut painter = None;
+        let gpu = Gpu::new(
+            &mut service,
+            &mut painter,
+            window.into(),
+            width,
+            height,
+            settings,
+        )?;
+        Self::start(service, Some(gpu), painter, settings)
     }
 
     /// Starts with no surface: it arrives with [`Self::attach`].
     pub fn spawn_detached(settings: SurfaceSettings) -> Result<Self> {
-        Self::start(None, settings)
+        Self::start(GpuService::new(), None, None, settings)
     }
 
-    fn start(gpu: Option<Gpu>, settings: SurfaceSettings) -> Result<Self> {
+    fn start(
+        service: GpuService,
+        gpu: Option<Gpu>,
+        painter: Option<Painter>,
+        settings: SurfaceSettings,
+    ) -> Result<Self> {
         let metrics = SharedVideoMetrics::default();
         metrics.lock().gpu = gpu.as_ref().map(|g| g.info.clone());
         let (tx, rx) = mpsc::channel();
-        let video = Video::new(gpu, settings, metrics.clone());
+        let video = Video::new(service, gpu, painter, settings, metrics.clone());
         std::thread::Builder::new()
             .name("emudome-video".into())
             .spawn(move || video.run(rx))?;
@@ -214,9 +235,13 @@ impl Renderer {
 /// How often the video thread logs the frame rates (to measure FPS from the logs too).
 const FPS_LOG_EVERY: Duration = Duration::from_secs(10);
 
-/// The video thread: the GPU (while there is a surface) and the game it shows.
+/// The video thread: the GPU, the surface (while there is one) and the game it shows.
 struct Video {
+    service: GpuService,
+    /// The surface drawn on; `None` while detached.
     gpu: Option<Gpu>,
+    /// Draws the game; kept across surfaces of the same format.
+    painter: Option<Painter>,
     settings: SurfaceSettings,
     metrics: SharedVideoMetrics,
     source: Option<Arc<Shared>>,
@@ -230,9 +255,17 @@ struct Video {
 }
 
 impl Video {
-    fn new(gpu: Option<Gpu>, settings: SurfaceSettings, metrics: SharedVideoMetrics) -> Self {
+    fn new(
+        service: GpuService,
+        gpu: Option<Gpu>,
+        painter: Option<Painter>,
+        settings: SurfaceSettings,
+        metrics: SharedVideoMetrics,
+    ) -> Self {
         Self {
+            service,
             gpu,
+            painter,
             settings,
             metrics,
             source: None,
@@ -259,18 +292,26 @@ impl Video {
                 match m {
                     Msg::Resize(w, h) => {
                         if let Some(gpu) = &mut self.gpu {
-                            gpu.resize(w, h);
+                            gpu.resize(&self.service, w, h);
                         }
                     }
                     Msg::Source(s) => {
                         self.source = s;
-                        if let Some(gpu) = &mut self.gpu {
-                            gpu.painter.reset_game();
+                        if let Some(painter) = &mut self.painter {
+                            painter.reset_game();
                         }
                     }
                     Msg::Attach(target, w, h) => {
+                        // The old surface goes first; the GPU and the painter stay.
                         self.gpu = None;
-                        match Gpu::new(target, w, h, self.settings) {
+                        match Gpu::new(
+                            &mut self.service,
+                            &mut self.painter,
+                            target,
+                            w,
+                            h,
+                            self.settings,
+                        ) {
                             Ok(gpu) => {
                                 let mut m = self.metrics.lock();
                                 m.gpu = Some(gpu.info.clone());
@@ -284,6 +325,7 @@ impl Video {
                         }
                     }
                     Msg::Detach(ack) => {
+                        // Only the surface: the device lives on for the next one.
                         self.gpu = None;
                         let _ = ack.send(());
                     }
@@ -292,27 +334,27 @@ impl Video {
                     Msg::EffectListener(listener) => self.effect_listener = Some(listener),
                 }
             }
-            if let Some(gpu) = &mut self.gpu {
-                gpu.painter.sync_effect(self.effect.as_ref());
-                if let Some((preset, detail)) = gpu.painter.effect_error.take() {
+            if let (Some(gpu), Some(painter)) = (&mut self.gpu, &mut self.painter) {
+                painter.sync_effect(self.effect.as_ref());
+                if let Some((preset, detail)) = painter.effect_error.take() {
                     log::error!("screen effect {}: {detail}", preset.display());
                     if let Some(listener) = &self.effect_listener {
                         listener(&preset, detail);
                     }
                 }
-                gpu.painter.upload_frame(self.source.as_deref());
-                match gpu.draw(self.inset) {
+                painter.upload_frame(self.source.as_deref());
+                match gpu.draw(&self.service, painter, self.inset) {
                     Ok(()) => {
                         self.presented += 1;
                         let at = Instant::now();
                         let mut m = self.metrics.lock();
-                        if gpu.painter.game.is_some() && m.first_game_present.is_none() {
+                        if painter.game.is_some() && m.first_game_present.is_none() {
                             m.first_game_present = Some(at);
                         }
                         if let Some(presents) = &mut m.presents {
                             presents.push(Present {
                                 at,
-                                seq: gpu.painter.last_seq,
+                                seq: painter.last_seq,
                             });
                         }
                     }
@@ -424,12 +466,83 @@ struct GameTexture {
     bind_group: wgpu::BindGroup,
 }
 
-/// The surface the game is presented on, and what draws on it.
+/// The GPU for the whole run: made with the first surface (an adapter that can present to it),
+/// kept when surfaces come and go. The one owner of the device; the painter holds clones.
+struct GpuService {
+    instance: wgpu::Instance,
+    device: Option<ServiceDevice>,
+}
+
+struct ServiceDevice {
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+}
+
+impl GpuService {
+    fn new() -> Self {
+        // No display handle: Windows and Android do not need it, and on Linux Tauri's
+        // one does not match the surface's (MismatchingDisplayHandle).
+        // The environment (WGPU_BACKEND, WGPU_DX12_PRESENTATION_SYSTEM...) picks the backend.
+        Self {
+            instance: wgpu::Instance::new(
+                wgpu::InstanceDescriptor::new_without_display_handle_from_env(),
+            ),
+            device: None,
+        }
+    }
+
+    /// A surface for `target`, and whether the device was (re)made for it: on the first
+    /// surface, or when the GPU in use cannot present to this one.
+    fn surface(
+        &mut self,
+        target: wgpu::SurfaceTarget<'static>,
+    ) -> Result<(wgpu::Surface<'static>, bool)> {
+        let surface = self
+            .instance
+            .create_surface(target)
+            .map_err(|e| anyhow::anyhow!("wgpu surface not created: {e:?}"))?;
+        if let Some(d) = &self.device {
+            if d.adapter.is_surface_supported(&surface) {
+                return Ok((surface, false));
+            }
+            log::warn!("native video: the GPU in use cannot present to the new surface");
+        }
+        let adapter =
+            pollster::block_on(self.instance.request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+                apply_limit_buckets: false,
+            }))
+            .context("no compatible GPU")?;
+        log::info!("GPU: {:?}", adapter.get_info());
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+                label: Some("emudome"),
+                // Mobile GPUs do not reach the desktop defaults.
+                required_limits:
+                    wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+                ..Default::default()
+            }))?;
+        self.device = Some(ServiceDevice {
+            adapter,
+            device,
+            queue,
+        });
+        Ok((surface, true))
+    }
+
+    fn device(&self) -> Option<&ServiceDevice> {
+        self.device.as_ref()
+    }
+}
+
+/// A surface the game is presented on (the GPU is [`GpuService`]'s).
 struct Gpu {
     surface: wgpu::Surface<'static>,
     config: wgpu::SurfaceConfiguration,
     info: GpuInfo,
-    painter: Painter,
 }
 
 /// Draws the game, with its effect, on any texture view of the surface's format: the surface
@@ -437,6 +550,8 @@ struct Gpu {
 struct Painter {
     device: wgpu::Device,
     queue: wgpu::Queue,
+    /// The format it draws in (the surface's): another format needs another painter.
+    format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
     /// The pass that mixes the effect over the plain image.
@@ -460,39 +575,28 @@ struct Painter {
 }
 
 impl Gpu {
+    /// Attaches `target`: a surface on the service's GPU (made now if there is none or it cannot
+    /// present here), and a painter for its format (`painter` kept when the format is the same
+    /// and the device was not remade).
     fn new(
+        service: &mut GpuService,
+        painter: &mut Option<Painter>,
         target: wgpu::SurfaceTarget<'static>,
         width: u32,
         height: u32,
         settings: SurfaceSettings,
     ) -> Result<Self> {
-        // No display handle: Windows and Android do not need it, and on Linux Tauri's
-        // one does not match the surface's (MismatchingDisplayHandle).
-        // The environment (WGPU_BACKEND, WGPU_DX12_PRESENTATION_SYSTEM...) picks the backend.
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        let surface = instance
-            .create_surface(target)
-            .map_err(|e| anyhow::anyhow!("wgpu surface not created: {e:?}"))?;
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface: Some(&surface),
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        }))
-        .context("no compatible GPU")?;
+        let (surface, remade) = service.surface(target)?;
+        if remade {
+            *painter = None;
+        }
+        let d = service
+            .device()
+            .context("no GPU device after making the surface")?;
+        let (adapter, device, queue) = (&d.adapter, &d.device, &d.queue);
         let adapter_info = adapter.get_info();
-        log::info!("GPU: {adapter_info:?}");
-        let (device, queue) =
-            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some("emudome"),
-                // Mobile GPUs do not reach the desktop defaults.
-                required_limits:
-                    wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
-                ..Default::default()
-            }))?;
 
-        let caps = surface.get_capabilities(&adapter);
+        let caps = surface.get_capabilities(adapter);
         let format = caps
             .formats
             .iter()
@@ -526,7 +630,10 @@ impl Gpu {
             color_space: wgpu::SurfaceColorSpace::Auto,
             view_formats: vec![],
         };
-        surface.configure(&device, &config);
+        surface.configure(device, &config);
+        if painter.as_ref().map(|p| p.format) != Some(format) {
+            *painter = Some(Painter::new(device.clone(), queue.clone(), format));
+        }
         let info = GpuInfo {
             adapter: adapter_info.name.clone(),
             backend: format!("{:?}", adapter_info.backend),
@@ -552,20 +659,28 @@ impl Gpu {
             surface,
             config,
             info,
-            painter: Painter::new(device, queue, format),
         })
     }
 
-    fn resize(&mut self, width: u32, height: u32) {
-        if width > 0 && height > 0 {
+    fn resize(&mut self, service: &GpuService, width: u32, height: u32) {
+        if let (true, Some(d)) = (width > 0 && height > 0, service.device()) {
             self.config.width = width;
             self.config.height = height;
-            self.surface.configure(&self.painter.device, &self.config);
+            self.surface.configure(&d.device, &self.config);
         }
     }
 
-    /// Draws and presents; when no frame was presented, the kind of surface error.
-    fn draw(&mut self, inset: f32) -> Result<(), &'static str> {
+    /// Draws and presents with `painter`; when no frame was presented, the kind of surface
+    /// error.
+    fn draw(
+        &mut self,
+        service: &GpuService,
+        painter: &mut Painter,
+        inset: f32,
+    ) -> Result<(), &'static str> {
+        let Some(d) = service.device() else {
+            return Err("no device");
+        };
         let skipped = |kind: &'static str| {
             log::debug!("frame skipped: {kind}");
             std::thread::sleep(Duration::from_millis(8));
@@ -575,11 +690,11 @@ impl Gpu {
             wgpu::CurrentSurfaceTexture::Success(t)
             | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
             wgpu::CurrentSurfaceTexture::Outdated => {
-                self.surface.configure(&self.painter.device, &self.config);
+                self.surface.configure(&d.device, &self.config);
                 return Err("outdated");
             }
             wgpu::CurrentSurfaceTexture::Lost => {
-                self.surface.configure(&self.painter.device, &self.config);
+                self.surface.configure(&d.device, &self.config);
                 return Err("lost");
             }
             wgpu::CurrentSurfaceTexture::Timeout => return skipped("timeout"),
@@ -587,9 +702,8 @@ impl Gpu {
             wgpu::CurrentSurfaceTexture::Validation => return skipped("validation"),
         };
         let view = output.texture.create_view(&Default::default());
-        self.painter
-            .paint(&view, (self.config.width, self.config.height), inset);
-        self.painter.queue.present(output);
+        painter.paint(&view, (self.config.width, self.config.height), inset);
+        d.queue.present(output);
         Ok(())
     }
 }
@@ -742,6 +856,7 @@ impl Painter {
         Self {
             device,
             queue,
+            format,
             pipeline,
             layout,
             effect_pipeline,

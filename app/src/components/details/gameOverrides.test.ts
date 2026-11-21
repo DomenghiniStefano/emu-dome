@@ -26,6 +26,7 @@ const entry = (key: SettingKey, kind: SettingKind, phase = 0): SettingEntry => (
   mostUsed: false,
   needsNativeVideo: false,
   wired: true,
+  unsupportedConsoles: [],
 })
 
 const filter = entry('video.filter', {

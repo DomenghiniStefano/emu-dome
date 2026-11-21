@@ -175,6 +175,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           :level="effective"
           :level-name="levelName"
           :scoped="scopeBar.scoped.value"
+          :console="'console' in scope ? scope.console : null"
           lock-note
           @set="v => store.set(e.key, v)"
           @reset="store.reset(e.key)"

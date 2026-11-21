@@ -13,7 +13,14 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Undo2 } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import type { SettingEntry, SettingLevel, SettingRow, SettingsSchema, SettingValue } from '@/emu'
+import type {
+  ConsoleId,
+  SettingEntry,
+  SettingLevel,
+  SettingRow,
+  SettingsSchema,
+  SettingValue,
+} from '@/emu'
 import { errorText } from '@/i18n/labels'
 import { FILE_PICKERS, msg } from '@/lib/settingsModel'
 import SettingSelect from './SettingSelect.vue'
@@ -39,6 +46,8 @@ const props = defineProps<{
   levelName: (level: SettingLevel) => string
   /** The page offers more than one level (scope bar shown). */
   scoped: boolean
+  /** The console of the scope being edited (none at «Tutti i giochi»). */
+  console?: ConsoleId | null
   /** Quick menu: no per-row reset or «Come in …» (the bar at the bottom handles the changes). */
   compact?: boolean
   /** Shown instead of the description (T01 «Usate più spesso»: the page the setting is on). */
