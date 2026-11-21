@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isInterfaceTarget, pointerArgs } from './screenTouch'
+import { isInterfaceTarget, pointerArgs, viewArea } from './screenTouch'
 
 const view = { innerWidth: 1280, innerHeight: 720, devicePixelRatio: 1.5 }
 
@@ -24,6 +24,13 @@ describe('pointerArgs', () => {
     expect(pointerArgs(0, 0, view, 'webview', 216).area.inset).toBeCloseTo(0.3)
     expect(pointerArgs(0, 0, view, 'webview', 5000).area.inset).toBe(0.9)
     expect(pointerArgs(0, 0, { ...view, innerHeight: 0 }, 'webview', 10).area.inset).toBe(0)
+  })
+})
+
+describe('viewArea', () => {
+  it('is the area the canvas asks its placements in and the touch is measured against', () => {
+    expect(viewArea(view, 1, 216)).toEqual(pointerArgs(0, 0, view, 'webview', 216).area)
+    expect(viewArea(view, 1.5, 0)).toEqual(pointerArgs(0, 0, view, 'native', 0).area)
   })
 })
 

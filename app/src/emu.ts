@@ -36,6 +36,10 @@ import type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
 import type { PadInfo } from '@/generated/app/PadInfo'
 import type { PadState } from '@/generated/app/PadState'
 import type { PointerArea } from '@/generated/app/PointerArea'
+import type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
+import type { CustomLayout } from '@/generated/CustomLayout'
+import type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
+import type { ScreenStatus } from '@/generated/ScreenStatus'
 import type { SaveExport } from '@/generated/app/SaveExport'
 import type { SaveMatch } from '@/generated/app/SaveMatch'
 import type { SavesMigration } from '@/generated/app/SavesMigration'
@@ -93,6 +97,16 @@ export type { SettingValue } from '@/generated/SettingValue'
 export type { SliderUnit } from '@/generated/SliderUnit'
 export type { Speed } from '@/generated/Speed'
 export type { StateLoadBlock } from '@/generated/StateLoadBlock'
+export type { CustomLayout } from '@/generated/CustomLayout'
+export type { CustomScreen } from '@/generated/CustomScreen'
+export type { PxRect } from '@/generated/PxRect'
+export type { ScreenId } from '@/generated/ScreenId'
+export type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
+export type { ScreenPlacement } from '@/generated/ScreenPlacement'
+export type { ScreenRect } from '@/generated/ScreenRect'
+export type { ScreenRotation } from '@/generated/ScreenRotation'
+export type { ScreenStatus } from '@/generated/ScreenStatus'
+export type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
 export type { BiosRow } from '@/generated/app/BiosRow'
 export type { ComboRow } from '@/generated/app/ComboRow'
 export type { ControlsBindings } from '@/generated/app/ControlsBindings'
@@ -199,6 +213,32 @@ export const emu = {
   pointer: (x: number, y: number, pressed: boolean, area: PointerArea) =>
     invoke<void>('pointer', { x, y, pressed, area }),
   stats: () => invoke<Stats>('stats'),
+  /**
+   * NDS / 3DS screens (Trello #28): the open game's layout, swap and lid. Every change (from
+   * these, L3 + Y / R3 / Select, or a `screens.*` setting) arrives on `onChanged`.
+   */
+  screens: {
+    /** Now (`dualScreen` false without a two-screen game). */
+    status: () => invoke<ScreenStatus>('screens_status'),
+    /** The next layout of `screens.cycle` (like L3 + R3). */
+    nextLayout: () => invoke<ScreenStatus>('screens_next_layout'),
+    /** Shows `layout`, in the cycle or not (`custom` only once one is saved). */
+    setLayout: (layout: ScreenLayoutId) => invoke<ScreenStatus>('screens_set_layout', { layout }),
+    /** «Scambia schermi»: a toggle (L3 + Y follows `screens.swap`). */
+    swap: () => invoke<ScreenStatus>('screens_swap'),
+    /** «Chiudi il coperchio»: closes or opens it (`lidUnsupported` where the core cannot). */
+    toggleLid: () => invoke<ScreenStatus>('screens_toggle_lid'),
+    /** The webview canvas: where each screen of the current frame goes in `area` (CSS px). */
+    placements: (area: PointerArea) => invoke<ScreenPlacements>('screens_placements', { area }),
+    /** The custom layout as `scope` resolves it (empty: none). */
+    custom: (scope: SettingsScope) => invoke<CustomLayout>('screens_custom', { scope }),
+    /** Saves it at a console / game scope, or previews it «in prova» at the session scope;
+     * removing it is `settings.reset('screens.custom', scope)`. */
+    setCustom: (scope: SettingsScope, layout: CustomLayout) =>
+      invoke<void>('screens_set_custom', { scope, layout }),
+    onChanged: (cb: (e: ScreenStatus) => void): Promise<UnlistenFn> =>
+      listen<ScreenStatus>('emu://screens', e => cb(e.payload)),
+  },
   /** Bench mode (`EMUDOME_BENCH`): the canvas reports its rounds with `benchFrames`. */
   benchActive: () => invoke<boolean>('bench_active'),
   benchFrames: (frames: BenchFrame[]) => invoke<void>('bench_frames', { frames }),

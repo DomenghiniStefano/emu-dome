@@ -187,6 +187,9 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'text':
     case 'bindings':
       return false
+    // Edited in the C09 screen editor, which the interface does not have yet (Trello #28).
+    case 'screenLayout':
+      return true
   }
 }
 

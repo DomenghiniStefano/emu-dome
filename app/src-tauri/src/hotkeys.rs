@@ -254,8 +254,10 @@ impl Runner {
             Hotkey::Screenshot => {
                 self.send(Command::Screenshot);
             }
-            // Reserved rows (`Hotkey::status`): the routers never fire them.
-            Hotkey::SwapScreens | Hotkey::NextLayout | Hotkey::Lid => {}
+            // Two-screen games only (`Hotkey::status`): nothing with a one-screen game.
+            Hotkey::SwapScreens => crate::screens::swap_hotkey(&self.app, true),
+            Hotkey::NextLayout => crate::screens::next_layout_hotkey(&self.app),
+            Hotkey::Lid => crate::screens::lid_hotkey(&self.app),
         }
     }
 
@@ -274,6 +276,8 @@ impl Runner {
                     self.send(Command::Rewind(false));
                 }
             }
+            // `screens.swap` = hold: the screens go back (a toggle ignores it).
+            Hotkey::SwapScreens => crate::screens::swap_hotkey(&self.app, false),
             // Press-only hotkeys have nothing to undo.
             Hotkey::ToggleMenu
             | Hotkey::SaveState
@@ -285,7 +289,6 @@ impl Runner {
             | Hotkey::FpsOverlay
             | Hotkey::Pause
             | Hotkey::Screenshot
-            | Hotkey::SwapScreens
             | Hotkey::NextLayout
             | Hotkey::Lid => {}
         }
