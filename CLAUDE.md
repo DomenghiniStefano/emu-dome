@@ -113,6 +113,7 @@ cargo clippy --target aarch64-linux-android -p libretro-sys -p emudome-core -p e
                                               # Android without the NDK (the whole workspace needs it: glslang-sys)
 cargo fmt --all
 cargo run -p emudome-core --example headless -- <core> tools/test-rom/emudome-test.gba   # windowless core host
+                                              # (--release ... --timing 20 --rewind 30: per-frame work p50/p99/max)
 cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe (app/src-tauri/examples)
 ```
 
@@ -146,7 +147,7 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
 ```
 crates/libretro-sys      libretro API types and constants (added as they are needed)
 crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulation thread),
-                         Command/Event, Shared (RGBA frame, audio queue, input, stats), speed, states, .sav,
+                         Command/Event, Shared (RGBA frame, audio ring, input, stats), speed, states, .sav,
                          ErrorCode (errors for the UI as code + params),
                          atomic.rs (`write_atomic`: the one way user data is written: temp file
                          `.<name>.<pid>-<n>.emudome-tmp`, fsync, rename, folder fsync where allowed),
@@ -198,6 +199,7 @@ app/src-tauri            Tauri shell: window.rs (the app's names for emudome_pla
                          `<app local data>/system/<core>/` for cores with a BIOS table, emu://bios-fallback)
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
+                         health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
@@ -227,23 +229,38 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`onPause`) sends `Command::Flush` (the same writes, the game keeps running). A thread that does not stop in
   time, or is abandoned after E11, is let go: the session is dead (no file, no event, no `retro_unload_game` /
   `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
+- Writes while the game runs (quick saves, the periodic auto quick save and `.sav` flush, «Annulla» of a save,
+  screenshots) go to the session's I/O worker (`session/io.rs`, thread `emudome-io`): the emulation thread only
+  serializes and copies the bytes; the worker reads what the slot held, writes atomically, encodes the PNG and sends
+  the event. The emulation thread waits for it before reading a slot (load), before `Flush` and at the end of the
+  session, whose exit writes stay synchronous. Rewind serializes into reused buffers and encodes its differences on
+  its own thread (`emudome-rewind`); stepping back turns the newest state into the older one in place.
 - **Video, two paths:**
   - **Native**: wgpu draws on the window, under a transparent child webview ("ui").
     Needs Tauri's `unstable` feature (`window.add_child`). The device is made with the first surface and
     kept: a detach or a new surface replaces the surface only (a new device only if the GPU cannot present
-    to the new surface).
+    to the new surface). It presents only when something changed (a new frame wakes it through
+    `Shared::frame_wake`, or a message), else sleeps; a minimized window draws nothing; a failed present waits
+    8 ms. A detach waits for the GPU to finish before the surface goes (Android destroys it right after). Pacing
+    options (present-driven / audio-driven): `docs/video-pacing.md`.
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
+  - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
+    lock and swaps it in; readers (texture upload, the webview's copy, PNG thumbnails and screenshots) clone the
+    `Arc` under the lock and work after letting go. A buffer no reader holds is converted into again.
 - tauri, wgpu and librashader are pinned to exact versions (`=x.y.z`, `app/src-tauri/Cargo.toml`, tauri also in
   `emudome-platform`) and upgrade only together, as one task ending with a native-video smoke test.
 - Screen effects (`fx.*`): librashader 0.12 (its wgpu must stay our wgpu version) renders the game texture
   (`Rgba8Unorm`, the core's sRGB bytes as they are) into a texture the size of the game's rectangle; our pass mixes it
   over the plain image (`fx.fxint`, `fx.fxbright`). Rows with `needs_native_video` are disabled on Compatible (X05).
   GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
-- Audio: shared queue, linear resampling to the device's rate,
-  ±0.5% correction on the queue's fill level. Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread):
-  muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about real time reaches
-  the queue. At Max the speed is measured.
+- Audio: a lock-free SPSC ring (`emudome_core::audio::AudioRing`, rtrb) from the emulation thread to the cpal
+  callback, linear resampling to the device's rate, ±0.5% correction on the ring's fill level; the reader drops
+  what is queued beyond ~150 ms, oldest first. Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread,
+  before the push): muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about
+  real time reaches the ring. At Max the speed is measured. The real-time threads (audio callback, controllers)
+  read the open game through `CurrentShared` (an `ArcSwapOption`, no lock); the callback records its measurements
+  only in bench mode, with `try_lock`.
 - Core options: the settings' values come from `settings::core_values` (a `CoreTable` per core: setting → core
   option, `Live` or `Restart`). A change while the game runs: live options go to the core
   (`GET_VARIABLE_UPDATE`), restart ones are listed in `emu://core-restart` (`core_settings.rs`).
@@ -307,7 +324,15 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
-  `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below).
+  `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
+  `emu://health` (the whole list of `ErrorCode`s of what is not working, see below).
+- Health (Trello #79, `app/src-tauri/src/health.rs`): backend failures that change what the user gets are one
+  `ErrorCode` per part (native video fallen back `nativeVideoFallback`, surface `videoSurfaceFailed`, audio output
+  `audioUnavailable`, controllers `controllersUnavailable`, a thread that panicked `threadStopped`), set and cleared
+  by that part; each change sends the whole list on `emu://health`, the `diagnostics` command answers it. The shell
+  (`useShellEvents.ts`) toasts each code once while it lasts. The audio thread rebuilds its stream on a stream error
+  or a change of the default output (polled every 2 s when no device is forced), retrying with a growing pause
+  while none can be opened; every cpal integer and float sample format is played.
 - Closing with a game open (Trello #86): the window's X, a quit, `close_game` and opening another game go through
   one pure state machine, `emudome_core::close_flow` (requested → saving → saved → finish; timeout / failed → the
   user's «Wait» / «Close anyway»; a second request while saving is ignored, a quit turns a game close into a quit).
@@ -350,6 +375,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   put it on the method, not on the field the method reads, or the field's expectation is unfulfilled.
 - Do not start a build in a worktree while a merge or checkout is writing its files: on 2026-11-20 a build read the
   old `Cargo.toml` with the new code (`unresolved import md5`).
+- Unit tests of `app/src-tauri` must not reach Tauri's runtime (an `AppHandle` method called from tested code): the
+  test exe then imports Windows entry points it cannot load and dies with `STATUS_ENTRYPOINT_NOT_FOUND`
+  (2026-11-21, `health.rs`). Keep the `AppHandle` behind a closure made where the app exists.
 
 ## Project rules
 

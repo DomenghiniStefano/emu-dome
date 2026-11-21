@@ -15,6 +15,10 @@ libloading = "0.9"
 log = "0.4"
 parking_lot = "0.12"
 png = "0.18"
+# The audio queue between the emulation thread and the audio output (`audio.rs`): a lock-free
+# single-producer single-consumer ring, so the real-time callback never waits on a lock the
+# emulation thread holds. MIT OR Apache-2.0.
+rtrb = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 md-5 = "0.10"

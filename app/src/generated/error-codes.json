@@ -43,5 +43,10 @@
   "biosOtherSlot",
   "biosFileFailed",
   "biosDsiFilesMissing",
-  "biosDsMenuFilesMissing"
+  "biosDsMenuFilesMissing",
+  "nativeVideoFallback",
+  "videoSurfaceFailed",
+  "audioUnavailable",
+  "controllersUnavailable",
+  "threadStopped"
 ]

@@ -133,6 +133,20 @@ pub enum ErrorCode {
     /// Booting through the DS menu was asked for without the DS system files: the game starts
     /// directly.
     BiosDsMenuFilesMissing,
+    /// Health (`emu://health`, `diagnostics`): the native video could not start, the game is
+    /// drawn in the interface's canvas instead.
+    NativeVideoFallback { detail: String },
+    /// Health: the surface the system handed over (Android's) cannot be drawn on; nothing is
+    /// shown until the next one.
+    VideoSurfaceFailed { detail: String },
+    /// Health: no audio output (no device, the device refused the stream, it went away);
+    /// EmuDome keeps trying and clears this once a stream plays.
+    AudioUnavailable { detail: String },
+    /// Health: the controllers cannot be used in this run (SDL did not start).
+    ControllersUnavailable { detail: String },
+    /// Health: a part of EmuDome (`thread`: `video`, `audio`, `controllers`) stopped after an
+    /// internal error (a panic caught in a build that unwinds; a release build aborts instead).
+    ThreadStopped { thread: String },
 }
 
 impl crate::StartError {

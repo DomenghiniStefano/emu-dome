@@ -3,18 +3,23 @@
 //! drains the queue.
 //!
 //! The device, its rate, channels and buffer and the queue target come from
-//! [`AudioTuning`]; every callback is measured into [`AudioMetrics`] (bench reports).
+//! [`AudioTuning`]. The real-time callback takes no lock another thread may hold: the open game
+//! comes from an `ArcSwapOption` ([`CurrentShared`]), its samples from the lock-free ring
+//! (`emudome_core::audio`), and the measurements ([`AudioMetrics`]) are recorded only in bench
+//! mode, with `try_lock` (a callback never waits for the bench reading them).
 
-use std::sync::mpsc;
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use emudome_core::audio::TEST_TONE_HZ;
 use emudome_core::tuning::{AudioBuffer, AudioTuning};
+use emudome_core::{ErrorCode, Shared};
 use parking_lot::Mutex;
 use serde::Serialize;
 
+use crate::health::{Part, SharedHealth};
 use crate::CurrentShared;
 
 /// The cpal stream is not `Send` on every platform: it lives on a thread of its own.
@@ -22,6 +27,9 @@ pub struct AudioOutput {
     _stop: mpsc::Sender<()>,
     metrics: SharedAudioMetrics,
 }
+
+/// [`CallbackStats::windows`] keeps the last this many windows (an hour of 10 s windows).
+const MAX_WINDOWS: usize = 360;
 
 /// The output as opened, for logs and bench reports.
 #[derive(Debug, Clone, Serialize)]
@@ -68,8 +76,9 @@ pub struct CallbackStats {
     pub ratio_sum: f64,
     /// Breaks in the test tone (bench mode with `EMUDOME_BENCH_TONE`): each is an audible click.
     pub discontinuities: u64,
-    /// Averages per 10 s window, to see latency drift over a long run.
-    pub windows: Vec<WindowStats>,
+    /// Averages per 10 s window, to see latency drift over a long run (the last
+    /// [`MAX_WINDOWS`]).
+    pub windows: std::collections::VecDeque<WindowStats>,
     #[serde(skip)]
     last_callback: Option<Instant>,
     #[serde(skip)]
@@ -141,7 +150,10 @@ impl CallbackStats {
         w.underrun_frames += s.underrun_frames;
         if s.at.duration_since(start) >= WINDOW {
             let n = w.callbacks as f64;
-            self.windows.push(WindowStats {
+            if self.windows.len() >= MAX_WINDOWS {
+                self.windows.pop_front();
+            }
+            self.windows.push_back(WindowStats {
                 fill_ms_avg: w.fill_ms_sum / n,
                 device_latency_ms_avg: w.latency_ms_sum / n,
                 underrun_frames: w.underrun_frames,
@@ -174,32 +186,46 @@ pub type SharedAudioMetrics = Arc<Mutex<AudioMetrics>>;
 
 impl AudioOutput {
     /// `tone`: the amplitude of the bench's test tone, when the game's audio is replaced by
-    /// it; the callbacks then count its breaks.
-    pub fn start(current: CurrentShared, tuning: AudioTuning, tone: Option<f32>) -> Self {
+    /// it; the callbacks then count its breaks. `measure`: the callbacks record
+    /// [`CallbackStats`] (bench mode only).
+    ///
+    /// The stream is rebuilt when it fails (headphones unplugged, a Bluetooth device gone and
+    /// back) and, when no device is forced, when the system's default output changes; while no
+    /// stream plays, `audioUnavailable` is on `health` and a new one is tried with a growing
+    /// pause. The thread ends when this value is dropped.
+    pub fn start(
+        current: CurrentShared,
+        tuning: AudioTuning,
+        tone: Option<f32>,
+        measure: bool,
+        health: SharedHealth,
+    ) -> Self {
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
         let metrics = SharedAudioMetrics::default();
         let thread_metrics = metrics.clone();
+        let thread_health = health.clone();
         let spawned = std::thread::Builder::new()
             .name("emudome-audio".into())
-            .spawn(
-                move || match build_stream(current, &tuning, tone, thread_metrics.clone()) {
-                    Ok(stream) => {
-                        if let Err(e) = stream.play() {
-                            log::error!("audio not started: {e}");
-                            thread_metrics.lock().error = Some(format!("play: {e}"));
-                        }
-                        // Stays alive until the app closes.
-                        let _ = stop_rx.recv();
-                    }
-                    Err(e) => {
-                        log::error!("no audio output: {e:#}");
-                        thread_metrics.lock().error = Some(format!("{e:#}"));
-                    }
-                },
-            );
+            .spawn(move || {
+                let output = Output {
+                    current,
+                    tuning,
+                    tone,
+                    metrics: thread_metrics,
+                    measure,
+                    health: thread_health.clone(),
+                };
+                thread_health.guard(Part::Audio, || output.run(&stop_rx));
+            });
         if let Err(e) = spawned {
             log::error!("audio thread not started: {e}");
             metrics.lock().error = Some(format!("thread: {e}"));
+            health.set(
+                Part::Audio,
+                Some(ErrorCode::AudioUnavailable {
+                    detail: e.to_string(),
+                }),
+            );
         }
         Self {
             _stop: stop_tx,
@@ -213,6 +239,114 @@ impl AudioOutput {
     )]
     pub fn metrics(&self) -> &SharedAudioMetrics {
         &self.metrics
+    }
+}
+
+/// How often the default output device is looked at (no event for it on every backend).
+const DEVICE_POLL: Duration = Duration::from_secs(2);
+/// First and longest pause before trying to open an output again.
+const RETRY_FIRST: Duration = Duration::from_millis(500);
+const RETRY_MAX: Duration = Duration::from_secs(10);
+
+/// Why a playing stream is given up.
+enum Ended {
+    /// The app is closing.
+    Stop,
+    /// The stream failed, or the default device changed: a new one is built.
+    Rebuild(String),
+}
+
+/// Whether a stream error means the stream must be built again. Underruns, an automatic reroute
+/// to the new default device and a refused real-time priority leave it playing.
+fn needs_rebuild(kind: cpal::ErrorKind) -> bool {
+    !matches!(
+        kind,
+        cpal::ErrorKind::Xrun | cpal::ErrorKind::DeviceChanged | cpal::ErrorKind::RealtimeDenied
+    )
+}
+
+/// The audio thread: builds the stream, keeps it playing, builds it again when it fails.
+struct Output {
+    current: CurrentShared,
+    tuning: AudioTuning,
+    tone: Option<f32>,
+    metrics: SharedAudioMetrics,
+    measure: bool,
+    health: SharedHealth,
+}
+
+impl Output {
+    fn run(&self, stop: &Receiver<()>) {
+        let mut retry = RETRY_FIRST;
+        loop {
+            let (errors_tx, errors) = mpsc::channel::<String>();
+            let measured = self.measure.then(|| self.metrics.clone());
+            let built = build_stream(
+                self.current.clone(),
+                &self.tuning,
+                self.tone,
+                &self.metrics,
+                measured,
+                errors_tx,
+            )
+            .and_then(|(stream, device)| {
+                stream.play().map_err(|e| anyhow::anyhow!("play: {e}"))?;
+                Ok((stream, device))
+            });
+            match built {
+                Ok((stream, device)) => {
+                    retry = RETRY_FIRST;
+                    self.metrics.lock().error = None;
+                    self.health.set(Part::Audio, None);
+                    let ended = self.watch(stop, &errors, &device);
+                    drop(stream);
+                    match ended {
+                        Ended::Stop => return,
+                        Ended::Rebuild(why) => log::info!("audio: opening the output again: {why}"),
+                    }
+                }
+                Err(e) => {
+                    let detail = format!("{e:#}");
+                    log::error!("no audio output: {detail}");
+                    self.metrics.lock().error = Some(detail.clone());
+                    self.health
+                        .set(Part::Audio, Some(ErrorCode::AudioUnavailable { detail }));
+                    match stop.recv_timeout(retry) {
+                        Ok(()) | Err(RecvTimeoutError::Disconnected) => return,
+                        Err(RecvTimeoutError::Timeout) => {}
+                    }
+                    retry = (retry * 2).min(RETRY_MAX);
+                }
+            }
+        }
+    }
+
+    /// While a stream plays: until the app closes, the stream fails, or (no device forced) the
+    /// default device is another one than `device`.
+    fn watch(&self, stop: &Receiver<()>, errors: &Receiver<String>, device: &str) -> Ended {
+        let mut looked = Instant::now();
+        loop {
+            match errors.recv_timeout(Duration::from_millis(250)) {
+                Ok(e) => return Ended::Rebuild(e),
+                Err(RecvTimeoutError::Timeout | RecvTimeoutError::Disconnected) => {}
+            }
+            match stop.try_recv() {
+                Ok(()) | Err(TryRecvError::Disconnected) => return Ended::Stop,
+                Err(TryRecvError::Empty) => {}
+            }
+            if self.tuning.device.is_none() && looked.elapsed() >= DEVICE_POLL {
+                looked = Instant::now();
+                let now = cpal::default_host()
+                    .default_output_device()
+                    .map(|d| device_name(&d));
+                if now.as_deref() != Some(device) {
+                    return Ended::Rebuild(format!(
+                        "the default output is now {}",
+                        now.as_deref().unwrap_or("none")
+                    ));
+                }
+            }
+        }
     }
 }
 
@@ -290,12 +424,133 @@ fn device_name(device: &cpal::Device) -> String {
         .unwrap_or_else(|e| format!("? ({e})"))
 }
 
+/// What a stream's callback keeps between two calls.
+struct Fill {
+    current: CurrentShared,
+    target_seconds: f64,
+    out_rate: f64,
+    channels: usize,
+    rs: Resampler,
+    /// The game the resampler's state belongs to (its `Shared`'s address): another game starts
+    /// from a clean resampler, not from the last game's samples.
+    game: usize,
+    tone: Option<f32>,
+    check: Option<ToneCheck>,
+    /// Bench mode only: where the callbacks' measurements go.
+    metrics: Option<SharedAudioMetrics>,
+}
+
+impl Fill {
+    /// One callback: `out` filled with interleaved frames of `channels` samples. Takes no lock
+    /// another thread may hold (the reader's is only ever tried by this callback; the metrics'
+    /// with `try_lock`, in bench mode).
+    fn fill(&mut self, out: &mut [f32], info: &cpal::OutputCallbackInfo) {
+        let at = Instant::now();
+        let current = self.current.load();
+        let Some(shared) = current.as_ref() else {
+            out.fill(0.0);
+            return;
+        };
+        let game = Arc::as_ptr(shared) as usize;
+        if game != self.game {
+            self.game = game;
+            self.rs = Resampler::new();
+            self.check = self.tone.map(|a| ToneCheck::new(a, self.out_rate));
+        }
+        self.play(shared, out, info, at);
+    }
+
+    fn play(
+        &mut self,
+        shared: &Shared,
+        out: &mut [f32],
+        info: &cpal::OutputCallbackInfo,
+        at: Instant,
+    ) {
+        let ring = &shared.audio;
+        let Some(mut reader) = ring.reader() else {
+            out.fill(0.0);
+            return;
+        };
+        if shared.muted.load(std::sync::atomic::Ordering::Relaxed) {
+            // «Muto»: the samples are dropped, so unmuting does not play stale sound.
+            reader.drain();
+            out.fill(0.0);
+            return;
+        }
+        let queued = reader.begin(ring) as f64;
+        let rate = ring.sample_rate();
+        let fill_ms = queued / 2.0 / rate * 1000.0;
+        // Base ratio plus a correction proportional to the queue's fill level (±0.5%).
+        let target = rate * self.target_seconds * 2.0;
+        let fill_err = ((queued - target) / target).clamp(-1.0, 1.0);
+        let ratio = 1.0 + 0.005 * fill_err;
+        let step = rate / self.out_rate * ratio;
+        let mut underrun_frames = 0u64;
+        let mut discontinuities = 0u64;
+        let rs = &mut self.rs;
+        for frame in out.chunks_mut(self.channels) {
+            while rs.pos >= 1.0 {
+                rs.prev = rs.next;
+                rs.next = match reader.pop_frame() {
+                    Some([l, r]) => [f32::from(l) / 32768.0, f32::from(r) / 32768.0],
+                    None => {
+                        underrun_frames += 1;
+                        [rs.prev[0] * 0.98, rs.prev[1] * 0.98] // empty queue: fade out
+                    }
+                };
+                rs.pos -= 1.0;
+            }
+            let t = rs.pos as f32;
+            let l = rs.prev[0] + (rs.next[0] - rs.prev[0]) * t;
+            let r = rs.prev[1] + (rs.next[1] - rs.prev[1]) * t;
+            if let Some(c) = &mut self.check {
+                discontinuities += u64::from(c.step(l));
+            }
+            match frame.len() {
+                1 => frame[0] = (l + r) * 0.5,
+                _ => {
+                    frame[0] = l;
+                    frame[1] = r;
+                    for c in frame.iter_mut().skip(2) {
+                        *c = 0.0;
+                    }
+                }
+            }
+            rs.pos += step;
+        }
+        drop(reader);
+        let Some(metrics) = &self.metrics else {
+            return;
+        };
+        let ts = info.timestamp();
+        let device_latency_ms = ts
+            .playback
+            .checked_duration_since(ts.callback)
+            .map_or(0.0, |d| d.as_secs_f64() * 1000.0);
+        // Never waits: a callback the bench is reading at that moment goes unrecorded.
+        if let Some(mut m) = metrics.try_lock() {
+            m.stats.record(CallbackSample {
+                at,
+                frames: (out.len() / self.channels.max(1)) as u64,
+                underrun_frames,
+                fill_ms,
+                device_latency_ms,
+                ratio,
+                discontinuities,
+            });
+        }
+    }
+}
+
 fn build_stream(
     current: CurrentShared,
     tuning: &AudioTuning,
     tone: Option<f32>,
-    metrics: SharedAudioMetrics,
-) -> anyhow::Result<cpal::Stream> {
+    metrics: &SharedAudioMetrics,
+    measured: Option<SharedAudioMetrics>,
+    errors: Sender<String>,
+) -> anyhow::Result<(cpal::Stream, String)> {
     let host = cpal::default_host();
     let devices: Vec<cpal::Device> = host.output_devices()?.collect();
     let device = match &tuning.device {
@@ -365,117 +620,92 @@ fn build_stream(
         info.buffer,
         tuning.target_ms
     );
+    let name = info.name.clone();
     metrics.lock().device = Some(info);
 
-    let target_seconds = f64::from(tuning.target_ms) / 1000.0;
-    let mut rs = Resampler::new();
-    let mut check = tone.map(|a| ToneCheck::new(a, out_rate));
-    let mut fill = move |out: &mut [f32], info: &cpal::OutputCallbackInfo| {
-        let at = Instant::now();
-        let shared = current.lock().clone();
-        let Some(shared) = shared else {
-            out.fill(0.0);
-            return;
-        };
-        let mut q = shared.audio.lock();
-        if shared.muted.load(std::sync::atomic::Ordering::Relaxed) {
-            // «Muto»: the samples are dropped, so unmuting does not play stale sound.
-            q.samples.clear();
-            out.fill(0.0);
-            return;
-        }
-        let fill_ms = q.samples.len() as f64 / 2.0 / q.sample_rate * 1000.0;
-        // Base ratio plus a correction proportional to the queue's fill level (±0.5%).
-        let target = q.sample_rate * target_seconds * 2.0;
-        let fill_err = ((q.samples.len() as f64 - target) / target).clamp(-1.0, 1.0);
-        let ratio = 1.0 + 0.005 * fill_err;
-        let step = q.sample_rate / out_rate * ratio;
-        let mut underrun_frames = 0u64;
-        let mut discontinuities = 0u64;
-        for frame in out.chunks_mut(channels) {
-            while rs.pos >= 1.0 {
-                rs.prev = rs.next;
-                rs.next = match (q.samples.pop_front(), q.samples.pop_front()) {
-                    (Some(l), Some(r)) => [l as f32 / 32768.0, r as f32 / 32768.0],
-                    _ => {
-                        underrun_frames += 1;
-                        [rs.prev[0] * 0.98, rs.prev[1] * 0.98] // empty queue: fade out
-                    }
-                };
-                rs.pos -= 1.0;
-            }
-            let t = rs.pos as f32;
-            let l = rs.prev[0] + (rs.next[0] - rs.prev[0]) * t;
-            let r = rs.prev[1] + (rs.next[1] - rs.prev[1]) * t;
-            if let Some(c) = &mut check {
-                discontinuities += u64::from(c.step(l));
-            }
-            match frame.len() {
-                1 => frame[0] = (l + r) * 0.5,
-                _ => {
-                    frame[0] = l;
-                    frame[1] = r;
-                    for c in frame.iter_mut().skip(2) {
-                        *c = 0.0;
-                    }
-                }
-            }
-            rs.pos += step;
-        }
-        drop(q);
-        let ts = info.timestamp();
-        let device_latency_ms = ts
-            .playback
-            .checked_duration_since(ts.callback)
-            .map_or(0.0, |d| d.as_secs_f64() * 1000.0);
-        metrics.lock().stats.record(CallbackSample {
-            at,
-            frames: (out.len() / channels.max(1)) as u64,
-            underrun_frames,
-            fill_ms,
-            device_latency_ms,
-            ratio,
-            discontinuities,
-        });
+    let state = Fill {
+        current,
+        target_seconds: f64::from(tuning.target_ms) / 1000.0,
+        out_rate,
+        channels,
+        rs: Resampler::new(),
+        game: 0,
+        tone,
+        check: tone.map(|a| ToneCheck::new(a, out_rate)),
+        metrics: measured,
     };
-
-    let err = |e| log::error!("audio error: {e}");
-    // cpal::SampleFormat is `#[non_exhaustive]`: a fallback arm is the only way to match it, and
-    // every format without an arm here is reported as an error, never silently mis-played.
+    // cpal::SampleFormat is `#[non_exhaustive]`: a fallback arm is the only way to match it.
     #[expect(
         clippy::wildcard_enum_match_arm,
         reason = "cpal::SampleFormat is non_exhaustive: the fallback arm is required"
     )]
     let stream = match sample_format {
-        cpal::SampleFormat::F32 => device.build_output_stream(
-            config,
-            move |data: &mut [f32], info| fill(data, info),
-            err,
-            None,
-        )?,
-        cpal::SampleFormat::I16 => {
-            let mut buf = Vec::new();
-            device.build_output_stream(
-                config,
-                move |data: &mut [i16], info| {
-                    buf.resize(data.len(), 0.0);
-                    fill(&mut buf, info);
-                    for (o, s) in data.iter_mut().zip(&buf) {
-                        *o = (s.clamp(-1.0, 1.0) * 32767.0) as i16;
-                    }
-                },
-                err,
-                None,
-            )?
+        cpal::SampleFormat::F32 => build_typed::<f32>(&device, config, state, errors),
+        cpal::SampleFormat::F64 => build_typed::<f64>(&device, config, state, errors),
+        cpal::SampleFormat::I8 => build_typed::<i8>(&device, config, state, errors),
+        cpal::SampleFormat::I16 => build_typed::<i16>(&device, config, state, errors),
+        cpal::SampleFormat::I32 => build_typed::<i32>(&device, config, state, errors),
+        cpal::SampleFormat::I64 => build_typed::<i64>(&device, config, state, errors),
+        cpal::SampleFormat::U8 => build_typed::<u8>(&device, config, state, errors),
+        cpal::SampleFormat::U16 => build_typed::<u16>(&device, config, state, errors),
+        cpal::SampleFormat::U32 => build_typed::<u32>(&device, config, state, errors),
+        cpal::SampleFormat::U64 => build_typed::<u64>(&device, config, state, errors),
+        other => unhandled(other),
+    }?;
+    Ok((stream, name))
+}
+
+/// A format with no arm (24-bit packed, DSD, a future one) is refused, never mis-played.
+fn unhandled(format: cpal::SampleFormat) -> anyhow::Result<cpal::Stream> {
+    anyhow::bail!("unhandled audio format: {format:?}")
+}
+
+/// The stream for samples of type `T`: the callback fills `f32` frames and converts them. A
+/// stream error that needs a new stream is sent on `errors`.
+fn build_typed<T>(
+    device: &cpal::Device,
+    config: cpal::StreamConfig,
+    mut state: Fill,
+    errors: Sender<String>,
+) -> anyhow::Result<cpal::Stream>
+where
+    T: cpal::SizedSample + cpal::FromSample<f32>,
+{
+    // Grows once to the device's buffer, then is reused.
+    let mut buf: Vec<f32> = Vec::new();
+    let on_error = move |e: cpal::Error| {
+        log::error!("audio error: {e}");
+        if needs_rebuild(e.kind()) {
+            let _ = errors.send(e.to_string());
         }
-        other => anyhow::bail!("unhandled audio format: {other:?}"),
     };
-    Ok(stream)
+    Ok(device.build_output_stream(
+        config,
+        move |data: &mut [T], info| {
+            buf.resize(data.len(), 0.0);
+            state.fill(&mut buf, info);
+            for (o, s) in data.iter_mut().zip(&buf) {
+                *o = T::from_sample(s.clamp(-1.0, 1.0));
+            }
+        },
+        on_error,
+        None,
+    )?)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_lost_device_rebuilds_the_stream_an_underrun_does_not() {
+        assert!(needs_rebuild(cpal::ErrorKind::DeviceNotAvailable));
+        assert!(needs_rebuild(cpal::ErrorKind::StreamInvalidated));
+        assert!(needs_rebuild(cpal::ErrorKind::BackendError));
+        assert!(!needs_rebuild(cpal::ErrorKind::Xrun));
+        assert!(!needs_rebuild(cpal::ErrorKind::DeviceChanged));
+        assert!(!needs_rebuild(cpal::ErrorKind::RealtimeDenied));
+    }
 
     #[test]
     fn a_clean_tone_has_no_breaks_and_a_cut_has_one() {

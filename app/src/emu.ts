@@ -327,6 +327,11 @@ export const emu = {
   /** A game opened without the system files a setting asked for, and fell back (`bios*Missing`). */
   onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
     listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
+  /** What is not working now (native video, surface, audio output, controllers, a stopped thread). */
+  diagnostics: () => invoke<ErrorCode[]>('diagnostics'),
+  /** The list of what is not working changed (`emu://health`): the whole list, empty when all is well. */
+  onHealth: (cb: (issues: ErrorCode[]) => void): Promise<UnlistenFn> =>
+    listen<ErrorCode[]>('emu://health', e => cb(e.payload)),
   onGamepadConnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
     listen<PadInfo>('emu://gamepad-connected', e => cb(e.payload)),
   onGamepadDisconnected: (cb: (e: PadInfo) => void): Promise<UnlistenFn> =>
