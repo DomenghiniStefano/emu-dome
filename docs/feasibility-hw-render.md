@@ -252,8 +252,11 @@ What the hardware-rendering work builds on (Trello #78, 2026-11-21); nothing her
 - **Frames.** `video_refresh(RETRO_HW_FRAME_BUFFER_VALID)` → the handler's `GpuFrame` (the image from `set_image`) →
   `hw_render::GpuFrameSink`: a raw barrier (the core's colour writes → fragment reads), a draw of the core's image into
   a game texture EmuDome owns, a raw barrier ordering the core's next frame after that read, then a readback into
-  `Shared::frame`, all on the emulation thread inside the callback, under the queue lock. The core's image is wrapped
-  anew each frame: Azahar destroys and recreates it on every state load, possibly with the same handle.
+  `Shared::frame`, all on the emulation thread inside the callback (the submit under the queue lock). The readback
+  uses two buffers in turn and waits for the GPU at most 3 ms (`READBACK_WAIT`): a frame not ready then is published
+  by the next call, one frame late, so a GPU busy with another program never holds the emulation thread for long.
+  The core's image is wrapped anew each frame: Azahar destroys and recreates it on every state load, possibly with
+  the same handle.
 - **Queue lock.** The core takes it around its `vkQueueSubmit` (`lock_queue` / `unlock_queue`); the shell around
   every submit and present (the renderer's paint and present, librashader's preset load, the copy).
 - **Software fallback.** `CoreProfile::hw_render.renderer(vulkan)` picks `citra_graphics_api`: `Vulkan` when the app's

@@ -11,6 +11,7 @@
 //!   screenshots and the slot thumbnails read it, and the native renderer uploads it as it does
 //!   a software frame, until it samples the game texture itself.
 
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -132,12 +133,16 @@ impl GpuFrameSink {
         texture
     }
 
-    /// The frame copied into the game texture and read back into `Shared::frame`.
+    /// The frame copied into the game texture and read back into `Shared::frame` (the readback
+    /// waits for the GPU at most [`READBACK_WAIT`]; a frame not ready then is published later).
     fn gpu_frame(&mut self, frame: &GpuFrame, split: Split) -> Result<()> {
         let size = (frame.width, frame.height);
         anyhow::ensure!(size.0 > 0 && size.1 > 0, "empty frame");
         let target = self.game_texture(size);
         let device = self.lease.device.clone();
+        // The buffer this frame goes into must be free: the frame two calls ago, if the GPU
+        // still has not finished it, is waited for and published first.
+        self.readback.free_next(&device, &mut self.frames)?;
         let readback = &mut self.readback;
         // SAFETY: the image is the core's current one (`set_image` of this `retro_run`), alive
         // until its next `retro_run`; its layout and queue family were checked by the handler.
@@ -146,12 +151,21 @@ impl GpuFrameSink {
                 readback.record(&device, enc, &target, size);
             })?
         };
-        let back = self.frames.back_buffer();
-        self.readback.finish(&device, submitted, back)?;
-        self.frames.publish(size.0, size.1, split);
+        self.readback.submitted(submitted.clone(), split);
+        // Most frames are done well within the wait and shown at once; a busy GPU (another
+        // program's game) never holds the emulation thread longer than this.
+        let _ = device.poll(wgpu::PollType::Wait {
+            submission_index: Some(submitted),
+            timeout: Some(READBACK_WAIT),
+        });
+        self.readback.publish_ready(&mut self.frames);
         Ok(())
     }
 }
+
+/// How long the emulation thread waits for a frame's readback before going on (the frame is then
+/// published by a later call, one frame late).
+pub const READBACK_WAIT: std::time::Duration = std::time::Duration::from_millis(3);
 
 impl VideoSink for GpuFrameSink {
     fn frame(&mut self, frame: VideoFrame<'_>, split: Split) {
@@ -173,6 +187,8 @@ impl VideoSink for GpuFrameSink {
 
     fn release(&mut self) {
         self.copier.release();
+        // The GPU is idle now: the last frames read back reach `Shared::frame`.
+        self.readback.publish_ready(&mut self.frames);
     }
 }
 
@@ -428,12 +444,38 @@ impl CoreImageCopier {
     }
 }
 
-/// The game texture back to the CPU, as tightly packed RGBA8 rows. Synchronous: it waits for
-/// the GPU (measured cost in `docs/fase0-esito.md`, 3DS entry).
+/// The game texture back to the CPU, as tightly packed RGBA8 rows, into `Shared::frame`. Two
+/// buffers used in turn, so the emulation thread never has to wait for the GPU to finish a frame
+/// before running the next one: a frame's buffer is mapped as soon as its submit is done, and
+/// published by whichever call finds it mapped ([`Self::publish_ready`]). Only when the frame
+/// two calls back is still not done is it waited for ([`Self::free_next`]).
 #[derive(Default)]
 pub struct Readback {
-    buffer: Option<(wgpu::Buffer, (u32, u32), u32)>,
+    slots: [Option<Slot>; 2],
+    /// The slot the next frame goes into.
+    next: usize,
+    /// Frames submitted so far: publishing goes oldest first.
+    count: u64,
 }
+
+/// One readback buffer and the frame in it.
+struct Slot {
+    buffer: wgpu::Buffer,
+    size: (u32, u32),
+    row: u32,
+    split: Split,
+    /// Which frame it holds (`Readback::count` when submitted).
+    order: u64,
+    submitted: Option<wgpu::SubmissionIndex>,
+    state: Arc<std::sync::atomic::AtomicU8>,
+}
+
+/// [`Slot::state`]: free; copy recorded (and maybe submitted), being mapped; mapped, ready to
+/// publish; the map failed (the frame is dropped).
+const FREE: u8 = 0;
+const MAPPING: u8 = 1;
+const MAPPED: u8 = 2;
+const FAILED: u8 = 3;
 
 /// Bytes per row in the buffer: wgpu wants rows aligned to 256 bytes.
 pub fn padded_row(width: u32) -> u32 {
@@ -449,8 +491,33 @@ pub fn unpad(data: &[u8], width: u32, padded: u32, out: &mut Vec<u8>) {
 }
 
 impl Readback {
-    /// Records the copy of `texture` (`size`) into the buffer; [`Self::finish`] reads it once the
-    /// encoder's submit is done.
+    /// Makes the next slot free: a frame still in it (submitted two calls ago and not mapped
+    /// yet) is waited for, up to 5 s, and published (with anything older).
+    pub fn free_next(&mut self, device: &wgpu::Device, frames: &mut SharedFrameSink) -> Result<()> {
+        let busy = self.slots[self.next]
+            .as_ref()
+            .filter(|s| s.state.load(Ordering::Acquire) == MAPPING)
+            .and_then(|s| s.submitted.clone());
+        if let Some(index) = busy {
+            device
+                .poll(wgpu::PollType::Wait {
+                    submission_index: Some(index),
+                    timeout: Some(std::time::Duration::from_secs(5)),
+                })
+                .map_err(|e| anyhow!("waiting for a readback: {e:?}"))?;
+            self.publish_ready(frames);
+        }
+        if let Some(slot) = &self.slots[self.next] {
+            anyhow::ensure!(
+                slot.state.load(Ordering::Acquire) != MAPPING,
+                "the readback buffer is still in use"
+            );
+        }
+        Ok(())
+    }
+
+    /// Records the copy of `texture` (`size`) into the next slot; [`Self::submitted`] follows
+    /// once the encoder is submitted.
     pub fn record(
         &mut self,
         device: &wgpu::Device,
@@ -458,26 +525,34 @@ impl Readback {
         texture: &wgpu::Texture,
         size: (u32, u32),
     ) {
-        if self.buffer.as_ref().map(|b| b.1) != Some(size) {
+        let slot = &mut self.slots[self.next];
+        if slot.as_ref().map(|s| s.size) != Some(size) {
             let row = padded_row(size.0);
-            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("frame readback"),
-                size: u64::from(row) * u64::from(size.1),
-                usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-                mapped_at_creation: false,
+            *slot = Some(Slot {
+                buffer: device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("frame readback"),
+                    size: u64::from(row) * u64::from(size.1),
+                    usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+                    mapped_at_creation: false,
+                }),
+                size,
+                row,
+                split: Split::Whole,
+                order: 0,
+                submitted: None,
+                state: Arc::default(),
             });
-            self.buffer = Some((buffer, size, row));
         }
-        let Some((buffer, _, row)) = &self.buffer else {
+        let Some(slot) = slot.as_mut() else {
             return;
         };
         encoder.copy_texture_to_buffer(
             texture.as_image_copy(),
             wgpu::TexelCopyBufferInfo {
-                buffer,
+                buffer: &slot.buffer,
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: Some(*row),
+                    bytes_per_row: Some(slot.row),
                     rows_per_image: Some(size.1),
                 },
             },
@@ -487,38 +562,66 @@ impl Readback {
                 depth_or_array_layers: 1,
             },
         );
+        slot.state.store(MAPPING, Ordering::Release);
+        slot.submitted = None;
     }
 
-    /// Waits for `submitted` and copies the recorded frame into `out`.
-    pub fn finish(
-        &self,
-        device: &wgpu::Device,
-        submitted: wgpu::SubmissionIndex,
-        out: &mut Vec<u8>,
-    ) -> Result<()> {
-        let (buffer, size, row) = self.buffer.as_ref().context("nothing recorded")?;
-        let slice = buffer.slice(..);
-        let (tx, rx) = std::sync::mpsc::channel();
-        slice.map_async(wgpu::MapMode::Read, move |r| {
-            let _ = tx.send(r);
-        });
-        device
-            .poll(wgpu::PollType::Wait {
-                submission_index: Some(submitted),
-                timeout: Some(std::time::Duration::from_secs(5)),
-            })
-            .map_err(|e| anyhow!("poll: {e:?}"))?;
-        rx.recv()
-            .context("map callback")?
-            .map_err(|e| anyhow!("map: {e:?}"))?;
-        {
-            let data = slice
-                .get_mapped_range()
-                .map_err(|e| anyhow!("mapped range: {e:?}"))?;
-            unpad(&data, size.0, *row, out);
+    /// The copy recorded last was submitted as `index`: its buffer is mapped when the GPU is
+    /// done (seen by a later poll), and the next frame takes the other slot.
+    pub fn submitted(&mut self, index: wgpu::SubmissionIndex, split: Split) {
+        if let Some(slot) = self.slots[self.next].as_mut() {
+            self.count += 1;
+            slot.order = self.count;
+            slot.split = split;
+            slot.submitted = Some(index);
+            let state = slot.state.clone();
+            slot.buffer
+                .slice(..)
+                .map_async(wgpu::MapMode::Read, move |r| {
+                    state.store(if r.is_ok() { MAPPED } else { FAILED }, Ordering::Release);
+                });
         }
-        buffer.unmap();
-        Ok(())
+        self.next = 1 - self.next;
+    }
+
+    /// Publishes every mapped frame, oldest first (the newest wins), and frees its slot.
+    pub fn publish_ready(&mut self, frames: &mut SharedFrameSink) {
+        let mut ready: Vec<usize> = (0..self.slots.len())
+            .filter(|&i| {
+                self.slots[i]
+                    .as_ref()
+                    .is_some_and(|s| matches!(s.state.load(Ordering::Acquire), MAPPED | FAILED))
+            })
+            .collect();
+        ready.sort_by_key(|&i| self.slots[i].as_ref().map_or(0, |s| s.order));
+        for i in ready {
+            let Some(slot) = self.slots[i].as_mut() else {
+                continue;
+            };
+            if slot.state.load(Ordering::Acquire) == MAPPED {
+                let published = {
+                    let slice = slot.buffer.slice(..);
+                    match slice.get_mapped_range() {
+                        Ok(data) => {
+                            unpad(&data, slot.size.0, slot.row, frames.back_buffer());
+                            true
+                        }
+                        Err(e) => {
+                            log::warn!("hw render: readback not read: {e:?}");
+                            false
+                        }
+                    }
+                };
+                slot.buffer.unmap();
+                if published {
+                    frames.publish(slot.size.0, slot.size.1, slot.split);
+                }
+            } else {
+                log::warn!("hw render: a readback could not be mapped: frame dropped");
+            }
+            slot.state.store(FREE, Ordering::Release);
+            slot.submitted = None;
+        }
     }
 }
 
@@ -574,9 +677,11 @@ mod gpu_tests {
                 Split::Whole,
             );
             eprintln!(
-                "frame {i}: copy + readback {} µs",
+                "frame {i}: copy + readback (bounded wait) {} µs",
                 started.elapsed().as_micros()
             );
+            // A frame the GPU had not finished within `READBACK_WAIT` is published here.
+            sink.release();
             {
                 let f = shared.frame.lock();
                 assert_eq!((f.width, f.height, f.seq), (size.0, size.1, i as u64 + 1));
@@ -593,7 +698,6 @@ mod gpu_tests {
                     );
                 }
             }
-            sink.release();
             destroy();
         }
     }
