@@ -50,24 +50,24 @@ pub(super) static TABLE: BiosTable = BiosTable {
                 console_types: &[0xFF, 0x20, 0x43, 0x63],
             },
         },
-        // The DSi BIOS and firmware have no settings row yet (`bios.bdsi` is the memory image).
+        // The DSi BIOS have no published hash: their size is checked, the core checks the rest.
         SlotSpec {
             slot: Slot::DsiArm7,
-            setting: None,
+            setting: Some(keys::BIOS_DSI_ARM7.as_str()),
             file: "melonDS DS/dsi_bios7.bin",
             sizes: &[64 * 1024],
             check: Check::SizeOnly,
         },
         SlotSpec {
             slot: Slot::DsiArm9,
-            setting: None,
+            setting: Some(keys::BIOS_DSI_ARM9.as_str()),
             file: "melonDS DS/dsi_bios9.bin",
             sizes: &[64 * 1024],
             check: Check::SizeOnly,
         },
         SlotSpec {
             slot: Slot::DsiFirmware,
-            setting: None,
+            setting: Some(keys::BIOS_DSI_FIRMWARE.as_str()),
             file: DSI_FIRMWARE,
             sizes: FIRMWARE_SIZES,
             check: Check::FirmwareHeader {

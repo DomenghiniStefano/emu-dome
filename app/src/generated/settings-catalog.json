@@ -875,6 +875,18 @@
       "page": "presets"
     },
     {
+      "key": "bios.bgb",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bgbc",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
       "key": "bios.bgba",
       "kind": "file",
       "options": [],
@@ -894,6 +906,24 @@
     },
     {
       "key": "bios.bdsfw",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bdsi7",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bdsi9",
+      "kind": "file",
+      "options": [],
+      "page": "bios"
+    },
+    {
+      "key": "bios.bdsifw",
       "kind": "file",
       "options": [],
       "page": "bios"
@@ -1386,6 +1416,10 @@
     {
       "id": "file",
       "page": "presets"
+    },
+    {
+      "id": "gb",
+      "page": "bios"
     },
     {
       "id": "gba",

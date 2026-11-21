@@ -430,6 +430,7 @@
         "file": "SETTINGS FILE"
       },
       "bios": {
+        "gb": "GAME BOY AND GAME BOY COLOR",
         "gba": "GAME BOY ADVANCE",
         "nds": "NINTENDO DS",
         "3ds": "NINTENDO 3DS"
@@ -1299,6 +1300,34 @@
       }
     },
     "bios": {
+      "bgb": {
+        "name": "Game Boy BIOS",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Built-in replacement in use",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: using the built-in replacement"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Go back to the built-in replacement"
+        }
+      },
+      "bgbc": {
+        "name": "Game Boy Color BIOS",
+        "desc": "{status}",
+        "status": {
+          "builtin": "Built-in replacement in use",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: using the built-in replacement"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Go back to the built-in replacement"
+        }
+      },
       "bgba": {
         "name": "Game Boy Advance BIOS",
         "desc": "{status}",
@@ -1353,6 +1382,48 @@
           "use": "Use your file…",
           "replace": "Replace…",
           "reset": "Go back to the built-in replacement"
+        }
+      },
+      "bdsi7": {
+        "name": "Nintendo DSi ARM7 BIOS",
+        "desc": "{status}",
+        "status": {
+          "builtin": "No file: DSi mode is not available",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: DSi mode is not available"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Remove your file"
+        }
+      },
+      "bdsi9": {
+        "name": "Nintendo DSi ARM9 BIOS",
+        "desc": "{status}",
+        "status": {
+          "builtin": "No file: DSi mode is not available",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: DSi mode is not available"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Remove your file"
+        }
+      },
+      "bdsifw": {
+        "name": "Nintendo DSi firmware",
+        "desc": "{status}",
+        "status": {
+          "builtin": "No file: DSi mode is not available",
+          "verified": "Your file · verified",
+          "unrecognised": "Your file · not recognised: DSi mode is not available"
+        },
+        "buttons": {
+          "use": "Use your file…",
+          "replace": "Replace…",
+          "reset": "Remove your file"
         }
       },
       "bdsi": {
@@ -1489,7 +1560,7 @@
       },
       "mgbaall": {
         "name": "All mGBA options",
-        "desc": "{n} options, grouped as in the engine.",
+        "desc": "{n} option, grouped as in the engine. | {n} options, grouped as in the engine.",
         "button": "Show"
       },
       "mdsrender": {
@@ -1510,7 +1581,7 @@
       },
       "mdsall": {
         "name": "All melonDS DS options",
-        "desc": "{n} options.",
+        "desc": "{n} option. | {n} options.",
         "button": "Show"
       },
       "azaudio": {
@@ -1523,7 +1594,7 @@
       },
       "azall": {
         "name": "All Azahar options",
-        "desc": "{n} options.",
+        "desc": "{n} option. | {n} options.",
         "button": "Show"
       }
     },

@@ -79,6 +79,9 @@ export function useSettingRow(props: SettingRowInput) {
     const k = key.value
     const status = `settings.${k}.status.${biosStatus(k)}`
     if (k.startsWith('bios.') && te(status)) return t(status)
+    // A number from Rust (`count`: the options a core declares), in the text's plural form.
+    const count = props.entry.count
+    if (count !== undefined) return t(msg.desc(k), { n: count }, count)
     switch (k) {
       case 'cloud.acct':
         return t('settings.cloud.acct.value.signedOut')
