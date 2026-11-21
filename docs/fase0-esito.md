@@ -386,3 +386,51 @@ core image → Shared::frame, built-in effects).
 Errors and fixes: none in these runs.
 Proposed next step: look at the 3DS quick-save stall (serialize off the hot path is not possible: only the emulation
 thread may call the core; at least warn or pause audio) and the 2× slowdown in the world.
+
+## 2026-11-21 19:30 · 3DS quick-save stall and 2× in the world (#98)
+Release build of `headless_gpu` (branch `perf/3ds-stalls`, from develop 0146fb2), Azahar 2126.2 (219d743, pinned),
+Craftus Reloaded 0.3 homebrew (MIT, same sha256), Vulkan on the app's device, RTX 3060 / NVIDIA 617.42, Ryzen 7
+9700X, GPU free. In the world (`--press-a 2 --tap 110,203 --tap 232,168`, checked on a PNG of the top screen), a
+fresh short `--dir` per run. Runs kept under ~20 s, so `--secs 3-6` instead of 10.
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless |
+| 2. FPS at 1× | 59.7-60.0 in the world (5 runs, 3-6 s each) | last second 60.0 |
+| 3. Audio | not tested on a device | the output's refill after a stall is unit-tested (below) |
+| 4. Controller | not tested | touch by `--tap` |
+| 5. Native vs webview | not tested | |
+
+2× in the world: 120.2-120.3 frames/s over 3-6 s in 5 runs, first second 120.9-121.0, last second 120.0; frame work at
+2× max 9-17 ms, at most 2 frames over 8.3 ms. Max in the world 764-1272 frames/s (2-10 s). Also after 10 s at Max,
+2× ran at 120.3. The 13.5 of the earlier entry did not come back: that run read the rate of the first 1-s window
+1.2 s after 10 s at Max, so one stall at that moment was enough to read low; the code paths have not changed since
+(no commit to the session, readback or callbacks after it). `headless` now measures 2× over the whole `--secs`
+window from the frame counter and prints the first and last second and the frame work (`--max-secs` sets the Max
+window alone).
+
+Quick save (`--timing 10`, a save every 2 s; time of `retro_serialize_size` + `retro_serialize`, from the new
+`quick save: ... taken in` log line; states of 755-771 KB):
+| Renderer | Model | Saves | Time per save | Frames after it |
+| --- | --- | --- | --- | --- |
+| Vulkan | New 3DS (default) | 5 + 4 | 233-305 ms | 1.0-3.2 ms each (6 frames after each save) |
+| Software | New 3DS | 5 | 231-237 ms | (the software world runs at ~4 fps: not comparable) |
+| Vulkan | Old 3DS (`citra_is_new_3ds`) | 3 | 155-159 ms | |
+
+The time is the same with the software renderer and scales with the emulated memory (New 3DS 256 MB FCRAM, Old
+3DS 128 MB): it is Azahar's `System::SaveStateBuffer()` (Boost archive of the whole system, then zstd), all of it run
+inside `retro_serialize_size`; `retro_serialize` only copies. The Vulkan cache flush in it (`gpu->ClearAll(true)`)
+costs nothing visible: the frames after a save take their usual 1-3 ms. The shell already calls the slow part once
+per save, and only the emulation thread may call it, so the stall stays: a 3DS quick save drops ~15-18 frames.
+Draft for upstream: `docs/upstream/azahar-libretro-savestate-stall.md` (not posted).
+
+What the shell does now: the audio output, once its queue runs dry, stays silent until the queue is back at its
+target (60 ms) and fades back in over 5 ms. Before, it played each sample as it arrived, and the ±0.5 % control took
+~12 s to refill 60 ms, so after a stall the queue hovered at empty with a fade and a step on every late frame (a
+crackle). Unit test `audio::tests::a_stall_is_one_clean_gap_and_the_queue_refills_to_its_target` (a 0.3-s stall: one
+dry spell, no step above 0.02, the queue back near its target); it fails on the old code (dry spells repeated). The
+pacing already starts over after the stall without catch-up frames.
+
+Errors and fixes: none in these runs.
+Proposed next step: the owner hears a 3DS quick save in the app (one short clean gap, no crackle after it); decide
+whether 3DS keeps `saves.autoq` at 5 min (one ~0.25 s hitch each time).

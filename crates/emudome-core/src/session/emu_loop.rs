@@ -317,8 +317,15 @@ impl<C: Core> EmuLoop<C> {
     /// Serializes into `slot` and hands the write to the worker; false (and an error event) when
     /// the core cannot serialize.
     fn save_async(&mut self, slot: u8) -> bool {
+        let started = Instant::now();
         match self.core.serialize() {
             Ok(state) => {
+                // A 3DS state on Vulkan takes a quarter of a second (Trello #98): seen in the log.
+                log::info!(
+                    "quick save: slot {slot}, state of {} KB taken in {:.1} ms",
+                    state.len() / 1024,
+                    started.elapsed().as_secs_f64() * 1000.0
+                );
                 let frame = self.shared.frame.lock().clone();
                 self.io.send(io::Job::Slot { slot, state, frame });
                 true
