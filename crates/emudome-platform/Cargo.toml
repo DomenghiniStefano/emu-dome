@@ -1,9 +1,10 @@
 [package]
 name = "emudome-platform"
-description = "Operating-system-dependent code for EmuDome."
+description = "EmuDome's operating-system and form-factor dependent code: windows, file pickers, logs, core paths, the Android surface."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 # `links` turns the Android library in `android/` into a Gradle module of the app:
 # build.rs prints `android_library_path`, Cargo hands it to the app's build script as
 # `DEP_EMUDOME_PLATFORM_ANDROID_LIBRARY_PATH` and tauri-build includes it in the Gradle project.
