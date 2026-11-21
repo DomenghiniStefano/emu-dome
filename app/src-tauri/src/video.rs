@@ -21,7 +21,10 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use anyhow::{Context, Result};
+use emudome_core::hw_render::vulkan::QueueLock;
 use emudome_core::video_sink::Wake;
 use emudome_core::{ErrorCode, Shared};
 use librashader::presets::ShaderFeatures;
@@ -30,6 +33,7 @@ use librashader::runtime::{Size, Viewport};
 use parking_lot::Mutex;
 use serde::Serialize;
 
+use crate::gpu_interop::{self, VulkanHandles, VulkanInterop};
 use crate::health::{Part, SharedHealth};
 use crate::tuning::{PresentMode, VideoTuning};
 
@@ -151,16 +155,16 @@ impl Renderer {
     /// the window's native handle is only available there (from another thread Tauri
     /// blocks waiting for it). Drawing then continues on a dedicated thread.
     pub fn spawn(
+        service: Arc<GpuService>,
         window: tauri::Window,
         width: u32,
         height: u32,
         settings: SurfaceSettings,
         health: SharedHealth,
     ) -> Result<Self> {
-        let mut service = GpuService::new();
         let mut painter = None;
         let gpu = Gpu::new(
-            &mut service,
+            &service,
             &mut painter,
             window.into(),
             width,
@@ -171,12 +175,16 @@ impl Renderer {
     }
 
     /// Starts with no surface: it arrives with [`Self::attach`].
-    pub fn spawn_detached(settings: SurfaceSettings, health: SharedHealth) -> Result<Self> {
-        Self::start(GpuService::new(), None, None, settings, health)
+    pub fn spawn_detached(
+        service: Arc<GpuService>,
+        settings: SurfaceSettings,
+        health: SharedHealth,
+    ) -> Result<Self> {
+        Self::start(service, None, None, settings, health)
     }
 
     fn start(
-        service: GpuService,
+        service: Arc<GpuService>,
         gpu: Option<Gpu>,
         painter: Option<Painter>,
         settings: SurfaceSettings,
@@ -279,7 +287,7 @@ const FPS_LOG_EVERY: Duration = Duration::from_secs(10);
 
 /// The video thread: the GPU, the surface (while there is one) and the game it shows.
 struct Video {
-    service: GpuService,
+    service: Arc<GpuService>,
     /// The surface drawn on; `None` while detached.
     gpu: Option<Gpu>,
     /// Draws the game; kept across surfaces of the same format.
@@ -306,7 +314,7 @@ struct Video {
 
 impl Video {
     fn new(
-        service: GpuService,
+        service: Arc<GpuService>,
         gpu: Option<Gpu>,
         painter: Option<Painter>,
         settings: SurfaceSettings,
@@ -399,7 +407,7 @@ impl Video {
                 // The old surface goes first; the GPU and the painter stay.
                 self.gpu = None;
                 match Gpu::new(
-                    &mut self.service,
+                    &self.service,
                     &mut self.painter,
                     target,
                     w,
@@ -580,47 +588,115 @@ struct GameTexture {
     bind_group: wgpu::BindGroup,
 }
 
-/// The GPU for the whole run: made with the first surface (an adapter that can present to it),
-/// kept when surfaces come and go. The one owner of the device; the painter holds clones.
-struct GpuService {
+/// The GPU for the whole run: one per app ([`GpuService::new`]), shared by the native renderer
+/// and the games that render on the GPU (3DS, [`crate::hw_render`]). Its device is made with the
+/// first surface (an adapter that can present to it), or by the first game that needs it when
+/// there is no surface (the webview path, Android before its surface), and kept when surfaces
+/// come and go. The one owner of the device; the painter and the games hold clones.
+pub struct GpuService {
     instance: wgpu::Instance,
-    device: Option<ServiceDevice>,
+    device: Mutex<Option<ServiceDevice>>,
+    /// Taken around every submit and present on the device's queue: a hardware-rendering core
+    /// submits on the same `VkQueue` from its own threads.
+    queue_lock: Arc<QueueLock>,
+    /// Games rendering on the device now ([`VulkanLease`]): while there is one the device is
+    /// never made again (a surface it cannot present to is refused instead).
+    games: AtomicUsize,
 }
 
+#[derive(Clone)]
 struct ServiceDevice {
     adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
+    /// Its raw Vulkan objects, when it was opened for cores to render on
+    /// (`gpu_interop::open_device_for_cores`); `None` on another backend.
+    vulkan: Option<VulkanHandles>,
+}
+
+/// A game's hold on the app's Vulkan device: the device, its queue, the raw objects the core is
+/// handed and the queue's lock. While one is held the device stays the same.
+pub struct VulkanLease {
+    pub device: wgpu::Device,
+    pub queue: wgpu::Queue,
+    pub handles: VulkanHandles,
+    pub queue_lock: Arc<QueueLock>,
+    service: Arc<GpuService>,
+}
+
+impl Drop for VulkanLease {
+    fn drop(&mut self) {
+        self.service.games.fetch_sub(1, Ordering::AcqRel);
+    }
 }
 
 impl GpuService {
-    fn new() -> Self {
+    pub fn new() -> Arc<Self> {
         // No display handle: Windows and Android do not need it, and on Linux Tauri's
         // one does not match the surface's (MismatchingDisplayHandle).
         // The environment (WGPU_BACKEND, WGPU_DX12_PRESENTATION_SYSTEM...) picks the backend.
-        Self {
+        Arc::new(Self {
             instance: wgpu::Instance::new(
                 wgpu::InstanceDescriptor::new_without_display_handle_from_env(),
             ),
-            device: None,
-        }
+            device: Mutex::new(None),
+            queue_lock: Arc::default(),
+            games: AtomicUsize::new(0),
+        })
+    }
+
+    /// The device on `adapter`: on Vulkan, opened with what a 3DS core renders with
+    /// (`gpu_interop::open_device_for_cores`); elsewhere, or if that fails, wgpu's own.
+    fn make_device(adapter: wgpu::Adapter) -> Result<ServiceDevice> {
+        log::info!("GPU: {:?}", adapter.get_info());
+        let desc = wgpu::DeviceDescriptor {
+            label: Some("emudome"),
+            // Mobile GPUs do not reach the desktop defaults.
+            required_limits: wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            ..Default::default()
+        };
+        let for_cores = gpu_interop::open_device_for_cores(&adapter, &desc).unwrap_or_else(|e| {
+            log::warn!("GPU device for cores not opened ({e:#}): wgpu's own instead");
+            None
+        });
+        let (device, queue, vulkan) = match for_cores {
+            Some((device, queue)) => {
+                let vulkan = device.vulkan_handles();
+                (device, queue, vulkan)
+            }
+            None => {
+                let (device, queue) = pollster::block_on(adapter.request_device(&desc))?;
+                (device, queue, None)
+            }
+        };
+        Ok(ServiceDevice {
+            adapter,
+            device,
+            queue,
+            vulkan,
+        })
     }
 
     /// A surface for `target`, and whether the device was (re)made for it: on the first
-    /// surface, or when the GPU in use cannot present to this one.
+    /// surface, or when the GPU in use cannot present to this one and no game renders on it.
     fn surface(
-        &mut self,
+        &self,
         target: wgpu::SurfaceTarget<'static>,
     ) -> Result<(wgpu::Surface<'static>, bool)> {
         let surface = self
             .instance
             .create_surface(target)
             .map_err(|e| anyhow::anyhow!("wgpu surface not created: {e:?}"))?;
-        if let Some(d) = &self.device {
+        let mut slot = self.device.lock();
+        if let Some(d) = slot.as_ref() {
             if d.adapter.is_surface_supported(&surface) {
                 return Ok((surface, false));
             }
             log::warn!("native video: the GPU in use cannot present to the new surface");
+            anyhow::ensure!(
+                self.games.load(Ordering::Acquire) == 0,
+                "the GPU a running game renders on cannot present to this surface"
+            );
         }
         let adapter =
             pollster::block_on(self.instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -630,25 +706,46 @@ impl GpuService {
                 apply_limit_buckets: false,
             }))
             .context("no compatible GPU")?;
-        log::info!("GPU: {:?}", adapter.get_info());
-        let (device, queue) =
-            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some("emudome"),
-                // Mobile GPUs do not reach the desktop defaults.
-                required_limits:
-                    wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
-                ..Default::default()
-            }))?;
-        self.device = Some(ServiceDevice {
-            adapter,
-            device,
-            queue,
-        });
+        *slot = Some(Self::make_device(adapter)?);
         Ok((surface, true))
     }
 
-    fn device(&self) -> Option<&ServiceDevice> {
-        self.device.as_ref()
+    fn device(&self) -> Option<ServiceDevice> {
+        self.device.lock().clone()
+    }
+
+    /// The app's Vulkan device for a game that renders on the GPU: the one in use, else one made
+    /// now on the fastest GPU (no surface yet: the webview path, Android in the background).
+    /// Refused when the device is not on Vulkan (another backend, or the device for cores could
+    /// not be opened): the game then draws in software.
+    pub fn vulkan_lease(self: &Arc<Self>) -> Result<VulkanLease> {
+        let mut slot = self.device.lock();
+        if slot.is_none() {
+            let adapter =
+                pollster::block_on(self.instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::HighPerformance,
+                    compatible_surface: None,
+                    force_fallback_adapter: false,
+                    apply_limit_buckets: false,
+                }))
+                .context("no GPU")?;
+            *slot = Some(Self::make_device(adapter)?);
+        }
+        let d = slot.as_ref().context("no GPU device")?;
+        let handles = d.vulkan.with_context(|| {
+            format!(
+                "the GPU device is on {:?}, not on Vulkan opened for cores",
+                d.adapter.get_info().backend
+            )
+        })?;
+        self.games.fetch_add(1, Ordering::AcqRel);
+        Ok(VulkanLease {
+            device: d.device.clone(),
+            queue: d.queue.clone(),
+            handles,
+            queue_lock: self.queue_lock.clone(),
+            service: self.clone(),
+        })
     }
 }
 
@@ -666,6 +763,8 @@ struct Gpu {
 struct Painter {
     device: wgpu::Device,
     queue: wgpu::Queue,
+    /// Held around every submit (`GpuService::queue_lock`).
+    queue_lock: Arc<QueueLock>,
     /// The format it draws in (the surface's): another format needs another painter.
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
@@ -695,7 +794,7 @@ impl Gpu {
     /// present here), and a painter for its format (`painter` kept when the format is the same
     /// and the device was not remade).
     fn new(
-        service: &mut GpuService,
+        service: &GpuService,
         painter: &mut Option<Painter>,
         target: wgpu::SurfaceTarget<'static>,
         width: u32,
@@ -755,7 +854,12 @@ impl Gpu {
         };
         surface.configure(device, &config);
         if painter.as_ref().map(|p| p.format) != Some(format) {
-            *painter = Some(Painter::new(device.clone(), queue.clone(), format));
+            *painter = Some(Painter::new(
+                device.clone(),
+                queue.clone(),
+                service.queue_lock.clone(),
+                format,
+            ));
         }
         let info = GpuInfo {
             adapter: adapter_info.name.clone(),
@@ -835,13 +939,20 @@ impl Gpu {
         };
         let view = output.texture.create_view(&Default::default());
         painter.paint(&view, (self.config.width, self.config.height), inset);
+        // The queue a hardware-rendering core also submits to.
+        let _queue = service.queue_lock.lock();
         d.queue.present(output);
         Ok(())
     }
 }
 
 impl Painter {
-    fn new(device: wgpu::Device, queue: wgpu::Queue, format: wgpu::TextureFormat) -> Self {
+    fn new(
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        queue_lock: Arc<QueueLock>,
+        format: wgpu::TextureFormat,
+    ) -> Self {
         // A validation error (a user's preset librashader let through) is logged and makes the
         // effect fail, instead of wgpu's default panic on the video thread.
         let gpu_error: Arc<Mutex<Option<String>>> = Arc::default();
@@ -988,6 +1099,7 @@ impl Painter {
         Self {
             device,
             queue,
+            queue_lock,
             format,
             pipeline,
             layout,
@@ -1139,7 +1251,10 @@ impl Painter {
                 pass.draw(0..3, 0..1);
             }
         }
-        self.queue.submit([encoder.finish()]);
+        {
+            let _queue = self.queue_lock.lock();
+            self.queue.submit([encoder.finish()]);
+        }
         self.frame_count = self.frame_count.wrapping_add(1);
         if let Some(e) = self.gpu_error.lock().take() {
             if let Some(effect) = self.effect.take() {
@@ -1198,13 +1313,17 @@ impl Painter {
             enable_cache: false,
             adapter_info: None,
         };
-        let chain = FilterChain::load_from_path(
-            preset,
-            ShaderFeatures::NONE,
-            &self.device,
-            &self.queue,
-            Some(&options),
-        )
+        // librashader may submit while it loads (its lookup textures).
+        let chain = {
+            let _queue = self.queue_lock.lock();
+            FilterChain::load_from_path(
+                preset,
+                ShaderFeatures::NONE,
+                &self.device,
+                &self.queue,
+                Some(&options),
+            )
+        }
         .map_err(|e| e.to_string())?;
         match self.gpu_error.lock().take() {
             Some(e) => Err(e),
@@ -1405,7 +1524,7 @@ mod gpu_tests {
             ..Default::default()
         }))
         .expect("a device");
-        Painter::new(device, queue, FORMAT)
+        Painter::new(device, queue, Default::default(), FORMAT)
     }
 
     /// Paints one frame on a texture of `TARGET` and reads it back as RGBA.

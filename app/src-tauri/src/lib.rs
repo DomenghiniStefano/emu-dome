@@ -34,6 +34,7 @@ mod gamepad;
 mod gpu_interop;
 mod health;
 mod hotkeys;
+mod hw_render;
 mod library;
 mod migration;
 mod pads;
@@ -61,6 +62,9 @@ use ts_rs::TS;
 pub(crate) use crate::commands::unix_ms;
 pub(crate) use crate::game::{open_library_game, GameInfo};
 use crate::game_session::{GameSession, Hooks};
+/// The app's GPU and a Vulkan session's video with no window, for the headless examples
+/// (`examples/headless_gpu.rs`).
+pub use crate::hw_render::headless_setup;
 pub(crate) use crate::protocol::response_error;
 use crate::tuning::{Tuning, VideoPath};
 
@@ -94,6 +98,8 @@ struct AppState {
     games: GameSession,
     /// `None` where the native renderer cannot sit under the webview (Linux) or is off.
     renderer: Option<video::Renderer>,
+    /// The GPU for the whole run, the renderer's and the 3DS games' (`hw_render.rs`).
+    gpu: Arc<video::GpuService>,
     /// Why the native renderer could not start, when it was wanted.
     #[cfg_attr(
         not(feature = "bench"),
@@ -321,13 +327,15 @@ pub fn run() {
                     p == VideoPath::Native
                 });
             let surface = video::SurfaceSettings::from_tuning(&tuning.video);
+            let gpu = video::GpuService::new();
             let mut native_error = None;
             let renderer = if native {
                 let spawned = if emudome_platform::EXTERNAL_SURFACE {
-                    video::Renderer::spawn_detached(surface, health.clone())
+                    video::Renderer::spawn_detached(gpu.clone(), surface, health.clone())
                         .inspect(|r| attach_surface(&ui, r.clone()))
                 } else {
                     video::Renderer::spawn(
+                        gpu.clone(),
                         window.clone(),
                         size.width,
                         size.height,
@@ -400,6 +408,7 @@ pub fn run() {
             app.manage(AppState {
                 games: GameSession::new(current, game_hooks(app.handle())),
                 renderer,
+                gpu,
                 native_error,
                 video_mode: Mutex::new(mode),
                 menu_open,

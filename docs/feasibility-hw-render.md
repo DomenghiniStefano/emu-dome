@@ -233,9 +233,32 @@ What the hardware-rendering work builds on (Trello #78, 2026-11-21); nothing her
 - **One GPU for the whole run** (`GpuService`, `app/src-tauri/src/video.rs`): surfaces attach and detach, the device
   stays, so Android's background / resume no longer destroys the device under a running core.
 - **wgpu-hal interop** lives in `app/src-tauri/src/gpu_interop.rs` only (`VulkanInterop` for the device's raw
-  handles and a core image as a texture, `VulkanAdapterInterop` for a device the core made through the negotiation).
+  handles and a core image as a texture).
 - **Callbacks from the core's own threads** find their context (one static slot per loaded core, not a
   `thread_local`), and a `need_fullpath` core gets the path only: a 3DS game is never read into memory.
+
+## Vulkan in the shell (#46, 2026-11-21)
+
+- **One device, the app's.** `GpuService` opens its Vulkan device with wgpu's extensions and features plus what
+  Azahar uses when the GPU has them (`gpu_interop::open_device_for_cores`: `geometryShader`, `logicOp`,
+  `samplerAnisotropy`, `fragmentStoresAndAtomics`, `shaderClipDistance`; `VK_EXT_custom_border_color`,
+  `extended_dynamic_state`, `index_type_uint8`, `pipeline_creation_cache_control`, `fragment_shader_interlock`,
+  `external_memory_host`, `VK_KHR_fragment_shader_barycentric`, `image_format_list`, `timeline_semaphore`, with their
+  feature structs). Azahar's libretro build picks what to use from what the GPU *supports*, not from what the device
+  enabled, so the device enables everything it can see. The core is handed this device in
+  `retro_hw_render_interface_vulkan`; its negotiation interface is read for the API version it wants
+  (`get_application_info`: 1.1) and `create_device` is never called, so the risk «Vulkan device features given to
+  Azahar's `create_device`» above no longer applies.
+- **Frames.** `video_refresh(RETRO_HW_FRAME_BUFFER_VALID)` → the handler's `GpuFrame` (the image from `set_image`) →
+  `hw_render::GpuFrameSink`: a raw barrier (the core's colour writes → fragment reads), a draw of the core's image into
+  a game texture EmuDome owns, a raw barrier ordering the core's next frame after that read, then a readback into
+  `Shared::frame`, all on the emulation thread inside the callback, under the queue lock. The core's image is wrapped
+  anew each frame: Azahar destroys and recreates it on every state load, possibly with the same handle.
+- **Queue lock.** The core takes it around its `vkQueueSubmit` (`lock_queue` / `unlock_queue`); the shell around
+  every submit and present (the renderer's paint and present, librashader's preset load, the copy).
+- **Software fallback.** `CoreProfile::hw_render.renderer(vulkan)` picks `citra_graphics_api`: `Vulkan` when the app's
+  device is on Vulkan (opened for cores), else `Software`, reported as `hwRenderFallback` (`emu://health`).
+- **Not yet:** the native renderer sampling the game texture directly (every frame is read back today); OpenGL.
 
 ## Sensors (plan, not implemented)
 
