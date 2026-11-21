@@ -5,24 +5,24 @@ import { useI18n } from 'vue-i18n'
 import { Folder } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { emu } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 
 defineProps<{ folders: string[]; addText: string; disabled: boolean }>()
-const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
+const failWith = useErrorSink()
 
 async function remove(path: string) {
   try {
     await emu.library.removeFolder(path)
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 async function add() {
   try {
     await emu.library.chooseFolder()
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 </script>

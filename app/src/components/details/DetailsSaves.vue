@@ -9,7 +9,8 @@
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AUTO_SLOT, type GameSaves, type LibraryGame, type QuickSave } from '@/emu'
-import { errorText, saveWhenLabel } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
+import { saveWhenLabel } from '@/i18n/labels'
 import { loadGameSaves } from './gameSaves'
 import InGameSaveCard from './InGameSaveCard.vue'
 import QuickSaveDialog from '@/components/saves/QuickSaveDialog.vue'
@@ -24,11 +25,10 @@ const emit = defineEmits<{
   import: []
   /** A quick save was deleted: «Riprendi» may change. */
   changed: []
-  error: [string]
-  notice: [string]
 }>()
 
 const { t } = useI18n()
+const failWith = useErrorSink()
 
 const saves = ref<GameSaves | null>(null)
 
@@ -39,7 +39,7 @@ async function load() {
     // Rule 7: the details show another game now; its own load shows.
     if (props.game.id === id) saves.value = loaded
   } catch (e) {
-    if (props.game.id === id) emit('error', errorText(e))
+    if (props.game.id === id) failWith(e)
   }
 }
 watch(
@@ -103,8 +103,6 @@ async function onChanged() {
       :phone="phone"
       @backups="emit('backups')"
       @import="emit('import')"
-      @error="text => emit('error', text)"
-      @notice="text => emit('notice', text)"
     />
 
     <QuickSaveDialog
@@ -114,8 +112,6 @@ async function onChanged() {
       @close="closeQuick"
       @play="playQuick"
       @changed="onChanged"
-      @error="text => emit('error', text)"
-      @notice="text => emit('notice', text)"
     />
   </div>
 </template>

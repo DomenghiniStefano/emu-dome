@@ -13,7 +13,7 @@ import { useI18n } from 'vue-i18n'
 import { emu, type LibraryGame } from '@/emu'
 import { settingsUnder, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { gameScopeOf } from '@/lib/gameDetails'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import DetailsAction from './DetailsAction.vue'
 import DetailsCard from './DetailsCard.vue'
 import { hasOwnRemap, hasTouchScreen, pointerLabel, type PadRows } from './gameControls'
@@ -23,10 +23,10 @@ const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{
   /** «Rimappa i pulsanti per questo gioco». */
   remap: []
-  error: [string]
 }>()
 
 const { t, te } = useI18n()
+const failWith = useErrorSink()
 
 const scope = computed(() => gameScopeOf(props.game))
 const consoleName = computed(() => t(`console.${props.game.console}`))
@@ -41,7 +41,7 @@ async function load() {
     if (scope.value.game !== s.game) return
     rows.value = Object.fromEntries(page.map(r => [r.key, r]))
   } catch (e) {
-    if (scope.value.game === s.game) emit('error', errorText(e))
+    if (scope.value.game === s.game) failWith(e)
   }
 }
 watch(scope, () => void load())

@@ -15,7 +15,7 @@ import { Info } from '@lucide/vue'
 import type { SettingEntry, SettingRecent, SettingsSchema } from '@/emu'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { settingsFocus } from '@/lib/gameDetails'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { loadSchema, lockReason, msg } from '@/lib/settingsModel'
 import SettingRowView from './SettingRow.vue'
 import SettingsCategories from './SettingsCategories.vue'
@@ -38,7 +38,7 @@ import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
 import { Card, CardPad } from '@/components/ui/card'
 import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 
-const emit = defineEmits<{ error: [string]; openControls: [] }>()
+const emit = defineEmits<{ openControls: [] }>()
 const { t } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
@@ -55,7 +55,7 @@ const pageEntries = computed(() => (schema.value ? shownOn(schema.value, page.va
 
 const scopeBar = useSettingsScope(pageEntries, gameFocus)
 const { effective, scope, levelName } = scopeBar
-const store = useSettingsValues(schema, byKey, scope, e => emit('error', errorText(e)))
+const store = useSettingsValues(schema, byKey, scope, useErrorSink())
 const { values } = store
 
 const sections = computed(() => {
@@ -123,7 +123,6 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         @open-recent="openRecent"
         @set="store.set"
         @reset="store.reset"
-        @error="text => emit('error', text)"
       />
 
       <template v-else-if="!searching">
@@ -178,7 +177,6 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           lock-note
           @set="v => store.set(e.key, v)"
           @reset="store.reset(e.key)"
-          @error="text => emit('error', text)"
           @open="emit('openControls')"
           @choose="store.chooseBackground"
         />

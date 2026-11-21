@@ -14,7 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { Undo2 } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { SettingEntry, SettingLevel, SettingRow, SettingsSchema, SettingValue } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { FILE_PICKERS, msg } from '@/lib/settingsModel'
 import SettingSelect from './SettingSelect.vue'
 import SettingCards from './SettingCards.vue'
@@ -49,7 +49,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   set: [SettingValue]
   reset: []
-  error: [string]
   /** A binding list (`pad.remap`, `pad.combos`): open the Controls section, where it is edited. */
   open: []
   /** A file row with a backend (`video.surroundImg`): open its picker at the page's scope. */
@@ -57,6 +56,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const failWith = useErrorSink()
 const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
@@ -74,7 +74,7 @@ async function choose() {
   try {
     await pick()
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 </script>
@@ -189,7 +189,6 @@ async function choose() {
       :folders="chosenList(value)"
       :add-text="buttonText"
       :disabled="disabled"
-      @error="text => emit('error', text)"
     />
     <SettingSwatches
       v-if="kind.type === 'colour'"

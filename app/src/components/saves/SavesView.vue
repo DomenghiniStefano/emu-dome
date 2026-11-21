@@ -15,7 +15,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type GameId, type GameSaves, type LibraryGame } from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { library } from '@/lib/library'
 import { savesFocus, savesImportFor } from '@/lib/savesFocus'
 import QuickSaveDialog from './QuickSaveDialog.vue'
@@ -39,15 +39,11 @@ const emit = defineEmits<{
   /** «Dettagli del gioco» (L04). */
   openDetails: [LibraryGame]
   openLibrary: []
-  error: [string]
-  notice: [string]
 }>()
 
 const { t } = useI18n()
-
-function fail(e: unknown) {
-  emit('error', errorText(e))
-}
+const toasts = useToasts()
+const fail = useErrorSink()
 
 const settings = useSavesSettings(fail)
 const shortcut = useSaveShortcut(fail)
@@ -112,7 +108,7 @@ async function exportInGame() {
   const g = selected.value
   if (!g) return
   try {
-    if (await emu.saves.export(g.id, { kind: 'inGame' })) emit('notice', t('saves.exported'))
+    if (await emu.saves.export(g.id, { kind: 'inGame' })) toasts.notify(t('saves.exported'))
   } catch (e) {
     fail(e)
   }
@@ -123,7 +119,7 @@ async function restore(name: string) {
   if (!g) return
   try {
     await emu.saves.restore(g.id, name)
-    emit('notice', t('saves.restored'))
+    toasts.notify(t('saves.restored'))
   } catch (e) {
     fail(e)
   }
@@ -143,7 +139,7 @@ function playFromDetails(slot: number) {
 // ---- V05: import ----
 
 const importer = useSaveImport(settings.slotCount, fail, async g => {
-  emit('notice', t('saves.imported'))
+  toasts.notify(t('saves.imported'))
   mode.value = 'game'
   selectedId.value = g.id
   await refresh()
@@ -241,8 +237,6 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
       @close="quickDetails.close"
       @play="playFromDetails"
       @changed="refresh"
-      @error="text => emit('error', text)"
-      @notice="text => emit('notice', text)"
     />
 
     <!-- V05: «Scegli un altro gioco…» -->

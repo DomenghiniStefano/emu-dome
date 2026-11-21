@@ -12,7 +12,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
-import { errorText, type ErrorSink } from '@/i18n/labels'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
 import type { LibraryGame } from '@/emu'
 import { chooseFolder, library, replaceFolder } from '@/lib/library'
 import ContinuePlaying from './ContinuePlaying.vue'
@@ -38,12 +38,11 @@ const emit = defineEmits<{
   /** L04: the game's details. */
   details: [LibraryGame]
   openFile: []
-  error: [string]
 }>()
 
 const { t } = useI18n()
-const reportError = (text: string) => emit('error', text)
-const failWith: ErrorSink = e => reportError(errorText(e))
+const toasts = useToasts()
+const failWith = useErrorSink()
 
 const root = ref<HTMLElement | null>(null)
 useLibraryFocus(root)
@@ -77,11 +76,11 @@ const resumeGame = (g: LibraryGame) => open(g, resume.value[g.id]?.slot ?? undef
 
 async function addFolder() {
   const failed = await chooseFolder()
-  if (failed) reportError(failed)
+  if (failed) toasts.fail(failed)
 }
 async function replace(path: string) {
   const failed = await replaceFolder(path)
-  if (failed) reportError(failed)
+  if (failed) toasts.fail(failed)
 }
 const unreachable = computed(() => unreachableFolders(library.folders, library.games))
 </script>

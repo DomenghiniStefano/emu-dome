@@ -19,7 +19,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { controlsFocus } from '@/lib/gameDetails'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ControlsOverview from './ControlsOverview.vue'
 import ControlsRemap from './ControlsRemap.vue'
@@ -41,7 +41,6 @@ import { ControlsTab, tabOrRemap, tabsFor } from './tabs'
 import { useControlsData } from './useControlsData'
 import { SectionPage } from '@/components/ui/section-page'
 
-const emit = defineEmits<{ error: [string] }>()
 const { t } = useI18n()
 
 /** L07 «Rimappa i pulsanti per questo gioco»: the game this section opened for. */
@@ -57,7 +56,7 @@ const root = ref<HTMLElement | null>(null)
 /** The chosen device; null = the first controller. */
 const chosen = ref<DeviceId | null>(null)
 const { schema, globalRows, pads, states } = useControlsData({
-  onError: e => emit('error', errorText(e)),
+  onError: useErrorSink(),
   onPadGone: id => {
     if (chosen.value === id) chosen.value = null
   },
@@ -119,7 +118,6 @@ defineExpose({ tab: stepTabs, back })
       :global-rows="globalRows"
       @pick="d => (chosen = d)"
       @open="openTab"
-      @error="text => emit('error', text)"
     />
 
     <SectionPage v-else as="main">
@@ -141,7 +139,6 @@ defineExpose({ tab: stepTabs, back })
           :states="states"
           :global-rows="globalRows"
           :game="gameFocus"
-          @error="text => emit('error', text)"
         />
         <ControlsShortcuts
           v-else-if="tab === ControlsTab.Shortcuts"
@@ -150,7 +147,6 @@ defineExpose({ tab: stepTabs, back })
           :states="states"
           :schema="schema"
           :global-rows="globalRows"
-          @error="text => emit('error', text)"
         />
         <ControlsSticks
           v-else
@@ -158,7 +154,6 @@ defineExpose({ tab: stepTabs, back })
           :states="states"
           :schema="schema"
           :global-rows="globalRows"
-          @error="text => emit('error', text)"
         />
       </template>
     </SectionPage>

@@ -21,7 +21,8 @@ import {
   type RemapRow,
   type SettingRow,
 } from '@/emu'
-import { errorText, gamepadName } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
+import { gamepadName } from '@/i18n/labels'
 import { buttonName, keyName, posName, testerCells } from '@/lib/controls'
 import { GLOBAL } from '@/lib/settingsModel'
 import { Card, CardVariant } from '@/components/ui/card'
@@ -48,9 +49,9 @@ const emit = defineEmits<{
   pick: [DeviceId]
   /** Go one step down: C02 remap, C03 shortcuts, C04 sticks. */
   open: [ControlsTab]
-  error: [string]
 }>()
 const { t } = useI18n()
+const failWith = useErrorSink()
 
 const family = computed(() => familyOf(props.device))
 const isKeyboard = computed(() => props.device === 'keyboard')
@@ -66,7 +67,7 @@ async function load() {
     combos.value = own.combos
     modifier.value = own.modifier
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 watch(family, () => void load())

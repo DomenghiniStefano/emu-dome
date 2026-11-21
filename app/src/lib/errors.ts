@@ -7,13 +7,15 @@
 // What escapes all of them (a rejected promise nobody awaited, an error in a component) reaches
 // `catchEverything`'s handlers, which report it the same way. A bare `void emu.x()` is refused by
 // ESLint (app/eslint.config.js).
+// A component reaches the same toasts with `useErrorSink()` (composables/useToasts.ts, provided by
+// App.vue) instead of relaying its errors up through emits.
 import type { App } from 'vue'
 
 type Sink = (e: unknown) => void
 
 let sink: Sink | null = null
 
-/** App.vue hands its toasts over once mounted; until then a failure is logged only. */
+/** App.vue hands its toasts over in its setup; before that a failure is logged only. */
 export function setErrorSink(to: Sink | null) {
   sink = to
 }

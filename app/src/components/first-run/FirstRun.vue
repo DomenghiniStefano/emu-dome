@@ -12,7 +12,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type PadInfo } from '@/emu'
 import { report } from '@/lib/errors'
-import { errorText, type ErrorSink } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { focusInitial, useNavScope } from '@/nav'
 import { useFirstRunSteps } from './useFirstRunSteps'
 import { useListeners } from '@/composables/useListeners'
@@ -28,10 +28,9 @@ import ReadyStep from './ReadyStep.vue'
 import StepDots from './StepDots.vue'
 import WelcomeStep from './WelcomeStep.vue'
 
-const emit = defineEmits<{ done: []; error: [string] }>()
+const emit = defineEmits<{ done: [] }>()
 const { t } = useI18n()
-const fail = (text: string) => emit('error', text)
-const failWith: ErrorSink = e => fail(errorText(e))
+const failWith = useErrorSink()
 
 const pads = ref<PadInfo[]>([])
 const { steps, step, index, mainKey, refresh, next, back } = useFirstRunSteps(pads, {
@@ -99,7 +98,7 @@ onBeforeUnmount(() => {
         :lang-options="language.options.value"
         @lang="language.choose"
       />
-      <GamesStep v-else-if="step === 'games'" @error="fail" />
+      <GamesStep v-else-if="step === 'games'" />
       <ControllerStep
         v-else-if="step === 'controller' && tester.pad.value"
         :pad="tester.pad.value"

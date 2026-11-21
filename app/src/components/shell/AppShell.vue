@@ -40,8 +40,6 @@ const emit = defineEmits<{
   openFile: []
   /** `slot`: a quick save to load once the game runs (Saves, V03). */
   openGame: [game: LibraryGame, slot?: number]
-  error: [string]
-  notice: [string]
 }>()
 const section = defineModel<Section>({ required: true })
 
@@ -140,8 +138,6 @@ function openSaves(g: LibraryGame) {
           @import="importFor"
           @settings="settingsFor"
           @remap="remapFor"
-          @error="text => emit('error', text)"
-          @notice="text => emit('notice', text)"
         />
         <LibraryView
           v-else-if="section === 'library'"
@@ -149,27 +145,19 @@ function openSaves(g: LibraryGame) {
           @open-saves="openSaves"
           @details="openDetails"
           @open-file="emit('openFile')"
-          @error="text => emit('error', text)"
         />
         <SavesView
           v-else-if="section === 'saves'"
           @open-game="(g, slot) => emit('openGame', g, slot)"
           @open-details="openDetails"
           @open-library="section = 'library'"
-          @error="text => emit('error', text)"
-          @notice="text => emit('notice', text)"
         />
         <SettingsView
           v-else-if="section === 'settings'"
           ref="settingsView"
-          @error="text => emit('error', text)"
           @open-controls="section = 'controls'"
         />
-        <ControlsView
-          v-else-if="section === 'controls'"
-          ref="controlsView"
-          @error="text => emit('error', text)"
-        />
+        <ControlsView v-else-if="section === 'controls'" ref="controlsView" />
         <SectionPlaceholder v-else :section="section" />
       </main>
     </div>

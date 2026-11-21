@@ -20,7 +20,7 @@ import { useI18n } from 'vue-i18n'
 import type { GameInfo, Speed, VideoMode } from '@/emu'
 import { useNavScope } from '@/nav'
 import { inputMode } from '@/lib/inputMode'
-import { errorText, type ErrorSink } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { lockReason } from '@/lib/settingsModel'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import ControlsPage from './ControlsPage.vue'
@@ -80,13 +80,11 @@ const emit = defineEmits<{
   screenshot: []
   /** G09: px at the bottom of the window the bar covers (0 = none); the game shrinks above. */
   inset: [number]
-  error: [string]
 }>()
 
 const { t } = useI18n()
 const say = useSay()
-const reportError = (text: string) => emit('error', text)
-const failWith: ErrorSink = e => reportError(errorText(e))
+const failWith = useErrorSink()
 
 // ---- State ----
 const root = ref<HTMLElement | null>(null)
@@ -352,7 +350,6 @@ onBeforeUnmount(() => emit('inset', 0))
             :rows="sessionRows"
             :schema="schema"
             @set="setSession"
-            @error="reportError"
           />
 
           <!-- Phone G09: the picks and the cards in the sheet, the game at full brightness above. -->
@@ -372,7 +369,6 @@ onBeforeUnmount(() => emit('inset', 0))
             :modifier="modifier"
             :shortcut-count="boundCount"
             @set="setSession"
-            @error="reportError"
             @shortcuts="e => open(QuickMenuView.Shortcuts, e)"
           />
 
