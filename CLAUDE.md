@@ -172,7 +172,11 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
   Until 2026-11-21 it was `com.domenghini.emudome` (#90): a desktop build's first start copies those folders once,
   verified, and leaves them in place (`emudome_core::data_move`); a copy that did not finish makes that run use the
   old folders and is tried again. Android data does not carry over (another package's storage).
-- The executable accepts a game path as an argument and opens it at startup.
+- The executable accepts a game path as an argument and opens it at startup. On Android: the `game` extra of the
+  launch intent, else the `content://` document of «Open with» (`ACTION_VIEW`, octet-stream).
+- Android's back button (Trello #14, `SystemBridge.kt` → `hotkeys::back_button`): in game with the quick menu
+  closed it is the controller's menu button (`emu://menu`), anywhere else its B (`emu://nav` back). Not yet: leaving
+  to the background at the shell's root, and «Open with» while the app already runs (both need the interface).
 - Homebrew test ROM: `tools/test-rom/emudome-test.gba`. Magenta screen, green while A is held (X key).
 
 ## Architecture
@@ -239,8 +243,12 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          data folders (old_data_dirs: beside the new ones on desktop, none on Android),
                          paths.rs (how long a path this process can create: `path_limits`, Windows long
                          paths for the process and the `LongPathsEnabled` policy, read only);
-                         android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
-                         jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
+                         android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView;
+                         SystemBridge: the back button, the launch intent's game, `content://` documents;
+                         jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked);
+                         content.rs (games as `content://` documents, opened without a copy: the
+                         provider's file descriptor kept open for the session, read through a link
+                         `<cache>/content/<fd>/<name>` → `/proc/self/fd/<fd>`; pure parts tested)
 app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, the per-game hooks, setup, the
                          command list, `blocking()` for heavy commands), game_session.rs (`GameSession`: the
                          open game and what lives as long as it does, open / take / close / abandon; exit-path
