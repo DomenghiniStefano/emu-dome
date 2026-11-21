@@ -11,10 +11,12 @@ use raw_window_handle::{
 };
 
 mod azahar;
+mod content;
 mod cores;
 mod cpu;
 mod paths;
 
+pub use content::is_content_uri;
 pub use cores::CoreLookupError;
 pub use paths::{long_paths_enabled, long_paths_policy, path_limits, PathLimits};
 
@@ -96,8 +98,9 @@ pub fn is_suspend(event: &tauri::WindowEvent) -> bool {
 }
 
 /// The game to open at startup: the first non-flag argument on the desktop
-/// (`emudome game.gba`), the `game` extra of the launch intent on Android
-/// (`adb shell am start -n <package>/.MainActivity --es game /path/game.gba`).
+/// (`emudome game.gba`); on Android the `game` extra of the launch intent
+/// (`adb shell am start -n <package>/.MainActivity --es game /path/game.gba`), else the
+/// `content://` document of an «Open with» (`ACTION_VIEW`), which [`open_content`] opens.
 pub fn startup_game() -> Option<String> {
     imp::startup_game()
 }
@@ -264,5 +267,63 @@ pub fn set_fullscreen(window: &tauri::Window, on: bool) -> tauri::Result<()> {
     imp::set_fullscreen(window, on)
 }
 
+/// A `content://` document opened for a core ([`open_content`]): a path with the document's name
+/// and extension that reads it in this process, valid while this value lives. Keep it until the
+/// core is done with the game; dropping it closes the document and removes the path.
+pub struct ContentFile {
+    path: PathBuf,
+    name: Option<String>,
+    /// The descriptor and the link, released on drop.
+    _hold: Box<dyn Send>,
+}
+
+impl ContentFile {
+    /// The path the core and EmuDome read the game from.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The document's display name (its file name, as the provider tells it).
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
+}
+
+/// Why a `content://` document could not be opened ([`open_content`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ContentError {
+    /// This system has no content documents (the desktop).
+    Unsupported,
+    /// The provider refused it (permission gone, document deleted) or it could not be read.
+    Unreadable(String),
+    /// Not a file on the device (a stream from a cloud provider): it cannot be read again from
+    /// the start, as cores and EmuDome do.
+    NotLocal,
+}
+
+/// Opens the `content://` document `uri` for reading, without copying it (`content.rs` says how):
+/// the link it reads through goes under `cache_dir` (the app's private cache). Blocks on the
+/// provider: never call it on the main thread. Takes the persistable read permission when the
+/// system granted one (a document picked with `ACTION_OPEN_DOCUMENT`), so that game opens again
+/// after a restart. [`ContentError::Unsupported`] on the desktop.
+pub fn open_content(uri: &str, cache_dir: &Path) -> Result<ContentFile, ContentError> {
+    imp::open_content(uri, cache_dir)
+}
+
+/// Connects the app to what the system asks outside the page, whatever the video path. Android:
+/// `on_back` is called for every press of the back button or gesture (on the UI thread: it must
+/// return quickly; the system's own back no longer runs), and [`startup_game`] learns the launch
+/// intent's game. The desktop has no back button (its back is the keyboard's Esc and the
+/// controller's B): nothing is kept there.
+pub fn attach_system<R: tauri::Runtime>(
+    webview: &tauri::Webview<R>,
+    on_back: impl Fn() + Send + Sync + 'static,
+) {
+    imp::attach_system(webview, Box::new(on_back));
+}
+
 /// Listener of the external surface, boxed for the per-OS modules.
 pub(crate) type SurfaceListener = Box<dyn Fn(SurfaceEvent) + Send + Sync>;
+
+/// Listener of the back button, boxed for the per-OS modules.
+pub(crate) type BackListener = Box<dyn Fn() + Send + Sync>;

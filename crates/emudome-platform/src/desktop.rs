@@ -5,7 +5,10 @@ use std::path::{Path, PathBuf};
 
 use raw_window_handle::{DisplayHandle, HandleError, HasWindowHandle, WindowHandle};
 
-use crate::{DataDirs, SurfaceListener, WindowOptions, OLD_IDENTIFIER};
+use crate::{
+    BackListener, ContentError, ContentFile, DataDirs, SurfaceListener, WindowOptions,
+    OLD_IDENTIFIER,
+};
 
 /// The system's data folders are `<base>/<identifier>` (`%APPDATA%` and `%LOCALAPPDATA%` on
 /// Windows, `$XDG_DATA_HOME` for both on Linux, `~/Library/Application Support` on macOS): the
@@ -96,6 +99,14 @@ pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> O
         .inspect_err(|e| log::warn!("picked file: {e}"))
         .ok()
 }
+
+/// The desktop opens games by path only.
+pub fn open_content(_uri: &str, _cache_dir: &Path) -> Result<ContentFile, ContentError> {
+    Err(ContentError::Unsupported)
+}
+
+/// No back button on the desktop, and the startup game is the command line's: nothing to attach.
+pub fn attach_system<R: tauri::Runtime>(_webview: &tauri::Webview<R>, _on_back: BackListener) {}
 
 pub fn set_fullscreen(window: &tauri::Window, on: bool) -> tauri::Result<()> {
     window.set_fullscreen(on)

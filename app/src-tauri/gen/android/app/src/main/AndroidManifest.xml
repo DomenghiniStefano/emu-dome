@@ -22,6 +22,15 @@
                 <!-- AndroidTV support -->
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
+            <!-- «Open with»: a game file handed as a document (Trello #14). Game files have no MIME
+                 type of their own, providers send them as octet-stream; EmuDome refuses what no
+                 console runs (crates/emudome-platform/src/content.rs, SystemBridge.kt). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
         </activity>
 
         <provider

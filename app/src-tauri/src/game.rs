@@ -156,23 +156,18 @@ pub(crate) async fn open_game(app: tauri::AppHandle, path: String) -> Result<Gam
 fn open_game_now(app: &tauri::AppHandle, path: String) -> Result<GameInfo, ErrorCode> {
     let state = app.state::<AppState>();
     if let Some((key, title)) = library::game_at(app, &path) {
-        return open_library_game(app, &state, &key, PathBuf::from(path), title);
+        return open_library_game(app, &state, &key, GameFile::open(app, &path)?, title);
     }
-    let game_path = PathBuf::from(&path);
+    let file = GameFile::open(app, &path)?;
     // An extension EmuDome does not run is refused before any hashing.
-    core_for(&game_path)?;
-    let identity = library::identify_path(app, &game_path)?;
+    core_for(file.path())?;
+    // The content decides, whether the file came as a path or as a document (Trello #14): the
+    // same game has the same key both ways.
+    let identity = library::identify_path(app, file.path())?;
     if let Some(title) = library::title_of(app, &identity.id) {
-        return open_library_game(app, &state, &identity.id, game_path, title);
+        return open_library_game(app, &state, &identity.id, file, title);
     }
-    open_path(
-        app,
-        &state,
-        game_path,
-        identity.id,
-        Some(identity.title),
-        false,
-    )
+    open_path(app, &state, file, identity.id, Some(identity.title), false)
 }
 
 /// Opens a library game: its play time counts until it closes.
@@ -180,10 +175,80 @@ pub(crate) fn open_library_game(
     app: &tauri::AppHandle,
     state: &AppState,
     key: &GameKey,
-    game_path: PathBuf,
+    file: GameFile,
     title: String,
 ) -> Result<GameInfo, ErrorCode> {
-    open_path(app, state, game_path, key.clone(), Some(title), true)
+    open_path(app, state, file, key.clone(), Some(title), true)
+}
+
+/// A game file as the core reads it: a filesystem path, or a `content://` document (Android's
+/// picker, «Open with») opened by the platform without copying it, read through a path that
+/// stays valid while this value lives (`emudome_platform::open_content`). The session keeps it
+/// until its thread ended ([`keep_until_end`]).
+pub(crate) struct GameFile {
+    path: PathBuf,
+    document: Option<emudome_platform::ContentFile>,
+}
+
+impl GameFile {
+    /// `given` as the interface or the library has it: a path, or a `content://` URI.
+    pub(crate) fn open(app: &tauri::AppHandle, given: &str) -> Result<Self, ErrorCode> {
+        if !emudome_platform::is_content_uri(given) {
+            return Ok(Self {
+                path: PathBuf::from(given),
+                document: None,
+            });
+        }
+        let cache = app
+            .path()
+            .app_cache_dir()
+            .map_err(|e| ErrorCode::RomUnreadable {
+                detail: format!("{given}: no cache folder: {e}"),
+            })?;
+        let document =
+            emudome_platform::open_content(given, &cache).map_err(|e| content_error(given, e))?;
+        log::info!("{given}: document {:?}", document.name());
+        Ok(Self {
+            path: document.path().to_path_buf(),
+            document: Some(document),
+        })
+    }
+
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+/// A document that could not be opened, for the interface: the game file cannot be read, and
+/// the detail says why (no new code: the interface already tells it with what to check).
+fn content_error(uri: &str, e: emudome_platform::ContentError) -> ErrorCode {
+    use emudome_platform::ContentError;
+    let detail = match e {
+        ContentError::Unreadable(detail) => detail,
+        ContentError::NotLocal => format!(
+            "{uri} is not a file on this device (a cloud document?): copy the game to the \
+             device's storage and open it from there"
+        ),
+        ContentError::Unsupported => format!("{uri}: documents open on Android only"),
+    };
+    ErrorCode::RomUnreadable { detail }
+}
+
+/// The session's end-of-thread check, extended to keep `document` open until then: a core may
+/// read its game again while it runs (a 3DS game is streamed from its file).
+fn keep_until_end(
+    after_end: Option<AfterEnd>,
+    document: Option<emudome_platform::ContentFile>,
+) -> Option<AfterEnd> {
+    let Some(document) = document else {
+        return after_end;
+    };
+    Some(Box::new(move || {
+        if let Some(check) = after_end {
+            check();
+        }
+        drop(document);
+    }))
 }
 
 /// The options the core starts with: the settings' (console options), then the ones the shell
@@ -236,17 +301,21 @@ fn game_video(app: &tauri::AppHandle, state: &AppState, core: CoreId) -> (Render
     }
 }
 
-/// Closes the open game, then opens `game_path` as the game `game` (its console, saves and
+/// Closes the open game, then opens `file` as the game `game` (its console, saves and
 /// settings). `title` comes from the library or the ROM (else the file name); `library`: a
-/// library game, whose play time counts.
+/// library game, whose play time counts. A document stays open until the session's thread ended.
 fn open_path(
     app: &tauri::AppHandle,
     state: &AppState,
-    game_path: PathBuf,
+    file: GameFile,
     game: GameKey,
     title: Option<String>,
     library: bool,
 ) -> Result<GameInfo, ErrorCode> {
+    let GameFile {
+        path: game_path,
+        document,
+    } = file;
     // The one-time move of old save names ends before any game reads its saves.
     migration::wait(app);
     let (core, console) = core_for(&game_path)?;
@@ -282,7 +351,7 @@ fn open_path(
     // Trello #93: on this renderer the core would crash loading a state of this game.
     let state_load_block = state_load_block(core, renderer, &game);
     // After the previous game closed: its writes are in the "before".
-    let after_end = watch_core_user_folder(app, core);
+    let after_end = keep_until_end(watch_core_user_folder(app, core), document);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(

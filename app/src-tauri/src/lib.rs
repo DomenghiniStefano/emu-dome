@@ -338,6 +338,10 @@ pub fn run() {
                 .map_or_else(emudome_platform::native_video_default, |p| {
                     p == VideoPath::Native
                 });
+            // Android: the back button (as the controller's menu button / B) and the launch
+            // intent's game; nothing on the desktop.
+            let back_app = app.handle().clone();
+            emudome_platform::attach_system(&ui, move || hotkeys::back_button(&back_app));
             let surface = video::SurfaceSettings::from_tuning(&tuning.video);
             let gpu = video::GpuService::new();
             let mut native_error = None;
