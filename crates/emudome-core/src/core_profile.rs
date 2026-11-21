@@ -233,9 +233,8 @@ static MELONDSDS: CoreProfile = CoreProfile {
 static AZAHAR: CoreProfile = CoreProfile {
     id: CoreId::Azahar,
     consoles: &[ConsoleId::N3ds],
-    forced_options: &[],
-    // TODO(Phase 3): Azahar's two screens.
-    split: Split::Whole,
+    forced_options: crate::n3ds::FORCED_OPTIONS,
+    split: crate::n3ds::SPLIT,
     hw_render: HwRender {
         contexts: &[HwContext::Vulkan, HwContext::OpenGlCore],
         software_fallback: true,

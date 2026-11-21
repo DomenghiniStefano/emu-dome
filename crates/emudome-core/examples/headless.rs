@@ -24,6 +24,8 @@
 //!   rectangle → pointer value) and check what the test ROM shows (`tools/test-rom-nds`);
 //! - `--set key=value` (repeatable): a text setting the BIOS rule reads (`consoles.dsmode`,
 //!   `cores.mdsboot`), as the shell would resolve it for the game;
+//! - `--tap X,Y` (repeatable): after `--press-a`, touch pixel (X, Y) of the bottom screen for
+//!   200 ms, then wait a second (through the shell's pointer value for that screen);
 //! - `--timing N`: run N seconds at 1x, a quick save into slot 5 every 2 s, and print the
 //!   emulation thread's work per frame (p50 / p99 / max, frames over budget), then stop. With
 //!   `--rewind S` rewind records meanwhile, as in the app. Build with `--release` to measure.
@@ -73,6 +75,27 @@ struct Args {
     fast_audio: Option<emudome_core::speed_audio::FastAudio>,
     sets: Vec<(String, String)>,
     timing: Option<u32>,
+    taps: Vec<(u32, u32)>,
+}
+
+/// `--tap X,Y`: a touch on pixel (X, Y) of the bottom screen, as the shell would send it.
+fn tap(session: &Session, (x, y): (u32, u32)) -> anyhow::Result<()> {
+    let (frame, bottom) = {
+        let f = session.shared().frame.lock();
+        let bottom = f
+            .screens()
+            .into_iter()
+            .find(|s| s.id == ScreenId::Bottom)
+            .ok_or_else(|| anyhow::anyhow!("--tap: the frame has no bottom screen"))?;
+        ((f.width, f.height), bottom.src)
+    };
+    let pointer = screens::pointer_value(bottom, frame, x, y);
+    session.shared().input.set_pointer(Some(pointer));
+    std::thread::sleep(Duration::from_millis(200));
+    session.shared().input.set_pointer(None);
+    std::thread::sleep(Duration::from_secs(1));
+    println!("tapped bottom screen ({x}, {y}): pointer {pointer:?}");
+    Ok(())
 }
 
 /// `--timing N`: the emulation thread's work per frame over N seconds at 1x, with a quick save
@@ -160,6 +183,7 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut fast_audio = None;
     let mut sets = Vec::new();
     let mut timing = None;
+    let mut taps = Vec::new();
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -184,6 +208,13 @@ fn parse_args() -> anyhow::Result<Args> {
             "--live" => live.push(key_value(&value()?)?),
             "--set" => sets.push(key_value(&value()?)?),
             "--timing" => timing = Some(value()?.parse()?),
+            "--tap" => {
+                let xy = value()?;
+                let (x, y) = xy
+                    .split_once(',')
+                    .ok_or_else(|| anyhow::anyhow!("--tap wants X,Y, got {xy}"))?;
+                taps.push((x.trim().parse()?, y.trim().parse()?));
+            }
             "--fast-audio" => {
                 let id = value()?;
                 fast_audio = Some(
@@ -213,6 +244,7 @@ fn parse_args() -> anyhow::Result<Args> {
         fast_audio,
         sets,
         timing,
+        taps,
     })
 }
 
@@ -508,8 +540,19 @@ pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
             .set(Source::Keyboard, Button::A, false);
     }
 
+    for xy in &args.taps {
+        tap(&session, *xy)?;
+    }
+
     if let Some(secs) = args.timing {
         measure_timing(&session, &rx, secs)?;
+        // The picture at the end of the measure.
+        if let Some(png) = &args.png {
+            write_png(&session, png)?;
+        }
+        if let Some(prefix) = &args.screens {
+            write_screens(&session, prefix)?;
+        }
         drop(session);
         return Ok(());
     }

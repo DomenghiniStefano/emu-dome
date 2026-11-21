@@ -28,6 +28,7 @@ pub mod input;
 pub mod keyboard;
 pub mod library;
 pub mod migration;
+pub mod n3ds;
 pub mod nds;
 pub mod rewind;
 pub mod saves;
