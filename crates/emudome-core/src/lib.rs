@@ -17,10 +17,12 @@ pub mod bindings;
 pub mod bios;
 pub mod close_flow;
 pub mod contract;
+pub mod core_profile;
 pub mod effects;
 pub mod first_run;
 pub mod game_key;
 pub mod hotkeys;
+pub mod hw_render;
 pub mod input;
 pub mod library;
 pub mod migration;
@@ -32,13 +34,15 @@ pub mod screenshot;
 pub mod settings;
 pub mod speed_audio;
 pub mod tuning;
+pub mod video_sink;
 
 pub use atomic::write_atomic;
-pub use core::GameFiles;
+pub use core::{GameFiles, StartError};
 pub use error::ErrorCode;
 pub use frame::Frame;
 pub use game_key::GameKey;
 pub use session::{
     core_needs_restart, has_auto_save, slot_infos, Closed, Command, CoreOptionInfo, Event,
-    ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, AUTO_SLOT, CLOSE_TIMEOUT,
+    ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, VideoSetup, AUTO_SLOT,
+    CLOSE_TIMEOUT,
 };

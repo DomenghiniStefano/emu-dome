@@ -24,7 +24,7 @@ const DSI_FIRMWARE: &str = "melonDS DS/dsi_firmware.bin";
 const DSI_NAND: &str = "melonDS DS/dsi_nand.bin";
 
 pub(super) static TABLE: BiosTable = BiosTable {
-    core: crate::nds::CORE,
+    core: crate::core_profile::CoreId::MelonDsDs,
     slots: &[
         SlotSpec {
             slot: Slot::DsArm7,

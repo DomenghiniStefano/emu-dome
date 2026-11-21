@@ -31,7 +31,7 @@ use std::time::{Duration, Instant};
 
 use emudome_core::bindings::{Family, PadConfig, PadMap, Pos};
 use emudome_core::hotkeys::{Action, Hotkey, Nav, PadInput, Router};
-use emudome_core::input::Source;
+use emudome_core::input::{Source, Sticks};
 use emudome_core::{Command, Speed};
 use sdl3_sys::error::SDL_GetError;
 use sdl3_sys::events::{
@@ -139,6 +139,18 @@ struct Pad {
 }
 
 /// One poll of one pad.
+/// The sticks the game gets: the first pad with a stick off centre (several pads are one player).
+fn game_sticks(readings: &[Reading]) -> Sticks {
+    readings
+        .iter()
+        .map(|r| Sticks {
+            left: (r.axes[0], r.axes[1]),
+            right: (r.axes[2], r.axes[3]),
+        })
+        .find(|s| *s != Sticks::default())
+        .unwrap_or_default()
+}
+
 struct Reading {
     /// Positions held: buttons and triggers past the threshold, plus the left stick as d-pad.
     input: PadInput,
@@ -322,6 +334,7 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
             router.absorb(input);
             if let Some(shared) = shared {
                 shared.input.set_mask(Source::Gamepad, 0);
+                shared.input.set_sticks(Sticks::default());
             }
             std::thread::sleep(POLL);
             continue;
@@ -335,6 +348,13 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
                 mask | pad.map.apply(r.input.buttons & routed.game_mask)
             });
             shared.input.set_mask(Source::Gamepad, mask);
+            // The sticks as they are (cores keep their own dead zones), from the first pad that
+            // moves one; centred while the menu or a combo has the controller.
+            shared.input.set_sticks(if routed.game_has_input {
+                game_sticks(&readings)
+            } else {
+                Sticks::default()
+            });
         }
         for action in routed.actions {
             hotkeys.run(action);

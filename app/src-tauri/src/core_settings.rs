@@ -10,6 +10,7 @@
 //!   go to the interface as `emu://core-restart` `{ settings: [key, ...] }`, sent whenever that
 //!   list changes (an empty list: nothing waits any more). TypeScript: `CoreRestart` (generated).
 
+use emudome_core::core_profile::CoreId;
 use emudome_core::settings::core_values::{self, MappedOption};
 use emudome_core::settings::{ConsoleId, Scope, Value};
 use parking_lot::Mutex;
@@ -21,7 +22,7 @@ use crate::settings::SettingsState;
 
 /// The open game's core and options.
 struct Running {
-    core: &'static str,
+    core: CoreId,
     console: ConsoleId,
     /// What the core was opened with.
     started: Vec<MappedOption>,
@@ -48,12 +49,7 @@ fn emit_restart(app: &AppHandle, settings: &[&'static str]) {
 }
 
 /// A game was opened by `core` with these options (from the settings).
-pub fn started(
-    app: &AppHandle,
-    core: &'static str,
-    console: ConsoleId,
-    options: Vec<MappedOption>,
-) {
+pub fn started(app: &AppHandle, core: CoreId, console: ConsoleId, options: Vec<MappedOption>) {
     let old = RUNNING.lock().replace(Running {
         core,
         console,

@@ -76,6 +76,76 @@ pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL: c_uint = 54;
 pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY: c_uint = 55;
 pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2: c_uint = 67;
 pub const RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL: c_uint = 68;
+/// `uint64_t *`: the core's serialization quirks; the frontend zeroes the ones it does not know.
+/// Shares the number 44 with `SET_HW_SHARED_CONTEXT`, which carries the experimental flag: a host
+/// that masks the flag off must tell them apart before masking.
+pub const RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS: c_uint = 44;
+/// `const struct retro_game_info_ext **`: more about the loaded content than `retro_game_info`.
+pub const RETRO_ENVIRONMENT_GET_GAME_INFO_EXT: c_uint = 66;
+
+// Analog sticks (`RETRO_DEVICE_ANALOG`): index = which stick, id = which axis; -0x8000..=0x7FFF.
+pub const RETRO_DEVICE_INDEX_ANALOG_LEFT: c_uint = 0;
+pub const RETRO_DEVICE_INDEX_ANALOG_RIGHT: c_uint = 1;
+pub const RETRO_DEVICE_INDEX_ANALOG_BUTTON: c_uint = 2;
+pub const RETRO_DEVICE_ID_ANALOG_X: c_uint = 0;
+pub const RETRO_DEVICE_ID_ANALOG_Y: c_uint = 1;
+
+/// `retro_language`: the one EmuDome answers today.
+pub const RETRO_LANGUAGE_ENGLISH: c_uint = 0;
+
+/// `retro_log_level`.
+pub const RETRO_LOG_DEBUG: c_uint = 0;
+pub const RETRO_LOG_INFO: c_uint = 1;
+pub const RETRO_LOG_WARN: c_uint = 2;
+pub const RETRO_LOG_ERROR: c_uint = 3;
+
+/// `RETRO_SERIALIZATION_QUIRK_*`: what a core's states can and cannot do.
+pub const RETRO_SERIALIZATION_QUIRK_INCOMPLETE: u64 = 1 << 0;
+pub const RETRO_SERIALIZATION_QUIRK_MUST_INITIALIZE: u64 = 1 << 1;
+pub const RETRO_SERIALIZATION_QUIRK_CORE_VARIABLE_SIZE: u64 = 1 << 2;
+pub const RETRO_SERIALIZATION_QUIRK_FRONT_VARIABLE_SIZE: u64 = 1 << 3;
+pub const RETRO_SERIALIZATION_QUIRK_SINGLE_SESSION: u64 = 1 << 4;
+pub const RETRO_SERIALIZATION_QUIRK_ENDIAN_DEPENDENT: u64 = 1 << 5;
+pub const RETRO_SERIALIZATION_QUIRK_PLATFORM_DEPENDENT: u64 = 1 << 6;
+
+/// `retro_log_printf_t`. In C it is variadic (`level, fmt, ...`); stable Rust cannot define a
+/// variadic function, so the host's logger is declared with the two named arguments only and
+/// ignores the rest. Sound on the ABIs EmuDome targets (Windows x64, System V x86-64, AArch64
+/// AAPCS64, Apple arm64): named arguments are passed the same way to a variadic and to a fixed
+/// function, and a callee may leave the variadic ones unread.
+pub type retro_log_printf_t = unsafe extern "C" fn(level: c_uint, fmt: *const c_char);
+
+/// `GET_LOG_INTERFACE`: the frontend fills in its logger.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_log_callback {
+    pub log: Option<retro_log_printf_t>,
+}
+
+/// `SET_MESSAGE`: a message the core wants shown for `frames` frames.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_message {
+    pub msg: *const c_char,
+    pub frames: c_uint,
+}
+
+/// `GET_GAME_INFO_EXT`: valid from `retro_load_game` until `retro_unload_game`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct retro_game_info_ext {
+    pub full_path: *const c_char,
+    pub archive_path: *const c_char,
+    pub archive_file: *const c_char,
+    pub dir: *const c_char,
+    pub name: *const c_char,
+    pub ext: *const c_char,
+    pub meta: *const c_char,
+    pub data: *const c_void,
+    pub size: usize,
+    pub file_in_archive: bool,
+    pub persistent_data: bool,
+}
 
 // Hardware rendering (`SET_HW_RENDER` and its interfaces). The experimental ones carry the flag,
 // like `GET_INPUT_BITMASKS`; a host that masks the flag off compares against `x & !EXPERIMENTAL`.

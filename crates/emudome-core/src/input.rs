@@ -1,6 +1,10 @@
 //! RetroPad button state, written by keyboard, controllers and touch,
 //! read by the core. One bitmask per source, merged on read.
-//! Also the touch-screen pointer (NDS, 3DS), read as `RETRO_DEVICE_POINTER`.
+//! Also the touch-screen pointer (NDS, 3DS), read as `RETRO_DEVICE_POINTER`, and the two analog
+//! sticks (3DS Circle Pad and C-stick, read as `RETRO_DEVICE_ANALOG`).
+//!
+//! The core never reads these atomics directly: the session takes a [`Snapshot`] before each
+//! frame and at the core's `input_poll`, so every `input_state` of one poll sees the same input.
 
 use std::sync::atomic::{AtomicU16, AtomicU64, Ordering};
 
@@ -97,6 +101,24 @@ pub struct InputState {
     /// ([`crate::screens::pointer_value`]): x in bits 0-15, y in 16-31, pressed in bit 32.
     /// One pointer whatever moves it (mouse, finger): the last writer wins.
     pointer: AtomicU64,
+    /// Both sticks, `-0x8000..=0x7FFF` each: left x, left y, right x, right y in bits 0-15,
+    /// 16-31, 32-47, 48-63. Written by the controllers only.
+    sticks: AtomicU64,
+}
+
+/// The analog sticks as the core reads them (`RETRO_DEVICE_ANALOG`; y grows downwards).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Sticks {
+    pub left: (i16, i16),
+    pub right: (i16, i16),
+}
+
+/// Everything the core can read, frozen at one moment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Snapshot {
+    pub mask: u16,
+    pub pointer: Pointer,
+    pub sticks: Sticks,
 }
 
 /// Where the touch-screen pointer is, as the core reads it.
@@ -154,11 +176,64 @@ impl InputState {
             pressed: p & POINTER_PRESSED != 0,
         }
     }
+
+    /// Both sticks at once (centred: `Sticks::default()`).
+    pub fn set_sticks(&self, sticks: Sticks) {
+        let part = |v: i16, shift: u32| u64::from(v as u16) << shift;
+        let packed = part(sticks.left.0, 0)
+            | part(sticks.left.1, 16)
+            | part(sticks.right.0, 32)
+            | part(sticks.right.1, 48);
+        self.sticks.store(packed, Ordering::Relaxed);
+    }
+
+    pub fn sticks(&self) -> Sticks {
+        let p = self.sticks.load(Ordering::Relaxed);
+        let part = |shift: u32| (p >> shift) as u16 as i16;
+        Sticks {
+            left: (part(0), part(16)),
+            right: (part(32), part(48)),
+        }
+    }
+
+    /// What the core reads until the next snapshot.
+    pub fn snapshot(&self) -> Snapshot {
+        Snapshot {
+            mask: self.mask(),
+            pointer: self.pointer(),
+            sticks: self.sticks(),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Button, InputState, Pointer, Source};
+    use super::{Button, InputState, Pointer, Snapshot, Source, Sticks};
+
+    #[test]
+    fn sticks_keep_both_axes_and_their_signs() {
+        let input = InputState::default();
+        assert_eq!(input.sticks(), Sticks::default());
+        let s = Sticks {
+            left: (-32768, 32767),
+            right: (-1, 12345),
+        };
+        input.set_sticks(s);
+        assert_eq!(input.sticks(), s);
+        input.set(Source::Gamepad, Button::A, true);
+        let snap = input.snapshot();
+        assert_eq!(
+            snap,
+            Snapshot {
+                mask: Button::A.bit(),
+                pointer: Pointer::default(),
+                sticks: s
+            }
+        );
+        // A snapshot does not move with later input.
+        input.set_sticks(Sticks::default());
+        assert_eq!(snap.sticks, s);
+    }
 
     #[test]
     fn releasing_a_source_lets_go_of_its_buttons_only() {

@@ -633,7 +633,7 @@ pub fn identify_path(app: &AppHandle, path: &Path) -> Result<Identity, ErrorCode
         lib.cache().get(path.to_string_lossy().as_ref()).cloned()
     });
     library::identify_cached(path, cached.as_ref()).map_err(|e| match e {
-        NotAGame::Io(e) => ErrorCode::OpenFailed {
+        NotAGame::Io(e) => ErrorCode::RomUnreadable {
             detail: format!("{}: {e}", path.display()),
         },
         NotAGame::Extension | NotAGame::Header(_) => ErrorCode::GameUnidentified {

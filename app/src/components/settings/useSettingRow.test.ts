@@ -28,6 +28,7 @@ const entry = (key: SettingKey, over: Partial<SettingEntry> = {}): SettingEntry 
   mostUsed: false,
   needsNativeVideo: false,
   wired: true,
+  unsupportedConsoles: [],
   ...over,
 })
 const schema: SettingsSchema = {

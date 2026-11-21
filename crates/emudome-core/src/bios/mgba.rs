@@ -7,7 +7,7 @@ use super::{BiosTable, Check, Plan, Slot, SlotSpec};
 use crate::settings::{keys, ConsoleId, Value};
 
 pub(super) static TABLE: BiosTable = BiosTable {
-    core: "mgba",
+    core: crate::core_profile::CoreId::Mgba,
     slots: &[
         SlotSpec {
             slot: Slot::GbaBios,

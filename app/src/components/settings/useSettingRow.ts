@@ -5,6 +5,7 @@ import { computed, onMounted, ref, watch, type ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   emu,
+  type ConsoleId,
   type SettingEntry,
   type SettingLevel,
   type SettingRow,
@@ -37,6 +38,8 @@ export interface SettingRowInput {
   schema: SettingsSchema
   level: SettingLevel
   scoped: boolean
+  /** The console of the scope being edited: a row its emulator cannot honour is locked. */
+  console?: ConsoleId | null
   /** The page says once why its «Tutti i giochi» rows are grey: the row keeps its description. */
   lockNote?: boolean
 }
@@ -46,7 +49,14 @@ export function useSettingRow(props: SettingRowInput) {
   const key = computed(() => props.entry.key)
   const value = computed(() => rowValue(props.entry, props.row))
   const state: ComputedRef<RowState> = computed(() =>
-    rowState(props.entry, props.row, props.schema, props.level, props.scoped),
+    rowState(
+      props.entry,
+      props.row,
+      props.schema,
+      props.level,
+      props.scoped,
+      props.console ?? null,
+    ),
   )
 
   // A `bios.*` row with a picker: its status follows its value (the row reset, another file).

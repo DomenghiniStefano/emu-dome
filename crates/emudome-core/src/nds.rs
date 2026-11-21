@@ -16,9 +16,6 @@ use crate::screens::Split;
 use crate::settings::keys::{self, Reader};
 use crate::settings::Value;
 
-/// The core's buildbot name (`melondsds_libretro.*`).
-pub const CORE: &str = "melondsds";
-
 /// How the frame holds the screens with [`FORCED_OPTIONS`]: 256 × 384, top then bottom.
 pub const SPLIT: Split = Split::DsStacked { gap: 0 };
 

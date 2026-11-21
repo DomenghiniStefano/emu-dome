@@ -30,6 +30,7 @@ const entry = (over: Partial<SettingEntry> = {}): SettingEntry => ({
   mostUsed: false,
   needsNativeVideo: false,
   wired: true,
+  unsupportedConsoles: [],
   ...over,
 })
 const schema: SettingsSchema = {
@@ -71,6 +72,15 @@ describe('rowState', () => {
       disabled: true,
       changedHere: false,
     })
+  })
+
+  it('locks a row on a console whose emulator has no equivalent, and only there', () => {
+    const frameskip = entry({ key: 'perf.frameskip', unsupportedConsoles: ['nds', '3ds'] })
+    const at = (console: 'gba' | 'nds' | null) =>
+      rowState(frameskip, row('global'), schema, 'console', true, console)
+    expect(at('nds')).toMatchObject({ reason: 'settingsUi.lockedConsole', disabled: true })
+    expect(at('gba').reason).toBeNull()
+    expect(at(null).reason).toBeNull()
   })
 
   it('disables a row with no backend yet without a lock reason', () => {

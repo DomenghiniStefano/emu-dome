@@ -834,5 +834,8 @@ fn the_file_picker_offers_every_console_that_opens_today() {
 
 #[test]
 fn the_ds_core_is_the_one_the_nds_module_names() {
-    assert_eq!(core_of(ConsoleId::Nds), crate::nds::CORE);
+    assert_eq!(
+        core_of(ConsoleId::Nds),
+        crate::core_profile::CoreId::MelonDsDs.name()
+    );
 }

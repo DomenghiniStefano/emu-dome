@@ -711,8 +711,7 @@ pub static ENTRIES: &[Entry] = &[
         ALL,
     )
     .device()
-    .on_page(ADV)
-    .not_wired(),
+    .on_page(ADV),
     sw("perf.jit", true, CG).phase(2).on_page(ADV).not_wired(),
     sw("perf.shcache", true, C)
         .device()
