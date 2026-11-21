@@ -644,7 +644,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   - Tailwind v4 reads them in `@theme`, with its default scales **reset**: a colour, size, radius, shadow or
     duration that is not a token generates no class at all. Preflight is off.
   - Names come from the design system (`title`, `heading`, `body`, `space-*`, `control`, `radius-*`, `glow-*`…).
-    One value per step: a new value is a design-system change (Cowork), never a literal in a screen.
+    One value per step: a new value is a design-system change (decided with the owner), never a literal in a screen.
   - Themes (Scuro / Nero / Chiaro) and the runtime accent (`lib/appearance.ts`, `lib/accent.ts`) are CSS variables on
     `:root` / `[data-theme]`; Tailwind points at them (`@theme inline`), so a theme or accent change needs no class.
   - Glass, glow and other compound looks are named utilities (`assets/utilities.css`), not long class strings.
@@ -656,8 +656,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `as-child` on the screen's Card or Button. A screen never restyles a primitive; a missing look is a new variant.
 - **Every visual value is a token**: colours, borders (width and colour, `theme/border.css`), margins, paddings, gaps,
   radius, shadows, opacity. Where a value has a role it has a role name (`radius-control`, `spacing-card-pad`,
-  `spacing-section-x`…), so changing it everywhere is one edit. Values Cowork has not decided yet are tokens under a
-  «pending Cowork» comment, never literals in a screen. Internal design variables only, not user settings.
+  `spacing-section-x`…), so changing it everywhere is one edit. Values not decided yet are tokens under a
+  «pending» comment (decided with the owner), never literals in a screen. Internal design variables only, not user settings.
 - **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
   components never take a `phone` / `touch` prop just to change their look.
 - **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
@@ -767,17 +767,21 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   another program (the standalone Azahar) during the session looks the same, and nothing is moved back.
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 
-## Handoff with Cowork
+## Design and interface work
 
-Analysis, decisions and design are handled in a separate Cowork session, which reads this folder but does not see the Claude Code conversation.
+There is no separate Cowork session any more (owner, 2026-11-21). The design system (tokens, primitives on Reka, the
+Kit page) and the boards already drawn on the canvas are the reference.
 
-**Who does what** (owner, 2026-11-16):
-- **Cowork: design.** Look, layout, screens, flows, texts' wording, the design system. Claude Code does not invent or
-  restyle UI on its own: a visual problem it notices goes on Trello for Cowork, not into the code.
+**Who does what:**
+- **Interface and design: with the owner, in dedicated sessions.** The UI step cards (screens, layouts, flows) are not
+  started autonomously. Claude Code does not invent or restyle UI on its own: a visual problem it notices goes on Trello
+  for the owner, not into the code. New user-visible texts follow the existing tone and are listed on the card for the
+  owner to review.
 - **Claude Code: backend structure and feasibility.** Rust crates, cores, platforms, video/audio/input, IPC, settings
-  engine, build and checks, prototypes that answer "can it be done". It implements the interface **from Cowork's designs**,
-  wiring them to the backend; until a design exists, the UI stays a functional placeholder (correct, i18n, controller-usable,
+  engine, build and checks, prototypes that answer "can it be done", and the interface wiring of what is already
+  designed; until a design exists, the UI stays a functional placeholder (correct, i18n, controller-usable,
   design-system tokens), not a design proposal.
+
 After every Phase 0 test, update **`docs/fase0-esito.md`** (create it if missing) in this format, without deleting the earlier entries:
 
 ```
