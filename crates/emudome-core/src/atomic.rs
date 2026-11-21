@@ -20,7 +20,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 /// The extension of the helper's temporary files.
-const TMP_SUFFIX: &str = ".emudome-tmp";
+pub(crate) const TMP_SUFFIX: &str = ".emudome-tmp";
 
 /// A temporary file older than this is a leftover of an interrupted write, never one in flight.
 pub const STALE_AFTER: Duration = Duration::from_secs(60 * 60);
@@ -102,7 +102,7 @@ fn write_tmp(tmp: &Path, bytes: &[u8]) -> io::Result<()> {
 
 /// Flushes the folder's entries (the rename) where the system can: a folder opens as a file on
 /// Linux and Android; on Windows the open or the flush is refused, and NTFS journals the rename.
-fn sync_dir(dir: &Path) {
+pub(crate) fn sync_dir(dir: &Path) {
     if let Ok(d) = fs::File::open(dir) {
         let _ = d.sync_all();
     }
