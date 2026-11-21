@@ -129,7 +129,18 @@ export function lockReason(
 }
 
 /** The `bios.*` rows with a backend (`emudome_core::bios` tables): their picker checks the file. */
-const BIOS_ROWS: SettingKey[] = ['bios.bgba', 'bios.bds7', 'bios.bds9', 'bios.bdsfw', 'bios.bdsi']
+const BIOS_ROWS: SettingKey[] = [
+  'bios.bgb',
+  'bios.bgbc',
+  'bios.bgba',
+  'bios.bds7',
+  'bios.bds9',
+  'bios.bdsfw',
+  'bios.bdsi7',
+  'bios.bdsi9',
+  'bios.bdsifw',
+  'bios.bdsi',
+]
 
 /**
  * File rows that work: the picker the row's button opens, which stores the chosen file itself.

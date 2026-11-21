@@ -92,6 +92,9 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
                                               # (sh scripts/android-build.sh [--install] ... on Linux / Git Bash)
 node scripts/cores.mjs generate               # after editing cores.lock: cores/SOURCES.md, app/src-tauri/package/*.json
 pnpm package:windows                          # installer (from app/): only the cores.lock files, verified (THIRD_PARTY.md)
+                                              # releases (tag on main, clean clone, where published): docs/release.md
+node scripts/third-party-tables.mjs --write   # after a dependency change (and pnpm install): THIRD_PARTY.md's tables
+node scripts/versions.mjs                     # the version agrees in Cargo.toml, app/package.json, tauri.conf.json
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
@@ -179,7 +182,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 155 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 160 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
                          compiled, and `Reader` (a value or the catalogue's default),
@@ -347,9 +350,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 155 entries on 18 pages: key
-  `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default,
-  accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 160 entries on 18 pages: key
+  `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
+  (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
+  the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
   reads it, the unwired ones shown disabled with «arrives in a future update»); the interface builds its
   pages from `settings_schema` and never lists settings by hand. A key the interface names is a `SettingKey`
   (generated union); one the Rust code reads is a typed constant of `settings/keys.rs`, its default the catalogue's. Levels Default → Global → Console → Game →
@@ -512,6 +516,9 @@ version (`scripts/node-version.mjs`, against `engines.node` in `app/package.json
 clippy for Android (`aarch64-linux-android`: the crates with no C code always, the whole workspace when an NDK is
 found, else skipped),
 `cargo test`, the licence check (`cargo deny check licenses` with `deny.toml`, `scripts/npm-licenses.mjs`),
+`THIRD_PARTY.md`'s generated tables equal to a fresh run of `scripts/third-party-tables.mjs --check` (blind spots: a
+stale `app/node_modules`, the spike's workspace, the hand-written sections), one version (`scripts/versions.mjs`:
+the workspace `Cargo.toml` version equal in `app/package.json` and `tauri.conf.json`, every member inheriting it),
 `vue-tsc`, ESLint (the import style and no dropped `emu.*` call included), Prettier (`format:check`), Vitest (`pnpm test`), the design system conventions
 (`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
@@ -647,7 +654,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   sync, game identity from the content, no cover scraping, positional face layout, NDS/3DS screens composed by
   EmuDome, no core of our own). Read it before designing anything they touch.
 - `docs/customization.md` (what can be customized, how, at what cost), `docs/feasibility.md` (desk checks of
-  those decisions), `docs/combo-tasti.md` (controller combos), `docs/fase0-esito.md` (Phase 0 test log).
+  those decisions), `docs/combo-tasti.md` (controller combos), `docs/fase0-esito.md` (Phase 0 test log),
+  `docs/release.md` (the version, the packages as they are, the release flow: tag on `main`, built from a clean clone).
 - Roadmap:
   - Phase 0: video, GBA, Windows and Android
   - Phase 1: desktop shell (library, settings engine, complete saves, shaders with librashader)
@@ -664,7 +672,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `perf.shcache`, `screens.stereo`, `pad.gyro`, `bios.b3ds`, reasons in that file). `perf.frameskip` drives mGBA
   only, `video.res3d` / `video.texf` / `perf.cpuclock` Azahar only; elsewhere their rows are disabled with the reason
   (`CoreProfile::unsupported_settings`). The 3DS rows are phase 3, so the interface still hides them
-  (`CURRENT_PHASE`). The interface does not show `emu://core-restart` yet.
+  (`CURRENT_PHASE`). The interface does not show `emu://core-restart` yet. The «All … options»
+  rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
+  (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
+  test); Azahar's is not measured yet.
 - 42 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
@@ -675,6 +686,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (2026-11-21, `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet. Since
   2026-11-21 the buildbot's Android mGBA no longer matches the pinned sha256, so the Android fetch fails for mGBA and
   a debug APK goes without it (a release build stops) until `cores.lock` is re-pinned.
+- Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet; `bundle.targets` is `["nsis"]`
+  only, so Linux gets no AppImage / deb; the Android script builds APKs, not the App Bundle Google Play wants; no
+  Windows code signing; the update channel is not decided.
 - The game key migration (Trello #70) leaves in place, and reports, what facts cannot give to one game (a file name
   shared by several library games, no library game, the new place already taken); the app no longer reads those.
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game

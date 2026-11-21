@@ -8,6 +8,10 @@ const COUNTS = [
   'settings.pad.combos.value.count',
   'settings.library.hidden.value.count',
   'settings.cloud.sgames.value.count',
+  // The options a core declares (`count` in the schema, from Rust: Trello #89).
+  'settings.cores.mgbaall.desc',
+  'settings.cores.mdsall.desc',
+  'settings.cores.azall.desc',
 ]
 
 describe('count messages', () => {

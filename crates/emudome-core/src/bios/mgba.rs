@@ -16,21 +16,21 @@ pub(super) static TABLE: BiosTable = BiosTable {
             sizes: &[16 * 1024],
             check: Check::Md5(&["a860e8c0b6d573d191e4ec7db1b1e4f6"]),
         },
-        // The Game Boy files have no settings row yet (the catalogue has `bios.bgba` only).
         SlotSpec {
             slot: Slot::GbBoot,
-            setting: None,
+            setting: Some(keys::BIOS_GB.as_str()),
             file: "gb_bios.bin",
             sizes: &[256],
             check: Check::Md5(&["32fbbd84168d3482956eb3c5051637f5"]),
         },
         SlotSpec {
             slot: Slot::GbcBoot,
-            setting: None,
+            setting: Some(keys::BIOS_GBC.as_str()),
             file: "gbc_bios.bin",
             sizes: &[2304],
             check: Check::Md5(&["dbfce9db9deaa2567f6a84fde55f9680"]),
         },
+        // No settings row (not asked for): still known, so it is recognised on another row.
         SlotSpec {
             slot: Slot::SgbBoot,
             setting: None,

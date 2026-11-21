@@ -1,9 +1,10 @@
 [package]
 name = "emudome"
-description = "EmuDome: GBA, NDS and 3DS in a single app"
+description = "EmuDome: Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS and Nintendo 3DS in one app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [lints]
 workspace = true

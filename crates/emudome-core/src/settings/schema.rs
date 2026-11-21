@@ -230,6 +230,28 @@ impl DefaultValue {
     }
 }
 
+/// A default that holds only on one device, or only for some consoles (owner, 2026-11-21: rewind
+/// is off by default on phones and on 3DS). Read at the Default level by
+/// [`Entry::default_for`]: the first rule of the entry that matches wins, and the entry's own
+/// `default` holds where none does.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DefaultRule {
+    /// `None`: on every device.
+    pub device: Option<Device>,
+    /// Empty: for every console and at the Global level (which has no console). Otherwise only
+    /// for the games of these consoles (Console, Game and Session levels).
+    pub consoles: &'static [super::ConsoleId],
+    pub value: DefaultValue,
+}
+
+impl DefaultRule {
+    /// Whether the rule holds on `device`, for `console` (`None`: the Global level).
+    pub fn holds(&self, device: Device, console: Option<super::ConsoleId>) -> bool {
+        self.device.is_none_or(|d| d == device)
+            && (self.consoles.is_empty() || console.is_some_and(|c| self.consoles.contains(&c)))
+    }
+}
+
 /// When a row is shown: the value of another entry of the same page, resolved at the level being
 /// edited, is (or with `not`, is not) one of `values`. TypeScript: `SettingShowIf` (generated).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
@@ -261,7 +283,11 @@ pub struct Entry {
     /// The page it is shown on (one of `catalog::PAGES`), set in the catalogue.
     pub page: &'static str,
     pub kind: Kind,
+    /// The default where no rule of `default_rules` holds.
     pub default: DefaultValue,
+    /// Defaults of one device or of some consoles, first match wins ([`Entry::default_for`]).
+    /// Same kind as `default` (`every_default_is_valid_for_its_kind`).
+    pub default_rules: &'static [DefaultRule],
     pub levels: Levels,
     /// The value belongs to this device and never goes into the synced files.
     pub per_device: bool,
@@ -348,8 +374,20 @@ impl Entry {
             }
     }
 
+    /// The catalogue's base default, before any [`DefaultRule`]: what a reader falls back to when
+    /// it knows neither the device nor the console. The engine resolves [`Self::default_for`].
     pub fn default_value(&self) -> Option<Value> {
         self.default.to_value()
+    }
+
+    /// The default on `device` for the games of `console` (`None`: the Global level): the first
+    /// [`DefaultRule`] that holds, else `default`.
+    pub fn default_for(&self, device: Device, console: Option<super::ConsoleId>) -> Option<Value> {
+        self.default_rules
+            .iter()
+            .find(|rule| rule.holds(device, console))
+            .map_or(self.default, |rule| rule.value)
+            .to_value()
     }
 
     /// Whether `value` is valid for this entry's kind and constraints.
@@ -459,7 +497,9 @@ pub struct EntryDto {
     pub key: &'static str,
     pub page: &'static str,
     pub kind: Kind,
-    /// `None` for actions.
+    /// The default on this device at the Global level; `None` for actions. A console's games may
+    /// have another (a [`DefaultRule`] with consoles): the rows of a page (`settings_page`) carry
+    /// the value resolved for the scope, this is only the fallback before they arrive.
     pub default: Option<Value>,
     /// Accepted levels, weakest first.
     pub levels: Vec<Level>,
@@ -483,6 +523,12 @@ pub struct EntryDto {
     pub unsupported_consoles: Vec<super::ConsoleId>,
     /// Something reads it; otherwise shown disabled with «arrives in a future update».
     pub wired: bool,
+    /// The number the row's text shows as `{n}` (plural forms): the options a core declares, on
+    /// its «All … options» row (`crate::core_profile::row_count`). Absent elsewhere, and while
+    /// not measured.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub count: Option<u32>,
 }
 
 /// The search synonyms of `key`: its own and those of a `<page>.*` row of its page.
@@ -513,7 +559,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 key: e.key,
                 page: e.page(),
                 kind: e.kind,
-                default: e.default_value(),
+                default: e.default_for(device, None),
                 levels: e.levels.list(),
                 per_device: e.per_device,
                 platform: e.platform,
@@ -525,6 +571,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 needs_native_video: e.needs_native_video,
                 unsupported_consoles: crate::core_profile::unsupported_consoles(e.key),
                 wired: e.wired,
+                count: crate::core_profile::row_count(e.key),
             })
             .collect(),
     }

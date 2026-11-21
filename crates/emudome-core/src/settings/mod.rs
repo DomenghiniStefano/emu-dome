@@ -29,8 +29,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub use schema::{
-    entry, page_entries, schema, synonyms, ActionStyle, ChoiceStyle, DefaultValue, Device, Entry,
-    Kind, Level, Levels, Platform, SchemaDto, Unit, Value,
+    entry, page_entries, schema, synonyms, ActionStyle, ChoiceStyle, DefaultRule, DefaultValue,
+    Device, Entry, Kind, Level, Levels, Platform, SchemaDto, Unit, Value,
 };
 use store::{Change, FileId, Store};
 
@@ -187,7 +187,7 @@ impl Settings {
                 let resolved = self.resolve_entry(entry, scope)?;
                 Ok(PageValue {
                     key: entry.key,
-                    changed: resolved.value != entry.default_value(),
+                    changed: resolved.value != self.default_of(entry, scope),
                     value: resolved.value,
                     source: resolved.source,
                 })
@@ -405,9 +405,23 @@ impl Settings {
                     })
             });
         Ok(found.unwrap_or_else(|| Resolved {
-            value: entry.default_value(),
+            value: self.default_of(entry, scope),
             source: Level::Default,
         }))
+    }
+
+    /// The Default level of `entry` seen from `scope`: on this device, for its console.
+    fn default_of(&self, entry: &Entry, scope: &Scope) -> Option<Value> {
+        entry.default_for(self.device, self.console_of(scope))
+    }
+
+    /// The console `scope` looks at (`None` at the Global level, or without an open game).
+    fn console_of(&self, scope: &Scope) -> Option<ConsoleId> {
+        match scope {
+            Scope::Global => None,
+            Scope::Console { console } | Scope::Game { console, .. } => Some(*console),
+            Scope::Session => self.session.as_ref().map(|s| s.console),
+        }
     }
 
     /// The levels to look at for `scope`, strongest first (Default excluded).

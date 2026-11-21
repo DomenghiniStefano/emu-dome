@@ -1,9 +1,10 @@
 [package]
 name = "emudome-core"
-description = "EmuDome's libretro host: core loading, emulation thread, states, speed."
+description = "EmuDome's libretro host and pure shell logic: core loading, emulation thread, states, speed, input routing, settings engine, library, saves."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [lints]
 workspace = true

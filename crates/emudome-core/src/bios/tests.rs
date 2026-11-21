@@ -369,7 +369,43 @@ fn the_wired_rows_are_the_ones_the_interface_lists() {
             "bios.bds9",
             "bios.bdsfw",
             "bios.bdsi",
-            "bios.bgba"
+            "bios.bdsi7",
+            "bios.bdsi9",
+            "bios.bdsifw",
+            "bios.bgb",
+            "bios.bgba",
+            "bios.bgbc"
         ]
     );
+}
+
+#[test]
+fn every_bios_file_row_picks_a_slot_of_the_core_that_reads_it() {
+    // Trello #89: the Game Boy / Color boot ROMs go to mGBA, the DSi files to melonDS DS (whose
+    // DSi mode needs them all, `dsi_mode_without_its_files_runs_as_a_ds_and_says_so`).
+    for (key, core, slot) in [
+        ("bios.bgb", CoreId::Mgba, Slot::GbBoot),
+        ("bios.bgbc", CoreId::Mgba, Slot::GbcBoot),
+        ("bios.bgba", CoreId::Mgba, Slot::GbaBios),
+        ("bios.bds7", CoreId::MelonDsDs, Slot::DsArm7),
+        ("bios.bds9", CoreId::MelonDsDs, Slot::DsArm9),
+        ("bios.bdsfw", CoreId::MelonDsDs, Slot::DsFirmware),
+        ("bios.bdsi7", CoreId::MelonDsDs, Slot::DsiArm7),
+        ("bios.bdsi9", CoreId::MelonDsDs, Slot::DsiArm9),
+        ("bios.bdsifw", CoreId::MelonDsDs, Slot::DsiFirmware),
+        ("bios.bdsi", CoreId::MelonDsDs, Slot::DsiNand),
+    ] {
+        let (table, spec) = slot_for_setting(key).unwrap_or_else(|| panic!("{key}: no slot"));
+        assert_eq!((table.core, spec.slot), (core, slot), "{key}");
+    }
+    // Every wired file row of the BIOS page has its slot; the one without is shown as not
+    // wired yet (3DS).
+    for e in crate::settings::page_entries("bios") {
+        assert_eq!(
+            e.wired,
+            slot_for_setting(e.key).is_some(),
+            "{}: wired only with a slot",
+            e.key
+        );
+    }
 }
