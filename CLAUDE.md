@@ -330,7 +330,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
 - Audio: a lock-free SPSC ring (`emudome_core::audio::AudioRing`, rtrb) from the emulation thread to the cpal
   callback, linear resampling to the device's rate, ±0.5% correction on the ring's fill level; the reader drops
-  what is queued beyond ~150 ms, oldest first. Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread,
+  what is queued beyond ~150 ms, oldest first. A ring that runs dry (a stall: a 3DS quick save takes ~0.25 s, #98;
+  a pause; a game's start) fades out and stays silent until it holds the queue target again, then fades back in
+  (`Resampler` in `app/src-tauri/src/audio.rs`). Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread,
   before the push): muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about
   real time reaches the ring. At Max the speed is measured. The real-time threads (audio callback, controllers)
   read the open game through `CurrentShared` (an `ArcSwapOption`, no lock); the callback records its measurements
