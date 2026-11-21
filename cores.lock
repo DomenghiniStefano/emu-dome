@@ -9,24 +9,34 @@
       "spdx": "MPL-2.0",
       "source": {
         "repo": "https://github.com/libretro/mgba",
-        "ref": "master, as built by the libretro buildbot on 2026-11-16",
+        "ref": "master, at the commit the libretro buildbot built on 2026-11-16",
         "commit": "7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6",
-        "version": "0.11-212-7a12d6d"
+        "version": "0.11-212-7a12d6d",
+        "archive": "https://github.com/libretro/mgba/archive/7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6.tar.gz",
+        "archive_sha256": "5cbf639e527fb586bf33e14d59037eab35f78f45154e0b79c784fff474c3bc37"
       },
       "license": {
         "url": "https://raw.githubusercontent.com/libretro/mgba/7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6/LICENSE",
         "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
         "file": "mgba-LICENSE.txt"
       },
+      "build": {
+        "about": "Built by EmuDome from source.archive (Trello #88): scripts/core-build.mjs, behind the scripts below. cmake: the libretro buildbot's own arguments for this core (.gitlab-ci.yml CORE_ARGS at the commit). git_depth: the commit's history is fetched this deep so the core reports the buildbot's version string (0.11-212-7a12d6d: mGBA counts the commits a 50-deep clone sees); EmuDome compares that string to tell when a quick save might not load.",
+        "scripts": ["scripts/build-mgba.ps1", "scripts/build-mgba.sh"],
+        "cmake": ["-DLIBMGBA_ONLY=ON", "-DBUILD_LIBRETRO=ON"],
+        "target": "mgba_libretro",
+        "output": "mgba_libretro",
+        "license": "LICENSE",
+        "git_depth": 50
+      },
       "builds": {
         "windows-x86_64": {
-          "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/mgba_libretro.dll.zip",
-          "url_stable": false,
-          "sha256": "a7ae453b739d3f9117537e8ca7275ecebd923d9035b52435f556470bf58a268f",
+          "built": {
+            "toolchain": "clang-cl 18.0.2 (Android NDK 27.1.12297006), MSVC 14.44.35207 libraries and linker, Windows SDK 10.0.26100.0, CMake 3.31.6-msvc6"
+          },
           "library": {
-            "member": "mgba_libretro.dll",
             "file": "mgba_libretro.dll",
-            "sha256": "d775ecef6da1da5489ff2e0a37c13826b510c73711f89e78cb8d757c6f8c1426"
+            "sha256": "8fbb4137f6dd3b28f4d92c832d2d7460a9aff5009b3a7c20f75320e4ed53b66d"
           },
           "notices": []
         },
@@ -42,13 +52,12 @@
           "notices": []
         },
         "android-arm64-v8a": {
-          "url": "https://buildbot.libretro.com/nightly/android/latest/arm64-v8a/mgba_libretro_android.so.zip",
-          "url_stable": false,
-          "sha256": "df1dd7fe5eb28cdb071bddb45fe4f3f0127512440a41402a5e380007d693099e",
+          "built": {
+            "toolchain": "Android NDK 27.1.12297006, API 26, CMake 3.31.6"
+          },
           "library": {
-            "member": "mgba_libretro_android.so",
             "file": "libmgba_libretro_android.so",
-            "sha256": "b5a6ed40ede735ea7f1d56916f4ceed8c2aabe4d481fe3383ae2b5e5485b6545"
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
           },
           "notices": []
         }
