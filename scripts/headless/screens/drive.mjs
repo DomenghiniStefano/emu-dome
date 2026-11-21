@@ -227,13 +227,14 @@ for (const [state, s] of Object.entries(SAVES_STATES)) {
 // The shell (App.vue, first run, flow dialogs, toasts, overlays, touch): each screen in the three
 // themes at the smallest and the largest window, named `shell-<screen>-<theme>-<size>`.
 // Steps reach the running app through the dev server's own modules (`import('/src/…')`, the same
-// instances the app uses), the mock's `__emit` (a backend event) and the toast stack's exposed
-// `push`. `freeze` stops CSS animations at their first frame, so a moving bar shoots the same.
+// instances the app uses), the mock's `__emit` (a backend event) and the app's toast list (the one
+// the toast stack injects, composables/useToasts.ts). `freeze` stops CSS animations at their first
+// frame, so a moving bar shoots the same.
 const flowSet = (state) =>
   `import('/src/components/game/gameFlow.ts').then(m => Object.assign(m.flow, ${state}))`;
 const firstRunNext = `document.querySelector('footer [data-nav-initial]').click()`;
 const toast = (text, kind, opts) =>
-  `document.querySelector('[aria-live=polite]').__vueParentComponent.exposed.push(${JSON.stringify(text)}, '${kind}', { ms: 600000, ...${opts ?? "{}"} })`;
+  `(() => { const l = document.querySelector('[aria-live=polite]').__vueParentComponent.setupState.toasts.list; l.value = [...l.value, { id: 1e6 + l.value.length, text: ${JSON.stringify(text)}, kind: '${kind}', ms: 600000, ...${opts ?? "{}"} }] })()`;
 const FIXED = 1795000000000;
 const SHELL = {
   "first-run-welcome": { mock: { firstRun: true }, steps: [] },
