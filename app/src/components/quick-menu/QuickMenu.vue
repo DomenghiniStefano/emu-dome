@@ -5,6 +5,8 @@
 // salvataggi» = G08), speed (Normale / Avanti veloce / Rallentatore, «Imposta le velocità» = G16),
 // tools, the rows «Schermi e immagine» (G09: the menu becomes a bar at the bottom and the game
 // stays visible above it) and «Controlli» (G10), then «Chiudi il gioco» and «Riprendi il gioco».
+// NDS / 3DS: swap and the lid among the tools, the layout card first on G09, and from there the
+// C09 screens editor over the whole game (Trello #28).
 // Phone in portrait: a bottom sheet under the game, same order for the thumb.
 // Settings changed here are «in prova» (Session level): live, listed, saved for this game or its
 // console, or undone; closing the game drops them.
@@ -17,7 +19,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { GameInfo, Speed, VideoMode } from '@/emu'
+import type { GameInfo, ScreenLayoutId, ScreenStatus, Speed, VideoMode } from '@/emu'
+import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
+
 import { useNavScope } from '@/nav'
 import { inputMode } from '@/lib/inputMode'
 import { useErrorSink } from '@/composables/useToasts'
@@ -38,7 +42,14 @@ import TrialPanel from './TrialPanel.vue'
 import UndoLoadBanner from './UndoLoadBanner.vue'
 import { backKeyLabel } from './hints'
 import { BAR_PANEL, MENU_PANEL, sheetPanel } from './panel'
-import { settingCard, unavailableOptions, videoPathCard, type ScreenCard } from './screenCards'
+import {
+  cycleStartingAt,
+  layoutCard,
+  settingCard,
+  unavailableOptions,
+  videoPathCard,
+  type ScreenCard,
+} from './screenCards'
 import { pickChanges, screenPicks, type ScreenPickId } from './screenPicks'
 import { slotCount } from '@/components/details/gameSaves'
 import { loadedLine, mainSlotCount } from './slots'
@@ -65,6 +76,8 @@ const props = defineProps<{
   undoLoadSlot: number | null
   muted: boolean
   fullscreen: boolean
+  /** The open game's screens (NDS, 3DS: swap, the lid, the layout card); null until known. */
+  screens: ScreenStatus | null
 }>()
 const emit = defineEmits<{
   videoMode: [VideoMode]
@@ -80,6 +93,10 @@ const emit = defineEmits<{
   screenshot: []
   /** G09: px at the bottom of the window the bar covers (0 = none); the game shrinks above. */
   inset: [number]
+  /** NDS / 3DS: «Scambia gli schermi», «Chiudi il coperchio», G09's layout card. */
+  swapScreens: []
+  toggleLid: []
+  layout: [ScreenLayoutId]
 }>()
 
 const { t } = useI18n()
@@ -132,8 +149,15 @@ const phone = computed(() => layout.device.value === 'phone')
 const sheet = layout.phone
 /** G09 on desktop: the bar at the bottom instead of the panel. */
 const barShown = computed(() => view.value === QuickMenuView.Screens && !sheet.value)
-/** The game shows through on G09 (and the phone's sheet sits under it): no dimming. */
-const dimmed = computed(() => view.value !== QuickMenuView.Screens && !sheet.value)
+/** C09: the screens editor over the whole game, in place of the menu. */
+const editorShown = computed(() => view.value === QuickMenuView.ScreenEditor)
+/** The game shows through on G09 and in the editor (and the phone's sheet sits under it). */
+const dimmed = computed(
+  () =>
+    view.value !== QuickMenuView.Screens &&
+    view.value !== QuickMenuView.ScreenEditor &&
+    !sheet.value,
+)
 const panelClass = computed(() => (sheet.value ? sheetPanel(view.value) : MENU_PANEL))
 
 const consoleName = computed(() => t(`console.${props.game.consoleId}`))
@@ -186,9 +210,9 @@ function runTool(tool: Tool, e: Event) {
     case ToolId.Restart:
       return open(QuickMenuView.Restart, e)
     case ToolId.SwapScreens:
+      return emit('swapScreens')
     case ToolId.CloseLid:
-      // No backend yet: the tile is disabled.
-      return
+      return emit('toggleLid')
   }
 }
 function restart() {
@@ -196,11 +220,29 @@ function restart() {
   emit('reset')
 }
 
-// ---- G09: one card per setting, then the video method ----
+// ---- G09: the layout (NDS, 3DS), one card per setting, then the video method ----
+/** The layout card's step: shown at once, and «in prova» as the layout the game opens with
+ * (`screens.cycle` turned to start with it), saved or undone with the other changes. */
+function stepLayout(id: ScreenLayoutId) {
+  emit('layout', id)
+  const cycle = settingValue('screens.cycle')
+  if (Array.isArray(cycle)) void setSession('screens.cycle', cycleStartingAt(cycle, id))
+}
 const cards = computed<ScreenCard[]>(() => {
   const s = schema.value
   if (!s) return []
+  const screens = props.screens
   return [
+    ...(dualScreen.value && screens?.dualScreen
+      ? [
+          layoutCard({
+            status: screens,
+            row: sessionRows.value['screens.cycle'],
+            consoleName: consoleName.value,
+            set: stepLayout,
+          }),
+        ]
+      : []),
     ...entriesOf(QuickMenuView.Screens).map(e =>
       settingCard({
         entry: e,
@@ -267,13 +309,20 @@ onBeforeUnmount(() => emit('inset', 0))
         :picks="picks"
         :trial-title="trialTitle"
         :hint="backKey"
+        :dual-screen="dualScreen && !!screens?.dualScreen"
         @back="back"
         @discard="discard"
         @commit-game="commit('game')"
         @inset="px => emit('inset', px)"
         @pick="applyPick"
+        @customise="e => open(QuickMenuView.ScreenEditor, e)"
       />
     </section>
+
+    <!-- C09 over the game at its real size; the menu's scope stays its parent. -->
+    <div v-else-if="editorShown" ref="root" class="contents">
+      <ScreenEditor :console="game.consoleId" :scope="null" :status="screens" @close="back" />
+    </div>
 
     <section
       v-else
@@ -340,6 +389,7 @@ onBeforeUnmount(() => emit('inset', 0))
             :dual-screen="dualScreen"
             :muted="muted"
             :fullscreen="fullscreen"
+            :screens="screens"
             @speed="s => emit('speed', s)"
             @open="open"
             @run="runTool"

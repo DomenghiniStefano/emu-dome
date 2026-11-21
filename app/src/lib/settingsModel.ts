@@ -186,6 +186,8 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'colour':
     case 'text':
     case 'bindings':
+    case 'screenLayout':
+      // A screen layout: edited in the C09 screens editor (components/screen-editor, #28).
       return false
   }
 }

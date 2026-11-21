@@ -10,8 +10,8 @@ import { QuickMenuView } from './view'
 
 defineProps<{
   tools: Tool[]
-  /** The note about the tools not available yet; '' with none. */
-  notYet: string
+  /** Why the disabled tools cannot be used; '' with none. */
+  note: string
 }>()
 const emit = defineEmits<{
   open: [QuickMenuView, Event]
@@ -66,5 +66,5 @@ const PAGES: { view: QuickMenuView; icon: Component; label: string }[] = [
       <span class="overflow-hidden text-ellipsis">{{ t(x.label) }}</span>
     </Card>
   </nav>
-  <span v-if="notYet" class="text-caption text-ink-muted">{{ notYet }}</span>
+  <span v-if="note" class="text-caption text-ink-muted">{{ note }}</span>
 </template>

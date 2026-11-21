@@ -1,14 +1,19 @@
 <script setup lang="ts">
 // G09 on desktop: the menu becomes a bar at the bottom of the window and the game stays visible
-// above it, shrunk by the height the bar covers (`inset`, px; 0 when the bar goes).
+// above it, shrunk by the height the bar covers (`inset`, px; 0 when the bar goes). For a
+// two-screen game the layout card comes first (five columns) and «Personalizza gli schermi»
+// opens the C09 editor.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Rows2 } from '@lucide/vue'
+import { Button, ButtonVariant } from '@/components/ui/button'
 import BackButton from './BackButton.vue'
 import ScreenCardView from './ScreenCard.vue'
 import ScreenPicks from './ScreenPicks.vue'
 import TrialActions from './TrialActions.vue'
 import type { ScreenCard } from './screenCards'
 import type { ScreenPick, ScreenPickId } from './screenPicks'
+import { FocusMark } from './view'
 
 defineProps<{
   cards: ScreenCard[]
@@ -16,6 +21,8 @@ defineProps<{
   /** The changes «in prova», as the title over them says; '' with none. */
   trialTitle: string
   hint: string | null
+  /** NDS and 3DS: the layout card (five columns) and «Personalizza gli schermi». */
+  dualScreen: boolean
 }>()
 const emit = defineEmits<{
   back: []
@@ -23,9 +30,11 @@ const emit = defineEmits<{
   commitGame: []
   inset: [number]
   pick: [ScreenPickId]
+  customise: [Event]
 }>()
 
 const { t } = useI18n()
+const customiseMark = { [FocusMark.Customise]: '' }
 
 const bar = ref<HTMLElement | null>(null)
 /** The gap kept between the game and the bar. */
@@ -54,9 +63,18 @@ onBeforeUnmount(() => {
       <span class="text-heading">{{ t('qm.row.screens.name') }}</span>
       <span class="min-w-0 flex-1"></span>
       <span class="text-caption text-ink-muted">{{ t('qm.liveNote') }}</span>
+      <Button
+        v-if="dualScreen"
+        v-bind="customiseMark"
+        :variant="ButtonVariant.Soft"
+        @click="emit('customise', $event)"
+      >
+        <Rows2 :size="16" :stroke-width="1.75" aria-hidden="true" />
+        {{ t('settings.screens.custom.button') }}
+      </Button>
     </div>
     <ScreenPicks :picks="picks" @pick="id => emit('pick', id)" />
-    <div class="grid grid-cols-4 gap-8">
+    <div class="grid gap-8" :class="dualScreen ? 'grid-cols-5' : 'grid-cols-4'">
       <ScreenCardView v-for="(c, i) in cards" :key="c.key" :card="c" :first="i === 0" />
     </div>
     <div v-if="trialTitle" class="flex items-center gap-8" role="status">

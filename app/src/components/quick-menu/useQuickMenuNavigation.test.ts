@@ -40,6 +40,13 @@ function harness() {
                 nav.view.value === QuickMenuView.Shortcuts
                   ? h('div', { [FocusMark.SubInitial]: '' }, [h('button', { id: 'first-combo' })])
                   : null,
+                nav.view.value === QuickMenuView.Screens
+                  ? h('button', {
+                      id: 'customise',
+                      [FocusMark.Customise]: '',
+                      onClick: (e: Event) => nav.open(QuickMenuView.ScreenEditor, e),
+                    })
+                  : null,
               ],
         ])
     },
@@ -107,5 +114,19 @@ describe('quick menu navigation', () => {
     mounted = wrapper
     await nav().focusChosenSlot()
     expect(focused()).toBe('chosen')
+  })
+
+  it('closes the screens editor back onto G09, on «Personalizza gli schermi»', async () => {
+    const { wrapper, nav, home } = harness()
+    mounted = wrapper
+    nav().open(QuickMenuView.Screens, new Event('click'))
+    await nextTick()
+    await wrapper.find('#customise').trigger('click')
+    expect(nav().view.value).toBe(QuickMenuView.ScreenEditor)
+    nav().back()
+    await nextTick()
+    expect(nav().view.value).toBe(QuickMenuView.Screens)
+    expect(focused()).toBe('customise')
+    expect(home).not.toHaveBeenCalled()
   })
 })

@@ -48,7 +48,9 @@ const fn stored(kind: &Kind) -> Stored {
         Kind::Toggle => Stored::Bool,
         Kind::Slider { .. } => Stored::Int,
         Kind::Choice { .. } | Kind::File | Kind::Colour { .. } | Kind::Text => Stored::Text,
-        Kind::Multi { .. } | Kind::Folders | Kind::Bindings { .. } => Stored::List,
+        Kind::Multi { .. } | Kind::Folders | Kind::Bindings { .. } | Kind::ScreenLayout => {
+            Stored::List
+        }
         Kind::Action { .. } | Kind::Apply { .. } => Stored::Nothing,
     }
 }
@@ -127,6 +129,12 @@ pub const FX_PICK: TextKey = TextKey::new("fx.fxpick");
 pub const FX_INTENSITY: IntKey = IntKey::new("fx.fxint");
 pub const FX_BRIGHTNESS: IntKey = IntKey::new("fx.fxbright");
 pub const FX_FILE: TextKey = TextKey::new("fx.fxfile");
+pub const SCREENS_CYCLE: ListKey = ListKey::new("screens.cycle");
+pub const SCREENS_CUSTOM: ListKey = ListKey::new("screens.custom");
+pub const SCREENS_RATIO: IntKey = IntKey::new("screens.ratio");
+pub const SCREENS_GAP: IntKey = IntKey::new("screens.gap");
+pub const SCREENS_ROTATION: TextKey = TextKey::new("screens.rot");
+pub const SCREENS_SWAP: TextKey = TextKey::new("screens.swap");
 pub const AUDIO_FF: TextKey = TextKey::new("audio.ff");
 pub const SPEED_FF: TextKey = TextKey::new("speed.ffval");
 pub const SPEED_SLOW: TextKey = TextKey::new("speed.slow");
@@ -140,6 +148,7 @@ pub const PAD_LAYOUT: TextKey = TextKey::new("pad.ab");
 pub const PAD_REMAP: ListKey = ListKey::new("pad.remap");
 pub const PAD_MODIFIER: TextKey = TextKey::new("pad.mod");
 pub const PAD_COMBOS: ListKey = ListKey::new("pad.combos");
+pub const PAD_LID: TextKey = TextKey::new("pad.lid");
 pub const PAD_DEAD_ZONE: IntKey = IntKey::new("pad.dead");
 pub const PAD_STICK_DPAD: IntKey = IntKey::new("pad.stickdpad");
 pub const PAD_TRIGGER: IntKey = IntKey::new("pad.trig");
@@ -232,7 +241,8 @@ impl<F: Fn(&str) -> Option<Value>> Reader<F> {
             | Kind::Text
             | Kind::Action { .. }
             | Kind::Apply { .. }
-            | Kind::Bindings { .. } => v,
+            | Kind::Bindings { .. }
+            | Kind::ScreenLayout => v,
         }
     }
 

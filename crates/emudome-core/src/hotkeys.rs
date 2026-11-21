@@ -50,13 +50,32 @@ pub enum Nav {
     Next,
     /// X: the focused item's other actions (a cover's game details, like a right click).
     More,
+    /// Select: a screen's own toggle (the C09 screens editor folds its panel).
+    Select,
+    /// The right stick pushed past `pad.stickdpad`, one step per direction, repeating like the
+    /// d-pad: a screen's second pair of arrows (the C09 editor resizes a screen with it).
+    #[serde(rename = "stickUp")]
+    StickUp,
+    #[serde(rename = "stickDown")]
+    StickDown,
+    #[serde(rename = "stickLeft")]
+    StickLeft,
+    #[serde(rename = "stickRight")]
+    StickRight,
 }
 
 impl Nav {
     fn repeats(self) -> bool {
         match self {
-            Nav::Up | Nav::Down | Nav::Left | Nav::Right => true,
-            Nav::Confirm | Nav::Back | Nav::Prev | Nav::Next | Nav::More => false,
+            Nav::Up
+            | Nav::Down
+            | Nav::Left
+            | Nav::Right
+            | Nav::StickUp
+            | Nav::StickDown
+            | Nav::StickLeft
+            | Nav::StickRight => true,
+            Nav::Confirm | Nav::Back | Nav::Prev | Nav::Next | Nav::More | Nav::Select => false,
         }
     }
 }
@@ -71,7 +90,34 @@ const NAV_BUTTONS: &[(Button, Nav)] = &[
     (Button::L, Nav::Prev),
     (Button::R, Nav::Next),
     (Button::X, Nav::More),
+    (Button::Select, Nav::Select),
 ];
+
+/// The right stick's directions while the interface has the input ([`PadInput::stick`], as
+/// d-pad bits).
+const STICK_NAV: &[(Button, Nav)] = &[
+    (Button::Up, Nav::StickUp),
+    (Button::Down, Nav::StickDown),
+    (Button::Left, Nav::StickLeft),
+    (Button::Right, Nav::StickRight),
+];
+
+/// What a repeating step is held by: a button (the d-pad, the left stick folded in) or a
+/// direction of the right stick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Held {
+    Button(Button),
+    Stick(Button),
+}
+
+impl Held {
+    fn still(self, input: &PadInput) -> bool {
+        match self {
+            Held::Button(b) => input.buttons & b.bit() != 0,
+            Held::Stick(b) => input.stick & b.bit() != 0,
+        }
+    }
+}
 
 /// A shell feature reachable from the controller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,7 +144,8 @@ pub enum Hotkey {
     Screenshot,
     /// FPS overlay on/off.
     FpsOverlay,
-    /// Swap the two screens ([`Status::DualScreen`]).
+    /// Swap the two screens ([`Status::DualScreen`]). A hold: the router sends press and release,
+    /// the shell decides (`screens.swap`: toggled at each press, or swapped while held).
     SwapScreens,
     /// Next screen layout ([`Status::DualScreen`]).
     NextLayout,
@@ -115,7 +162,8 @@ pub enum Status {
     Active,
     /// Its feature does not exist yet: the combo is listed and reserved, and does nothing.
     Later,
-    /// It comes with the Nintendo DS and 3DS (Phase 2): reserved, does nothing for now.
+    /// It works with Nintendo DS and 3DS games only (Trello #28): with any other game it does
+    /// nothing.
     DualScreen,
 }
 
@@ -164,7 +212,7 @@ impl Hotkey {
         Hotkey::ALL.into_iter().find(|h| h.id() == id)
     }
 
-    /// Whether the hotkey does something yet. The router never fires the others.
+    /// Whether the hotkey does something yet. The router never fires the [`Status::Later`] ones.
     pub fn status(self) -> Status {
         match self {
             Hotkey::ToggleMenu
@@ -192,7 +240,7 @@ impl Hotkey {
     /// Whether the action lasts while the button is held (and then gets a release).
     pub fn is_hold(self) -> bool {
         match self {
-            Hotkey::FastForwardHold | Hotkey::Rewind => true,
+            Hotkey::FastForwardHold | Hotkey::Rewind | Hotkey::SwapScreens => true,
             Hotkey::ToggleMenu
             | Hotkey::SaveState
             | Hotkey::LoadState
@@ -203,7 +251,6 @@ impl Hotkey {
             | Hotkey::Pause
             | Hotkey::Screenshot
             | Hotkey::FpsOverlay
-            | Hotkey::SwapScreens
             | Hotkey::NextLayout
             | Hotkey::Lid => false,
         }
@@ -221,8 +268,8 @@ impl Hotkey {
 pub const DEFAULT_MODIFIER: Button = Button::L3;
 
 /// Default combos, modifier + button → action, in [`Hotkey::ALL`] order. Each fires once per
-/// press of the button; the rows whose [`Hotkey::status`] is not active are reserved and do
-/// nothing. The Guide button alone also toggles the menu (it is not a RetroPad button, see
+/// press of the button; the rows whose [`Hotkey::status`] is [`Status::Later`] are reserved and
+/// do nothing ([`Status::DualScreen`] ones act on DS and 3DS games only). The Guide button alone also toggles the menu (it is not a RetroPad button, see
 /// [`PadInput`]). Fullscreen has no combo: keyboard F11 and the quick menu only.
 pub const DEFAULT_COMBOS: &[(Button, Hotkey)] = &[
     // Fallback for when Steam or the Xbox Game Bar take the Guide button.
@@ -316,6 +363,10 @@ pub struct PadInput {
     pub buttons: u16,
     /// The Guide / Home button.
     pub guide: bool,
+    /// The right stick past `pad.stickdpad`, as d-pad bits ([`Button::Up`]…): steps of its own
+    /// for the interface ([`Nav::StickUp`]…), nothing for the game (the core reads the stick
+    /// itself, as an analog).
+    pub stick: u16,
 }
 
 /// Something the shell has to do.
@@ -350,7 +401,7 @@ pub struct Router {
     /// Hold hotkeys in progress, with their button.
     holds: Vec<(Button, Hotkey)>,
     /// The held direction, and when it fires again.
-    repeat: Option<(Button, Nav, Instant)>,
+    repeat: Option<(Held, Nav, Instant)>,
     ui_had_input: bool,
 }
 
@@ -409,7 +460,7 @@ impl Router {
             for &(button, hotkey) in &self.bindings.combos {
                 // A reserved row (feature still to come) does nothing: its button only stays
                 // away from the game, like any button held with the modifier.
-                let reserved = hotkey.status() != Status::Active;
+                let reserved = hotkey.status() == Status::Later;
                 if pressed & button.bit() == 0
                     || reserved
                     || (ui_has_input && !hotkey.works_in_ui())
@@ -434,12 +485,24 @@ impl Router {
                 if pressed & button.bit() != 0 {
                     actions.push(Action::Nav(nav));
                     if nav.repeats() {
-                        self.repeat = Some((button, nav, now + self.bindings.repeat_delay));
+                        self.repeat =
+                            Some((Held::Button(button), nav, now + self.bindings.repeat_delay));
                     }
                 }
             }
-            if let Some((button, nav, next)) = self.repeat {
-                if held & button.bit() == 0 {
+            let stick_pushed = input.stick & !self.prev.stick;
+            for &(direction, nav) in STICK_NAV {
+                if stick_pushed & direction.bit() != 0 {
+                    actions.push(Action::Nav(nav));
+                    self.repeat = Some((
+                        Held::Stick(direction),
+                        nav,
+                        now + self.bindings.repeat_delay,
+                    ));
+                }
+            }
+            if let Some((source, nav, next)) = self.repeat {
+                if !source.still(&input) {
                     self.repeat = None;
                 } else if now >= next {
                     actions.push(Action::Nav(nav));
@@ -450,7 +513,7 @@ impl Router {
                     } else {
                         now + self.bindings.repeat_interval
                     };
-                    self.repeat = Some((button, nav, after));
+                    self.repeat = Some((source, nav, after));
                 }
             }
         }
@@ -482,7 +545,71 @@ mod tests {
     fn pad(buttons: &[Button]) -> PadInput {
         PadInput {
             buttons: buttons.iter().fold(0, |m, b| m | b.bit()),
-            guide: false,
+            ..PadInput::default()
+        }
+    }
+
+    /// The right stick pushed towards `directions` (d-pad bits), nothing else held.
+    fn stick(directions: &[Button]) -> PadInput {
+        PadInput {
+            stick: directions.iter().fold(0, |m, b| m | b.bit()),
+            ..PadInput::default()
+        }
+    }
+
+    #[test]
+    fn select_and_the_right_stick_step_the_interface_only() {
+        let mut r = router();
+        let t = Instant::now();
+        r.step(pad(&[]), true, t);
+        assert_eq!(
+            r.step(pad(&[Button::Select]), true, t).actions,
+            vec![Action::Nav(Nav::Select)]
+        );
+        // Held: no repeat.
+        assert!(r
+            .step(pad(&[Button::Select]), true, t + REPEAT_DELAY * 2)
+            .actions
+            .is_empty());
+        r.step(pad(&[]), true, t);
+        let out = r.step(stick(&[Button::Right]), true, t);
+        assert_eq!(out.actions, vec![Action::Nav(Nav::StickRight)]);
+        assert_eq!(out.game_mask, 0);
+        // The stick held repeats like the d-pad, and stops when let go.
+        assert_eq!(
+            r.step(stick(&[Button::Right]), true, t + REPEAT_DELAY)
+                .actions,
+            vec![Action::Nav(Nav::StickRight)]
+        );
+        assert!(r
+            .step(pad(&[]), true, t + REPEAT_DELAY + REPEAT_INTERVAL)
+            .actions
+            .is_empty());
+        assert_eq!(
+            r.step(stick(&[Button::Up]), true, t).actions,
+            vec![Action::Nav(Nav::StickUp)]
+        );
+        // In game the stick is the core's analog and Select the game's button: no step.
+        let mut game = router();
+        let out = game.step(stick(&[Button::Left]), false, t);
+        assert!(out.actions.is_empty());
+        assert_eq!(out.game_mask, 0);
+        let out = game.step(pad(&[Button::Select]), false, t);
+        assert!(out.actions.is_empty());
+        assert_eq!(out.game_mask, Button::Select.bit());
+    }
+
+    #[test]
+    fn the_new_steps_have_the_names_the_interface_reads() {
+        for (nav, name) in [
+            (Nav::Select, "select"),
+            (Nav::StickUp, "stickUp"),
+            (Nav::StickDown, "stickDown"),
+            (Nav::StickLeft, "stickLeft"),
+            (Nav::StickRight, "stickRight"),
+            (Nav::More, "more"),
+        ] {
+            assert_eq!(serde_json::to_value(nav).unwrap(), serde_json::json!(name));
         }
     }
 
@@ -602,8 +729,8 @@ mod tests {
         let mut r = router();
         let t = Instant::now();
         let guide = PadInput {
-            buttons: 0,
             guide: true,
+            ..PadInput::default()
         };
         assert_eq!(
             r.step(guide, false, t).actions,
@@ -832,13 +959,13 @@ mod tests {
     }
 
     #[test]
-    fn the_reserved_rows_are_the_features_still_to_come() {
-        let reserved = [
+    fn the_dual_screen_rows_are_the_screens_and_the_lid() {
+        let dual = [
             (Button::Y, Hotkey::SwapScreens, Status::DualScreen),
             (Button::R3, Hotkey::NextLayout, Status::DualScreen),
             (Button::Select, Hotkey::Lid, Status::DualScreen),
         ];
-        for (button, hotkey, status) in reserved {
+        for (button, hotkey, status) in dual {
             assert!(DEFAULT_COMBOS.contains(&(button, hotkey)), "{hotkey:?}");
             assert_eq!(hotkey.status(), status, "{hotkey:?}");
         }
@@ -879,22 +1006,42 @@ mod tests {
     }
 
     #[test]
-    fn a_reserved_combo_does_nothing_and_keeps_its_button_from_the_game() {
-        for button in [Button::Y, Button::R3, Button::Select] {
+    fn the_dual_screen_combos_fire_and_keep_their_button_from_the_game() {
+        // The shell does nothing with them for a one-screen game (app/src-tauri/src/screens.rs).
+        for (button, hotkey) in [
+            (Button::R3, Hotkey::NextLayout),
+            (Button::Select, Hotkey::Lid),
+        ] {
             let mut r = router();
             let t = Instant::now();
             r.step(pad(&[Button::L3]), false, t);
             let out = r.step(pad(&[Button::L3, button]), false, t);
-            assert!(out.actions.is_empty(), "{button:?}");
+            assert_eq!(out.actions, vec![Action::Press(hotkey)], "{button:?}");
             assert_eq!(out.game_mask, 0, "{button:?}");
-            // Released with the modifier gone: no release action, and it reaches the game
-            // only after a new press.
+            // Released with the modifier gone: no release action (not a hold), and it reaches
+            // the game only after a new press.
             let out = r.step(pad(&[button]), false, t);
             assert!(out.actions.is_empty(), "{button:?}");
             assert_eq!(out.game_mask, 0, "{button:?}");
             let out = r.step(pad(&[]), false, t);
             assert!(out.actions.is_empty(), "{button:?}");
         }
+        // Swap is a hold: its release follows Y, for `screens.swap` = hold.
+        let mut r = router();
+        let t = Instant::now();
+        r.step(pad(&[Button::L3]), false, t);
+        let out = r.step(pad(&[Button::L3, Button::Y]), false, t);
+        assert_eq!(out.actions, vec![Action::Press(Hotkey::SwapScreens)]);
+        let out = r.step(pad(&[Button::Y]), false, t);
+        assert!(out.actions.is_empty());
+        let out = r.step(pad(&[]), false, t);
+        assert_eq!(out.actions, vec![Action::Release(Hotkey::SwapScreens)]);
+        // Not from the menu.
+        r.step(pad(&[Button::L3]), true, t);
+        assert!(r
+            .step(pad(&[Button::L3, Button::R3]), true, t)
+            .actions
+            .is_empty());
     }
 
     #[test]

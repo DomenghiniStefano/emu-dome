@@ -1,5 +1,14 @@
-// G09 «Schermi e immagine»: one card per setting, ‹ value ›, then the video method.
-import type { SettingEntry, SettingKey, SettingRow, SettingValue, VideoMode } from '@/emu'
+// G09 «Schermi e immagine»: for a two-screen game the layout first, then one card per setting,
+// ‹ value ›, then the video method.
+import type {
+  ScreenLayoutId,
+  ScreenStatus,
+  SettingEntry,
+  SettingKey,
+  SettingRow,
+  SettingValue,
+  VideoMode,
+} from '@/emu'
 import { msg } from '@/lib/settingsModel'
 import type { Message } from '@/i18n/message'
 
@@ -96,6 +105,41 @@ export function settingCard(c: SettingCardInput): ScreenCard {
     trial: c.row?.source === 'session',
     ...(c.reason ? { prev: null, next: null } : stepper(ids, current, c.set)),
   }
+}
+
+export interface LayoutCardInput {
+  status: ScreenStatus
+  /** `screens.cycle` at the Session level: changed here, the layout card is «in prova». */
+  row: SettingRow | undefined
+  consoleName: string
+  set: (layout: ScreenLayoutId) => void
+}
+
+/**
+ * «Disposizione degli schermi» (NDS, 3DS): ‹ › step through the cycle (`custom` only once one is
+ * saved), from the layout shown; one shown from outside the cycle steps into it.
+ */
+export function layoutCard(c: LayoutCardInput): ScreenCard {
+  const { layout, cycle } = c.status
+  const ids = cycle.includes(layout) ? cycle : [layout, ...cycle]
+  return {
+    key: 'screens.layout',
+    name: { key: 'qm.layout' },
+    value: { key: msg.option('screens.cycle', layout) },
+    sub: sourceLine(c.row, c.consoleName),
+    trial: c.row?.source === 'session',
+    ...stepper(ids, layout, id => c.set(id as ScreenLayoutId)),
+  }
+}
+
+/**
+ * `screens.cycle` turned to start at `layout`, its order kept (L3 + R3 steps the same way):
+ * the layout a game opens with is the cycle's first, so this is what the layout card keeps «in
+ * prova» and saves.
+ */
+export function cycleStartingAt(cycle: string[], layout: string): string[] {
+  const i = cycle.indexOf(layout)
+  return i < 0 ? [layout, ...cycle] : [...cycle.slice(i), ...cycle.slice(0, i)]
 }
 
 export interface VideoPathInput {

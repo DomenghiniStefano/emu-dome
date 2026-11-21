@@ -43,6 +43,8 @@
   "dataMoveFailed",
   "dataMoveConflict",
   "screenshotFailed",
+  "lidUnsupported",
+  "screenLayoutUnavailable",
   "effectNotLoaded",
   "biosUnreadable",
   "biosWrongSize",

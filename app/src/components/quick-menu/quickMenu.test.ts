@@ -1,11 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingEntry, SettingRow } from '@/emu'
+import type { ScreenStatus, SettingEntry, SettingRow } from '@/emu'
 import { backKeyLabel } from './hints'
-import { settingCard, sourceLine, stepper, unavailableOptions, videoPathCard } from './screenCards'
+import {
+  cycleStartingAt,
+  layoutCard,
+  settingCard,
+  sourceLine,
+  stepper,
+  unavailableOptions,
+  videoPathCard,
+} from './screenCards'
 import { ScreenPickId, pickChanges, screenPicks } from './screenPicks'
 import { isEmptySlot, loadLabel, loadedLine, mainSlotCount, slotName } from './slots'
 import { chosenSpeed, followedSpeed, modeSpeeds, speedChoices } from './speedChoices'
-import { ToolId, quickTools, toolsNotYet } from './tools'
+import { ToolId, quickTools, toolReasons, toolsNotYet } from './tools'
 import { trialNames, trialTitle } from './trial'
 import { QuickMenuView, isSubPage } from './view'
 
@@ -99,7 +107,18 @@ describe('speeds', () => {
 })
 
 describe('tools', () => {
-  const base = { phone: false, dualScreen: false, muted: false, fullscreen: true }
+  const base = { phone: false, dualScreen: false, muted: false, fullscreen: true, screens: null }
+  const screens = (over: Partial<ScreenStatus>): ScreenStatus => ({
+    dualScreen: true,
+    layout: 'vertical',
+    cycle: ['vertical', 'side'],
+    swapped: false,
+    swapHold: false,
+    hasCustom: false,
+    lidSupported: true,
+    lidClosed: false,
+    ...over,
+  })
   it('gives every game screenshot, mute, full screen and restart on desktop', () => {
     expect(quickTools(base).map(t => t.id)).toEqual([
       ToolId.Screenshot,
@@ -112,11 +131,31 @@ describe('tools', () => {
   it('has no full screen on the phone', () => {
     expect(quickTools({ ...base, phone: true }).map(t => t.id)).not.toContain(ToolId.Fullscreen)
   })
-  it('adds the two dual-screen tools, not available yet, for NDS and 3DS', () => {
+  it('adds swap and the lid for NDS and 3DS, pressed while they are on', () => {
     const tools = quickTools({ ...base, dualScreen: true })
     expect(tools).toHaveLength(6)
-    expect(toolsNotYet(tools)).toEqual(['qm.swapScreens', 'qm.closeLid'])
+    expect(toolsNotYet(tools)).toEqual([])
+    expect(toolReasons(tools)).toEqual([])
+    const on = quickTools({
+      ...base,
+      dualScreen: true,
+      screens: screens({ swapped: true, lidClosed: true }),
+    })
+    expect(on.find(t => t.id === ToolId.SwapScreens)?.pressed).toBe(true)
+    expect(on.find(t => t.id === ToolId.CloseLid)?.pressed).toBe(true)
     expect(toolsNotYet(quickTools(base))).toEqual([])
+  })
+  it('disables the lid with the reason where the emulator has none (3DS)', () => {
+    const tools = quickTools({
+      ...base,
+      dualScreen: true,
+      screens: screens({ lidSupported: false }),
+    })
+    const lid = tools.find(t => t.id === ToolId.CloseLid)
+    expect(lid?.available).toBe(false)
+    expect(toolReasons(tools)).toEqual(['qm.lidUnsupported'])
+    // A reason, not «arrives in a future update».
+    expect(toolsNotYet(tools)).toEqual([])
   })
 })
 
@@ -134,6 +173,10 @@ describe('changes «in prova»', () => {
     )
     expect(names).toEqual(['settings.video.filter.option.soft', 'settings.saves.undo.name'])
   })
+  it('names the layout card’s change by the layout the game opens with', () => {
+    const names = trialNames([row('screens.cycle', ['side', 'vertical'], 'session')], find)
+    expect(names).toEqual(['settings.screens.cycle.option.side'])
+  })
   it('titles one change and several', () => {
     expect(trialTitle(['A'])).toEqual({ key: 'qm.trialOne', params: { names: 'A' } })
     expect(trialTitle(['A', 'B'])).toEqual({ key: 'qm.trial', params: { n: 2, names: 'A, B' } })
@@ -141,6 +184,54 @@ describe('changes «in prova»', () => {
 })
 
 describe('G09 cards', () => {
+  it('steps the layout card through the cycle, from the layout shown', () => {
+    const set = vi.fn()
+    const status = {
+      dualScreen: true,
+      layout: 'side',
+      cycle: ['vertical', 'side', 'big_small'],
+      swapped: false,
+      swapHold: false,
+      hasCustom: false,
+      lidSupported: true,
+      lidClosed: false,
+    } satisfies ScreenStatus
+    const card = layoutCard({ status, row: undefined, consoleName: 'Nintendo DS', set })
+    expect(card.name).toEqual({ key: 'qm.layout' })
+    expect(card.value).toEqual({ key: 'settings.screens.cycle.option.side' })
+    expect(card.trial).toBe(false)
+    card.next?.()
+    card.prev?.()
+    expect(set.mock.calls).toEqual([['big_small'], ['vertical']])
+    // «In prova» once the cycle was changed here.
+    const trial = layoutCard({
+      status,
+      row: row('screens.cycle', ['side', 'big_small', 'vertical'], 'session'),
+      consoleName: 'Nintendo DS',
+      set,
+    })
+    expect(trial.trial).toBe(true)
+    expect(trial.sub).toEqual({ key: 'qm.source.session' })
+    // A layout shown from outside the cycle (the editor's custom) steps into it.
+    const outside = layoutCard({
+      status: { ...status, layout: 'custom' },
+      row: undefined,
+      consoleName: 'Nintendo DS',
+      set,
+    })
+    expect(outside.prev).toBeNull()
+    outside.next?.()
+    expect(set).toHaveBeenLastCalledWith('vertical')
+  })
+  it('turns the cycle to start at the chosen layout, keeping its order', () => {
+    expect(cycleStartingAt(['vertical', 'side', 'big_small', 'top_only'], 'big_small')).toEqual([
+      'big_small',
+      'top_only',
+      'vertical',
+      'side',
+    ])
+    expect(cycleStartingAt(['vertical', 'side'], 'custom')).toEqual(['custom', 'vertical', 'side'])
+  })
   it('steps through the options and stops at the ends', () => {
     const set = vi.fn()
     const middle = stepper(['a', 'b', 'c'], 'b', set)

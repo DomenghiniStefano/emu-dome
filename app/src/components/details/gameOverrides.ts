@@ -28,7 +28,8 @@ export function settingValueText(e: SettingEntry, v: SettingValue, { t, te }: Tr
       return Array.isArray(v) ? v.map(option).join(', ') : String(v)
     case 'slider':
       return t(`settingsUi.unit.${e.kind.unit}`, { v: Number(v) })
-    case 'bindings': {
+    case 'bindings':
+    case 'screenLayout': {
       const k = `settings.${e.key}.value.custom`
       return te(k) ? t(k) : ''
     }

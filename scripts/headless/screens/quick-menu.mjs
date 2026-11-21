@@ -38,6 +38,32 @@ const STATES = {
     mock: { trial: true },
     steps: [escape, click("^(Screens and picture|Schermi e immagine)$")],
   },
+  // DS screens (#28): swap and the lid among the tools (a 3DS core has no lid), G09's layout
+  // card and «Personalizza gli schermi», the C09 editor open and folded, G15 with the lid closed.
+  "nds-tools": { mock: { slots: "full", game: "nds", swapped: true }, steps: [escape] },
+  "nds-lidless": { mock: { slots: "full", game: "nds", lidless: true }, steps: [escape] },
+  "nds-screens": {
+    mock: { game: "nds" },
+    steps: [escape, click("^(Screens and picture|Schermi e immagine)$")],
+  },
+  "nds-editor": {
+    mock: { game: "nds" },
+    steps: [
+      escape,
+      click("^(Screens and picture|Schermi e immagine)$"),
+      click("(Customise the screens|Personalizza gli schermi)$"),
+    ],
+  },
+  "nds-editor-folded": {
+    mock: { game: "nds" },
+    steps: [
+      escape,
+      click("^(Screens and picture|Schermi e immagine)$"),
+      click("(Customise the screens|Personalizza gli schermi)$"),
+      click("^(Collapse|Riduci)"),
+    ],
+  },
+  "nds-lid": { mock: { game: "nds", lid: true }, steps: [] },
   // Screen effects (#43): on the Accelerated method with «TV CRT» picked «in prova»; on
   // Compatible (every other scenario) the effect card is locked with its reason.
   effects: {

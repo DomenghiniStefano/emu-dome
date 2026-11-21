@@ -11,8 +11,22 @@ export interface Viewport {
 }
 
 /**
+ * The area the screens are composed in, in the renderer's unit (`scale` per CSS pixel): the
+ * window, `insetPx` CSS pixels at the bottom kept clear for the quick menu. The webview canvas
+ * asks Rust for its placements in it (scale 1); the touch screen is measured against it.
+ */
+export function viewArea(view: Viewport, scale: number, insetPx: number): PointerArea {
+  const inset = view.innerHeight > 0 ? insetPx / view.innerHeight : 0
+  return {
+    width: view.innerWidth * scale,
+    height: view.innerHeight * scale,
+    inset: Math.min(Math.max(inset, 0), 0.9),
+  }
+}
+
+/**
  * The point and area in the renderer's unit: the native video draws in physical pixels, the
- * webview canvas in CSS pixels (and each fits the game with an integer scale in its own unit).
+ * webview canvas in CSS pixels (each composes the screens in its own unit, in Rust).
  * `insetPx`: the CSS pixels at the bottom kept clear for the quick menu.
  */
 export function pointerArgs(
@@ -23,16 +37,7 @@ export function pointerArgs(
   insetPx: number,
 ): { x: number; y: number; area: PointerArea } {
   const scale = mode === 'native' ? view.devicePixelRatio || 1 : 1
-  const inset = view.innerHeight > 0 ? insetPx / view.innerHeight : 0
-  return {
-    x: clientX * scale,
-    y: clientY * scale,
-    area: {
-      width: view.innerWidth * scale,
-      height: view.innerHeight * scale,
-      inset: Math.min(Math.max(inset, 0), 0.9),
-    },
-  }
+  return { x: clientX * scale, y: clientY * scale, area: viewArea(view, scale, insetPx) }
 }
 
 /** A press on an interface element (on-screen buttons, the d-pad, the menu) is not a touch. */

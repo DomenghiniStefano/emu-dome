@@ -31,6 +31,7 @@
 @source '../components/quick-menu';
 @source '../components/details/*.vue';
 @source '../components/settings';
+@source '../components/screen-editor';
 
 /* The touch density: `touch:` styles an element while the interface is laid out for a finger
    (`data-density="touch"` on <html>, set once by composables/useDensity.ts: a phone held upright,

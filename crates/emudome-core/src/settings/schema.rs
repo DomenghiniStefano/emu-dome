@@ -194,6 +194,10 @@ pub enum Kind {
     /// A binding list edited in the Controls section, shown as a link in the settings pages
     /// (`pad.remap`, `pad.combos`). Value: list of overrides, shapes in `crate::bindings`.
     Bindings { table: BindingTable },
+    /// The user's own screen layout, edited in the screen editor (C09), shown as a link in the
+    /// settings pages (`screens.custom`). Value: list, shape in `crate::screens::CustomLayout`
+    /// (empty: none); read and written as a typed `CustomLayout` by the `screens_custom*` commands.
+    ScreenLayout,
 }
 
 /// A stored or resolved value. TypeScript: `SettingValue` (generated).
@@ -339,7 +343,8 @@ impl Entry {
             | Kind::Text
             | Kind::Action { .. }
             | Kind::Apply { .. }
-            | Kind::Bindings { .. } => true,
+            | Kind::Bindings { .. }
+            | Kind::ScreenLayout => true,
         }
     }
 
@@ -360,7 +365,8 @@ impl Entry {
             | Kind::Text
             | Kind::Action { .. }
             | Kind::Apply { .. }
-            | Kind::Bindings { .. } => Vec::new(),
+            | Kind::Bindings { .. }
+            | Kind::ScreenLayout => Vec::new(),
         }
     }
 
@@ -416,6 +422,9 @@ impl Entry {
             (Kind::Bindings { table }, Value::List(items)) => {
                 crate::bindings::valid_list(table, items)
             }
+            (Kind::ScreenLayout, Value::List(items)) => {
+                crate::screens::CustomLayout::valid_items(items)
+            }
             (
                 Kind::Toggle
                 | Kind::Choice { .. }
@@ -427,7 +436,8 @@ impl Entry {
                 | Kind::Text
                 | Kind::Action { .. }
                 | Kind::Apply { .. }
-                | Kind::Bindings { .. },
+                | Kind::Bindings { .. }
+                | Kind::ScreenLayout,
                 Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_),
             ) => false,
         }

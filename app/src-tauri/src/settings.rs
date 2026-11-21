@@ -62,6 +62,7 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
     }
     crate::core_settings::settings_changed(app, keys);
     crate::bios::settings_changed(app, keys);
+    crate::screens::settings_changed(app, keys);
     if keys.iter().any(|k| REWIND_KEYS.contains(k)) {
         // The open game follows at once (no game: nothing to tell).
         let seconds = rewind_seconds(app, &Scope::Session);
@@ -130,7 +131,7 @@ const REWIND_KEYS: [&str; 2] = [
 
 /// A setting's value as `scope` resolves it, `None` when it has none or cannot be read (logged):
 /// what [`keys::Reader`] takes, which puts the catalogue's default in its place.
-fn resolver<'a>(
+pub(crate) fn resolver<'a>(
     app: &'a AppHandle,
     scope: &'a Scope,
 ) -> impl Fn(&str) -> Option<Value> + Copy + 'a {

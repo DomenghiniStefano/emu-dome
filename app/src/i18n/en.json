@@ -279,6 +279,8 @@
     "dataMoveFailed": "Couldn’t copy your data to EmuDome’s new folder. Nothing was lost: for now EmuDome keeps using the old folder ({old}) and tries again at the next start. Details: {detail}",
     "dataMoveConflict": "EmuDome’s new data folder ({new}) already held data, so your earlier data wasn’t copied over it. It’s still in {old}, untouched: copy what you need by hand. See {report}.",
     "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again.",
+    "lidUnsupported": "This game’s emulator can’t close the lid. Pause the game from the quick menu instead.",
+    "screenLayoutUnavailable": "This screen layout isn’t available for this game. Pick another one in the quick menu.",
     "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file.",
     "biosUnreadable": "Couldn’t read this file: {detail}. Check that it’s still there and choose it again.",
     "biosWrongSize": "This file doesn’t have the right size for this row. Choose the right file.",
@@ -695,7 +697,8 @@
           "vertical": "Vertical",
           "side": "Side by side",
           "big_small": "Large and small",
-          "top_only": "Top screen only"
+          "top_only": "Top screen only",
+          "custom": "Free layout"
         }
       },
       "custom": {
@@ -1808,6 +1811,12 @@
     "closeAnyway": "Close without saving"
   },
   "flow": {
+    "lid": {
+      "title": "Lid closed",
+      "text": "The game behaves as on a closed console: it usually goes to sleep.",
+      "open": "Open the lid",
+      "hint": "{modifier} + {button} to open it again"
+    },
     "starting": "Starting",
     "startFailed": "Can’t start {title}",
     "gotIt": "Got it",
@@ -1903,6 +1912,8 @@
     "fullscreen": "Full screen",
     "swapScreens": "Swap screens",
     "closeLid": "Close the lid",
+    "lidUnsupported": "This game’s emulator can’t close the lid.",
+    "layout": "Screen layout",
     "restartTitle": "Restart the game?",
     "restartText": "The game starts over. Your saves stay, progress since your last save is lost.",
     "restartConfirm": "Restart",
@@ -2280,6 +2291,57 @@
       "otherDesc": ".sav, .dsv files or Action Replay backups (.duc)",
       "hintDesktop": "In game, press Esc or the controller's Home button for the quick menu.",
       "hintPhone": "In game, press the menu button at the bottom right for the quick menu."
+    }
+  },
+  "screenEditor": {
+    "title": "Screen layout",
+    "lead": "Drag a screen to move it, its corner to resize it.",
+    "startFrom": "Start from",
+    "start": {
+      "vertical": "Vertical",
+      "side": "Side by side",
+      "big_small": "Large and small",
+      "top_only": "Top only"
+    },
+    "screen": {
+      "top": "Top screen",
+      "bottom": "Touch screen"
+    },
+    "short": {
+      "top": "Top",
+      "bottom": "Touch"
+    },
+    "field": {
+      "x": "From the left (%)",
+      "y": "From the top (%)",
+      "w": "Width (%)",
+      "h": "Height (%)"
+    },
+    "keep": "Keep the proportions",
+    "snap": "Snap to the grid",
+    "front": "In front",
+    "appliesTo": "Applies to",
+    "thisGame": "This game only",
+    "cancel": "Cancel",
+    "save": "Save",
+    "collapse": "Collapse",
+    "expand": "Show the options",
+    "width": "{n}% wide",
+    "hintsLabel": "Editor controls",
+    "hint": {
+      "pick": "Choose the screen",
+      "move": "Move",
+      "resize": "Resize",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "key": {
+      "dpad": "D-pad",
+      "rightStick": "Right stick",
+      "pageUp": "PgUp",
+      "pageDown": "PgDn",
+      "arrows": "Arrows",
+      "shiftArrows": "Shift + Arrows"
     }
   }
 }

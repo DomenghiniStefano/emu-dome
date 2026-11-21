@@ -279,6 +279,8 @@
     "dataMoveFailed": "Non riesco a copiare i tuoi dati nella nuova cartella di EmuDome. Non hai perso nulla: per ora EmuDome continua a usare la vecchia cartella ({old}) e riprova al prossimo avvio. Dettagli: {detail}",
     "dataMoveConflict": "La nuova cartella dei dati di EmuDome ({new}) conteneva già dei dati, quindi i tuoi dati precedenti non sono stati copiati sopra. Sono ancora in {old}, intatti: copia a mano quello che ti serve. Vedi {report}.",
     "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
+    "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio. Metti in pausa il gioco dal menu rapido.",
+    "screenLayoutUnavailable": "Questa disposizione degli schermi non è disponibile per questo gioco. Scegline un’altra dal menu rapido.",
     "effectNotLoaded": "Non riesco a usare l’effetto «{name}», quindi il gioco si vede senza. Scegli un altro effetto o un altro file.",
     "biosUnreadable": "Non riesco a leggere questo file: {detail}. Controlla che ci sia ancora e sceglilo di nuovo.",
     "biosWrongSize": "Questo file non ha la dimensione giusta per questa voce. Scegli il file giusto.",
@@ -695,7 +697,8 @@
           "vertical": "Verticale",
           "side": "Affiancati",
           "big_small": "Grande e piccolo",
-          "top_only": "Solo lo schermo superiore"
+          "top_only": "Solo lo schermo superiore",
+          "custom": "Disposizione libera"
         }
       },
       "custom": {
@@ -1808,6 +1811,12 @@
     "closeAnyway": "Chiudi senza salvare"
   },
   "flow": {
+    "lid": {
+      "title": "Coperchio chiuso",
+      "text": "Il gioco si comporta come su una console chiusa: di solito va in standby.",
+      "open": "Apri il coperchio",
+      "hint": "{modifier} + {button} per riaprirlo"
+    },
     "starting": "Avvio in corso",
     "startFailed": "Impossibile avviare {title}",
     "gotIt": "Ho capito",
@@ -1903,6 +1912,8 @@
     "fullscreen": "A schermo intero",
     "swapScreens": "Scambia gli schermi",
     "closeLid": "Chiudi il coperchio",
+    "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio.",
+    "layout": "Disposizione degli schermi",
     "restartTitle": "Riavviare il gioco?",
     "restartText": "Il gioco riparte dall’inizio. I salvataggi restano, i progressi dall’ultimo salvataggio si perdono.",
     "restartConfirm": "Riavvia",
@@ -2280,6 +2291,57 @@
       "otherDesc": "File .sav, .dsv o backup Action Replay (.duc)",
       "hintDesktop": "In gioco premi Esc o il pulsante Home del controller per il menu rapido.",
       "hintPhone": "In gioco premi il pulsante menu in basso a destra per il menu rapido."
+    }
+  },
+  "screenEditor": {
+    "title": "Disposizione degli schermi",
+    "lead": "Trascina uno schermo per spostarlo, l’angolo per ridimensionarlo.",
+    "startFrom": "Parti da",
+    "start": {
+      "vertical": "Verticale",
+      "side": "Affiancati",
+      "big_small": "Grande e piccolo",
+      "top_only": "Solo superiore"
+    },
+    "screen": {
+      "top": "Schermo superiore",
+      "bottom": "Schermo touch"
+    },
+    "short": {
+      "top": "Superiore",
+      "bottom": "Touch"
+    },
+    "field": {
+      "x": "Da sinistra (%)",
+      "y": "Dall’alto (%)",
+      "w": "Larghezza (%)",
+      "h": "Altezza (%)"
+    },
+    "keep": "Mantieni le proporzioni",
+    "snap": "Aggancia alla griglia",
+    "front": "In primo piano",
+    "appliesTo": "Si applica a",
+    "thisGame": "Solo questo gioco",
+    "cancel": "Annulla",
+    "save": "Salva",
+    "collapse": "Riduci",
+    "expand": "Mostra le opzioni",
+    "width": "{n}% di larghezza",
+    "hintsLabel": "Comandi dell’editor",
+    "hint": {
+      "pick": "Scegli lo schermo",
+      "move": "Sposta",
+      "resize": "Ridimensiona",
+      "save": "Salva",
+      "cancel": "Annulla"
+    },
+    "key": {
+      "dpad": "Croce",
+      "rightStick": "Levetta destra",
+      "pageUp": "PagSu",
+      "pageDown": "PagGiù",
+      "arrows": "Frecce",
+      "shiftArrows": "Maiusc + Frecce"
     }
   }
 }

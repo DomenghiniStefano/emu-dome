@@ -5,7 +5,7 @@
 use std::sync::atomic::Ordering;
 
 use emudome_core::input::{Button, Source};
-use emudome_core::screens::{Area, Layout};
+use emudome_core::screens::Area;
 use emudome_core::{Command, ErrorCode, Speed};
 use serde::Serialize;
 use tauri::Manager;
@@ -243,12 +243,24 @@ pub(crate) struct PointerArea {
     inset: f32,
 }
 
-/// Touch screen (NDS): the mouse or a finger at (`x`, `y`) in `area`, pressed or not. Rust maps it
-/// through the composed bottom screen (`screens::pointer_at`); off the touch screen it is a
+impl PointerArea {
+    /// The area as the screens are composed in it.
+    pub(crate) fn area(&self) -> Area {
+        Area {
+            width: self.width,
+            height: self.height,
+            inset: self.inset,
+        }
+    }
+}
+
+/// Touch screen (NDS, 3DS): the mouse or a finger at (`x`, `y`) in `area`, pressed or not. Rust
+/// maps it through the bottom screen as the open game's layout composes it (`screens.*`, swapped
+/// or not: `crate::screens::layout`, `screens::pointer_at`); off the touch screen it is a
 /// release, as on the console. One-screen consoles ignore it.
-/// TODO(#28): the layout from the `screens.*` settings; today the default (stacked).
 #[tauri::command]
 pub(crate) fn pointer(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     x: f32,
     y: f32,
@@ -263,12 +275,8 @@ pub(crate) fn pointer(
             let f = shared.frame.lock();
             ((f.width, f.height), f.split)
         };
-        let area = Area {
-            width: area.width,
-            height: area.height,
-            inset: area.inset,
-        };
-        emudome_core::screens::pointer_at(&Layout::default(), split, frame, area, x, y)
+        let layout = crate::screens::layout(&app);
+        emudome_core::screens::pointer_at(&layout, split, frame, area.area(), x, y)
     } else {
         None
     };

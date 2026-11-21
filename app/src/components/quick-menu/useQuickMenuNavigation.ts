@@ -43,6 +43,12 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
       void nextTick(() => find(`[${FocusMark.Shortcuts}]`)?.focus())
       return
     }
+    // The screens editor closes back onto G09, on the button that opened it.
+    if (view.value === QuickMenuView.ScreenEditor) {
+      view.value = QuickMenuView.Screens
+      void nextTick(() => find(`[${FocusMark.Customise}]`)?.focus())
+      return
+    }
     view.value = QuickMenuView.Home
     hooks.home()
     void nextTick(() => opener?.focus())

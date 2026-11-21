@@ -910,6 +910,25 @@
     controls_bindings: bindings,
     theme: scenario.theme ?? "dark",
     bench_active: false,
+    // NDS screens (#28): `swapped`, `lid` (closed: G15) and `lidless` (a core without one) set
+    // the status; the editor starts from a vertical stack and has no layout saved.
+    screens_status: {
+      dualScreen: scenario.game === "nds",
+      layout: "vertical",
+      cycle: ["vertical", "side", "big_small", "top_only"],
+      swapped: !!scenario.swapped,
+      swapHold: false,
+      hasCustom: false,
+      lidSupported: !scenario.lidless,
+      lidClosed: !!scenario.lid,
+    },
+    screens_custom: { screens: [] },
+    screens_preset_custom: {
+      screens: [
+        { id: "top", x: 0.3125, y: 0, w: 0.375, h: 0.5 },
+        { id: "bottom", x: 0.3125, y: 0.5, w: 0.375, h: 0.5 },
+      ],
+    },
     "plugin:app|version": "0.0.1",
   };
   // Game details (L05, L06) with something in them: quick saves, an in-game save with backups

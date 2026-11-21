@@ -417,6 +417,7 @@ mod tests {
                     Kind::Action { .. } => ("action", &[]),
                     Kind::Apply { options } => ("apply", options),
                     Kind::Bindings { .. } => ("bindings", &[]),
+                    Kind::ScreenLayout => ("screenLayout", &[]),
                 };
                 json!({ "key": e.key, "page": e.page(), "kind": kind, "options": options })
             })
@@ -444,7 +445,8 @@ mod tests {
                 | Kind::Text
                 | Kind::Action { .. }
                 | Kind::Apply { .. }
-                | Kind::Bindings { .. } => None,
+                | Kind::Bindings { .. }
+                | Kind::ScreenLayout => None,
             })
             .collect();
         json!({
@@ -485,6 +487,10 @@ mod tests {
         g.ts::<crate::library::Region>().unwrap();
         g.ts::<crate::Speed>().unwrap();
         g.ts::<crate::Event>().unwrap();
+        g.ts::<crate::screens::Placement>().unwrap();
+        g.ts::<crate::screens::LayoutId>().unwrap();
+        g.ts::<crate::screens::CustomLayout>().unwrap();
+        g.ts::<crate::screens::ScreenStatus>().unwrap();
         let codes = error_codes(g.get("ErrorCode.ts").unwrap());
         g.file("error-codes.json", pretty(&json!(codes)));
         g.file("settings-catalog.json", pretty(&catalog()));

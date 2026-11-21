@@ -16,6 +16,8 @@ pub const MENU: &str = "emu://menu";
 pub const NAV: &str = "emu://nav";
 /// What a shortcut changed (`hotkeys::HotkeyEvent`).
 pub const HOTKEY: &str = "emu://hotkey";
+/// The open game's screens changed: layout, swap, lid (`emudome_core::screens::ScreenStatus`).
+pub const SCREENS: &str = "emu://screens";
 /// Settings waiting for the game to be opened again (`core_settings::CoreRestart`).
 pub const CORE_RESTART: &str = "emu://core-restart";
 /// A game opened without the system files a setting asked for (an `ErrorCode`).

@@ -11,13 +11,20 @@
 //! - [`touch_at`]: window point → touch-screen pixel, through the composed rectangle;
 //! - [`pointer_value`]: touch-screen pixel → the `RETRO_DEVICE_POINTER` value the core reads.
 //!
-//! Today the renderers draw the whole frame with [`fit`], which for the default layout (stacked,
-//! no gap, no rotation) puts every screen exactly where [`compose`] does (tested below).
-//! TODO(#28): the `screens.*` settings choose the [`Layout`]; the renderers then draw each
-//! [`Placement`] instead of the whole frame.
+//! The `screens.*` settings choose the [`Layout`] ([`ScreenSettings`]: the layouts to step
+//! through, the ratio, the gap, the rotation, the custom layout) together with what the user
+//! changed while playing (the current [`LayoutId`], the screens swapped); the renderers draw each
+//! [`Placement`] of [`compose`] (native `video.rs`, webview `GameCanvas.vue` from the placements
+//! the shell sends), and the touch screen maps back through the same placements (Trello #28).
 
-/// Which screen of the console.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+use crate::settings::keys::{self, Reader};
+use crate::settings::Value;
+
+/// Which screen of the console. TypeScript: `ScreenId` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum ScreenId {
     /// The only screen of a one-screen console (GB, GBC, GBA).
@@ -28,8 +35,36 @@ pub enum ScreenId {
     Bottom,
 }
 
-/// A rectangle of whole pixels in the core's frame.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+impl ScreenId {
+    /// The other screen of a two-screen console (the only screen stays itself).
+    pub fn other(self) -> ScreenId {
+        match self {
+            ScreenId::Main => ScreenId::Main,
+            ScreenId::Top => ScreenId::Bottom,
+            ScreenId::Bottom => ScreenId::Top,
+        }
+    }
+
+    fn from_id(id: &str) -> Option<ScreenId> {
+        match id {
+            "top" => Some(ScreenId::Top),
+            "bottom" => Some(ScreenId::Bottom),
+            "main" => Some(ScreenId::Main),
+            _ => None,
+        }
+    }
+
+    fn id(self) -> &'static str {
+        match self {
+            ScreenId::Main => "main",
+            ScreenId::Top => "top",
+            ScreenId::Bottom => "bottom",
+        }
+    }
+}
+
+/// A rectangle of whole pixels in the core's frame. TypeScript: `PxRect` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, TS)]
 pub struct PxRect {
     pub x: u32,
     pub y: u32,
@@ -38,8 +73,9 @@ pub struct PxRect {
 }
 
 /// A rectangle in window pixels (the renderer's unit: physical pixels for the native path, CSS
-/// pixels for the webview canvas).
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+/// pixels for the webview canvas). TypeScript: `ScreenRect` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, TS)]
+#[ts(rename = "ScreenRect")]
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -148,10 +184,19 @@ impl Split {
             }
         }
     }
+
+    /// The frame the core hands over at its own resolution (1×) for this split; `None` for one
+    /// screen, whose size depends on the console. What the editor's presets are composed from.
+    pub fn frame_at_1x(self) -> Option<(u32, u32)> {
+        match self {
+            Split::Whole => None,
+            Split::DsStacked { gap } => Some((256, 2 * 192 + gap)),
+            Split::N3dsStacked => Some((N3DS_TOP.0, 2 * N3DS_TOP.1)),
+        }
+    }
 }
 
-/// How the screens are arranged (`screens.cycle` ids: `vertical`, `side`, `big_small`,
-/// `top_only`; `bottom_only` and custom come with the screen editor, #28).
+/// How the screens are arranged (from a [`LayoutId`]; `SecondOnly` is `top_only` swapped).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Arrangement {
     /// One above the other («Uno sopra l'altro»): the default.
@@ -184,8 +229,55 @@ impl Arrangement {
     }
 }
 
+/// The layouts the user picks: the `screens.cycle` options, in the order of the quick menu.
+/// `custom` is the user's own layout (`screens.custom`), there only once one is saved.
+/// TypeScript: `ScreenLayoutId` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(rename = "ScreenLayoutId")]
+pub enum LayoutId {
+    /// «Uno sopra l'altro»: the default.
+    Vertical,
+    /// «Affiancati».
+    Side,
+    /// «Grande e piccolo».
+    BigSmall,
+    /// «Solo superiore» (swapped: the bottom screen only).
+    TopOnly,
+    /// «Personalizzata»: `screens.custom`.
+    Custom,
+}
+
+impl LayoutId {
+    pub const ALL: [LayoutId; 5] = [
+        LayoutId::Vertical,
+        LayoutId::Side,
+        LayoutId::BigSmall,
+        LayoutId::TopOnly,
+        LayoutId::Custom,
+    ];
+
+    /// The `screens.cycle` option id.
+    pub fn id(self) -> &'static str {
+        match self {
+            LayoutId::Vertical => "vertical",
+            LayoutId::Side => "side",
+            LayoutId::BigSmall => "big_small",
+            LayoutId::TopOnly => "top_only",
+            LayoutId::Custom => "custom",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<LayoutId> {
+        LayoutId::ALL.into_iter().find(|l| l.id() == id)
+    }
+}
+
 /// The whole picture turned (`screens.rot`), book-style games held sideways.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// TypeScript: `ScreenRotation` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(rename = "ScreenRotation")]
 pub enum Rotation {
     #[default]
     None,
@@ -245,8 +337,10 @@ pub struct Area {
     pub inset: f32,
 }
 
-/// Where one screen is drawn.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// Where one screen is drawn. TypeScript: `ScreenPlacement` (generated): the webview canvas
+/// draws `src` of the frame into `dst`, its picture turned by `rotation`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, TS)]
+#[ts(rename = "ScreenPlacement")]
 pub struct Placement {
     pub id: ScreenId,
     /// Its pixels in the core's frame.
@@ -292,10 +386,14 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
             height: area.height * (1.0 - area.inset.clamp(0.0, 0.9)),
             ..area
         };
+        // The whole picture turns: each rectangle turns inside the game area, its picture with it.
         return rects
             .iter()
             .filter_map(|(id, r)| {
-                let s = screens.iter().find(|s| s.id == *id)?;
+                // Swapped: each screen takes the other's rectangle.
+                let id = if layout.swap { id.other() } else { *id };
+                let s = screens.iter().find(|s| s.id == id)?;
+                let r = turn(*r, layout.rotation, 1.0, 1.0);
                 Some(Placement {
                     id: s.id,
                     src: s.src,
@@ -518,12 +616,741 @@ pub fn pointer_at(
     Some(pointer_value(bottom.src, frame, tx, ty))
 }
 
+/// One screen of a custom layout: its rectangle as fractions (0..1) of the game area.
+/// TypeScript: `CustomScreen` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
+pub struct CustomScreen {
+    pub id: ScreenId,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+/// The user's own layout (`screens.custom`, the C09 editor), saved per console or per game.
+/// TypeScript: `CustomLayout` (generated).
+///
+/// Stored as the setting's list, one item per screen, back to front (the last one is drawn in
+/// front): `"<top|bottom>:<x>,<y>,<w>,<h>"`, fractions of the game area with at most 4 decimals,
+/// e.g. `["top:0,0,0.5,0.5", "bottom:0.5,0,0.5,1"]`. An empty list: no custom layout.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize, TS)]
+pub struct CustomLayout {
+    /// Back to front: the last one is in front.
+    pub screens: Vec<CustomScreen>,
+}
+
+/// How far past the area's edge a rectangle may go from rounding.
+const EDGE_SLACK: f32 = 1e-3;
+
+impl CustomLayout {
+    /// Each screen once, `top` or `bottom`, inside the area with a size: what the editor may
+    /// save. Empty is valid (no custom layout).
+    pub fn is_valid(&self) -> bool {
+        let fits = |start: f32, size: f32| {
+            start.is_finite()
+                && size.is_finite()
+                && start >= 0.0
+                && size > 0.0
+                && start + size <= 1.0 + EDGE_SLACK
+        };
+        self.screens.iter().enumerate().all(|(i, s)| {
+            matches!(s.id, ScreenId::Top | ScreenId::Bottom)
+                && self.screens[..i].iter().all(|o| o.id != s.id)
+                && fits(s.x, s.w)
+                && fits(s.y, s.h)
+        })
+    }
+
+    /// The layout a stored list holds; `None` when an item is malformed or the whole is not
+    /// [valid](Self::is_valid).
+    pub fn from_items(items: &[String]) -> Option<CustomLayout> {
+        let parse = |item: &str| -> Option<CustomScreen> {
+            let (id, rest) = item.split_once(':')?;
+            let mut n = rest.split(',').map(|v| v.trim().parse::<f32>().ok());
+            let screen = CustomScreen {
+                id: ScreenId::from_id(id.trim())?,
+                x: n.next()??,
+                y: n.next()??,
+                w: n.next()??,
+                h: n.next()??,
+            };
+            n.next().is_none().then_some(screen)
+        };
+        let layout = CustomLayout {
+            screens: items.iter().map(|i| parse(i)).collect::<Option<Vec<_>>>()?,
+        };
+        layout.is_valid().then_some(layout)
+    }
+
+    /// The stored list (see the type's doc), numbers rounded to 4 decimals.
+    pub fn to_items(&self) -> Vec<String> {
+        let n = |v: f32| (v * 10_000.0).round() / 10_000.0;
+        self.screens
+            .iter()
+            .map(|s| format!("{}:{},{},{},{}", s.id.id(), n(s.x), n(s.y), n(s.w), n(s.h)))
+            .collect()
+    }
+
+    /// Whether a stored value is a valid custom layout (the schema's check, `Kind::ScreenLayout`).
+    pub fn valid_items(items: &[String]) -> bool {
+        Self::from_items(items).is_some()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.screens.is_empty()
+    }
+
+    fn arrangement(&self) -> Arrangement {
+        Arrangement::Custom(
+            self.screens
+                .iter()
+                .map(|s| {
+                    (
+                        s.id,
+                        Rect {
+                            x: s.x,
+                            y: s.y,
+                            w: s.w,
+                            h: s.h,
+                        },
+                    )
+                })
+                .collect(),
+        )
+    }
+
+    /// Where `layout` puts the screens of `split` in an area of `width` × `height` (the whole
+    /// window, no inset), as a custom layout: the C09 editor's «Parti da», so the editor never
+    /// works the geometry out again. The gap and the ratio are `settings`'; the picture is not
+    /// turned (`screens.rot` turns a custom layout as a whole on top); `custom` is the one saved.
+    /// Empty for a one-screen split or an empty area.
+    pub fn preset(
+        settings: &ScreenSettings,
+        layout: LayoutId,
+        split: Split,
+        width: f32,
+        height: f32,
+    ) -> CustomLayout {
+        if layout == LayoutId::Custom {
+            return settings.custom.clone();
+        }
+        let Some((frame_w, frame_h)) = split.frame_at_1x() else {
+            return CustomLayout::default();
+        };
+        if !(width > 0.0 && height > 0.0) {
+            return CustomLayout::default();
+        }
+        let arranged = Layout {
+            rotation: Rotation::None,
+            ..settings.layout(layout, false)
+        };
+        let area = Area {
+            width,
+            height,
+            inset: 0.0,
+        };
+        // A fraction of the area, kept inside it whatever the rounding.
+        let fraction = |start: f32, size: f32, whole: f32| {
+            let s = (start / whole).clamp(0.0, 1.0);
+            (s, (size / whole).min(1.0 - s))
+        };
+        let screens = compose(&arranged, &split.screens(frame_w, frame_h), area)
+            .into_iter()
+            .filter(|p| p.id != ScreenId::Main)
+            .map(|p| {
+                let (x, w) = fraction(p.dst.x, p.dst.w, width);
+                let (y, h) = fraction(p.dst.y, p.dst.h, height);
+                CustomScreen {
+                    id: p.id,
+                    x,
+                    y,
+                    w,
+                    h,
+                }
+            })
+            .collect();
+        CustomLayout { screens }
+    }
+}
+
+/// The `screens.*` settings of the open game (its changes «in prova» included), read once.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScreenSettings {
+    /// `screens.cycle`: the layouts L3 + R3 and the quick menu step through, in order; `custom`
+    /// only while a custom layout is saved.
+    pub cycle: Vec<LayoutId>,
+    /// `screens.ratio`, per cent.
+    pub ratio: u8,
+    /// `screens.gap`, console pixels.
+    pub gap: u32,
+    /// `screens.rot`.
+    pub rotation: Rotation,
+    /// `screens.custom` (empty: none saved).
+    pub custom: CustomLayout,
+    /// `screens.swap` is `hold`: the screens are swapped only while the shortcut is held.
+    pub swap_hold: bool,
+}
+
+impl Default for ScreenSettings {
+    fn default() -> Self {
+        Self::from_settings(|_| None)
+    }
+}
+
+impl ScreenSettings {
+    /// From the resolved settings (`get(key)`, `None`: the catalogue's default). A value of the
+    /// wrong shape is the default; an unknown layout id in the cycle is skipped.
+    pub fn from_settings(get: impl Fn(&str) -> Option<Value>) -> Self {
+        let settings = Reader::new(get);
+        let custom =
+            CustomLayout::from_items(&settings.list(keys::SCREENS_CUSTOM)).unwrap_or_default();
+        let cycle = settings
+            .list(keys::SCREENS_CYCLE)
+            .iter()
+            .filter_map(|id| LayoutId::from_id(id))
+            .filter(|l| *l != LayoutId::Custom || !custom.is_empty())
+            .collect();
+        let clamp = |v: i64, max: i64| v.clamp(0, max);
+        Self {
+            cycle,
+            ratio: u8::try_from(clamp(settings.int(keys::SCREENS_RATIO), 100)).unwrap_or(70),
+            gap: u32::try_from(clamp(settings.int(keys::SCREENS_GAP), 1000)).unwrap_or(0),
+            rotation: Rotation::from_id(&settings.text(keys::SCREENS_ROTATION)).unwrap_or_default(),
+            custom,
+            swap_hold: settings.text(keys::SCREENS_SWAP) == "hold",
+        }
+    }
+
+    /// Whether `layout` can be shown: every one but `custom` with no custom layout saved.
+    pub fn available(&self, layout: LayoutId) -> bool {
+        layout != LayoutId::Custom || !self.custom.is_empty()
+    }
+
+    /// The layout a game opens with: the first of the cycle (vertical with an empty cycle).
+    pub fn first(&self) -> LayoutId {
+        self.cycle.first().copied().unwrap_or(LayoutId::Vertical)
+    }
+
+    /// The layout after `current` in the cycle, wrapping; from a layout outside the cycle, the
+    /// first.
+    pub fn next(&self, current: LayoutId) -> LayoutId {
+        match self.cycle.iter().position(|l| *l == current) {
+            Some(i) => self.cycle[(i + 1) % self.cycle.len()],
+            None => self.first(),
+        }
+    }
+
+    /// After a settings change: `current` stays while it can be shown, else the first.
+    pub fn keep(&self, current: LayoutId) -> LayoutId {
+        if self.available(current) {
+            current
+        } else {
+            self.first()
+        }
+    }
+
+    /// The [`Layout`] to compose with `current` shown and the screens `swapped` or not. A
+    /// layout that cannot be shown (custom with none saved) is the first of the cycle.
+    pub fn layout(&self, current: LayoutId, swapped: bool) -> Layout {
+        let arrangement = match self.keep(current) {
+            LayoutId::Vertical => Arrangement::Stacked,
+            LayoutId::Side => Arrangement::SideBySide,
+            LayoutId::BigSmall => Arrangement::BigSmall,
+            LayoutId::TopOnly => Arrangement::FirstOnly,
+            LayoutId::Custom if !self.custom.is_empty() => self.custom.arrangement(),
+            LayoutId::Custom => Arrangement::Stacked,
+        };
+        Layout {
+            arrangement,
+            swap: swapped,
+            gap: self.gap,
+            ratio: self.ratio,
+            rotation: self.rotation,
+        }
+    }
+}
+
+/// The screens of the open game as the interface shows them (quick menu G09, the tools, the G15
+/// lid overlay): sent on `emu://screens` at every change and answered by `screens_status`.
+/// TypeScript: `ScreenStatus` (generated).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct ScreenStatus {
+    /// A two-screen game (NDS, 3DS) is open: the rest means something only then.
+    pub dual_screen: bool,
+    /// The layout shown now.
+    pub layout: LayoutId,
+    /// The layouts L3 + R3 and «next layout» step through, in order (`screens.cycle`, `custom`
+    /// only while one is saved).
+    pub cycle: Vec<LayoutId>,
+    /// The screens are swapped now.
+    pub swapped: bool,
+    /// `screens.swap` is `hold`: L3 + Y swaps only while held.
+    pub swap_hold: bool,
+    /// A custom layout is saved for this game or its console (`screens.custom`).
+    pub has_custom: bool,
+    /// The core can close the lid; otherwise the lid is shown disabled with the reason.
+    pub lid_supported: bool,
+    /// The lid is closed now (the G15 overlay «Coperchio chiuso»).
+    pub lid_closed: bool,
+}
+
+impl Default for ScreenStatus {
+    /// No game open.
+    fn default() -> Self {
+        ScreenSession::new(ScreenSettings::default(), false, false).status()
+    }
+}
+
+/// What the user does with the open game's screens, on top of its settings: the layout shown,
+/// the screens swapped, the lid. Pure; the shell (`app/src-tauri/src/screens.rs`) carries the
+/// changes out (renderer, interface, the core's lid). A one-screen game changes nothing.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ScreenSession {
+    settings: ScreenSettings,
+    dual_screen: bool,
+    lid_supported: bool,
+    current: LayoutId,
+    swapped: bool,
+    lid_closed: bool,
+}
+
+impl ScreenSession {
+    /// A game opens: the first layout of its cycle, not swapped, lid open.
+    pub fn new(settings: ScreenSettings, dual_screen: bool, lid_supported: bool) -> Self {
+        Self {
+            current: settings.first(),
+            settings,
+            dual_screen,
+            lid_supported: dual_screen && lid_supported,
+            swapped: false,
+            lid_closed: false,
+        }
+    }
+
+    /// The settings changed (or their session «in prova»): the layout shown stays while it can.
+    pub fn settings_changed(&mut self, settings: ScreenSettings) {
+        self.current = settings.keep(self.current);
+        self.settings = settings;
+    }
+
+    pub fn settings(&self) -> &ScreenSettings {
+        &self.settings
+    }
+
+    /// The next layout of the cycle (L3 + R3, the quick menu). False: nothing changed.
+    pub fn next_layout(&mut self) -> bool {
+        self.show(self.settings.next(self.current))
+    }
+
+    /// Shows `layout` (the quick menu, the editor's live preview), in the cycle or not. `None`:
+    /// it cannot be shown (a custom layout not saved, a one-screen game).
+    pub fn set_layout(&mut self, layout: LayoutId) -> Option<bool> {
+        if !self.dual_screen || !self.settings.available(layout) {
+            return None;
+        }
+        Some(self.show(layout))
+    }
+
+    fn show(&mut self, layout: LayoutId) -> bool {
+        let changed = self.dual_screen && self.current != layout;
+        if changed {
+            self.current = layout;
+        }
+        changed
+    }
+
+    /// L3 + Y went down: toggles the screens, or swaps them until released with
+    /// `screens.swap` = hold. False: nothing changed.
+    pub fn swap_pressed(&mut self) -> bool {
+        if self.settings.swap_hold {
+            self.set_swapped(true)
+        } else {
+            self.toggle_swap()
+        }
+    }
+
+    /// L3 + Y let go: with `screens.swap` = hold, the screens go back.
+    pub fn swap_released(&mut self) -> bool {
+        self.settings.swap_hold && self.set_swapped(false)
+    }
+
+    /// The quick menu's «Scambia gli schermi»: always a toggle.
+    pub fn toggle_swap(&mut self) -> bool {
+        self.set_swapped(!self.swapped)
+    }
+
+    fn set_swapped(&mut self, swapped: bool) -> bool {
+        let changed = self.dual_screen && self.swapped != swapped;
+        if changed {
+            self.swapped = swapped;
+        }
+        changed
+    }
+
+    /// L3 + Select, the quick menu: the lid flips. False when the core cannot close it (then
+    /// nothing is pressed and nothing changes).
+    pub fn toggle_lid(&mut self) -> bool {
+        if self.lid_supported {
+            self.lid_closed = !self.lid_closed;
+        }
+        self.lid_supported
+    }
+
+    /// The layout to compose now.
+    pub fn layout(&self) -> Layout {
+        self.settings.layout(self.current, self.swapped)
+    }
+
+    pub fn status(&self) -> ScreenStatus {
+        ScreenStatus {
+            dual_screen: self.dual_screen,
+            layout: self.settings.keep(self.current),
+            cycle: self.settings.cycle.clone(),
+            swapped: self.swapped,
+            swap_hold: self.settings.swap_hold,
+            has_custom: !self.settings.custom.is_empty(),
+            lid_supported: self.lid_supported,
+            lid_closed: self.lid_closed,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        compose, fit, pointer_at, pointer_value, touch_at, Area, Arrangement, Layout, Placement,
-        PxRect, Rect, Rotation, ScreenId, Split,
+        compose, fit, pointer_at, pointer_value, touch_at, Area, Arrangement, CustomLayout,
+        CustomScreen, Layout, LayoutId, Placement, PxRect, Rect, Rotation, ScreenId, ScreenSession,
+        ScreenSettings, ScreenStatus, Split,
     };
+    use crate::settings::Value;
+
+    fn settings(values: &[(&str, Value)]) -> ScreenSettings {
+        ScreenSettings::from_settings(|key| {
+            values
+                .iter()
+                .find(|(k, _)| *k == key)
+                .map(|(_, v)| v.clone())
+        })
+    }
+
+    fn list(items: &[&str]) -> Value {
+        Value::List(items.iter().map(|s| (*s).to_owned()).collect())
+    }
+
+    const CUSTOM: &[&str] = &["top:0,0,0.5,0.5", "bottom:0.5,0,0.5,1"];
+
+    #[test]
+    fn the_default_settings_are_the_default_layout() {
+        let s = ScreenSettings::default();
+        assert_eq!(
+            s.cycle,
+            [
+                LayoutId::Vertical,
+                LayoutId::Side,
+                LayoutId::BigSmall,
+                LayoutId::TopOnly
+            ]
+        );
+        assert_eq!(s.layout(s.first(), false), Layout::default());
+        assert!(!s.swap_hold);
+        assert!(s.custom.is_empty());
+    }
+
+    #[test]
+    fn the_settings_choose_the_layout() {
+        let s = settings(&[
+            ("screens.cycle", list(&["big_small", "vertical", "custom"])),
+            ("screens.ratio", Value::Int(80)),
+            ("screens.gap", Value::Int(90)),
+            ("screens.rot", Value::Text("left".into())),
+            ("screens.swap", Value::Text("hold".into())),
+        ]);
+        // No custom layout saved: `custom` is not stepped to.
+        assert_eq!(s.cycle, [LayoutId::BigSmall, LayoutId::Vertical]);
+        assert_eq!(s.first(), LayoutId::BigSmall);
+        assert_eq!(
+            s.layout(LayoutId::BigSmall, true),
+            Layout {
+                arrangement: Arrangement::BigSmall,
+                swap: true,
+                gap: 90,
+                ratio: 80,
+                rotation: Rotation::Left,
+            }
+        );
+        assert_eq!(
+            s.layout(LayoutId::TopOnly, false).arrangement,
+            Arrangement::FirstOnly
+        );
+        // A custom layout asked for with none saved is the first of the cycle.
+        assert_eq!(
+            s.layout(LayoutId::Custom, false).arrangement,
+            Arrangement::BigSmall
+        );
+        assert!(s.swap_hold);
+        // Values of the wrong shape are the defaults; an empty cycle is vertical.
+        let odd = settings(&[
+            ("screens.cycle", list(&[])),
+            ("screens.rot", Value::Int(3)),
+            ("screens.custom", list(&["top:nonsense"])),
+        ]);
+        assert_eq!(odd.first(), LayoutId::Vertical);
+        assert_eq!(odd.rotation, Rotation::None);
+        assert!(odd.custom.is_empty());
+    }
+
+    #[test]
+    fn the_cycle_wraps_and_a_layout_outside_it_steps_to_the_first() {
+        let s = settings(&[
+            ("screens.cycle", list(&["side", "custom", "top_only"])),
+            ("screens.custom", list(CUSTOM)),
+        ]);
+        assert_eq!(s.next(LayoutId::Side), LayoutId::Custom);
+        assert_eq!(s.next(LayoutId::Custom), LayoutId::TopOnly);
+        assert_eq!(s.next(LayoutId::TopOnly), LayoutId::Side);
+        assert_eq!(s.next(LayoutId::BigSmall), LayoutId::Side);
+        assert_eq!(s.keep(LayoutId::BigSmall), LayoutId::BigSmall);
+        assert!(matches!(
+            s.layout(LayoutId::Custom, false).arrangement,
+            Arrangement::Custom(_)
+        ));
+    }
+
+    #[test]
+    fn a_custom_layout_round_trips_and_bad_ones_are_refused() {
+        let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
+        let layout = CustomLayout::from_items(&items).unwrap();
+        assert_eq!(
+            layout.screens[1],
+            CustomScreen {
+                id: ScreenId::Bottom,
+                x: 0.5,
+                y: 0.0,
+                w: 0.5,
+                h: 1.0
+            }
+        );
+        assert_eq!(layout.to_items(), items);
+        // Rounded to 4 decimals when written.
+        let precise = CustomLayout {
+            screens: vec![CustomScreen {
+                id: ScreenId::Top,
+                x: 0.123_456,
+                y: 0.0,
+                w: 0.5,
+                h: 0.333_333,
+            }],
+        };
+        assert_eq!(precise.to_items(), ["top:0.1235,0,0.5,0.3333"]);
+        assert!(CustomLayout::valid_items(&[]));
+        for bad in [
+            &["top:0,0,0.5"][..],
+            &["top:0,0,0.5,0.5,1"],
+            &["main:0,0,1,1"],
+            &["left:0,0,1,1"],
+            &["top:0,0,1,1", "top:0,0,1,1"],
+            &["top:0.6,0,0.5,0.5"],
+            &["top:0,0,0,0.5"],
+            &["top:-0.1,0,0.5,0.5"],
+            &["top:NaN,0,0.5,0.5"],
+            &["top 0,0,1,1"],
+        ] {
+            let items: Vec<String> = bad.iter().map(|s| (*s).to_owned()).collect();
+            assert!(!CustomLayout::valid_items(&items), "{bad:?}");
+        }
+        // The settings engine refuses them the same way.
+        let entry = crate::settings::schema::entry("screens.custom").unwrap();
+        assert!(entry.accepts_value(&list(CUSTOM)));
+        assert!(!entry.accepts_value(&list(&["top:2,0,1,1"])));
+        assert!(!entry.accepts_value(&Value::Text("top:0,0,1,1".into())));
+    }
+
+    #[test]
+    fn a_preset_is_where_the_layout_draws_the_screens() {
+        let s = ScreenSettings::default();
+        // Vertical at 1080p: the DS stack at 2x (512 x 768), centred, as `fit` places it.
+        let v = CustomLayout::preset(&s, LayoutId::Vertical, DS, 1920.0, 1080.0);
+        let near = |a: f32, b: f32| (a - b).abs() < 1e-4;
+        let top = v.screens[0];
+        assert_eq!(top.id, ScreenId::Top);
+        assert!(near(top.x, 704.0 / 1920.0) && near(top.y, 156.0 / 1080.0));
+        assert!(near(top.w, 512.0 / 1920.0) && near(top.h, 384.0 / 1080.0));
+        assert_eq!(v.screens[1].id, ScreenId::Bottom);
+        assert!(near(v.screens[1].y, (156.0 + 384.0) / 1080.0));
+        // Every preset of both consoles is a layout the editor may save, back to front.
+        for split in [DS, Split::N3dsStacked] {
+            for layout in [
+                LayoutId::Vertical,
+                LayoutId::Side,
+                LayoutId::BigSmall,
+                LayoutId::TopOnly,
+            ] {
+                let p = CustomLayout::preset(&s, layout, split, 1280.0, 720.0);
+                assert!(p.is_valid() && !p.is_empty(), "{layout:?} {split:?}");
+                assert!(CustomLayout::valid_items(&p.to_items()));
+            }
+        }
+        // Only the top screen: one rectangle.
+        let only = CustomLayout::preset(&s, LayoutId::TopOnly, DS, 1280.0, 720.0);
+        assert_eq!(only.screens.len(), 1);
+        // The settings' ratio and gap count; the rotation does not.
+        let wide = settings(&[
+            ("screens.ratio", Value::Int(50)),
+            ("screens.rot", Value::Text("left".into())),
+        ]);
+        let half = CustomLayout::preset(&wide, LayoutId::BigSmall, DS, 1280.0, 720.0);
+        assert!(near(half.screens[0].w, half.screens[1].w));
+        assert!(near(half.screens[0].y, half.screens[1].y));
+        // Custom: the one saved; one screen or no room: none.
+        let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
+        let saved = settings(&[("screens.custom", Value::List(items))]);
+        assert_eq!(
+            CustomLayout::preset(&saved, LayoutId::Custom, DS, 1280.0, 720.0),
+            saved.custom
+        );
+        assert!(CustomLayout::preset(&s, LayoutId::Side, Split::Whole, 1280.0, 720.0).is_empty());
+        assert!(CustomLayout::preset(&s, LayoutId::Side, DS, 0.0, 720.0).is_empty());
+        assert_eq!(DS.frame_at_1x(), Some((256, 384)));
+        assert_eq!(Split::N3dsStacked.frame_at_1x(), Some((400, 480)));
+    }
+
+    #[test]
+    fn a_custom_layout_swaps_its_screens_and_turns_as_a_whole() {
+        let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
+        let s = settings(&[("screens.custom", Value::List(items))]);
+        let a = area(1000.0, 1000.0);
+        let swapped = ds(&s.layout(LayoutId::Custom, true), a);
+        // The bottom screen takes the top one's rectangle.
+        assert_eq!(
+            dst(&swapped, ScreenId::Bottom),
+            rect(0.0, 0.0, 500.0, 500.0)
+        );
+        assert_eq!(
+            dst(&swapped, ScreenId::Top),
+            rect(500.0, 0.0, 500.0, 1000.0)
+        );
+        // Turned left: the right half becomes the top half.
+        let turned = ScreenSettings {
+            rotation: Rotation::Left,
+            ..s
+        };
+        let p = ds(&turned.layout(LayoutId::Custom, false), a);
+        assert_eq!(dst(&p, ScreenId::Bottom), rect(0.0, 0.0, 1000.0, 500.0));
+        assert_eq!(dst(&p, ScreenId::Top), rect(0.0, 500.0, 500.0, 500.0));
+        // Touch follows: the bottom screen's top-left corner in the window is the screen's
+        // top-right (anticlockwise).
+        assert_eq!(touch_at(&p, 1.0, 1.0), Some((255, 0)));
+    }
+
+    #[test]
+    fn touch_maps_through_a_custom_layout() {
+        let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
+        let s = settings(&[("screens.custom", Value::List(items))]);
+        let a = area(1000.0, 1000.0);
+        let layout = s.layout(LayoutId::Custom, false);
+        // The bottom screen fills the right half: 500 x 1000 for 256 x 192.
+        let p = ds(&layout, a);
+        assert_eq!(touch_at(&p, 500.0, 0.0), Some((0, 0)));
+        assert_eq!(touch_at(&p, 750.0, 500.0), Some((128, 96)));
+        assert_eq!(touch_at(&p, 250.0, 250.0), None, "the top screen");
+        let pointer = pointer_at(&layout, DS, FRAME, a, 750.0, 500.0).unwrap();
+        assert_eq!(melonds_reads(pointer, FRAME), (128, 192 + 96));
+    }
+
+    #[test]
+    fn the_session_steps_swaps_and_closes_the_lid() {
+        let s = settings(&[("screens.swap", Value::Text("hold".into()))]);
+        let mut session = ScreenSession::new(s, true, true);
+        assert_eq!(session.status().layout, LayoutId::Vertical);
+        assert!(session.next_layout());
+        assert_eq!(session.status().layout, LayoutId::Side);
+        assert_eq!(session.set_layout(LayoutId::TopOnly), Some(true));
+        assert_eq!(session.set_layout(LayoutId::TopOnly), Some(false));
+        assert_eq!(session.set_layout(LayoutId::Custom), None, "none saved");
+        // Hold: swapped while held.
+        assert!(session.swap_pressed());
+        assert!(session.layout().swap);
+        assert!(session.swap_released());
+        assert!(!session.layout().swap);
+        // The quick menu toggles whatever the setting.
+        assert!(session.toggle_swap());
+        assert!(session.status().swapped);
+        assert!(session.toggle_swap());
+        // The lid flips.
+        assert!(session.toggle_lid());
+        assert!(session.status().lid_closed);
+        assert!(session.toggle_lid());
+        assert!(!session.status().lid_closed);
+        // Toggle mode: each press flips, the release does nothing.
+        let mut toggle = ScreenSession::new(ScreenSettings::default(), true, false);
+        assert!(toggle.swap_pressed());
+        assert!(!toggle.swap_released());
+        assert!(toggle.status().swapped);
+        // A core with no lid: nothing changes.
+        assert!(!toggle.toggle_lid());
+        assert!(!toggle.status().lid_supported && !toggle.status().lid_closed);
+    }
+
+    #[test]
+    fn a_settings_change_keeps_the_layout_while_it_can() {
+        let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
+        let with_custom = settings(&[
+            ("screens.cycle", list(&["custom", "side"])),
+            ("screens.custom", Value::List(items)),
+        ]);
+        let mut session = ScreenSession::new(with_custom.clone(), true, true);
+        assert_eq!(session.status().layout, LayoutId::Custom);
+        assert!(session.status().has_custom);
+        // The editor's layout removed: back to the first of the cycle.
+        session.settings_changed(settings(&[("screens.cycle", list(&["custom", "side"]))]));
+        assert_eq!(session.status().layout, LayoutId::Side);
+        assert!(!session.status().has_custom);
+        // Another change keeps what is shown.
+        session.settings_changed(with_custom);
+        assert_eq!(session.status().layout, LayoutId::Side);
+    }
+
+    #[test]
+    fn a_one_screen_game_changes_nothing() {
+        let mut session = ScreenSession::new(ScreenSettings::default(), false, true);
+        assert!(!session.next_layout());
+        assert_eq!(session.set_layout(LayoutId::Side), None);
+        assert!(!session.swap_pressed());
+        assert!(!session.toggle_lid());
+        assert_eq!(session.layout(), Layout::default());
+        assert!(!session.status().dual_screen);
+        assert_eq!(ScreenStatus::default(), session.status());
+    }
+
+    #[test]
+    fn the_interface_reads_the_ids_and_shapes_it_expects() {
+        assert_eq!(
+            serde_json::to_value(LayoutId::BigSmall).unwrap(),
+            serde_json::json!("big_small")
+        );
+        for l in LayoutId::ALL {
+            assert_eq!(serde_json::to_value(l).unwrap(), serde_json::json!(l.id()));
+            assert_eq!(LayoutId::from_id(l.id()), Some(l));
+        }
+        // Every layout id is a `screens.cycle` option.
+        let entry = crate::settings::schema::entry("screens.cycle").unwrap();
+        assert!(entry.accepts_value(&Value::List(
+            LayoutId::ALL.iter().map(|l| l.id().to_owned()).collect()
+        )));
+        let status = serde_json::to_value(ScreenStatus::default()).unwrap();
+        assert_eq!(status["layout"], "vertical");
+        assert_eq!(status["lidClosed"], false);
+        let custom: CustomLayout = serde_json::from_value(serde_json::json!({
+            "screens": [{ "id": "bottom", "x": 0.0, "y": 0.5, "w": 1.0, "h": 0.5 }]
+        }))
+        .unwrap();
+        assert!(custom.is_valid());
+        assert_eq!(
+            serde_json::to_value(Rotation::Left).unwrap(),
+            serde_json::json!("left")
+        );
+    }
 
     const DS: Split = Split::DsStacked { gap: 0 };
     const FRAME: (u32, u32) = (256, 384);

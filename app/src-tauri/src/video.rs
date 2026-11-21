@@ -11,9 +11,17 @@
 //! present to makes a new device. The painter (pipelines, game texture, effect chain) is kept
 //! too while the surface format stays the same.
 //!
-//! Screen effects ([`Renderer::set_effect`]): the game texture goes through a librashader
-//! filter chain into a texture the size of the game's rectangle, then one pass of ours mixes it
-//! over the plain image (`fx.fxint`) and brightens it (`fx.fxbright`) on the surface.
+//! Screens ([`Renderer::set_layout`], Trello #28): the core's frame holds one screen or two
+//! (`emudome_core::screens::Split`); each is drawn into its own rectangle as
+//! `emudome_core::screens::compose` places it, its picture turned with the whole (`screens.rot`).
+//! One draw per screen, its part of the frame and its turn in a uniform.
+//!
+//! Screen effects ([`Renderer::set_effect`]): the whole frame (every screen, as the core hands
+//! it) goes through a librashader filter chain into a texture of the frame's size times the
+//! largest screen's scale, then one pass of ours cuts each screen out of it like the plain image,
+//! mixes it over the plain image (`fx.fxint`) and brightens it (`fx.fxbright`) on the surface.
+//! One chain for the whole frame keeps the presets that remember past frames working; a curved
+//! CRT bends the frame as the core stacks it, not each screen apart.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -25,6 +33,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Result};
 use emudome_core::hw_render::vulkan::QueueLock;
+use emudome_core::screens::{Area, Layout, Placement, Rotation, Split};
 use emudome_core::video_sink::Wake;
 use emudome_core::{ErrorCode, Shared};
 use librashader::presets::ShaderFeatures;
@@ -139,6 +148,8 @@ enum Msg {
     Inset(f32),
     Effect(Option<EffectSpec>),
     EffectListener(EffectListener),
+    /// How the screens are placed (`crate::screens`).
+    Layout(Layout),
 }
 
 #[derive(Clone)]
@@ -255,6 +266,12 @@ impl Renderer {
         self.send(Msg::EffectListener(listener));
     }
 
+    /// How the game's screens are placed (`screens.*`, swapped or not): each one is drawn where
+    /// `emudome_core::screens::compose` puts it. Kept across games and surfaces.
+    pub fn set_layout(&self, layout: Layout) {
+        self.send(Msg::Layout(layout));
+    }
+
     /// Lets go of the surface; returns once the GPU no longer uses it (Android destroys it right
     /// after). Waits for as long as the video thread takes: a surface destroyed under a present in
     /// flight is a crash, a slow detach only a slow pause. Returns at once if the thread is gone.
@@ -302,6 +319,8 @@ struct Video {
     /// See [`Renderer::set_effect`]; kept across surfaces.
     effect: Option<EffectSpec>,
     effect_listener: Option<EffectListener>,
+    /// See [`Renderer::set_layout`].
+    layout: Layout,
     /// Woken by the messages and by the game's new frames.
     wake: Arc<Wake>,
     /// Something changed since the last present (size, surface, game, inset, effect).
@@ -334,6 +353,7 @@ impl Video {
             inset: 0.0,
             effect: None,
             effect_listener: None,
+            layout: Layout::default(),
             wake,
             dirty: true,
             unchanged: 0,
@@ -451,6 +471,7 @@ impl Video {
             Msg::Inset(fraction) => self.inset = fraction,
             Msg::Effect(effect) => self.effect = effect,
             Msg::EffectListener(listener) => self.effect_listener = Some(listener),
+            Msg::Layout(layout) => self.layout = layout,
         }
     }
 
@@ -468,7 +489,7 @@ impl Video {
             }
         }
         painter.upload_frame(self.source.as_deref());
-        gpu.draw(&self.service, painter, self.inset)?;
+        gpu.draw(&self.service, painter, self.inset, &self.layout)?;
         self.dirty = false;
         self.presented += 1;
         let at = Instant::now();
@@ -522,13 +543,28 @@ const BG: wgpu::Color = wgpu::Color {
 const SHADER: &str = r#"
 struct Out { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
 
+// The screen this draw shows: its part of the frame (0..1) and how its picture is turned in the
+// viewport (0 none, 1 left, 2 right, 3 upside down; `screens::Rotation`).
+struct Screen { origin: vec2<f32>, size: vec2<f32>, rotation: u32, p0: u32, p1: u32, p2: u32 };
+@group(0) @binding(4) var<uniform> screen: Screen;
+
 @vertex
 fn vs_main(@builtin(vertex_index) i: u32) -> Out {
     // Triangle covering the whole viewport.
     let p = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u));
     var o: Out;
     o.pos = vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
-    o.uv = vec2<f32>(p.x, 1.0 - p.y);
+    // The point in the viewport, (0, 0) top-left, back to the screen's own axes
+    // (as `screens::touch_at` does).
+    let v = vec2<f32>(p.x, 1.0 - p.y);
+    var s = v;
+    switch screen.rotation {
+        case 1u: { s = vec2<f32>(1.0 - v.y, v.x); }
+        case 2u: { s = vec2<f32>(v.y, 1.0 - v.x); }
+        case 3u: { s = vec2<f32>(1.0 - v.x, 1.0 - v.y); }
+        default: {}
+    }
+    o.uv = screen.origin + s * screen.size;
     return o;
 }
 
@@ -549,23 +585,77 @@ fn fs_main(in: Out) -> @location(0) vec4<f32> {
     return to_surface(textureSample(tex, samp, in.uv).rgb);
 }
 
-// The effect's output, one texel per pixel of the game's rectangle, mixed over the plain image.
-struct Mix { intensity: f32, brightness: f32, origin: vec2<f32> };
+// The effect's output: the whole frame at the largest screen's scale, cut like the plain image
+// and mixed over it.
+struct Mix { intensity: f32, brightness: f32, p0: f32, p1: f32 };
 @group(0) @binding(2) var fx_tex: texture_2d<f32>;
 @group(0) @binding(3) var<uniform> mix_: Mix;
 
 @fragment
 fn fs_effect(in: Out) -> @location(0) vec4<f32> {
     let plain = textureSample(tex, samp, in.uv).rgb;
-    let size = vec2<i32>(textureDimensions(fx_tex)) - vec2<i32>(1);
-    let p = clamp(vec2<i32>(floor(in.pos.xy - mix_.origin)), vec2<i32>(0), size);
-    let fx = min(textureLoad(fx_tex, p, 0).rgb * mix_.brightness, vec3<f32>(1.0));
+    let fx = min(textureSample(fx_tex, samp, in.uv).rgb * mix_.brightness, vec3<f32>(1.0));
     return to_surface(mix(plain, fx, mix_.intensity));
 }
 "#;
 
 /// Format of the game texture and of the effect's output: the bytes as they are, sRGB-encoded.
 const RAW_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+
+/// Screens drawn at most (a frame holds one or two); one `Screen` uniform each.
+const SCREEN_SLOTS: usize = 4;
+/// The `Screen` uniform's size, and the distance between two (wgpu's dynamic offset alignment).
+const SCREEN_SIZE: u64 = 32;
+const SCREEN_STRIDE: u64 = 256;
+
+/// The `Screen` uniform of the shader for `p` in a frame of `frame` size.
+fn screen_uniform(p: &Placement, frame: (u32, u32)) -> [u8; SCREEN_SIZE as usize] {
+    let (fw, fh) = (frame.0.max(1) as f32, frame.1.max(1) as f32);
+    let rotation: u32 = match p.rotation {
+        Rotation::None => 0,
+        Rotation::Left => 1,
+        Rotation::Right => 2,
+        Rotation::Flip => 3,
+    };
+    let floats = [
+        p.src.x as f32 / fw,
+        p.src.y as f32 / fh,
+        p.src.w as f32 / fw,
+        p.src.h as f32 / fh,
+    ];
+    let mut out = [0u8; SCREEN_SIZE as usize];
+    for (i, f) in floats.iter().enumerate() {
+        out[i * 4..i * 4 + 4].copy_from_slice(&f.to_ne_bytes());
+    }
+    out[16..20].copy_from_slice(&rotation.to_ne_bytes());
+    out
+}
+
+/// `dst` as a viewport on a target of `size`: kept inside it (a custom layout may round past
+/// the edge), `None` when less than a pixel is left.
+fn screen_viewport(dst: emudome_core::screens::Rect, size: (u32, u32)) -> Option<[f32; 4]> {
+    let (tw, th) = (size.0 as f32, size.1 as f32);
+    let x = dst.x.clamp(0.0, tw);
+    let y = dst.y.clamp(0.0, th);
+    let w = dst.w.min(tw - x);
+    let h = dst.h.min(th - y);
+    (w >= 1.0 && h >= 1.0).then_some([x, y, w, h])
+}
+
+/// The scale of the largest screen of `placements` (window pixels per frame pixel): the effect
+/// draws the whole frame at it.
+fn largest_scale(placements: &[Placement]) -> f32 {
+    placements
+        .iter()
+        .map(|p| {
+            let across = match p.rotation {
+                Rotation::None | Rotation::Flip => p.src.w,
+                Rotation::Left | Rotation::Right => p.src.h,
+            };
+            p.dst.w / across.max(1) as f32
+        })
+        .fold(0.0, f32::max)
+}
 
 /// The effect's filter chain and the texture it draws into (the size of the game's rectangle).
 struct Effect {
@@ -772,10 +862,14 @@ struct Painter {
     /// The pass that mixes the effect over the plain image.
     effect_pipeline: wgpu::RenderPipeline,
     effect_layout: wgpu::BindGroupLayout,
-    /// `Mix` of the shader: intensity, brightness, origin of the game's rectangle.
+    /// `Mix` of the shader: intensity, brightness.
     effect_uniform: wgpu::Buffer,
+    /// `Screen` of the shader, one per screen drawn ([`SCREEN_STRIDE`] apart).
+    screen_uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
     game: Option<GameTexture>,
+    /// How the frame in `game` holds its screens.
+    split: Split,
     last_seq: u64,
     effect: Option<Effect>,
     /// The preset that failed: not tried again until another one is asked for.
@@ -913,6 +1007,7 @@ impl Gpu {
         service: &GpuService,
         painter: &mut Painter,
         inset: f32,
+        layout: &Layout,
     ) -> Result<(), &'static str> {
         let Some(d) = service.device() else {
             return Err("no device");
@@ -938,7 +1033,12 @@ impl Gpu {
             wgpu::CurrentSurfaceTexture::Validation => return skipped("validation"),
         };
         let view = output.texture.create_view(&Default::default());
-        painter.paint(&view, (self.config.width, self.config.height), inset);
+        painter.paint(
+            &view,
+            (self.config.width, self.config.height),
+            inset,
+            layout,
+        );
         // The queue a hardware-rendering core also submits to.
         let _queue = service.queue_lock.lock();
         d.queue.present(output);
@@ -967,6 +1067,17 @@ impl Painter {
             label: Some("game"),
             source: wgpu::ShaderSource::Wgsl(source.into()),
         });
+        // The screen drawn, read by the vertex stage, one slot per screen (dynamic offset).
+        let screen_entry = wgpu::BindGroupLayoutEntry {
+            binding: 4,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: true,
+                min_binding_size: wgpu::BufferSize::new(SCREEN_SIZE),
+            },
+            count: None,
+        };
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("game"),
             entries: &[
@@ -986,6 +1097,7 @@ impl Painter {
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
+                screen_entry,
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -1049,6 +1161,7 @@ impl Painter {
                     },
                     count: None,
                 },
+                screen_entry,
             ],
         });
         let effect_pipeline_layout =
@@ -1088,6 +1201,12 @@ impl Painter {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+        let screen_uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("screens"),
+            size: SCREEN_STRIDE * SCREEN_SLOTS as u64,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
         // Sharp pixels: the "smooth" filter and the shaders come with librashader.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("nearest"),
@@ -1106,8 +1225,10 @@ impl Painter {
             effect_pipeline,
             effect_layout,
             effect_uniform,
+            screen_uniform,
             sampler,
             game: None,
+            split: Split::Whole,
             last_seq: u64::MAX,
             effect: None,
             effect_failed: None,
@@ -1136,6 +1257,7 @@ impl Painter {
                 return;
             }
             self.last_seq = frame.seq;
+            self.split = frame.split;
             (frame.width, frame.height, frame.rgba.clone())
         };
         self.upload(width, height, &rgba);
@@ -1201,6 +1323,7 @@ impl Painter {
                     binding: 1,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
                 },
+                self.screen_binding(),
             ],
         });
         GameTexture {
@@ -1212,11 +1335,51 @@ impl Painter {
         }
     }
 
+    /// The `Screen` uniform binding: one slot, its offset given at each draw.
+    fn screen_binding(&self) -> wgpu::BindGroupEntry<'_> {
+        wgpu::BindGroupEntry {
+            binding: 4,
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer: &self.screen_uniform,
+                offset: 0,
+                size: wgpu::BufferSize::new(SCREEN_SIZE),
+            }),
+        }
+    }
+
+    /// Where each screen of the uploaded frame goes on a target of `size` (`layout`, `inset`),
+    /// at most [`SCREEN_SLOTS`], their uniforms written.
+    fn place(&self, size: (u32, u32), inset: f32, layout: &Layout) -> Vec<Placement> {
+        let Some(game) = &self.game else {
+            return Vec::new();
+        };
+        let area = Area {
+            width: size.0 as f32,
+            height: size.1 as f32,
+            inset,
+        };
+        let mut placements = emudome_core::screens::compose(
+            layout,
+            &self.split.screens(game.width, game.height),
+            area,
+        );
+        placements.truncate(SCREEN_SLOTS);
+        for (i, p) in placements.iter().enumerate() {
+            self.queue.write_buffer(
+                &self.screen_uniform,
+                i as u64 * SCREEN_STRIDE,
+                &screen_uniform(p, (game.width, game.height)),
+            );
+        }
+        placements
+    }
+
     /// Draws the game (or the background) on `view`, a target of `size`, and submits.
-    fn paint(&mut self, view: &wgpu::TextureView, size: (u32, u32), inset: f32) {
+    fn paint(&mut self, view: &wgpu::TextureView, size: (u32, u32), inset: f32, layout: &Layout) {
         let mut encoder = self.device.create_command_encoder(&Default::default());
+        let placements = self.place(size, inset, layout);
         // The effect first draws into its own texture; `None`: the plain image this frame.
-        let effect_group = self.record_effect(&mut encoder, size, inset);
+        let effect_group = self.record_effect(&mut encoder, &placements);
         {
             let clear = if self.game.is_some() {
                 wgpu::Color::BLACK
@@ -1237,18 +1400,20 @@ impl Painter {
                 ..Default::default()
             });
             if let Some(game) = &self.game {
-                let (x, y, w, h) = game_rect(size, game, inset);
-                if let Some((group, (ew, eh))) = &effect_group {
-                    // The effect's texture is exactly the rectangle's whole pixels.
-                    pass.set_viewport(x, y, *ew as f32, *eh as f32, 0.0, 1.0);
-                    pass.set_pipeline(&self.effect_pipeline);
-                    pass.set_bind_group(0, group, &[]);
-                } else {
+                let (pipeline, group) = match &effect_group {
+                    Some(group) => (&self.effect_pipeline, group),
+                    None => (&self.pipeline, &game.bind_group),
+                };
+                pass.set_pipeline(pipeline);
+                for (i, p) in placements.iter().enumerate() {
+                    let Some([x, y, w, h]) = screen_viewport(p.dst, size) else {
+                        continue;
+                    };
                     pass.set_viewport(x, y, w, h, 0.0, 1.0);
-                    pass.set_pipeline(&self.pipeline);
-                    pass.set_bind_group(0, &game.bind_group, &[]);
+                    let offset = u32::try_from(i as u64 * SCREEN_STRIDE).unwrap_or(0);
+                    pass.set_bind_group(0, group, &[offset]);
+                    pass.draw(0..3, 0..1);
                 }
-                pass.draw(0..3, 0..1);
             }
         }
         {
@@ -1331,19 +1496,24 @@ impl Painter {
         }
     }
 
-    /// Records the effect's chain into its texture and returns the bind group of the mixing
-    /// pass with the texture's size; `None` without an effect or a game (or when it failed).
+    /// Records the effect's chain into its texture (the whole frame at the largest screen's
+    /// scale, `placements`) and returns the bind group of the mixing pass; `None` without an
+    /// effect, a game or a screen drawn (or when it failed).
     fn record_effect(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
-        target_size: (u32, u32),
-        inset: f32,
-    ) -> Option<(wgpu::BindGroup, (u32, u32))> {
+        placements: &[Placement],
+    ) -> Option<wgpu::BindGroup> {
         let game = self.game.as_ref()?;
         self.effect.as_ref()?;
-        let (x, y, w, h) = game_rect(target_size, game, inset);
-        // Whole pixels, at least one.
-        let size = (w.floor().max(1.0) as u32, h.floor().max(1.0) as u32);
+        let scale = largest_scale(placements);
+        if scale <= 0.0 {
+            return None;
+        }
+        // Whole pixels, at least one, within what the GPU can hold.
+        let max = self.device.limits().max_texture_dimension_2d as f32;
+        let side = |frame: u32| (frame as f32 * scale).floor().clamp(1.0, max) as u32;
+        let size = (side(game.width), side(game.height));
         let effect = self.effect.as_mut()?;
         if effect.target.as_ref().map(|t| (t.width, t.height)) != Some(size) {
             let texture = self.device.create_texture(&wgpu::TextureDescriptor {
@@ -1395,7 +1565,7 @@ impl Painter {
         self.queue.write_buffer(
             &self.effect_uniform,
             0,
-            bytemuck::cast_slice(&[intensity, brightness, x, y]),
+            bytemuck::cast_slice(&[intensity, brightness, 0.0, 0.0]),
         );
         let group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("effect"),
@@ -1417,62 +1587,99 @@ impl Painter {
                     binding: 3,
                     resource: self.effect_uniform.as_entire_binding(),
                 },
+                // `screen_binding`, spelled out: `effect` still borrows `self`.
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                        buffer: &self.screen_uniform,
+                        offset: 0,
+                        size: wgpu::BufferSize::new(SCREEN_SIZE),
+                    }),
+                },
             ],
         });
-        Some((group, size))
+        Some(group)
     }
-}
-
-/// [`viewport`] of `game` on a target of `size`.
-fn game_rect(size: (u32, u32), game: &GameTexture, inset: f32) -> (f32, f32, f32, f32) {
-    viewport(
-        (size.0 as f32, size.1 as f32),
-        (game.width as f32, game.height as f32),
-        inset,
-    )
-}
-
-/// The game's rectangle `(x, y, w, h)` on a `surface` of `(width, height)`: integer scale when it
-/// fits, otherwise the largest that keeps the aspect ratio, centred in the part of the surface
-/// above the bottom `inset` share (0..0.9) that the quick menu's bar keeps clear.
-///
-/// The rule is `emudome_core::screens::fit`, the one the touch mapping composes the screens
-/// with: the whole frame drawn here is the default screen layout (NDS: top above bottom).
-/// TODO(#28): draw each `screens::compose` placement once the layout comes from `screens.*`.
-fn viewport(surface: (f32, f32), game: (f32, f32), inset: f32) -> (f32, f32, f32, f32) {
-    let r = emudome_core::screens::fit(
-        emudome_core::screens::Area {
-            width: surface.0,
-            height: surface.1,
-            inset,
-        },
-        game,
-    );
-    (r.x, r.y, r.w, r.h)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::viewport;
+    use super::{largest_scale, screen_uniform, screen_viewport};
+    use emudome_core::screens::{
+        compose, Area, Arrangement, Layout, Rect, Rotation, ScreenId, Split,
+    };
 
-    #[test]
-    fn the_game_is_centred_at_an_integer_scale() {
-        // GBA 240x160 on 1440x900: 5x = 1200x800.
-        assert_eq!(
-            viewport((1440.0, 900.0), (240.0, 160.0), 0.0),
-            (120.0, 50.0, 1200.0, 800.0)
-        );
+    fn ds(layout: &Layout) -> Vec<emudome_core::screens::Placement> {
+        let area = Area {
+            width: 1920.0,
+            height: 1080.0,
+            inset: 0.0,
+        };
+        compose(layout, &Split::DsStacked { gap: 0 }.screens(256, 384), area)
     }
 
     #[test]
-    fn an_inset_keeps_the_bottom_clear() {
-        // A bar over the bottom 30 %: 630 px left, 3x = 720x480 centred in them.
-        let (x, y, w, h) = viewport((1440.0, 900.0), (240.0, 160.0), 0.3);
-        assert_eq!((x, y, w, h), (360.0, 75.0, 720.0, 480.0));
-        assert!(y + h <= 900.0 * 0.7);
-        // Out-of-range insets are clamped, never a negative height.
-        let (_, _, _, h) = viewport((1440.0, 900.0), (240.0, 160.0), 5.0);
-        assert!(h > 0.0);
+    fn a_one_screen_game_is_drawn_whole_where_fit_puts_it() {
+        // GBA 240x160 on 1440x900: 5x = 1200x800, the whole frame.
+        let area = Area {
+            width: 1440.0,
+            height: 900.0,
+            inset: 0.0,
+        };
+        let p = compose(&Layout::default(), &Split::Whole.screens(240, 160), area);
+        assert_eq!(p.len(), 1);
+        assert_eq!(
+            screen_viewport(p[0].dst, (1440, 900)),
+            Some([120.0, 50.0, 1200.0, 800.0])
+        );
+        let u = screen_uniform(&p[0], (240, 160));
+        let f = |i: usize| f32::from_ne_bytes([u[i], u[i + 1], u[i + 2], u[i + 3]]);
+        assert_eq!((f(0), f(4), f(8), f(12)), (0.0, 0.0, 1.0, 1.0));
+    }
+
+    #[test]
+    fn each_ds_screen_samples_its_half_of_the_frame() {
+        let p = ds(&Layout {
+            arrangement: Arrangement::SideBySide,
+            rotation: Rotation::Right,
+            ..Layout::default()
+        });
+        let bottom = p.iter().find(|p| p.id == ScreenId::Bottom).unwrap();
+        let u = screen_uniform(bottom, (256, 384));
+        let f = |i: usize| f32::from_ne_bytes([u[i], u[i + 1], u[i + 2], u[i + 3]]);
+        assert_eq!((f(0), f(4), f(8), f(12)), (0.0, 0.5, 1.0, 0.5));
+        assert_eq!(u32::from_ne_bytes([u[16], u[17], u[18], u[19]]), 2);
+    }
+
+    #[test]
+    fn the_effect_runs_at_the_largest_screens_scale() {
+        // Stacked at 1080p: 2x.
+        assert_eq!(largest_scale(&ds(&Layout::default())), 2.0);
+        // Side by side: 3x; turned, the screen's height lies across.
+        let side = ds(&Layout {
+            arrangement: Arrangement::SideBySide,
+            ..Layout::default()
+        });
+        assert_eq!(largest_scale(&side), 3.0);
+        let turned = ds(&Layout {
+            rotation: Rotation::Left,
+            ..Layout::default()
+        });
+        assert!((largest_scale(&turned) - 4.0).abs() < 1e-4);
+        assert_eq!(largest_scale(&[]), 0.0);
+    }
+
+    #[test]
+    fn a_viewport_stays_inside_the_target() {
+        let r = |x, y, w, h| Rect { x, y, w, h };
+        assert_eq!(
+            screen_viewport(r(1900.0, 0.0, 40.0, 100.0), (1920, 1080)),
+            Some([1900.0, 0.0, 20.0, 100.0])
+        );
+        assert_eq!(
+            screen_viewport(r(-5.0, 10.0, 0.5, 100.0), (1920, 1080)),
+            None
+        );
     }
 }
 
@@ -1480,6 +1687,7 @@ mod tests {
 mod gpu_tests {
     use super::{EffectSpec, Painter};
     use emudome_core::effects::BUILTIN;
+    use emudome_core::screens::{Arrangement, Layout, Rotation, Split};
     use emudome_core::Frame;
 
     const GAME: (u32, u32) = (240, 160);
@@ -1529,6 +1737,11 @@ mod gpu_tests {
 
     /// Paints one frame on a texture of `TARGET` and reads it back as RGBA.
     fn paint(painter: &mut Painter) -> Vec<u8> {
+        paint_with(painter, &Layout::default())
+    }
+
+    /// The same, with the screens placed by `layout`.
+    fn paint_with(painter: &mut Painter, layout: &Layout) -> Vec<u8> {
         let texture = painter.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("test target"),
             size: wgpu::Extent3d {
@@ -1544,7 +1757,7 @@ mod gpu_tests {
             view_formats: &[],
         });
         let view = texture.create_view(&Default::default());
-        painter.paint(&view, TARGET, 0.0);
+        painter.paint(&view, TARGET, 0.0, layout);
         let row = TARGET.0 * 4; // 3840, a multiple of 256
         let buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("readback"),
@@ -1673,6 +1886,70 @@ mod gpu_tests {
         painter.sync_effect(Some(&missing));
         assert!(painter.effect_error.is_none(), "not tried again");
 
+        let _ = std::fs::remove_dir_all(&base);
+    }
+
+    /// The two DS screens drawn where `compose` puts them, swapped and turned, with and without
+    /// an effect. A 256 × 384 frame, top screen red, bottom one green.
+    #[test]
+    #[ignore = "needs a GPU: cargo test -p emudome --lib gpu_tests -- --ignored"]
+    fn ds_screens_are_drawn_where_the_layout_puts_them() {
+        let mut frame = Vec::new();
+        for y in 0..384u32 {
+            for _ in 0..256u32 {
+                frame.extend_from_slice(if y < 192 {
+                    &[255, 0, 0, 255]
+                } else {
+                    &[0, 255, 0, 255]
+                });
+            }
+        }
+        let mut painter = painter();
+        painter.upload(256, 384, &frame);
+        painter.split = Split::DsStacked { gap: 0 };
+        // Red, green, or the black around the game.
+        let at = |px: &[u8], x: u32, y: u32| {
+            let i = ((y * TARGET.0 + x) * 4) as usize;
+            match (px[i] > 200, px[i + 1] > 200) {
+                (true, false) => 'r',
+                (false, true) => 'g',
+                (false, false) | (true, true) => '-',
+            }
+        };
+        // Side by side on 960 × 640: 512 × 192 at 1x, from (224, 224).
+        let side = Layout {
+            arrangement: Arrangement::SideBySide,
+            ..Layout::default()
+        };
+        let swapped = Layout {
+            swap: true,
+            ..side.clone()
+        };
+        let out = paint_with(&mut painter, &side);
+        assert_eq!((at(&out, 300, 300), at(&out, 600, 300)), ('r', 'g'));
+        assert_eq!(at(&out, 100, 300), '-');
+        let out = paint_with(&mut painter, &swapped);
+        assert_eq!((at(&out, 300, 300), at(&out, 600, 300)), ('g', 'r'));
+        // Stacked and turned left: 384 × 256 fits 2x (768 × 512 from (96, 64)); the top screen
+        // ends on the left.
+        let turned = Layout {
+            rotation: Rotation::Left,
+            ..Layout::default()
+        };
+        let out = paint_with(&mut painter, &turned);
+        assert_eq!((at(&out, 200, 320), at(&out, 700, 320)), ('r', 'g'));
+        // With an effect the screens stay where they are.
+        let base = std::env::temp_dir().join(format!("emudome-ds-gpu-{}", std::process::id()));
+        let dir = crate::effects::write_builtins(&base).expect("presets written");
+        painter.sync_effect(Some(&EffectSpec {
+            preset: dir.join("lcd.slangp"),
+            intensity: 1.0,
+            brightness: 1.0,
+        }));
+        paint_with(&mut painter, &swapped);
+        let out = paint_with(&mut painter, &swapped);
+        assert!(painter.effect.is_some(), "{:?}", painter.effect_error);
+        assert_eq!((at(&out, 300, 300), at(&out, 600, 300)), ('g', 'r'));
         let _ = std::fs::remove_dir_all(&base);
     }
 }

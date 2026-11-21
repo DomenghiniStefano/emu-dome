@@ -42,6 +42,7 @@ mod migration;
 mod pads;
 mod protocol;
 mod saves;
+mod screens;
 mod settings;
 mod theme;
 mod tuning;
@@ -156,7 +157,8 @@ impl AppState {
 
 /// What lives as long as a game is open, in the order it starts (it stops in reverse): the
 /// native renderer's source, the settings session («in prova»), the core options that follow
-/// the settings, the library's play time.
+/// the settings, the screens' layout and lid (after the session it reads), the library's play
+/// time.
 fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
     let (a, b) = (app.clone(), app.clone());
     let renderer = Hooks::new(
@@ -182,6 +184,11 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         move || core_settings::stopped(&b),
     );
     let (a, b) = (app.clone(), app.clone());
+    let screens = Hooks::new(
+        move |g| screens::started(&a, g.core, g.console),
+        move || screens::stopped(&b),
+    );
+    let (a, b) = (app.clone(), app.clone());
     let play_time = Hooks::new(
         move |g| {
             if g.library {
@@ -190,7 +197,7 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         },
         move || library::end_play(&b),
     );
-    vec![renderer, settings_session, core_options, play_time]
+    vec![renderer, settings_session, core_options, screens, play_time]
 }
 
 /// Runs `f` on a blocking thread of the async runtime and waits for it there: a command whose
@@ -422,6 +429,7 @@ pub fn run() {
             app.manage(settings::open(app)?);
             app.manage(library::open(app)?);
             app.manage(core_settings::CoreSettings::default());
+            app.manage(screens::ScreensState::default());
             app.manage(AppState {
                 games: GameSession::new(current, game_hooks(app.handle())),
                 renderer,
@@ -468,6 +476,15 @@ pub fn run() {
             commands::input,
             commands::key,
             commands::pointer,
+            screens::screens_status,
+            screens::screens_next_layout,
+            screens::screens_set_layout,
+            screens::screens_swap,
+            screens::screens_toggle_lid,
+            screens::screens_placements,
+            screens::screens_custom,
+            screens::screens_set_custom,
+            screens::screens_preset_custom,
             commands::stats,
             commands::video_mode,
             commands::set_video_mode,

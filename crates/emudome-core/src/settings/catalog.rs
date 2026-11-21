@@ -459,14 +459,22 @@ pub static ENTRIES: &[Entry] = &[
     // The path of the user's `.slangp` (empty: none), used by the «file» option of `fx.fxpick`.
     file("fx.fxfile", G).native_video(),
     // ---- Schermi di DS e 3DS (screens) ----
+    // `custom`: the user's own layout (`screens.custom`), stepped to only once one is saved.
     chips(
         "screens.cycle",
-        &["vertical", "side", "big_small", "top_only"],
+        &["vertical", "side", "big_small", "top_only", "custom"],
         &["vertical", "side", "big_small", "top_only"],
         CG,
     )
     .phase(2),
-    link("screens.custom", GM).phase(2),
+    // Per console, not global (owner, 2026-11-21): a DS layout never stretches a 3DS screen.
+    e(
+        "screens.custom",
+        Kind::ScreenLayout,
+        DefaultValue::List(&[]),
+        CG,
+    )
+    .phase(2),
     slider("screens.ratio", 70, (50, 90, 5), Unit::Percent, CG).phase(2),
     // Its «Come sul DS» button sets 90 px (the real gap at 1×).
     slider("screens.gap", 0, (0, 120, 1), Unit::Px, CG).phase(2),
@@ -545,9 +553,7 @@ pub static ENTRIES: &[Entry] = &[
     link("pad.turbo", ALL),
     sel("pad.mod", &["l3", "r3", "select"], "l3", G),
     bindings("pad.combos", BindingTable::Combos, ALL),
-    sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC)
-        .phase(2)
-        .not_wired(),
+    sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC).phase(2),
     slider("pad.dead", 15, (0, 50, 1), Unit::Percent, G),
     slider("pad.stickdpad", 50, (20, 90, 5), Unit::Percent, GC),
     slider("pad.trig", 50, (10, 90, 5), Unit::Percent, G),
