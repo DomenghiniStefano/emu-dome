@@ -61,7 +61,7 @@ bundle lists, `cores/SOURCES.md`, the Gradle build and this file (each core's co
 | --- | --- | --- | --- |
 | Tauri 2 (`tauri`, `tauri-build`, `tauri-plugin-dialog`, `wry`) | app shell, webview | Apache-2.0 OR MIT | `tao` (windowing) is Apache-2.0. |
 | `@tauri-apps/api`, `@tauri-apps/plugin-dialog` | interface to the shell | Apache-2.0 OR MIT | |
-| wgpu, naga | native video | MIT OR Apache-2.0 | |
+| wgpu, naga, ash | native video; ash: the raw Vulkan types of wgpu's backend (`gpu_interop.rs`) | MIT OR Apache-2.0 | |
 | cpal | audio output | Apache-2.0 | Apache-2.0 is compatible with GPL-3.0 (not with GPL-2.0-only). |
 | SDL3 (`sdl3-sys`, `sdl3-src`) | controllers; built from source and linked statically | Zlib | SDL bundles HIDAPI, offered under GPL-3.0, a BSD-style licence or the original HIDAPI licence (`src/hidapi/LICENSE.txt` in SDL): every option is compatible. |
 | notify | library folder watching | CC0-1.0 | |

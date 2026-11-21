@@ -242,7 +242,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   every keyboard button; the page ends the fast forward and the held rewind of its keys (`useGameKeys.ts`).
   Controllers go through an SDL3 thread
   (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
-  count as L2/R2 and d-pad.
+  count as L2/R2 and d-pad. Both sticks also reach the core as `RETRO_DEVICE_ANALOG` while the game has the
+  input (`Routed::game_has_input`). The core reads a frozen `input::Snapshot`, taken before each frame and at
+  its `input_poll`, never the live state mid-frame.
 - **Controller routing lives in Rust**, as a pure function: `emudome_core::hotkeys::Router::step`
   (previous state, buttons, time → game mask + actions), unit-tested without SDL. Three modes:
   - in game: buttons go to the core, except the modifier L3, which never does;
@@ -535,6 +537,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
   (`saves/nds/<hex>/melonDS DS/`); an existing shared `saves/melonDS DS/` is left untouched and not read any more.
 - Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
+- Core host (#78): hardware rendering is refused (`hw_render::SoftwareOnly`; the seams `HwRenderHandler`,
+  `VideoSink`, `gpu_interop.rs` are in place); a core's log lines (`GET_LOG_INTERFACE`) are logged as their format
+  string without the arguments (variadic C, no C shim); `GET_LANGUAGE` always answers English; `SET_MESSAGE` is
+  logged, not shown; no sensors (plan in `docs/feasibility-hw-render.md`).
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 
 ## Handoff with Cowork
