@@ -24,12 +24,14 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, Result};
 use emudome_core::tuning::{PresentMode, VideoTuning};
 use emudome_core::video_sink::Wake;
-use emudome_core::Shared;
+use emudome_core::{ErrorCode, Shared};
 use librashader::presets::ShaderFeatures;
 use librashader::runtime::wgpu::{FilterChain, FilterChainOptions, WgpuOutputView};
 use librashader::runtime::{Size, Viewport};
 use parking_lot::Mutex;
 use serde::Serialize;
+
+use crate::health::{Part, SharedHealth};
 
 /// How the surface presents, from the tuning knobs.
 #[derive(Debug, Clone, Copy)]
@@ -153,6 +155,7 @@ impl Renderer {
         width: u32,
         height: u32,
         settings: SurfaceSettings,
+        health: SharedHealth,
     ) -> Result<Self> {
         let mut service = GpuService::new();
         let mut painter = None;
@@ -164,12 +167,12 @@ impl Renderer {
             height,
             settings,
         )?;
-        Self::start(service, Some(gpu), painter, settings)
+        Self::start(service, Some(gpu), painter, settings, health)
     }
 
     /// Starts with no surface: it arrives with [`Self::attach`].
-    pub fn spawn_detached(settings: SurfaceSettings) -> Result<Self> {
-        Self::start(GpuService::new(), None, None, settings)
+    pub fn spawn_detached(settings: SurfaceSettings, health: SharedHealth) -> Result<Self> {
+        Self::start(GpuService::new(), None, None, settings, health)
     }
 
     fn start(
@@ -177,6 +180,7 @@ impl Renderer {
         gpu: Option<Gpu>,
         painter: Option<Painter>,
         settings: SurfaceSettings,
+        health: SharedHealth,
     ) -> Result<Self> {
         let metrics = SharedVideoMetrics::default();
         metrics.lock().gpu = gpu.as_ref().map(|g| g.info.clone());
@@ -189,10 +193,11 @@ impl Renderer {
             settings,
             metrics.clone(),
             wake.clone(),
+            health.clone(),
         );
         std::thread::Builder::new()
             .name("emudome-video".into())
-            .spawn(move || video.run(rx))?;
+            .spawn(move || health.guard(Part::NativeVideo, || video.run(rx)))?;
         Ok(Self { tx, wake, metrics })
     }
 
@@ -295,6 +300,8 @@ struct Video {
     dirty: bool,
     /// Frames not presented because nothing changed, since the last rate log.
     unchanged: u32,
+    /// Where a surface that cannot be used is reported (`videoSurfaceFailed`).
+    health: SharedHealth,
 }
 
 impl Video {
@@ -305,6 +312,7 @@ impl Video {
         settings: SurfaceSettings,
         metrics: SharedVideoMetrics,
         wake: Arc<Wake>,
+        health: SharedHealth,
     ) -> Self {
         Self {
             service,
@@ -321,6 +329,7 @@ impl Video {
             wake,
             dirty: true,
             unchanged: 0,
+            health,
         }
     }
 
@@ -398,14 +407,22 @@ impl Video {
                     self.settings,
                 ) {
                     Ok(gpu) => {
-                        let mut m = self.metrics.lock();
-                        m.gpu = Some(gpu.info.clone());
-                        m.surface_error = None;
+                        {
+                            let mut m = self.metrics.lock();
+                            m.gpu = Some(gpu.info.clone());
+                            m.surface_error = None;
+                        }
                         self.gpu = Some(gpu);
+                        self.health.set(Part::Surface, None);
                     }
                     Err(e) => {
                         log::error!("native video: surface not usable: {e:#}");
-                        self.metrics.lock().surface_error = Some(format!("{e:#}"));
+                        let detail = format!("{e:#}");
+                        self.metrics.lock().surface_error = Some(detail.clone());
+                        self.health.set(
+                            Part::Surface,
+                            Some(ErrorCode::VideoSurfaceFailed { detail }),
+                        );
                     }
                 }
             }

@@ -26,6 +26,7 @@ mod first_run;
 #[cfg(desktop)]
 mod gamepad;
 mod gpu_interop;
+mod health;
 mod library;
 mod migration;
 mod pads;
@@ -853,6 +854,7 @@ fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
 }
 
 /// Hands the system's surface (Android's `SurfaceView` under the webview) to the renderer.
+/// A surface the renderer cannot use is reported by the renderer (`videoSurfaceFailed`).
 fn attach_surface(ui: &tauri::Webview, renderer: video::Renderer) {
     emudome_platform::attach_external_surface(ui, move |event| match event {
         emudome_platform::SurfaceEvent::Ready(surface) => {
@@ -910,6 +912,10 @@ pub fn run() {
                 },
             )?;
             let size = window.inner_size()?;
+            // What is not working, for the interface (`emu://health`, `diagnostics`).
+            let health = health::SharedHealth::default();
+            health.attach(app.handle().clone());
+            app.manage(health.clone());
 
             let current: CurrentShared = Arc::default();
             // The native renderer is created only where it can sit under the webview:
@@ -924,16 +930,29 @@ pub fn run() {
             let mut native_error = None;
             let renderer = if native {
                 let spawned = if emudome_platform::EXTERNAL_SURFACE {
-                    video::Renderer::spawn_detached(surface)
+                    video::Renderer::spawn_detached(surface, health.clone())
                         .inspect(|r| attach_surface(&ui, r.clone()))
                 } else {
-                    video::Renderer::spawn(window.clone(), size.width, size.height, surface)
+                    video::Renderer::spawn(
+                        window.clone(),
+                        size.width,
+                        size.height,
+                        surface,
+                        health.clone(),
+                    )
                 };
                 match spawned {
                     Ok(r) => Some(r),
                     Err(e) => {
                         log::error!("native video unavailable, using the webview: {e:#}");
-                        native_error = Some(format!("{e:#}"));
+                        let detail = format!("{e:#}");
+                        health.set(
+                            health::Part::NativeVideo,
+                            Some(ErrorCode::NativeVideoFallback {
+                                detail: detail.clone(),
+                            }),
+                        );
+                        native_error = Some(detail);
                         None
                     }
                 }
@@ -952,6 +971,7 @@ pub fn run() {
                 tuning.audio.clone(),
                 bench.as_ref().and_then(|b| b.tone()),
                 bench.is_some(),
+                health.clone(),
             );
             let menu_open = Arc::new(AtomicBool::new(false));
             let pads = pads::PadsState::default();
@@ -962,6 +982,7 @@ pub fn run() {
                 current.clone(),
                 menu_open.clone(),
                 pads,
+                health.clone(),
             );
 
             // An external surface reports its own size.
@@ -1080,6 +1101,7 @@ pub fn run() {
             first_run::first_run_show,
             first_run::first_run_steps,
             first_run::first_run_done,
+            health::diagnostics,
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")

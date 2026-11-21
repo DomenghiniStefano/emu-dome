@@ -279,7 +279,12 @@
     "biosOtherSlot": "This file belongs to another row of this page. Choose it there.",
     "biosFileFailed": "Couldn’t save EmuDome’s copy of the file: {detail}. Check the free disk space and try again.",
     "biosDsiFilesMissing": "DSi mode needs your DS and DSi system files, so the game runs as a DS. Add them in Settings › BIOS and firmware.",
-    "biosDsMenuFilesMissing": "Starting from the DS menu needs your DS system files, so the game starts directly. Add them in Settings › BIOS and firmware."
+    "biosDsMenuFilesMissing": "Starting from the DS menu needs your DS system files, so the game starts directly. Add them in Settings › BIOS and firmware.",
+    "nativeVideoFallback": "Native video couldn’t start ({detail}), so the game shows in the interface instead. You can keep playing; update your graphics driver and restart EmuDome to try again.",
+    "videoSurfaceFailed": "Couldn’t draw on the screen ({detail}), so the game isn’t shown. Switch to another app and back, or restart EmuDome.",
+    "audioUnavailable": "No sound: the audio output can’t be used ({detail}). EmuDome keeps trying; check that speakers or headphones are connected.",
+    "controllersUnavailable": "Controllers can’t be used this time ({detail}). Use the keyboard, or restart EmuDome to try again.",
+    "threadStopped": "Part of EmuDome stopped after an internal error ({thread}). Save from the quick menu if you can, then restart EmuDome."
   },
   "consoleShort": {
     "gb": "GB",

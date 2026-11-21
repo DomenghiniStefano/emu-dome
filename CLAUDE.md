@@ -198,6 +198,7 @@ app/src-tauri            Tauri shell: window.rs (the app's names for emudome_pla
                          `<app local data>/system/<core>/` for cores with a BIOS table, emu://bios-fallback)
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
+                         health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
                          library.rs (library commands, background scans, library://scan and library://changed,
                          play time, covers on emu://cover/<id>, library.watch with notify on desktop)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
@@ -313,7 +314,15 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
-  `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below).
+  `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
+  `emu://health` (the whole list of `ErrorCode`s of what is not working, see below).
+- Health (Trello #79, `app/src-tauri/src/health.rs`): backend failures that change what the user gets are one
+  `ErrorCode` per part (native video fallen back `nativeVideoFallback`, surface `videoSurfaceFailed`, audio output
+  `audioUnavailable`, controllers `controllersUnavailable`, a thread that panicked `threadStopped`), set and cleared
+  by that part; each change sends the whole list on `emu://health`, the `diagnostics` command answers it. The shell
+  (`useShellEvents.ts`) toasts each code once while it lasts. The audio thread rebuilds its stream on a stream error
+  or a change of the default output (polled every 2 s when no device is forced), retrying with a growing pause
+  while none can be opened; every cpal integer and float sample format is played.
 - Closing with a game open (Trello #86): the window's X, a quit, `close_game` and opening another game go through
   one pure state machine, `emudome_core::close_flow` (requested → saving → saved → finish; timeout / failed → the
   user's «Wait» / «Close anyway»; a second request while saving is ignored, a quit turns a game close into a quit).

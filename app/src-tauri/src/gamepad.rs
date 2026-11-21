@@ -32,7 +32,7 @@ use std::time::{Duration, Instant};
 use emudome_core::bindings::{Family, PadConfig, PadMap, Pos};
 use emudome_core::hotkeys::{Action, Hotkey, Nav, PadInput, Router};
 use emudome_core::input::{Source, Sticks};
-use emudome_core::{Command, Speed};
+use emudome_core::{Command, ErrorCode, Speed};
 use sdl3_sys::error::SDL_GetError;
 use sdl3_sys::events::{
     SDL_Event, SDL_PollEvent, SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMOVED,
@@ -65,6 +65,7 @@ use sdl3_sys::power::{
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
+use crate::health::{Part, SharedHealth};
 use crate::pads::{self, PadInfo, PadState, PadStates, PadsState};
 use crate::CurrentShared;
 
@@ -198,14 +199,42 @@ impl Pad {
     }
 }
 
-pub fn spawn(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, pads: PadsState) {
-    std::thread::Builder::new()
+/// Starts the controller thread. A thread that cannot start, SDL that does not initialise, or a
+/// panic on the thread is reported to the interface (`controllersUnavailable`, `threadStopped`).
+pub fn spawn(
+    app: AppHandle,
+    current: CurrentShared,
+    menu_open: Arc<AtomicBool>,
+    pads: PadsState,
+    health: SharedHealth,
+) {
+    let thread_health = health.clone();
+    let spawned = std::thread::Builder::new()
         .name("emudome-gamepad".into())
-        .spawn(move || run(app, current, menu_open, pads))
-        .expect("controller thread");
+        .spawn(move || {
+            let reported = thread_health.clone();
+            thread_health.guard(Part::Controllers, || {
+                run(app, current, menu_open, pads, &reported);
+            });
+        });
+    if let Err(e) = spawned {
+        log::error!("controller thread not started: {e}");
+        health.set(
+            Part::Controllers,
+            Some(ErrorCode::ControllersUnavailable {
+                detail: e.to_string(),
+            }),
+        );
+    }
 }
 
-fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, shared_pads: PadsState) {
+fn run(
+    app: AppHandle,
+    current: CurrentShared,
+    menu_open: Arc<AtomicBool>,
+    shared_pads: PadsState,
+    health: &SharedHealth,
+) {
     // SAFETY: SDL is initialised and used by this thread only;
     // hints must be set before SDL_Init.
     unsafe {
@@ -215,7 +244,12 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
         // Steam Controller read directly, without Steam.
         SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_STEAM, c"1".as_ptr());
         if !SDL_Init(SDL_INIT_GAMEPAD) {
-            log::warn!("controllers unavailable: {}", text(SDL_GetError()));
+            let detail = text(SDL_GetError());
+            log::warn!("controllers unavailable: {detail}");
+            health.set(
+                Part::Controllers,
+                Some(ErrorCode::ControllersUnavailable { detail }),
+            );
             return;
         }
     }
