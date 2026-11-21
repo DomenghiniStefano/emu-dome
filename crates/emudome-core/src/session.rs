@@ -879,6 +879,8 @@ fn emu_thread(
             continue;
         }
 
+        // The input this frame reads (the core takes it again at its own `input_poll`).
+        callbacks.refresh_input();
         if rewinding {
             // One state back, then one frame run to show it. With nothing left the game
             // stays on its picture (the frame count still moves: the thread is alive).

@@ -328,6 +328,9 @@ pub enum Action {
 pub struct Routed {
     /// What the core sees from the controllers.
     pub game_mask: u16,
+    /// The game has the controllers' input (no menu, no combo modifier held): the analog sticks
+    /// reach the core only then, centred otherwise.
+    pub game_has_input: bool,
     pub actions: Vec<Action>,
 }
 
@@ -449,12 +452,17 @@ impl Router {
         }
 
         self.prev = input;
-        let game_mask = if ui_has_input || modifier_held {
-            0
-        } else {
+        let game_has_input = !(ui_has_input || modifier_held);
+        let game_mask = if game_has_input {
             held & !self.suppressed & !modifier
+        } else {
+            0
         };
-        Routed { game_mask, actions }
+        Routed {
+            game_mask,
+            game_has_input,
+            actions,
+        }
     }
 }
 
@@ -484,6 +492,15 @@ mod tests {
         let out = r.step(pad(&[Button::A, Button::Up]), false, Instant::now());
         assert_eq!(out.game_mask, Button::A.bit() | Button::Up.bit());
         assert!(out.actions.is_empty());
+        assert!(out.game_has_input);
+    }
+
+    #[test]
+    fn the_sticks_are_the_games_only_without_menu_or_modifier() {
+        let t = Instant::now();
+        assert!(!router().step(pad(&[]), true, t).game_has_input);
+        assert!(!router().step(pad(&[Button::L3]), false, t).game_has_input);
+        assert!(router().step(pad(&[]), false, t).game_has_input);
     }
 
     #[test]

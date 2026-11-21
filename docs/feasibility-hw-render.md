@@ -220,6 +220,43 @@ measure of real games.
 6. **GL state sharing**: on wgpu-hal's context the spike is the only GL user; in the product the core's context must
    stay separate from anything else drawn with GL.
 
+## The host side, ready since #78
+
+What the hardware-rendering work builds on (Trello #78, 2026-11-21); nothing here renders on the GPU yet:
+
+- **Hardware-rendering calls** go to the session's `HwRenderHandler` (`crates/emudome-core/src/hw_render/`), told
+  apart by their raw number (44 with the experimental flag is `SET_HW_SHARED_CONTEXT`, without it
+  `SET_SERIALIZATION_QUIRKS`). Today's handler, `SoftwareOnly`, refuses them all, as before.
+- **Frames** go to the session's `VideoSink` (`video_sink.rs`) as `VideoFrame::Cpu` (bytes) or `VideoFrame::Gpu`
+  (`GpuFrame`: the core's image and the semaphores to wait for, raw handles as integers). A GPU sink must keep
+  `Shared::frame` filled (readback on demand) for screenshots, slot thumbnails and the webview path.
+- **One GPU for the whole run** (`GpuService`, `app/src-tauri/src/video.rs`): surfaces attach and detach, the device
+  stays, so Android's background / resume no longer destroys the device under a running core.
+- **wgpu-hal interop** lives in `app/src-tauri/src/gpu_interop.rs` only (`VulkanInterop` for the device's raw
+  handles and a core image as a texture, `VulkanAdapterInterop` for a device the core made through the negotiation).
+- **Callbacks from the core's own threads** find their context (one static slot per loaded core, not a
+  `thread_local`), and a `need_fullpath` core gets the path only: a 3DS game is never read into memory.
+
+## Sensors (plan, not implemented)
+
+Who needs them: mGBA (GBA cartridges with a tilt sensor or gyro, the solar sensor: `mgba_solar_sensor_level` has a
+`sensor` value that reads the light level) and Azahar (3DS accelerometer and gyroscope); melonDS DS none.
+
+1. **libretro side**: answer `RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE` (25) with `retro_sensor_interface`: one
+   `set_sensor_state(port, action, rate)` and one `get_sensor_input(port, id)` per callback slot, like the other
+   callbacks. `get_sensor_input` reads the frozen input (`input::Snapshot`, taken at `input_poll`), never live values.
+2. **State**: `InputState` gains the seven readings (accelerometer x/y/z, gyroscope x/y/z, illuminance) as `f32` bits
+   in atomics, and the set of sensors the core switched on (`set_sensor_state`), which the shell reads to start and
+   stop the device's sensors (battery on Android).
+3. **Sources**, in order: the phone's own sensors on Android (through `emudome-platform`, SensorManager), the
+   controller's gyro and accelerometer on desktop (SDL3 gamepad sensors: DualShock 4, DualSense, Switch Pro), else
+   tilt from the right stick (a pure mapping, unit-tested). Light: the phone's light sensor, else the `consoles.solar`
+   slider as today.
+4. **Settings**: one choice per console for the source (device / controller / right stick), from the Rust schema;
+   rows disabled with the reason where the platform has no such sensor.
+5. **Tests**: the sensor interface answered per slot, the stick-to-tilt mapping, the snapshot; on a device, a tilt
+   cartridge test ROM with a free licence.
+
 ## Sources
 
 - [L1] libretro.h (`retro_hw_render_callback`, `SET_HW_RENDER`, `SET_HW_SHARED_CONTEXT`, `RETRO_HW_FRAME_BUFFER_VALID`):

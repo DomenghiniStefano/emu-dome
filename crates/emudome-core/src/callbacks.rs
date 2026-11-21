@@ -23,8 +23,10 @@ use libretro_sys::{
     retro_core_options_v2, retro_core_options_v2_intl, retro_environment_t, retro_game_geometry,
     retro_game_info_ext, retro_hw_render_callback, retro_input_poll_t, retro_input_state_t,
     retro_log_callback, retro_message, retro_system_av_info, retro_variable, retro_video_refresh_t,
+    RETRO_DEVICE_ANALOG, RETRO_DEVICE_ID_ANALOG_X, RETRO_DEVICE_ID_ANALOG_Y,
     RETRO_DEVICE_ID_JOYPAD_MASK, RETRO_DEVICE_ID_POINTER_COUNT, RETRO_DEVICE_ID_POINTER_PRESSED,
-    RETRO_DEVICE_ID_POINTER_X, RETRO_DEVICE_ID_POINTER_Y, RETRO_DEVICE_JOYPAD,
+    RETRO_DEVICE_ID_POINTER_X, RETRO_DEVICE_ID_POINTER_Y, RETRO_DEVICE_INDEX_ANALOG_BUTTON,
+    RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_JOYPAD,
     RETRO_DEVICE_POINTER, RETRO_ENVIRONMENT_EXPERIMENTAL, RETRO_ENVIRONMENT_GET_CAN_DUPE,
     RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION, RETRO_ENVIRONMENT_GET_GAME_INFO_EXT,
     RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES,
@@ -52,6 +54,7 @@ use crate::core::GameStrings;
 use crate::core_options::{CoreOptions, OptionDef};
 use crate::frame::bytes_per_pixel;
 use crate::hw_render::{is_hw_command, HwRenderHandler, SoftwareOnly};
+use crate::input::Snapshot;
 use crate::screens::Split;
 use crate::session::Shared;
 use crate::speed_audio::SpeedAudio;
@@ -88,6 +91,8 @@ pub(crate) struct CallbackCtx {
     pub video: Box<dyn VideoSink>,
     /// The answers to the hardware-rendering calls ([`HwRenderHandler`]): today refused.
     pub hw: Box<dyn HwRenderHandler>,
+    /// The input the core reads ([`Snapshot`]), taken at `input_poll` and before each frame.
+    pub input: Snapshot,
 }
 
 impl CallbackCtx {
@@ -110,6 +115,7 @@ impl CallbackCtx {
             game_strings: None,
             video: Box::new(SharedFrameSink::new(shared.clone())),
             hw: Box::new(SoftwareOnly::default()),
+            input: Snapshot::default(),
         }
     }
 }
@@ -263,6 +269,12 @@ impl Slot {
     /// Changes a core option while the game runs (seen at the core's next `GET_VARIABLE_UPDATE`).
     pub(crate) fn set_core_option(&self, key: String, value: String) {
         self.with(|c| c.options.set(key, value));
+    }
+
+    /// Freezes the input for the next frame (also done at the core's `input_poll`): a core that
+    /// reads without polling still sees this frame's input.
+    pub(crate) fn refresh_input(&self) {
+        self.with(|c| c.input = c.shared.input.snapshot());
     }
 
     /// The timing the core set with `SET_SYSTEM_AV_INFO` since the last call, if it did.
@@ -477,7 +489,7 @@ unsafe fn environment_in(slot: &SlotState, raw: c_uint, data: *mut c_void) -> bo
         // The devices the host feeds: RetroPad and the touch-screen pointer.
         RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES => answer::<u64>(
             data,
-            (1 << RETRO_DEVICE_JOYPAD) | (1 << RETRO_DEVICE_POINTER),
+            (1 << RETRO_DEVICE_JOYPAD) | (1 << RETRO_DEVICE_POINTER) | (1 << RETRO_DEVICE_ANALOG),
         ),
         // Buttons can also be read as a single mask (faster for the core).
         x if x == (RETRO_ENVIRONMENT_GET_INPUT_BITMASKS & !RETRO_ENVIRONMENT_EXPERIMENTAL) => true,
@@ -699,7 +711,13 @@ unsafe extern "C" fn audio_sample_batch<const S: usize>(data: *const i16, frames
     })
 }
 
-unsafe extern "C" fn input_poll<const S: usize>() {}
+/// The core is about to read its input: it reads this snapshot until the next poll (or the next
+/// frame, [`Slot::refresh_input`]), never input changing between two of its reads.
+unsafe extern "C" fn input_poll<const S: usize>() {
+    guard("input_poll", (), || {
+        SLOTS[S].with("input_poll", |c| c.input = c.shared.input.snapshot());
+    });
+}
 
 unsafe extern "C" fn input_state<const S: usize>(
     port: c_uint,
@@ -719,41 +737,58 @@ fn input_state_in(
     index: c_uint,
     id: c_uint,
 ) -> i16 {
+    slot.with("input_state", |c| {
+        read_input(&c.input, port, device, index, id)
+    })
+    .unwrap_or(0)
+}
+
+/// One `input_state` answer from the frozen input: port 0 only (one player).
+fn read_input(s: &Snapshot, port: c_uint, device: c_uint, index: c_uint, id: c_uint) -> i16 {
     if port != 0 {
         return 0;
     }
-    if device == RETRO_DEVICE_POINTER {
+    match device {
         // One pointer (index 0): the touch screen.
-        if index != 0 {
-            return 0;
+        RETRO_DEVICE_POINTER if index == 0 => match id {
+            RETRO_DEVICE_ID_POINTER_X => s.pointer.x,
+            RETRO_DEVICE_ID_POINTER_Y => s.pointer.y,
+            RETRO_DEVICE_ID_POINTER_PRESSED | RETRO_DEVICE_ID_POINTER_COUNT => {
+                i16::from(s.pointer.pressed)
+            }
+            _ => 0,
+        },
+        RETRO_DEVICE_JOYPAD => {
+            if id == RETRO_DEVICE_ID_JOYPAD_MASK {
+                s.mask as i16
+            } else if id < 16 {
+                ((s.mask >> id) & 1) as i16
+            } else {
+                0
+            }
         }
-        return slot
-            .with("input_state", |c| {
-                let p = c.shared.input.pointer();
-                match id {
-                    RETRO_DEVICE_ID_POINTER_X => p.x,
-                    RETRO_DEVICE_ID_POINTER_Y => p.y,
-                    RETRO_DEVICE_ID_POINTER_PRESSED => i16::from(p.pressed),
-                    RETRO_DEVICE_ID_POINTER_COUNT => i16::from(p.pressed),
-                    _ => 0,
+        RETRO_DEVICE_ANALOG => {
+            let stick = match index {
+                RETRO_DEVICE_INDEX_ANALOG_LEFT => s.sticks.left,
+                RETRO_DEVICE_INDEX_ANALOG_RIGHT => s.sticks.right,
+                // Analog buttons: the digital ones, fully pressed or not.
+                RETRO_DEVICE_INDEX_ANALOG_BUTTON => {
+                    return if id < 16 && (s.mask >> id) & 1 != 0 {
+                        0x7fff
+                    } else {
+                        0
+                    };
                 }
-            })
-            .unwrap_or(0);
-    }
-    if device != RETRO_DEVICE_JOYPAD {
-        return 0;
-    }
-    slot.with("input_state", |c| {
-        let mask = c.shared.input.mask();
-        if id == RETRO_DEVICE_ID_JOYPAD_MASK {
-            mask as i16
-        } else if id < 16 {
-            ((mask >> id) & 1) as i16
-        } else {
-            0
+                _ => return 0,
+            };
+            match id {
+                RETRO_DEVICE_ID_ANALOG_X => stick.0,
+                RETRO_DEVICE_ID_ANALOG_Y => stick.1,
+                _ => 0,
+            }
         }
-    })
-    .unwrap_or(0)
+        _ => 0,
+    }
 }
 
 #[cfg(test)]
@@ -989,6 +1024,50 @@ mod tests {
                 &mut preferred as *mut _ as *mut c_void,
             )
         });
+        slot.release();
+    }
+
+    #[test]
+    fn input_reads_come_from_the_snapshot_not_the_live_state() {
+        use crate::input::{Button, Source, Sticks};
+        use libretro_sys::{
+            RETRO_DEVICE_ANALOG, RETRO_DEVICE_ID_ANALOG_X, RETRO_DEVICE_ID_ANALOG_Y,
+            RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_INDEX_ANALOG_LEFT,
+            RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_JOYPAD,
+        };
+        let _serial = SERIAL.lock();
+        let (shared, ctx) = ctx();
+        let slot = Slot::claim(ctx).unwrap();
+        let cb = slot.callbacks();
+        shared.input.set(Source::Gamepad, Button::A, true);
+        shared.input.set_sticks(Sticks {
+            left: (-20000, 300),
+            right: (0, -32768),
+        });
+        let read = |device, index, id| unsafe { (cb.input_state)(0, device, index, id) };
+        let (left, right) = (
+            RETRO_DEVICE_INDEX_ANALOG_LEFT,
+            RETRO_DEVICE_INDEX_ANALOG_RIGHT,
+        );
+        let (x, y) = (RETRO_DEVICE_ID_ANALOG_X, RETRO_DEVICE_ID_ANALOG_Y);
+        // Not polled yet: the empty snapshot.
+        assert_eq!(read(RETRO_DEVICE_JOYPAD, 0, 8), 0);
+        unsafe { (cb.input_poll)() };
+        assert_eq!(read(RETRO_DEVICE_JOYPAD, 0, 8), 1);
+        assert_eq!(read(RETRO_DEVICE_ANALOG, left, x), -20000);
+        assert_eq!(read(RETRO_DEVICE_ANALOG, left, y), 300);
+        assert_eq!(read(RETRO_DEVICE_ANALOG, right, y), -32768);
+        assert_eq!(
+            read(RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, 8),
+            0x7fff
+        );
+        // Released mid-frame: the core keeps seeing the polled state until it polls again.
+        shared.input.set(Source::Gamepad, Button::A, false);
+        assert_eq!(read(RETRO_DEVICE_JOYPAD, 0, 8), 1);
+        slot.refresh_input();
+        assert_eq!(read(RETRO_DEVICE_JOYPAD, 0, 8), 0);
+        // Other ports read nothing.
+        assert_eq!(unsafe { (cb.input_state)(1, RETRO_DEVICE_JOYPAD, 0, 8) }, 0);
         slot.release();
     }
 }
