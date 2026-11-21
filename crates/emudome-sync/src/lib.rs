@@ -12,13 +12,23 @@
 //! - [`drive`]: Drive as the sync sees it ([`drive::DriveApi`]), over REST v3
 //!   ([`drive::rest::RestDrive`]: multipart uploads for small files, resumable ones in chunks
 //!   for big files) and in memory for the tests ([`drive::fake::FakeDrive`]).
+//! - [`index`]: what this device last synced (`<app data>/sync/index.json`), the base of every
+//!   decision.
+//! - [`decide`]: the conflict rule, a pure function of three checksums.
+//! - [`marker`]: «in use on <device>», a pure decision on a heartbeat.
+//! - [`sync`]: the Drive layout, the plan of a folder (a game's saves, the settings) and its
+//!   execution: pull before launch, push after exit, conflicts kept both ways.
 
 pub mod auth;
+pub mod decide;
 pub mod drive;
 mod error;
 pub mod http;
+pub mod index;
 pub mod loopback;
+pub mod marker;
 pub mod oauth;
+pub mod sync;
 pub mod time;
 
 #[cfg(test)]
