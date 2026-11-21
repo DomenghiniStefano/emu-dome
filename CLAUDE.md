@@ -237,7 +237,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   - **Native**: wgpu draws on the window, under a transparent child webview ("ui").
     Needs Tauri's `unstable` feature (`window.add_child`). The device is made with the first surface and
     kept: a detach or a new surface replaces the surface only (a new device only if the GPU cannot present
-    to the new surface).
+    to the new surface). It presents only when something changed (a new frame wakes it through
+    `Shared::frame_wake`, or a message), else sleeps; a minimized window draws nothing; a failed present waits
+    8 ms. A detach waits for the GPU to finish before the surface goes (Android destroys it right after). Pacing
+    options (present-driven / audio-driven): `docs/video-pacing.md`.
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the

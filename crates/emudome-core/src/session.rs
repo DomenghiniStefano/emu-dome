@@ -160,6 +160,9 @@ pub struct Shared {
     /// The emulation thread's work per frame in µs (commands, `retro_run`, rewind, saves; not
     /// the pacing sleep), recorded only while `Some`: the headless example's `--timing`.
     pub frame_times: Mutex<Option<Vec<u32>>>,
+    /// Woken at each new frame: the native renderer registers here and presents only when
+    /// something changed (Trello #79).
+    pub frame_wake: Mutex<Option<Arc<crate::video_sink::Wake>>>,
 }
 
 /// One option as the running core declares it (`SET_VARIABLES` / `SET_CORE_OPTIONS*`).

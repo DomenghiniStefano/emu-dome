@@ -63,6 +63,31 @@ pub enum VideoFrame<'a> {
     Gpu(GpuFrame),
 }
 
+/// Wakes whoever draws the frames (the native renderer) when there is something new to show: a
+/// frame in [`Shared::frame`], or a message of its own. A notification is kept until the waiter
+/// takes it, so one sent before the wait is never lost.
+#[derive(Default)]
+pub struct Wake {
+    pending: parking_lot::Mutex<bool>,
+    cv: parking_lot::Condvar,
+}
+
+impl Wake {
+    pub fn notify(&self) {
+        *self.pending.lock() = true;
+        self.cv.notify_one();
+    }
+
+    /// Waits for a notification, at most `timeout`; true when there was one.
+    pub fn wait(&self, timeout: std::time::Duration) -> bool {
+        let mut pending = self.pending.lock();
+        if !*pending {
+            self.cv.wait_for(&mut pending, timeout);
+        }
+        std::mem::take(&mut *pending)
+    }
+}
+
 /// Takes the core's frames. Called from the video callback, on the thread the core calls it
 /// from, while the session's callback context is held: it must not call into the core.
 pub trait VideoSink: Send {
@@ -111,6 +136,9 @@ impl VideoSink for SharedFrameSink {
                         f.seq = f.seq.wrapping_add(1);
                         std::mem::replace(&mut f.rgba, fresh)
                     };
+                    if let Some(wake) = self.shared.frame_wake.lock().as_ref() {
+                        wake.notify();
+                    }
                     // The previous pixels, when no reader holds them any more.
                     if let Ok(buffer) = Arc::try_unwrap(old) {
                         self.back = buffer;
@@ -188,6 +216,35 @@ mod tests {
             1,
             "a GPU frame changed the CPU one"
         );
+    }
+
+    /// A notification sent before the wait is kept; none times out; the drawer registered in
+    /// `Shared::frame_wake` is woken by each new frame.
+    #[test]
+    fn the_wake_keeps_a_notification_and_new_frames_send_one() {
+        use std::time::{Duration, Instant};
+        let wake = Arc::new(super::Wake::default());
+        wake.notify();
+        assert!(wake.wait(Duration::from_secs(5)));
+        let t = Instant::now();
+        assert!(!wake.wait(Duration::from_millis(20)));
+        assert!(t.elapsed() >= Duration::from_millis(15));
+
+        let shared = Arc::new(Shared::default());
+        *shared.frame_wake.lock() = Some(wake.clone());
+        let mut sink = SharedFrameSink::new(shared);
+        let px = 0u16.to_ne_bytes();
+        sink.frame(
+            VideoFrame::Cpu(CpuFrame {
+                data: &px,
+                width: 1,
+                height: 1,
+                pitch: 2,
+                format: RETRO_PIXEL_FORMAT_RGB565,
+            }),
+            Split::Whole,
+        );
+        assert!(wake.wait(Duration::ZERO));
     }
 
     /// A reader keeps the pixels it took while new frames come in; once nobody holds a buffer it
