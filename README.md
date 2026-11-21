@@ -45,6 +45,20 @@ Every check (format, lint, types, clippy, tests, the project's gates) is one com
 Then "Open a game". The executable also accepts a game path as an argument and opens it right away. To try it without games there is `tools/test-rom/emudome-test.gba`:
 magenta screen, it turns green while A is held (X key).
 
+## Building for Android
+
+Requirements, on top of the above: a JDK 17, the Android SDK (platform 37, build-tools, an NDK; Android Studio
+installs them), `rustup target add aarch64-linux-android`, and on Windows developer mode on (Settings > System >
+For developers). Then, with the phone connected over USB and USB debugging on:
+
+```powershell
+./scripts/android-build.ps1 -Install           # debug APK (arm64-v8a), installed with adb; without -Install it only builds
+```
+
+`sh scripts/android-build.sh --install` does the same on Linux. The script's header lists every step; a release
+APK (`-Release`) is signed with a keystore kept outside the repository, named by environment variables (`CLAUDE.md`,
+«Commands»).
+
 ### Controls
 
 | Key | Function |

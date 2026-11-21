@@ -86,6 +86,9 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
 ./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar|all]  # cores pinned by cores.lock into cores/, sha256-checked
                                               # (default: the shipped ones; sh scripts/fetch-cores.sh [--cores ...] on Linux)
 ./scripts/fetch-cores-android.ps1 [-Cores ...] [-Abi arm64-v8a]  # same, into cores/android/<abi>/ as lib*_libretro_android.so
+./scripts/android-build.ps1 [-Install] [-Release] [-DryRun]  # the Android APK (arm64-v8a) from a clean clone: cores,
+                                              # frontend, Rust, Gradle; prints the APK; -Install = adb install -r
+                                              # (sh scripts/android-build.sh [--install] ... on Linux / Git Bash)
 node scripts/cores.mjs generate               # after editing cores.lock: cores/SOURCES.md, app/src-tauri/package/*.json
 pnpm package:windows                          # installer (from app/): only the cores.lock files, verified (THIRD_PARTY.md)
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
@@ -121,9 +124,24 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
 - Build speed: with sccache installed, `RUSTC_WRAPPER=sccache` (user environment) shares the compiled dependencies
   between worktrees; each worktree keeps its own `target/` (see below). The dev profile keeps line tables only
   (`debug = true` locally for a debugger session).
-- Android build: `tauri android build` fails with "Creation symbolic link is not allowed" when Windows developer mode
-  is off (the CLI symlinks the `.so` into jniLibs). Workaround: copy `libemudome_app.so` into
-  `app/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a/` and run `gradlew assembleArm64Debug -x rustBuildArm64Debug`.
+- Android build (Trello #76): `./scripts/android-build.ps1` is the one command; its header lists what it needs (JDK 17,
+  Android SDK with platform 37 and an NDK, `rustup target add aarch64-linux-android`, pnpm). It runs
+  `pnpm tauri android build --apk --split-per-abi --target aarch64 --debug`; the APK is
+  `app/src-tauri/gen/android/app/build/outputs/apk/arm64/debug/app-arm64-debug.apk`. On Windows it needs **developer
+  mode on** (Settings > System > For developers): the Tauri CLI symlinks `libemudome_app.so` into jniLibs and Windows
+  refuses symlinks otherwise ("Creation symbolic link is not allowed"); the script checks it first. Gradle runs
+  without a daemon, and with Gradle's configuration cache off (`gen/android/gradle.properties`: the platform library's
+  `emudomeCores` task is not cacheable yet).
+- The Android project `app/src-tauri/gen/android` is **versioned** (generated once by `pnpm tauri android init`,
+  tauri-cli 2.12.4); its `.gitignore` files keep out the build outputs and what tauri-build writes with machine paths
+  (`tauri.settings.gradle`, `tauri.build.gradle.kts`, `tauri.properties`, the jniLibs `.so`, generated Kotlin). Do not run
+  `tauri android init` again on it: it would overwrite our changes (release signing, launcher icons). On a Tauri
+  upgrade, generate into a scratch copy and carry the differences over by hand. The cores and the SurfaceView come
+  from `crates/emudome-platform/android` (included by tauri-build), never from the app project's own jniLibs.
+- Android release signing: `-Release` / `assembleArm64Release` read `EMUDOME_KEYSTORE` (path of a keystore **outside**
+  the repo), `EMUDOME_KEYSTORE_PASSWORD`, `EMUDOME_KEY_ALIAS`, `EMUDOME_KEY_PASSWORD` from the environment
+  (`gen/android/app/build.gradle.kts`); without them, or with the keystore inside the repo, the release build stops.
+  Never a keystore or a password in the repo (licence rule 6; `scripts/check` refuses keystore files).
 - Android check: the whole workspace for `aarch64-linux-android` needs the NDK (`ANDROID_NDK_HOME` / `NDK_HOME`, or
   `ANDROID_HOME/ndk/<version>`): librashader's glslang-sys builds C++ for the target. Without it the check runs
   the crates with no C code and says the rest is skipped. Linux is checked only by running the check on Linux (WSL).
@@ -463,9 +481,11 @@ no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `targe
 `unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
 `lib.rs`, `library.rs`, `saves.rs` and the SDL3 table of `app/src-tauri`, moved in #72 phase 2), tauri / wgpu /
 librashader pinned with `=`, `invoke` only in `app/src/emu.ts`, no emoji,
-no Nintendo files by name, no hardcoded visible text in `.vue` templates (`scripts/visible-text.mjs`), and the
-cores (`scripts/cores.mjs check --self-test`: `cores.lock`, the bundle lists, `cores/SOURCES.md`, the Gradle build and
-`THIRD_PARTY.md` agree; it cannot see whether a URL still serves the pinned bytes, only a fetch can).
+no Nintendo files by name, no signing keystore (`*.jks`, `*.keystore`, `*.p12`, `*.pfx`) in the repo, no hardcoded
+visible text in `.vue` templates (`scripts/visible-text.mjs`), and the cores (`scripts/cores.mjs check --self-test`:
+`cores.lock`, the bundle lists, `cores/SOURCES.md`, the Gradle build and `THIRD_PARTY.md` agree, and the versioned
+Android project `app/src-tauri/gen/android` is there and adds no jniLibs folder of its own; it cannot see whether a
+URL still serves the pinned bytes, only a fetch can).
 Each gate's comment says what it cannot see. The pre-commit hook runs the fast ones (`cargo fmt`, conflict markers,
 Prettier on the staged frontend files).
 
@@ -606,8 +626,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`, but mGBA's pinned build comes from the libretro buildbot's `latest/` (no stable
   URL exists upstream): packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until
-  the owner picks a stable source. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock was not
-  built on a device yet.
+  the owner picks a stable source. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds
+  (2026-11-21, `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet. Since
+  2026-11-21 the buildbot's Android mGBA no longer matches the pinned sha256, so the Android fetch fails for mGBA and
+  a debug APK goes without it (a release build stops) until `cores.lock` is re-pinned.
 - The game key migration (Trello #70) leaves in place, and reports, what facts cannot give to one game (a file name
   shared by several library games, no library game, the new place already taken); the app no longer reads those.
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
