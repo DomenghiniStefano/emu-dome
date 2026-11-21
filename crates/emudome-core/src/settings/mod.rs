@@ -34,49 +34,11 @@ pub use schema::{
 };
 use store::{Change, FileId, Store};
 
+/// A console, as a settings level (its own module since #81; re-exported here, where the code
+/// has always named it).
+pub use crate::console::ConsoleId;
 pub use crate::game_key::GameKey;
 use crate::ErrorCode;
-
-/// A console, as a settings level. TypeScript: `ConsoleId` (generated).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
-pub enum ConsoleId {
-    #[serde(rename = "gb")]
-    Gb,
-    #[serde(rename = "gbc")]
-    Gbc,
-    #[serde(rename = "gba")]
-    Gba,
-    #[serde(rename = "nds")]
-    Nds,
-    #[serde(rename = "3ds")]
-    N3ds,
-}
-
-impl ConsoleId {
-    /// The id in file names and in the interface.
-    pub fn id(self) -> &'static str {
-        match self {
-            ConsoleId::Gb => "gb",
-            ConsoleId::Gbc => "gbc",
-            ConsoleId::Gba => "gba",
-            ConsoleId::Nds => "nds",
-            ConsoleId::N3ds => "3ds",
-        }
-    }
-
-    /// The console of an id ([`ConsoleId::id`]).
-    pub fn from_id(id: &str) -> Option<Self> {
-        [
-            ConsoleId::Gb,
-            ConsoleId::Gbc,
-            ConsoleId::Gba,
-            ConsoleId::Nds,
-            ConsoleId::N3ds,
-        ]
-        .into_iter()
-        .find(|c| c.id() == id)
-    }
-}
 
 /// What the interface is looking at or changing. TypeScript: `SettingsScope` (generated).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -357,15 +319,8 @@ impl Settings {
     /// The `limit` newest changes across every level (Global, each console, each game), newest
     /// first. Keys this version does not know, and entries without a value, are left out.
     pub fn recent(&mut self, limit: usize) -> Vec<RecentChange> {
-        let consoles = [
-            ConsoleId::Gb,
-            ConsoleId::Gbc,
-            ConsoleId::Gba,
-            ConsoleId::Nds,
-            ConsoleId::N3ds,
-        ];
         let mut files: Vec<FileId> = vec![FileId::Global];
-        files.extend(consoles.into_iter().map(FileId::Console));
+        files.extend(ConsoleId::ALL.into_iter().map(FileId::Console));
         files.extend(self.store.game_ids().into_iter().map(FileId::Game));
         let mut out: Vec<RecentChange> = Vec::new();
         for file in files {

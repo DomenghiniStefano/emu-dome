@@ -33,6 +33,7 @@ mod pads;
 mod saves;
 mod settings;
 mod theme;
+mod tuning;
 mod video;
 mod window;
 
@@ -45,7 +46,6 @@ use emudome_core::core_profile::CoreId;
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{Area, Layout};
 use emudome_core::settings::ConsoleId;
-use emudome_core::tuning::{Tuning, VideoPath};
 use emudome_core::{
     Closed, Command, ErrorCode, Event, GameKey, Session, SessionOptions, Shared, Speed,
     CLOSE_TIMEOUT,
@@ -56,6 +56,8 @@ use serde::Serialize;
 use tauri::webview::Color;
 use tauri::{Emitter, Manager, WindowEvent};
 use ts_rs::TS;
+
+use crate::tuning::{Tuning, VideoPath};
 
 /// The active session, read by renderer, audio and controllers: an `ArcSwapOption`, so the audio
 /// callback and the controller thread read it without a lock (Trello #79).
@@ -249,18 +251,6 @@ fn open_extensions() -> Vec<&'static str> {
     emudome_core::library::open_extensions()
 }
 
-/// The console's short name in `GameInfo` (a .gb file whose header asks for a Game Boy Color
-/// is «GBC»).
-fn console_label(console: ConsoleId) -> &'static str {
-    match console {
-        ConsoleId::Gb => "GB",
-        ConsoleId::Gbc => "GBC",
-        ConsoleId::Gba => "GBA",
-        ConsoleId::Nds => "NDS",
-        ConsoleId::N3ds => "3DS",
-    }
-}
-
 /// Opens a game file. Every game is its content's key, never its path: a file of the library
 /// opens as that library game; any other file is identified first (from the library's hash
 /// cache when it knows the file unchanged, else by hashing it, holding no lock), and when its
@@ -408,7 +398,7 @@ fn open_path(
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_default()
         }),
-        console: console_label(console_id).into(),
+        console: console_id.short_name().into(),
         console_id,
         core: core.name().into(),
         resumable,

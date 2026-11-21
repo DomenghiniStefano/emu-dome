@@ -197,13 +197,7 @@ mod tests {
 
     #[test]
     fn every_console_has_one_core_whose_profile_lists_it() {
-        for console in [
-            ConsoleId::Gb,
-            ConsoleId::Gbc,
-            ConsoleId::Gba,
-            ConsoleId::Nds,
-            ConsoleId::N3ds,
-        ] {
+        for console in ConsoleId::ALL {
             let core = CoreId::for_console(console);
             assert!(core.profile().consoles.contains(&console), "{console:?}");
             let owners = CoreId::ALL

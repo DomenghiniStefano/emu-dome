@@ -1,6 +1,6 @@
 //! Developer and bench knobs, read once at startup from the environment (Trello #19).
 //!
-//! They are not user settings (those live in [`crate::settings`]): they exist to measure the
+//! They are not user settings (those live in `emudome_core::settings`): they exist to measure the
 //! video and audio paths, and what the measures settle can then become a setting. With none
 //! of them set, the defaults are exactly the app's normal behaviour.
 //!

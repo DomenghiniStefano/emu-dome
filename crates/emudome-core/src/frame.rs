@@ -13,6 +13,25 @@ use libretro_sys::{RETRO_PIXEL_FORMAT_RGB565, RETRO_PIXEL_FORMAT_XRGB8888};
 use crate::screens::{SourceScreen, Split};
 use crate::video_sink::CpuFrame;
 
+/// RGBA8 pixels (row after row, no padding) as a PNG file: frames, thumbnails, ROM icons.
+/// Errors on an empty image or a buffer of the wrong size.
+pub(crate) fn rgba_png(
+    width: u32,
+    height: u32,
+    rgba: &[u8],
+) -> Result<Vec<u8>, png::EncodingError> {
+    let mut out = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut out, width, height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header()?;
+        writer.write_image_data(rgba)?;
+        writer.finish()?;
+    }
+    Ok(out)
+}
+
 #[derive(Default, Clone)]
 pub struct Frame {
     pub width: u32,
@@ -34,16 +53,7 @@ impl Frame {
     /// The frame as a PNG file (slot thumbnails, screenshots). Errors on an empty frame.
     /// Call it on a clone taken under the lock ([`Frame::clone`] is cheap), never under it.
     pub fn to_png(&self) -> Result<Vec<u8>, png::EncodingError> {
-        let mut out = Vec::new();
-        {
-            let mut encoder = png::Encoder::new(&mut out, self.width, self.height);
-            encoder.set_color(png::ColorType::Rgba);
-            encoder.set_depth(png::BitDepth::Eight);
-            let mut writer = encoder.write_header()?;
-            writer.write_image_data(&self.rgba)?;
-            writer.finish()?;
-        }
-        Ok(out)
+        rgba_png(self.width, self.height, &self.rgba)
     }
 
     /// Converts a software frame into this one ([`convert_cpu`]), in place when no reader holds

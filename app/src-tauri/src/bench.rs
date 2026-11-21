@@ -1,4 +1,4 @@
-//! Bench mode (`EMUDOME_BENCH=<seconds>`, see `emudome_core::tuning`): the app opens the game
+//! Bench mode (`EMUDOME_BENCH=<seconds>`, see `tuning.rs`): the app opens the game
 //! given on the command line, waits for the first frame and a warm-up, measures for the given
 //! time, writes a JSON report (`EMUDOME_BENCH_OUT`) and exits. Nothing here runs otherwise.
 //!
@@ -16,10 +16,11 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use emudome_core::tuning::{BenchTuning, Tuning};
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::{json, Value};
+
+use crate::tuning::{BenchTuning, Tuning};
 use tauri::{Emitter, Manager};
 
 use crate::{AppState, VideoMode};
