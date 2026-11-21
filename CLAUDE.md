@@ -234,6 +234,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     to the new surface).
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
+  - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
+    lock and swaps it in; readers (texture upload, the webview's copy, PNG thumbnails and screenshots) clone the
+    `Arc` under the lock and work after letting go. A buffer no reader holds is converted into again.
 - tauri, wgpu and librashader are pinned to exact versions (`=x.y.z`, `app/src-tauri/Cargo.toml`, tauri also in
   `emudome-platform`) and upgrade only together, as one task ending with a native-video smoke test.
 - Screen effects (`fx.*`): librashader 0.12 (its wgpu must stay our wgpu version) renders the game texture

@@ -628,7 +628,8 @@ fn frame_protocol(
             .body(Vec::new())
             .unwrap_or_else(response_error);
     };
-    let frame = shared.frame.lock();
+    // A clone of the frame (its pixels' `Arc`) under the lock; the copy into the response after.
+    let frame = shared.frame.lock().clone();
     if frame.rgba.is_empty() || since == Some(frame.seq) {
         return builder
             .status(StatusCode::NO_CONTENT)
@@ -640,7 +641,7 @@ fn frame_protocol(
         .header("x-width", frame.width)
         .header("x-height", frame.height)
         .header("x-seq", frame.seq)
-        .body(frame.rgba.clone())
+        .body(frame.rgba.to_vec())
         .unwrap_or_else(response_error)
 }
 

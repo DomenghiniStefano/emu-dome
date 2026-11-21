@@ -303,7 +303,9 @@ impl Writer<'_> {
     /// The thumbnail of a slot from the frame on screen (failures only logged: a slot without a
     /// picture still loads).
     fn thumb(&self, slot: u8, shared: &Shared) {
-        let png = shared.frame.lock().to_png();
+        // Encoded from a clone (the pixels' `Arc`): the lock is not held while encoding.
+        let frame = shared.frame.lock().clone();
+        let png = frame.to_png();
         match png {
             Ok(bytes) if self.alive() => {
                 if let Err(e) = crate::write_atomic(&self.files.thumb(slot), &bytes) {
@@ -854,8 +856,8 @@ fn emu_thread(
                     (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
                 }
                 Command::Screenshot => {
-                    let png = shared.frame.lock().to_png();
-                    let res = png.map_err(|e| e.to_string()).and_then(|png| {
+                    let frame = shared.frame.lock().clone();
+                    let res = frame.to_png().map_err(|e| e.to_string()).and_then(|png| {
                         crate::screenshot::write(
                             &crate::screenshot::screenshots_dir(&opts.save_dir),
                             &rom_name,
@@ -1314,7 +1316,7 @@ mod tests {
         let shared = Shared::default();
         shared.frame.lock().width = 1;
         shared.frame.lock().height = 1;
-        shared.frame.lock().rgba = vec![0; 4];
+        shared.frame.lock().rgba = Arc::new(vec![0; 4]);
         writer.thumb(1, &shared);
         assert_eq!(
             files_in(&dir.path("saves/gba/9a3e")),

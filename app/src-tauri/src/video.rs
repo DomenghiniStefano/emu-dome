@@ -884,12 +884,17 @@ impl Painter {
         let Some(source) = source else {
             return;
         };
-        let frame = source.frame.lock();
-        if frame.seq == self.last_seq || frame.rgba.is_empty() {
-            return;
-        }
-        self.last_seq = frame.seq;
-        self.upload(frame.width, frame.height, &frame.rgba);
+        // The pixels' `Arc` is taken under the lock, the upload runs after it: the core's next
+        // frame never waits for `write_texture`.
+        let (width, height, rgba) = {
+            let frame = source.frame.lock();
+            if frame.seq == self.last_seq || frame.rgba.is_empty() {
+                return;
+            }
+            self.last_seq = frame.seq;
+            (frame.width, frame.height, frame.rgba.clone())
+        };
+        self.upload(width, height, &rgba);
     }
 
     /// Puts `rgba` (`w` x `h`) in the game texture.
@@ -1335,7 +1340,7 @@ mod gpu_tests {
         let frame = Frame {
             width: TARGET.0,
             height: TARGET.1,
-            rgba,
+            rgba: rgba.into(),
             seq: 0,
             split: emudome_core::screens::Split::Whole,
         };
