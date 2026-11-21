@@ -744,7 +744,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   is on Vulkan, else software with `hwRenderFallback` in `emu://health`); OpenGL (melonDS DS upscaling) is refused.
   Every Vulkan frame is read back into `Shared::frame` (the native renderer does not sample the GPU frame yet).
   Azahar 2126.2 crashes on a state load (and with its disk shader cache off) for content without a title ID
-  (`.3dsx` homebrew: its pipeline cache is skipped for title 0); a core's log lines (`GET_LOG_INTERFACE`) are logged as their format
+  (`.3dsx` homebrew: its pipeline cache is skipped for title 0). Guarded until Azahar fixes it (Trello #93):
+  `core_profile::state_load_block` (Azahar + Vulkan + `n3ds::title_id` 0) makes the session refuse every load, the
+  auto quick save's resume, «Annulla il caricamento» and rewind with `stateLoadUnsupported` (rewind records nothing),
+  and `GameInfo.stateLoadBlock` has the quick menu's Carica and the resume question's «Riprendi» disabled with the
+  reason; saving works. The issue text for Azahar: `docs/upstream/azahar-vulkan-state-load-title-id-0.md`. A core's log lines (`GET_LOG_INTERFACE`) are logged as their format
   string without the arguments (variadic C, no C shim); `GET_LANGUAGE` always answers English; `SET_MESSAGE` is
   logged, not shown; no sensors (plan in `docs/feasibility-hw-render.md`).
   Azahar's path limit (#94) is guarded for the NAND tail only: what it creates at load (`n3ds::SAVE_DEPTH`, measured
