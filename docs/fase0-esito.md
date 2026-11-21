@@ -218,3 +218,50 @@ Errors and fixes: melonDS DS refused the first test ROM ("Expected logo CRC16 of
 non-homebrew ROMs only, so the test ROM is homebrew (ARM9 at 0x1000) and carries no logo and no logo checksum; it also
 wants at least 0x1000 bytes of header ("ROM is only 1536 bytes").
 Proposed next step: open a DS homebrew game in the app (native and webview) and check the stylus with the mouse (UAT).
+
+## 2026-11-21 13:00 · Hot paths: per-frame time of the emulation thread, audio lock contention (headless, Windows)
+Trello #79. mGBA 0.11-212-7a12d6d (`cores/mgba_libretro.dll`), `tools/test-rom/emudome-test.gba` (state 528 448 bytes),
+release build of the `headless` example with its new `--timing 20`: 20 s at 1x, a quick save into slot 5 every 2 s,
+the emulation thread's work per frame recorded (commands, `retro_run`, rewind, saves; not the pacing sleep).
+Before = develop 7d6fb85 plus the timer only; after = branch `perf/hot-paths` (I/O worker, rewind encoder thread,
+lock-free audio ring, frames swapped in). Same PC, same command.
+
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | not tested | headless; the renderer now presents only on a change, see below |
+| 2. FPS at 1× | 1195-1199 frames recorded in each ~20 s run, before and after (core target 59.73) | per-frame work in the tables below |
+| 3. Audio | not tested | headless, silent ROM; lock contention measured by a unit test (below) |
+| 4. Controller | not tested | |
+| 5. Native vs webview | not tested | |
+
+Work per frame, µs (rewind 30 s on, `speed.rew` default):
+
+| Build | mean | p50 | p90 | p99 | p99.9 | max | frames > 8 ms | > 16.7 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| before, run 1 | 613 | 563 | 889 | 1644 | 17903 | 17908 | 9 | 4 |
+| before, run 2 | 598 | 557 | 849 | 988 | 16277 | 17218 | 9 | 1 |
+| before, run 3 | 616 | 564 | 902 | 1026 | 16227 | 16754 | 9 | 1 |
+| after, run 1 | 428 | 445 | 706 | 806 | 5023 | 8053 | 1 | 0 |
+| after, run 2 | 420 | 456 | 725 | 855 | 1267 | 2191 | 0 | 0 |
+| after, run 3 | 426 | 454 | 720 | 817 | 1263 | 1648 | 0 | 0 |
+
+Rewind off: before mean 317, p99 327, max 16117, 9 frames > 8 ms; after mean 205, p99 453, max 4798, none > 8 ms.
+The frames over 8 ms before are the quick saves (undo read, state write, thumbnail PNG, all on the emulation thread):
+~16-18 ms each, a skipped frame at 60 Hz. After, a quick save costs the serialize and a hand-off. Rewind's cost on
+GBA went from ~300 to ~210 µs per frame (the serialize stays on the emulation thread; the difference is encoded on
+its own thread). The two outliers after (8.0 ms and 4.8 ms max, one frame each) were not tied to a save; not
+investigated.
+
+Rewind cost for the owner / Cowork decision on its default (rewind stays on by default for now): on GBA ~0.2 ms per
+frame and 0.7 MB for 30 s. NDS: not tested, there is no melonDS DS core in `cores/`; from the 2026-11-19 entry an NDS
+state is 18.3 MB, so each state taken (every 4 frames above 8 MB: `rewind::interval_for`) costs an 18 MB serialize on
+the emulation thread plus the encode on the rewind thread: to measure with `--timing 20 --rewind 30` on a DS game.
+
+Audio lock contention (`cargo test -p emudome-core --release --lib -- audio::tests::callback_wait --ignored
+--nocapture`): longest wait of a simulated 5 ms audio callback over 200 callbacks while the producer spends 4 ms per
+push (a slow phone's WSOLA): one mutex around queue and work (the old design) 4.001 ms; the lock-free ring 0.003 ms.
+
+Errors and fixes: none in the measurement. Files touched: see Trello #79 (session I/O worker `session/io.rs`,
+`rewind.rs`, `audio.rs` in both crates, `video_sink.rs`, `frame.rs`, `video.rs`, `health.rs`).
+Proposed next step: the same `--timing` run on a DS game with melonDS DS, and the owner's UAT of the native video
+(CPU while paused and minimized) and of unplugging headphones during play.

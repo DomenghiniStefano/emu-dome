@@ -113,6 +113,7 @@ cargo clippy --target aarch64-linux-android -p libretro-sys -p emudome-core -p e
                                               # Android without the NDK (the whole workspace needs it: glslang-sys)
 cargo fmt --all
 cargo run -p emudome-core --example headless -- <core> tools/test-rom/emudome-test.gba   # windowless core host
+                                              # (--release ... --timing 20 --rewind 30: per-frame work p50/p99/max)
 cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe (app/src-tauri/examples)
 ```
 
@@ -365,6 +366,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   put it on the method, not on the field the method reads, or the field's expectation is unfulfilled.
 - Do not start a build in a worktree while a merge or checkout is writing its files: on 2026-11-20 a build read the
   old `Cargo.toml` with the new code (`unresolved import md5`).
+- Unit tests of `app/src-tauri` must not reach Tauri's runtime (an `AppHandle` method called from tested code): the
+  test exe then imports Windows entry points it cannot load and dies with `STATUS_ENTRYPOINT_NOT_FOUND`
+  (2026-11-21, `health.rs`). Keep the `AppHandle` behind a closure made where the app exists.
 
 ## Project rules
 
