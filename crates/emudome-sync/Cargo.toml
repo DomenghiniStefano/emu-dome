@@ -1,0 +1,55 @@
+[package]
+name = "emudome-sync"
+description = "EmuDome's Google Drive sync: sign-in (OAuth installed-app flow), the Drive REST client, the sync index and the conflict decisions. No OS code: what depends on the system is in emudome-platform."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+emudome-core.workspace = true
+# The HTTP client (Google's OAuth token endpoint, Drive REST v3), on the async runtime Tauri
+# already ships (tokio). MIT OR Apache-2.0. TLS through rustls, never native-tls / OpenSSL, with
+# the roots handed in by `http.rs` (`rustls-tls-manual-roots-no-provider`). Why 0.12 and not the
+# 0.13 Tauri uses (without TLS): every rustls feature of reqwest 0.13 brings
+# rustls-platform-verifier, whose wasm32 dependency webpki-root-certs is CDLA-Permissive-2.0, a
+# licence deny.toml does not allow (and on Android it needs a JNI set-up of its own).
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls-manual-roots-no-provider",
+    "json",
+    "stream",
+] }
+# rustls with the ring provider, not aws-lc-rs (CMake, NASM). ring is Apache-2.0 AND ISC and
+# builds C and assembly with the system's C compiler (the NDK's clang for Android).
+# rustls: MIT OR Apache-2.0 OR ISC.
+rustls = { version = "0.23", default-features = false, features = [
+    "ring",
+    "std",
+    "tls12",
+] }
+# The system's root certificates (Windows' certificate store, the Linux certificate files) for
+# rustls. Apache-2.0 OR ISC OR MIT. Android has none this way: see `http.rs` (Phase 4).
+rustls-native-certs = "0.8"
+tokio = { version = "1", features = ["rt", "net", "io-util", "time", "fs", "sync"] }
+parking_lot = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+url = "2"
+# PKCE (S256) and the base64url of the verifier's hash. MIT OR Apache-2.0.
+sha2 = "0.10"
+base64 = "0.23"
+# Drive's `md5Checksum` is compared with the local files' MD5. MIT OR Apache-2.0.
+md-5 = "0.10"
+# The PKCE verifier, the OAuth `state` and the device id: from the system's random source.
+# MIT OR Apache-2.0.
+getrandom = "0.3"
+ts-rs = { version = "12.0", features = ["no-serde-warnings"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros"] }
+# The `drive_probe` example opens the browser and keeps the refresh token through the platform.
+emudome-platform.workspace = true

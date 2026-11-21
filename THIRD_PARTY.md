@@ -80,6 +80,8 @@ bundle lists, `cores/SOURCES.md`, the Gradle build and this file (each core's co
 | cpal | audio output | Apache-2.0 | Apache-2.0 is compatible with GPL-3.0 (not with GPL-2.0-only). |
 | SDL3 (`sdl3-sys`, `sdl3-src`) | controllers; built from source and linked statically | Zlib | SDL bundles HIDAPI, offered under GPL-3.0, a BSD-style licence or the original HIDAPI licence (`src/hidapi/LICENSE.txt` in SDL): every option is compatible. |
 | notify | library folder watching | CC0-1.0 | |
+| reqwest 0.12, rustls, ring, rustls-native-certs | Google Drive sync: HTTPS to Google (`emudome-sync`) | MIT OR Apache-2.0; rustls and rustls-native-certs Apache-2.0 OR ISC OR MIT; ring Apache-2.0 AND ISC | ring builds C and assembly with the system's C compiler; code from BoringSSL is Apache-2.0 or ISC (`LICENSE`, `LICENSE-BoringSSL`, `LICENSE-other-bits` in the crate). reqwest 0.12 because 0.13's rustls brings `webpki-root-certs` (CDLA-Permissive-2.0, not in `deny.toml`'s allow-list). |
+| keyring | the Drive sign-in's refresh token in the system's credential store (`emudome-platform`) | MIT OR Apache-2.0 | Windows: Credential Manager; Linux: Secret Service over zbus (MIT), pure Rust. |
 | libloading | loading the cores | ISC | |
 | Vue 3, vue-i18n | interface | MIT | |
 | Lucide icons (`@lucide/vue`) | interface icons | ISC | Lucide includes icons derived from Feather (MIT); both notices are in the package. |
@@ -183,11 +185,12 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 permission with no condition at all (ISC without the notice requirement); the owner allowed it on
 2026-11-18, and `scripts/npm-licenses.mjs` lists it.
 
-### Rust crates (586)
+### Rust crates (687)
 
 | Crate | Version | Licence |
 | --- | --- | --- |
 | adler2 | 2.0.1 | 0BSD OR MIT OR Apache-2.0 |
+| aes | 0.8.4 | MIT OR Apache-2.0 |
 | aho-corasick | 1.1.5 | Unlicense OR MIT |
 | alloc-no-stdlib | 3.0.0 | BSD-3-Clause |
 | alloc-stdlib | 0.3.0 | BSD-3-Clause |
@@ -207,11 +210,23 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | array-concat | 0.5.5 | MIT |
 | arrayvec | 0.7.8 | MIT OR Apache-2.0 |
 | ash | 0.38.0+1.3.281 | MIT OR Apache-2.0 |
+| async-broadcast | 0.7.2 | MIT OR Apache-2.0 |
+| async-channel | 2.5.0 | Apache-2.0 OR MIT |
+| async-executor | 1.14.1 | Apache-2.0 OR MIT |
+| async-fs | 2.2.0 | Apache-2.0 OR MIT |
+| async-io | 2.6.0 | Apache-2.0 OR MIT |
+| async-lock | 3.5.0 | Apache-2.0 OR MIT |
+| async-process | 2.5.0 | Apache-2.0 OR MIT |
+| async-recursion | 1.2.0 | MIT OR Apache-2.0 |
+| async-signal | 0.2.14 | Apache-2.0 OR MIT |
+| async-task | 4.7.1 | Apache-2.0 OR MIT |
+| async-trait | 0.1.92 | MIT OR Apache-2.0 |
 | atk | 0.18.2 | MIT |
 | atk-sys | 0.18.2 | MIT |
 | atomic-waker | 1.1.2 | Apache-2.0 OR MIT |
 | autocfg | 1.5.1 | Apache-2.0 OR MIT |
 | base64 | 0.21.7 | MIT OR Apache-2.0 |
+| base64 | 0.22.1 | MIT OR Apache-2.0 |
 | base64 | 0.23.1 | MIT OR Apache-2.0 |
 | bincode | 2.0.1 | MIT |
 | bincode_derive | 2.0.1 | MIT |
@@ -225,7 +240,9 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | bitflags | 2.13.2 | MIT OR Apache-2.0 |
 | blake3 | 1.8.7 | CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception |
 | block-buffer | 0.10.4 | MIT OR Apache-2.0 |
+| block-padding | 0.3.3 | MIT OR Apache-2.0 |
 | block2 | 0.6.2 | MIT |
+| blocking | 1.7.0 | Apache-2.0 OR MIT |
 | brotli | 9.1.3 | BSD-3-Clause AND MIT |
 | brotli-decompressor | 6.3.2 | BSD-3-Clause/MIT |
 | bs58 | 0.5.1 | MIT/Apache-2.0 |
@@ -242,6 +259,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | cargo_metadata | 0.19.2 | MIT |
 | cargo_toml | 1.0.1 | Apache-2.0 OR MIT |
 | cargo-platform | 0.1.9 | MIT OR Apache-2.0 |
+| cbc | 0.1.2 | MIT OR Apache-2.0 |
 | cc | 1.11.2 | MIT OR Apache-2.0 |
 | cesu8 | 1.1.0 | Apache-2.0/MIT |
 | cfb | 0.14.0 | MIT |
@@ -250,10 +268,12 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | cfg-if | 1.0.5 | MIT OR Apache-2.0 |
 | chacha20 | 0.10.2 | MIT OR Apache-2.0 |
 | chrono | 0.4.45 | MIT OR Apache-2.0 |
+| cipher | 0.4.4 | MIT OR Apache-2.0 |
 | cmake | 0.1.58 | MIT OR Apache-2.0 |
 | codespan-reporting | 0.13.1 | Apache-2.0 |
 | colorchoice | 1.0.5 | MIT OR Apache-2.0 |
 | combine | 4.6.9 | MIT |
+| concurrent-queue | 2.5.0 | Apache-2.0 OR MIT |
 | constant_time_eq | 0.4.2 | CC0-1.0 OR MIT-0 OR Apache-2.0 |
 | cookie | 0.18.2 | MIT OR Apache-2.0 |
 | core_detect | 1.0.0 | MIT/Apache-2.0 |
@@ -284,6 +304,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | dasp_sample | 0.11.0 | MIT OR Apache-2.0 |
 | data-encoding | 2.11.1 | MIT |
 | dbus | 0.9.12 | Apache-2.0/MIT |
+| dbus-secret-service | 4.2.0 | MIT OR Apache-2.0 |
 | deranged | 0.5.9 | MIT OR Apache-2.0 |
 | derive_more | 2.1.1 | MIT |
 | derive_more-impl | 2.1.1 | MIT |
@@ -309,11 +330,17 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | embed_plist | 1.2.2 | MIT OR Apache-2.0 |
 | embed-resource | 3.0.12 | MIT |
 | encoding_rs | 0.8.44 | (Apache-2.0 OR MIT) AND BSD-3-Clause |
+| endi | 1.1.1 | MIT |
+| enumflags2 | 0.7.12 | MIT OR Apache-2.0 |
+| enumflags2_derive | 0.7.12 | MIT OR Apache-2.0 |
 | env_filter | 0.1.4 | MIT OR Apache-2.0 |
 | env_filter | 2.0.0 | MIT OR Apache-2.0 |
 | env_logger | 0.11.11 | MIT OR Apache-2.0 |
 | equivalent | 1.0.3 | Apache-2.0 OR MIT |
 | erased-serde | 0.4.11 | MIT OR Apache-2.0 |
+| errno | 0.3.15 | MIT OR Apache-2.0 |
+| event-listener | 5.4.2 | Apache-2.0 OR MIT |
+| event-listener-strategy | 0.5.4 | Apache-2.0 OR MIT |
 | fastrand | 2.5.0 | Apache-2.0 OR MIT |
 | fdeflate | 0.3.7 | MIT OR Apache-2.0 |
 | field-offset | 0.3.6 | MIT OR Apache-2.0 |
@@ -332,6 +359,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | futures-core | 0.3.34 | MIT OR Apache-2.0 |
 | futures-executor | 0.3.34 | MIT OR Apache-2.0 |
 | futures-io | 0.3.34 | MIT OR Apache-2.0 |
+| futures-lite | 2.6.1 | Apache-2.0 OR MIT |
 | futures-macro | 0.3.34 | MIT OR Apache-2.0 |
 | futures-sink | 0.3.34 | MIT OR Apache-2.0 |
 | futures-task | 0.3.34 | MIT OR Apache-2.0 |
@@ -371,7 +399,10 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | hashbrown | 0.17.1 | MIT OR Apache-2.0 |
 | heck | 0.4.1 | MIT OR Apache-2.0 |
 | heck | 0.5.0 | MIT OR Apache-2.0 |
+| hermit-abi | 0.5.3 | MIT OR Apache-2.0 |
 | hex | 0.4.3 | MIT OR Apache-2.0 |
+| hkdf | 0.12.4 | MIT OR Apache-2.0 |
+| hmac | 0.12.1 | MIT OR Apache-2.0 |
 | html5ever | 0.39.0 | MIT OR Apache-2.0 |
 | html5ever | 0.40.1 | MIT OR Apache-2.0 |
 | http | 1.5.0 | MIT OR Apache-2.0 |
@@ -379,6 +410,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | http-body-util | 0.1.5 | MIT |
 | httparse | 1.10.1 | MIT OR Apache-2.0 |
 | hyper | 1.12.0 | MIT |
+| hyper-rustls | 0.27.10 | Apache-2.0 OR ISC OR MIT |
 | hyper-util | 0.1.21 | MIT |
 | iana-time-zone | 0.1.65 | MIT OR Apache-2.0 |
 | iana-time-zone-haiku | 0.1.2 | MIT OR Apache-2.0 |
@@ -399,6 +431,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | infer | 0.22.0 | MIT |
 | inotify | 0.11.5 | ISC |
 | inotify-sys | 0.1.8 | ISC |
+| inout | 0.1.4 | MIT OR Apache-2.0 |
 | ipnet | 2.12.2 | MIT OR Apache-2.0 |
 | is_terminal_polyfill | 1.70.2 | MIT OR Apache-2.0 |
 | itoa | 1.0.19 | MIT OR Apache-2.0 |
@@ -420,6 +453,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | json-patch | 4.2.0 | MIT/Apache-2.0 |
 | jsonptr | 0.7.1 | MIT OR Apache-2.0 |
 | keyboard-types | 0.8.3 | MIT OR Apache-2.0 |
+| keyring | 3.6.3 | MIT OR Apache-2.0 |
 | khronos_api | 3.1.0 | Apache-2.0 |
 | khronos-egl | 6.0.0 | MIT/Apache-2.0 |
 | kqueue | 1.2.1 | MIT |
@@ -444,6 +478,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | libredox | 0.1.25 | MIT |
 | link-section | 0.19.4 | Apache-2.0 OR MIT |
 | linked-hash-map | 0.5.6 | MIT/Apache-2.0 |
+| linux-raw-sys | 0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | litemap | 0.8.3 | Unicode-3.0 |
 | litrs | 1.0.1 | MIT OR Apache-2.0 |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 |
@@ -467,14 +502,21 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | ndk-context | 0.1.1 | MIT OR Apache-2.0 |
 | ndk-sys | 0.6.0+11769913 | MIT OR Apache-2.0 |
 | new_debug_unreachable | 1.0.6 | MIT |
+| nix | 0.29.0 | MIT |
 | nom | 8.0.0 | MIT |
 | nom_locate | 5.0.0 | MIT |
 | notify | 8.2.2 | CC0-1.0 |
 | notify-types | 2.3.1 | MIT OR Apache-2.0 |
+| num | 0.4.3 | MIT OR Apache-2.0 |
 | num_enum | 0.7.6 | BSD-3-Clause OR MIT OR Apache-2.0 |
 | num_enum_derive | 0.7.6 | BSD-3-Clause OR MIT OR Apache-2.0 |
+| num-bigint | 0.4.8 | MIT OR Apache-2.0 |
+| num-complex | 0.4.6 | MIT OR Apache-2.0 |
 | num-conv | 0.2.2 | MIT OR Apache-2.0 |
 | num-derive | 0.4.2 | MIT OR Apache-2.0 |
+| num-integer | 0.1.47 | MIT OR Apache-2.0 |
+| num-iter | 0.1.46 | MIT OR Apache-2.0 |
+| num-rational | 0.4.2 | MIT OR Apache-2.0 |
 | num-traits | 0.2.19 | MIT OR Apache-2.0 |
 | objc2 | 0.6.5 | MIT |
 | objc2-app-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
@@ -501,10 +543,13 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | objc2-web-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 |
 | once_cell_polyfill | 1.70.2 | MIT OR Apache-2.0 |
+| openssl-probe | 0.2.2 | MIT OR Apache-2.0 |
 | option-ext | 0.2.0 | MPL-2.0 |
 | ordered-float | 5.5.1 | MIT |
+| ordered-stream | 0.2.0 | MIT OR Apache-2.0 |
 | pango | 0.18.3 | MIT |
 | pango-sys | 0.18.0 | MIT |
+| parking | 2.2.1 | Apache-2.0 OR MIT |
 | parking_lot | 0.12.5 | MIT OR Apache-2.0 |
 | parking_lot_core | 0.9.12 | MIT OR Apache-2.0 |
 | percent-encoding | 2.3.2 | MIT OR Apache-2.0 |
@@ -521,15 +566,18 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | phf_shared | 0.13.1 | MIT |
 | phf_shared | 0.14.0 | MIT |
 | pin-project-lite | 0.2.17 | Apache-2.0 OR MIT |
+| piper | 0.2.5 | MIT OR Apache-2.0 |
 | pkg-config | 0.3.34 | MIT OR Apache-2.0 |
 | platform-dirs | 0.3.0 | MIT |
 | plist | 1.10.3 | MIT |
 | png | 0.18.1 | MIT OR Apache-2.0 |
+| polling | 3.11.0 | Apache-2.0 OR MIT |
 | pollster | 0.4.0 | Apache-2.0/MIT |
 | portable-atomic | 1.15.0 | Apache-2.0 OR MIT |
 | portable-atomic-util | 0.2.8 | Apache-2.0 OR MIT |
 | potential_utf | 0.1.6 | Unicode-3.0 |
 | powerfmt | 0.2.1 | MIT OR Apache-2.0 |
+| ppv-lite86 | 0.2.21 | MIT OR Apache-2.0 |
 | precomputed-hash | 0.1.1 | MIT |
 | presser | 0.3.1 | MIT OR Apache-2.0 |
 | proc-macro-crate | 1.3.1 | MIT OR Apache-2.0 |
@@ -545,7 +593,10 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | r-efi | 5.3.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
 | r-efi | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |
 | rand | 0.10.4 | MIT OR Apache-2.0 |
+| rand | 0.8.8 | MIT OR Apache-2.0 |
+| rand_chacha | 0.3.1 | MIT OR Apache-2.0 |
 | rand_core | 0.10.1 | MIT OR Apache-2.0 |
+| rand_core | 0.6.4 | MIT OR Apache-2.0 |
 | range-alloc | 0.1.5 | MIT OR Apache-2.0 |
 | raw-window-handle | 0.6.2 | MIT OR Apache-2.0 OR Zlib |
 | raw-window-metal | 1.1.0 | MIT OR Apache-2.0 |
@@ -560,16 +611,25 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 |
 | renderdoc-sys | 1.1.0 | MIT OR Apache-2.0 |
+| reqwest | 0.12.28 | MIT OR Apache-2.0 |
 | reqwest | 0.13.5 | MIT OR Apache-2.0 |
 | rfd | 0.17.2 | MIT |
+| ring | 0.17.14 | Apache-2.0 AND ISC |
 | rpkg-config | 0.1.2 | Zlib OR MIT OR Apache-2.0 |
 | rspirv | 0.13.0+sdk-1.4.341.0 | Apache-2.0 |
 | rtrb | 0.4.1 | MIT OR Apache-2.0 |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 |
 | rustc-hash | 1.1.0 | Apache-2.0/MIT |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |
+| rustix | 1.1.6 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
+| rustls | 0.23.46 | Apache-2.0 OR ISC OR MIT |
+| rustls-native-certs | 0.8.5 | Apache-2.0 OR ISC OR MIT |
+| rustls-pki-types | 1.16.0 | MIT OR Apache-2.0 |
+| rustls-webpki | 0.103.17 | ISC |
 | rustversion | 1.0.23 | MIT OR Apache-2.0 |
+| ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 |
 | same-file | 1.0.6 | Unlicense/MIT |
+| schannel | 0.1.30 | MIT |
 | schemars | 0.8.22 | MIT |
 | schemars | 0.9.0 | MIT |
 | schemars | 1.2.3 | MIT |
@@ -577,6 +637,9 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | scopeguard | 1.2.0 | MIT OR Apache-2.0 |
 | sdl3-src | 3.4.20 | Zlib |
 | sdl3-sys | 0.7.3+SDL-3.4.20 | Zlib |
+| secret-service | 4.0.0 | MIT OR Apache-2.0 |
+| security-framework | 3.7.0 | MIT OR Apache-2.0 |
+| security-framework-sys | 2.17.0 | MIT OR Apache-2.0 |
 | selectors | 0.38.0 | MPL-2.0 |
 | selectors | 0.41.0 | MPL-2.0 |
 | semver | 1.0.28 | MIT OR Apache-2.0 |
@@ -588,6 +651,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | serde_repr | 0.1.21 | MIT OR Apache-2.0 |
 | serde_spanned | 0.6.9 | MIT OR Apache-2.0 |
 | serde_spanned | 1.1.3 | MIT OR Apache-2.0 |
+| serde_urlencoded | 0.7.1 | MIT/Apache-2.0 |
 | serde_with | 3.24.0 | MIT OR Apache-2.0 |
 | serde_with_macros | 3.24.0 | MIT OR Apache-2.0 |
 | serde-untagged | 0.1.9 | MIT OR Apache-2.0 |
@@ -598,6 +662,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | sha1 | 0.10.7 | MIT OR Apache-2.0 |
 | sha2 | 0.10.9 | MIT OR Apache-2.0 |
 | shlex | 2.0.1 | MIT OR Apache-2.0 |
+| signal-hook-registry | 1.4.8 | MIT OR Apache-2.0 |
 | simd_cesu8 | 1.2.0 | Apache-2.0 OR MIT |
 | simd-adler32 | 0.3.10 | MIT |
 | simdutf8 | 0.1.5 | MIT OR Apache-2.0 |
@@ -623,6 +688,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | string_cache_codegen | 0.6.1 | MIT OR Apache-2.0 |
 | strsim | 0.11.1 | MIT |
 | strumbra | 0.6.0 | MIT |
+| subtle | 2.6.1 | BSD-3-Clause |
 | swift-rs | 1.0.9 | MIT OR Apache-2.0 |
 | syn | 1.0.109 | MIT OR Apache-2.0 |
 | syn | 2.0.119 | MIT OR Apache-2.0 |
@@ -644,6 +710,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | tauri-runtime-wry | 2.12.3 | Apache-2.0 OR MIT |
 | tauri-utils | 2.10.2 | Apache-2.0 OR MIT |
 | tauri-winres | 0.3.7 | MIT |
+| tempfile | 3.27.0 | MIT OR Apache-2.0 |
 | tendril | 0.5.1 | MIT OR Apache-2.0 |
 | termcolor | 1.4.1 | Unlicense OR MIT |
 | thiserror | 1.0.69 | MIT OR Apache-2.0 |
@@ -656,6 +723,8 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | tinystr | 0.8.5 | Unicode-3.0 |
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT |
 | tokio | 1.54.1 | MIT |
+| tokio-macros | 2.7.2 | MIT |
+| tokio-rustls | 0.26.6 | MIT OR Apache-2.0 |
 | tokio-util | 0.7.20 | MIT |
 | toml | 0.8.2 | MIT OR Apache-2.0 |
 | toml | 1.2.1+spec-1.1.0 | MIT OR Apache-2.0 |
@@ -671,6 +740,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | tower-layer | 0.3.3 | MIT |
 | tower-service | 0.3.3 | MIT |
 | tracing | 0.1.44 | MIT |
+| tracing-attributes | 0.1.31 | MIT |
 | tracing-core | 0.1.36 | MIT |
 | tray-icon | 0.25.1 | MIT OR Apache-2.0 |
 | try-lock | 0.2.5 | MIT |
@@ -678,10 +748,12 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | ts-rs-macros | 12.0.1 | MIT |
 | typeid | 1.0.3 | MIT OR Apache-2.0 |
 | typenum | 1.20.1 | MIT OR Apache-2.0 |
+| uds_windows | 1.2.1 | MIT |
 | unicode-ident | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 |
 | unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 |
 | unicode-width | 0.2.3 | MIT OR Apache-2.0 |
 | unsigned-varint | 0.8.0 | MIT |
+| untrusted | 0.9.0 | ISC |
 | unty | 0.0.4 | MIT OR Apache-2.0 |
 | url | 2.5.8 | MIT OR Apache-2.0 |
 | urlpattern | 0.6.0 | MIT |
@@ -704,6 +776,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | wasm-bindgen-macro | 0.2.130 | MIT OR Apache-2.0 |
 | wasm-bindgen-macro-support | 0.2.130 | MIT OR Apache-2.0 |
 | wasm-bindgen-shared | 0.2.130 | MIT OR Apache-2.0 |
+| wasm-streams | 0.4.2 | MIT OR Apache-2.0 |
 | wasm-streams | 0.5.0 | MIT OR Apache-2.0 |
 | wayland-sys | 0.31.11 | MIT |
 | web_atoms | 0.2.6 | MIT OR Apache-2.0 |
@@ -730,12 +803,28 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | window-vibrancy | 0.8.1 | Apache-2.0 OR MIT |
 | windows | 0.62.2 | MIT OR Apache-2.0 |
 | windows_aarch64_gnullvm | 0.42.2 | MIT OR Apache-2.0 |
+| windows_aarch64_gnullvm | 0.52.6 | MIT OR Apache-2.0 |
+| windows_aarch64_gnullvm | 0.53.1 | MIT OR Apache-2.0 |
 | windows_aarch64_msvc | 0.42.2 | MIT OR Apache-2.0 |
+| windows_aarch64_msvc | 0.52.6 | MIT OR Apache-2.0 |
+| windows_aarch64_msvc | 0.53.1 | MIT OR Apache-2.0 |
 | windows_i686_gnu | 0.42.2 | MIT OR Apache-2.0 |
+| windows_i686_gnu | 0.52.6 | MIT OR Apache-2.0 |
+| windows_i686_gnu | 0.53.1 | MIT OR Apache-2.0 |
+| windows_i686_gnullvm | 0.52.6 | MIT OR Apache-2.0 |
+| windows_i686_gnullvm | 0.53.1 | MIT OR Apache-2.0 |
 | windows_i686_msvc | 0.42.2 | MIT OR Apache-2.0 |
+| windows_i686_msvc | 0.52.6 | MIT OR Apache-2.0 |
+| windows_i686_msvc | 0.53.1 | MIT OR Apache-2.0 |
 | windows_x86_64_gnu | 0.42.2 | MIT OR Apache-2.0 |
+| windows_x86_64_gnu | 0.52.6 | MIT OR Apache-2.0 |
+| windows_x86_64_gnu | 0.53.1 | MIT OR Apache-2.0 |
 | windows_x86_64_gnullvm | 0.42.2 | MIT OR Apache-2.0 |
+| windows_x86_64_gnullvm | 0.52.6 | MIT OR Apache-2.0 |
+| windows_x86_64_gnullvm | 0.53.1 | MIT OR Apache-2.0 |
 | windows_x86_64_msvc | 0.42.2 | MIT OR Apache-2.0 |
+| windows_x86_64_msvc | 0.52.6 | MIT OR Apache-2.0 |
+| windows_x86_64_msvc | 0.53.1 | MIT OR Apache-2.0 |
 | windows-collections | 0.3.2 | MIT OR Apache-2.0 |
 | windows-core | 0.62.2 | MIT OR Apache-2.0 |
 | windows-future | 0.3.2 | MIT OR Apache-2.0 |
@@ -746,8 +835,13 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | windows-result | 0.4.1 | MIT OR Apache-2.0 |
 | windows-strings | 0.5.1 | MIT OR Apache-2.0 |
 | windows-sys | 0.45.0 | MIT OR Apache-2.0 |
+| windows-sys | 0.52.0 | MIT OR Apache-2.0 |
+| windows-sys | 0.59.0 | MIT OR Apache-2.0 |
+| windows-sys | 0.60.2 | MIT OR Apache-2.0 |
 | windows-sys | 0.61.2 | MIT OR Apache-2.0 |
 | windows-targets | 0.42.2 | MIT OR Apache-2.0 |
+| windows-targets | 0.52.6 | MIT OR Apache-2.0 |
+| windows-targets | 0.53.5 | MIT OR Apache-2.0 |
 | windows-threading | 0.2.1 | MIT OR Apache-2.0 |
 | windows-version | 0.1.7 | MIT OR Apache-2.0 |
 | winnow | 0.5.40 | MIT |
@@ -758,13 +852,19 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | wry | 0.57.2 | Apache-2.0 OR MIT |
 | x11 | 2.21.0 | MIT |
 | x11-dl | 2.21.0 | MIT |
+| xdg-home | 1.3.0 | MIT |
 | xml-rs | 0.8.29 | MIT |
 | yoke | 0.8.4 | Unicode-3.0 |
 | yoke-derive | 0.8.4 | Unicode-3.0 |
+| zbus | 4.4.0 | MIT |
+| zbus_macros | 4.4.0 | MIT |
+| zbus_names | 3.0.0 | MIT |
 | zerocopy | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
 | zerocopy-derive | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
 | zerofrom | 0.1.8 | Unicode-3.0 |
 | zerofrom-derive | 0.1.8 | Unicode-3.0 |
+| zeroize | 1.9.2 | Apache-2.0 OR MIT |
+| zeroize_derive | 1.5.0 | Apache-2.0 OR MIT |
 | zerotrie | 0.2.5 | Unicode-3.0 |
 | zerovec | 0.11.9 | Unicode-3.0 |
 | zerovec-derive | 0.11.7 | Unicode-3.0 |
@@ -773,6 +873,9 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | zmij | 1.0.23 | MIT |
 | zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib |
 | zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib |
+| zvariant | 4.2.0 | MIT |
+| zvariant_derive | 4.2.0 | MIT |
+| zvariant_utils | 2.1.0 | MIT |
 
 ### npm packages (249, 53 shipped)
 

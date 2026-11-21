@@ -37,6 +37,21 @@ env_logger = "0.11"
 # The native file picker (`pick_file`); Android has no file-path picker yet (TODO with the SAF).
 tauri-plugin-dialog = "2.8"
 
+# The Drive sign-in's refresh token in the system's credential store (`cloud.rs`), under
+# the service `it.domehub.emudome`. MIT OR Apache-2.0. One backend per system, each pure Rust:
+# Windows' Credential Manager; on Linux the Secret Service over D-Bus through zbus (no libdbus,
+# no OpenSSL: `crypto-rust`), on the tokio runtime Tauri ships. Android keeps no refresh token
+# (Google's AuthorizationClient hands out access tokens; Phase 4); macOS is not built yet.
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6", features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6", features = [
+    "async-secret-service",
+    "crypto-rust",
+    "tokio",
+] }
+
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.15"
 # Same versions as wry/tao: the `JNIEnv` handed by `JniHandle::exec` is jni 0.21's.

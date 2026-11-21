@@ -56,7 +56,8 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
 Phase 0 (feasibility) is done. On `develop` now: shell and themes, settings engine and pages, library, game flow,
 quick menu, saves, controls, first run, rewind and screenshots, screen effects (librashader), appearance, and the
 melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
-back to the CPU, encrypted games refused with E10). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+back to the CPU, encrypted games refused with E10), and the Google Drive sync backend (#20: sign-in, Drive client,
+sync index and conflict rule, tested, not wired into the game flow or the interface yet). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
 before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
@@ -127,6 +128,10 @@ cargo fmt --all
 cargo run -p emudome-core --example headless -- <core> tools/test-rom/emudome-test.gba   # windowless core host
                                               # (--release ... --timing 20 --rewind 30: per-frame work p50/p99/max)
 cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe (app/src-tauri/examples)
+cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|sign-out|list|quota|upload <f>|download <n> <out>
+                                              # the real Google sign-in and Drive calls (owner's UAT only: it opens
+                                              # the browser, talks to Google, keeps the refresh token in the system's
+                                              # credential store; needs EMUDOME_GOOGLE_CLIENT_ID at build time)
 ```
 
 - On Windows `sh` is not on the PATH that PowerShell and pnpm see, so there use `./scripts/check.ps1`.
@@ -172,7 +177,11 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
   Until 2026-11-21 it was `com.domenghini.emudome` (#90): a desktop build's first start copies those folders once,
   verified, and leaves them in place (`emudome_core::data_move`); a copy that did not finish makes that run use the
   old folders and is tried again. Android data does not carry over (another package's storage).
-- The executable accepts a game path as an argument and opens it at startup.
+- The executable accepts a game path as an argument and opens it at startup. On Android: the `game` extra of the
+  launch intent, else the `content://` document of «Open with» (`ACTION_VIEW`, octet-stream).
+- Android's back button (Trello #14, `SystemBridge.kt` → `hotkeys::back_button`): in game with the quick menu
+  closed it is the controller's menu button (`emu://menu`), anywhere else its B (`emu://nav` back). Not yet: leaving
+  to the background at the shell's root, and «Open with» while the app already runs (both need the interface).
 - Homebrew test ROM: `tools/test-rom/emudome-test.gba`. Magenta screen, green while A is held (X key).
 
 ## Architecture
@@ -245,8 +254,34 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          data folders (old_data_dirs: beside the new ones on desktop, none on Android),
                          paths.rs (how long a path this process can create: `path_limits`, Windows long
                          paths for the process and the `LongPathsEnabled` policy, read only);
-                         android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
-                         jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
+                         android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView;
+                         SystemBridge: the back button, the launch intent's game, `content://` documents;
+                         jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked);
+                         content.rs (games as `content://` documents, opened without a copy: the
+                         provider's file descriptor kept open for the session, read through a link
+                         `<cache>/content/<fd>/<name>` → `/proc/self/fd/<fd>`; pure parts tested),
+                         cloud.rs (what the Drive sync needs from the system: `open_url` (the system
+                         browser), `device_name`, the credential store (`keyring`: Windows Credential
+                         Manager, Linux Secret Service over zbus) under the service `it.domehub.emudome`;
+                         Android and macOS answer `Unsupported`, the Android sign-in plan in its doc)
+crates/emudome-sync      Google Drive sync (Trello #20), no OS code: oauth.rs (PKCE S256, the authorization
+                         URL, code exchange, refresh, revoke; the client id and secret are build-time
+                         values, `option_env!("EMUDOME_GOOGLE_CLIENT_ID" / "..._SECRET")`, none = sync not
+                         configured), loopback.rs (the redirect on 127.0.0.1:<random port>, state
+                         checked), auth.rs (`Auth`: refresh token in a `SecretStore`, access token
+                         refreshed in memory, sign-in / sign-out), http.rs (reqwest 0.12 + rustls/ring,
+                         the system's root certificates), drive/ (`DriveApi`; rest.rs Drive REST v3:
+                         multipart up to 5 MiB, resumable chunks above, retries, 401 → new token;
+                         fake.rs `FakeDrive` in memory with failure injection), index.rs (the sync
+                         index `<app data>/sync/index.json`: last synced md5 / Drive id per file, the
+                         device id; write_atomic, unreadable never written over), decide.rs (the
+                         conflict rule: none / push / pull / conflict, pure, tested exhaustively),
+                         marker.rs («in use on <device>»: appProperties of the game's Drive folder,
+                         heartbeat 2 min, stale after 10), sync.rs (`Area` (a game's saves folder ↔
+                         `EmuDome/<console>/<hex>/`, settings ↔ `EmuDome/settings/`), `Syncer`: plan,
+                         pull before launch, push after exit, conflicts resolved keeping the other side
+                         under `conflicts/`, the library list `EmuDome/library/<device id>.json`;
+                         data-survival tests on `FakeDrive`)
 app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, the per-game hooks, setup, the
                          command list, `blocking()` for heavy commands), game_session.rs (`GameSession`: the
                          open game and what lives as long as it does, open / take / close / abandon; exit-path
@@ -276,6 +311,8 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
+                         cloud.rs (the Google account: cloud_status / cloud_sign_in / cloud_sign_out, the
+                         refresh token through emudome_platform::cloud; no sync wired yet)
                          dirs.rs (the data folders: Tauri's, EMUDOME_DATA_DIR, or the old identifier's for a
                          run whose copy did not finish), data_move.rs (that copy, first thing in setup)
                          library.rs (library commands, background scans, library://scan and library://changed,
@@ -349,7 +386,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
 - Audio: a lock-free SPSC ring (`emudome_core::audio::AudioRing`, rtrb) from the emulation thread to the cpal
   callback, linear resampling to the device's rate, ±0.5% correction on the ring's fill level; the reader drops
-  what is queued beyond ~150 ms, oldest first. Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread,
+  what is queued beyond ~150 ms, oldest first. A ring that runs dry (a stall: a 3DS quick save takes ~0.25 s, #98;
+  a pause; a game's start) fades out and stays silent until it holds the queue target again, then fades back in
+  (`Resampler` in `app/src-tauri/src/audio.rs`). Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread,
   before the push): muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about
   real time reaches the ring. At Max the speed is measured. The real-time threads (audio callback, controllers)
   read the open game through `CurrentShared` (an `ArcSwapOption`, no lock); the callback records its measurements
@@ -807,6 +846,17 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   entries before and after (`n3ds::fallback`, `coreSavedOutsideGame` on `emu://health`, read only): a write there by
   another program (the standalone Azahar) during the session looks the same, and nothing is moved back.
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
+- Google Drive sync (Trello #20, `crates/emudome-sync`): the backend is there and tested on `FakeDrive` and a local
+  mock server, never against Google by the checks (`drive_probe` is the owner's UAT). Not wired yet: nothing calls
+  `Syncer` (no pull before launch, push after exit, periodic push, heartbeat, library list or settings sync in the
+  game flow), the interface has no Cloud screens (#31) and does not call `cloud_*`; the `cloud.*` settings stay
+  unwired (`cloud.ssaves`, `cloud.squick`, `cloud.ssettings`, `cloud.sauto`, `cloud.swifi` are what the wiring
+  will read; `cloud.acct`, `cloud.space`, `cloud.sgames` are the account, quota and games rows). Games are not
+  synced (no streaming download to disk yet). A resumable upload resumes within its call, not after a restart.
+  Deletions never travel (a file missing on one side is copied back). `changes.list` is implemented but no run uses
+  it yet. Android: sign-in refused (`cloudSignInUnsupported`; plan in `emudome-platform/src/cloud.rs`) and no TLS
+  roots there (`emudome-sync/src/http.rs`). Linux: the Secret Service backend is not compiled or tried on this
+  machine. The browser page after the sign-in shows the texts `cloud_sign_in` receives from the interface.
 
 ## Design and interface work
 

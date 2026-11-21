@@ -6,19 +6,28 @@
 //!   `it.domehub.emudome.platform.NativeSurface`, in `android/`). Its `Surface` reaches
 //!   Rust through JNI and becomes an `ANativeWindow` for wgpu.
 //! - Logs: logcat, tag `EmuDome`.
+//! - The system's requests (Kotlin class `it.domehub.emudome.platform.SystemBridge`): the back
+//!   button reaches the listener of [`crate::listen_back`]; the game of «Open with» and the
+//!   `content://` games ([`crate::open_content`], `content.rs`).
 use std::ffi::c_void;
+use std::fs;
+use std::os::fd::{FromRawFd, OwnedFd};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 use std::time::Duration;
 
-use jni::objects::{JClass, JObject, JString, JValue};
+use jni::objects::{GlobalRef, JClass, JObject, JString, JValue};
 use jni::sys::jint;
-use jni::{JNIEnv, NativeMethod};
+use jni::{JNIEnv, JavaVM, NativeMethod};
 use ndk::native_window::NativeWindow;
 use parking_lot::{Condvar, Mutex};
 use raw_window_handle::{DisplayHandle, HandleError};
 
-use crate::{DataDirs, ExternalSurface, SurfaceEvent, SurfaceListener, WindowOptions};
+use crate::content::{fd_path, link_dir, link_name, LINKS_DIR};
+use crate::{
+    BackListener, ContentError, ContentFile, DataDirs, ExternalSurface, SurfaceEvent,
+    SurfaceListener, WindowOptions,
+};
 
 pub const OS_NAME: &str = "Android";
 
@@ -67,7 +76,8 @@ pub fn init_logging() {
     );
 }
 
-/// The `game` extra of the launch intent, read when the surface is attached.
+/// The launch intent's game (`SystemBridge.startupGame`: the `game` extra, else the document of
+/// «Open with»), read when the system bridge is attached ([`attach_system`]).
 /// `None` inside means "not read yet".
 static STARTUP_GAME: Mutex<Option<Option<String>>> = Mutex::new(None);
 static STARTUP_READ: Condvar = Condvar::new();
@@ -118,40 +128,77 @@ pub fn attach_external_surface<R: tauri::Runtime>(
         platform.jni_handle().exec(|env, activity, webview| {
             if let Err(e) = attach_jni(env, activity, webview) {
                 log::error!("native surface not attached: {e}");
-                if env.exception_check().unwrap_or(false) {
-                    let _ = env.exception_describe();
-                    let _ = env.exception_clear();
-                }
-                set_startup_game(None);
+                clear_exception(env);
             }
         })
     });
     if let Err(e) = result {
         log::error!("webview not reachable for the native surface: {e}");
+    }
+}
+
+/// Attaches `SystemBridge` on the UI thread (the back button to `on_back`, the launch intent's
+/// game for [`startup_game`], the documents). Whatever the video path: the webview mode has no
+/// native surface but has the back button.
+pub fn attach_system<R: tauri::Runtime>(webview: &tauri::Webview<R>, on_back: BackListener) {
+    *BACK.lock() = Some(Arc::from(on_back));
+    let result = webview.with_webview(|platform| {
+        platform.jni_handle().exec(|env, activity, _webview| {
+            let attached = env
+                .call_method(activity, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])
+                .and_then(|loader| loader.l())
+                .and_then(|loader| attach_bridge(env, activity, &loader));
+            match attached {
+                Ok(game) => set_startup_game(game),
+                Err(e) => {
+                    log::error!("system bridge not attached (back button, documents): {e}");
+                    clear_exception(env);
+                    set_startup_game(None);
+                }
+            }
+        })
+    });
+    if let Err(e) = result {
+        log::error!("webview not reachable for the system bridge: {e}");
         set_startup_game(None);
     }
 }
 
-/// Runs on the UI thread: reads the launch intent, registers the native methods of
-/// `NativeSurface` and asks it to put the `SurfaceView` under the WebView.
-fn attach_jni(env: &mut JNIEnv, activity: &JObject, webview: &JObject) -> jni::errors::Result<()> {
-    set_startup_game(intent_game(env, activity)?);
+/// A pending Java exception is printed to logcat and cleared, so the next JNI call works.
+fn clear_exception(env: &mut JNIEnv) {
+    if env.exception_check().unwrap_or(false) {
+        // Best effort: nothing more can be done about an exception that cannot be printed.
+        let _ = env.exception_describe();
+        let _ = env.exception_clear();
+    }
+}
 
-    // App classes are found through the activity's class loader (FindClass would use
-    // the system one when called from native code).
-    let loader = env
-        .call_method(activity, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])?
-        .l()?;
-    let name = env.new_string(NATIVE_SURFACE_CLASS)?;
-    let class: JClass = env
+/// An app class, through the activity's class loader (FindClass would use the system one when
+/// called from native code).
+fn load_class<'local>(
+    env: &mut JNIEnv<'local>,
+    loader: &JObject,
+    name: &str,
+) -> jni::errors::Result<JClass<'local>> {
+    let name = env.new_string(name)?;
+    Ok(env
         .call_method(
-            &loader,
+            loader,
             "loadClass",
             "(Ljava/lang/String;)Ljava/lang/Class;",
             &[JValue::Object(&name)],
         )?
         .l()?
-        .into();
+        .into())
+}
+
+/// Runs on the UI thread: registers the native methods of `NativeSurface` and asks it to put the
+/// `SurfaceView` under the WebView.
+fn attach_jni(env: &mut JNIEnv, activity: &JObject, webview: &JObject) -> jni::errors::Result<()> {
+    let loader = env
+        .call_method(activity, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])?
+        .l()?;
+    let class = load_class(env, &loader, NATIVE_SURFACE_CLASS)?;
     env.register_native_methods(
         &class,
         &[
@@ -177,28 +224,190 @@ fn attach_jni(env: &mut JNIEnv, activity: &JObject, webview: &JObject) -> jni::e
     Ok(())
 }
 
-fn intent_game(env: &mut JNIEnv, activity: &JObject) -> jni::errors::Result<Option<String>> {
-    let intent = env
-        .call_method(activity, "getIntent", "()Landroid/content/Intent;", &[])?
-        .l()?;
-    if intent.is_null() {
-        return Ok(None);
-    }
-    let key = env.new_string("game")?;
-    let value = env
-        .call_method(
-            &intent,
-            "getStringExtra",
-            "(Ljava/lang/String;)Ljava/lang/String;",
-            &[JValue::Object(&key)],
+// ---- SystemBridge: the back button, the launch intent's game, `content://` documents ----
+
+const SYSTEM_BRIDGE_CLASS: &str = "it.domehub.emudome.platform.SystemBridge";
+
+/// What the document calls need from any thread: the VM, the activity (a `Context`) and the
+/// bridge class (loaded once through the app's class loader, which a native thread cannot reach).
+struct Java {
+    vm: JavaVM,
+    activity: GlobalRef,
+    bridge: GlobalRef,
+}
+
+static JAVA: Mutex<Option<Arc<Java>>> = Mutex::new(None);
+
+/// Who receives the back button; called after the lock is let go (a clone of the `Arc`).
+static BACK: Mutex<Option<Arc<dyn Fn() + Send + Sync>>> = Mutex::new(None);
+
+/// Registers the bridge's native method, keeps what [`with_java`] needs, adds the back callback,
+/// and returns the launch intent's game.
+fn attach_bridge(
+    env: &mut JNIEnv,
+    activity: &JObject,
+    loader: &JObject,
+) -> jni::errors::Result<Option<String>> {
+    let class = load_class(env, loader, SYSTEM_BRIDGE_CLASS)?;
+    env.register_native_methods(
+        &class,
+        &[NativeMethod {
+            name: "nativeBackPressed".into(),
+            sig: "()V".into(),
+            fn_ptr: native_back_pressed as *mut c_void,
+        }],
+    )?;
+    *JAVA.lock() = Some(Arc::new(Java {
+        vm: env.get_java_vm()?,
+        activity: env.new_global_ref(activity)?,
+        bridge: env.new_global_ref(&class)?,
+    }));
+    env.call_static_method(
+        &class,
+        "attach",
+        "(Landroid/app/Activity;)V",
+        &[JValue::Object(activity)],
+    )?;
+    let game = env
+        .call_static_method(
+            &class,
+            "startupGame",
+            "(Landroid/app/Activity;)Ljava/lang/String;",
+            &[JValue::Object(activity)],
         )?
         .l()?;
+    optional_string(env, game)
+}
+
+/// A Java `String` that may be null.
+fn optional_string(env: &mut JNIEnv, value: JObject) -> jni::errors::Result<Option<String>> {
     if value.is_null() {
         return Ok(None);
     }
-    let value = JString::from(value);
-    let game: String = env.get_string(&value)?.into();
-    Ok(Some(game))
+    Ok(Some(env.get_string(&JString::from(value))?.into()))
+}
+
+/// `SystemBridge.nativeBackPressed`, on the UI thread.
+extern "system" fn native_back_pressed(_env: JNIEnv, _class: JClass) {
+    let listener = BACK.lock().clone();
+    match listener {
+        Some(on_back) => on_back(),
+        None => log::info!("back pressed with no listener: ignored"),
+    }
+}
+
+/// Runs `call` with a JNI environment on this thread (attached for the call when it is not a
+/// Java thread), the activity and the bridge class. A Java exception is cleared and returned as
+/// the error, prefixed with `what`.
+fn with_java<T>(
+    what: &str,
+    call: impl FnOnce(&mut JNIEnv, &JObject, &JClass) -> jni::errors::Result<T>,
+) -> Result<T, String> {
+    let java = JAVA
+        .lock()
+        .clone()
+        .ok_or_else(|| format!("{what}: the activity is not attached yet"))?;
+    let mut env = java
+        .vm
+        .attach_current_thread()
+        .map_err(|e| format!("{what}: {e}"))?;
+    let bridge: &JClass = java.bridge.as_obj().into();
+    let result = call(&mut env, java.activity.as_obj(), bridge);
+    if result.is_err() {
+        clear_exception(&mut env);
+    }
+    result.map_err(|e| format!("{what}: {e}"))
+}
+
+/// The links of the documents a killed process left are removed once, at the first open.
+static LINKS_CLEANED: Once = Once::new();
+
+pub fn open_content(uri: &str, cache_dir: &Path) -> Result<ContentFile, ContentError> {
+    let (fd, name) = with_java("document", |env, activity, bridge| {
+        let juri = env.new_string(uri)?;
+        let args = [JValue::Object(activity), JValue::Object(&juri)];
+        let fd = env
+            .call_static_method(
+                bridge,
+                "openDocument",
+                "(Landroid/content/Context;Ljava/lang/String;)I",
+                &args,
+            )?
+            .i()?;
+        let name = env
+            .call_static_method(
+                bridge,
+                "displayName",
+                "(Landroid/content/Context;Ljava/lang/String;)Ljava/lang/String;",
+                &args,
+            )?
+            .l()?;
+        Ok((fd, optional_string(env, name)?))
+    })
+    .map_err(ContentError::Unreadable)?;
+    if fd < 0 {
+        return Err(ContentError::Unreadable(format!(
+            "the provider did not open {uri} (logcat, tag EmuDome)"
+        )));
+    }
+    // SAFETY: `detachFd` handed the descriptor over: nothing else owns or closes it.
+    let file = fs::File::from(unsafe { OwnedFd::from_raw_fd(fd) });
+    let meta = file
+        .metadata()
+        .map_err(|e| ContentError::Unreadable(format!("{uri}: {e}")))?;
+    if !meta.is_file() {
+        return Err(ContentError::NotLocal);
+    }
+    // What the core does with the path: open it again. A provider whose file cannot be opened
+    // again this way is told now, not by the core.
+    let source = fd_path(fd);
+    fs::File::open(&source)
+        .map_err(|e| ContentError::Unreadable(format!("{}: {e}", source.display())))?;
+
+    LINKS_CLEANED.call_once(|| {
+        // Only links live there (removed, never followed); a missing folder is the usual case.
+        let leftovers = cache_dir.join(LINKS_DIR);
+        if let Err(e) = fs::remove_dir_all(&leftovers) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                log::warn!("old document links in {}: {e}", leftovers.display());
+            }
+        }
+    });
+    let dir = link_dir(cache_dir, fd);
+    let link = dir.join(link_name(name.as_deref()));
+    fs::create_dir_all(&dir)
+        .and_then(|()| std::os::unix::fs::symlink(&source, &link))
+        .map_err(|e| ContentError::Unreadable(format!("{}: {e}", link.display())))?;
+    log::info!("document {uri} opened as {}", link.display());
+    Ok(ContentFile {
+        path: link.clone(),
+        name,
+        _hold: Box::new(OpenDocument {
+            link,
+            dir,
+            _file: file,
+        }),
+    })
+}
+
+/// A document opened for a game: the link is removed before the descriptor closes, so a new
+/// descriptor with the same number never finds it.
+struct OpenDocument {
+    link: PathBuf,
+    dir: PathBuf,
+    _file: fs::File,
+}
+
+impl Drop for OpenDocument {
+    fn drop(&mut self) {
+        if let Err(e) = fs::remove_file(&self.link) {
+            log::warn!("document link {}: {e}", self.link.display());
+        }
+        // Empty now; if it is not, the next process's first open removes it.
+        if let Err(e) = fs::remove_dir(&self.dir) {
+            log::warn!("document folder {}: {e}", self.dir.display());
+        }
+    }
 }
 
 /// `SurfaceHolder.Callback.surfaceChanged`: the first call after a creation hands

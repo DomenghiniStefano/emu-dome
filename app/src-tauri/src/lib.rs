@@ -17,6 +17,7 @@ mod bench;
 mod bench;
 mod bios;
 mod closing;
+mod cloud;
 mod commands;
 #[cfg(test)]
 mod contract;
@@ -345,6 +346,10 @@ pub fn run() {
                 .map_or_else(emudome_platform::native_video_default, |p| {
                     p == VideoPath::Native
                 });
+            // Android: the back button (as the controller's menu button / B) and the launch
+            // intent's game; nothing on the desktop.
+            let back_app = app.handle().clone();
+            emudome_platform::attach_system(&ui, move || hotkeys::back_button(&back_app));
             let surface = video::SurfaceSettings::from_tuning(&tuning.video);
             let gpu = video::GpuService::new();
             let mut native_error = None;
@@ -441,6 +446,7 @@ pub fn run() {
                 bench: bench.clone(),
             });
             app.manage(effects::open(app));
+            app.manage(cloud::Cloud::default());
             effects::apply(app.handle());
             // After the library is read, before any game opens (opening waits for it).
             migration::start(app);
@@ -536,6 +542,9 @@ pub fn run() {
             first_run::first_run_steps,
             first_run::first_run_done,
             health::diagnostics,
+            cloud::cloud_status,
+            cloud::cloud_sign_in,
+            cloud::cloud_sign_out,
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")

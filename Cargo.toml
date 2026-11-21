@@ -4,6 +4,7 @@ members = [
     "crates/libretro-sys",
     "crates/emudome-core",
     "crates/emudome-platform",
+    "crates/emudome-sync",
     "app/src-tauri",
 ]
 # The hardware-rendering spike (Trello #16) is its own workspace, with its own Cargo.lock and
@@ -20,6 +21,7 @@ repository = "https://github.com/DomenghiniStefano/emu-dome"
 libretro-sys = { path = "crates/libretro-sys" }
 emudome-core = { path = "crates/emudome-core" }
 emudome-platform = { path = "crates/emudome-platform" }
+emudome-sync = { path = "crates/emudome-sync" }
 
 [profile.dev]
 # File and line in backtraces and panics, without the full debug info: a smaller target/ and

@@ -5,7 +5,8 @@
 //! Options:
 //! - `--opt key=value` (repeatable): a core option answered to `GET_VARIABLE`,
 //!   e.g. `--opt citra_graphics_api=Software` for Azahar;
-//! - `--secs N`: measure the 1x and Max speeds over N seconds each (default 1);
+//! - `--secs N`: measure the 1x, Max and 2x speeds over N seconds each (default 1);
+//! - `--max-secs N`: run Max for N seconds instead (what a long fast forward leaves behind);
 //! - `--png <file>`: write the last frame before the state tests as a PNG;
 //! - `--press-a N`: before measuring, tap A N times, one tap per second (to leave a title screen);
 //! - `--live key=value` (repeatable): after the 1x measure, change a core option while the
@@ -68,6 +69,7 @@ struct Args {
     rom: String,
     opts: Vec<(String, String)>,
     secs: f64,
+    max_secs: Option<f64>,
     png: Option<std::path::PathBuf>,
     press_a: u32,
     rewind: Option<u32>,
@@ -138,6 +140,12 @@ fn measure_timing(
         .take()
         .unwrap_or_default();
     anyhow::ensure!(!times.is_empty(), "no frame recorded");
+    // Each frame over 100 ms (a quick save, mostly) and the work of the 6 frames after it: what
+    // the save costs after it is taken (Trello #98).
+    for (i, &w) in times.iter().enumerate().filter(|(_, &w)| w > 100_000) {
+        let after: Vec<u32> = times.iter().skip(i + 1).take(6).copied().collect();
+        println!("timing: frame {i}: {w} µs, then {after:?} µs");
+    }
     times.sort_unstable();
     let at = |q: f64| times[((times.len() - 1) as f64 * q).round() as usize];
     let mean = times.iter().map(|&t| f64::from(t)).sum::<f64>() / times.len() as f64;
@@ -186,6 +194,7 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut positional = Vec::new();
     let mut opts = Vec::new();
     let mut secs = 1.0;
+    let mut max_secs = None;
     let mut png = None;
     let mut press_a = 0;
     let mut rewind = None;
@@ -213,6 +222,7 @@ fn parse_args() -> anyhow::Result<Args> {
                 opts.push((k.to_owned(), v.to_owned()));
             }
             "--secs" => secs = value()?.parse()?,
+            "--max-secs" => max_secs = Some(value()?.parse()?),
             "--png" => png = Some(value()?.into()),
             "--press-a" => press_a = value()?.parse()?,
             "--rewind" => rewind = Some(value()?.parse()?),
@@ -259,6 +269,7 @@ fn parse_args() -> anyhow::Result<Args> {
         rom,
         opts,
         secs,
+        max_secs,
         png,
         press_a,
         rewind,
@@ -691,7 +702,7 @@ pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
     session.send(Command::SetSpeed(Speed::Max));
     let t = Instant::now();
     let f0 = session.shared().stats.lock().frames;
-    std::thread::sleep(measure);
+    std::thread::sleep(args.max_secs.map_or(measure, Duration::from_secs_f64));
     let f1 = session.shared().stats.lock().frames;
     println!(
         "Max: {:.0} frames/s over {:.1} s",
@@ -699,11 +710,30 @@ pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
         t.elapsed().as_secs_f64()
     );
 
+    // 2x: the first second's rate 1.2 s in, then the average over the same window as 1x, from
+    // the frame counter (Trello #98: the first second alone read as a slow 2x).
+    *session.shared().frame_times.lock() = Some(Vec::new());
     session.send(Command::SetSpeed(Speed::Factor(2.0)));
-    std::thread::sleep(Duration::from_millis(1200));
+    let t = Instant::now();
+    let f0 = session.shared().stats.lock().frames;
+    let early = Duration::from_millis(1200);
+    std::thread::sleep(early);
+    let first_second = session.shared().stats.lock().emu_fps;
+    std::thread::sleep(measure.saturating_sub(early));
+    let f1 = session.shared().stats.lock().frames;
+    let times = session
+        .shared()
+        .frame_times
+        .lock()
+        .take()
+        .unwrap_or_default();
     println!(
-        "2x: emulated fps {:.1}",
-        session.shared().stats.lock().emu_fps
+        "2x: {:.1} frames/s over {:.1} s (first second {first_second:.1}, last second {:.1}); work per frame: max {} µs, {} frames over 8.3 ms",
+        (f1 - f0) as f64 / t.elapsed().as_secs_f64(),
+        t.elapsed().as_secs_f64(),
+        session.shared().stats.lock().emu_fps,
+        times.iter().max().copied().unwrap_or(0),
+        times.iter().filter(|&&w| w > 8_333).count(),
     );
     session.send(Command::SetSpeed(Speed::Factor(1.0)));
 
