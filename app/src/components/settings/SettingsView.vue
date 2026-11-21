@@ -10,10 +10,11 @@
 // settingsPage.ts's.
 // Controller: the shell's nav scope; L1 / R1 change level (this section's own `tab`, nav.ts
 // `useNavSection`).
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Info } from '@lucide/vue'
-import type { SettingEntry, SettingRecent, SettingsSchema } from '@/emu'
+import type { ConsoleId, SettingEntry, SettingRecent, SettingsSchema, SettingsScope } from '@/emu'
+import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
 import type { GameFocus } from '@/lib/gameDetails'
 import { useNavSection } from '@/nav'
@@ -98,6 +99,21 @@ function openRecent(r: SettingRecent) {
 
 const root = ref<HTMLElement | null>(null)
 useNavSection(root, { tab: scopeBar.tab })
+
+// `screens.custom` (C09): the screens editor over the whole window, at the page's scope; closed,
+// the focus goes back to the row's button.
+const editing = ref<{ scope: SettingsScope; console: ConsoleId } | null>(null)
+let editOpener: HTMLElement | null = null
+function editScreens() {
+  const s = scope.value
+  if (!('console' in s)) return
+  editOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  editing.value = { scope: s, console: s.console }
+}
+function closeEditor() {
+  editing.value = null
+  void nextTick(() => editOpener?.focus())
+}
 
 onMounted(async () => {
   schema.value = await loadSchema()
@@ -186,6 +202,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           @reset="store.reset(e.key)"
           @open="emit('openControls')"
           @choose="store.chooseBackground"
+          @edit="editScreens"
         />
       </SettingsSection>
 
@@ -206,5 +223,13 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         {{ t('settingsUi.hint') }}
       </div>
     </SectionPage>
+
+    <ScreenEditor
+      v-if="editing"
+      :console="editing.console"
+      :scope="editing.scope"
+      :status="null"
+      @close="closeEditor"
+    />
   </div>
 </template>

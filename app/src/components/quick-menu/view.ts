@@ -17,13 +17,16 @@ export const QuickMenuView = {
   Speed: 'speed',
   /** G11: the confirmation of «Riavvia», in place of the menu. */
   Restart: 'restart',
+  /** C09 from G09 «Personalizza gli schermi»: the screens editor over the game, in place of the
+   * menu (`screen-editor/ScreenEditor.vue`). */
+  ScreenEditor: 'screenEditor',
 } as const
 export type QuickMenuView = (typeof QuickMenuView)[keyof typeof QuickMenuView]
 
 /** A page with a title under the back button. */
 export type SubPage = Exclude<
   QuickMenuView,
-  typeof QuickMenuView.Home | typeof QuickMenuView.Restart
+  typeof QuickMenuView.Home | typeof QuickMenuView.Restart | typeof QuickMenuView.ScreenEditor
 >
 
 /** The title (message key) of each page. */
@@ -36,11 +39,15 @@ export const SUB_PAGE_TITLE: Record<SubPage, string> = {
 }
 
 export function isSubPage(view: QuickMenuView): view is SubPage {
-  return view !== QuickMenuView.Home && view !== QuickMenuView.Restart
+  return (
+    view !== QuickMenuView.Home &&
+    view !== QuickMenuView.Restart &&
+    view !== QuickMenuView.ScreenEditor
+  )
 }
 
-/** The settings pages whose Session rows the quick menu reads. */
-export const SESSION_PAGES = ['video', 'fx', 'audio', 'speed', 'saves', 'touch']
+/** The settings pages whose Session rows the quick menu reads (`screens`: the layout card). */
+export const SESSION_PAGES = ['video', 'fx', 'screens', 'audio', 'speed', 'saves', 'touch']
 
 /**
  * The setting rows each page shows at the Session level (those the schema shows: `touch.topac`
@@ -62,4 +69,6 @@ export const FocusMark = {
   Shortcuts: 'data-shortcuts',
   ChosenSlot: 'data-qm-chosen',
   MoreSlots: 'data-qm-more',
+  /** G09's «Personalizza gli schermi»: the focus comes back to it from the editor. */
+  Customise: 'data-qm-customise',
 } as const

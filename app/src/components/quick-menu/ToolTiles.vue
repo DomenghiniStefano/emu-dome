@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The tools on desktop (Strumenti): one tile each; those with no backend yet are disabled and
-// named in the note under them.
+// The tools on desktop (Strumenti): one tile each; those that cannot be used are disabled and
+// the note under them says why.
 import { useI18n } from 'vue-i18n'
 import { Card, CardVariant } from '@/components/ui/card'
 import type { Tool } from './tools'
@@ -10,8 +10,8 @@ defineProps<{
   tools: Tool[]
   /** Six tools (NDS, 3DS): three columns. */
   threeColumns: boolean
-  /** The note about the tools not available yet; '' with none. */
-  notYet: string
+  /** Why the disabled tools cannot be used; '' with none. */
+  note: string
 }>()
 defineEmits<{ run: [Tool, Event] }>()
 
@@ -36,6 +36,6 @@ const { t } = useI18n()
         {{ t(x.label) }}
       </Card>
     </div>
-    <span v-if="notYet" class="text-caption text-ink-muted">{{ notYet }}</span>
+    <span v-if="note" class="text-caption text-ink-muted">{{ note }}</span>
   </LabelledBlock>
 </template>

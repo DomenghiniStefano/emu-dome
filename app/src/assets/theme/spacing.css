@@ -165,6 +165,11 @@
   /* Its main action's width on the desktop. */
   --spacing-menu-main: 260px;
 
+  /* DS / 3DS screens (Trello #28, the owner's mockup of 2026-11-21): the C09 editor's side panel,
+     the G15 «Coperchio chiuso» card. */
+  --spacing-editor-panel: 320px;
+  --spacing-lid-card: 400px;
+
   /* Controls: a remap row's capture field, a shortcut's key column, a shortcut chip at its
      narrowest, a shortcut row's action column. */
   --spacing-capture: 30px;

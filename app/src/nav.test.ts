@@ -14,6 +14,7 @@ import {
   useNavSection,
   type GridStep,
 } from './nav'
+import type { NavAction } from './emu'
 
 const rects = new WeakMap<Element, DOMRect>()
 const place = (el: Element, x: number, y: number) => rects.set(el, new DOMRect(x, y, 10, 10))
@@ -201,6 +202,24 @@ describe('the scope tree', () => {
     // No `tab` of its own: L1 / R1 reach the screen.
     dispatchNav('next')
     expect(screenTab).toHaveBeenCalledWith(1)
+  })
+
+  it('a scope that owns its steps sees each one first, and leaves the rest to nav.ts', () => {
+    const back = vi.fn()
+    // Takes Select and the left arrow, nothing else.
+    const own = vi.fn((a: NavAction) => (a === 'select' || a === 'left' ? undefined : false))
+    part(
+      root => useNavScope(root, { back, own }),
+      () => [h('button', { id: 'a' })],
+    )
+    dispatchNav('select')
+    dispatchNav('left')
+    expect(own).toHaveBeenCalledWith('select')
+    expect(back).not.toHaveBeenCalled()
+    // Not taken: nav.ts goes on (B reaches `back`).
+    dispatchNav('back')
+    expect(own).toHaveBeenLastCalledWith('back')
+    expect(back).toHaveBeenCalledOnce()
   })
 
   it('a dialog above a section ends the bubbling: the screen behind it gets nothing', () => {

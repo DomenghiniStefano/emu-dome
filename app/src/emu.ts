@@ -6,6 +6,7 @@ import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { BiosStatus } from '@/generated/BiosStatus'
 import type { Button } from '@/generated/Button'
 import type { ClosingProgress } from '@/generated/ClosingProgress'
+import type { ConsoleId } from '@/generated/ConsoleId'
 import type { CoverKind } from '@/generated/CoverKind'
 import type { EmuEvent } from '@/generated/EmuEvent'
 import type { ErrorCode } from '@/generated/ErrorCode'
@@ -236,6 +237,15 @@ export const emu = {
      * removing it is `settings.reset('screens.custom', scope)`. */
     setCustom: (scope: SettingsScope, layout: CustomLayout) =>
       invoke<void>('screens_set_custom', { scope, layout }),
+    /** The editor's «Parti da»: where `layout` puts a `console` game's screens in a window of
+     * `width` × `height`, composed by Rust (gap and ratio as `scope` resolves them). */
+    presetCustom: (
+      scope: SettingsScope,
+      console: ConsoleId,
+      layout: ScreenLayoutId,
+      width: number,
+      height: number,
+    ) => invoke<CustomLayout>('screens_preset_custom', { scope, console, layout, width, height }),
     onChanged: (cb: (e: ScreenStatus) => void): Promise<UnlistenFn> =>
       listen<ScreenStatus>('emu://screens', e => cb(e.payload)),
   },

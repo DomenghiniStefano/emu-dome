@@ -12,6 +12,7 @@ import { useFirstRun } from '@/components/first-run/useFirstRun'
 import { useGameKeys } from '@/components/game/useGameKeys'
 import { useGameLaunch } from '@/components/game/useGameLaunch'
 import { useGameSession } from '@/components/game/useGameSession'
+import { useScreenStatus } from '@/components/game/useScreenStatus'
 import { useScreenTouch } from '@/components/game/useScreenTouch'
 import { useShellEvents } from '@/components/shell/useShellEvents'
 import { createToasts, provideToasts } from '@/composables/useToasts'
@@ -28,6 +29,7 @@ import QuickMenu from '@/components/quick-menu/QuickMenu.vue'
 import ToastStack from '@/components/toasts/ToastStack.vue'
 import TouchControls from '@/components/game/TouchControls.vue'
 import GameHud from '@/components/game/GameHud.vue'
+import LidClosedCard from '@/components/game/LidClosedCard.vue'
 
 // The toasts: provided to every screen (useToasts / useErrorSink) and the sink of lib/errors.ts
 // from the start, so a failure before the stack is mounted waits in the list instead of being lost.
@@ -43,6 +45,8 @@ const keys = useGameKeys(session)
 const drop = useDropTarget(game, toast)
 const events = useShellEvents(session, toast, drop.listen)
 const closing = useClosing(toast)
+// NDS / 3DS: the layout shown, swapped, the lid (quick menu, G15).
+const screens = useScreenStatus(toast)
 
 // Where the shell is (components/shell/route.ts): kept while a game is open, so closing it comes
 // back here (a game opened from its details comes back to them).
@@ -68,6 +72,7 @@ onMounted(async () => {
   await Promise.all([
     settle(events.listen()),
     settle(closing.listen()),
+    settle(screens.listen()),
     settle(decideFirstRun()),
     settle(loadVideoMode()),
     settle(session.loadDeviceState()),
@@ -114,6 +119,7 @@ onMounted(async () => {
       :shoulders="game.consoleId !== 'gb' && game.consoleId !== 'gbc'"
       @menu="session.setMenu(true)"
     />
+    <LidClosedCard v-if="screens.status.value?.lidClosed && !menuOpen" @open="screens.toggleLid" />
     <QuickMenu
       v-if="menuOpen && !flow.ending"
       :game="game"
@@ -125,6 +131,7 @@ onMounted(async () => {
       :undo-load-slot="settings.undoAllowed ? session.undoLoadSlot.value : null"
       :muted="session.muted.value"
       :fullscreen="session.fullscreen.value"
+      :screens="screens.status.value"
       @video-mode="setVideoMode"
       @resume="session.setMenu(false)"
       @speed="session.setSpeed"
@@ -137,6 +144,9 @@ onMounted(async () => {
       @fullscreen="session.toggleFullscreen"
       @screenshot="session.screenshot"
       @inset="session.setInset"
+      @swap-screens="screens.swap"
+      @toggle-lid="screens.toggleLid"
+      @layout="screens.setLayout"
     />
   </template>
 

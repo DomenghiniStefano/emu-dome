@@ -62,6 +62,8 @@ const emit = defineEmits<{
   open: []
   /** A file row with a backend (`video.surroundImg`): open its picker at the page's scope. */
   choose: []
+  /** A screen layout (`screens.custom`): open the C09 screens editor at the page's scope. */
+  edit: []
 }>()
 
 const { t } = useI18n()
@@ -70,6 +72,8 @@ const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
 const disabled = computed(() => state.value.disabled)
+/** A screen layout is edited for one two-screen console (or one of its games) at a time. */
+const twoScreens = computed(() => props.console === 'nds' || props.console === '3ds')
 
 function set(v: SettingValue) {
   if (!disabled.value) emit('set', v)
@@ -172,6 +176,16 @@ async function choose() {
           @click="emit('open')"
         >
           {{ t('settingsUi.openControls') }}
+        </Button>
+        <!-- screen layout: edited in the C09 screens editor -->
+        <Button
+          v-else-if="kind.type === 'screenLayout'"
+          :variant="ButtonVariant.Soft"
+          :fade="ButtonFade.None"
+          :disabled="disabled || compact || !twoScreens"
+          @click="emit('edit')"
+        >
+          {{ buttonText }}
         </Button>
         <SettingFileAction
           v-else-if="kind.type === 'file' || kind.type === 'action'"

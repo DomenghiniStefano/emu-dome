@@ -36,6 +36,12 @@ interface Scope {
   back?: Handler<[]>
   /** L1 / R1 (`prev` / `next`): the screen's own tabs or levels. */
   tab?: Handler<[dir: -1 | 1]>
+  /**
+   * Every step, before nav.ts acts on it, for a screen that works by steps of its own (the C09
+   * screens editor: the d-pad moves a screen, Select folds its panel, the right stick resizes).
+   * Asked only when its scope is the one the focus moves in; `false`: nav.ts goes on as usual.
+   */
+  own?: Handler<[action: NavAction]>
   /** A scope keeps the focus inside its root; a section (false) only adds handlers. */
   contain: boolean
   /** The scopes registered inside this one, oldest first. */
@@ -305,8 +311,11 @@ export function activeScopeRoot(): HTMLElement | null {
 export function dispatchNav(action: NavAction) {
   showFocusRing()
   const path = activePath()
-  const root = movementScope(path)?.root.value
+  const scope = movementScope(path)
+  const root = scope?.root.value
   if (!root) return
+  if (scope.own && scope.own(action) !== false) return
+  // `select` and the right stick (`stick*`) mean something only to a scope that owns them.
   switch (action) {
     case 'back':
       bubble(path, s => (s.back ? s.back() : false))
@@ -461,18 +470,27 @@ export function keyToNav(e: KeyboardEvent): NavAction | null {
 /**
  * Registers a screen for controller/keyboard navigation while it is mounted.
  * `autofocus` focuses its `data-nav-initial` element (or the first focusable) on mount;
- * `escape` makes Esc on the keyboard its `back` too (B = Esc).
+ * `escape` makes Esc on the keyboard its `back` too (B = Esc). `own` sees every step first while
+ * the focus moves in this scope (`Scope.own`).
  */
 export function useNavScope(
   root: Ref<HTMLElement | null>,
   options: {
     back?: Handler<[]>
     tab?: Handler<[dir: -1 | 1]>
+    own?: Handler<[action: NavAction]>
     autofocus?: boolean
     escape?: boolean
   } = {},
 ) {
-  register({ root, back: options.back, tab: options.tab, contain: true, children: [] })
+  register({
+    root,
+    back: options.back,
+    tab: options.tab,
+    own: options.own,
+    contain: true,
+    children: [],
+  })
   onMounted(() => {
     if (options.autofocus && root.value) focusInitial(root.value)
   })

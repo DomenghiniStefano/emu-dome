@@ -11,11 +11,14 @@ export function trialNames(
 ): string[] {
   return [...rows]
     .filter(r => r.source === 'session')
-    .map(r =>
-      entry(r.key)?.kind.type === 'choice' && typeof r.value === 'string'
+    .map(r => {
+      // G09's layout card keeps the layout a game opens with as the first of `screens.cycle`.
+      if (r.key === 'screens.cycle' && Array.isArray(r.value) && r.value[0])
+        return msg.option(r.key, r.value[0])
+      return entry(r.key)?.kind.type === 'choice' && typeof r.value === 'string'
         ? msg.option(r.key, r.value)
-        : msg.name(r.key),
-    )
+        : msg.name(r.key)
+    })
 }
 
 /** The title over the changes: «1 modifica in prova: …» or «N modifiche in prova: …». */
