@@ -1,11 +1,14 @@
-// The keyboard's fixed shortcuts in game: the one table of them. App.vue carries them out,
-// C01 lists them under «Tasti della tastiera», C03 on the keyboard's tab, and the G12 overlay
-// will read them from here too. The same table is written in docs/combo-tasti.md, section 5.
+// The keyboard's fixed shortcuts in game. The one table is Rust's (`KEYBOARD_SHORTCUTS`,
+// crates/emudome-core/src/keyboard.rs), which also routes the keys in game; it reaches the
+// interface generated (generated/keyboard-shortcuts.json). C01 lists them under «Tasti della
+// tastiera», C03 on the keyboard's tab, and the G12 overlay will read them from here too. The
+// same table is written in docs/combo-tasti.md, section 5.
 //
 // The controller's shortcuts are `DEFAULT_COMBOS` in Rust (crates/emudome-core/src/hotkeys.rs);
 // a key does what the hotkey with the same id does, plus fullscreen, which only the keyboard
 // (and the quick menu) has.
 import type { HotkeyId, HotkeyStatus } from '@/emu'
+import table from '@/generated/keyboard-shortcuts.json'
 
 /** What a key does: a controller hotkey's action, or fullscreen (keyboard only). */
 export type KeyAction = HotkeyId | 'fullscreen'
@@ -23,19 +26,7 @@ export interface KeyShortcut {
  * Backspace rewind (held; toggled with `a11y.toggle`) · F9 FPS · F11 full screen · F12 screenshot.
  * F1 and F4 act on the current slot, the one F2 / F3 and L3 + ← → move.
  */
-export const KEYBOARD_SHORTCUTS: readonly KeyShortcut[] = [
-  { code: 'Escape', action: 'menu', status: 'active' },
-  { code: 'F1', action: 'save', status: 'active' },
-  { code: 'F4', action: 'load', status: 'active' },
-  { code: 'F2', action: 'prev_slot', status: 'active' },
-  { code: 'F3', action: 'next_slot', status: 'active' },
-  { code: 'Tab', action: 'ff_hold', status: 'active' },
-  // Select's default key moved from Backspace to the right Shift (bindings.rs, Trello #42).
-  { code: 'Backspace', action: 'rewind', status: 'active' },
-  { code: 'F9', action: 'fps', status: 'active' },
-  { code: 'F11', action: 'fullscreen', status: 'active' },
-  { code: 'F12', action: 'screenshot', status: 'active' },
-]
+export const KEYBOARD_SHORTCUTS = table as readonly KeyShortcut[]
 
 /** The working shortcut of a key, if it has one. */
 export function keyShortcut(code: string): KeyShortcut | undefined {

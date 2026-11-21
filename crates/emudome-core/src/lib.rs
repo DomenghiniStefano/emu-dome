@@ -16,6 +16,7 @@ pub mod audio;
 pub mod bindings;
 pub mod bios;
 pub mod close_flow;
+pub mod console;
 pub mod contract;
 pub mod core_profile;
 pub mod effects;
@@ -24,6 +25,7 @@ pub mod game_key;
 pub mod hotkeys;
 pub mod hw_render;
 pub mod input;
+pub mod keyboard;
 pub mod library;
 pub mod migration;
 pub mod nds;
@@ -33,16 +35,18 @@ pub mod screens;
 pub mod screenshot;
 pub mod settings;
 pub mod speed_audio;
-pub mod tuning;
+#[doc(hidden)]
+pub mod testing;
 pub mod video_sink;
 
 pub use atomic::write_atomic;
+pub use console::ConsoleId;
 pub use core::{GameFiles, StartError};
 pub use error::ErrorCode;
 pub use frame::Frame;
 pub use game_key::GameKey;
 pub use session::{
-    core_needs_restart, has_auto_save, slot_infos, Closed, Command, CoreOptionInfo, Event,
-    ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, VideoSetup, AUTO_SLOT,
-    CLOSE_TIMEOUT,
+    core_needs_restart, has_auto_save, slot_infos, Closed, Command, Core, CoreInfo, CoreOptionInfo,
+    Event, ExitWrites, Session, SessionOptions, Shared, SlotInfo, Speed, Stats, VideoSetup,
+    AUTO_SLOT, CLOSE_TIMEOUT,
 };

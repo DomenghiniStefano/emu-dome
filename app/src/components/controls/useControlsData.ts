@@ -1,6 +1,6 @@
 // What the Controls section reads while it is open: the settings schema, the `pad` page at
 // «Tutti i giochi» (reloaded when a `pad.*` setting changes), the connected controllers (kept up
-// to date by their events) and their live state (`emu://pad-state`, watched only meanwhile).
+// to date by their events) and their live state (`emu://gamepad-state`, watched only meanwhile).
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { emu, type PadInfo, type PadState, type SettingRow, type SettingsSchema } from '@/emu'
 import { report } from '@/lib/errors'

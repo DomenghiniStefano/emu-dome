@@ -20,7 +20,7 @@ Conventions:
 | Touch controls | Fixed overlay: d-pad (8-way, deadzone 0.25), A/B, L/R, Start/Select, menu button. Positions in CSS, no settings | `app/src/components/game/TouchControls.vue` |
 | Controller routing | Pure `Router::step`; `Bindings { modifier, combos }` with `DEFAULT_MODIFIER = L3` and `DEFAULT_COMBOS`; Guide toggles the menu; menu navigation with repeat | `crates/emudome-core/src/hotkeys.rs`, `docs/combo-tasti.md` |
 | Controller mapping | SDL3, positional RetroArch-style (right face button = A). Mask merged from keyboard / gamepad / touch | `app/src-tauri/src/gamepad.rs`, `crates/emudome-core/src/input.rs` |
-| Keyboard | Fixed keys in the webview (`input` command) | `app/src/App.vue` |
+| Keyboard | The webview forwards raw keys (`key` command); Rust routes them: fixed shortcuts and the game keys of `pad.remap` | `crates/emudome-core/src/keyboard.rs`, `app/src-tauri/src/hotkeys.rs` |
 | Video | Two paths: native wgpu under a transparent webview, or canvas via `emu://frame`. Software frames only (RGBA copy) | `app/src-tauri/src/video.rs`, `NATIVE_VIDEO_DEFAULT` in `emudome-platform` |
 | Audio | cpal, linear resampling, ±0.5 % queue correction, muted when speed ≠ 1× | `app/src-tauri/src/audio.rs` |
 | Core options | `GET_VARIABLE` → `false`; `SET_VARIABLES` accepted and ignored. No `SET_CORE_OPTIONS_V2`, no `SET_HW_RENDER`, no pointer, no rumble, no sensors | `crates/emudome-core/src/callbacks.rs` |
@@ -220,8 +220,8 @@ position [P6]. AetherSX2/NetherSX2 and Azahar Android: in-app drag editors (**to
   (SDL has an Android Java layer: integration with Tauri's activity **to verify**) or read `KeyEvent`/`MotionEvent`
   in the Kotlin plugin and pass them to Rust. The mapping model is the same either way; the input backend is a
   `emudome-platform` concern.
-- **Keyboard**: today it goes through the webview (`input` command), which loses keys while focus is elsewhere
-  and cannot see raw scancodes reliably. Moving keyboard capture to Rust (window events) is **to verify** with
+- **Keyboard**: today the webview receives the keys and forwards them raw to Rust (`key` command, routed in
+  `emudome_core::keyboard`), so it still loses keys while focus is elsewhere and cannot see raw scancodes reliably. Moving keyboard capture to Rust (window events) is **to verify** with
   Tauri's child-webview setup; the mapping model does not depend on it.
 - **Steam Input** can remap a pad before we see it; we cannot detect a Steam remap. Document it, do not fight it.
 

@@ -2,6 +2,6 @@
 import type { PadState } from "./PadState";
 
 /**
- * Payload of `emu://pad-state`.
+ * Payload of `emu://gamepad-state`.
  */
 export type PadStates = { pads: Array<PadState>, };

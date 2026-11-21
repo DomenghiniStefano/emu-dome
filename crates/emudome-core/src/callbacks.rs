@@ -534,22 +534,22 @@ unsafe fn environment_in(slot: &SlotState, raw: c_uint, data: *mut c_void) -> bo
         }
         RETRO_ENVIRONMENT_SET_CORE_OPTIONS => define(
             slot,
-            definitions_v1(data as *const retro_core_option_definition),
+            definitions(data as *const retro_core_option_definition),
         ),
         RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL => {
             let intl = data as *const retro_core_options_intl;
-            !intl.is_null() && define(slot, definitions_v1((*intl).us))
+            !intl.is_null() && define(slot, definitions((*intl).us))
         }
         RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2 => {
             let opts = data as *const retro_core_options_v2;
-            !opts.is_null() && define(slot, definitions_v2((*opts).definitions))
+            !opts.is_null() && define(slot, definitions((*opts).definitions))
         }
         RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL => {
             let intl = data as *const retro_core_options_v2_intl;
             if intl.is_null() || (*intl).us.is_null() {
                 return false;
             }
-            define(slot, definitions_v2((*(*intl).us).definitions))
+            define(slot, definitions((*(*intl).us).definitions))
         }
         RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE => {
             if data.is_null() {
@@ -620,29 +620,53 @@ unsafe fn values(
     list.iter().map_while(|v| c_string(v.value)).collect()
 }
 
-/// `SET_CORE_OPTIONS` (v1): an array of definitions ending with a null key.
-unsafe fn definitions_v1(mut d: *const retro_core_option_definition) -> Vec<OptionDef> {
-    let mut defs = Vec::new();
-    while !d.is_null() && !(*d).key.is_null() {
-        if let Some(key) = c_string((*d).key) {
-            defs.push(
-                OptionDef::new(key, values(&(*d).values), c_string((*d).default_value))
-                    .with_label(c_string((*d).desc)),
-            );
-        }
-        d = d.add(1);
-    }
-    defs
+/// The fields a core option definition has in both layouts: v1 (`SET_CORE_OPTIONS`) and v2
+/// (`SET_CORE_OPTIONS_V2`, the same with categories, which the shell ignores for now).
+trait OptionDefinition {
+    fn key(&self) -> *const c_char;
+    fn desc(&self) -> *const c_char;
+    fn values(&self) -> &[retro_core_option_value; RETRO_NUM_CORE_OPTION_VALUES_MAX];
+    fn default_value(&self) -> *const c_char;
 }
 
-/// `SET_CORE_OPTIONS_V2`: same as v1 with categories, which the shell ignores for now.
-unsafe fn definitions_v2(mut d: *const retro_core_option_v2_definition) -> Vec<OptionDef> {
+impl OptionDefinition for retro_core_option_definition {
+    fn key(&self) -> *const c_char {
+        self.key
+    }
+    fn desc(&self) -> *const c_char {
+        self.desc
+    }
+    fn values(&self) -> &[retro_core_option_value; RETRO_NUM_CORE_OPTION_VALUES_MAX] {
+        &self.values
+    }
+    fn default_value(&self) -> *const c_char {
+        self.default_value
+    }
+}
+
+impl OptionDefinition for retro_core_option_v2_definition {
+    fn key(&self) -> *const c_char {
+        self.key
+    }
+    fn desc(&self) -> *const c_char {
+        self.desc
+    }
+    fn values(&self) -> &[retro_core_option_value; RETRO_NUM_CORE_OPTION_VALUES_MAX] {
+        &self.values
+    }
+    fn default_value(&self) -> *const c_char {
+        self.default_value
+    }
+}
+
+/// An array of definitions (v1 or v2) ending with a null key.
+unsafe fn definitions<D: OptionDefinition>(mut d: *const D) -> Vec<OptionDef> {
     let mut defs = Vec::new();
-    while !d.is_null() && !(*d).key.is_null() {
-        if let Some(key) = c_string((*d).key) {
+    while !d.is_null() && !(*d).key().is_null() {
+        if let Some(key) = c_string((*d).key()) {
             defs.push(
-                OptionDef::new(key, values(&(*d).values), c_string((*d).default_value))
-                    .with_label(c_string((*d).desc)),
+                OptionDef::new(key, values((*d).values()), c_string((*d).default_value()))
+                    .with_label(c_string((*d).desc())),
             );
         }
         d = d.add(1);

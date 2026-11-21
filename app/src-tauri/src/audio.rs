@@ -14,12 +14,12 @@ use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use emudome_core::audio::TEST_TONE_HZ;
-use emudome_core::tuning::{AudioBuffer, AudioTuning};
 use emudome_core::{ErrorCode, Shared};
 use parking_lot::Mutex;
 use serde::Serialize;
 
 use crate::health::{Part, SharedHealth};
+use crate::tuning::{AudioBuffer, AudioTuning};
 use crate::CurrentShared;
 
 /// The cpal stream is not `Send` on every platform: it lives on a thread of its own.

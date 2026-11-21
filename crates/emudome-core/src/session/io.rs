@@ -200,6 +200,8 @@ pub(super) enum Io {
         thread: JoinHandle<()>,
     },
     Inline(Box<Worker>),
+    /// After [`Io::finish`]: the session's exit writes run on the emulation thread itself.
+    Finished,
 }
 
 impl Io {
@@ -233,6 +235,7 @@ impl Io {
                 }
             }
             Io::Inline(worker) => worker.run(job),
+            Io::Finished => log::error!("a write sent after the session's end was dropped"),
         }
     }
 

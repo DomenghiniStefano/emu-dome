@@ -28,8 +28,10 @@ import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
 import type { GameInfo } from '@/generated/app/GameInfo'
 import type { GameSaves } from '@/generated/app/GameSaves'
+import type { HotkeyEvent } from '@/generated/app/HotkeyEvent'
 import type { ImportCandidate } from '@/generated/app/ImportCandidate'
 import type { Library } from '@/generated/app/Library'
+import type { LibraryChanged } from '@/generated/app/LibraryChanged'
 import type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
 import type { PadInfo } from '@/generated/app/PadInfo'
 import type { PadState } from '@/generated/app/PadState'
@@ -46,8 +48,8 @@ import type { VideoMode } from '@/generated/app/VideoMode'
 
 // The bridge's types are generated from the Rust types (ts-rs) and the settings catalogue into
 // src/generated/ (crates/emudome-core/src/contract.rs, app/src-tauri/src/contract.rs): a `cargo
-// test` fails while they are stale. Never write one here by hand; the two below have no Rust
-// type the contract can reach yet (see their comments).
+// test` fails while they are stale. Never write one here by hand; the one below has no Rust
+// type the contract can reach yet (see its comment).
 export type { ActionStyle } from '@/generated/ActionStyle'
 export type { BackupReason } from '@/generated/BackupReason'
 export type { BindingTable } from '@/generated/BindingTable'
@@ -97,10 +99,12 @@ export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { FolderSaves } from '@/generated/app/FolderSaves'
 export type { GameInfo } from '@/generated/app/GameInfo'
 export type { GameSaves } from '@/generated/app/GameSaves'
+export type { HotkeyEvent } from '@/generated/app/HotkeyEvent'
 export type { ImportCandidate } from '@/generated/app/ImportCandidate'
 export type { Library } from '@/generated/app/Library'
 export type { LibraryFolder } from '@/generated/app/LibraryFolder'
 export type { LibraryGame } from '@/generated/app/LibraryGame'
+export type { LibraryChanged } from '@/generated/app/LibraryChanged'
 export type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
 export type { PadInfo } from '@/generated/app/PadInfo'
 export type { PadState } from '@/generated/app/PadState'
@@ -124,18 +128,6 @@ export type GamepadEvent = Pick<PadInfo, 'name'>
 
 /** Slot 0: the auto quick save («Salvataggio rapido automatico»). */
 export const AUTO_SLOT = 0
-
-/**
- * Payload of `emu://hotkey` (`HotkeyEvent` in src-tauri/src/gamepad.rs, which is compiled on the
- * desktop only, so the contract test cannot reach it yet): what a controller combo changed that
- * the interface shows. The combos themselves run in Rust.
- */
-export type HotkeyEvent =
-  | { kind: 'fps' }
-  | { kind: 'slot'; slot: number }
-  | { kind: 'speed'; speed: Speed }
-  | { kind: 'turbo'; held: boolean }
-  | { kind: 'paused'; paused: boolean }
 
 /**
  * One round of the canvas loop in bench mode (`WebviewFrame` in src-tauri/src/bench.rs, behind
@@ -187,7 +179,7 @@ export const emu = {
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
   loadState: (slot: number) => invoke<void>('load_state', { slot }),
   reset: () => invoke<void>('reset_game'),
-  /** Backspace / L3 + L2: rewind on (held, or toggled with `a11y.toggle`) or off. */
+  /** Rewind on or off (Backspace and L3 + L2 reach it in Rust, `key` and the controllers). */
   rewind: (on: boolean) => invoke<void>('rewind', { on }),
   /** F12, L3 + B, quick menu › Strumenti: PNG next to the saves (`screenshotSaved`). */
   screenshot: () => invoke<void>('screenshot'),
@@ -195,8 +187,12 @@ export const emu = {
   undoLoad: () => invoke<void>('undo_load'),
   /** «Salvato nello slot N · Annulla»: the slot gets back what it held (`saveUndone`). */
   undoSave: () => invoke<void>('undo_save'),
+  /** A game button from the touch controls. */
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
-  /** The page lost the focus: the game lets go of every keyboard button. */
+  /** A key (`KeyboardEvent.code`) for Rust to route in game: a game button or a shortcut. */
+  key: (code: string, pressed: boolean, repeat: boolean) =>
+    invoke<void>('key', { code, pressed, repeat }),
+  /** The page lost the focus: Rust lets go of every key (game buttons, fast forward, rewind). */
   releaseKeys: () => invoke<void>('release_keys'),
   /** The DS touch screen: the pointer at (x, y) in `area`; Rust maps it to the bottom screen. */
   pointer: (x: number, y: number, pressed: boolean, area: PointerArea) =>
@@ -257,8 +253,10 @@ export const emu = {
     setName: (id: GameId, name: string) => invoke<void>('library_set_name', { id, name }),
     onScan: (cb: (e: LibraryScanEvent) => void): Promise<UnlistenFn> =>
       listen<LibraryScanEvent>('library://scan', e => cb(e.payload)),
-    /** Something in the library changed (scan, cover, flags, play time): call `get` again. */
-    onChanged: (cb: () => void): Promise<UnlistenFn> => listen('library://changed', () => cb()),
+    /** What changed in the library: some games' rows (cover, flags, name, play time), or all of
+     * it (a scan, a folder removed). */
+    onChanged: (cb: (e: LibraryChanged) => void): Promise<UnlistenFn> =>
+      listen<LibraryChanged>('library://changed', e => cb(e.payload)),
     /** Files or folders dragged over the window: `over` while hovering, `drop` with the paths, `leave`. */
     onDragDrop: (
       cb: (e: { type: 'over' } | { type: 'drop'; paths: string[] } | { type: 'leave' }) => void,
@@ -305,7 +303,7 @@ export const emu = {
     done: () => invoke<void>('first_run_done'),
   },
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
-    listen<EmuEvent>('emu://event', e => cb(e.payload)),
+    listen<EmuEvent>('emu://session', e => cb(e.payload)),
   onMenu: (cb: () => void): Promise<UnlistenFn> => listen('emu://menu', () => cb()),
   onNav: (cb: (action: NavAction) => void): Promise<UnlistenFn> =>
     listen<{ action: NavAction }>('emu://nav', e => cb(e.payload.action)),
@@ -354,6 +352,6 @@ export const emu = {
     bindings: (family: PadFamily, scope: SettingsScope) =>
       invoke<ControlsBindings>('controls_bindings', { family, scope }),
     onPadState: (cb: (pads: PadState[]) => void): Promise<UnlistenFn> =>
-      listen<{ pads: PadState[] }>('emu://pad-state', e => cb(e.payload.pads)),
+      listen<{ pads: PadState[] }>('emu://gamepad-state', e => cb(e.payload.pads)),
   },
 }

@@ -1,4 +1,4 @@
-//! Bench mode (`EMUDOME_BENCH=<seconds>`, see `emudome_core::tuning`): the app opens the game
+//! Bench mode (`EMUDOME_BENCH=<seconds>`, see `tuning.rs`): the app opens the game
 //! given on the command line, waits for the first frame and a warm-up, measures for the given
 //! time, writes a JSON report (`EMUDOME_BENCH_OUT`) and exits. Nothing here runs otherwise.
 //!
@@ -16,10 +16,11 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use emudome_core::tuning::{BenchTuning, Tuning};
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::{json, Value};
+
+use crate::tuning::{BenchTuning, Tuning};
 use tauri::{Emitter, Manager};
 
 use crate::{AppState, VideoMode};
@@ -208,7 +209,7 @@ fn run(app: &tauri::AppHandle, bench: &Bench) -> (i32, Value) {
     log::info!("bench: first frame {first_ms:.0} ms after main");
     let first_at = Instant::now();
 
-    let Some(shared) = state.current.load_full() else {
+    let Some(shared) = state.games.current().load_full() else {
         return (2, fail(report, "error", "game closed".into()));
     };
 
@@ -216,7 +217,7 @@ fn run(app: &tauri::AppHandle, bench: &Bench) -> (i32, Value) {
         let wait = Duration::from_secs_f64(after).saturating_sub(first_at.elapsed());
         std::thread::sleep(wait);
         log::info!("bench: opening the quick menu");
-        let _ = app.emit("emu://menu", ());
+        let _ = app.emit(crate::events::MENU, ());
     }
     let warmup = Duration::from_secs_f64(bench.config.warmup_seconds);
     std::thread::sleep(warmup.saturating_sub(first_at.elapsed()));

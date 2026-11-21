@@ -1,0 +1,52 @@
+[
+  {
+    "action": "menu",
+    "code": "Escape",
+    "status": "active"
+  },
+  {
+    "action": "save",
+    "code": "F1",
+    "status": "active"
+  },
+  {
+    "action": "load",
+    "code": "F4",
+    "status": "active"
+  },
+  {
+    "action": "prev_slot",
+    "code": "F2",
+    "status": "active"
+  },
+  {
+    "action": "next_slot",
+    "code": "F3",
+    "status": "active"
+  },
+  {
+    "action": "ff_hold",
+    "code": "Tab",
+    "status": "active"
+  },
+  {
+    "action": "rewind",
+    "code": "Backspace",
+    "status": "active"
+  },
+  {
+    "action": "fps",
+    "code": "F9",
+    "status": "active"
+  },
+  {
+    "action": "fullscreen",
+    "code": "F11",
+    "status": "active"
+  },
+  {
+    "action": "screenshot",
+    "code": "F12",
+    "status": "active"
+  }
+]

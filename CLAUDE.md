@@ -167,9 +167,17 @@ crates/libretro-sys      libretro API types and constants (added as they are nee
 crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulation thread),
                          Command/Event, Shared (RGBA frame, audio ring, input, stats), speed, states, .sav,
                          ErrorCode (errors for the UI as code + params),
+                         session/ (emu_loop.rs: the `Core` trait and `EmuLoop`, one method per `Command`, one
+                         `step` per frame, every time passed in, tested on a fake core; libretro.rs: `LoadedCore`
+                         + its callback slot as the `Core`; io.rs: the I/O worker),
+                         testing.rs (`FakeCore`, `Gate`: a core without an emulator for the session's and the
+                         shell's tests, `Session::start_with`),
+                         console.rs (`ConsoleId`, `ConsoleId::ALL`; re-exported as `settings::ConsoleId`),
                          atomic.rs (`write_atomic`: the one way user data is written: temp file
                          `.<name>.<pid>-<n>.emudome-tmp`, fsync, rename, folder fsync where allowed),
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
+                         keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
+                         game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
                          settings/ (settings engine: schema.rs types, catalog.rs the 155 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
@@ -205,7 +213,15 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          picker (pick_file), logs, core paths, the external surface;
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView,
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked)
-app/src-tauri            Tauri shell: window.rs (the app's names for emudome_platform::create_window),
+app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, the per-game hooks, setup, the
+                         command list, `blocking()` for heavy commands), game_session.rs (`GameSession`: the
+                         open game and what lives as long as it does, open / take / close / abandon; exit-path
+                         tests on `FakeCore`), game.rs (opening a game, `close_game`, `abandon_game`),
+                         commands.rs (the one-line in-game commands, `key`), protocol.rs (the `emu://` scheme:
+                         one route per resource, unknown paths 404), events.rs (every event name),
+                         hotkeys.rs (`HotkeyRunner`: the shortcuts of the pads and of the keyboard carried out,
+                         one hold shared by both), tuning.rs (developer / bench knobs from the environment),
+                         window.rs (the app's names for emudome_platform::create_window),
                          video.rs (wgpu; `GpuService` owns instance / adapter / device for the whole run,
                          surfaces attach and detach on it), gpu_interop.rs (the one module under wgpu:
                          wgpu-hal / ash Vulkan interop for hardware rendering, behind `VulkanInterop`),
@@ -241,9 +257,14 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`callbacks.rs`: 8 static slots, one callback set per slot), so calls from a core's own threads reach it and
   a core let go keeps its slot, empty, forever. A `need_fullpath` core (Azahar) gets the game's path only: the
   host never reads its file (`GameContent`, `core.rs`).
-- Ending a game: every way out (closing the game, opening another, closing the window, quitting) goes through
-  `close_current` (`app/src-tauri/src/lib.rs`), which waits up to `CLOSE_TIMEOUT` (10 s) for the thread's exit
-  writes: the `.sav` first, then the auto quick save with `saves.autoexit`. Android going to the background
+- The open game is one `GameSession` (`app/src-tauri/src/game_session.rs`): the `Session`, `CurrentShared`, the
+  key of the game whose files are in use (until its thread ended), and the per-game parts as `Hooks` started in
+  order and stopped in reverse (renderer source, settings session, core options that follow the settings, play
+  time; a new per-game part is one more hook in `lib.rs`).
+- Ending a game: every way out (closing the game, opening another, closing the window, quitting) takes it out
+  through `GameSession::take` (the close flow, `closing.rs`) or, for `RunEvent::Exit` only, `GameSession::close`,
+  and waits up to `CLOSE_TIMEOUT` (10 s) for the thread's exit writes: the `.sav` first, then the auto quick save
+  with `saves.autoexit`. Android going to the background
   (`onPause`) sends `Command::Flush` (the same writes, the game keeps running). A thread that does not stop in
   time, or is abandoned after E11, is let go: the session is dead (no file, no event, no `retro_unload_game` /
   `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
@@ -282,9 +303,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Core options: the settings' values come from `settings::core_values` (a `CoreTable` per core: setting → core
   option, `Live` or `Restart`). A change while the game runs: live options go to the core
   (`GET_VARIABLE_UPDATE`), restart ones are listed in `emu://core-restart` (`core_settings.rs`).
-- Keyboard: for now it goes through the webview (`input` command). Opening the quick menu (`set_menu_open`) and the
-  window losing the focus (`WindowEvent::Focused(false)`, and the page's `blur` through `release_keys`) let go of
-  every keyboard button; the page ends the fast forward and the held rewind of its keys (`useGameKeys.ts`).
+- Keyboard (Trello #81): the webview has the focus, so it receives the keys and forwards them raw to Rust (`key`
+  command: `KeyboardEvent.code`, down / up, repeat); Rust routes them (`emudome_core::keyboard::KeyRouter`, the
+  keyboard's row of `pad.remap` for the game's buttons) and carries the shortcuts out with the controllers' runner
+  (`hotkeys.rs`). What stays in the page (`useGameKeys.ts`, `keyRoute.ts`): Esc (quick menu / back), F11 and the
+  menus' focus keys (`nav.ts`). Opening the quick menu (`set_menu_open`) and the window losing the focus
+  (`WindowEvent::Focused(false)`, and the page's `blur` through `release_keys`) let go of every keyboard button and
+  end the keyboard's fast forward and held rewind, in Rust. The touch controls still send buttons (`input`).
   Controllers go through an SDL3 thread
   (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
   count as L2/R2 and d-pad. Both sticks also reach the core as `RETRO_DEVICE_ANALOG` while the game has the
@@ -294,7 +319,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (previous state, buttons, time → game mask + actions), unit-tested without SDL. Three modes:
   - in game: buttons go to the core, except the modifier L3, which never does;
   - L3 held: combos from the **one table** `DEFAULT_COMBOS` (`hotkeys.rs`, remappable in Phase 1),
-    carried out by `Hotkeys` in `gamepad.rs` (session `Command`s, or events for the UI);
+    carried out by `HotkeyRunner` in `hotkeys.rs`, shared with the keyboard (session `Command`s, or events for
+    the UI; a hold from both, Tab and L3 + R2, ends with the last release);
     the full table and its TODOs are in `docs/combo-tasti.md` section 5;
   - the interface has the input (quick menu open, or no game): the game gets nothing, d-pad / A / B
     become `emu://nav` steps with key repeat (400 ms, then every 120 ms).
@@ -323,7 +349,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log; a file that is there but cannot be read is never
   written over (writes to it refused with `settingsReadFailed` until it reads again; the library does the same
-  with `libraryReadFailed`). Session = the quick menu's changes «in prova»:
+  with `libraryReadFailed`). Every file says its layout (`"$schema": 1`, written on save; none = 0; older ones go
+  through `store.rs`'s `MIGRATIONS` in memory) and is read again before use when its mtime or size changed. The
+  sync rules as they are today are tests (`settings/tests.rs`, «Sync rules»). Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
   A game is its `GameKey` everywhere (settings, saves, library, the interface's `GameId`); a file opened by its path
   is identified first (the library's hash cache, else hashed, with no lock held). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
@@ -331,15 +359,19 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - **The Rust ↔ TypeScript contract** (Trello #73): the bridge's types are generated from the Rust types by ts-rs
   (`#[derive(TS)]`, MIT) into `app/src/generated/` (core types; the shell's DTOs in `generated/app/`), with
   `SettingKey` (the catalogue's keys), `HotkeyId` and `Button` from Rust lists, and the fixtures
-  `error-codes.json` / `settings-catalog.json`. `emu.ts` only re-exports them. The files are committed; the contract
+  `error-codes.json` / `settings-catalog.json` / `keyboard-shortcuts.json` (read by `lib/keyboard.ts`). `emu.ts` only re-exports them. The files are committed; the contract
   test of each crate (`cargo test -p emudome-core contract`, `cargo test -p emudome contract`) fails when they are
   stale, and `EMUDOME_BLESS=1` writes them again. `app/src/i18n/parity.test.ts` holds the fixtures against the
   message files. `session::Speed` / `Event` are typed through shadow types in `contract.rs` (session.rs untouched),
-  held to the real serialization by a test. Still by hand: the command names and argument lists in `emu.ts`, the
-  `HotkeyEvent` payload (gamepad.rs is desktop-only) and `BenchFrame` (the `bench` feature). The generated folder is
+  held to the real serialization by a test. Still by hand: the command names and argument lists in `emu.ts` and
+  `BenchFrame` (the `bench` feature). The generated folder is
   left out of ESLint and Prettier (compared byte for byte).
-- Events: `emu://gamepad-connected`, `emu://gamepad-disconnected` (`{ name }`), `emu://menu`,
+- Events, every name a constant of `app/src-tauri/src/events.rs` (`<domain>://<event>`; `emu://` the emulator,
+  `library://`, `settings://`, `saves://` theirs): `emu://session` (the session's `Event`s), `emu://gamepad-connected`,
+  `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
+  `library://changed` (`LibraryChanged`: the rows that changed, or the whole library), `library://scan`,
+  `saves://migration`, `emu://effect-error`,
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
   `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
@@ -359,7 +391,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   itself), `emu://closing` reports `phase` (`saving` / `saved` / `timeout` / `failed` / `closed`) and `purpose`
   (`game` / `quit`), «Saved» stays `SAVED_VISIBLE` (600 ms), then the app exits (with the exit code asked for).
   `RunEvent::Exit`, which cannot be prevented, closes what is left in place (bounded by `CLOSE_TIMEOUT`). The
-  commands that wait (`open_game`, `library_open`, `close_game`) run off the event loop (`#[tauri::command(async)]`).
+  commands that wait or read files (`open_game`, `library_open`, `close_game`, the `saves_*` that touch files) run
+  on a blocking thread of the async runtime (`blocking()` in `lib.rs`), never on the event loop.
   Interface: `components/closing/` (`closing.ts` the view, `useClosing.ts`; `ClosingStrip.vue` the bottom strip
   while saving / saved, `ClosingAsk.vue` the timeout / failure question, `ClosingOverlay.vue` places them).
 

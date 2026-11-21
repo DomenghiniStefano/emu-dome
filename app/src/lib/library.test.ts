@@ -1,20 +1,20 @@
 // The library store: loads, the newest of several reloads wins, and L11's per-console count of a
 // scan comes from the ids that were not there when it started.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GameId, LibraryGame, LibraryScanEvent } from '@/emu'
-import { library, reloadLibrary, startLibrary } from './library'
+import type { GameId, LibraryChanged, LibraryGame, LibraryScanEvent } from '@/emu'
+import { applyLibraryChange, library, reloadLibrary, startLibrary } from './library'
 
 type Listener<T> = (e: T) => void
 const bridge = vi.hoisted(() => ({
   get: vi.fn(),
-  changed: [] as Array<() => void>,
+  changed: [] as Array<(e: unknown) => void>,
   scan: [] as Array<(e: unknown) => void>,
 }))
 vi.mock('@/emu', () => ({
   emu: {
     library: {
       get: bridge.get,
-      onChanged: (cb: () => void) => {
+      onChanged: (cb: Listener<unknown>) => {
         bridge.changed.push(cb)
         return Promise.resolve(() => {})
       },
@@ -31,6 +31,7 @@ const game = (id: string, console: LibraryGame['console'] = 'gba') =>
   ({ id: `${console}:${id}` as GameId, console }) as LibraryGame
 const answer = (games: LibraryGame[]) => ({ games, folders: [], scanning: false })
 const scan = (e: LibraryScanEvent) => bridge.scan.forEach(cb => cb(e))
+const change = (e: LibraryChanged) => bridge.changed.forEach(cb => cb(e))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -48,15 +49,36 @@ beforeEach(() => {
 })
 
 describe('the library store', () => {
-  it('loads on start and on every change', async () => {
-    bridge.get.mockResolvedValue(answer([game('a')]))
+  it('loads on start, then follows each change without asking again', async () => {
+    bridge.get.mockResolvedValue(answer([game('a'), game('b')]))
     await startLibrary()
     expect(library.loaded).toBe(true)
-    expect(library.games.map(g => g.id)).toEqual(['gba:a'])
-    bridge.get.mockResolvedValue(answer([game('a'), game('b')]))
-    bridge.changed.forEach(cb => cb())
-    await flush()
-    expect(library.games).toHaveLength(2)
+    expect(library.games.map(g => g.id)).toEqual(['gba:a', 'gba:b'])
+    const b = library.games[1]
+    const before = library.games
+
+    // One row changed: it replaces its own, in a new list; the others are the same objects.
+    const renamed = { ...game('a'), title: 'Renamed' }
+    change({ kind: 'games', games: [renamed, game('unknown')] })
+    expect(library.games).not.toBe(before)
+    expect(library.games.map(g => g.id)).toEqual(['gba:a', 'gba:b'])
+    expect(library.games[0]?.title).toBe('Renamed')
+    expect(library.games[1]).toBe(b)
+
+    // Everything changed (a scan): the library sent replaces ours.
+    change({ kind: 'all', library: answer([game('c', 'nds')]) })
+    expect(library.games.map(g => g.id)).toEqual(['nds:c'])
+    expect(bridge.get).toHaveBeenCalledOnce()
+  })
+
+  it('a change is newer than a load still answering', async () => {
+    let pending!: (v: unknown) => void
+    bridge.get.mockImplementationOnce(() => new Promise(r => (pending = r)))
+    const older = reloadLibrary()
+    applyLibraryChange({ kind: 'all', library: answer([game('new')]) })
+    pending(answer([game('old')]))
+    await older
+    expect(library.games.map(g => g.id)).toEqual(['gba:new'])
   })
 
   it('keeps only the newest of overlapping reloads', async () => {

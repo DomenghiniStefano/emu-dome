@@ -97,7 +97,7 @@ pub fn open(app: &tauri::App) -> EffectsState {
                 name: effect_name(preset),
                 detail,
             };
-            if let Err(e) = handle.emit("emu://effect-error", error) {
+            if let Err(e) = handle.emit(crate::events::EFFECT_ERROR, error) {
                 log::warn!("emu://effect-error: {e}");
             }
         }));

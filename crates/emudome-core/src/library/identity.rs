@@ -86,16 +86,7 @@ pub struct Icon {
 impl Icon {
     /// The icon as a PNG file.
     pub fn to_png(&self) -> Result<Vec<u8>, png::EncodingError> {
-        let mut out = Vec::new();
-        {
-            let mut encoder = png::Encoder::new(&mut out, self.width, self.height);
-            encoder.set_color(png::ColorType::Rgba);
-            encoder.set_depth(png::BitDepth::Eight);
-            let mut writer = encoder.write_header()?;
-            writer.write_image_data(&self.rgba)?;
-            writer.finish()?;
-        }
-        Ok(out)
+        crate::frame::rgba_png(self.width, self.height, &self.rgba)
     }
 }
 

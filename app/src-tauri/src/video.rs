@@ -22,7 +22,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use emudome_core::tuning::{PresentMode, VideoTuning};
 use emudome_core::video_sink::Wake;
 use emudome_core::{ErrorCode, Shared};
 use librashader::presets::ShaderFeatures;
@@ -32,6 +31,7 @@ use parking_lot::Mutex;
 use serde::Serialize;
 
 use crate::health::{Part, SharedHealth};
+use crate::tuning::{PresentMode, VideoTuning};
 
 /// How the surface presents, from the tuning knobs.
 #[derive(Debug, Clone, Copy)]

@@ -86,7 +86,7 @@ impl Health {
     /// The app is there: what was reported before is sent.
     pub fn attach(&self, app: AppHandle) {
         let sink: Sink = Box::new(move |list| {
-            if let Err(e) = app.emit("emu://health", list) {
+            if let Err(e) = app.emit(crate::events::HEALTH, list) {
                 log::warn!("emu://health not sent: {e}");
             }
         });

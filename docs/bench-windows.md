@@ -1,6 +1,6 @@
 # Bench on Windows (Trello #19)
 
-The bench mode (`app/src-tauri/src/bench.rs`, knobs in `crates/emudome-core/src/tuning.rs`) and the
+The bench mode (`app/src-tauri/src/bench.rs`, knobs in `app/src-tauri/src/tuning.rs`) and the
 first raw runs (`docs/bench-runs/`, one PC: RTX 3060, 240 Hz display, release build, test ROM).
 This work was paused unfinished; this page says what the runs show, what was decided from them
 (nothing yet) and what of the original work-in-progress was not brought over.

@@ -7,6 +7,8 @@
 //!   test (`app/src/i18n/parity.test.ts`) holds it against `errors.<code>` in both message files.
 //! - `settings-catalog.json`: pages, groups, sections, keys and option ids of the catalogue, which
 //!   the same Vitest test holds against the `settings.*` texts.
+//! - `keyboard-shortcuts.json`: the keyboard's fixed keys ([`crate::keyboard::KEYBOARD_SHORTCUTS`]:
+//!   `code`, `action`, `status`), which the interface lists (C01, C03).
 //!
 //! The generated files are committed. A test of each crate builds them again and fails when they
 //! differ from the committed ones ([`check_generated`]): a changed type, a renamed setting key or a
@@ -170,7 +172,7 @@ enum SpeedShape {
 }
 shadow_ts!(crate::Speed => SpeedShape);
 
-/// What the emulation thread tells the interface (`session::Event`, `emu://event`).
+/// What the emulation thread tells the interface (`session::Event`, `emu://session`).
 #[derive(serde::Serialize, TS)]
 #[serde(tag = "type", rename_all = "camelCase")]
 #[ts(rename = "EmuEvent")]
@@ -458,6 +460,13 @@ mod tests {
         let codes = error_codes(g.get("ErrorCode.ts").unwrap());
         g.file("error-codes.json", pretty(&json!(codes)));
         g.file("settings-catalog.json", pretty(&catalog()));
+        let keys: Vec<Json> = crate::keyboard::KEYBOARD_SHORTCUTS
+            .iter()
+            .map(
+                |k| json!({ "code": k.code, "action": k.action.id(), "status": k.action.status() }),
+            )
+            .collect();
+        g.file("keyboard-shortcuts.json", pretty(&json!(keys)));
         g
     }
 

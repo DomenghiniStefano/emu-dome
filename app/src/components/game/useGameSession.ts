@@ -23,8 +23,6 @@ export function useGameSession(toasts: Toasts) {
     menuOpen,
     paused,
     speed,
-    turboHeld,
-    rewinding,
     comboSlot,
     undoLoadSlot,
     muted,
@@ -56,7 +54,6 @@ export function useGameSession(toasts: Toasts) {
     speed.value = { ...NORMAL }
     menuOpen.value = false
     paused.value = false
-    rewinding.value = false
     undoLoadSlot.value = null
     events.reset()
     muted.value = false
@@ -133,20 +130,6 @@ export function useGameSession(toasts: Toasts) {
     }
   }
 
-  /** Rewind on or off (Backspace). */
-  function setRewinding(on: boolean) {
-    if (on === rewinding.value) return
-    rewinding.value = on
-    report(emu.rewind(on))
-  }
-
-  /** Tab held: fast forward at `speed.ffval`, back to the chosen speed when let go. */
-  function setTurbo(held: boolean) {
-    if (held === turboHeld.value) return
-    turboHeld.value = held
-    report(emu.setSpeed(held ? settings.value.ffSpeed : speed.value))
-  }
-
   return {
     ...state,
     settings,
@@ -168,10 +151,7 @@ export function useGameSession(toasts: Toasts) {
     toggleFullscreen,
     setInset,
     onHotkey: events.onHotkey,
-    stepSlot: events.stepSlot,
     screenshot,
-    setRewinding,
-    setTurbo,
     onEmuEvent: events.onEmuEvent,
     watchStats: ending.watchStats,
   }

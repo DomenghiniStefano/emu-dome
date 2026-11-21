@@ -295,10 +295,12 @@ the G12 overlay will read it the same way.
 
 ### Keyboard table
 
-The keyboard's fixed keys in game are one table too: `KEYBOARD_SHORTCUTS` in `app/src/lib/keyboard.ts`
-(the keyboard goes through the webview). `App.vue` carries them out; C01 lists them under «Tasti della
-tastiera», C03 on the keyboard's tab; the G12 overlay will read them from there. A key does what the
-controller hotkey with the same id does.
+The keyboard's fixed keys in game are one table too: `KEYBOARD_SHORTCUTS` in
+`crates/emudome-core/src/keyboard.rs`, generated for the interface (`app/src/generated/keyboard-shortcuts.json`,
+read by `app/src/lib/keyboard.ts`). The webview forwards the keys raw to Rust, which routes them and carries them
+out with the controllers' runner (`app/src-tauri/src/hotkeys.rs`); Esc and F11 stay in the page. C01 lists them
+under «Tasti della tastiera», C03 on the keyboard's tab; the G12 overlay will read them from there. A key does
+what the controller hotkey with the same id does.
 
 | Key | Action | Status |
 |---|---|---|

@@ -12,7 +12,7 @@ use emudome_core::saves::{self, BackupReason, FolderImport, ImportFormat, SaveHe
 use emudome_core::settings::{keys, Scope};
 use emudome_core::{ErrorCode, GameKey};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager};
 use ts_rs::TS;
 
 use crate::settings::SettingsState;
@@ -43,7 +43,7 @@ fn keep_backups(app: &AppHandle) -> usize {
 
 /// Refuses to change the saves of the game that is open: its session rewrites the `.sav`.
 fn ensure_closed(state: &AppState, game: &GameKey) -> Result<(), ErrorCode> {
-    match state.game.lock().as_ref() {
+    match state.games.in_use().as_ref() {
         Some(open) if open == game => Err(ErrorCode::SaveGameOpen),
         Some(_) | None => Ok(()),
     }
@@ -204,17 +204,23 @@ pub fn thumb_response(app: &AppHandle, rest: &str) -> tauri::http::Response<Vec<
 }
 
 // ---- Commands ----
+//
+// Each one reads or writes files (and waits for the one-time migration): it runs on a blocking
+// thread of the async runtime (`crate::blocking`), never on the event loop.
 
 /// V01: what each game has saved, for the list.
 #[tauri::command]
-pub fn saves_summary(
+pub async fn saves_summary(
     app: AppHandle,
-    state: State<'_, AppState>,
     games: Vec<GameKey>,
     slots: u8,
-) -> Vec<SummaryDto> {
-    crate::migration::wait(&app);
-    let save_dir = state.save_dir();
+) -> Result<Vec<SummaryDto>, ErrorCode> {
+    crate::blocking(app, move |app| summary(app, games, slots)).await
+}
+
+fn summary(app: &AppHandle, games: Vec<GameKey>, slots: u8) -> Vec<SummaryDto> {
+    crate::migration::wait(app);
+    let save_dir = app.state::<AppState>().save_dir();
     games
         .into_iter()
         .map(|game| {
@@ -233,14 +239,17 @@ pub fn saves_summary(
 
 /// V02: everything saved for one game.
 #[tauri::command]
-pub fn saves_game(
+pub async fn saves_game(
     app: AppHandle,
-    state: State<'_, AppState>,
     game: GameKey,
     slots: u8,
-) -> GameSavesDto {
-    crate::migration::wait(&app);
-    let s = saves::game_saves(&state.save_dir(), &game, slots);
+) -> Result<GameSavesDto, ErrorCode> {
+    crate::blocking(app, move |app| game_detail(app, &game, slots)).await
+}
+
+fn game_detail(app: &AppHandle, game: &GameKey, slots: u8) -> GameSavesDto {
+    crate::migration::wait(app);
+    let s = saves::game_saves(&app.state::<AppState>().save_dir(), game, slots);
     GameSavesDto {
         in_game: s.in_game.map(|f| FileDto {
             size: f.size,
@@ -255,7 +264,7 @@ pub fn saves_game(
                     slot: q.slot,
                     size: q.file.size,
                     saved_at,
-                    thumb_url: q.thumb.map(|_| thumb_url(&game, q.slot, saved_at)),
+                    thumb_url: q.thumb.map(|_| thumb_url(game, q.slot, saved_at)),
                     outdated: q.outdated,
                 }
             })
@@ -276,53 +285,45 @@ pub fn saves_game(
 
 /// V04: puts a backup back; the current in-game save becomes a backup first.
 #[tauri::command]
-pub fn saves_restore(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    game: GameKey,
-    name: String,
-) -> Result<(), ErrorCode> {
-    crate::migration::wait(&app);
-    ensure_closed(&state, &game)?;
-    saves::restore(
-        &state.save_dir(),
-        &game,
-        &name,
-        now_ms(),
-        keep_backups(&app),
-    )
-    .map_err(file_failed)
+pub async fn saves_restore(app: AppHandle, game: GameKey, name: String) -> Result<(), ErrorCode> {
+    crate::blocking(app, move |app| {
+        crate::migration::wait(app);
+        let state = app.state::<AppState>();
+        ensure_closed(&state, &game)?;
+        saves::restore(&state.save_dir(), &game, &name, now_ms(), keep_backups(app))
+            .map_err(file_failed)
+    })
+    .await?
 }
 
 /// E04: puts the newest backup back (after the broken save was set aside).
 #[tauri::command]
-pub fn saves_restore_latest(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    game: GameKey,
-) -> Result<(), ErrorCode> {
-    crate::migration::wait(&app);
-    ensure_closed(&state, &game)?;
-    let save_dir = state.save_dir();
-    let newest = saves::backups(&save_dir, &game)
-        .into_iter()
-        .next()
-        .ok_or_else(|| file_failed("no backup"))?;
-    saves::restore(&save_dir, &game, &newest.name, now_ms(), keep_backups(&app))
-        .map_err(file_failed)
+pub async fn saves_restore_latest(app: AppHandle, game: GameKey) -> Result<(), ErrorCode> {
+    crate::blocking(app, move |app| {
+        crate::migration::wait(app);
+        let state = app.state::<AppState>();
+        ensure_closed(&state, &game)?;
+        let save_dir = state.save_dir();
+        let newest = saves::backups(&save_dir, &game)
+            .into_iter()
+            .next()
+            .ok_or_else(|| file_failed("no backup"))?;
+        saves::restore(&save_dir, &game, &newest.name, now_ms(), keep_backups(app))
+            .map_err(file_failed)
+    })
+    .await?
 }
 
 /// V03: deletes a quick save and its thumbnail.
 #[tauri::command]
-pub fn saves_delete_quick(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    game: GameKey,
-    slot: u8,
-) -> Result<(), ErrorCode> {
-    crate::migration::wait(&app);
-    ensure_closed(&state, &game)?;
-    saves::delete_quick(&state.save_dir(), &game, slot).map_err(file_failed)
+pub async fn saves_delete_quick(app: AppHandle, game: GameKey, slot: u8) -> Result<(), ErrorCode> {
+    crate::blocking(app, move |app| {
+        crate::migration::wait(app);
+        let state = app.state::<AppState>();
+        ensure_closed(&state, &game)?;
+        saves::delete_quick(&state.save_dir(), &game, slot).map_err(file_failed)
+    })
+    .await?
 }
 
 /// V03 / V02: copies the in-game save or a quick save where the user chooses. `false` = the
@@ -386,14 +387,12 @@ pub async fn saves_import_pick(app: AppHandle) -> Result<Option<ImportDto>, Erro
 /// V05 «Importa e sostituisci»: `file` becomes the in-game save of `game`; the current one
 /// becomes a backup first.
 #[tauri::command]
-pub fn saves_import(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    file: String,
-    game: GameKey,
-) -> Result<(), ErrorCode> {
-    crate::migration::wait(&app);
-    import_one(&app, &state, Path::new(&file), &game)
+pub async fn saves_import(app: AppHandle, file: String, game: GameKey) -> Result<(), ErrorCode> {
+    crate::blocking(app, move |app| {
+        crate::migration::wait(app);
+        import_one(app, &app.state::<AppState>(), Path::new(&file), &game)
+    })
+    .await?
 }
 
 fn import_one(
@@ -471,15 +470,15 @@ pub async fn saves_import_folder(
 /// Imports every pair (each current in-game save becomes a backup first). Answers how many
 /// were imported; the first failure stops and is the error.
 #[tauri::command]
-pub fn saves_import_many(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    matches: Vec<MatchDto>,
-) -> Result<usize, ErrorCode> {
-    crate::migration::wait(&app);
-    matches.iter().try_fold(0, |done, m| {
-        import_one(&app, &state, Path::new(&m.file), &m.game).map(|()| done + 1)
+pub async fn saves_import_many(app: AppHandle, matches: Vec<MatchDto>) -> Result<usize, ErrorCode> {
+    crate::blocking(app, move |app| {
+        crate::migration::wait(app);
+        let state = app.state::<AppState>();
+        matches.iter().try_fold(0, |done, m| {
+            import_one(app, &state, Path::new(&m.file), &m.game).map(|()| done + 1)
+        })
     })
+    .await?
 }
 
 // ---- Native pickers (desktop; Android has no file-path pickers: TODO with the SAF) ----

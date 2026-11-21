@@ -1,5 +1,5 @@
 // «Prova i pulsanti» (C01, C02): what is held lights up, and the last press is described by the
-// screen (`describe`). A controller is fed with `onPads` (every `emu://pad-state`); the keyboard
+// screen (`describe`). A controller is fed with `onPads` (every `emu://gamepad-state`); the keyboard
 // is read here, from the window's keys, while `keyboard()` is true.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { PadState } from '@/emu'

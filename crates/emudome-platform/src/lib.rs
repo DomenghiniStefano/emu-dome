@@ -37,7 +37,7 @@ use windows as imp;
 
 /// Whether the game is drawn natively under the webview (otherwise in a canvas
 /// inside the webview) on this system. `EMUDOME_VIDEO=native|webview` overrides it
-/// (read with the other knobs in `emudome_core::tuning`).
+/// (read with the other knobs in the app's `tuning.rs`).
 pub fn native_video_default() -> bool {
     imp::NATIVE_VIDEO_DEFAULT
 }

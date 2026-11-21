@@ -241,7 +241,7 @@ export function useCapture(options: {
     if (options.device().kind === 'pad') report(emu.controls.capture(false))
   }
 
-  /** Feed every `emu://pad-state` here. */
+  /** Feed every `emu://gamepad-state` here. */
   function onPads(states: PadState[]) {
     const device = options.device()
     if (!target.value || device.kind !== 'pad') return

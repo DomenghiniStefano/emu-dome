@@ -19,8 +19,8 @@ export function createGameState() {
     showFps: ref(false),
     stats: ref<Stats | null>(null),
     speed: ref<Speed>({ ...NORMAL }),
+    /** Fast forward held (Tab or L3 + R2, run in Rust; `emu://hotkey` says so). */
     turboHeld: ref(false),
-    rewinding: ref(false),
     /** The controller in use (quick menu). */
     controller: ref<string | null>(null),
     /** The current slot (L3 + ← →, F2 / F3 move it; L3 + R1 / L1, F1 / F4 use it): the quick

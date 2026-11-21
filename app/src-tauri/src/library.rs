@@ -76,7 +76,7 @@ pub fn startup(app: &AppHandle) {
 // ---- DTOs (TypeScript generated into app/src/generated/app/ by src/contract.rs) ----
 
 /// TypeScript: `LibraryGame` (generated).
-#[derive(Serialize, TS)]
+#[derive(Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "app/", rename = "LibraryGame")]
 pub(crate) struct GameDto {
@@ -150,7 +150,7 @@ impl GameDto {
 }
 
 /// TypeScript: `LibraryFolder` (generated).
-#[derive(Serialize, TS)]
+#[derive(Clone, Serialize, TS)]
 #[ts(export_to = "app/", rename = "LibraryFolder")]
 pub(crate) struct FolderDto {
     path: String,
@@ -158,12 +158,25 @@ pub(crate) struct FolderDto {
 }
 
 /// TypeScript: `Library` (generated).
-#[derive(Serialize, TS)]
+#[derive(Clone, Serialize, TS)]
 #[ts(export_to = "app/", rename = "Library")]
 pub struct LibraryDto {
     games: Vec<GameDto>,
     folders: Vec<FolderDto>,
     scanning: bool,
+}
+
+/// Payload of `library://changed`: what changed, for the interface to update in place instead of
+/// asking for the whole library again. TypeScript: `LibraryChanged` (generated).
+#[derive(Clone, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "LibraryChanged")]
+pub(crate) enum LibraryChanged {
+    /// These games' rows changed (play time, last played, cover, flags, name, availability):
+    /// each replaces the row with its id.
+    Games { games: Vec<GameDto> },
+    /// Anything may have changed (a scan, a folder removed): the whole library.
+    All { library: LibraryDto },
 }
 
 /// Payload of `library://scan`. TypeScript: `LibraryScanEvent` (generated).
@@ -231,14 +244,31 @@ pub fn on_setting_changed(app: &AppHandle, key: &str) {
 
 // ---- Events, time ----
 
-fn emit_changed(app: &AppHandle) {
-    if let Err(e) = app.emit("library://changed", ()) {
+fn emit_changed(app: &AppHandle, change: LibraryChanged) {
+    if let Err(e) = app.emit(crate::events::LIBRARY_CHANGED, change) {
         log::warn!("library://changed: {e}");
     }
 }
 
+/// The rows of `ids` changed.
+fn emit_games(app: &AppHandle, state: &LibraryState, ids: &[&GameKey]) {
+    let games = {
+        let lib = state.lib.lock();
+        ids.iter()
+            .filter_map(|id| lib.game(id).ok().map(GameDto::new))
+            .collect()
+    };
+    emit_changed(app, LibraryChanged::Games { games });
+}
+
+/// Anything may have changed: the whole library.
+fn emit_all(app: &AppHandle, state: &LibraryState) {
+    let library = library_dto(app, state);
+    emit_changed(app, LibraryChanged::All { library });
+}
+
 fn emit_scan(app: &AppHandle, event: ScanEvent) {
-    if let Err(e) = app.emit("library://scan", event) {
+    if let Err(e) = app.emit(crate::events::LIBRARY_SCAN, event) {
         log::warn!("library://scan: {e}");
     }
 }
@@ -332,7 +362,7 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
             unreachable: report.unreachable,
         },
     );
-    emit_changed(app);
+    emit_all(app, state);
 }
 
 // ---- Covers ----
@@ -583,7 +613,7 @@ pub fn begin_play(app: &AppHandle, id: &GameKey) {
     if let Err(e) = state.lib.lock().mark_played(id, now_ms()) {
         log::warn!("last played of {id}: {e:?}");
     }
-    emit_changed(app);
+    emit_games(app, &state, &[id]);
 }
 
 /// The game closed (or the app exits): add the time since it opened.
@@ -599,7 +629,7 @@ pub fn end_play(app: &AppHandle) {
     if let Err(e) = state.lib.lock().add_play_time(&id, secs) {
         log::warn!("play time of {id}: {e:?}");
     }
-    emit_changed(app);
+    emit_games(app, &state, &[&id]);
 }
 
 /// The library game whose file is `path`: its key and title.
@@ -660,10 +690,14 @@ pub fn known_files(app: &AppHandle) -> Result<Vec<(String, GameKey)>, ErrorCode>
 /// The whole library for the interface.
 #[tauri::command]
 pub fn library_get(app: AppHandle, state: State<'_, LibraryState>) -> LibraryDto {
+    library_dto(&app, &state)
+}
+
+fn library_dto(app: &AppHandle, state: &LibraryState) -> LibraryDto {
     let games: Vec<GameDto> = state.lib.lock().games().map(GameDto::new).collect();
     LibraryDto {
         games,
-        folders: folders(&app)
+        folders: folders(app)
             .into_iter()
             .map(|path| FolderDto {
                 reachable: Path::new(&path).is_dir(),
@@ -713,7 +747,7 @@ pub fn library_remove_folder(
     set_folders(&app, list)?;
     state.lib.lock().unlist_folder(&path)?;
     refresh_watch(&app);
-    emit_changed(&app);
+    emit_all(&app, &state);
     Ok(())
 }
 
@@ -744,15 +778,17 @@ pub fn library_scan(app: AppHandle) {
     start_scan(&app);
 }
 
-/// Opens a library game and counts its play time until it closes. Off the event loop (`async`):
-/// it may wait for the open game to close (`closing::close_game`).
-#[tauri::command(async)]
-pub fn library_open(
-    app: AppHandle,
-    app_state: State<'_, AppState>,
-    state: State<'_, LibraryState>,
-    id: GameKey,
-) -> Result<GameInfo, ErrorCode> {
+/// Opens a library game and counts its play time until it closes. Off the event loop (a
+/// blocking thread): it loads the core and the ROM, and may wait for the open game to close
+/// (`closing::close_game`).
+#[tauri::command]
+pub async fn library_open(app: AppHandle, id: GameKey) -> Result<GameInfo, ErrorCode> {
+    crate::blocking(app, move |app| open_now(app, id)).await?
+}
+
+fn open_now(app: &AppHandle, id: GameKey) -> Result<GameInfo, ErrorCode> {
+    let app_state = app.state::<AppState>();
+    let state = app.state::<LibraryState>();
     let (path, title) = {
         let lib = state.lib.lock();
         let game = lib.game(&id)?;
@@ -760,10 +796,10 @@ pub fn library_open(
     };
     if !Path::new(&path).is_file() {
         state.lib.lock().set_unavailable(&id)?;
-        emit_changed(&app);
+        emit_games(app, &state, &[&id]);
         return Err(ErrorCode::LibraryGameUnavailable { id: id.to_string() });
     }
-    crate::open_library_game(&app, &app_state, &id, PathBuf::from(path), title)
+    crate::open_library_game(app, &app_state, &id, PathBuf::from(path), title)
 }
 
 /// Changes the cover (L12). `user` opens an image picker first: `false` if it was cancelled.
@@ -800,7 +836,7 @@ pub async fn library_set_cover(
             log::warn!("old cover {}: {e}", old.display());
         }
     }
-    emit_changed(&app);
+    emit_games(&app, &state, &[&id]);
     Ok(true)
 }
 
@@ -814,7 +850,7 @@ pub fn library_set_flags(
     hidden: Option<bool>,
 ) -> Result<(), ErrorCode> {
     state.lib.lock().set_flags(&id, favourite, hidden)?;
-    emit_changed(&app);
+    emit_games(&app, &state, &[&id]);
     Ok(())
 }
 
@@ -827,7 +863,7 @@ pub fn library_set_name(
     name: String,
 ) -> Result<(), ErrorCode> {
     state.lib.lock().set_name(&id, &name)?;
-    emit_changed(&app);
+    emit_games(&app, &state, &[&id]);
     Ok(())
 }
 

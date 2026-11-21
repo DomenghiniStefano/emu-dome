@@ -72,7 +72,7 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
         crate::send_command(app, emudome_core::Command::SetFastAudio(policy));
     }
     for key in keys {
-        if let Err(e) = app.emit("settings://changed", Changed { key, level }) {
+        if let Err(e) = app.emit(crate::events::SETTINGS_CHANGED, Changed { key, level }) {
             log::warn!("settings://changed {key}: {e}");
         }
     }

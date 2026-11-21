@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
-use emudome_core::tuning::Tuning;
+use crate::tuning::Tuning;
 
 /// Never built: there is no bench in this build.
 pub enum Bench {}

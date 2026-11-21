@@ -7,7 +7,7 @@ import { useGameSettings } from './useGameSettings'
 const bridge = vi.hoisted(() => ({ schema: vi.fn(), page: vi.fn() }))
 vi.mock('@/emu', () => ({ emu: { settings: { schema: bridge.schema, page: bridge.page } } }))
 
-const rows = (toggle: boolean) => [{ key: 'a11y.toggle', value: toggle }] as SettingRow[]
+const rows = (undo: boolean) => [{ key: 'saves.undo', value: undo }] as SettingRow[]
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -53,6 +53,6 @@ describe('useGameSettings', () => {
     await load()
     answerOld(rows(false))
     await old
-    expect(settings.value.rewindToggle).toBe(true)
+    expect(settings.value.undoAllowed).toBe(true)
   })
 })

@@ -83,7 +83,7 @@ fn finish(app: &AppHandle, problem: Option<ErrorCode>) {
         status.clone()
     };
     state.ended.notify_all();
-    if let Err(e) = app.emit("saves://migration", status) {
+    if let Err(e) = app.emit(crate::events::SAVES_MIGRATION, status) {
         log::warn!("saves://migration: {e}");
     }
 }

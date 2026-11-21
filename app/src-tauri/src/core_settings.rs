@@ -32,7 +32,17 @@ struct Running {
     restart: Vec<&'static str>,
 }
 
-static RUNNING: Mutex<Option<Running>> = Mutex::new(None);
+/// The open game's core options (Tauri state, set and cleared by the game's lifecycle,
+/// `game_session.rs`).
+#[derive(Default)]
+pub struct CoreSettings(Mutex<Option<Running>>);
+
+/// Runs `f` on the open game's core options (nothing before the state exists).
+fn with_running<R>(app: &AppHandle, f: impl FnOnce(&mut Option<Running>) -> R) -> Option<R> {
+    let state = app.try_state::<CoreSettings>()?;
+    let mut running = state.0.lock();
+    Some(f(&mut running))
+}
 
 /// Payload of `emu://core-restart`.
 #[derive(Clone, Serialize, TS)]
@@ -43,20 +53,23 @@ pub(crate) struct CoreRestart<'a> {
 }
 
 fn emit_restart(app: &AppHandle, settings: &[&'static str]) {
-    if let Err(e) = app.emit("emu://core-restart", CoreRestart { settings }) {
+    if let Err(e) = app.emit(crate::events::CORE_RESTART, CoreRestart { settings }) {
         log::warn!("emu://core-restart: {e}");
     }
 }
 
 /// A game was opened by `core` with these options (from the settings).
 pub fn started(app: &AppHandle, core: CoreId, console: ConsoleId, options: Vec<MappedOption>) {
-    let old = RUNNING.lock().replace(Running {
-        core,
-        console,
-        previous: options.clone(),
-        started: options,
-        restart: Vec::new(),
-    });
+    let old = with_running(app, |r| {
+        r.replace(Running {
+            core,
+            console,
+            previous: options.clone(),
+            started: options,
+            restart: Vec::new(),
+        })
+    })
+    .flatten();
     if old.is_some_and(|o| !o.restart.is_empty()) {
         emit_restart(app, &[]);
     }
@@ -64,7 +77,7 @@ pub fn started(app: &AppHandle, core: CoreId, console: ConsoleId, options: Vec<M
 
 /// The game was closed.
 pub fn stopped(app: &AppHandle) {
-    let old = RUNNING.lock().take();
+    let old = with_running(app, Option::take).flatten();
     if old.is_some_and(|o| !o.restart.is_empty()) {
         emit_restart(app, &[]);
     }
@@ -75,7 +88,9 @@ pub fn settings_changed(app: &AppHandle, keys: &[&str]) {
     if !keys.iter().any(|k| core_values::is_core_setting(k)) {
         return;
     }
-    let Some((core, console)) = RUNNING.lock().as_ref().map(|r| (r.core, r.console)) else {
+    let Some((core, console)) =
+        with_running(app, |r| r.as_ref().map(|r| (r.core, r.console))).flatten()
+    else {
         return;
     };
     let Some(state) = app.try_state::<SettingsState>() else {
@@ -93,16 +108,18 @@ pub fn settings_changed(app: &AppHandle, keys: &[&str]) {
             }
         })
     };
-    let (push, restart) = {
-        let mut running = RUNNING.lock();
-        let Some(r) = running.as_mut().filter(|r| r.core == core) else {
-            return; // the game closed meanwhile
-        };
+    let planned = with_running(app, |running| {
+        // `None`: the game closed meanwhile.
+        let r = running.as_mut().filter(|r| r.core == core)?;
         let update = core_values::plan_update(&r.started, &r.previous, &now);
         r.previous = now;
         let restart = (update.restart != r.restart).then(|| update.restart.clone());
         r.restart = update.restart;
-        (update.push, restart)
+        Some((update.push, restart))
+    })
+    .flatten();
+    let Some((push, restart)) = planned else {
+        return;
     };
     for (key, value) in push {
         log::info!("core option {key} = {value}");

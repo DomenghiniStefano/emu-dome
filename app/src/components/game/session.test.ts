@@ -7,7 +7,6 @@ import {
   gameSettingsFrom,
   insetShare,
   pageBackground,
-  rewindAfter,
   speedShown,
 } from './session'
 
@@ -47,35 +46,22 @@ describe('speedShown', () => {
   })
 })
 
-describe('rewindAfter', () => {
-  it('follows the key while held', () => {
-    expect(rewindAfter(false, true, false)).toBe(true)
-    expect(rewindAfter(false, false, true)).toBe(false)
-  })
-  it('switches on each press with a11y.toggle, ignoring releases', () => {
-    expect(rewindAfter(true, true, false)).toBe(true)
-    expect(rewindAfter(true, true, true)).toBe(false)
-    expect(rewindAfter(true, false, true)).toBe(true)
-  })
-})
-
 describe('gameSettingsFrom', () => {
   it('falls back to the defaults', () => {
     expect(gameSettingsFrom([])).toEqual({
       ffSpeed: FF_DEFAULT,
       undoAllowed: true,
-      rewindToggle: false,
       colourBlind: 'none',
     })
   })
   it('reads the rows', () => {
     const s = gameSettingsFrom([
+      { key: 'speed.ffval', value: 'max' },
       { key: 'saves.undo', value: false },
-      { key: 'a11y.toggle', value: true },
       { key: 'a11y.cblind', value: 'deutan' },
     ])
+    expect(s.ffSpeed).toEqual({ kind: 'max' })
     expect(s.undoAllowed).toBe(false)
-    expect(s.rewindToggle).toBe(true)
     expect(s.colourBlind).toBe('deutan')
   })
 })
