@@ -64,6 +64,8 @@ pub struct FakeCalls {
     pub fast_audio: Option<FastAudio>,
     pub options: Vec<(String, String)>,
     pub resets: u32,
+    /// `unserialize` calls (loads, undo, rewind steps), valid states or not.
+    pub unserializes: u32,
     /// `end` was called, and whether the core was let go.
     pub ended: Option<bool>,
 }
@@ -159,6 +161,7 @@ impl Core for FakeCore {
     }
 
     fn unserialize(&mut self, state: &[u8]) -> anyhow::Result<()> {
+        self.calls.lock().unserializes += 1;
         match (state.len(), Self::counter(state)) {
             (8, Some(frames)) => {
                 self.frames = frames;

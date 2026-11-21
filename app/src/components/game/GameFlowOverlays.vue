@@ -12,7 +12,12 @@ import ResumeDialog from './ResumeDialog.vue'
 import SaveBrokenDialog from './SaveBrokenDialog.vue'
 import SlowDialog from './SlowDialog.vue'
 import StartFailedDialog from './StartFailedDialog.vue'
+import type { StateLoadBlock } from '@/emu'
 
+defineProps<{
+  /** The open game's `stateLoadBlock`: the resume question shows «Riprendi» disabled with it. */
+  loadBlock: StateLoadBlock | null
+}>()
 const emit = defineEmits<{
   startErrorClose: []
   resume: [boolean]
@@ -58,7 +63,11 @@ const { t } = useI18n()
     @close="emit('brokenClose')"
   />
 
-  <ResumeDialog v-if="flow.resumeAsk" @answer="resume => emit('resume', resume)" />
+  <ResumeDialog
+    v-if="flow.resumeAsk"
+    :load-block="loadBlock"
+    @answer="resume => emit('resume', resume)"
+  />
 
   <CrashDialog
     v-if="flow.crashed"

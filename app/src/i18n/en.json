@@ -251,6 +251,7 @@
     "stateSaveFailed": "Couldn’t save to slot {slot}: {detail}. Check that the save folder is writable.",
     "stateLoadFailed": "Couldn’t read slot {slot}: {detail}. Try again or use another slot.",
     "stateInvalid": "The state in slot {slot} doesn’t fit this game or this core version. Save it again.",
+    "stateLoadUnsupported": "{reason}",
     "settingUnknown": "Unknown setting: it is ignored. If it keeps happening, export the log from Settings › About.",
     "settingLevelRefused": "This setting only applies to {levels}: change it there.",
     "settingInvalidValue": "Invalid value for “{name}”: back to the default.",
@@ -1810,6 +1811,9 @@
     "resumeTitle": "Do you want to resume where you left off?",
     "resume": "Resume",
     "restart": "Start from the in-game save",
+    "loadBlock": {
+      "vulkanNoTitleId": "Loading is off for this game: with Vulkan, the 3DS emulator crashes when it loads a homebrew state. You can still save."
+    },
     "crashTitle": "The game stopped because of an error",
     "crashText": "The {console} emulator stopped responding.",
     "crashSaved": "The auto quick save from {when} is safe.",

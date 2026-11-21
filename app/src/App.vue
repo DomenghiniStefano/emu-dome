@@ -143,6 +143,7 @@ onMounted(async () => {
   <LibraryDropTarget v-if="drop.dragOver.value && !game" />
 
   <GameFlowOverlays
+    :load-block="game?.stateLoadBlock ?? null"
     @start-error-close="flow.startError = null"
     @resume="launch.answerResume"
     @crash-copy="launch.crashCopy"

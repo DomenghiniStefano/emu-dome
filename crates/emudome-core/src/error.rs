@@ -75,6 +75,11 @@ pub enum ErrorCode {
     StateLoadFailed { slot: u8, detail: String },
     /// The core refused the state (another game or another core version).
     StateInvalid { slot: u8 },
+    /// Loading states (a quick load, the auto quick save, «Annulla il caricamento», rewind) is
+    /// off for the open game: its core would crash on it (`reason`, Trello #93). Saving works.
+    StateLoadUnsupported {
+        reason: crate::core_profile::StateLoadBlock,
+    },
     /// No setting has this key.
     SettingUnknown { key: String },
     /// The setting cannot be stored at `level` (e.g. a global-only one for a single game);

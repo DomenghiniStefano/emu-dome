@@ -5,9 +5,12 @@ import {
   daysApart,
   lastPlayedLabel,
   saveWhenLabel,
+  errorText,
   slotDateLabel,
+  stateLoadBlockText,
   timeAgoLabel,
 } from './labels'
+import type { StateLoadBlock } from '@/emu'
 
 // i18n/index.ts follows `general.lang` through the bridge, which reads Tauri's internals.
 vi.mock('@/emu', () => ({ emu: { settings: { onChanged: () => Promise.resolve(() => {}) } } }))
@@ -87,5 +90,26 @@ describe('timeAgoLabel', () => {
   it('speaks the interface language', () => {
     i18n.global.locale.value = 'it'
     expect(timeAgoLabel(NOW - 2 * MINUTE, NOW)).toBe('2 minuti fa')
+  })
+})
+
+describe('stateLoadBlockText', () => {
+  // Every reason Rust can send (a Record: typecheck fails when the generated union grows).
+  const REASONS: Record<StateLoadBlock, true> = { vulkanNoTitleId: true }
+  const reasons = Object.keys(REASONS) as StateLoadBlock[]
+
+  it('has a text for every reason, in both languages', () => {
+    for (const locale of ['en', 'it'] as const) {
+      i18n.global.locale.value = locale
+      for (const reason of reasons) {
+        expect(i18n.global.te(`flow.loadBlock.${reason}`, locale)).toBe(true)
+      }
+    }
+  })
+  it('is what the refusal says', () => {
+    for (const reason of reasons) {
+      const refusal = { code: 'stateLoadUnsupported', params: { reason } }
+      expect(errorText(refusal)).toBe(stateLoadBlockText(reason))
+    }
   })
 })
