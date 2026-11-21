@@ -294,6 +294,15 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - The static SDL3 build fails with MSBuild FTK1011 (260-character path limit) when the build folder's path is long.
   The repo's own `target\` is fine: one more reason never to move `CARGO_TARGET_DIR`.
 - A Windows audio device can open with 8 channels: `audio.rs` writes left/right on the first two and zeroes the rest.
+- Branches developed in parallel break each other without a textual conflict (2026-11-20: #70 renamed
+  `AppState::game_path` to `game` and changed `GameFiles::new` to take a `GameKey`; #86 still used both and its merge
+  had no conflict there). After merging `develop` into a branch, build and test the touched crates before committing
+  the merge.
+- A cargo feature that is off by default needs clippy both ways, with and without it (2026-11-21: `bench` off left 8
+  items unused). Items only that feature reads take `#[cfg_attr(not(feature = "…"), expect(dead_code, reason = …))]`;
+  put it on the method, not on the field the method reads, or the field's expectation is unfulfilled.
+- Do not start a build in a worktree while a merge or checkout is writing its files: on 2026-11-20 a build read the
+  old `Cargo.toml` with the new code (`unresolved import md5`).
 
 ## Project rules
 
