@@ -3,12 +3,16 @@
 // packaging configs (app/src-tauri/package/) call `verify`, and scripts/check calls `check`.
 //
 //   node scripts/cores.mjs fetch    [--platform P] [--cores a,b] [--lock file] [--work-dir D] [--jobs N]
+//                                   [--build]
 //       Downloads each core's archive, checks its sha256, takes the listed files out of it, checks
 //       theirs, and writes them (temp file + rename). Also the core's licence file at the pinned
 //       commit, sha256-checked. A file already in place with the right hash is kept. On any
 //       mismatch: the core's files for that platform are deleted and the command fails.
-//       A platform entry with `built` (a core EmuDome builds from source, e.g. mGBA) is not
-//       downloaded: when its files are not in place it is built, as `build` does.
+//       A platform entry with `built` (a core EmuDome builds from source, e.g. mGBA) is downloaded
+//       from EmuDome's own GitHub release of that build (`built.release`: library, licence and
+//       notices, each by its file name, each sha256-checked); when that fails, or the entry names
+//       no release, it is built as `build` does. --build: the `built` entries are built from source
+//       even when their files are in place or downloadable (to reproduce a pin, or make a new one).
 //       Default platform: this machine's (windows-x86_64 / linux-x86_64). Default cores: the ones
 //       cores.lock ships (`ship: true`); `--cores all` for every core in the lock.
 //   node scripts/cores.mjs build    [--platform P] [--cores a,b] [--work-dir D] [--jobs N]
@@ -87,6 +91,13 @@ const installedFiles = (core, platform) => {
 
 const abs = relative => path.join(ROOT, ...relative.split('/'))
 
+/**
+ * The download folder of the GitHub release a built core's files are published to: one release per
+ * core and pinned commit, named `cores-<core>-<first 7 characters of the commit>` (docs/release.md).
+ */
+const releaseFolder = (id, core) =>
+  `${EMUDOME_REPO}/releases/download/cores-${id}-${(core.source?.commit ?? '').slice(0, 7)}/`
+
 // --- The lock
 
 const HEX64 = /^[0-9a-f]{64}$/
@@ -145,6 +156,12 @@ const lockProblems = lock => {
       if (isBuilt) {
         need(typeof build.built?.toolchain === 'string', `${bt}.built.toolchain missing`)
         need(build.url === undefined && build.sha256 === undefined, `${bt}: built from source, so no url / sha256`)
+        // Optional (a new pin is built before it is published), but when named it is the release of
+        // this core and commit: a re-pin that forgets to publish its build cannot point at the old one.
+        need(
+          build.built?.release === undefined || build.built.release === releaseFolder(id, core),
+          `${bt}.built.release must be ${releaseFolder(id, core)}`,
+        )
       } else {
         need(/^https:\/\//.test(build.url ?? ''), `${bt}.url`)
         need(typeof build.url_stable === 'boolean', `${bt}.url_stable must be true or false`)
@@ -186,7 +203,10 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 const fileSha256 = file => (fs.existsSync(file) ? sha256(fs.readFileSync(file)) : null)
 
 const download = async url => {
-  const response = await fetch(url, { headers: { 'User-Agent': 'emudome-fetch-cores' } })
+  // A network error (no connection, DNS, TLS) is a failure like an HTTP error, not a crash.
+  const response = await fetch(url, { headers: { 'User-Agent': 'emudome-fetch-cores' } }).catch(error =>
+    fail(`${url}: ${error.cause?.message ?? error.message}`),
+  )
   if (!response.ok) fail(`${url}: HTTP ${response.status}`)
   return Buffer.from(await response.arrayBuffer())
 }
@@ -293,15 +313,46 @@ const buildAndInstall = async (id, core, platform, options) => {
   }
 }
 
+/**
+ * Downloads a built core's files from EmuDome's release of that build (`built.release` + each file's
+ * name: library, licence, notices) and installs them only when every one has its pinned sha256.
+ */
+const downloadBuilt = async (id, core, platform) => {
+  const files = installedFiles(core, platform)
+  const bytes = []
+  for (const f of files) {
+    const url = `${core.builds[platform].built.release}${path.posix.basename(f.path)}`
+    console.log(`${id} (${platform}): downloading ${url}`)
+    bytes.push(checked(`${id} ${path.posix.basename(f.path)}`, await download(url), f.sha256))
+  }
+  files.forEach((f, i) => writeAtomic(abs(f.path), bytes[i]))
+  console.log(`${id} (${platform}): ${files.map(f => f.path).join(', ')}`)
+}
+
 const fetchCore = async (id, core, platform, options) => {
   const build = core.builds[platform]
   const files = installedFiles(core, platform)
+  if (build.built && options.build) {
+    console.log(`${id} (${platform}): --build: building it from the pinned source`)
+    await buildAndInstall(id, core, platform, options)
+    return
+  }
   if (files.every(f => fileSha256(abs(f.path)) === f.sha256)) {
     console.log(`${id} (${platform}): already in place, sha256 verified`)
     return
   }
   if (build.built) {
-    console.log(`${id} (${platform}): built from source by EmuDome (cores.lock), not downloaded: building it`)
+    if (build.built.release === undefined) {
+      console.log(`${id} (${platform}): cores.lock names no release of this build: building it from source`)
+    } else {
+      try {
+        await downloadBuilt(id, core, platform)
+        return
+      } catch (error) {
+        if (!(error instanceof Failure)) throw error
+        console.warn(`warning: ${id} (${platform}): ${error.message}; building it from source instead`)
+      }
+    }
     await buildAndInstall(id, core, platform, options)
     return
   }
@@ -394,7 +445,8 @@ const sourcesMarkdown = lock => {
         b.built
           ? `  - ${platform}: \`${b.library.file}\`, built by EmuDome from the source archive above with` +
             ` ${core.build.scripts.map(s => `\`${s}\``).join(' / ')} (${b.built.toolchain};` +
-            ` sha256 \`${b.library.sha256}\`)`
+            ` sha256 \`${b.library.sha256}\`)` +
+            (b.built.release ? `, published as ${b.built.release}${b.library.file}` : '')
           : `  - ${platform}: \`${b.library.file}\`, from ${b.url} (sha256 \`${b.sha256}\`)`,
       )
       .join('\n')
@@ -429,9 +481,10 @@ const sourcesMarkdown = lock => {
     '',
     'EmuDome ships these libretro cores unmodified, as separate programs it loads at run time.',
     'Some are the upstream builds, downloaded; the others EmuDome builds from the unmodified',
-    'upstream source (said per build below). Each keeps its own licence, whose text is in',
-    '`notices/`. The Corresponding Source of each binary is the upstream commit named below (and,',
-    'for a build of EmuDome, the build scripts named with it). If a link stops working, open',
+    'upstream source and publishes in its own GitHub releases (said per build below). Each keeps',
+    'its own licence, whose text is in `notices/`. The Corresponding Source of each binary is the',
+    'upstream commit named below (for a build of EmuDome, the source archive of that commit and',
+    'the build scripts named with it). If a link stops working, open',
     `an issue at ${EMUDOME_REPO}/issues and the project will provide that source.`,
     '',
     ...shipped(lock).map(([id, core]) => line(id, core)),
@@ -536,6 +589,10 @@ const selfTest = lock => {
       mutated(core => {
         core.source.commit = newCommit
         core.license.url += newCommit
+        // Kept valid, so that only the stale derived files can catch this case.
+        Object.values(core.builds)
+          .filter(b => b.built?.release !== undefined)
+          .forEach(b => (b.built.release = b.built.release.replace(/-[0-9a-f]{7}\/$/, `-${newCommit.slice(0, 7)}/`)))
       }),
       disk,
     ],
@@ -568,6 +625,14 @@ const selfTest = lock => {
       disk,
     ],
     ['a built entry without its toolchain', mutated((core, build) => delete build.built.toolchain, isBuilt), disk],
+    [
+      "a built entry pointing at another commit's release",
+      mutated(
+        (core, build) => (build.built.release = `${EMUDOME_REPO}/releases/download/cores-mgba-0000000/`),
+        isBuilt,
+      ),
+      disk,
+    ],
     [
       'a built core whose build script is missing',
       mutated(core => (core.build.scripts = ['scripts/no-such-build-script.ps1']), isBuilt),
@@ -606,6 +671,7 @@ const parseArgs = argv =>
         return { ...acc, jobs, skip: true }
       }
       if (arg === '--package') return { ...acc, package: true }
+      if (arg === '--build') return { ...acc, build: true }
       if (arg === '--self-test') return { ...acc, selfTest: true }
       if (!acc.command) return { ...acc, command: arg }
       return fail(`unknown argument ${arg}`)

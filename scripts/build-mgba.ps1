@@ -6,7 +6,8 @@
 # Needs Node, git, and for Windows Visual Studio 2022 (or its Build Tools) with the C++ tools, for
 # Android the NDK (cores.lock names the version the pin came from). CMake: CMAKE, else PATH, else
 # the one inside Visual Studio / the Android SDK. Every step and toolchain: scripts/core-build.mjs.
-# fetch-cores.ps1 / fetch-cores-android.ps1 call the same build when mGBA is not in place.
+# fetch-cores.ps1 / fetch-cores-android.ps1 download the pinned build from EmuDome's GitHub release
+# instead, and call this same build only when that download fails or with -Build.
 
 param(
     [ValidateSet("windows-x86_64", "android-arm64-v8a")]
