@@ -19,10 +19,14 @@
 //   node scripts/cores.mjs check [--self-test]
 //       Offline, in scripts/check: cores.lock is well formed, the derived files are what
 //       `generate` would write, tauri.conf.json lists no resource of its own, the Gradle build
-//       reads cores.lock, and THIRD_PARTY.md names every core's commit. --self-test feeds each
-//       rule a broken copy first and fails if a rule does not fire.
+//       reads cores.lock, the app's Android project (app/src-tauri/gen/android, versioned) is
+//       there and adds no jniLibs folder of its own (the cores reach the APK only through the
+//       platform library's Gradle build), and THIRD_PARTY.md names every core's commit.
+//       --self-test feeds each rule a broken copy first and fails if a rule does not fire.
 //       Blind spots: it cannot tell whether a URL still serves the pinned bytes (only `fetch` can),
-//       and THIRD_PARTY.md's prose is matched by the commit hash only.
+//       and THIRD_PARTY.md's prose is matched by the commit hash only. The Android project rule
+//       reads gen/android/app/build.gradle.kts only: a jniLibs folder added another way (a plain
+//       src/main/jniLibs/ with .so files, ignored by git) is not seen.
 //
 // No dependency: Node's fetch, crypto and zlib (zip archives are read here, store and deflate).
 
@@ -38,6 +42,7 @@ const SOURCES = path.join(ROOT, 'cores', 'SOURCES.md')
 const PACKAGE_DIR = path.join(ROOT, 'app', 'src-tauri', 'package')
 const TAURI_CONF = path.join(ROOT, 'app', 'src-tauri', 'tauri.conf.json')
 const GRADLE = path.join(ROOT, 'crates', 'emudome-platform', 'android', 'build.gradle.kts')
+const APP_GRADLE = path.join(ROOT, 'app', 'src-tauri', 'gen', 'android', 'app', 'build.gradle.kts')
 const THIRD_PARTY = path.join(ROOT, 'THIRD_PARTY.md')
 const EMUDOME_REPO = 'https://github.com/DomenghiniStefano/emu-dome'
 
@@ -390,11 +395,24 @@ const checkProblems = (lock, files) => {
   const gradle = (files.read(GRADLE) ?? '').includes('cores.lock')
     ? []
     : ['build.gradle.kts does not read cores.lock: the APK would take whatever is in cores/android']
+  const appGradle = files.read(APP_GRADLE)
+  const androidProject =
+    appGradle === null
+      ? [
+          'app/src-tauri/gen/android/app/build.gradle.kts is missing: the Android project is versioned' +
+            ' (generated once with `pnpm tauri android init`, then kept in the repo)',
+        ]
+      : /\bjniLibs\s*\.\s*(srcDirs?|setSrcDirs)\b|cores\/android/.test(appGradle)
+        ? [
+            'app/src-tauri/gen/android/app/build.gradle.kts adds a jniLibs folder: the cores reach the APK only' +
+              ' through crates/emudome-platform/android/build.gradle.kts (cores.lock, sha256-checked)',
+          ]
+        : []
   const thirdParty = files.read(THIRD_PARTY) ?? ''
   const undocumented = Object.entries(lock.cores)
     .filter(([, core]) => !thirdParty.includes(core.source.commit))
     .map(([id, core]) => `THIRD_PARTY.md does not name ${id}'s commit ${core.source.commit}`)
-  return [...stale, ...ownResources, ...gradle, ...undocumented]
+  return [...stale, ...ownResources, ...gradle, ...androidProject, ...undocumented]
 }
 
 const disk = { read }
@@ -421,6 +439,12 @@ const selfTest = lock => {
     ['a hand-edited bundle list', lock, override(path.join(PACKAGE_DIR, 'windows-x86_64.json'), '{}\n')],
     ['resources back in tauri.conf.json', lock, override(TAURI_CONF, '{"bundle":{"resources":["../../cores/"]}}')],
     ['Gradle not reading the lock', lock, override(GRADLE, 'jniLibs.srcDir("../../../cores/android")')],
+    ['the Android project missing', lock, override(APP_GRADLE, null)],
+    [
+      'the Android app adding its own jniLibs',
+      lock,
+      override(APP_GRADLE, `${read(APP_GRADLE)}\nandroid.sourceSets["main"].jniLibs.srcDir("libs")\n`),
+    ],
     ['THIRD_PARTY.md without the commits', lock, override(THIRD_PARTY, '# Third-party components\n')],
     [
       'a latest/ URL marked stable',
@@ -440,7 +464,7 @@ const runCheck = (lock, options) => {
   if (options.selfTest) selfTest(lock)
   const problems = checkProblems(lock, disk)
   if (problems.length > 0) fail(`cores check:\n  ${problems.join('\n  ')}`)
-  console.log('cores.lock, the bundle lists, cores/SOURCES.md, Gradle and THIRD_PARTY.md agree.')
+  console.log('cores.lock, the bundle lists, cores/SOURCES.md, Gradle, the Android project and THIRD_PARTY.md agree.')
 }
 
 // --- Entry point

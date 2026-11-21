@@ -113,6 +113,14 @@ nintendo_files() {
 		grep -vxF -e 'tools/test-rom/emudome-test.gba' -e 'tools/test-rom-nds/emudome-test.nds'
 }
 
+# Licence rule 6, no secrets in the repo: signing keystores, by extension (tracked, or untracked and
+# not ignored). Android release signing reads its keystore from outside the repository
+# (EMUDOME_KEYSTORE, app/src-tauri/gen/android/app/build.gradle.kts). Cannot see a keystore under
+# another name, or a password written into a file.
+keystore_files() {
+	git ls-files --cached --others --exclude-standard | grep -iE '\.(jks|keystore|p12|pfx)$'
+}
+
 # --- Rust
 run 'cargo fmt' cargo fmt --all --check
 run 'cargo clippy' cargo clippy --workspace --all-targets -- -D warnings
@@ -242,10 +250,12 @@ else
 fi
 
 # --- The libretro cores (CLAUDE.md, engineering rule 3): cores.lock, the bundle lists generated
-# from it (app/src-tauri/package/), cores/SOURCES.md, the Gradle build and THIRD_PARTY.md agree, and
-# tauri.conf.json lists no resource of its own. --self-test feeds every rule a broken input first.
-# Offline: it cannot see whether a URL still serves the pinned bytes (only a fetch can).
-run 'cores: lock, bundle lists, sources, docs' node scripts/cores.mjs check --self-test
+# from it (app/src-tauri/package/), cores/SOURCES.md, the Gradle build and THIRD_PARTY.md agree,
+# tauri.conf.json lists no resource of its own, and the versioned Android project
+# (app/src-tauri/gen/android) is there and adds no jniLibs folder of its own (Trello #76).
+# --self-test feeds every rule a broken input first. Offline: it cannot see whether a URL still
+# serves the pinned bytes (only a fetch can).
+run 'cores: lock, bundle lists, sources, android project, docs' node scripts/cores.mjs check --self-test
 
 # --- Frontend (app/)
 run_script typecheck
@@ -344,6 +354,10 @@ run 'design system conventions' node scripts/scan-conventions.mjs
 # "Never include Nintendo files (games, BIOS, firmware, keys)".
 forbid 'no nintendo files' 'Remove it: the user adds games; the cores bring open-source BIOS replacements.' \
 	nintendo_files
+
+# "No secrets in the repo": no signing keystore (see keystore_files above).
+forbid 'no keystores' 'Move it out of the repository and point EMUDOME_KEYSTORE at it.' \
+	keystore_files
 
 [ -n "$skipped" ] && printf '\nSKIPPED (not checked on this machine):%s\n' "$skipped"
 if [ -n "$failed" ]; then

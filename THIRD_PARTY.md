@@ -108,7 +108,9 @@ License 1.1: list it here and ship its `OFL.txt` next to the font files.
 - **App icon** (`app/src-tauri/icons/`, every size and `icon.ico`): a neutral placeholder made for
   EmuDome in the first commit, a rounded square in the accent colour with a light rounded rectangle.
   It is not the Tauri logo and is not taken from anywhere else (checked 2026-11-18). Part of EmuDome
-  under GPL-3.0-or-later. The real icon comes later (Trello #54).
+  under GPL-3.0-or-later. The real icon comes later (Trello #54). The Android launcher icons
+  (`app/src-tauri/gen/android/app/src/main/res/mipmap-*/`) are generated from it by `pnpm tauri icon`;
+  the template's own icons (the Tauri logo, the Android robot) were removed.
 - **Interface icons**: all from Lucide (`@lucide/vue`, ISC, see above), imported as components. The
   only icon drawn by hand is the three-line menu glyph in `app/src/components/game/TouchControls.vue`
   (three straight lines), part of EmuDome.
@@ -125,6 +127,18 @@ empty: it contains no Nintendo material.
 and `build.py` (its own small assembler), under GPL-3.0-or-later (`tools/test-rom-nds/LICENSE`). Its
 header leaves the logo area and the logo checksum empty, and it needs no BIOS or firmware file: it
 contains no Nintendo material.
+
+### Android project
+
+`app/src-tauri/gen/android/` is the Android Gradle project, generated once by the Tauri CLI
+(`pnpm tauri android init`, tauri-cli 2.12.4, Apache-2.0 OR MIT) from its template and versioned
+with EmuDome's changes (release signing, launcher icons); `scripts/android-build.ps1` builds it.
+
+| Component | Used for | Licence | Notes |
+| --- | --- | --- | --- |
+| Gradle Wrapper (`gradle/wrapper/gradle-wrapper.jar`, `gradlew`, `gradlew.bat`) | downloads and runs the Gradle version in `gradle-wrapper.properties` | Apache-2.0 | Build tool, in the repository, not in the APK. The jar carries its licence (`META-INF/LICENSE`, `SPDX-License-Identifier: Apache-2.0` in its manifest). |
+| Android Gradle Plugin, Kotlin Gradle plugin | build | Apache-2.0 | Downloaded by Gradle at build time; build tools, not in the APK. |
+| AndroidX (`webkit`, `appcompat`, `activity-ktx`, `lifecycle-process`), Material Components, Kotlin standard library | the app's Android side (Tauri's activity and WebView) | Apache-2.0 | Downloaded by Gradle from Google's Maven and Maven Central at build time and compiled into the APK. Versions in `app/build.gradle.kts`. Compatible with GPL-3.0-or-later. |
 
 ### Platform components (not shipped by EmuDome)
 
