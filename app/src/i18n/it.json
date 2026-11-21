@@ -279,6 +279,8 @@
     "dataMoveFailed": "Non riesco a copiare i tuoi dati nella nuova cartella di EmuDome. Non hai perso nulla: per ora EmuDome continua a usare la vecchia cartella ({old}) e riprova al prossimo avvio. Dettagli: {detail}",
     "dataMoveConflict": "La nuova cartella dei dati di EmuDome ({new}) conteneva già dei dati, quindi i tuoi dati precedenti non sono stati copiati sopra. Sono ancora in {old}, intatti: copia a mano quello che ti serve. Vedi {report}.",
     "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
+    "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio. Metti in pausa il gioco dal menu rapido.",
+    "screenLayoutUnavailable": "Questa disposizione degli schermi non è disponibile per questo gioco. Scegline un’altra dal menu rapido.",
     "effectNotLoaded": "Non riesco a usare l’effetto «{name}», quindi il gioco si vede senza. Scegli un altro effetto o un altro file.",
     "biosUnreadable": "Non riesco a leggere questo file: {detail}. Controlla che ci sia ancora e sceglilo di nuovo.",
     "biosWrongSize": "Questo file non ha la dimensione giusta per questa voce. Scegli il file giusto.",
@@ -685,7 +687,8 @@
           "vertical": "Verticale",
           "side": "Affiancati",
           "big_small": "Grande e piccolo",
-          "top_only": "Solo lo schermo superiore"
+          "top_only": "Solo lo schermo superiore",
+          "custom": "Disposizione libera"
         }
       },
       "custom": {

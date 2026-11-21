@@ -406,6 +406,9 @@ pub struct PadConfig {
     /// `a11y.toggle`: rewind (L3 + L2) goes on at one press and off at the next instead of
     /// lasting while held.
     pub hold_toggle: bool,
+    /// `pad.lid` is `l3_select` (the default): the lid has its combo. `menu_only`: no combo,
+    /// the quick menu only.
+    pub lid_combo: bool,
 }
 
 impl Default for PadConfig {
@@ -460,6 +463,7 @@ impl PadConfig {
             fast_forward: speed(keys::SPEED_FF),
             slow_motion: speed(keys::SPEED_SLOW),
             hold_toggle: settings.bool(keys::A11Y_HOLD_TOGGLE),
+            lid_combo: settings.text(keys::PAD_LID) != "menu_only",
         }
     }
 
@@ -485,11 +489,15 @@ impl PadConfig {
         }
     }
 
-    /// Every hotkey with its position (`None`: no combo), in [`Hotkey::ALL`] order.
+    /// Every hotkey with its position (`None`: no combo), in [`Hotkey::ALL`] order. The lid has
+    /// none with `pad.lid` on «quick menu only».
     pub fn combo_table(&self) -> Vec<(Hotkey, Option<Pos>)> {
         Hotkey::ALL
             .into_iter()
             .map(|hotkey| {
+                if hotkey == Hotkey::Lid && !self.lid_combo {
+                    return (hotkey, None);
+                }
                 let pos = self
                     .combos
                     .iter()

@@ -221,13 +221,14 @@
         "vertical",
         "side",
         "big_small",
-        "top_only"
+        "top_only",
+        "custom"
       ],
       "page": "screens"
     },
     {
       "key": "screens.custom",
-      "kind": "action",
+      "kind": "screenLayout",
       "options": [],
       "page": "screens"
     },

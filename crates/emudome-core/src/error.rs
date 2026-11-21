@@ -150,6 +150,12 @@ pub enum ErrorCode {
     },
     /// The screenshot could not be encoded or written (no frame yet, folder not writable).
     ScreenshotFailed { detail: String },
+    /// The open game's core has no way to close the lid (`core_profile::Lid::Unsupported`:
+    /// Azahar, a one-screen console). The interface shows the lid disabled before this.
+    LidUnsupported,
+    /// The screen layout `layout` (a `ScreenLayoutId`) cannot be shown for the open game: a
+    /// custom layout that is not saved, or a one-screen game.
+    ScreenLayoutUnavailable { layout: String },
     /// The screen effect `name` (a built-in one or the user's `.slangp` file name) could not
     /// be loaded or drawn; the game shows without it.
     EffectNotLoaded { name: String, detail: String },

@@ -162,6 +162,27 @@ fn a_combo_on_the_modifier_itself_is_dropped() {
 }
 
 #[test]
+fn the_lid_has_no_combo_on_quick_menu_only() {
+    let lid = |c: &PadConfig| {
+        c.bindings()
+            .combos
+            .iter()
+            .find(|(_, h)| *h == Hotkey::Lid)
+            .map(|(b, _)| *b)
+    };
+    assert_eq!(lid(&PadConfig::default()), Some(Button::Select));
+    let menu_only = config(&[("pad.lid", Value::Text("menu_only".into()))]);
+    assert_eq!(lid(&menu_only), None);
+    assert!(menu_only.combo_table().contains(&(Hotkey::Lid, None)));
+    // Even a remapped lid combo.
+    let remapped = config(&[
+        ("pad.lid", Value::Text("menu_only".into())),
+        ("pad.combos", list(&["lid=north"])),
+    ]);
+    assert_eq!(lid(&remapped), None);
+}
+
+#[test]
 fn the_default_bindings_are_the_routers_defaults() {
     assert_eq!(
         PadConfig::default().bindings(),

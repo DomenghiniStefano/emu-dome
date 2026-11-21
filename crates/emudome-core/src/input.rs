@@ -92,11 +92,14 @@ pub enum Source {
     Keyboard = 0,
     Gamepad = 1,
     Touch = 2,
+    /// The shell itself: a core's own chord pressed for a moment (the lid,
+    /// `core_profile::Lid::Chord`).
+    Shell = 3,
 }
 
 #[derive(Default)]
 pub struct InputState {
-    sources: [AtomicU16; 3],
+    sources: [AtomicU16; 4],
     /// The touch-screen pointer in `RETRO_DEVICE_POINTER` values
     /// ([`crate::screens::pointer_value`]): x in bits 0-15, y in 16-31, pressed in bit 32.
     /// One pointer whatever moves it (mouse, finger): the last writer wins.

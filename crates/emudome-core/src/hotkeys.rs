@@ -98,7 +98,8 @@ pub enum Hotkey {
     Screenshot,
     /// FPS overlay on/off.
     FpsOverlay,
-    /// Swap the two screens ([`Status::DualScreen`]).
+    /// Swap the two screens ([`Status::DualScreen`]). A hold: the router sends press and release,
+    /// the shell decides (`screens.swap`: toggled at each press, or swapped while held).
     SwapScreens,
     /// Next screen layout ([`Status::DualScreen`]).
     NextLayout,
@@ -115,7 +116,8 @@ pub enum Status {
     Active,
     /// Its feature does not exist yet: the combo is listed and reserved, and does nothing.
     Later,
-    /// It comes with the Nintendo DS and 3DS (Phase 2): reserved, does nothing for now.
+    /// It works with Nintendo DS and 3DS games only (Trello #28): with any other game it does
+    /// nothing.
     DualScreen,
 }
 
@@ -164,7 +166,7 @@ impl Hotkey {
         Hotkey::ALL.into_iter().find(|h| h.id() == id)
     }
 
-    /// Whether the hotkey does something yet. The router never fires the others.
+    /// Whether the hotkey does something yet. The router never fires the [`Status::Later`] ones.
     pub fn status(self) -> Status {
         match self {
             Hotkey::ToggleMenu
@@ -192,7 +194,7 @@ impl Hotkey {
     /// Whether the action lasts while the button is held (and then gets a release).
     pub fn is_hold(self) -> bool {
         match self {
-            Hotkey::FastForwardHold | Hotkey::Rewind => true,
+            Hotkey::FastForwardHold | Hotkey::Rewind | Hotkey::SwapScreens => true,
             Hotkey::ToggleMenu
             | Hotkey::SaveState
             | Hotkey::LoadState
@@ -203,7 +205,6 @@ impl Hotkey {
             | Hotkey::Pause
             | Hotkey::Screenshot
             | Hotkey::FpsOverlay
-            | Hotkey::SwapScreens
             | Hotkey::NextLayout
             | Hotkey::Lid => false,
         }
@@ -221,8 +222,8 @@ impl Hotkey {
 pub const DEFAULT_MODIFIER: Button = Button::L3;
 
 /// Default combos, modifier + button → action, in [`Hotkey::ALL`] order. Each fires once per
-/// press of the button; the rows whose [`Hotkey::status`] is not active are reserved and do
-/// nothing. The Guide button alone also toggles the menu (it is not a RetroPad button, see
+/// press of the button; the rows whose [`Hotkey::status`] is [`Status::Later`] are reserved and
+/// do nothing ([`Status::DualScreen`] ones act on DS and 3DS games only). The Guide button alone also toggles the menu (it is not a RetroPad button, see
 /// [`PadInput`]). Fullscreen has no combo: keyboard F11 and the quick menu only.
 pub const DEFAULT_COMBOS: &[(Button, Hotkey)] = &[
     // Fallback for when Steam or the Xbox Game Bar take the Guide button.
@@ -409,7 +410,7 @@ impl Router {
             for &(button, hotkey) in &self.bindings.combos {
                 // A reserved row (feature still to come) does nothing: its button only stays
                 // away from the game, like any button held with the modifier.
-                let reserved = hotkey.status() != Status::Active;
+                let reserved = hotkey.status() == Status::Later;
                 if pressed & button.bit() == 0
                     || reserved
                     || (ui_has_input && !hotkey.works_in_ui())
@@ -832,13 +833,13 @@ mod tests {
     }
 
     #[test]
-    fn the_reserved_rows_are_the_features_still_to_come() {
-        let reserved = [
+    fn the_dual_screen_rows_are_the_screens_and_the_lid() {
+        let dual = [
             (Button::Y, Hotkey::SwapScreens, Status::DualScreen),
             (Button::R3, Hotkey::NextLayout, Status::DualScreen),
             (Button::Select, Hotkey::Lid, Status::DualScreen),
         ];
-        for (button, hotkey, status) in reserved {
+        for (button, hotkey, status) in dual {
             assert!(DEFAULT_COMBOS.contains(&(button, hotkey)), "{hotkey:?}");
             assert_eq!(hotkey.status(), status, "{hotkey:?}");
         }
@@ -879,22 +880,42 @@ mod tests {
     }
 
     #[test]
-    fn a_reserved_combo_does_nothing_and_keeps_its_button_from_the_game() {
-        for button in [Button::Y, Button::R3, Button::Select] {
+    fn the_dual_screen_combos_fire_and_keep_their_button_from_the_game() {
+        // The shell does nothing with them for a one-screen game (app/src-tauri/src/screens.rs).
+        for (button, hotkey) in [
+            (Button::R3, Hotkey::NextLayout),
+            (Button::Select, Hotkey::Lid),
+        ] {
             let mut r = router();
             let t = Instant::now();
             r.step(pad(&[Button::L3]), false, t);
             let out = r.step(pad(&[Button::L3, button]), false, t);
-            assert!(out.actions.is_empty(), "{button:?}");
+            assert_eq!(out.actions, vec![Action::Press(hotkey)], "{button:?}");
             assert_eq!(out.game_mask, 0, "{button:?}");
-            // Released with the modifier gone: no release action, and it reaches the game
-            // only after a new press.
+            // Released with the modifier gone: no release action (not a hold), and it reaches
+            // the game only after a new press.
             let out = r.step(pad(&[button]), false, t);
             assert!(out.actions.is_empty(), "{button:?}");
             assert_eq!(out.game_mask, 0, "{button:?}");
             let out = r.step(pad(&[]), false, t);
             assert!(out.actions.is_empty(), "{button:?}");
         }
+        // Swap is a hold: its release follows Y, for `screens.swap` = hold.
+        let mut r = router();
+        let t = Instant::now();
+        r.step(pad(&[Button::L3]), false, t);
+        let out = r.step(pad(&[Button::L3, Button::Y]), false, t);
+        assert_eq!(out.actions, vec![Action::Press(Hotkey::SwapScreens)]);
+        let out = r.step(pad(&[Button::Y]), false, t);
+        assert!(out.actions.is_empty());
+        let out = r.step(pad(&[]), false, t);
+        assert_eq!(out.actions, vec![Action::Release(Hotkey::SwapScreens)]);
+        // Not from the menu.
+        r.step(pad(&[Button::L3]), true, t);
+        assert!(r
+            .step(pad(&[Button::L3, Button::R3]), true, t)
+            .actions
+            .is_empty());
     }
 
     #[test]

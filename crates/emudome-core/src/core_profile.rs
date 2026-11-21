@@ -11,6 +11,7 @@
 
 use std::path::Path;
 
+use crate::input::Button;
 use crate::save_path::{PathLimits, SaveDepth, SavePathTooLong};
 use crate::screens::Split;
 use crate::settings::core_values::{self, CoreTable};
@@ -160,6 +161,28 @@ pub fn state_load_block(
     crashes.then_some(StateLoadBlock::VulkanNoTitleId)
 }
 
+/// How a core closes and opens the console's lid (Trello #28). Never faked by pausing: a core
+/// with no way is [`Lid::Unsupported`], and the interface shows the lid disabled with the reason
+/// (`pad.lid` in its [`CoreProfile::unsupported_settings`], `lidSupported` in the screens' status).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Lid {
+    /// No lid, or no way to close it through libretro.
+    Unsupported,
+    /// The core flips its lid when `press` goes down while `hold` is held (one flip per press);
+    /// the shell presses both for a moment ([`LID_PRESS`]). `press` also reaches the game then.
+    Chord { hold: Button, press: Button },
+}
+
+/// How long the shell holds a lid chord: a few frames, so the core's next polls see it go down
+/// even when a frame is late. A paused game polls nothing and misses it.
+pub const LID_PRESS: std::time::Duration = std::time::Duration::from_millis(100);
+
+impl Lid {
+    pub fn supported(self) -> bool {
+        self != Lid::Unsupported
+    }
+}
+
 /// Where a core keeps a game's progress.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SaveModel {
@@ -197,6 +220,8 @@ pub struct CoreProfile {
     /// Settings that act through cores but have no equivalent in this one: on its consoles the
     /// interface shows them disabled with the reason (`unsupportedConsoles` in the schema).
     pub unsupported_settings: &'static [&'static str],
+    /// How the lid is closed, if it can be.
+    pub lid: Lid,
     /// The settings row that opens the full list of this core's options (`cores.*all`).
     pub options_row: &'static str,
     /// How many options the pinned build declares, the number that row shows; `None` until
@@ -293,6 +318,8 @@ static MGBA: CoreProfile = CoreProfile {
     // 3D rendering settings (Azahar's): a 2D core has no internal resolution, texture filter
     // or CPU clock option.
     unsupported_settings: &["video.res3d", "video.texf", "perf.cpuclock"],
+    // One screen, no lid (the lid rows show on DS and 3DS games only).
+    lid: Lid::Unsupported,
     options_row: "cores.mgbaall",
     // Measured 2026-11-21 (Trello #89).
     declared_options: Some(DeclaredOptions {
@@ -327,6 +354,12 @@ static MELONDSDS: CoreProfile = CoreProfile {
         "video.texf",
         "perf.cpuclock",
     ],
+    // melonDS DS 1.4.0 `input/joypad.cpp`: Y pressed while L2 is held flips the lid
+    // (`NDS::SetLidClosed(!IsLidClosed())`); no core option changes it.
+    lid: Lid::Chord {
+        hold: Button::L2,
+        press: Button::Y,
+    },
     options_row: "cores.mdsall",
     // Measured 2026-11-21 on the DS test ROM (Trello #89).
     declared_options: Some(DeclaredOptions {
@@ -357,8 +390,11 @@ static AZAHAR: CoreProfile = CoreProfile {
     },
     save_model: SaveModel::CoreFiles,
     save_depth: Some(crate::n3ds::SAVE_DEPTH),
-    // Azahar 2126.2 has no frameskip option (`headless --list-options`).
-    unsupported_settings: &["perf.frameskip"],
+    // Azahar 2126.2 has no frameskip option (`headless --list-options`), and no lid: nothing in
+    // its libretro frontend (`src/citra_libretro/`) closes it, and its PTM service's
+    // `shell_open` is never set to false.
+    unsupported_settings: &["perf.frameskip", "pad.lid"],
+    lid: Lid::Unsupported,
     options_row: "cores.azall",
     // TODO(Phase 3): measured when the headless host runs 3DS games (#46); its row is hidden
     // until then (phase 3).

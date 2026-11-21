@@ -858,7 +858,8 @@ fn choices_have_unique_well_formed_options() {
             | Kind::Colour { .. }
             | Kind::Text
             | Kind::Action { .. }
-            | Kind::Bindings { .. } => continue,
+            | Kind::Bindings { .. }
+            | Kind::ScreenLayout => continue,
             Kind::Apply { options } => options,
         };
         assert!(!options.is_empty(), "{}: no options", e.key);
@@ -1963,7 +1964,6 @@ fn the_entries_not_wired_yet_are_these() {
             "speed.ffmode",
             "speed.runahead",
             "saves.rtc",
-            "pad.lid",
             "pad.gyro",
             "touch.tport",
             "touch.tland",
