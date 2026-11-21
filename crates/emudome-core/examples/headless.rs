@@ -23,7 +23,10 @@
 //! - `--touch`: NDS, touch the bottom screen through the shell's path (window point → composed
 //!   rectangle → pointer value) and check what the test ROM shows (`tools/test-rom-nds`);
 //! - `--set key=value` (repeatable): a text setting the BIOS rule reads (`consoles.dsmode`,
-//!   `cores.mdsboot`), as the shell would resolve it for the game.
+//!   `cores.mdsboot`), as the shell would resolve it for the game;
+//! - `--timing N`: run N seconds at 1x, a quick save into slot 5 every 2 s, and print the
+//!   emulation thread's work per frame (p50 / p99 / max, frames over budget), then stop. With
+//!   `--rewind S` rewind records meanwhile, as in the app. Build with `--release` to measure.
 //!
 //! A game runs as the shell runs it: its core's forced options and screen split
 //! (`emudome_core::core_profile`). Every game gets the BIOS rule of its core (`emudome_core::bios`): the
@@ -69,6 +72,55 @@ struct Args {
     live: Vec<(String, String)>,
     fast_audio: Option<emudome_core::speed_audio::FastAudio>,
     sets: Vec<(String, String)>,
+    timing: Option<u32>,
+}
+
+/// `--timing N`: the emulation thread's work per frame over N seconds at 1x, with a quick save
+/// every 2 s (rewind records too when it is on).
+fn measure_timing(
+    session: &Session,
+    rx: &mpsc::Receiver<emudome_core::Event>,
+    secs: u32,
+) -> anyhow::Result<()> {
+    *session.shared().frame_times.lock() = Some(Vec::new());
+    let t = Instant::now();
+    let mut saves = 0;
+    while t.elapsed() < Duration::from_secs(u64::from(secs)) {
+        std::thread::sleep(Duration::from_secs(2));
+        session.send(Command::SaveState(5));
+        saves += 1;
+    }
+    // The last save's event, then the frames recorded.
+    for _ in 0..saves {
+        rx.recv_timeout(Duration::from_secs(5))?;
+    }
+    let mut times = session
+        .shared()
+        .frame_times
+        .lock()
+        .take()
+        .unwrap_or_default();
+    anyhow::ensure!(!times.is_empty(), "no frame recorded");
+    times.sort_unstable();
+    let at = |q: f64| times[((times.len() - 1) as f64 * q).round() as usize];
+    let mean = times.iter().map(|&t| f64::from(t)).sum::<f64>() / times.len() as f64;
+    let (states, bytes) = {
+        let s = session.shared().stats.lock();
+        (s.rewind_states, s.rewind_bytes)
+    };
+    println!(
+        "timing: {} frames, {saves} quick saves; work per frame µs: mean {mean:.0}, p50 {}, p90 {}, p99 {}, p99.9 {}, max {}; over 8 ms {}, over 16.7 ms {}; rewind {states} states, {:.1} MB",
+        times.len(),
+        at(0.5),
+        at(0.9),
+        at(0.99),
+        at(0.999),
+        times[times.len() - 1],
+        times.iter().filter(|&&t| t > 8_000).count(),
+        times.iter().filter(|&&t| t > 16_700).count(),
+        bytes as f64 / 1e6,
+    );
+    Ok(())
 }
 
 fn key_value(kv: &str) -> anyhow::Result<(String, String)> {
@@ -80,14 +132,14 @@ fn key_value(kv: &str) -> anyhow::Result<(String, String)> {
 
 /// Audio frames queued per second of wall time over `secs` (the queue drained every 5 ms).
 fn audio_rate(session: &Session, secs: f64) -> f64 {
-    session.shared().audio.lock().samples.clear();
+    let ring = &session.shared().audio;
+    let drain = || ring.reader().map_or(0, |mut r| r.drain());
+    drain();
     let t = Instant::now();
     let mut samples = 0usize;
     while t.elapsed().as_secs_f64() < secs {
         std::thread::sleep(Duration::from_millis(5));
-        let mut q = session.shared().audio.lock();
-        samples += q.samples.len();
-        q.samples.clear();
+        samples += drain();
     }
     samples as f64 / 2.0 / t.elapsed().as_secs_f64()
 }
@@ -107,6 +159,7 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut live = Vec::new();
     let mut fast_audio = None;
     let mut sets = Vec::new();
+    let mut timing = None;
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -130,6 +183,7 @@ fn parse_args() -> anyhow::Result<Args> {
             "--list-options" => list_options = true,
             "--live" => live.push(key_value(&value()?)?),
             "--set" => sets.push(key_value(&value()?)?),
+            "--timing" => timing = Some(value()?.parse()?),
             "--fast-audio" => {
                 let id = value()?;
                 fast_audio = Some(
@@ -158,6 +212,7 @@ fn parse_args() -> anyhow::Result<Args> {
         live,
         fast_audio,
         sets,
+        timing,
     })
 }
 
@@ -422,6 +477,12 @@ fn main() -> anyhow::Result<()> {
             .set(Source::Keyboard, Button::A, false);
     }
 
+    if let Some(secs) = args.timing {
+        measure_timing(&session, &rx, secs)?;
+        drop(session);
+        return Ok(());
+    }
+
     // 1x: average over the whole window, from the frame counter.
     let measure = Duration::from_secs_f64(args.secs);
     let f0 = session.shared().stats.lock().frames;
@@ -471,7 +532,7 @@ fn main() -> anyhow::Result<()> {
         ] {
             session.send(Command::SetSpeed(speed));
             std::thread::sleep(Duration::from_millis(300));
-            let rate = session.shared().audio.lock().sample_rate;
+            let rate = session.shared().audio.sample_rate();
             println!(
                 "audio at {label}: {:.0} frames/s queued (core rate {rate})",
                 audio_rate(&session, 1.0)

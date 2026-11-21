@@ -146,7 +146,7 @@ cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe
 ```
 crates/libretro-sys      libretro API types and constants (added as they are needed)
 crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulation thread),
-                         Command/Event, Shared (RGBA frame, audio queue, input, stats), speed, states, .sav,
+                         Command/Event, Shared (RGBA frame, audio ring, input, stats), speed, states, .sav,
                          ErrorCode (errors for the UI as code + params),
                          atomic.rs (`write_atomic`: the one way user data is written: temp file
                          `.<name>.<pid>-<n>.emudome-tmp`, fsync, rename, folder fsync where allowed),
@@ -240,10 +240,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`Rgba8Unorm`, the core's sRGB bytes as they are) into a texture the size of the game's rectangle; our pass mixes it
   over the plain image (`fx.fxint`, `fx.fxbright`). Rows with `needs_native_video` are disabled on Compatible (X05).
   GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
-- Audio: shared queue, linear resampling to the device's rate,
-  ±0.5% correction on the queue's fill level. Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread):
-  muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about real time reaches
-  the queue. At Max the speed is measured.
+- Audio: a lock-free SPSC ring (`emudome_core::audio::AudioRing`, rtrb) from the emulation thread to the cpal
+  callback, linear resampling to the device's rate, ±0.5% correction on the ring's fill level; the reader drops
+  what is queued beyond ~150 ms, oldest first. Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread,
+  before the push): muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about
+  real time reaches the ring. At Max the speed is measured. The real-time threads (audio callback, controllers)
+  read the open game through `CurrentShared` (an `ArcSwapOption`, no lock); the callback records its measurements
+  only in bench mode, with `try_lock`.
 - Core options: the settings' values come from `settings::core_values` (a `CoreTable` per core: setting → core
   option, `Live` or `Restart`). A change while the game runs: live options go to the core
   (`GET_VARIABLE_UPDATE`), restart ones are listed in `emu://core-restart` (`core_settings.rs`).

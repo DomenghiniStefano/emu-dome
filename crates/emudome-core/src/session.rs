@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use libretro_sys::retro_system_av_info;
 use parking_lot::Mutex;
 
-use crate::audio::AudioQueue;
+use crate::audio::AudioRing;
 use crate::callbacks::{CallbackCtx, Slot};
 use crate::core::{GameContent, GameFiles, LoadedCore, StartError};
 use crate::core_options::CoreOptions;
@@ -142,7 +142,8 @@ pub struct Stats {
 #[derive(Default)]
 pub struct Shared {
     pub frame: Mutex<Frame>,
-    pub audio: Mutex<AudioQueue>,
+    /// The audio queue: lock-free between the emulation thread and the audio output.
+    pub audio: AudioRing,
     pub input: InputState,
     pub stats: Mutex<Stats>,
     /// «Muto» in the quick menu: the audio output plays silence for this game.
@@ -152,6 +153,9 @@ pub struct Shared {
     /// What the core said its states cannot do (`SET_SERIALIZATION_QUIRKS`,
     /// `RETRO_SERIALIZATION_QUIRK_*` bits); 0 until it says.
     pub serialization_quirks: std::sync::atomic::AtomicU64,
+    /// The emulation thread's work per frame in µs (commands, `retro_run`, rewind, saves; not
+    /// the pacing sleep), recorded only while `Some`: the headless example's `--timing`.
+    pub frame_times: Mutex<Option<Vec<u32>>>,
 }
 
 /// One option as the running core declares it (`SET_VARIABLES` / `SET_CORE_OPTIONS*`).
@@ -650,7 +654,7 @@ fn emu_thread(
         stats.av_info = av;
         stats.speed = Some(Speed::Factor(1.0));
     }
-    shared.audio.lock().set_rate(av.timing.sample_rate);
+    shared.audio.set_rate(av.timing.sample_rate);
     // The ROM's file name: the screenshots are named after it, for the user to browse.
     let rom_name = opts
         .game_path
@@ -731,6 +735,8 @@ fn emu_thread(
         } else {
             rx.try_recv().ok()
         };
+        // The frame's work starts here: the commands it carries out count.
+        let work_start = Instant::now();
         for cmd in first
             .into_iter()
             .chain(std::iter::from_fn(|| rx.try_recv().ok()))
@@ -745,7 +751,7 @@ fn emu_thread(
                     meter = SpeedMeter::new(base_fps, Instant::now());
                     callbacks.set_audio_speed(audio_speed(s));
                     if !s.is_normal() && fast_audio == FastAudio::Mute {
-                        shared.audio.lock().samples.clear();
+                        shared.audio.clear();
                     }
                     shared.stats.lock().speed = Some(s);
                     next_frame = Instant::now();
@@ -833,7 +839,7 @@ fn emu_thread(
                         rewinding = on;
                         // Silence while going back.
                         callbacks.set_audio_enabled(!on);
-                        shared.audio.lock().samples.clear();
+                        shared.audio.clear();
                         shared.stats.lock().rewinding = on;
                     }
                 }
@@ -941,6 +947,10 @@ fn emu_thread(
             // A failure was logged; the next flush tries again.
             let _ = writer.sram(&core);
             last_sram_flush = Instant::now();
+        }
+
+        if let Some(times) = shared.frame_times.lock().as_mut() {
+            times.push(u32::try_from(work_start.elapsed().as_micros()).unwrap_or(u32::MAX));
         }
 
         // Pacing: at a fixed speed wait for the next frame, at Max do not.

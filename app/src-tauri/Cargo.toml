@@ -39,6 +39,9 @@ serde_json = "1"
 anyhow = "1"
 log = "0.4"
 parking_lot = "0.12"
+# The open game's shared state for the real-time threads (audio callback, controllers): read
+# without a lock (`CurrentShared`). MIT OR Apache-2.0.
+arc-swap = "1"
 # Stable content names of the user's background images (`settings.rs`).
 sha2 = "0.10"
 wgpu = "=30.0.2"

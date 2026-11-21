@@ -528,6 +528,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | rfd | 0.17.2 | MIT |
 | rpkg-config | 0.1.2 | Zlib OR MIT OR Apache-2.0 |
 | rspirv | 0.13.0+sdk-1.4.341.0 | Apache-2.0 |
+| rtrb | 0.4.1 | MIT OR Apache-2.0 |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 |
 | rustc-hash | 1.1.0 | Apache-2.0/MIT |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |

@@ -328,7 +328,7 @@ fn run(app: AppHandle, current: CurrentShared, menu_open: Arc<AtomicBool>, share
             last_state = None;
         }
 
-        let shared = current.lock().clone();
+        let shared = current.load_full();
         if shared_pads.capture.load(Ordering::Relaxed) {
             // The Controls section is waiting for a button: nothing plays, nothing navigates.
             router.absorb(input);
@@ -474,7 +474,7 @@ impl Hotkeys {
 
     fn speed(&self) -> Speed {
         self.current
-            .lock()
+            .load()
             .as_ref()
             .and_then(|s| s.stats.lock().speed)
             .unwrap_or(NORMAL)
@@ -482,14 +482,14 @@ impl Hotkeys {
 
     fn rewinding(&self) -> bool {
         self.current
-            .lock()
+            .load()
             .as_ref()
             .is_some_and(|s| s.stats.lock().rewinding)
     }
 
     fn paused(&self) -> bool {
         self.current
-            .lock()
+            .load()
             .as_ref()
             .is_some_and(|s| s.stats.lock().paused)
     }

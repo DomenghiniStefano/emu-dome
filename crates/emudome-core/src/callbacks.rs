@@ -50,6 +50,7 @@ use libretro_sys::{
 };
 use parking_lot::Mutex;
 
+use crate::audio::AudioProducer;
 use crate::core::GameStrings;
 use crate::core_options::{CoreOptions, OptionDef};
 use crate::frame::bytes_per_pixel;
@@ -71,6 +72,8 @@ pub(crate) struct CallbackCtx {
     pub speed_audio: SpeedAudio,
     /// Scratch buffer for [`SpeedAudio`]'s output.
     pub audio_out: Vec<i16>,
+    /// The emulation thread's end of the session's audio ring (no lock shared with the output).
+    pub audio: AudioProducer,
     /// Answers to `GET_VARIABLE`: the core's definitions and the shell's values.
     pub options: CoreOptions,
     /// How the core lays its screens out in the frame (recorded on every frame).
@@ -106,6 +109,10 @@ impl CallbackCtx {
             audio_enabled: true,
             speed_audio: SpeedAudio::new(crate::speed_audio::FastAudio::Mute),
             audio_out: Vec::new(),
+            audio: shared
+                .audio
+                .take_producer()
+                .unwrap_or_else(AudioProducer::detached),
             options: CoreOptions::default(),
             split: Split::Whole,
             username: None,
@@ -508,7 +515,7 @@ unsafe fn environment_in(slot: &SlotState, raw: c_uint, data: *mut c_void) -> bo
             Some(av) => {
                 slot.with("SET_SYSTEM_AV_INFO", |c| {
                     c.shared.stats.lock().av_info = av;
-                    c.shared.audio.lock().set_rate(av.timing.sample_rate);
+                    c.shared.audio.set_rate(av.timing.sample_rate);
                     c.av_change = Some(av);
                 });
                 true
@@ -677,21 +684,22 @@ unsafe extern "C" fn video_refresh<const S: usize>(
     });
 }
 
-/// The core's samples to the audio queue, through [`SpeedAudio`] off 1×.
+/// The core's samples to the audio ring, through [`SpeedAudio`] off 1×. The time-stretch runs
+/// here, before the push, and the push is lock-free: the audio output never waits for it.
 fn push_audio(c: &mut CallbackCtx, samples: &[i16]) {
     if !c.audio_enabled {
         return;
     }
-    let mut queue = c.shared.audio.lock();
+    let ring = &c.shared.audio;
     if c.speed_audio.is_passthrough() {
-        queue.push(samples);
+        c.audio.push(ring, samples);
         return;
     }
     c.audio_out.clear();
     c.speed_audio
-        .process(queue.sample_rate, samples, &mut c.audio_out);
+        .process(ring.sample_rate(), samples, &mut c.audio_out);
     if !c.audio_out.is_empty() {
-        queue.push(&c.audio_out);
+        c.audio.push(ring, &c.audio_out);
     }
 }
 

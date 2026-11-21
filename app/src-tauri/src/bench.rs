@@ -208,7 +208,7 @@ fn run(app: &tauri::AppHandle, bench: &Bench) -> (i32, Value) {
     log::info!("bench: first frame {first_ms:.0} ms after main");
     let first_at = Instant::now();
 
-    let Some(shared) = state.current.lock().clone() else {
+    let Some(shared) = state.current.load_full() else {
         return (2, fail(report, "error", "game closed".into()));
     };
 
@@ -237,7 +237,7 @@ fn run(app: &tauri::AppHandle, bench: &Bench) -> (i32, Value) {
         .as_ref()
         .map(|m| m.lock().surface_errors.clone());
     let frames0 = shared.stats.lock().frames;
-    let dropped0 = shared.audio.lock().dropped;
+    let dropped0 = shared.audio.dropped();
     let cpu0 = emudome_platform::process_cpu_time();
     let t0 = Instant::now();
 
@@ -246,7 +246,7 @@ fn run(app: &tauri::AppHandle, bench: &Bench) -> (i32, Value) {
     let elapsed = t0.elapsed().as_secs_f64();
     let cpu1 = emudome_platform::process_cpu_time();
     let frames1 = shared.stats.lock().frames;
-    let dropped1 = shared.audio.lock().dropped;
+    let dropped1 = shared.audio.dropped();
     let presents = video_metrics
         .as_ref()
         .and_then(|m| m.lock().presents.take())

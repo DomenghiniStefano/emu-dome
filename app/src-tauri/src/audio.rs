@@ -3,7 +3,10 @@
 //! drains the queue.
 //!
 //! The device, its rate, channels and buffer and the queue target come from
-//! [`AudioTuning`]; every callback is measured into [`AudioMetrics`] (bench reports).
+//! [`AudioTuning`]. The real-time callback takes no lock another thread may hold: the open game
+//! comes from an `ArcSwapOption` ([`CurrentShared`]), its samples from the lock-free ring
+//! (`emudome_core::audio`), and the measurements ([`AudioMetrics`]) are recorded only in bench
+//! mode, with `try_lock` (a callback never waits for the bench reading them).
 
 use std::sync::mpsc;
 use std::sync::Arc;
@@ -12,6 +15,7 @@ use std::time::{Duration, Instant};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use emudome_core::audio::TEST_TONE_HZ;
 use emudome_core::tuning::{AudioBuffer, AudioTuning};
+use emudome_core::Shared;
 use parking_lot::Mutex;
 use serde::Serialize;
 
@@ -22,6 +26,9 @@ pub struct AudioOutput {
     _stop: mpsc::Sender<()>,
     metrics: SharedAudioMetrics,
 }
+
+/// [`CallbackStats::windows`] keeps the last this many windows (an hour of 10 s windows).
+const MAX_WINDOWS: usize = 360;
 
 /// The output as opened, for logs and bench reports.
 #[derive(Debug, Clone, Serialize)]
@@ -68,8 +75,9 @@ pub struct CallbackStats {
     pub ratio_sum: f64,
     /// Breaks in the test tone (bench mode with `EMUDOME_BENCH_TONE`): each is an audible click.
     pub discontinuities: u64,
-    /// Averages per 10 s window, to see latency drift over a long run.
-    pub windows: Vec<WindowStats>,
+    /// Averages per 10 s window, to see latency drift over a long run (the last
+    /// [`MAX_WINDOWS`]).
+    pub windows: std::collections::VecDeque<WindowStats>,
     #[serde(skip)]
     last_callback: Option<Instant>,
     #[serde(skip)]
@@ -141,7 +149,10 @@ impl CallbackStats {
         w.underrun_frames += s.underrun_frames;
         if s.at.duration_since(start) >= WINDOW {
             let n = w.callbacks as f64;
-            self.windows.push(WindowStats {
+            if self.windows.len() >= MAX_WINDOWS {
+                self.windows.pop_front();
+            }
+            self.windows.push_back(WindowStats {
                 fill_ms_avg: w.fill_ms_sum / n,
                 device_latency_ms_avg: w.latency_ms_sum / n,
                 underrun_frames: w.underrun_frames,
@@ -174,15 +185,22 @@ pub type SharedAudioMetrics = Arc<Mutex<AudioMetrics>>;
 
 impl AudioOutput {
     /// `tone`: the amplitude of the bench's test tone, when the game's audio is replaced by
-    /// it; the callbacks then count its breaks.
-    pub fn start(current: CurrentShared, tuning: AudioTuning, tone: Option<f32>) -> Self {
+    /// it; the callbacks then count its breaks. `measure`: the callbacks record
+    /// [`CallbackStats`] (bench mode only).
+    pub fn start(
+        current: CurrentShared,
+        tuning: AudioTuning,
+        tone: Option<f32>,
+        measure: bool,
+    ) -> Self {
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
         let metrics = SharedAudioMetrics::default();
         let thread_metrics = metrics.clone();
         let spawned = std::thread::Builder::new()
             .name("emudome-audio".into())
-            .spawn(
-                move || match build_stream(current, &tuning, tone, thread_metrics.clone()) {
+            .spawn(move || {
+                let measured = measure.then(|| thread_metrics.clone());
+                match build_stream(current, &tuning, tone, &thread_metrics, measured) {
                     Ok(stream) => {
                         if let Err(e) = stream.play() {
                             log::error!("audio not started: {e}");
@@ -195,8 +213,8 @@ impl AudioOutput {
                         log::error!("no audio output: {e:#}");
                         thread_metrics.lock().error = Some(format!("{e:#}"));
                     }
-                },
-            );
+                }
+            });
         if let Err(e) = spawned {
             log::error!("audio thread not started: {e}");
             metrics.lock().error = Some(format!("thread: {e}"));
@@ -290,11 +308,131 @@ fn device_name(device: &cpal::Device) -> String {
         .unwrap_or_else(|e| format!("? ({e})"))
 }
 
+/// What a stream's callback keeps between two calls.
+struct Fill {
+    current: CurrentShared,
+    target_seconds: f64,
+    out_rate: f64,
+    channels: usize,
+    rs: Resampler,
+    /// The game the resampler's state belongs to (its `Shared`'s address): another game starts
+    /// from a clean resampler, not from the last game's samples.
+    game: usize,
+    tone: Option<f32>,
+    check: Option<ToneCheck>,
+    /// Bench mode only: where the callbacks' measurements go.
+    metrics: Option<SharedAudioMetrics>,
+}
+
+impl Fill {
+    /// One callback: `out` filled with interleaved frames of `channels` samples. Takes no lock
+    /// another thread may hold (the reader's is only ever tried by this callback; the metrics'
+    /// with `try_lock`, in bench mode).
+    fn fill(&mut self, out: &mut [f32], info: &cpal::OutputCallbackInfo) {
+        let at = Instant::now();
+        let current = self.current.load();
+        let Some(shared) = current.as_ref() else {
+            out.fill(0.0);
+            return;
+        };
+        let game = Arc::as_ptr(shared) as usize;
+        if game != self.game {
+            self.game = game;
+            self.rs = Resampler::new();
+            self.check = self.tone.map(|a| ToneCheck::new(a, self.out_rate));
+        }
+        self.play(shared, out, info, at);
+    }
+
+    fn play(
+        &mut self,
+        shared: &Shared,
+        out: &mut [f32],
+        info: &cpal::OutputCallbackInfo,
+        at: Instant,
+    ) {
+        let ring = &shared.audio;
+        let Some(mut reader) = ring.reader() else {
+            out.fill(0.0);
+            return;
+        };
+        if shared.muted.load(std::sync::atomic::Ordering::Relaxed) {
+            // «Muto»: the samples are dropped, so unmuting does not play stale sound.
+            reader.drain();
+            out.fill(0.0);
+            return;
+        }
+        let queued = reader.begin(ring) as f64;
+        let rate = ring.sample_rate();
+        let fill_ms = queued / 2.0 / rate * 1000.0;
+        // Base ratio plus a correction proportional to the queue's fill level (±0.5%).
+        let target = rate * self.target_seconds * 2.0;
+        let fill_err = ((queued - target) / target).clamp(-1.0, 1.0);
+        let ratio = 1.0 + 0.005 * fill_err;
+        let step = rate / self.out_rate * ratio;
+        let mut underrun_frames = 0u64;
+        let mut discontinuities = 0u64;
+        let rs = &mut self.rs;
+        for frame in out.chunks_mut(self.channels) {
+            while rs.pos >= 1.0 {
+                rs.prev = rs.next;
+                rs.next = match reader.pop_frame() {
+                    Some([l, r]) => [f32::from(l) / 32768.0, f32::from(r) / 32768.0],
+                    None => {
+                        underrun_frames += 1;
+                        [rs.prev[0] * 0.98, rs.prev[1] * 0.98] // empty queue: fade out
+                    }
+                };
+                rs.pos -= 1.0;
+            }
+            let t = rs.pos as f32;
+            let l = rs.prev[0] + (rs.next[0] - rs.prev[0]) * t;
+            let r = rs.prev[1] + (rs.next[1] - rs.prev[1]) * t;
+            if let Some(c) = &mut self.check {
+                discontinuities += u64::from(c.step(l));
+            }
+            match frame.len() {
+                1 => frame[0] = (l + r) * 0.5,
+                _ => {
+                    frame[0] = l;
+                    frame[1] = r;
+                    for c in frame.iter_mut().skip(2) {
+                        *c = 0.0;
+                    }
+                }
+            }
+            rs.pos += step;
+        }
+        drop(reader);
+        let Some(metrics) = &self.metrics else {
+            return;
+        };
+        let ts = info.timestamp();
+        let device_latency_ms = ts
+            .playback
+            .checked_duration_since(ts.callback)
+            .map_or(0.0, |d| d.as_secs_f64() * 1000.0);
+        // Never waits: a callback the bench is reading at that moment goes unrecorded.
+        if let Some(mut m) = metrics.try_lock() {
+            m.stats.record(CallbackSample {
+                at,
+                frames: (out.len() / self.channels.max(1)) as u64,
+                underrun_frames,
+                fill_ms,
+                device_latency_ms,
+                ratio,
+                discontinuities,
+            });
+        }
+    }
+}
+
 fn build_stream(
     current: CurrentShared,
     tuning: &AudioTuning,
     tone: Option<f32>,
-    metrics: SharedAudioMetrics,
+    metrics: &SharedAudioMetrics,
+    measured: Option<SharedAudioMetrics>,
 ) -> anyhow::Result<cpal::Stream> {
     let host = cpal::default_host();
     let devices: Vec<cpal::Device> = host.output_devices()?.collect();
@@ -367,77 +505,18 @@ fn build_stream(
     );
     metrics.lock().device = Some(info);
 
-    let target_seconds = f64::from(tuning.target_ms) / 1000.0;
-    let mut rs = Resampler::new();
-    let mut check = tone.map(|a| ToneCheck::new(a, out_rate));
-    let mut fill = move |out: &mut [f32], info: &cpal::OutputCallbackInfo| {
-        let at = Instant::now();
-        let shared = current.lock().clone();
-        let Some(shared) = shared else {
-            out.fill(0.0);
-            return;
-        };
-        let mut q = shared.audio.lock();
-        if shared.muted.load(std::sync::atomic::Ordering::Relaxed) {
-            // «Muto»: the samples are dropped, so unmuting does not play stale sound.
-            q.samples.clear();
-            out.fill(0.0);
-            return;
-        }
-        let fill_ms = q.samples.len() as f64 / 2.0 / q.sample_rate * 1000.0;
-        // Base ratio plus a correction proportional to the queue's fill level (±0.5%).
-        let target = q.sample_rate * target_seconds * 2.0;
-        let fill_err = ((q.samples.len() as f64 - target) / target).clamp(-1.0, 1.0);
-        let ratio = 1.0 + 0.005 * fill_err;
-        let step = q.sample_rate / out_rate * ratio;
-        let mut underrun_frames = 0u64;
-        let mut discontinuities = 0u64;
-        for frame in out.chunks_mut(channels) {
-            while rs.pos >= 1.0 {
-                rs.prev = rs.next;
-                rs.next = match (q.samples.pop_front(), q.samples.pop_front()) {
-                    (Some(l), Some(r)) => [l as f32 / 32768.0, r as f32 / 32768.0],
-                    _ => {
-                        underrun_frames += 1;
-                        [rs.prev[0] * 0.98, rs.prev[1] * 0.98] // empty queue: fade out
-                    }
-                };
-                rs.pos -= 1.0;
-            }
-            let t = rs.pos as f32;
-            let l = rs.prev[0] + (rs.next[0] - rs.prev[0]) * t;
-            let r = rs.prev[1] + (rs.next[1] - rs.prev[1]) * t;
-            if let Some(c) = &mut check {
-                discontinuities += u64::from(c.step(l));
-            }
-            match frame.len() {
-                1 => frame[0] = (l + r) * 0.5,
-                _ => {
-                    frame[0] = l;
-                    frame[1] = r;
-                    for c in frame.iter_mut().skip(2) {
-                        *c = 0.0;
-                    }
-                }
-            }
-            rs.pos += step;
-        }
-        drop(q);
-        let ts = info.timestamp();
-        let device_latency_ms = ts
-            .playback
-            .checked_duration_since(ts.callback)
-            .map_or(0.0, |d| d.as_secs_f64() * 1000.0);
-        metrics.lock().stats.record(CallbackSample {
-            at,
-            frames: (out.len() / channels.max(1)) as u64,
-            underrun_frames,
-            fill_ms,
-            device_latency_ms,
-            ratio,
-            discontinuities,
-        });
+    let mut state = Fill {
+        current,
+        target_seconds: f64::from(tuning.target_ms) / 1000.0,
+        out_rate,
+        channels,
+        rs: Resampler::new(),
+        game: 0,
+        tone,
+        check: tone.map(|a| ToneCheck::new(a, out_rate)),
+        metrics: measured,
     };
+    let mut fill = move |out: &mut [f32], info: &cpal::OutputCallbackInfo| state.fill(out, info);
 
     let err = |e| log::error!("audio error: {e}");
     // cpal::SampleFormat is `#[non_exhaustive]`: a fallback arm is the only way to match it, and
