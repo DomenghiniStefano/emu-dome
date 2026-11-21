@@ -7,7 +7,7 @@
 //!   Rust through JNI and becomes an `ANativeWindow` for wgpu.
 //! - Logs: logcat, tag `EmuDome`.
 use std::ffi::c_void;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -18,7 +18,7 @@ use ndk::native_window::NativeWindow;
 use parking_lot::{Condvar, Mutex};
 use raw_window_handle::{DisplayHandle, HandleError};
 
-use crate::{ExternalSurface, SurfaceEvent, SurfaceListener, WindowOptions};
+use crate::{DataDirs, ExternalSurface, SurfaceEvent, SurfaceListener, WindowOptions};
 
 pub const OS_NAME: &str = "Android";
 
@@ -39,6 +39,15 @@ pub fn extra_core_dirs() -> Vec<PathBuf> {
 pub fn packaged_core(name: &str) -> Option<PathBuf> {
     Some(PathBuf::from(name))
 }
+
+/// The old identifier is another package: its private storage (`/data/user/0/<package>/`) is
+/// readable by that package only, so the new one cannot copy from it. The old app's data does
+/// not carry over on Android (it stays with the old app until that is uninstalled).
+pub fn old_data_dirs(_data: &Path, _local: &Path) -> Option<DataDirs> {
+    None
+}
+
+pub const WEBVIEW_PROFILE_DIRS: &[&str] = &[];
 
 /// Game drawn natively under the transparent webview, on the `SurfaceView`.
 pub const NATIVE_VIDEO_DEFAULT: bool = true;

@@ -23,3 +23,7 @@ pub fn extra_core_dirs() -> Vec<PathBuf> {
 
 /// Game drawn natively under the transparent webview: to be verified in Phase 0.
 pub const NATIVE_VIDEO_DEFAULT: bool = true;
+
+/// WebView2's profile, which Tauri keeps in the local data folder: a cache the webview makes
+/// again (the interface keeps nothing there that matters).
+pub const WEBVIEW_PROFILE_DIRS: &[&str] = &["EBWebView"];
