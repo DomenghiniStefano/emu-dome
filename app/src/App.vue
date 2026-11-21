@@ -3,7 +3,7 @@
 // and the toasts over all of them. The logic lives in the composables; this file composes.
 import { onMounted, ref } from 'vue'
 import { flow } from '@/components/game/gameFlow'
-import type { Section } from '@/components/shell/sections'
+import { START, type Route } from '@/components/shell/route'
 import { useDensity } from '@/composables/useDensity'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useClosing } from '@/components/closing/useClosing'
@@ -14,7 +14,7 @@ import { useGameLaunch } from '@/components/game/useGameLaunch'
 import { useGameSession } from '@/components/game/useGameSession'
 import { useScreenTouch } from '@/components/game/useScreenTouch'
 import { useShellEvents } from '@/components/shell/useShellEvents'
-import { useToasts } from '@/composables/useToasts'
+import { createToasts, provideToasts } from '@/composables/useToasts'
 import { setErrorSink, settle } from '@/lib/errors'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
@@ -29,7 +29,11 @@ import ToastStack from '@/components/toasts/ToastStack.vue'
 import TouchControls from '@/components/game/TouchControls.vue'
 import GameHud from '@/components/game/GameHud.vue'
 
-const toast = useToasts()
+// The toasts: provided to every screen (useToasts / useErrorSink) and the sink of lib/errors.ts
+// from the start, so a failure before the stack is mounted waits in the list instead of being lost.
+const toast = createToasts()
+provideToasts(toast)
+setErrorSink(toast.failWith)
 const { firstRun, decide: decideFirstRun, finish: finishFirstRun } = useFirstRun(toast)
 const { videoMode, nativeAvailable, load: loadVideoMode, setVideoMode } = useVideoMode(toast)
 const session = useGameSession(toast)
@@ -40,8 +44,9 @@ const drop = useDropTarget(game, toast)
 const events = useShellEvents(session, toast, drop.listen)
 const closing = useClosing(toast)
 
-// The shell's section: kept while a game is open, so closing it comes back here.
-const section = ref<Section>('library')
+// Where the shell is (components/shell/route.ts): kept while a game is open, so closing it comes
+// back here (a game opened from its details comes back to them).
+const route = ref<Route>(START)
 // Touch screen (Android): on-screen buttons while playing.
 const touch = coarsePointer()
 // DS games: the mouse or a finger on the bottom screen is the stylus (no menu open).
@@ -58,7 +63,6 @@ useDensity(layout.phone)
 // after; each step on its own, a failed one reported (lib/errors.ts) and the next still run.
 // The game given at startup waits for the video mode and the events it needs.
 onMounted(async () => {
-  setErrorSink(toast.failWith)
   keys.listen()
   session.watchStats()
   await Promise.all([
@@ -74,16 +78,14 @@ onMounted(async () => {
 
 <template>
   <!-- No game, first start on this device: the first run. -->
-  <FirstRun v-if="!game && firstRun" @done="finishFirstRun" @error="toast.fail" />
+  <FirstRun v-if="!game && firstRun" @done="finishFirstRun" />
 
   <!-- No game: the shell (rail, sections). A game that cannot start is G02's dialog. -->
   <AppShell
     v-else-if="!game && firstRun === false"
-    v-model="section"
+    v-model="route"
     @open-file="launch.openFile()"
     @open-game="launch.openLibraryGame"
-    @error="toast.fail"
-    @notice="text => toast.notify(text)"
   />
 
   <!-- In game: no interface, except discreet indicators and the quick menu. -->
@@ -135,7 +137,6 @@ onMounted(async () => {
       @fullscreen="session.toggleFullscreen"
       @screenshot="session.screenshot"
       @inset="session.setInset"
-      @error="toast.fail"
     />
   </template>
 
@@ -160,5 +161,5 @@ onMounted(async () => {
     @close-anyway="closing.closeAnyway"
   />
 
-  <ToastStack ref="toasts" :in-game="!!game" />
+  <ToastStack :in-game="!!game" />
 </template>

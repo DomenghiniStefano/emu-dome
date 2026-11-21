@@ -8,7 +8,8 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AUTO_SLOT, emu, type LibraryGame, type QuickSave } from '@/emu'
-import { errorText, saveWhenLabel, sizeLabel } from '@/i18n/labels'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
+import { saveWhenLabel, sizeLabel } from '@/i18n/labels'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import SaveThumb from './SaveThumb.vue'
@@ -21,11 +22,11 @@ const emit = defineEmits<{
   play: [slot: number]
   /** The slot was deleted: the saves shown are out of date. */
   changed: []
-  error: [string]
-  notice: [string]
 }>()
 
 const { t } = useI18n()
+const toasts = useToasts()
+const failWith = useErrorSink()
 const slotName = useSlotName()
 const confirmDelete = ref(false)
 
@@ -42,19 +43,19 @@ const savedLine = computed(() =>
 async function exportIt() {
   try {
     if (await emu.saves.export(props.game.id, { kind: 'quick', slot: props.quick.slot }))
-      emit('notice', t('saves.exported'))
+      toasts.notify(t('saves.exported'))
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 
 async function deleteIt() {
-  // Emits before `close`: the parent unmounts this dialog on it.
+  // Emits `changed` before `close`: the parent unmounts this dialog on it.
   try {
     await emu.saves.deleteQuick(props.game.id, props.quick.slot)
-    emit('notice', t('saves.deleted'))
+    toasts.notify(t('saves.deleted'))
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
   emit('changed')
   emit('close')

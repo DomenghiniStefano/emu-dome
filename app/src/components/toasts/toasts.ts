@@ -24,3 +24,10 @@ export interface ToastOptions {
   /** How long it stays, in ms (the default: `toastDuration`). */
   ms?: number
 }
+
+/** One toast in the list (`composables/useToasts.ts`), already translated. */
+export interface Toast extends ToastOptions {
+  id: number
+  text: string
+  kind: ToastKind
+}

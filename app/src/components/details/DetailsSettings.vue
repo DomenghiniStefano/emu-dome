@@ -16,7 +16,7 @@ import {
 } from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
 import { gameScopeOf } from '@/lib/gameDetails'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { loadSchema } from '@/lib/settingsModel'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import DetailsCard from './DetailsCard.vue'
@@ -27,10 +27,10 @@ const props = defineProps<{ game: LibraryGame; phone: boolean }>()
 const emit = defineEmits<{
   /** «Apri tutte le impostazioni di questo gioco». */
   open: []
-  error: [string]
 }>()
 
 const { t, te } = useI18n()
+const failWith = useErrorSink()
 
 const scope = computed(() => gameScopeOf(props.game))
 const consoleName = computed(() => t(`console.${props.game.console}`))
@@ -54,7 +54,7 @@ async function load() {
     overrides.value = found
   } catch (e) {
     if (scope.value.game !== s.game) return
-    emit('error', errorText(e))
+    failWith(e)
   }
   loaded.value = true
 }
@@ -66,7 +66,7 @@ async function reset(key: SettingKey) {
   try {
     await emu.settings.reset(key, s)
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
   await load()
 }

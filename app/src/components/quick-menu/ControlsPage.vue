@@ -22,7 +22,6 @@ defineProps<{
 }>()
 const emit = defineEmits<{
   set: [SettingKey, SettingValue]
-  error: [string]
   shortcuts: [Event]
 }>()
 
@@ -46,7 +45,6 @@ const shortcutsMarks = { [FocusMark.Shortcuts]: '', [FocusMark.SubInitial]: '' }
       :rows="rows"
       :schema="schema"
       @set="(key, v) => emit('set', key, v)"
-      @error="text => emit('error', text)"
     />
     <Card
       as="button"

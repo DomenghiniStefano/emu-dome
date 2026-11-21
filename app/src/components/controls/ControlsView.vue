@@ -6,11 +6,12 @@
 // (board C02, 18/11): the device is changed on C01. With no controller connected the section
 // shows E05 until the keyboard is chosen.
 //
-// From Game details › Controlli (L07, `controlsFocus`) it opens on C02 at «Solo questo gioco» for
-// that game.
+// From Game details › Controlli (L07, the `game` prop from the shell's route) it opens on C02 at
+// «Solo questo gioco» for that game.
 //
-// Controller: the shell's nav scope; L1 / R1 change tab one step below C01 (exposed `tab`), back
-// goes from there to C01 (exposed `back`, true when it did), both called by AppShell.
+// Controller: the shell's nav scope; this section's own steps (nav.ts `useNavSection`): L1 / R1
+// change tab one step below C01, back goes from there to C01; on C01 back is left to the shell
+// (the rail).
 // The tester and the capture field read `emu://pad-state`, watched while this section is open.
 //
 // TODO(E06, Trello): unknown controller banner and guided setup (14 buttons, saved as an SDL
@@ -18,8 +19,9 @@
 // never reaches this list: detecting it needs the joystick events, not done yet.
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { controlsFocus } from '@/lib/gameDetails'
-import { errorText } from '@/i18n/labels'
+import type { GameFocus } from '@/lib/gameDetails'
+import { useErrorSink } from '@/composables/useToasts'
+import { useNavSection } from '@/nav'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ControlsOverview from './ControlsOverview.vue'
 import ControlsRemap from './ControlsRemap.vue'
@@ -41,12 +43,14 @@ import { ControlsTab, tabOrRemap, tabsFor } from './tabs'
 import { useControlsData } from './useControlsData'
 import { SectionPage } from '@/components/ui/section-page'
 
-const emit = defineEmits<{ error: [string] }>()
+const props = defineProps<{
+  /** L07 «Rimappa i pulsanti per questo gioco»: the game this section opened for (the shell's
+   * route, read on mount). */
+  game: GameFocus | null
+}>()
 const { t } = useI18n()
 
-/** L07 «Rimappa i pulsanti per questo gioco»: the game this section opened for. */
-const gameFocus = controlsFocus.value
-controlsFocus.value = null
+const gameFocus = props.game
 
 const View = { Overview: 'overview', Device: 'device' } as const
 type View = (typeof View)[keyof typeof View]
@@ -57,7 +61,7 @@ const root = ref<HTMLElement | null>(null)
 /** The chosen device; null = the first controller. */
 const chosen = ref<DeviceId | null>(null)
 const { schema, globalRows, pads, states } = useControlsData({
-  onError: e => emit('error', errorText(e)),
+  onError: useErrorSink(),
   onPadGone: id => {
     if (chosen.value === id) chosen.value = null
   },
@@ -104,7 +108,7 @@ function back(): boolean {
   void focusView()
   return true
 }
-defineExpose({ tab: stepTabs, back })
+useNavSection(root, { tab: stepTabs, back })
 </script>
 
 <template>
@@ -119,7 +123,6 @@ defineExpose({ tab: stepTabs, back })
       :global-rows="globalRows"
       @pick="d => (chosen = d)"
       @open="openTab"
-      @error="text => emit('error', text)"
     />
 
     <SectionPage v-else as="main">
@@ -141,7 +144,6 @@ defineExpose({ tab: stepTabs, back })
           :states="states"
           :global-rows="globalRows"
           :game="gameFocus"
-          @error="text => emit('error', text)"
         />
         <ControlsShortcuts
           v-else-if="tab === ControlsTab.Shortcuts"
@@ -150,7 +152,6 @@ defineExpose({ tab: stepTabs, back })
           :states="states"
           :schema="schema"
           :global-rows="globalRows"
-          @error="text => emit('error', text)"
         />
         <ControlsSticks
           v-else
@@ -158,7 +159,6 @@ defineExpose({ tab: stepTabs, back })
           :states="states"
           :schema="schema"
           :global-rows="globalRows"
-          @error="text => emit('error', text)"
         />
       </template>
     </SectionPage>

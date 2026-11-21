@@ -13,5 +13,7 @@ const label = props.touch ? 'a' : 'b'
   >
     <Button v-if="!phone" :variant="ButtonVariant.Primary" :size="size">{{ dark.light }}</Button>
     <span class="grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] -translate-1/2">{{ label }}</span>
+    <section role="region" aria-label="x"><p role="alert" data-role="dialog">x</p></section>
+    <div role="tabpanel"><div role="group" aria-roledescription="menu">y</div></div>
   </div>
 </template>

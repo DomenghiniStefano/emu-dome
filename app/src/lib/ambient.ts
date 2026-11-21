@@ -51,8 +51,9 @@ function sample(url: string): Promise<CoverColours | null> {
         const data = ctx.getImageData(0, 0, size, size).data
         const buckets = new Map<number, { w: number; r: number; g: number; b: number }>()
         for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3] < 128) continue
-          const [r, g, b] = [data[i], data[i + 1], data[i + 2]]
+          // Inside the image data: every index here is below `data.length`.
+          if ((data[i + 3] ?? 0) < 128) continue
+          const [r, g, b] = [data[i] ?? 0, data[i + 1] ?? 0, data[i + 2] ?? 0]
           const chroma = (Math.max(r, g, b) - Math.min(r, g, b)) / 255
           const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
           const e = buckets.get(key) ?? { w: 0, r: 0, g: 0, b: 0 }
@@ -76,8 +77,9 @@ function sample(url: string): Promise<CoverColours | null> {
           if (far) picked.push(capLightness(hex, COVER_MAX_L))
           if (picked.length === 3) break
         }
-        if (picked.length === 0) return resolve(null)
-        if (picked.length < 3) return resolve(steps(picked[0]))
+        const first = picked[0]
+        if (first === undefined) return resolve(null)
+        if (picked.length < 3) return resolve(steps(first))
         resolve(picked as CoverColours)
       } catch {
         resolve(null)

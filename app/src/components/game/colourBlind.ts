@@ -46,8 +46,12 @@ const SHIFT: Record<ColourBlindMode, M3> = {
   ],
 }
 
+/** `m[i][j]`; the matrices are full 3×3, so a missing cell does not happen. */
+const at = (m: M3, i: number, j: number) => m[i]?.[j] ?? 0
 const mul = (a: M3, b: M3): M3 =>
-  a.map((row, i) => b[0].map((_, j) => row.reduce((s, _v, k) => s + a[i][k] * b[k][j], 0)))
+  a.map((row, i) =>
+    (b[0] ?? []).map((_, j) => row.reduce((s, _v, k) => s + at(a, i, k) * at(b, k, j), 0)),
+  )
 
 /** The correction matrix: I + Shift · (I − Simulation). */
 export function correction(mode: ColourBlindMode): M3 {

@@ -5,6 +5,9 @@
 //
 // Its size is one of CoverSize (cover/variants.ts); a screen adds only placement (flex-none, a
 // shadow, a state), never a size of its own.
+//
+// The images load lazily and decode off the main thread: a library of hundreds of covers fetches
+// only those near the screen.
 import { computed, ref, watch, type HTMLAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/cn'
@@ -48,6 +51,8 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
       class="absolute inset-0 size-full object-cover"
       :src="image ?? ''"
       alt=""
+      loading="lazy"
+      decoding="async"
       @error="broken = true"
     />
     <!-- The ROM icon is small pixel art (32×32 on NDS): scaled up crisp, in the upper middle. -->
@@ -56,6 +61,8 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
       class="pixelated absolute top-[38%] left-1/2 w-2/5 -translate-1/2 rounded-6"
       :src="image"
       alt=""
+      loading="lazy"
+      decoding="async"
       @error="broken = true"
     />
     <span

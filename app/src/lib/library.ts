@@ -1,7 +1,11 @@
 // The game library as the interface sees it (boards L01–L03, L11, E01): one reactive copy of
 // `emu.library.get`, refreshed on `library://changed`, plus the scan progress from
 // `library://scan`. App.vue starts it once (`startLibrary`); the screens read `library`.
-import { reactive } from 'vue'
+//
+// The games list is replaced as a whole on every load and never changed in place, so it is kept
+// out of Vue's deep reactivity (`markRaw`): assigning a new list is what the screens react to, and
+// a library of thousands of games is not wrapped in proxies object by object on each change.
+import { markRaw, reactive } from 'vue'
 import { emu, type ConsoleId, type GameId, type LibraryFolder, type LibraryGame } from '@/emu'
 import { errorText } from '@/i18n/labels'
 import { latest } from '@/lib/latest'
@@ -16,7 +20,8 @@ export interface ScanSummary {
 export const library = reactive({
   /** False until the first `get` answered (or failed). */
   loaded: false,
-  games: [] as LibraryGame[],
+  /** Replaced whole, never changed in place (not deeply reactive). */
+  games: markRaw([]) as LibraryGame[],
   folders: [] as LibraryFolder[],
   scanning: false,
   /** Latest `progress` of the running scan. */
@@ -36,7 +41,7 @@ export async function reloadLibrary() {
   try {
     const l = await emu.library.get()
     if (!fresh()) return
-    library.games = l.games
+    library.games = markRaw(l.games)
     library.folders = l.folders
     library.scanning = l.scanning
     library.error = null

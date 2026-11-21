@@ -32,7 +32,6 @@ const emit = defineEmits<{
   openRecent: [SettingRecent]
   set: [key: SettingKey, value: SettingValue]
   reset: [key: SettingKey]
-  error: [string]
 }>()
 const { t } = useI18n()
 
@@ -94,7 +93,6 @@ function recentLine(r: SettingRecent): string {
         :sub="t(msg.page(e.page))"
         @set="v => emit('set', e.key, v)"
         @reset="emit('reset', e.key)"
-        @error="text => emit('error', text)"
       />
     </template>
   </SettingsSection>

@@ -1,37 +1,44 @@
 <script setup lang="ts">
 // The short messages (G13, G17): bottom left in the shell; in game at the top, never over the
-// centre of the game. Each goes away by itself; App.vue pushes them through `push`.
-import { computed, ref } from 'vue'
+// centre of the game. The list is the app's toasts (`composables/useToasts.ts`); each toast goes
+// away by itself, its time counted from when the stack shows it (errors stay longer outside the
+// game), so one pushed before the stack was mounted still gets its full time.
+import { computed, onBeforeUnmount, watch } from 'vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { useToasts } from '@/composables/useToasts'
 import { cn } from '@/lib/cn'
-import { ToastKind, toastDuration, type ToastAction, type ToastOptions } from './toasts'
+import { ToastKind, toastDuration, type Toast } from './toasts'
 
-interface Toast {
-  id: number
-  text: string
-  kind: ToastKind
-  note?: string
-  action?: ToastAction
-}
 const props = defineProps<{ inGame?: boolean }>()
-const toasts = ref<Toast[]>([])
-let next = 0
+const toasts = useToasts()
 
-const remove = (id: number) => (toasts.value = toasts.value.filter(t => t.id !== id))
+const timers = new Map<number, number>()
+watch(
+  toasts.list,
+  list => {
+    for (const t of list) {
+      if (timers.has(t.id)) continue
+      const ms = toastDuration(t.kind, !!props.inGame, t.ms)
+      timers.set(
+        t.id,
+        window.setTimeout(() => remove(t.id), ms),
+      )
+    }
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => timers.forEach(id => window.clearTimeout(id)))
 
-/** A message already translated; it goes away by itself (errors stay longer outside the game). */
-function push(text: string, kind: ToastKind = ToastKind.Info, opts: ToastOptions = {}) {
-  const id = next++
-  toasts.value.push({ id, text, kind, note: opts.note, action: opts.action })
-  window.setTimeout(() => remove(id), toastDuration(kind, !!props.inGame, opts.ms))
+function remove(id: number) {
+  window.clearTimeout(timers.get(id))
+  timers.delete(id)
+  toasts.dismiss(id)
 }
 
 function act(t: Toast) {
   remove(t.id)
   t.action?.run()
 }
-
-defineExpose({ push })
 
 // A toast with an action is a row at the touch minimum (44), its radius 12 pending Cowork (spec
 // Decision 5).
@@ -53,7 +60,7 @@ const toastClass = (t: Toast) =>
     :class="['pointer-events-none fixed z-toast flex flex-col gap-8', stackClass]"
     aria-live="polite"
   >
-    <div v-for="t in toasts" :key="t.id" :class="toastClass(t)">
+    <div v-for="t in toasts.list.value" :key="t.id" :class="toastClass(t)">
       <span>
         {{ t.text }}
         <span v-if="t.note" class="font-regular text-ink-muted before:content-['_·_']">

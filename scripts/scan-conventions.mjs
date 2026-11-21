@@ -69,6 +69,15 @@
 //                     read in <script> (a computed that only returns classes counts as a real
 //                     use), one passed down to a child that uses it only for looks, a prop of
 //                     another name, or props declared without the `defineProps<{ … }>` form.
+//   hand-role         a widget role written by hand outside src/components/ui: `role="dialog"`,
+//                     `alertdialog`, `radio`, `radiogroup`, `checkbox`, `menu`, `menuitem`,
+//                     `listbox`, `option`, `switch`, `tab`, `tablist`, static or in a `:role`
+//                     binding. Those widgets are Reka primitives (Dialog, RadioGroup, Checkbox,
+//                     DropdownMenu, Popover, Select, Switch, Tabs), which bring the focus trap,
+//                     `aria-modal`, the arrow roving and the keys. Files still written by hand
+//                     are in HAND_ROLES_PENDING with the reason, until they move (Trello #82).
+//                     Cannot see a role set from a script (`setAttribute`), one in a render
+//                     function, or a `:role` built from a variable.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
@@ -80,6 +89,66 @@ const FIXTURES = join(ROOT, "scripts", "scan-conventions");
 // has no token form. Empty: the last one (`align-[-2px]`, LibraryView) became the `align-icon`
 // utility (typography.css).
 const ALLOWED_LENGTHS = new Map([]);
+
+// hand-role: the files (under app/src) that still write a widget role by hand, each with why it
+// has not moved to a primitive yet. A temporary list: it only shrinks.
+const HAND_ROLES_PENDING = new Map([
+  [
+    "components/quick-menu/QuickMenu.vue",
+    "the menu's two panels are the screen itself (G07 panel, G09 bar, phone sheet), not an overlay over a trigger: on Reka Dialog they would portal and trap differently; needs its own design pass",
+  ],
+  [
+    "components/closing/ClosingAsk.vue",
+    "the closing question sits in the closing overlay's layout (ClosingOverlay), not as a centred dialog",
+  ],
+  [
+    "components/controls/ControlsOverview.vue",
+    "device cards (DeviceCard) as a radio group: next to move onto RadioGroup",
+  ],
+  [
+    "components/controls/DeviceCard.vue",
+    "one device card as a radio: moves with ControlsOverview",
+  ],
+  [
+    "components/first-run/ControllerStep.vue",
+    "the A/B layout choice: next to move onto RadioGroup",
+  ],
+  [
+    "components/quick-menu/QuickSaves.vue",
+    "the quick-save slots as a radio group (G07): moves with QuickMenu",
+  ],
+  [
+    "components/quick-menu/QuickSlotTile.vue",
+    "one quick-save slot as a radio: moves with QuickSaves",
+  ],
+  [
+    "components/settings/SettingCards.vue",
+    "a setting's choice cards, a plain group in `apply` mode: next to move onto RadioGroup",
+  ],
+  [
+    "components/settings/SettingChips.vue",
+    "a setting's multi-choice chips as checkboxes: next to move onto Checkbox",
+  ],
+  [
+    "components/settings/SettingSwatches.vue",
+    "a setting's colour swatches as a radio group: next to move onto RadioGroup",
+  ],
+  [
+    "kit/sections/ButtonSection.vue",
+    "the Kit page shows the accent swatches as written today",
+  ],
+  [
+    "kit/sections/CardSection.vue",
+    "the Kit page shows the choice cards as the screens above write them today",
+  ],
+  [
+    "kit/sections/ChipSection.vue",
+    "the Kit page shows the chips as SettingChips writes them today",
+  ],
+]);
+
+const WIDGET_ROLE =
+  /(?<![\w:-])(?::role|v-bind:role|role)="[^"]*\b(?:alertdialog|dialog|radiogroup|radio|checkbox|menuitem|menu|listbox|option|switch|tablist|tab)\b[^"]*"/g;
 
 export const RULES = [
   "literal-colour",
@@ -93,6 +162,7 @@ export const RULES = [
   "numeric-scale",
   "important",
   "look-only-prop",
+  "hand-role",
 ];
 
 /** The root <template> block of a .vue source, blanked outside it so offsets keep their lines. */
@@ -184,7 +254,11 @@ function lookOnlyProps(source, tpl) {
 }
 
 /** Findings of the text rules in one file: { rule, line, text }. `kind`: 'vue' or 'ts'. */
-export function scanSource(source, kind, { insideUi = false } = {}) {
+export function scanSource(
+  source,
+  kind,
+  { insideUi = false, handRolesAllowed = false } = {},
+) {
   const found = [];
   const lineOf = (offset) => source.slice(0, offset).split("\n").length;
   const add = (rule, offset, text) =>
@@ -239,6 +313,7 @@ export function scanSource(source, kind, { insideUi = false } = {}) {
       tpl,
     );
     if (!insideUi) each("raw-control", /<(?:button|input)\b/g, tpl);
+    if (!insideUi && !handRolesAllowed) each("hand-role", WIDGET_ROLE, tpl);
     each("style-block", /^<style\b[^>]*>/gm);
     for (const p of lookOnlyProps(source, tpl)) {
       add("look-only-prop", p.index, `prop \`${p.name}\` used only in :class`);
@@ -265,6 +340,7 @@ function scanRepo() {
     const kind = file.endsWith(".vue") ? "vue" : "ts";
     const found = scanSource(source, kind, {
       insideUi: file.startsWith("components/ui/"),
+      handRolesAllowed: HAND_ROLES_PENDING.has(file),
     });
     findings.push(
       ...found.map((f) => `app/src/${file}:${f.line}: ${f.rule}: ${f.text}`),

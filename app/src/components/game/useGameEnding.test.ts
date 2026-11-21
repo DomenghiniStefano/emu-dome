@@ -2,32 +2,45 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
 import type { GameInfo, Stats } from '@/emu'
+import { HANG_MS, SLOW_MS, flow, gameStarted } from './gameFlow'
 import { createGameState } from './gameState'
 import { useGameEnding } from './useGameEnding'
 
-const bridge = vi.hoisted(() => ({ stats: vi.fn() }))
-vi.mock('@/emu', () => ({ emu: { stats: bridge.stats } }))
+const bridge = vi.hoisted(() => ({ stats: vi.fn(), closeGame: vi.fn() }))
+vi.mock('@/emu', () => ({ emu: { stats: bridge.stats, closeGame: bridge.closeGame } }))
 
-const stats = (frames: number) =>
-  ({ running: true, emuFps: 60, targetFps: 60, speed: null, paused: false, frames }) as Stats
+const stats = (frames: number, over: Partial<Stats> = {}) =>
+  ({
+    running: true,
+    emuFps: 60,
+    targetFps: 60,
+    speed: null,
+    paused: false,
+    frames,
+    ...over,
+  }) as Stats
 
 function setup() {
   const state = createGameState()
-  state.game.value = { title: 'MINISH' } as GameInfo
+  state.game.value = { title: 'MINISH', consoleId: 'gba', autosaveOnExit: true } as GameInfo
+  let ending!: ReturnType<typeof useGameEnding>
   const wrapper = mount(
     defineComponent({
       setup() {
-        useGameEnding(state).watchStats()
+        ending = useGameEnding(state)
+        ending.watchStats()
         return () => h('div')
       },
     }),
   )
-  return { state, wrapper }
+  return { state, wrapper, ending }
 }
 
 beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
+  gameStarted()
+  Object.assign(flow, { crashed: null, slow: null, closing: null, ending: false, resumeAsk: false })
 })
 afterEach(() => vi.useRealTimers())
 
@@ -66,6 +79,88 @@ describe('the stats poll', () => {
     expect(warn).toHaveBeenCalledOnce()
     expect(state.stats.value?.frames).toBe(5)
     warn.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('frames standing still while the game runs open E11, once, and close the menu', async () => {
+    bridge.stats.mockResolvedValue(stats(7))
+    const { state, wrapper } = setup()
+    await vi.advanceTimersByTimeAsync(HANG_MS + 1000)
+    expect(flow.crashed?.console).toBe('gba')
+    const first = flow.crashed
+    state.menuOpen.value = false
+    await vi.advanceTimersByTimeAsync(HANG_MS * 2)
+    expect(flow.crashed).toBe(first)
+    wrapper.unmount()
+  })
+
+  it('a paused game or an open menu is never a hang', async () => {
+    bridge.stats.mockResolvedValue(stats(7))
+    const { state, wrapper } = setup()
+    state.paused.value = true
+    await vi.advanceTimersByTimeAsync(HANG_MS * 2)
+    state.paused.value = false
+    state.menuOpen.value = true
+    await vi.advanceTimersByTimeAsync(HANG_MS * 2)
+    expect(flow.crashed).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('a slow game at 1× opens E12 with what was measured', async () => {
+    let f = 0
+    bridge.stats.mockImplementation(() =>
+      Promise.resolve(stats(f++, { emuFps: 40, speed: { kind: 'factor', value: 1 } })),
+    )
+    const { wrapper } = setup()
+    await vi.advanceTimersByTimeAsync(SLOW_MS + 1000)
+    expect(flow.slow).toEqual({ fps: 40, target: 60 })
+    wrapper.unmount()
+  })
+})
+
+describe('the game ending', () => {
+  it('G14: the closing shows while the core saves, at least 400 ms, then the game is gone', async () => {
+    let done!: () => void
+    bridge.closeGame.mockImplementation(() => new Promise<void>(r => (done = r)))
+    const { state, ending, wrapper } = setup()
+    state.menuOpen.value = true
+    const closing = ending.close()
+    expect(flow.closing).toEqual({ title: 'MINISH', autosave: true })
+    expect(state.menuOpen.value).toBe(false)
+    // The core's `stopped` while closing on purpose is expected: not E11.
+    ending.stopped()
+    expect(flow.crashed).toBeNull()
+    done()
+    await vi.advanceTimersByTimeAsync(399)
+    expect(state.game.value).not.toBeNull()
+    await vi.advanceTimersByTimeAsync(1)
+    await closing
+    expect(flow.closing).toBeNull()
+    expect(state.game.value).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('a failed close is reported and still goes back to the shell', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    bridge.closeGame.mockRejectedValue(new Error('ipc'))
+    const { state, ending, wrapper } = setup()
+    const closing = ending.close()
+    await vi.advanceTimersByTimeAsync(400)
+    await closing
+    expect(error).toHaveBeenCalledWith(new Error('ipc'))
+    expect(state.game.value).toBeNull()
+    error.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('the core stopping by itself is E11; during the close flow (#86) it is not', () => {
+    const { ending, wrapper } = setup()
+    flow.ending = true
+    ending.stopped()
+    expect(flow.crashed).toBeNull()
+    flow.ending = false
+    ending.stopped()
+    expect(flow.crashed?.console).toBe('gba')
     wrapper.unmount()
   })
 })

@@ -17,7 +17,9 @@ import ClosingStripSection from '@/kit/sections/ClosingStripSection.vue'
 import DialogSection from '@/kit/sections/DialogSection.vue'
 import EmptyStateSection from '@/kit/sections/EmptyStateSection.vue'
 import HeadingSection from '@/kit/sections/HeadingSection.vue'
+import PopoverSection from '@/kit/sections/PopoverSection.vue'
 import ProgressSection from '@/kit/sections/ProgressSection.vue'
+import RadioGroupSection from '@/kit/sections/RadioGroupSection.vue'
 import SearchFieldSection from '@/kit/sections/SearchFieldSection.vue'
 import InputSection from '@/kit/sections/InputSection.vue'
 import SectionPageSection from '@/kit/sections/SectionPageSection.vue'
@@ -100,6 +102,8 @@ useNavScope(root, { autofocus: true })
       <SearchFieldSection />
       <CaptureFieldSection />
       <SectionPageSection />
+      <RadioGroupSection />
+      <PopoverSection />
     </div>
   </main>
 </template>

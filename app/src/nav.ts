@@ -1,29 +1,84 @@
 // Focus navigation with the controller and the keyboard, for every screen.
 //
-// A screen registers a scope with `useNavScope(root, { back })`: the latest mounted scope
-// receives the steps (`dispatchNav`), coming from `emu://nav` (the controller, routed in
-// Rust) or from the arrow keys / Enter / Esc. Directions move the focus spatially to the
-// nearest focusable element in that direction, by bounding rects, so a segmented control
-// moves left/right within itself and up/down out of it without any per-screen code.
-// `confirm` clicks the focused element, `back` calls the scope's `back`. Esc on the keyboard is
-// the same `back` for a scope that asks for it (`escape`), and for a part of a screen that goes
-// back on its own (`useEscapeBack`).
+// A screen registers a scope with `useNavScope(root, { back })`; the steps (`dispatchNav`) come
+// from `emu://nav` (the controller, routed in Rust) or from the arrow keys / Enter / Esc.
+// Directions move the focus spatially to the nearest focusable element in that direction, by
+// bounding rects, so a segmented control moves left/right within itself and up/down out of it
+// without any per-screen code. `confirm` clicks the focused element, `back` calls the scope's
+// `back`. Esc on the keyboard is the same `back` for a scope that asks for it (`escape`), and for
+// a part of a screen that goes back on its own (`useEscapeBack`).
+//
+// Scopes form a tree that follows the component tree (provide / inject): a scope registered
+// inside another one's component is its child. The steps go down the tree to the newest child
+// with its root in the page, level by level, so a child wins over its parent whatever their
+// mount order (Vue mounts a child before its parent). Two kinds:
+// - a scope (`useNavScope`): a screen, a menu, a dialog; the focus moves inside its root;
+// - a section (`useNavSection`): a part of a screen with its own `back` / `tab` (the shell's
+//   sections); the focus still moves across the whole screen around it.
+// `back` and `tab` bubble: from the deepest scope up, the first handler that does not return
+// `false` takes the step; they stop at the first scope (a section's parent screen gets what its
+// section leaves, a screen behind a dialog gets nothing).
 //
 // The focus ring shows only while moving without the mouse: `data-nav` on <html>
 // (styles.css), set by a step or a key, cleared by the pointer. The focused element also
 // carries `data-nav-focus`, because `:focus` does not match while the window is in the
 // background, and the controller keeps working then (SDL reads pads in the background).
-import { onBeforeUnmount, onMounted, type Ref } from 'vue'
+import { inject, onBeforeUnmount, onMounted, provide, type InjectionKey, type Ref } from 'vue'
 import type { NavAction } from './emu'
+
+/** A step's handler: `false` = not handled here, the step goes on to the parent. */
+type Handler<A extends unknown[]> = (...args: A) => boolean | void
 
 interface Scope {
   root: Ref<HTMLElement | null>
-  back?: () => void
+  back?: Handler<[]>
   /** L1 / R1 (`prev` / `next`): the screen's own tabs or levels. */
-  tab?: (dir: -1 | 1) => void
+  tab?: Handler<[dir: -1 | 1]>
+  /** A scope keeps the focus inside its root; a section (false) only adds handlers. */
+  contain: boolean
+  /** The scopes registered inside this one, oldest first. */
+  children: Scope[]
 }
 
-const scopes: Scope[] = []
+/** The scopes with no scope above them, oldest first. */
+const topScopes: Scope[] = []
+const PARENT: InjectionKey<Scope> = Symbol('navScope')
+
+/** The last scope of `list` that passes `test`. */
+function lastOf(list: Scope[], test: (s: Scope) => unknown): Scope | undefined {
+  for (let i = list.length - 1; i >= 0; i--) {
+    const s = list[i]
+    if (s && test(s)) return s
+  }
+  return undefined
+}
+
+/** The scopes that receive the steps, top down: the newest shown child at each level. */
+function activePath(): Scope[] {
+  const path: Scope[] = []
+  let level = topScopes
+  for (;;) {
+    const next = lastOf(level, s => s.root.value)
+    if (!next) return path
+    path.push(next)
+    level = next.children
+  }
+}
+
+/** Where the focus moves: the deepest scope of the path (not a section). */
+function movementScope(path: Scope[]): Scope | undefined {
+  return lastOf(path, s => s.contain) ?? path.at(-1)
+}
+
+/** Runs `call` from the deepest scope up, until one handles it or a scope (not a section) ends it. */
+function bubble(path: Scope[], call: (s: Scope) => boolean | void) {
+  for (let i = path.length - 1; i >= 0; i--) {
+    const s = path[i]
+    if (!s) return
+    if (call(s) !== false) return
+    if (s.contain) return
+  }
+}
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
@@ -55,10 +110,41 @@ export function showFocusRing() {
   if (document.activeElement !== document.body) mark(document.activeElement)
 }
 
-function focusables(root: HTMLElement): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-    el => !el.matches(':disabled') && el.getClientRects().length > 0,
+/**
+ * The elements a step can land on inside `within`: focusable, not disabled (`disabled` or
+ * `aria-disabled="true"`), not inside an `inert` subtree, laid out. `visibility: hidden` is
+ * checked by `shown`, only on the element about to be chosen (it needs the computed style).
+ */
+function candidates(within: HTMLElement): HTMLElement[] {
+  return [...within.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+    el =>
+      !el.matches(':disabled, [aria-disabled="true"]') &&
+      !el.closest('[inert]') &&
+      el.getClientRects().length > 0,
   )
+}
+
+const shown = (el: HTMLElement) => getComputedStyle(el).visibility !== 'hidden'
+
+function focusables(root: HTMLElement): HTMLElement[] {
+  return candidates(root).filter(shown)
+}
+
+const SCROLLS = /(auto|scroll)/
+
+/**
+ * The nearest ancestor of `el` inside `root` that scrolls (overflow auto / scroll, and content
+ * larger than its box), or null. A step looks there first: on a long list or grid only its own
+ * elements are measured, the rest of the screen only when nothing is there in that direction.
+ */
+function scrollBox(el: HTMLElement, root: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p && p !== root && root.contains(p); p = p.parentElement) {
+    const big = p.scrollHeight > p.clientHeight || p.scrollWidth > p.clientWidth
+    if (!big) continue
+    const style = getComputedStyle(p)
+    if (SCROLLS.test(style.overflowY) || SCROLLS.test(style.overflowX)) return p
+  }
+  return null
 }
 
 function focus(el: HTMLElement | null | undefined) {
@@ -126,42 +212,60 @@ function score(from: DOMRect, to: DOMRect, dir: Direction): number | null {
   return Math.max(0, along) + side * 2 + offset * 0.01
 }
 
+/** The nearest element of `within` in `dir` from `from`, or null. */
+function nearest(from: HTMLElement, rect: DOMRect, dir: Direction, within: HTMLElement) {
+  const scored: { el: HTMLElement; s: number }[] = []
+  for (const el of candidates(within)) {
+    if (el === from) continue
+    const s = score(rect, el.getBoundingClientRect(), dir)
+    if (s !== null) scored.push({ el, s })
+  }
+  scored.sort((a, b) => a.s - b.s)
+  return scored.find(c => shown(c.el))?.el ?? null
+}
+
+/**
+ * Entering a radio group from outside lands on its chosen radio, as Tab does: Reka chooses the
+ * radio a keyboard arrow focuses, so landing on the nearest one would change the choice.
+ */
+function entering(to: HTMLElement | null, from: HTMLElement): HTMLElement | null {
+  if (to?.getAttribute('role') !== 'radio') return to
+  const group = to.closest('[role="radiogroup"]')
+  if (!group || group.contains(from)) return to
+  const chosen = group.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+  return chosen && !chosen.matches(':disabled, [data-disabled]') ? chosen : to
+}
+
 function move(root: HTMLElement, dir: Direction) {
   const from = current(root)
   if (!from) return focusInitial(root)
   const rect = from.getBoundingClientRect()
-  let best: HTMLElement | null = null
-  let bestScore = Infinity
-  for (const el of focusables(root)) {
-    if (el === from) continue
-    const s = score(rect, el.getBoundingClientRect(), dir)
-    if (s !== null && s < bestScore) {
-      best = el
-      bestScore = s
-    }
-  }
-  focus(best)
+  const box = scrollBox(from, root)
+  const to = (box && nearest(from, rect, dir, box)) ?? nearest(from, rect, dir, root)
+  focus(entering(to, from))
 }
 
-/** Root of the scope that receives the steps now (the latest mounted one with a root). */
+/** Root the focus moves in now: the deepest scope receiving the steps (not a section). */
 export function activeScopeRoot(): HTMLElement | null {
-  return [...scopes].reverse().find(s => s.root.value)?.root.value ?? null
+  return movementScope(activePath())?.root.value ?? null
 }
 
-/** One step to the active scope (the latest mounted one with its root in the page). */
+/** One step to the scopes that receive the steps (`activePath`). */
 export function dispatchNav(action: NavAction) {
   showFocusRing()
-  const scope = [...scopes].reverse().find(s => s.root.value)
-  const root = scope?.root.value
-  if (!scope || !root) return
+  const path = activePath()
+  const root = movementScope(path)?.root.value
+  if (!root) return
   switch (action) {
     case 'back':
-      scope.back?.()
+      bubble(path, s => (s.back ? s.back() : false))
       return
     case 'prev':
-    case 'next':
-      scope.tab?.(action === 'prev' ? -1 : 1)
+    case 'next': {
+      const dir = action === 'prev' ? -1 : 1
+      bubble(path, s => (s.tab ? s.tab(dir) : false))
       return
+    }
     // X: the focused item's other actions, as a right click (a cover opens its game details).
     case 'more':
       current(root)?.dispatchEvent(
@@ -199,18 +303,22 @@ export function dispatchNav(action: NavAction) {
 //   App.vue's listener then ignores by this same rule;
 // - at the ends of a roving group (the primitives turn Reka's looping off) and on the other axis,
 //   nav.ts moves spatially as everywhere else; a slider and an open list have no ends;
-// - Enter on a tab, an option, a select field or a switch is the element's: `confirm` sends it
-//   Enter instead of a click.
+// - Enter on a tab, an option, a select field, a switch or a menu item is the element's:
+//   `confirm` sends it Enter instead of a click.
+// An open DropdownMenu's arrows are nav.ts's: its scope holds the focus and the items are moved
+// among spatially (Reka's own arrow handling did not move between our `as-child` items, measured
+// headless 2026-11-21), so a menu item owns Enter only.
 // docs/specs/2026-11-18-design-system-foundations.md, Decision 6.
 
 /** An item of a Reka roving group or a slider thumb: owns the arrows of its `data-orientation`. */
 const ROVING_ITEM = '[data-reka-collection-item][data-orientation]'
 /** An open Reka listbox (a Select's options): owns every arrow. */
 const OPEN_LIST = '[role="listbox"][data-dismissable-layer]'
-/** Reka elements that act on Enter themselves (`data-state` is Reka's). */
-const ENTER_OWNER = ['tab', 'option', 'combobox', 'switch']
-  .map(role => `[role="${role}"][data-state]`)
-  .join(', ')
+/** Reka elements that act on Enter themselves (`data-state` is Reka's; a menu item has none). */
+const ENTER_OWNER = [
+  ...['tab', 'option', 'combobox', 'switch'].map(role => `[role="${role}"][data-state]`),
+  `[role="menuitem"]`,
+].join(', ')
 
 const ARROW_KEY: Record<Direction, string> = {
   up: 'ArrowUp',
@@ -307,22 +415,41 @@ export function keyToNav(e: KeyboardEvent): NavAction | null {
 export function useNavScope(
   root: Ref<HTMLElement | null>,
   options: {
-    back?: () => void
-    tab?: (dir: -1 | 1) => void
+    back?: Handler<[]>
+    tab?: Handler<[dir: -1 | 1]>
     autofocus?: boolean
     escape?: boolean
   } = {},
 ) {
-  const scope: Scope = { root, back: options.back, tab: options.tab }
+  register({ root, back: options.back, tab: options.tab, contain: true, children: [] })
   onMounted(() => {
-    scopes.push(scope)
     if (options.autofocus && root.value) focusInitial(root.value)
   })
+  if (options.escape) useEscapeBack(root, () => void options.back?.())
+}
+
+/**
+ * Registers a part of a screen with its own `back` / `tab` (a section of the shell) while it is
+ * mounted. The focus keeps moving across the whole screen; a step the section does not take
+ * (its handler returns `false`, or it has none) goes on to the screen.
+ */
+export function useNavSection(
+  root: Ref<HTMLElement | null>,
+  options: { back?: Handler<[]>; tab?: Handler<[dir: -1 | 1]> },
+) {
+  register({ root, back: options.back, tab: options.tab, contain: false, children: [] })
+}
+
+/** Puts `scope` under the scope of the component around it (or at the top) while mounted. */
+function register(scope: Scope) {
+  const parent = inject(PARENT, null)
+  provide(PARENT, scope)
+  const siblings = parent ? parent.children : topScopes
+  onMounted(() => siblings.push(scope))
   onBeforeUnmount(() => {
-    const i = scopes.indexOf(scope)
-    if (i >= 0) scopes.splice(i, 1)
+    const i = siblings.indexOf(scope)
+    if (i >= 0) siblings.splice(i, 1)
   })
-  if (options.escape) useEscapeBack(root, () => options.back?.())
 }
 
 // ---- Esc

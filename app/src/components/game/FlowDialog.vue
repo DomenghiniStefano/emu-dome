@@ -28,7 +28,7 @@ const onEscape = (e: Event) => (props.escapeCloses ? undefined : keepOpen(e))
 
 <template>
   <Dialog :open="true" @update:open="open => open || emit('back')">
-    <DialogContent role="alertdialog" @escape-key-down="onEscape" @interact-outside="keepOpen">
+    <DialogContent alert @escape-key-down="onEscape" @interact-outside="keepOpen">
       <DialogTitle :tone="tone">{{ title }}</DialogTitle>
       <DialogDescription as="div" class="flex flex-col gap-6">
         <slot />

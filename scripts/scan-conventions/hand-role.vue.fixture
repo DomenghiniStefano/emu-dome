@@ -1,0 +1,9 @@
+<!-- Fixture of scripts/scan-conventions.mjs: widget roles written by hand outside components/ui. -->
+<template>
+  <div role="dialog" aria-modal="true">
+    <div role="radiogroup">
+      <Card as="button" role="radio" :aria-checked="true">x</Card>
+    </div>
+    <Button :role="open ? 'menuitem' : undefined">y</Button>
+  </div>
+</template>

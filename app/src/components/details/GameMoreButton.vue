@@ -62,6 +62,7 @@ defineExpose({ focus })
       v-if="open"
       :game="game"
       :items="items"
+      :anchor="(trigger?.$el as HTMLElement | undefined) ?? null"
       @cover="chooseCover"
       @flags="setFlags"
       @close="close"

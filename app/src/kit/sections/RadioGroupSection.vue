@@ -1,0 +1,60 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { Layers, Gamepad2, Disc3 } from '@lucide/vue'
+import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Card, CardVariant } from '@/components/ui/card'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import KitSection from '@/kit/KitSection.vue'
+import KitState from '@/kit/KitState.vue'
+
+const level = ref('global')
+const order = ref('recent')
+const LEVELS = [
+  { id: 'global', name: 'All games', icon: Layers },
+  { id: 'console', name: 'Nintendo DS games', icon: Gamepad2 },
+  { id: 'game', name: 'Only this game', icon: Disc3 },
+]
+</script>
+
+<template>
+  <KitSection title="RadioGroup">
+    <KitState label="Cards in a row (the settings scope bar): arrows along the row choose">
+      <RadioGroup v-model="level" class="grid w-field grid-cols-3 gap-8" aria-label="Level">
+        <RadioGroupItem v-for="l in LEVELS" :key="l.id" :value="l.id">
+          <Card
+            as="button"
+            :variant="CardVariant.RaisedAccent"
+            :selected="level === l.id"
+            class="min-h-level flex-row items-start gap-10 px-12"
+          >
+            <component :is="l.icon" :size="20" :stroke-width="1.75" aria-hidden="true" />
+            <span class="font-semibold">{{ l.name }}</span>
+          </Card>
+        </RadioGroupItem>
+      </RadioGroup>
+    </KitState>
+    <KitState label="Menu rows in a column (the library's order)">
+      <RadioGroup
+        v-model="order"
+        orientation="vertical"
+        class="flex w-menu flex-col gap-2"
+        aria-label="Order"
+      >
+        <RadioGroupItem v-for="o in ['recent', 'title', 'console']" :key="o" :value="o">
+          <Button
+            :variant="ButtonVariant.Menu"
+            :size="ButtonSize.MenuRow"
+            class="group"
+            :data-selected="order === o ? '' : undefined"
+          >
+            <span
+              class="size-14 shrink-0 rounded-full border border-line-strong group-data-selected:border-check group-data-selected:border-accent-text"
+              aria-hidden="true"
+            ></span>
+            {{ o }}
+          </Button>
+        </RadioGroupItem>
+      </RadioGroup>
+    </KitState>
+  </KitSection>
+</template>

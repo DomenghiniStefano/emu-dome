@@ -4,7 +4,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type LibraryGame } from '@/emu'
-import { errorText } from '@/i18n/labels'
+import { useErrorSink } from '@/composables/useToasts'
 import { Input, InputVariant } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import GameCover from '@/components/cover/GameCover.vue'
@@ -18,10 +18,10 @@ const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{
   /** «Cambia…»: L12. */
   cover: []
-  error: [string]
 }>()
 
 const { t } = useI18n()
+const failWith = useErrorSink()
 
 // ---- «Nome mostrato»: the name the user gave, blank for the ROM's own ----
 const shownName = (g: LibraryGame) => (g.renamed ? g.title : '')
@@ -36,7 +36,7 @@ async function saveName() {
   try {
     await emu.library.setName(props.game.id, now)
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 
@@ -44,7 +44,7 @@ async function setHidden(hidden: boolean) {
   try {
     await emu.library.setFlags(props.game.id, { hidden })
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 

@@ -6,7 +6,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from '@lucide/vue'
 import { emu, type GameSaves, type LibraryGame } from '@/emu'
-import { errorText, saveWhenLabel } from '@/i18n/labels'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
+import { saveWhenLabel } from '@/i18n/labels'
 import DetailsAction from './DetailsAction.vue'
 import DetailsCard from './DetailsCard.vue'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
@@ -15,11 +16,11 @@ const props = defineProps<{ game: LibraryGame; saves: GameSaves | null; phone: b
 const emit = defineEmits<{
   backups: []
   import: []
-  error: [string]
-  notice: [string]
 }>()
 
 const { t } = useI18n()
+const toasts = useToasts()
+const failWith = useErrorSink()
 
 const lastChange = computed(() => {
   const g = props.saves?.inGame
@@ -40,9 +41,9 @@ const backupsLine = computed(() => {
 async function exportInGame() {
   try {
     if (await emu.saves.export(props.game.id, { kind: 'inGame' }))
-      emit('notice', t('saves.exported'))
+      toasts.notify(t('saves.exported'))
   } catch (e) {
-    emit('error', errorText(e))
+    failWith(e)
   }
 }
 </script>

@@ -4,6 +4,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { uiZoom } from '@/lib/appearance'
+import { canvasSize } from './canvasLayout'
 import { feColorMatrix, isColourBlindMode } from './colourBlind'
 import { emu, frameUrl, type BenchFrame } from '@/emu'
 import { ignore } from '@/lib/errors'
@@ -46,14 +47,11 @@ function benchFlush() {
   benchFrames = []
 }
 
-// Sizes come from the window, in screen px; the interface may be scaled (`a11y.textsize`, CSS
-// zoom on <html>), the game is not: px written in styles are divided by the zoom.
+// The canvas's size: canvasLayout.ts (whole steps, the menu bar kept clear, the interface zoom).
 function layout() {
-  if (!size.w) return
-  const height = Math.max(1, window.innerHeight - (props.insetBottom ?? 0))
-  const fit = Math.min(window.innerWidth / size.w, height / size.h)
-  const scale = (fit >= 1 ? Math.floor(fit) : fit) / uiZoom.value
-  style.value = { width: `${size.w * scale}px`, height: `${size.h * scale}px` }
+  const win = { w: window.innerWidth, h: window.innerHeight }
+  const fit = canvasSize(size, win, props.insetBottom ?? 0, uiZoom.value)
+  if (fit) style.value = { width: `${fit.w}px`, height: `${fit.h}px` }
 }
 
 async function tick() {
