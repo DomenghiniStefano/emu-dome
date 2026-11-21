@@ -76,6 +76,12 @@ const LIBRARY = {
     ],
   },
   placeholder: { mock: {}, steps: [rail(3)] },
+  // A library of thousands (Trello #91: the grid renders only the rows near the screen).
+  "lib-many": { mock: { manyGames: 3000 }, steps: [] },
+  "lib-many-focus": {
+    mock: { manyGames: 3000 },
+    steps: [{ key: "ArrowDown" }, { key: "ArrowDown" }, { key: "ArrowDown" }],
+  },
 };
 const LIBRARY_SHOTS = Object.fromEntries(
   Object.entries(LIBRARY).flatMap(([name, s]) =>

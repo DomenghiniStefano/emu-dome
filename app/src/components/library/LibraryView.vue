@@ -134,6 +134,7 @@ const unreachable = computed(() => unreachableFolders(library.folders, library.g
       <CoverGrid
         :games="games"
         :menu-for="menuFor"
+        :anchor="returnTo"
         @details="g => emit('details', g)"
         @play="g => open(g)"
         @toggle-menu="toggleMenu"

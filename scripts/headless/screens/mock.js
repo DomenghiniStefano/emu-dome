@@ -51,6 +51,46 @@
     core: "mgba",
     settingsGame: id,
   }));
+  // `manyGames: N`: N more games after the five above (Trello #91, the windowed grid), never
+  // played, titles of one to three lines, every seventh one not reachable (its «Gioca» disabled).
+  // Deterministic: two runs build the same list.
+  const WORDS = [
+    "Pocket",
+    "Quest",
+    "Star",
+    "Tiny",
+    "Colour",
+    "Runner",
+    "Tales",
+    "Advance",
+  ];
+  for (let n = 0; n < (scenario.manyGames ?? 0); n++) {
+    const consoles = ["gba", "nds", "gb", "gbc"];
+    const console_ = consoles[n % consoles.length];
+    const words = 1 + (n % 5);
+    const title = [
+      ...Array.from(
+        { length: words },
+        (_, w) => WORDS[(n + w * 3) % WORDS.length],
+      ),
+      String(n + 1),
+    ].join(" ");
+    const id = `${console_}:${(1000 + n).toString(16)}`;
+    games.push({
+      ...games[2],
+      id,
+      console: console_,
+      title,
+      romTitle: title,
+      settingsGame: id,
+      path: `C:/Games/${title}.${console_}`,
+      colour: ["#2f5d8a", "#7a3b8c", "#2b7a4b", "#a0522d", "#1f6f78"][n % 5],
+      favourite: false,
+      available: n % 7 !== 6,
+      playTimeSecs: 0,
+      lastPlayed: null,
+    });
+  }
   // `unreachableFolder`: the last game lives in a folder that is gone (E01).
   if (scenario.unreachableFolder) {
     const last = games[games.length - 1];
@@ -191,20 +231,53 @@
   // In game (quick menu scenarios, quick-menu.mjs): the rows the quick menu reads.
   if (scenario.game) {
     entries.push(
-      entry("video.scale", "video", choice("segments", ["fit", "integer", "fill"]), "fit"),
-      entry("video.filter", "video", choice("segments", ["none", "light", "soft"]), "light"),
+      entry(
+        "video.scale",
+        "video",
+        choice("segments", ["fit", "integer", "fill"]),
+        "fit",
+      ),
+      entry(
+        "video.filter",
+        "video",
+        choice("segments", ["none", "light", "soft"]),
+        "light",
+      ),
       // The effects work on the Accelerated method only (X05); «Effetto da file» stays hidden
       // until a file is chosen.
       entry(
         "fx.fxpick",
         "fx",
-        choice("cards", ["none", "lcd", "lcd_grid", "crt", "crt_curved", "soft_pixels", "file"]),
+        choice("cards", [
+          "none",
+          "lcd",
+          "lcd_grid",
+          "crt",
+          "crt_curved",
+          "soft_pixels",
+          "file",
+        ]),
         "none",
         { needsNativeVideo: true },
       ),
-      entry("audio.ff", "audio", choice("segments", ["mute", "pitch_up", "same_pitch"]), "mute"),
-      entry("speed.ffval", "speed", choice("segments", ["2", "3", "4", "max"]), "4"),
-      entry("speed.slow", "speed", choice("segments", ["0.25", "0.5", "0.75"]), "0.5"),
+      entry(
+        "audio.ff",
+        "audio",
+        choice("segments", ["mute", "pitch_up", "same_pitch"]),
+        "mute",
+      ),
+      entry(
+        "speed.ffval",
+        "speed",
+        choice("segments", ["2", "3", "4", "max"]),
+        "4",
+      ),
+      entry(
+        "speed.slow",
+        "speed",
+        choice("segments", ["0.25", "0.5", "0.75"]),
+        "0.5",
+      ),
       entry("saves.slots", "saves", choice("segments", ["3", "5", "10"]), "10"),
       entry("saves.undo", "saves", { type: "toggle" }, true),
       entry(
@@ -388,22 +461,77 @@
     // `inGame`: the quick menu's speed rows (G16), shown at the Session level.
     const speed = scenario.inGame
       ? [
-          entry("speed.ffval", "speed", choice("segments", ["2", "3", "4", "max"]), "4"),
-          entry("speed.slow", "speed", choice("segments", ["0.25", "0.5", "0.75"]), "0.5", {
-            levels: G,
-          }),
-          entry("audio.ff", "speed", choice("segments", ["mute", "pitch_up", "same_pitch"]), "mute"),
+          entry(
+            "speed.ffval",
+            "speed",
+            choice("segments", ["2", "3", "4", "max"]),
+            "4",
+          ),
+          entry(
+            "speed.slow",
+            "speed",
+            choice("segments", ["0.25", "0.5", "0.75"]),
+            "0.5",
+            {
+              levels: G,
+            },
+          ),
+          entry(
+            "audio.ff",
+            "speed",
+            choice("segments", ["mute", "pitch_up", "same_pitch"]),
+            "mute",
+          ),
         ]
       : [];
     // The rows of the Controls section's shortcuts and sticks tabs (C03, C04).
     const pad = [
-      entry("pad.mod", "pad", choice("list", ["l3", "r3", "select"]), "l3", { levels: G, mostUsed: false }),
-      entry("pad.dead", "pad", { type: "slider", min: 0, max: 50, step: 1, unit: "percent" }, 15, { levels: G, mostUsed: false }),
-      entry("pad.stickdpad", "pad", { type: "slider", min: 20, max: 90, step: 5, unit: "percent" }, 50, { mostUsed: false }),
-      entry("pad.trig", "pad", { type: "slider", min: 10, max: 90, step: 5, unit: "percent" }, 50, { levels: G, mostUsed: false }),
-      entry("pad.rumble", "pad", { type: "slider", min: 0, max: 100, step: 10, unit: "percent" }, 70, { mostUsed: false, phase: 2 }),
-      entry("pad.confirm", "pad", choice("segments", ["right", "bottom"]), "right", { levels: G, mostUsed: false }),
-      entry("pad.repeat", "pad", choice("list", ["slow", "normal", "fast"]), "normal", { levels: G, mostUsed: false }),
+      entry("pad.mod", "pad", choice("list", ["l3", "r3", "select"]), "l3", {
+        levels: G,
+        mostUsed: false,
+      }),
+      entry(
+        "pad.dead",
+        "pad",
+        { type: "slider", min: 0, max: 50, step: 1, unit: "percent" },
+        15,
+        { levels: G, mostUsed: false },
+      ),
+      entry(
+        "pad.stickdpad",
+        "pad",
+        { type: "slider", min: 20, max: 90, step: 5, unit: "percent" },
+        50,
+        { mostUsed: false },
+      ),
+      entry(
+        "pad.trig",
+        "pad",
+        { type: "slider", min: 10, max: 90, step: 5, unit: "percent" },
+        50,
+        { levels: G, mostUsed: false },
+      ),
+      entry(
+        "pad.rumble",
+        "pad",
+        { type: "slider", min: 0, max: 100, step: 10, unit: "percent" },
+        70,
+        { mostUsed: false, phase: 2 },
+      ),
+      entry(
+        "pad.confirm",
+        "pad",
+        choice("segments", ["right", "bottom"]),
+        "right",
+        { levels: G, mostUsed: false },
+      ),
+      entry(
+        "pad.repeat",
+        "pad",
+        choice("list", ["slow", "normal", "fast"]),
+        "normal",
+        { levels: G, mostUsed: false },
+      ),
     ];
     const all = [...entries, ...more, ...speed, ...pad];
     const pages = [
@@ -582,13 +710,37 @@
     );
   const savesOf = {
     "Pocket Quest Advance": {
-      summary: { inGame: true, quickCount: 3, bytes: 1310720, lastChange: FIXED - 3600000, broken: true },
+      summary: {
+        inGame: true,
+        quickCount: 3,
+        bytes: 1310720,
+        lastChange: FIXED - 3600000,
+        broken: true,
+      },
       game: {
         inGame: { size: 131072, modified: FIXED - 3600000 },
         quick: [
-          { slot: 0, size: 393216, savedAt: FIXED - 3600000, thumbUrl: thumb("#2f5d8a", "#f5a524"), outdated: false },
-          { slot: 1, size: 393216, savedAt: FIXED - 2 * day, thumbUrl: thumb("#1f6f78", "#eceef3"), outdated: true },
-          { slot: 3, size: 393216, savedAt: null, thumbUrl: null, outdated: false },
+          {
+            slot: 0,
+            size: 393216,
+            savedAt: FIXED - 3600000,
+            thumbUrl: thumb("#2f5d8a", "#f5a524"),
+            outdated: false,
+          },
+          {
+            slot: 1,
+            size: 393216,
+            savedAt: FIXED - 2 * day,
+            thumbUrl: thumb("#1f6f78", "#eceef3"),
+            outdated: true,
+          },
+          {
+            slot: 3,
+            size: 393216,
+            savedAt: null,
+            thumbUrl: null,
+            outdated: false,
+          },
         ],
         backups: [
           { name: "b2", at: FIXED - day, reason: "launch", size: 131072 },
@@ -598,14 +750,39 @@
       },
     },
     "Dual Screen Tales": {
-      summary: { inGame: true, quickCount: 0, bytes: 524288, lastChange: FIXED - 3 * day, broken: false },
-      game: { inGame: { size: 524288, modified: FIXED - 3 * day }, quick: [], backups: [], broken: [] },
+      summary: {
+        inGame: true,
+        quickCount: 0,
+        bytes: 524288,
+        lastChange: FIXED - 3 * day,
+        broken: false,
+      },
+      game: {
+        inGame: { size: 524288, modified: FIXED - 3 * day },
+        quick: [],
+        backups: [],
+        broken: [],
+      },
     },
     "Star Pilot": {
-      summary: { inGame: false, quickCount: 1, bytes: 393216, lastChange: FIXED - 10 * day, broken: false },
+      summary: {
+        inGame: false,
+        quickCount: 1,
+        bytes: 393216,
+        lastChange: FIXED - 10 * day,
+        broken: false,
+      },
       game: {
         inGame: null,
-        quick: [{ slot: 2, size: 393216, savedAt: FIXED - 10 * day, thumbUrl: thumb("#2b3a8c", "#3ed68e"), outdated: false }],
+        quick: [
+          {
+            slot: 2,
+            size: 393216,
+            savedAt: FIXED - 10 * day,
+            thumbUrl: thumb("#2b3a8c", "#3ed68e"),
+            outdated: false,
+          },
+        ],
         backups: [],
         broken: [],
       },
@@ -618,9 +795,21 @@
         .filter((p) => savesOf[titleOf(p)])
         .map((p) => ({ path: p, ...savesOf[titleOf(p)].summary }));
     if (cmd === "saves_game")
-      return savesOf[titleOf(args.path)]?.game ?? { inGame: null, quick: [], backups: [], broken: [] };
+      return (
+        savesOf[titleOf(args.path)]?.game ?? {
+          inGame: null,
+          quick: [],
+          backups: [],
+          broken: [],
+        }
+      );
     if (cmd === "saves_import_pick")
-      return { path: "C:/Saves/Pocket Quest Advance.dsv", fileName: "Pocket Quest Advance.dsv", format: "desmume", size: 131072 };
+      return {
+        path: "C:/Saves/Pocket Quest Advance.dsv",
+        fileName: "Pocket Quest Advance.dsv",
+        format: "desmume",
+        size: 131072,
+      };
     return undefined;
   };
   const hour = 3600000;
@@ -630,15 +819,20 @@
   const listSlots = (count) =>
     Array.from({ length: count + 1 }, (_, slot) => {
       const full =
-        scenario.slots === "full" ? slot < 6 : scenario.slots === "some" && slot === 0;
+        scenario.slots === "full"
+          ? slot < 6
+          : scenario.slots === "some" && slot === 0;
       return {
         slot,
         savedAt: full ? FIXED - (slot + 1) * 5 * hour : null,
-        thumbUrl: full ? slotThumb(slotColours[slot % slotColours.length]) : null,
+        thumbUrl: full
+          ? slotThumb(slotColours[slot % slotColours.length])
+          : null,
       };
     });
   const gameInfo = {
-    title: scenario.game === "nds" ? "Dual Screen Tales" : "Pocket Quest Advance",
+    title:
+      scenario.game === "nds" ? "Dual Screen Tales" : "Pocket Quest Advance",
     console: scenario.game === "nds" ? "NDS" : "GBA",
     consoleId: scenario.game === "nds" ? "nds" : "gba",
     core: scenario.game === "nds" ? "melondsds" : "mgba",
@@ -699,18 +893,19 @@
     settings_game_scope: null,
     saves_summary: [],
     // `pads` (Controls) or `pad` (first run S04): one controller connected.
-    gamepad_list: scenario.pads || scenario.pad
-      ? [
-          {
-            id: 1,
-            name: "Xbox Wireless Controller",
-            family: "xbox",
-            vendor: 1118,
-            product: 2835,
-            battery: scenario.pads ? 80 : null,
-          },
-        ]
-      : [],
+    gamepad_list:
+      scenario.pads || scenario.pad
+        ? [
+            {
+              id: 1,
+              name: "Xbox Wireless Controller",
+              family: "xbox",
+              vendor: 1118,
+              product: 2835,
+              battery: scenario.pads ? 80 : null,
+            },
+          ]
+        : [],
     controls_bindings: bindings,
     theme: scenario.theme ?? "dark",
     bench_active: false,
@@ -814,7 +1009,14 @@
       }
       if (cmd === "list_slots") return listSlots(args.count);
       if (cmd === "save_state")
-        setTimeout(() => window.__emit("emu://session", { type: "stateSaved", slot: args.slot }), 50);
+        setTimeout(
+          () =>
+            window.__emit("emu://session", {
+              type: "stateSaved",
+              slot: args.slot,
+            }),
+          50,
+        );
       if (cmd === "plugin:event|unlisten") return null;
       if (cmd === "settings_page")
         return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);

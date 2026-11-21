@@ -5,7 +5,15 @@
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref, type Ref, type VNode } from 'vue'
-import { dispatchNav, focusInitial, useEscapeBack, useNavScope, useNavSection } from './nav'
+import {
+  dispatchNav,
+  focusInitial,
+  useEscapeBack,
+  useNavGrid,
+  useNavScope,
+  useNavSection,
+  type GridStep,
+} from './nav'
 
 const rects = new WeakMap<Element, DOMRect>()
 const place = (el: Element, x: number, y: number) => rects.set(el, new DOMRect(x, y, 10, 10))
@@ -299,5 +307,71 @@ describe('where a step lands', () => {
     // Nothing further down in the list: the whole screen.
     dispatchNav('right')
     expect(document.activeElement).toBe(out)
+  })
+})
+
+describe('a grid that moves by itself (useNavGrid)', () => {
+  /**
+   * A screen with a grid of `a` and, once `far` is rendered, `far`; `out` outside the grid, below
+   * it. The grid's step: down from `a` renders `far` and lands there, up leaves the grid.
+   */
+  async function screen() {
+    const far = ref(false)
+    const calls: string[] = []
+    const step: GridStep = (from, dir) => {
+      calls.push(`${from.id} ${dir}`)
+      if (dir !== 'down') return false
+      far.value = true
+      return nextTick().then(() => document.getElementById('far'))
+    }
+    const Grid = defineComponent({
+      setup() {
+        const grid = ref<HTMLElement | null>(null)
+        useNavGrid(grid, step)
+        return () =>
+          h('div', { ref: grid, id: 'grid' }, [
+            h('button', { id: 'a' }),
+            far.value ? h('button', { id: 'far' }) : null,
+          ])
+      },
+    })
+    part(
+      root => useNavScope(root, {}),
+      () => [h('button', { id: 'out' }), h(Grid)],
+    )
+    await nextTick()
+    const [a, out] = ['a', 'out'].map(id => document.getElementById(id))
+    if (!a || !out) throw new Error('not rendered')
+    place(out, 0, 0)
+    place(a, 0, 100)
+    return { a, out, calls }
+  }
+
+  it('a tile out of the DOM becomes focusable when a step reaches it, nothing measured', async () => {
+    const { a, out, calls } = await screen()
+    const outRect = vi.spyOn(out, 'getBoundingClientRect')
+    a.focus()
+    expect(document.getElementById('far')).toBeNull()
+    dispatchNav('down')
+    await nextTick()
+    await nextTick()
+    expect(document.activeElement?.id).toBe('far')
+    expect(calls).toEqual(['a down'])
+    expect(outRect).not.toHaveBeenCalled()
+  })
+
+  it('a step the grid leaves moves spatially out of it', async () => {
+    const { a } = await screen()
+    a.focus()
+    dispatchNav('up')
+    expect(document.activeElement?.id).toBe('out')
+  })
+
+  it('an element outside the grid is never asked to the grid', async () => {
+    const { out, calls } = await screen()
+    out.focus()
+    dispatchNav('down')
+    expect(calls).toEqual([])
+    expect(document.activeElement?.id).toBe('a')
   })
 })

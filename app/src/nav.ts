@@ -15,6 +15,8 @@
 // - a scope (`useNavScope`): a screen, a menu, a dialog; the focus moves inside its root;
 // - a section (`useNavSection`): a part of a screen with its own `back` / `tab` (the shell's
 //   sections); the focus still moves across the whole screen around it.
+// A long grid can move the focus by row and column itself (`useNavGrid`): a step inside it asks
+// the grid first, and moves spatially only when the grid lets it leave.
 // `back` and `tab` bubble: from the deepest scope up, the first handler that does not return
 // `false` takes the step; they stop at the first scope (a section's parent screen gets what its
 // section leaves, a screen behind a dialog gets nothing).
@@ -239,10 +241,59 @@ function entering(to: HTMLElement | null, from: HTMLElement): HTMLElement | null
 function move(root: HTMLElement, dir: Direction) {
   const from = current(root)
   if (!from) return focusInitial(root)
+  if (gridStep(from, dir)) return
   const rect = from.getBoundingClientRect()
   const box = scrollBox(from, root)
   const to = (box && nearest(from, rect, dir, box)) ?? nearest(from, rect, dir, root)
   focus(entering(to, from))
+}
+
+// ---- Grids that move by row and column
+//
+// A long grid (the library's covers, windowed: most tiles are not in the DOM) moves the focus
+// itself instead of having every tile measured (`useNavGrid`): a step from an element inside it
+// asks the grid first. The grid answers the element to focus, a promise of it (a tile it has to
+// render first), or `false`: the step leaves the grid and moves spatially as everywhere else.
+
+/** A grid's own step from `from` (an element inside it, or the grid itself) towards `dir`. */
+export type GridStep = (
+  from: HTMLElement,
+  dir: Direction,
+) => HTMLElement | Promise<HTMLElement | null> | false
+
+const GRID = '[data-nav-grid]'
+const grids = new WeakMap<Element, GridStep>()
+
+/** Whether the grid around `from` took the step (the focus moves now or once rendered). */
+function gridStep(from: HTMLElement, dir: Direction): boolean {
+  const grid = from.closest(GRID)
+  const step = grid && grids.get(grid)
+  if (!grid || !step) return false
+  const to = step(from, dir)
+  if (to === false) return false
+  if (to instanceof HTMLElement) {
+    focus(to)
+    return true
+  }
+  // Rendered later: focused only if the focus is still in the grid by then.
+  void to.then(el => {
+    if (el && grid.contains(document.activeElement)) focus(el)
+  })
+  return true
+}
+
+/** Registers `root` as a grid that moves the focus itself (`GridStep`) while it is mounted. */
+export function useNavGrid(root: Ref<HTMLElement | null>, step: GridStep) {
+  let el: HTMLElement | null = null
+  onMounted(() => {
+    el = root.value
+    if (!el) return
+    el.dataset.navGrid = ''
+    grids.set(el, step)
+  })
+  onBeforeUnmount(() => {
+    if (el) grids.delete(el)
+  })
 }
 
 /** Root the focus moves in now: the deepest scope receiving the steps (not a section). */
