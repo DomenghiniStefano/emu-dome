@@ -1,5 +1,5 @@
 // G09 «Schermi e immagine»: one card per setting, ‹ value ›, then the video method.
-import type { SettingEntry, SettingRow, SettingValue, VideoMode } from '@/emu'
+import type { SettingEntry, SettingKey, SettingRow, SettingValue, VideoMode } from '@/emu'
 import { msg } from '@/lib/settingsModel'
 import type { Message } from '@/i18n/message'
 
@@ -76,8 +76,8 @@ export interface SettingCardInput {
  * chosen in Settings (`fx.fxfile`).
  */
 export function unavailableOptions(
-  key: string,
-  value: (key: string) => SettingValue | null,
+  key: SettingKey,
+  value: (key: SettingKey) => SettingValue | null,
 ): string[] {
   return key === 'fx.fxpick' && !value('fx.fxfile') ? ['file'] : []
 }

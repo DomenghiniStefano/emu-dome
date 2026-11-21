@@ -7,12 +7,14 @@
 //! of it or of the setting; the answer goes on `<html data-theme>` (app/src/lib/theme.ts).
 
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::settings::{theme_setting, SettingsState};
 
-/// The interface theme. Mirror: `Theme` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// The interface theme. TypeScript: `Theme` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export_to = "app/")]
 pub enum Theme {
     Dark,
     Black,

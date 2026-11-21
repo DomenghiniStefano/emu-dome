@@ -20,6 +20,7 @@
 //! arriving while a game closes to the library turns that close into a quit.
 
 use std::time::Duration;
+use ts_rs::TS;
 
 use serde::Serialize;
 
@@ -29,8 +30,9 @@ use crate::ErrorCode;
 pub const SAVED_VISIBLE: Duration = Duration::from_millis(600);
 
 /// What the close is for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "ClosingPurpose")]
 pub enum Purpose {
     /// The game closes and the app stays: back to the library, or another game opens.
     Game,
@@ -39,8 +41,9 @@ pub enum Purpose {
 }
 
 /// What the interface shows while a game closes (`emu://closing`'s `phase`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "ClosingPhase")]
 pub enum Phase {
     /// The game is writing its saves: «Saving, don't turn off the device».
     Saving,
@@ -55,8 +58,9 @@ pub enum Phase {
 }
 
 /// One step of the close for the interface: the payload of `emu://closing`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "ClosingProgress")]
 pub struct Progress {
     pub phase: Phase,
     pub purpose: Purpose,

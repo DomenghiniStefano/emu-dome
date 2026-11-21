@@ -12,6 +12,7 @@
 //!   `{ code, params }` (an `ErrorCode`), once per fallback.
 
 use std::path::{Path, PathBuf};
+use ts_rs::TS;
 
 use emudome_core::bios::{self, files, Assessment, Status};
 use emudome_core::settings::{ConsoleId, Scope, Value};
@@ -50,9 +51,11 @@ fn chosen(app: &AppHandle, key: &str) -> bool {
     }
 }
 
-/// One wired row and its status. Mirror: `BiosRow` in app/src/emu.ts.
-#[derive(Serialize)]
+/// One wired row and its status. TypeScript: `BiosRow` (generated).
+#[derive(Serialize, TS)]
+#[ts(export_to = "app/")]
 pub struct BiosRow {
+    #[ts(as = "emudome_core::contract::SettingKey")]
     key: &'static str,
     status: Status,
 }

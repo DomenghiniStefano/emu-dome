@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import type { SettingsChanged } from '@/emu'
+import type { SettingKey, SettingsChanged } from '@/emu'
 import { listenerSet } from './useListeners'
 import {
   EVERY_SETTING,
@@ -31,7 +31,7 @@ const bridge = vi.hoisted(() => {
 })
 vi.mock('@/emu', () => ({ emu: { settings: { onChanged: bridge.onChanged } } }))
 
-const change = (key: string, level: SettingsChanged['level'] = 'global'): SettingsChanged => ({
+const change = (key: SettingKey, level: SettingsChanged['level'] = 'global'): SettingsChanged => ({
   key,
   level,
 })
@@ -55,13 +55,13 @@ beforeEach(() => {
 describe('settingMatches', () => {
   it('takes one key, a list of keys, or a test on the change', () => {
     expect(settingMatches('pad.ab', change('pad.ab'))).toBe(true)
-    expect(settingMatches('pad.ab', change('pad.abc'))).toBe(false)
+    expect(settingMatches('pad.ab', change('pad.abc' as SettingKey))).toBe(false)
     expect(settingMatches(['pad.ab', 'pad.remap'], change('pad.remap'))).toBe(true)
     expect(settingMatches(['pad.ab'], change('pad.mod'))).toBe(false)
     expect(settingMatches(settingsUnder('pad.'), change('pad.mod'))).toBe(true)
     expect(settingMatches(settingsUnder('pad.'), change('video.scale'))).toBe(false)
-    expect(settingMatches(e => e.level === 'game', change('x', 'game'))).toBe(true)
-    expect(settingMatches(EVERY_SETTING, change('anything'))).toBe(true)
+    expect(settingMatches(e => e.level === 'game', change('x' as SettingKey, 'game'))).toBe(true)
+    expect(settingMatches(EVERY_SETTING, change('anything' as SettingKey))).toBe(true)
   })
 })
 

@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use ts_rs::TS;
 
 use emudome_core::library::{
     self, core_of, cover_colour, region, CoverKind, GameRecord, Identity, Library, NotAGame,
@@ -72,12 +73,13 @@ pub fn startup(app: &AppHandle) {
     refresh_watch(app);
 }
 
-// ---- DTOs (mirrors in app/src/emu.ts) ----
+// ---- DTOs (TypeScript generated into app/src/generated/app/ by src/contract.rs) ----
 
-/// Mirror: `LibraryGame`.
-#[derive(Serialize)]
+/// TypeScript: `LibraryGame` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct GameDto {
+#[ts(export_to = "app/", rename = "LibraryGame")]
+pub(crate) struct GameDto {
     /// The game's one identity (`GameId` in app/src/emu.ts): its saves and settings too.
     id: GameKey,
     console: ConsoleId,
@@ -147,25 +149,28 @@ impl GameDto {
     }
 }
 
-/// Mirror: `LibraryFolder`.
-#[derive(Serialize)]
-struct FolderDto {
+/// TypeScript: `LibraryFolder` (generated).
+#[derive(Serialize, TS)]
+#[ts(export_to = "app/", rename = "LibraryFolder")]
+pub(crate) struct FolderDto {
     path: String,
     reachable: bool,
 }
 
-/// Mirror: `Library`.
-#[derive(Serialize)]
+/// TypeScript: `Library` (generated).
+#[derive(Serialize, TS)]
+#[ts(export_to = "app/", rename = "Library")]
 pub struct LibraryDto {
     games: Vec<GameDto>,
     folders: Vec<FolderDto>,
     scanning: bool,
 }
 
-/// Payload of `library://scan`. Mirror: `LibraryScanEvent`.
-#[derive(Clone, Serialize)]
+/// Payload of `library://scan`. TypeScript: `LibraryScanEvent` (generated).
+#[derive(Clone, Serialize, TS)]
 #[serde(tag = "phase", rename_all = "camelCase")]
-enum ScanEvent {
+#[ts(export_to = "app/", rename = "LibraryScanEvent")]
+pub(crate) enum ScanEvent {
     Started,
     Progress {
         checked: usize,

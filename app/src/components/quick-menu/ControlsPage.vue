@@ -3,7 +3,7 @@
 // yet) and the controller shortcuts.
 import { useI18n } from 'vue-i18n'
 import { ChevronRight } from '@lucide/vue'
-import type { Pos, SettingEntry, SettingRow, SettingsSchema, SettingValue } from '@/emu'
+import type { Pos, SettingEntry, SettingKey, SettingRow, SettingsSchema, SettingValue } from '@/emu'
 import { Card, CardVariant } from '@/components/ui/card'
 import { posName } from '@/lib/controls'
 import MenuList from './MenuList.vue'
@@ -21,7 +21,7 @@ defineProps<{
   shortcutCount: number
 }>()
 const emit = defineEmits<{
-  set: [string, SettingValue]
+  set: [SettingKey, SettingValue]
   error: [string]
   shortcuts: [Event]
 }>()

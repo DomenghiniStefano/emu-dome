@@ -19,6 +19,7 @@ use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+use ts_rs::TS;
 
 use serde::{Deserialize, Serialize};
 
@@ -27,7 +28,7 @@ use crate::session::AUTO_SLOT;
 use crate::{write_atomic, GameKey};
 
 /// Why a backup was made (the board's «Avvio del gioco», «Prima dell’importazione», …).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum BackupReason {
     /// The game started: the save as it was before this session rewrote it.
@@ -502,7 +503,7 @@ pub fn set_aside(save_dir: &Path, game: &GameKey, now_ms: u64) -> io::Result<Str
 // ---- Import (V05) ----
 
 /// Where an imported file comes from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum ImportFormat {
     /// A plain `.sav` (mGBA, VBA, no$gba raw, melonDS, a flash cart).
@@ -603,7 +604,7 @@ fn strip_dsv(bytes: &[u8]) -> Option<&[u8]> {
 // ---- Import from a folder (first run S06: DeSmuME, another folder or emulator) ----
 
 /// Which files a folder import reads.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum FolderImport {
     /// DeSmuME's `.dsv` files only.

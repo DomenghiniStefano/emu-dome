@@ -20,6 +20,7 @@
 //! level holding a list wins as a whole.
 
 use std::time::Duration;
+use ts_rs::TS;
 
 use serde::{Deserialize, Serialize};
 
@@ -29,8 +30,8 @@ use crate::session::Speed;
 use crate::settings::Value;
 
 /// A place on the controller, by position (SDL's names): the same position is the same
-/// [`Pos`] on every controller, whatever is printed on it. Mirror: `Pos` in app/src/emu.ts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// [`Pos`] on every controller, whatever is printed on it. TypeScript: `Pos` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
 pub enum Pos {
     /// Bottom face button.
@@ -149,9 +150,10 @@ impl Pos {
 }
 
 /// A controller type, for the remap tables: one table per family, plus the keyboard.
-/// Mirror: `PadFamily` in app/src/emu.ts (and the button names, `controls.pos.<family>.<pos>`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// TypeScript: `PadFamily` (generated) (and the button names, `controls.pos.<family>.<pos>`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "PadFamily")]
 pub enum Family {
     Xbox,
     #[serde(rename = "playstation")]
@@ -313,9 +315,10 @@ fn parse_combo(item: &str) -> Option<(Hotkey, Option<Pos>)> {
     Some((hotkey, Some(Pos::from_id(source)?)))
 }
 
-/// Which binding list an entry holds. Mirror: `table` of the `bindings` kind in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// Which binding list an entry holds. TypeScript: `BindingTable` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "BindingTable")]
 pub enum Table {
     /// `pad.remap`.
     Remap,

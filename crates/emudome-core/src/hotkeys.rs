@@ -23,6 +23,7 @@
 //! [`Bindings`] through [`crate::bindings::PadConfig`].
 
 use std::time::{Duration, Instant};
+use ts_rs::TS;
 
 use crate::input::Button;
 
@@ -32,8 +33,9 @@ pub const REPEAT_DELAY: Duration = Duration::from_millis(400);
 pub const REPEAT_INTERVAL: Duration = Duration::from_millis(120);
 
 /// One navigation step for the interface (payload of `emu://nav`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(rename = "NavAction")]
 pub enum Nav {
     Up,
     Down,
@@ -103,9 +105,10 @@ pub enum Hotkey {
     Lid,
 }
 
-/// Whether a hotkey does something yet. Mirror: `HotkeyStatus` in app/src/emu.ts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+/// Whether a hotkey does something yet. TypeScript: `HotkeyStatus` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "HotkeyStatus")]
 pub enum Status {
     /// It works.
     Active,

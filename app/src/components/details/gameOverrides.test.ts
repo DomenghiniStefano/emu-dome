@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { SettingEntry, SettingKind, SettingsSchema } from '@/emu'
+import type { SettingEntry, SettingKey, SettingKind, SettingsSchema } from '@/emu'
 import { overrideRows, settingValueText } from './gameOverrides'
 import type { Translator } from '@/i18n/message'
 
@@ -12,7 +12,7 @@ const i18n: Translator = {
   te: key => KNOWN.has(key),
 }
 
-const entry = (key: string, kind: SettingKind, phase = 0): SettingEntry => ({
+const entry = (key: SettingKey, kind: SettingKind, phase = 0): SettingEntry => ({
   key,
   page: key.split('.')[0]!,
   kind,
@@ -83,7 +83,7 @@ describe('overrideRows', () => {
     pages: [],
     groups: [],
     sections: [],
-    entries: [filter, entry('later.thing', { type: 'toggle' }, 2)],
+    entries: [filter, entry('later.thing' as SettingKey, { type: 'toggle' }, 2)],
   } as unknown as SettingsSchema
 
   it('names each override with its page and both values', () => {
@@ -115,8 +115,9 @@ describe('overrideRows', () => {
   it('leaves out keys the schema does not know or does not show yet', () => {
     const rows = overrideRows(
       [
-        { key: 'gone.key', page: 'gone', value: true, base: null },
-        { key: 'later.thing', page: 'later', value: true, base: null },
+        // Keys of another version of the catalogue: not in SettingKey on purpose.
+        { key: 'gone.key' as SettingKey, page: 'gone', value: true, base: null },
+        { key: 'later.thing' as SettingKey, page: 'later', value: true, base: null },
       ],
       schema,
       i18n,

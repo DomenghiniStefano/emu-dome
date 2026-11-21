@@ -23,7 +23,10 @@ const EMU_CALL =
 
 export default withVueTs(
   {
-    ignores: ['dist', 'node_modules', 'src-tauri'],
+    // src/generated: written by ts-rs from the Rust types (crates/emudome-core/src/contract.rs)
+    // and compared byte for byte by a cargo test; its files import each other across its own
+    // subfolders (`../X`), which the import rule below refuses in hand-written code.
+    ignores: ['dist', 'node_modules', 'src-tauri', 'src/generated'],
   },
   js.configs.recommended,
   pluginVue.configs['flat/essential'],

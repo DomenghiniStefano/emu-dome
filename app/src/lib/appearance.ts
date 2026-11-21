@@ -9,7 +9,7 @@
 import { ref } from 'vue'
 import { accentTokens } from './accent'
 import { onSettingsChanged } from '@/composables/useSettingsChanged'
-import { emu, type SettingRow, type SettingValue } from '@/emu'
+import { emu, type SettingKey, type SettingRow, type SettingValue } from '@/emu'
 import { GLOBAL } from './settingsModel'
 
 /** The interface's scale (`a11y.textsize` / 100). */
@@ -19,7 +19,7 @@ export const reducedMotion = ref(false)
 /** Solid surfaces instead of glass (`a11y.transp`, or the system's preference). */
 export const reducedTransparency = ref(false)
 
-const KEYS = ['general.accent', 'a11y.textsize', 'a11y.motion', 'a11y.transp']
+const KEYS: SettingKey[] = ['general.accent', 'a11y.textsize', 'a11y.motion', 'a11y.transp']
 const systemMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 const systemTransp = window.matchMedia('(prefers-reduced-transparency: reduce)')
 

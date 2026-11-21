@@ -11,13 +11,16 @@ use emudome_core::ErrorCode;
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
+use ts_rs::TS;
 
 /// The engine, behind a lock: every command is short (in memory, or one small file write).
 pub struct SettingsState(pub Mutex<Settings>);
 
-/// Payload of `settings://changed`. Mirror: `SettingsChanged` in app/src/emu.ts.
-#[derive(Clone, Serialize)]
-struct Changed<'a> {
+/// Payload of `settings://changed`. TypeScript: `SettingsChanged` (generated).
+#[derive(Clone, Serialize, TS)]
+#[ts(export_to = "app/", rename = "SettingsChanged")]
+pub(crate) struct Changed<'a> {
+    #[ts(as = "emudome_core::contract::SettingKey")]
     key: &'a str,
     level: Level,
 }

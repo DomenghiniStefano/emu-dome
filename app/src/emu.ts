@@ -3,238 +3,132 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { getVersion } from '@tauri-apps/api/app'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
+import type { BiosStatus } from '@/generated/BiosStatus'
+import type { Button } from '@/generated/Button'
+import type { ClosingProgress } from '@/generated/ClosingProgress'
+import type { CoverKind } from '@/generated/CoverKind'
+import type { EmuEvent } from '@/generated/EmuEvent'
 import type { ErrorCode } from '@/generated/ErrorCode'
+import type { FirstRunStep } from '@/generated/FirstRunStep'
+import type { FolderImport } from '@/generated/FolderImport'
 import type { GameId } from '@/generated/GameId'
-import type { SettingLevel } from '@/generated/SettingLevel'
+import type { GameOverride } from '@/generated/GameOverride'
+import type { NavAction } from '@/generated/NavAction'
+import type { PadFamily } from '@/generated/PadFamily'
+import type { SettingKey } from '@/generated/SettingKey'
+import type { SettingRecent } from '@/generated/SettingRecent'
+import type { SettingRow } from '@/generated/SettingRow'
+import type { SettingValue } from '@/generated/SettingValue'
+import type { SettingsSchema } from '@/generated/SettingsSchema'
+import type { SettingsScope } from '@/generated/SettingsScope'
+import type { Speed } from '@/generated/Speed'
+import type { BiosRow } from '@/generated/app/BiosRow'
+import type { ControlsBindings } from '@/generated/app/ControlsBindings'
+import type { CoreRestart } from '@/generated/app/CoreRestart'
+import type { FolderSaves } from '@/generated/app/FolderSaves'
+import type { GameInfo } from '@/generated/app/GameInfo'
+import type { GameSaves } from '@/generated/app/GameSaves'
+import type { ImportCandidate } from '@/generated/app/ImportCandidate'
+import type { Library } from '@/generated/app/Library'
+import type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
+import type { PadInfo } from '@/generated/app/PadInfo'
+import type { PadState } from '@/generated/app/PadState'
+import type { PointerArea } from '@/generated/app/PointerArea'
+import type { SaveExport } from '@/generated/app/SaveExport'
+import type { SaveMatch } from '@/generated/app/SaveMatch'
+import type { SavesMigration } from '@/generated/app/SavesMigration'
+import type { SavesSummary } from '@/generated/app/SavesSummary'
+import type { SettingsChanged } from '@/generated/app/SettingsChanged'
+import type { SlotInfo } from '@/generated/app/SlotInfo'
+import type { Stats } from '@/generated/app/Stats'
+import type { Theme } from '@/generated/app/Theme'
+import type { VideoMode } from '@/generated/app/VideoMode'
 
-export type Speed = { kind: 'factor'; value: number } | { kind: 'max' }
-export type Button =
-  | 'a'
-  | 'b'
-  | 'x'
-  | 'y'
-  | 'l'
-  | 'r'
-  | 'l2'
-  | 'r2'
-  | 'l3'
-  | 'r3'
-  | 'start'
-  | 'select'
-  | 'up'
-  | 'down'
-  | 'left'
-  | 'right'
+// The bridge's types are generated from the Rust types (ts-rs) and the settings catalogue into
+// src/generated/ (crates/emudome-core/src/contract.rs, app/src-tauri/src/contract.rs): a `cargo
+// test` fails while they are stale. Never write one here by hand; the two below have no Rust
+// type the contract can reach yet (see their comments).
+export type { ActionStyle } from '@/generated/ActionStyle'
+export type { BackupReason } from '@/generated/BackupReason'
+export type { BindingTable } from '@/generated/BindingTable'
+export type { BiosSlot } from '@/generated/BiosSlot'
+export type { BiosStatus } from '@/generated/BiosStatus'
+export type { Button } from '@/generated/Button'
+export type { ChoiceStyle } from '@/generated/ChoiceStyle'
+export type { ClosingPhase } from '@/generated/ClosingPhase'
+export type { ClosingProgress } from '@/generated/ClosingProgress'
+export type { ClosingPurpose } from '@/generated/ClosingPurpose'
+export type { CommitTarget } from '@/generated/CommitTarget'
+export type { ConsoleId } from '@/generated/ConsoleId'
+export type { CoverKind } from '@/generated/CoverKind'
+export type { EmuEvent } from '@/generated/EmuEvent'
+export type { ErrorCode } from '@/generated/ErrorCode'
+export type { FirstRunStep } from '@/generated/FirstRunStep'
+export type { FolderImport } from '@/generated/FolderImport'
+export type { GameId } from '@/generated/GameId'
+export type { GameOverride } from '@/generated/GameOverride'
+export type { GameRegion } from '@/generated/GameRegion'
+export type { HotkeyId } from '@/generated/HotkeyId'
+export type { HotkeyStatus } from '@/generated/HotkeyStatus'
+export type { ImportFormat } from '@/generated/ImportFormat'
+export type { NavAction } from '@/generated/NavAction'
+export type { PadFamily } from '@/generated/PadFamily'
+export type { Pos } from '@/generated/Pos'
+export type { SettingDevice } from '@/generated/SettingDevice'
+export type { SettingEntry } from '@/generated/SettingEntry'
+export type { SettingKey } from '@/generated/SettingKey'
+export type { SettingKind } from '@/generated/SettingKind'
+export type { SettingLevel } from '@/generated/SettingLevel'
+export type { SettingPageGroup } from '@/generated/SettingPageGroup'
+export type { SettingPlatform } from '@/generated/SettingPlatform'
+export type { SettingRecent } from '@/generated/SettingRecent'
+export type { SettingRow } from '@/generated/SettingRow'
+export type { SettingSection } from '@/generated/SettingSection'
+export type { SettingShowIf } from '@/generated/SettingShowIf'
+export type { SettingsSchema } from '@/generated/SettingsSchema'
+export type { SettingsScope } from '@/generated/SettingsScope'
+export type { SettingValue } from '@/generated/SettingValue'
+export type { SliderUnit } from '@/generated/SliderUnit'
+export type { Speed } from '@/generated/Speed'
+export type { BiosRow } from '@/generated/app/BiosRow'
+export type { ComboRow } from '@/generated/app/ComboRow'
+export type { ControlsBindings } from '@/generated/app/ControlsBindings'
+export type { CoreRestart } from '@/generated/app/CoreRestart'
+export type { FolderSaves } from '@/generated/app/FolderSaves'
+export type { GameInfo } from '@/generated/app/GameInfo'
+export type { GameSaves } from '@/generated/app/GameSaves'
+export type { ImportCandidate } from '@/generated/app/ImportCandidate'
+export type { Library } from '@/generated/app/Library'
+export type { LibraryFolder } from '@/generated/app/LibraryFolder'
+export type { LibraryGame } from '@/generated/app/LibraryGame'
+export type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
+export type { PadInfo } from '@/generated/app/PadInfo'
+export type { PadState } from '@/generated/app/PadState'
+export type { PointerArea } from '@/generated/app/PointerArea'
+export type { QuickSave } from '@/generated/app/QuickSave'
+export type { RemapRow } from '@/generated/app/RemapRow'
+export type { SaveBackup } from '@/generated/app/SaveBackup'
+export type { SaveExport } from '@/generated/app/SaveExport'
+export type { SaveFile } from '@/generated/app/SaveFile'
+export type { SaveMatch } from '@/generated/app/SaveMatch'
+export type { SavesMigration } from '@/generated/app/SavesMigration'
+export type { SavesSummary } from '@/generated/app/SavesSummary'
+export type { SettingsChanged } from '@/generated/app/SettingsChanged'
+export type { SlotInfo } from '@/generated/app/SlotInfo'
+export type { Stats } from '@/generated/app/Stats'
+export type { Theme } from '@/generated/app/Theme'
+export type { VideoMode } from '@/generated/app/VideoMode'
 
-/**
- * Where a pointer position is measured (`pointer`): the window in the renderer's unit (physical
- * pixels for native video, CSS pixels for the webview canvas) and the bottom share (0..0.9) kept
- * clear for the quick menu. Mirror: `PointerArea` in app/src-tauri/src/lib.rs.
- */
-export interface PointerArea {
-  width: number
-  height: number
-  inset: number
-}
-
-export interface GameInfo {
-  /** The game's one identity: its saves and «Solo questo gioco» settings are named by it. */
-  id: GameId
-  title: string
-  console: string
-  consoleId: ConsoleId
-  core: string
-  /** `saves.resume` is «ask» and an auto quick save exists: ask whether to resume. */
-  resumable: boolean
-  /** `saves.autoexit`: closing writes the auto quick save. */
-  autosaveOnExit: boolean
-}
-export interface Stats {
-  running: boolean
-  emuFps: number
-  targetFps: number
-  speed: Speed | null
-  paused: boolean
-  /** Frames emulated since the start (hang watchdog, E11). */
-  frames: number
-  /** Unix ms of the last auto quick save in this session. */
-  autoSavedAt: number | null
-}
-
-/** A quick save slot of the open game (G07). Mirror of `SlotDto` in src-tauri/src/lib.rs. */
-export interface SlotInfo {
-  slot: number
-  /** Unix ms of the last save; null = empty. */
-  savedAt: number | null
-  thumbUrl: string | null
-}
+/** Kept for the toasts, which only need the name. */
+export type GamepadEvent = Pick<PadInfo, 'name'>
 
 /** Slot 0: the auto quick save («Salvataggio rapido automatico»). */
 export const AUTO_SLOT = 0
 
 /**
- * What every command rejects with and what `error` events carry (`emudome_core::ErrorCode`,
- * generated). Turned into text by `errorText` (src/i18n/labels.ts) through `errors.<code>`;
- * `detail` is technical text, not a sentence.
- */
-export type { ErrorCode } from '@/generated/ErrorCode'
-
-/** Mirror of `emudome_core::close_flow::Phase`: what a game being closed is doing. */
-export type ClosingPhase = 'saving' | 'saved' | 'timeout' | 'failed' | 'closed'
-
-/** Mirror of `emudome_core::close_flow::Purpose`: the app quits, or only the game closes. */
-export type ClosingPurpose = 'game' | 'quit'
-
-/** Mirror of `emudome_core::close_flow::Progress`: one `emu://closing` event (Trello #86). */
-export interface ClosingProgress {
-  phase: ClosingPhase
-  purpose: ClosingPurpose
-  /** What could not be written, with `failed`. */
-  error: ErrorCode | null
-}
-
-/** One file a core can use (`emudome_core::bios::Slot`, generated). */
-export type { BiosSlot } from '@/generated/BiosSlot'
-
-/**
- * Mirror of `emudome_core::bios::Status`: what a `bios.*` row shows. `builtin`: no file, the
- * core's replacement; `verified`: the user's file in use; `unrecognised`: a file chosen that
- * EmuDome does not recognise, so the replacement stays in use.
- */
-export type BiosStatus = 'builtin' | 'verified' | 'unrecognised'
-
-/** Mirror of `BiosRow` (app/src-tauri/src/bios.rs). */
-export interface BiosRow {
-  key: string
-  status: BiosStatus
-}
-
-export type EmuEvent =
-  | { type: 'started'; core: string; game: string; fps: number; width: number; height: number }
-  | { type: 'stateSaved'; slot: number }
-  | { type: 'stateLoaded'; slot: number }
-  | { type: 'loadUndone' }
-  /** «Salvato nello slot N · Annulla»: `slot` holds what it held before the last save. */
-  | { type: 'saveUndone'; slot: number }
-  /** G13 «Schermata salvata»: `path` is the PNG written next to the saves. */
-  | { type: 'screenshotSaved'; path: string }
-  | { type: 'error'; error: ErrorCode }
-  | { type: 'stopped' }
-
-// ---- Controllers (mirrors of emudome_core::bindings and src-tauri/src/pads.rs) ----
-
-/**
- * A place on the controller, by position (SDL's names), the same on every controller whatever
- * is printed on it. Mirror of `Pos`. Names per controller type: `controls.pos.<family>.<pos>`.
- */
-export type Pos =
-  | 'south'
-  | 'east'
-  | 'west'
-  | 'north'
-  | 'l1'
-  | 'r1'
-  | 'l2'
-  | 'r2'
-  | 'l3'
-  | 'r3'
-  | 'back'
-  | 'start'
-  | 'up'
-  | 'down'
-  | 'left'
-  | 'right'
-
-/** Controller type: one remap table each, plus the keyboard. Mirror of `Family`. */
-export type PadFamily = 'xbox' | 'playstation' | 'switch' | 'generic' | 'keyboard'
-
-/**
- * A connected controller: payload of `emu://gamepad-connected` / `emu://gamepad-disconnected`
- * and the rows of `gamepad_list`. `name` is null when SDL knows none.
- */
-export interface PadInfo {
-  id: number
-  name: string | null
-  family: Exclude<PadFamily, 'keyboard'>
-  vendor: number
-  product: number
-  /** Battery charge left, 0..100; null when wired or unknown (`emu://gamepad-changed` updates it). */
-  battery: number | null
-}
-/** Kept for the toasts, which only need the name. */
-export type GamepadEvent = Pick<PadInfo, 'name'>
-
-/** One pad's live state (`emu://pad-state`, while watched). */
-export interface PadState {
-  id: number
-  /** Positions held: buttons, and triggers past `pad.trig`. */
-  held: Pos[]
-  /** Left x, left y, right x, right y (-32768..32767, y down), left trigger, right trigger. */
-  axes: [number, number, number, number, number, number]
-}
-
-/** One game button of the remap table. `source`: a `Pos` (controllers) or a key code (keyboard). */
-export interface RemapRow {
-  button: Button
-  source: string | null
-  default: string | null
-  changed: boolean
-}
-
-/** One controller shortcut: `pos` pressed with the shortcut button (null = none). */
-export interface ComboRow {
-  hotkey: HotkeyId
-  pos: Pos | null
-  default: Pos | null
-  /** Whether it works yet: reserved rows are listed and do nothing. */
-  status: HotkeyStatus
-  /** Listed among «Scorciatoie da ricordare» (C01). */
-  toRemember: boolean
-}
-
-/** Mirror of `Hotkey::id` (crates/emudome-core/src/hotkeys.rs), in `Hotkey::ALL` order. */
-export type HotkeyId =
-  | 'menu'
-  | 'save'
-  | 'load'
-  | 'next_slot'
-  | 'prev_slot'
-  | 'ff_hold'
-  | 'ff_toggle'
-  | 'slow'
-  | 'rewind'
-  | 'pause'
-  | 'screenshot'
-  | 'fps'
-  | 'swap'
-  | 'layout'
-  | 'lid'
-
-/** Mirror of `hotkeys::Status`: works, comes later, comes with the Nintendo DS and 3DS. */
-export type HotkeyStatus = 'active' | 'later' | 'dualScreen'
-
-/** The bindings of a family seen from a scope, with the defaults already applied. */
-export interface ControlsBindings {
-  remap: RemapRow[]
-  combos: ComboRow[]
-  /** The shortcut button (`pad.mod`). */
-  modifier: Pos
-}
-
-export type VideoMode = 'native' | 'webview'
-
-/** Interface theme (mirror of `Theme` in src-tauri/src/theme.rs): Scuro, Nero, Chiaro. */
-export type Theme = 'dark' | 'black' | 'light'
-
-/** One focus step (`emu://nav`, mirror of `emudome_core::hotkeys::Nav`), also produced by the keyboard. */
-/** `prev` / `next` are L1 / R1: tabs or levels of the screen. */
-/** `more` is X: the focused item's other actions (as a right click). */
-export type NavAction =
-  'up' | 'down' | 'left' | 'right' | 'confirm' | 'back' | 'prev' | 'next' | 'more'
-
-/**
- * Payload of `emu://hotkey` (mirror of `HotkeyEvent` in src-tauri/src/gamepad.rs): what a
- * controller combo changed that the interface shows. The combos themselves run in Rust.
+ * Payload of `emu://hotkey` (`HotkeyEvent` in src-tauri/src/gamepad.rs, which is compiled on the
+ * desktop only, so the contract test cannot reach it yet): what a controller combo changed that
+ * the interface shows. The combos themselves run in Rust.
  */
 export type HotkeyEvent =
   | { kind: 'fps' }
@@ -243,333 +137,9 @@ export type HotkeyEvent =
   | { kind: 'turbo'; held: boolean }
   | { kind: 'paused'; paused: boolean }
 
-// ---- Settings (mirrors of crates/emudome-core/src/settings, schema.rs and mod.rs) ----
-
-/** Where a value comes from, weakest first: default, «Tutti i giochi», «Giochi <console>», «Solo questo gioco», «in prova». */
-export type { SettingLevel } from '@/generated/SettingLevel'
-export type ConsoleId = 'gb' | 'gbc' | 'gba' | 'nds' | '3ds'
-export type SettingDevice = 'desktop' | 'phone'
-/** `touch`: only where there is a touch screen (for now the phone). */
-export type SettingPlatform = 'all' | SettingDevice | 'touch'
-/** bool (toggle), number (slider), string (choice, file, colour, text), string[] (multi, folders). */
-export type SettingValue = boolean | number | string | string[]
-
-/** Kind of an entry. Texts: `settings.<key>.name|desc`, options `settings.<key>.option.<id>`. */
-export type SettingKind =
-  | { type: 'toggle' }
-  | {
-      type: 'choice'
-      style: 'segments' | 'list' | 'cards'
-      options: string[]
-      /** The device adds options after these (audio outputs, saved touch layouts). */
-      moreAtRuntime: boolean
-    }
-  | { type: 'multi'; options: string[] }
-  | {
-      type: 'slider'
-      min: number
-      max: number
-      step: number
-      unit: 'percent' | 'px' | 'seconds' | 'copies'
-    }
-  | { type: 'file' }
-  | { type: 'folders' }
-  | { type: 'colour'; swatches: string[] }
-  | { type: 'text' }
-  | { type: 'action'; style: 'button' | 'link' | 'info' | 'storage' }
-  /** No value: cards that each apply a bundle of settings after a confirmation (`presets.preset`). */
-  | { type: 'apply'; options: string[] }
-  /** A binding list edited in the Controls section (`pad.remap`, `pad.combos`): a link here. */
-  | { type: 'bindings'; table: 'remap' | 'combos' }
-
-/** When a row is shown (mirror of `ShowIf`, schema.rs): entry `key` of the same page, resolved at
- * the level being edited, is (with `not`: is not) one of `values`. */
-export interface SettingShowIf {
-  key: string
-  values: string[]
-  not: boolean
-}
-
-export interface SettingEntry {
-  /** `<prefix>.<key>`, stable. */
-  key: string
-  /** The page it is shown on: usually the key's prefix, not always («Avanzate»). */
-  page: string
-  kind: SettingKind
-  /** null for actions. */
-  default: SettingValue | null
-  /** Accepted levels, weakest first. */
-  levels: SettingLevel[]
-  perDevice: boolean
-  platform: SettingPlatform
-  phase: number
-  /** Options of a choice this device does not offer: not shown. */
-  hiddenOptions: string[]
-  /** Extra words the search matches, in any language. */
-  synonyms: string[]
-  /** Listed in «Usate più spesso» (T01), at the Global level. */
-  mostUsed: boolean
-  /** Shown only while another row has (or has not) some values; absent: always. */
-  showIf?: SettingShowIf
-  /** Works only on the Accelerated (native) video method: disabled with the reason otherwise. */
-  needsNativeVideo: boolean
-}
-
-/** A heading of a settings page (`settings.sections.<page>.<id>`) and its entries in order. */
-export interface SettingSection {
-  page: string
-  id: string
-  keys: string[]
-}
-
-export interface SettingsSchema {
-  device: SettingDevice
-  /** Entries with a later `phase`, or whose `platform` excludes `device`, are not shown. */
-  currentPhase: number
-  pages: string[]
-  /** The category list's groups (`settings.groups.<id>`), in order, with their pages. */
-  groups: { id: string; pages: string[] }[]
-  /** Every page's headings in order, each with its entries. */
-  sections: SettingSection[]
-  entries: SettingEntry[]
-}
-
-/** What a page shows or a change targets. `session` = the open game with its changes «in prova». */
-export type SettingsScope =
-  | { level: 'global' }
-  | { level: 'console'; console: ConsoleId }
-  | { level: 'game'; console: ConsoleId; game: GameId }
-  | { level: 'session' }
-
-export interface SettingRow {
-  key: string
-  value: SettingValue | null
-  /** Weaker than the page's scope → «Come in "…"»; equal → the row can be reset. */
-  source: SettingLevel
-  /** Differs from the default. */
-  changed: boolean
-}
-
-/** A value changed recently at one level («Modificate di recente», T01). Mirror: `RecentChange`. */
-export interface SettingRecent {
-  key: string
-  level: 'global' | 'console' | 'game'
-  /** The console of a `console` level. */
-  console: ConsoleId | null
-  /** The game of a `game` level. */
-  game: GameId | null
-  /** Unix ms. */
-  at: number
-}
-
-/** A value stored for one game, with what its console's games get (L06). Mirror: `GameOverride`. */
-export interface GameOverride {
-  key: string
-  /** The settings page it is shown on. */
-  page: string
-  value: SettingValue
-  /** «Per tutti i giochi <console>: …». */
-  base: SettingValue | null
-}
-
-/** Payload of `settings://changed`. */
-export interface SettingsChanged {
-  key: string
-  level: SettingLevel
-}
-
 /**
- * Payload of `emu://core-restart` (mirror of `CoreRestart` in src-tauri/src/core_settings.rs):
- * the settings whose new value the open game's core takes only when the game is opened again.
- * Sent whenever the list changes; empty = nothing waits any more.
- */
-export interface CoreRestart {
-  settings: string[]
-}
-
-// ---- Library (mirrors of crates/emudome-core/src/library and src-tauri/src/library.rs) ----
-
-/**
- * The one identity of a game, from its content (docs/feasibility.md "Game identity"), never the
- * file name: `<console>:<hex>` (`emudome_core::GameKey`, generated). The library, the saves, the
- * settings and the open game all name a game by it. Opaque to the interface.
- */
-export type { GameId } from '@/generated/GameId'
-
-/** Which picture a cover shows (L12): the user's image, the icon inside the ROM, or a generated one. */
-export type CoverKind = 'user' | 'icon' | 'generated'
-
-/** Where a game was sold, from its game code (`details.region.<id>`). Mirror: `Region`. */
-export type GameRegion =
-  | 'japan'
-  | 'usa'
-  | 'europe'
-  | 'germany'
-  | 'france'
-  | 'italy'
-  | 'spain'
-  | 'netherlands'
-  | 'australia'
-  | 'korea'
-  | 'china'
-  | 'world'
-
-export interface LibraryGame {
-  id: GameId
-  console: ConsoleId
-  /** From the header / NDS banner / 3DS SMDH, or the user's override. Never the id. */
-  title: string
-  path: string
-  /** The library folder it was found in; null when added as a single file (drag and drop). */
-  folder: string | null
-  size: number
-  /** false when the file or its folder is not reachable now (E01): shown faded, not removed. */
-  available: boolean
-  playTimeSecs: number
-  /** Unix ms, null if never played. */
-  lastPlayed: number | null
-  /** Unix ms. */
-  addedAt: number
-  cover: CoverKind
-  /** What `cover` shows, loadable by the webview (`emu://cover/...`); null for `generated`. */
-  coverUrl: string | null
-  /** True when the ROM has an icon (NDS banner, 3DS SMDH): L12 offers it. */
-  hasIcon: boolean
-  /** Background colour of the generated cover, `#rrggbb`, stable per game. */
-  colour: string
-  favourite: boolean
-  hidden: boolean
-  /** Thumbnail of the newest save state for the «Riprendi» hero; null while states have none. */
-  lastStateThumbUrl: string | null
-  /** `title` is the user's «Nome mostrato» (L10). */
-  renamed: boolean
-  /** The ROM's own title, what «Nome mostrato» goes back to. */
-  romTitle: string
-  /** Game code from the header (L10). */
-  code: string | null
-  /** ROM version from the header. */
-  version: number | null
-  region: GameRegion | null
-  /** The core that runs it: `mgba`, `melondsds`, `azahar` (`details.files.core.<id>`). */
-  core: string
-}
-
-export interface LibraryFolder {
-  path: string
-  reachable: boolean
-}
-
-export interface Library {
-  games: LibraryGame[]
-  /** `library.folders` of this device, with whether each is reachable now. */
-  folders: LibraryFolder[]
-  scanning: boolean
-}
-
-/** Payload of `library://scan`. `added` at `done` drives L11 «N giochi aggiunti». */
-export type LibraryScanEvent =
-  | { phase: 'started' }
-  | { phase: 'progress'; checked: number; found: number }
-  | { phase: 'done'; found: number; added: number; unreachable: string[] }
-
-// ---- Saves (mirrors of src-tauri/src/saves.rs; games named by their `GameId`) ----
-
-/** V01: what a game has saved. Mirror: `SummaryDto`. */
-export interface SavesSummary {
-  game: GameId
-  inGame: boolean
-  quickCount: number
-  /** In-game save, quick saves and thumbnails. */
-  bytes: number
-  /** Unix ms of the newest change. */
-  lastChange: number | null
-  /** An unreadable in-game save was set aside (E04). */
-  broken: boolean
-}
-
-export interface SaveFile {
-  size: number
-  modified: number | null
-}
-
-/** A quick save that exists; slot 0 is the auto quick save. */
-export interface QuickSave {
-  slot: number
-  size: number
-  savedAt: number | null
-  thumbUrl: string | null
-  /** Made by an older version of its core: «Potrebbe non caricarsi». */
-  outdated: boolean
-}
-
-export type BackupReason = 'launch' | 'import' | 'restore'
-
-export interface SaveBackup {
-  /** What `restore` takes. */
-  name: string
-  /** Unix ms. */
-  at: number
-  reason: BackupReason
-  size: number
-}
-
-/** V02. Mirror: `GameSavesDto`. */
-export interface GameSaves {
-  inGame: SaveFile | null
-  quick: QuickSave[]
-  /** Newest first. */
-  backups: SaveBackup[]
-  /** In-game saves set aside as unreadable (E04), newest first. */
-  broken: string[]
-}
-
-export type ImportFormat = 'raw' | 'desmume' | 'actionReplay'
-
-/** V05: the chosen file, read and recognised. */
-export interface ImportCandidate {
-  path: string
-  fileName: string
-  format: ImportFormat
-  /** Bytes of the save inside the file. */
-  size: number
-}
-
-/** First run S06: which files a folder import reads. Mirror: `FolderImport` (emudome_core::saves). */
-export type FolderImport = 'desmume' | 'any'
-
-/** A found save paired with its game. Mirror: `MatchDto` in src-tauri/src/saves.rs. */
-export interface SaveMatch {
-  file: string
-  game: GameId
-}
-
-/** What a chosen folder offers. Mirror: `FolderSavesDto`. */
-export interface FolderSaves {
-  folder: string
-  /** Saves found that can be imported. */
-  found: number
-  /** The ones that belong to a library game, one per game. */
-  matches: SaveMatch[]
-}
-
-/** A step of the first run (mirror of `emudome_core::first_run::Step`): S01, S02, S04, S06. */
-export type FirstRunStep = 'welcome' | 'games' | 'controller' | 'ready'
-
-export type SaveExport = { kind: 'inGame' } | { kind: 'quick'; slot: number }
-
-/**
- * The one-time move of the saves and settings named the old way to the game key. Mirror:
- * `Status` in src-tauri/src/migration.rs; also the payload of `saves://migration`.
- */
-export interface SavesMigration {
-  running: boolean
-  /** `savesMigrationFailed` or `savesMigrationIncomplete`, to tell the user once. */
-  problem: ErrorCode | null
-}
-
-/**
- * One round of the canvas loop in bench mode (mirror of `WebviewFrame` in
- * src-tauri/src/bench.rs): `t` in ms since the Unix epoch, `seq` the game frame on the canvas.
+ * One round of the canvas loop in bench mode (`WebviewFrame` in src-tauri/src/bench.rs, behind
+ * the off-by-default `bench` feature): `t` in ms since the Unix epoch, `seq` the game frame.
  */
 export interface BenchFrame {
   t: number
@@ -648,9 +218,10 @@ export const emu = {
       invoke<GameOverride[]>('settings_game_overrides', { scope }),
     /** The open game's scope (null without one). */
     gameScope: () => invoke<SettingsScope | null>('settings_game_scope'),
-    set: (key: string, scope: SettingsScope, value: SettingValue) =>
+    set: (key: SettingKey, scope: SettingsScope, value: SettingValue) =>
       invoke<void>('settings_set', { key, scope, value }),
-    reset: (key: string, scope: SettingsScope) => invoke<void>('settings_reset', { key, scope }),
+    reset: (key: SettingKey, scope: SettingsScope) =>
+      invoke<void>('settings_reset', { key, scope }),
     /** Saves the changes «in prova» for this game or its console (all or nothing). */
     commitSession: (target: 'game' | 'console') =>
       invoke<void>('settings_session_commit', { target }),
@@ -749,7 +320,7 @@ export const emu = {
   },
   bios: {
     /** A `bios.*` row's picker: checks the file and keeps it; the row's new status, null = cancelled. */
-    choose: (key: string) => invoke<BiosStatus | null>('bios_choose', { key }),
+    choose: (key: SettingKey) => invoke<BiosStatus | null>('bios_choose', { key }),
     /** What every `bios.*` row EmuDome handles shows. */
     status: () => invoke<BiosRow[]>('bios_status'),
   },

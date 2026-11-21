@@ -1150,6 +1150,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+ "ts-rs",
  "wgpu",
 ]
 

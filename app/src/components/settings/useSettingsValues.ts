@@ -10,6 +10,7 @@ import {
   type SettingsSchema,
   type SettingsScope,
   type SettingValue,
+  type SettingKey,
 } from '@/emu'
 import type { ErrorSink } from '@/i18n/labels'
 import { latest, latestBy, type Fresh } from '@/lib/latest'
@@ -73,9 +74,9 @@ export function useSettingsValues(
     }, fresh)
   }
 
-  const set = (key: string, value: SettingValue) =>
+  const set = (key: SettingKey, value: SettingValue) =>
     attempt(() => emu.settings.set(key, scope.value, value))
-  const reset = (key: string) => attempt(() => emu.settings.reset(key, scope.value))
+  const reset = (key: SettingKey) => attempt(() => emu.settings.reset(key, scope.value))
   /** «Scegli un’immagine…» (`video.surroundImg`): the picker, then the value at this scope. */
   const chooseBackground = () => attempt(() => emu.settings.chooseBackground(scope.value))
 

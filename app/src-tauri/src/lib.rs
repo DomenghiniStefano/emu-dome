@@ -15,6 +15,8 @@ mod bench;
 mod bench;
 mod bios;
 mod closing;
+#[cfg(test)]
+mod contract;
 mod core_settings;
 mod cors;
 mod dirs;
@@ -36,6 +38,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
+use ts_rs::TS;
 
 use emudome_core::input::{Button, Source};
 use emudome_core::screens::{Area, Layout, Split};
@@ -55,9 +58,10 @@ use tauri::{Emitter, Manager, WindowEvent};
 pub type CurrentShared = Arc<Mutex<Option<Arc<Shared>>>>;
 
 /// Where the game is drawn: native surface under the webview, or canvas in the webview.
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, serde::Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
-enum VideoMode {
+#[ts(export_to = "app/")]
+pub(crate) enum VideoMode {
     Native,
     Webview,
 }
@@ -120,10 +124,11 @@ impl AppState {
     }
 }
 
-/// One quick save slot for the quick menu (G07). Mirror: `SlotInfo` in app/src/emu.ts.
-#[derive(Serialize)]
+/// One quick save slot for the quick menu (G07). TypeScript: `SlotInfo` (generated).
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct SlotDto {
+#[ts(export_to = "app/", rename = "SlotInfo")]
+pub(crate) struct SlotDto {
     slot: u8,
     /// Unix ms of the last save; null = empty.
     saved_at: Option<u64>,
@@ -184,9 +189,10 @@ fn slot_thumb_response(app: &tauri::AppHandle, slot: &str) -> tauri::http::Respo
     .unwrap_or_else(response_error)
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct GameInfo {
+#[ts(export_to = "app/")]
+pub(crate) struct GameInfo {
     /// The game's one identity (its saves, its «Solo questo gioco» settings).
     id: GameKey,
     title: String,
@@ -199,9 +205,10 @@ struct GameInfo {
     autosave_on_exit: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
-struct StatsDto {
+#[ts(export_to = "app/", rename = "Stats")]
+pub(crate) struct StatsDto {
     running: bool,
     emu_fps: f64,
     target_fps: f64,
@@ -798,9 +805,10 @@ fn input(state: tauri::State<'_, AppState>, button: Button, pressed: bool) {
 
 /// Where a pointer position is measured (`pointer`): the window in the renderer's unit (physical
 /// pixels for the native video, CSS pixels for the webview canvas) and the bottom share (0..0.9)
-/// kept clear for the quick menu. Mirror: `PointerArea` in app/src/emu.ts.
-#[derive(serde::Deserialize)]
-struct PointerArea {
+/// kept clear for the quick menu. TypeScript: `PointerArea` (generated).
+#[derive(serde::Deserialize, TS)]
+#[ts(export_to = "app/")]
+pub(crate) struct PointerArea {
     width: f32,
     height: f32,
     inset: f32,

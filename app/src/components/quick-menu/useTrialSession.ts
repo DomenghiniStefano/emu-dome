@@ -10,6 +10,7 @@ import {
   type SettingRow,
   type SettingsSchema,
   type SettingValue,
+  type SettingKey,
 } from '@/emu'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
 import type { ErrorSink } from '@/i18n/labels'
@@ -35,13 +36,13 @@ export function useTrialSession(onError: ErrorSink) {
     }
   }
 
-  const entry = (key: string): SettingEntry | undefined =>
+  const entry = (key: SettingKey): SettingEntry | undefined =>
     schema.value?.entries.find(e => e.key === key)
   /** A setting's value for the open game, «in prova» included. */
-  const value = (key: string): SettingValue | null =>
+  const value = (key: SettingKey): SettingValue | null =>
     rows.value[key]?.value ?? entry(key)?.default ?? null
 
-  async function set(key: string, v: SettingValue) {
+  async function set(key: SettingKey, v: SettingValue) {
     try {
       await emu.settings.set(key, SESSION, v)
     } catch (e) {

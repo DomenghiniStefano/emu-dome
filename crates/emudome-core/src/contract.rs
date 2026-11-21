@@ -28,6 +28,187 @@ use std::path::{Path, PathBuf};
 
 use ts_rs::{Config, TypeVisitor, TS};
 
+/// A setting key of the catalogue (`<prefix>.<key>`), as TypeScript sees it: the union of every
+/// key, so the interface cannot name a setting that does not exist. Only a type: fields holding a
+/// key are `&'static str` in Rust and carry `#[ts(as = "crate::contract::SettingKey")]`.
+pub struct SettingKey;
+
+/// A TypeScript union of string literals, for a type whose values come from a Rust list rather
+/// than from its serde attributes.
+macro_rules! string_union {
+    ($ty:ty, $name:literal, $doc:literal, $values:expr) => {
+        impl TS for $ty {
+            type WithoutGenerics = Self;
+            type OptionInnerType = Self;
+
+            fn docs() -> Option<String> {
+                Some(format!(
+                    "/**
+ * {}
+ */
+",
+                    $doc
+                ))
+            }
+
+            fn name(_: &Config) -> String {
+                $name.to_owned()
+            }
+
+            fn inline(_: &Config) -> String {
+                let values: Vec<String> = $values;
+                values
+                    .iter()
+                    .map(|v| format!("\"{v}\""))
+                    .collect::<Vec<_>>()
+                    .join(" | ")
+            }
+
+            fn decl(cfg: &Config) -> String {
+                format!("type {} = {};", $name, Self::inline(cfg))
+            }
+
+            fn decl_concrete(cfg: &Config) -> String {
+                Self::decl(cfg)
+            }
+
+            fn output_path() -> Option<PathBuf> {
+                Some(PathBuf::from(concat!($name, ".ts")))
+            }
+        }
+    };
+}
+
+string_union!(
+    SettingKey,
+    "SettingKey",
+    "A setting of the catalogue (crates/emudome-core/src/settings/catalog.rs).",
+    crate::settings::catalog::ENTRIES
+        .iter()
+        .map(|e| e.key.to_owned())
+        .collect()
+);
+
+string_union!(
+    crate::hotkeys::Hotkey,
+    "HotkeyId",
+    "A controller shortcut, by `Hotkey::id`, in `Hotkey::ALL` order.",
+    crate::hotkeys::Hotkey::ALL
+        .iter()
+        .map(|h| h.id().to_owned())
+        .collect()
+);
+
+string_union!(
+    crate::input::Button,
+    "Button",
+    "A button of the emulated pad, as serialized (`input::Button`).",
+    crate::input::Button::ALL
+        .iter()
+        .filter_map(|b| serde_json::to_value(b).ok())
+        .filter_map(|v| v.as_str().map(str::to_owned))
+        .collect()
+);
+
+/// A type whose TypeScript comes from a shadow: a copy of its shape with `#[derive(TS)]`, kept
+/// here because the type's own file belongs to the core host (`session.rs`). The test
+/// `contract_shadows_serialize_like_their_types` converts every variant exhaustively and compares
+/// the JSON, so a shadow cannot drift from its type.
+macro_rules! shadow_ts {
+    ($ty:ty => $shadow:ty) => {
+        impl TS for $ty {
+            type WithoutGenerics = Self;
+            type OptionInnerType = Self;
+
+            fn docs() -> Option<String> {
+                <$shadow as TS>::docs()
+            }
+
+            fn name(cfg: &Config) -> String {
+                <$shadow as TS>::name(cfg)
+            }
+
+            fn inline(cfg: &Config) -> String {
+                <$shadow as TS>::inline(cfg)
+            }
+
+            fn decl(cfg: &Config) -> String {
+                <$shadow as TS>::decl(cfg)
+            }
+
+            fn decl_concrete(cfg: &Config) -> String {
+                <$shadow as TS>::decl_concrete(cfg)
+            }
+
+            fn visit_dependencies(v: &mut impl TypeVisitor)
+            where
+                Self: 'static,
+            {
+                <$shadow as TS>::visit_dependencies(v)
+            }
+
+            fn output_path() -> Option<PathBuf> {
+                <$shadow as TS>::output_path()
+            }
+        }
+    };
+}
+
+/// Emulation speed (`session::Speed`).
+#[derive(serde::Serialize, TS)]
+#[serde(tag = "kind", content = "value", rename_all = "lowercase")]
+#[ts(rename = "Speed")]
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "a shape for TypeScript, built by tests only")
+)]
+enum SpeedShape {
+    /// Multiplier of the original speed (1.0 = normal).
+    Factor(f32),
+    /// As fast as possible.
+    Max,
+}
+shadow_ts!(crate::Speed => SpeedShape);
+
+/// What the emulation thread tells the interface (`session::Event`, `emu://event`).
+#[derive(serde::Serialize, TS)]
+#[serde(tag = "type", rename_all = "camelCase")]
+#[ts(rename = "EmuEvent")]
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "a shape for TypeScript, built by tests only")
+)]
+enum EventShape {
+    Started {
+        core: String,
+        game: String,
+        fps: f64,
+        width: u32,
+        height: u32,
+    },
+    StateSaved {
+        slot: u8,
+    },
+    StateLoaded {
+        slot: u8,
+    },
+    /// The last load was undone.
+    LoadUndone,
+    /// «Salvato nello slot N · Annulla»: `slot` holds what it held before the last save.
+    SaveUndone {
+        slot: u8,
+    },
+    /// G13 «Schermata salvata»: `path` is the PNG written next to the saves.
+    ScreenshotSaved {
+        path: String,
+    },
+    Error {
+        error: crate::ErrorCode,
+    },
+    Stopped,
+}
+shadow_ts!(crate::Event => EventShape);
+
 /// The environment variable that writes the generated files instead of comparing them.
 pub const BLESS: &str = "EMUDOME_BLESS";
 
@@ -192,10 +373,10 @@ fn list(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>) -> std::io:
 mod tests {
     use serde_json::{json, Value as Json};
 
-    use super::{check_generated, generated_dir, Generated, BLESS};
+    use super::{check_generated, generated_dir, EventShape, Generated, SpeedShape, BLESS};
     use crate::settings::catalog::{ENTRIES, GROUPS, PAGES, SECTIONS};
     use crate::settings::Kind;
-    use crate::ErrorCode;
+    use crate::{ErrorCode, Event, Speed};
 
     /// The core's files: those at the top of `generated/` (the shell's are in `app/`).
     fn core_owns(path: &str) -> bool {
@@ -252,6 +433,28 @@ mod tests {
     fn generate() -> Generated {
         let mut g = Generated::new();
         g.ts::<ErrorCode>().unwrap();
+        g.ts::<crate::settings::SchemaDto>().unwrap();
+        g.ts::<crate::settings::Scope>().unwrap();
+        g.ts::<crate::settings::PageValue>().unwrap();
+        g.ts::<crate::settings::GameOverride>().unwrap();
+        g.ts::<crate::settings::RecentChange>().unwrap();
+        g.ts::<crate::settings::CommitTarget>().unwrap();
+        g.ts::<crate::close_flow::Progress>().unwrap();
+        g.ts::<crate::first_run::Step>().unwrap();
+        g.ts::<crate::hotkeys::Nav>().unwrap();
+        g.ts::<crate::hotkeys::Status>().unwrap();
+        g.ts::<crate::hotkeys::Hotkey>().unwrap();
+        g.ts::<crate::input::Button>().unwrap();
+        g.ts::<crate::bindings::Family>().unwrap();
+        g.ts::<crate::bindings::Pos>().unwrap();
+        g.ts::<crate::bios::Status>().unwrap();
+        g.ts::<crate::saves::BackupReason>().unwrap();
+        g.ts::<crate::saves::ImportFormat>().unwrap();
+        g.ts::<crate::saves::FolderImport>().unwrap();
+        g.ts::<crate::library::CoverKind>().unwrap();
+        g.ts::<crate::library::Region>().unwrap();
+        g.ts::<crate::Speed>().unwrap();
+        g.ts::<crate::Event>().unwrap();
         let codes = error_codes(g.get("ErrorCode.ts").unwrap());
         g.file("error-codes.json", pretty(&json!(codes)));
         g.file("settings-catalog.json", pretty(&catalog()));
@@ -264,6 +467,72 @@ mod tests {
         let regenerate = format!("{BLESS}=1 cargo test -p emudome-core contract");
         if let Err(e) = check_generated(&dir, &generate(), core_owns, &regenerate) {
             panic!("{e}");
+        }
+    }
+
+    fn speed_shape(s: Speed) -> SpeedShape {
+        match s {
+            Speed::Factor(f) => SpeedShape::Factor(f),
+            Speed::Max => SpeedShape::Max,
+        }
+    }
+
+    fn event_shape(e: Event) -> EventShape {
+        match e {
+            Event::Started {
+                core,
+                game,
+                fps,
+                width,
+                height,
+            } => EventShape::Started {
+                core,
+                game,
+                fps,
+                width,
+                height,
+            },
+            Event::StateSaved { slot } => EventShape::StateSaved { slot },
+            Event::StateLoaded { slot } => EventShape::StateLoaded { slot },
+            Event::LoadUndone => EventShape::LoadUndone,
+            Event::SaveUndone { slot } => EventShape::SaveUndone { slot },
+            Event::ScreenshotSaved { path } => EventShape::ScreenshotSaved { path },
+            Event::Error { error } => EventShape::Error { error },
+            Event::Stopped => EventShape::Stopped,
+        }
+    }
+
+    #[test]
+    fn contract_shadows_serialize_like_their_types() {
+        for speed in [Speed::Factor(0.5), Speed::Max] {
+            assert_eq!(
+                serde_json::to_value(speed).unwrap(),
+                serde_json::to_value(speed_shape(speed)).unwrap()
+            );
+        }
+        let events = [
+            Event::Started {
+                core: "mgba".into(),
+                game: "x".into(),
+                fps: 59.7,
+                width: 240,
+                height: 160,
+            },
+            Event::StateSaved { slot: 1 },
+            Event::StateLoaded { slot: 2 },
+            Event::LoadUndone,
+            Event::SaveUndone { slot: 3 },
+            Event::ScreenshotSaved { path: "p".into() },
+            Event::Error {
+                error: ErrorCode::NoGame,
+            },
+            Event::Stopped,
+        ];
+        for event in events {
+            assert_eq!(
+                serde_json::to_value(&event).unwrap(),
+                serde_json::to_value(event_shape(event.clone())).unwrap()
+            );
         }
     }
 

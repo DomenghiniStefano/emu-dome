@@ -2,13 +2,15 @@
 //! game code names, and the core that runs its console.
 
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::settings::ConsoleId;
 
-/// Where a game was sold, from its game code. Mirror: `GameRegion` in app/src/emu.ts; the
+/// Where a game was sold, from its game code. TypeScript: `GameRegion` (generated); the
 /// interface names it with `details.region.<id>`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "GameRegion")]
 pub enum Region {
     Japan,
     Usa,

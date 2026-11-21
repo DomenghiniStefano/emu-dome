@@ -23,6 +23,7 @@ mod store;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use ts_rs::TS;
 
 use serde::{Deserialize, Serialize};
 
@@ -35,8 +36,8 @@ use store::{Change, FileId, Store};
 pub use crate::game_key::GameKey;
 use crate::ErrorCode;
 
-/// A console, as a settings level. Mirror: `ConsoleId` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+/// A console, as a settings level. TypeScript: `ConsoleId` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
 pub enum ConsoleId {
     #[serde(rename = "gb")]
     Gb,
@@ -76,9 +77,10 @@ impl ConsoleId {
     }
 }
 
-/// What the interface is looking at or changing. Mirror: `SettingsScope` in app/src/emu.ts.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// What the interface is looking at or changing. TypeScript: `SettingsScope` (generated).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(tag = "level", rename_all = "camelCase")]
+#[ts(rename = "SettingsScope")]
 pub enum Scope {
     Global,
     Console {
@@ -93,7 +95,7 @@ pub enum Scope {
 }
 
 /// Where the quick menu's changes are saved.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub enum CommitTarget {
     /// «Salva per questo gioco».
@@ -109,10 +111,12 @@ pub struct Resolved {
     pub source: Level,
 }
 
-/// One row of a settings page. Mirror: `SettingValueRow` in app/src/emu.ts.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// One row of a settings page. TypeScript: `SettingValueRow` (generated).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "SettingRow")]
 pub struct PageValue {
+    #[ts(as = "crate::contract::SettingKey")]
     pub key: &'static str,
     pub value: Option<Value>,
     /// The level the value comes from: when weaker than the page's scope, the row shows
@@ -123,10 +127,11 @@ pub struct PageValue {
 }
 
 /// A value stored for one game (Game details L06, «Impostazioni del gioco»), with what every game
-/// of its console gets instead. Mirror: `GameOverride` in app/src/emu.ts.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// of its console gets instead. TypeScript: `GameOverride` (generated).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct GameOverride {
+    #[ts(as = "crate::contract::SettingKey")]
     pub key: &'static str,
     /// The settings page it is shown on.
     pub page: &'static str,
@@ -143,10 +148,12 @@ struct SessionLayer {
 }
 
 /// A value changed recently, at one level («Modificate di recente», T01).
-/// Mirror: `SettingRecent` in app/src/emu.ts.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+/// TypeScript: `SettingRecent` (generated).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "SettingRecent")]
 pub struct RecentChange {
+    #[ts(as = "crate::contract::SettingKey")]
     pub key: &'static str,
     /// Global, Console or Game.
     pub level: Level,

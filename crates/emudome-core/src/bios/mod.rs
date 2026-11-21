@@ -250,9 +250,10 @@ pub fn assess<'a>(
     }
 }
 
-/// What a `bios.*` row shows. Mirror: `BiosStatus` in app/src/emu.ts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+/// What a `bios.*` row shows. TypeScript: `BiosStatus` (generated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(rename = "BiosStatus")]
 pub enum Status {
     /// No file chosen: the core's replacement.
     Builtin,
