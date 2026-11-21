@@ -8,6 +8,7 @@
 //! - Logs: logcat, tag `EmuDome`.
 use std::ffi::c_void;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use jni::objects::{JClass, JObject, JString, JValue};
@@ -79,9 +80,11 @@ pub fn surface_display_handle(_window: &SurfaceWindow) -> Result<DisplayHandle<'
     Ok(DisplayHandle::android())
 }
 
-/// Who receives the surface events, and whether a surface is current.
+/// Who receives the surface events, and whether a surface is current. The listener is called
+/// after the lock is let go (a clone of the `Arc`): `Lost` blocks until the renderer is done with
+/// the surface, and nothing may wait on this lock meanwhile.
 struct SurfaceState {
-    listener: Option<SurfaceListener>,
+    listener: Option<Arc<dyn Fn(SurfaceEvent) + Send + Sync>>,
     current: bool,
 }
 
@@ -96,7 +99,7 @@ pub fn attach_external_surface<R: tauri::Runtime>(
     webview: &tauri::Webview<R>,
     on_event: SurfaceListener,
 ) {
-    SURFACE.lock().listener = Some(on_event);
+    SURFACE.lock().listener = Some(Arc::from(on_event));
     let result = webview.with_webview(|platform| {
         platform.jni_handle().exec(|env, activity, webview| {
             if let Err(e) = attach_jni(env, activity, webview) {
@@ -194,39 +197,46 @@ extern "system" fn native_surface_changed(
     height: jint,
 ) {
     let (width, height) = (width.max(1) as u32, height.max(1) as u32);
-    let mut state = SURFACE.lock();
-    let event = if state.current {
-        SurfaceEvent::Resized { width, height }
-    } else {
-        // SAFETY: `env` and `surface` are the valid JNI arguments of this call;
-        // `from_surface` takes its own reference to the ANativeWindow.
-        let window = unsafe { NativeWindow::from_surface(env.get_raw(), surface.as_raw()) };
-        let Some(window) = window else {
-            log::error!("ANativeWindow_fromSurface failed");
-            return;
+    let (event, listener) = {
+        let mut state = SURFACE.lock();
+        let event = if state.current {
+            SurfaceEvent::Resized { width, height }
+        } else {
+            // SAFETY: `env` and `surface` are the valid JNI arguments of this call;
+            // `from_surface` takes its own reference to the ANativeWindow.
+            let window = unsafe { NativeWindow::from_surface(env.get_raw(), surface.as_raw()) };
+            let Some(window) = window else {
+                log::error!("ANativeWindow_fromSurface failed");
+                return;
+            };
+            state.current = true;
+            log::info!("native surface ready: {width}x{height}");
+            SurfaceEvent::Ready(ExternalSurface {
+                window,
+                width,
+                height,
+            })
         };
-        state.current = true;
-        log::info!("native surface ready: {width}x{height}");
-        SurfaceEvent::Ready(ExternalSurface {
-            window,
-            width,
-            height,
-        })
+        (event, state.listener.clone())
     };
-    if let Some(listener) = &state.listener {
+    if let Some(listener) = listener {
         listener(event);
     }
 }
 
-/// `SurfaceHolder.Callback.surfaceDestroyed`: blocks until the renderer let go of it.
+/// `SurfaceHolder.Callback.surfaceDestroyed`: blocks until the renderer let go of it (Android
+/// destroys the surface when this returns, so the GPU must be done with it first).
 extern "system" fn native_surface_destroyed(_env: JNIEnv, _class: JClass) {
-    let mut state = SURFACE.lock();
-    if !state.current {
-        return;
-    }
-    state.current = false;
+    let listener = {
+        let mut state = SURFACE.lock();
+        if !state.current {
+            return;
+        }
+        state.current = false;
+        state.listener.clone()
+    };
     log::info!("native surface lost");
-    if let Some(listener) = &state.listener {
+    if let Some(listener) = listener {
         listener(SurfaceEvent::Lost);
     }
 }
