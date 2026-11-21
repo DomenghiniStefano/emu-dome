@@ -13,7 +13,8 @@ the EmuDome Design System artifact linked from `CLAUDE.md`.
   tests. A screen composes panels, a panel composes primitives. A component another feature reuses stays
   with the feature it belongs to and is imported from there (`settings/SettingRow.vue`,
   `cover/GameCover.vue`, `saves/SlotTile.vue`). Features today: `controls`, `cover`, `details`,
-  `first-run`, `game`, `library`, `quick-menu`, `saves`, `settings`, `shell`, `toasts`.
+  `first-run`, `game`, `library`, `quick-menu`, `saves`, `screen-editor`, `settings`, `shell`,
+  `toasts`.
 - `composables/`: the `useX` functions used by two or more features or by the app root (`useDensity`,
   `useDeviceLayout`, `useListeners`, `useSettingsChanged`, `useToasts` with `useErrorSink`); `lib/`: plain modules and
   helpers shared the same way (`cn`, `cycle`, `design/`, `settingsModel`, `controls`, `theme`…). A
@@ -138,6 +139,10 @@ when it changes structure (what is rendered, `v-if`).
 - Steps from `emu://nav` (the controller, routed in Rust) and the arrows / Enter move the focus
   spatially; `confirm` clicks; `back` calls the scope's `back`. The focus ring shows only while moving
   without the mouse (`data-nav` on `<html>`).
+- A screen that works by steps of its own (the C09 screens editor: the d-pad moves a screen, Select
+  folds its panel, the right stick resizes) passes `own` to `useNavScope`: every step reaches it first
+  while the focus moves in its scope, and one it returns `false` for goes on to nav.ts. `select` and
+  the right stick's `stick*` steps mean nothing elsewhere. Tested in `nav.test.ts`.
 - One generic rule for elements that own their keys, recognised by the attributes Reka renders (never
   by component name): they take the arrows along their axis and Enter; at their ends the focus moves
   spatially. Select and Dialog take B while open and give the focus back on close.

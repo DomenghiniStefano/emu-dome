@@ -286,7 +286,12 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          contract tests, never by hand), nav.ts (controller/keyboard focus navigation),
                          components/<feature>/ one folder per feature: shell (AppShell: rail + sections,
                          outside the game), library, details, saves, settings, controls, quick-menu,
-                         game (GameCanvas: webview mode, TouchControls: Android overlay, the game flow),
+                         game (GameCanvas: webview mode, TouchControls: Android overlay, the game flow,
+                         useScreenStatus: the open game's `ScreenStatus` from `emu://screens`,
+                         LidClosedCard: G15 «Coperchio chiuso»),
+                         screen-editor (C09, Trello #28: ScreenEditor over the game at its real size, from
+                         G09 and from the `screens.custom` row; useScreenEditor the state, the live preview
+                         at the Session level and the steps; screenEditor.ts the geometry, pure, tested),
                          first-run (FirstRun, 4 steps, once per device: marker `<app local data>/first-run/done`,
                          src-tauri/src/first_run.rs), cover, toasts, closing (the loader while a game closes);
                          components/ui/ (the primitives),
@@ -372,7 +377,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     the UI; a hold from both, Tab and L3 + R2, ends with the last release);
     the full table and its TODOs are in `docs/combo-tasti.md` section 5;
   - the interface has the input (quick menu open, or no game): the game gets nothing, d-pad / A / B
-    become `emu://nav` steps with key repeat (400 ms, then every 120 ms).
+    become `emu://nav` steps with key repeat (400 ms, then every 120 ms); L1 / R1 `prev` / `next`, X `more`,
+    Select `select`, and the right stick past `pad.stickdpad` (`PadInput::stick`) `stickUp` / `stickDown` /
+    `stickLeft` / `stickRight`, repeating like the d-pad (the C09 screens editor's own steps).
   The interface tells Rust the menu is open with the `set_menu_open` command.
 - The library's cover grid is windowed (Trello #91, `components/library/useCoverWindow.ts`, sums in
   `coverWindow.ts`): only the rows near the screen plus 2 are in the DOM, the grid's padding stands for the rest
@@ -389,7 +396,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   newest shown child at each level, whatever the mount order. A part of a screen with steps of its own (the
   shell's sections) calls `useNavSection(root, { back, tab })`: the focus still moves across the whole screen,
   and `back` / `tab` bubble up to the screen when the section returns `false` (or has none), never past a
-  scope. The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the mouse.
+  scope. A screen that works by steps of its own (the C09 screens editor: the d-pad moves a screen) passes
+  `own` to `useNavScope`: it sees every step first while the focus moves in its scope, and returns `false` to
+  leave one to nav.ts. The focus ring (`data-nav` on `<html>`, styles.css) shows only while moving without the
+  mouse.
 - The shell's place is one typed `Route` (`components/shell/route.ts`: section, the game whose details show,
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
@@ -736,10 +746,16 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   test); Azahar's is not measured yet.
 - 41 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
-- DS / 3DS screens (Trello #28): the backend is in (layouts, swap, custom layout per console or game, rotation,
-  lid, touch through the layout, both video paths); the interface for it is not (G09 cards, the C09 editor, the
-  G15 lid overlay, the quick menu's tiles: `quick-menu/tools.ts` still shows swap and lid unavailable, and
-  `screens.custom` shows as not wired until the editor exists). The lid exists on melonDS DS only (its L2 + Y
+- DS / 3DS screens (Trello #28): layouts, swap, custom layout per console or game, rotation, lid, touch through
+  the layout, both video paths, and their interface: the quick menu's swap and lid tiles, G09's layout card
+  (stepping shows the layout at once and keeps it «in prova» as `screens.cycle` turned to start with it, the
+  layout the game opens with), the C09 editor (`components/screen-editor`) and the G15 card. The `screens.*`
+  rows are phase 2, so Settings › Schermi di DS e 3DS (and its `screens.custom` button) stays hidden while
+  `CURRENT_PHASE` is 1: the editor opens from G09 only. The editor's «Salva» stores the layout at its scope and
+  drops only its own preview; the other G09 changes «in prova» stay to be saved or undone. It draws the
+  rectangles unturned: with `screens.rot` set, the game shows them turned as a whole. The G15 card's button is
+  for the mouse and the keyboard: while the card shows the game keeps the controller, and the card names the
+  lid's shortcut instead. The lid exists on melonDS DS only (its L2 + Y
   chord, pressed by the shell for 100 ms: the game sees Y in those frames, a paused game misses it, and the
   shell's «closed» is its own count, not read back from the core, so a state loaded across a lid change shows
   it the wrong way); Azahar has none (`pad.lid` unsupported on 3DS). The screen effects run once on the whole
