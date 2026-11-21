@@ -1,5 +1,5 @@
 {
-  "about": "The libretro cores EmuDome fetches and ships, pinned. Read by scripts/cores.mjs (fetch, build, verify, generate, check) and by the Android Gradle build. Change it on purpose only: then run `node scripts/cores.mjs generate` and update THIRD_PARTY.md. Platforms: windows-x86_64, linux-x86_64 (libraries in cores/), android-arm64-v8a (cores/android/arm64-v8a/). A platform entry is either downloaded (url, sha256 of the archive and of every file taken from it) or built by EmuDome from source (built: the toolchain its sha256 came from; the core's source.archive with its sha256 and its build block say what and how, scripts/core-build.mjs does it). url_stable false: the URL serves whatever the upstream built last, so the pinned bytes stop being downloadable when it rebuilds (packaging refuses such an entry unless EMUDOME_ALLOW_UNSTABLE_CORES=1).",
+  "about": "The libretro cores EmuDome fetches and ships, pinned. Read by scripts/cores.mjs (fetch, build, verify, generate, check) and by the Android Gradle build. Change it on purpose only: then run `node scripts/cores.mjs generate` and update THIRD_PARTY.md. Platforms: windows-x86_64, linux-x86_64 (libraries in cores/), android-arm64-v8a (cores/android/arm64-v8a/). A platform entry is either downloaded (url, sha256 of the archive and of every file taken from it) or built by EmuDome from source (built: the toolchain its sha256 came from, and release: the download folder of the EmuDome GitHub release `cores-<core>-<first 7 characters of the commit>` the built files were published to; the fetch downloads each file from release + its file name, sha256-checked, and builds only when that fails or with --build; the core's source.archive with its sha256 and its build block say what is built and how, scripts/core-build.mjs does it). url_stable false: the URL serves whatever the upstream built last, so the pinned bytes stop being downloadable when it rebuilds (packaging refuses such an entry unless EMUDOME_ALLOW_UNSTABLE_CORES=1).",
   "schema": 1,
   "cores": {
     "mgba": {
@@ -32,7 +32,8 @@
       "builds": {
         "windows-x86_64": {
           "built": {
-            "toolchain": "clang-cl 18.0.2 (Android NDK 27.1.12297006), MSVC 14.44.35207 libraries and linker, Windows SDK 10.0.26100.0, CMake 3.31.6-msvc6"
+            "toolchain": "clang-cl 18.0.2 (Android NDK 27.1.12297006), MSVC 14.44.35207 libraries and linker, Windows SDK 10.0.26100.0, CMake 3.31.6-msvc6",
+            "release": "https://github.com/DomenghiniStefano/emu-dome/releases/download/cores-mgba-7a12d6d/"
           },
           "library": {
             "file": "mgba_libretro.dll",
@@ -59,7 +60,8 @@
         },
         "android-arm64-v8a": {
           "built": {
-            "toolchain": "Android NDK 27.1.12297006, API 26, CMake 3.31.6-msvc6"
+            "toolchain": "Android NDK 27.1.12297006, API 26, CMake 3.31.6-msvc6",
+            "release": "https://github.com/DomenghiniStefano/emu-dome/releases/download/cores-mgba-7a12d6d/"
           },
           "library": {
             "file": "libmgba_libretro_android.so",

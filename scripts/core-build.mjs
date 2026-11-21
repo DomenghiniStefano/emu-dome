@@ -1,7 +1,8 @@
 // Builds a libretro core from its pinned source, for the cores EmuDome builds itself instead of
 // downloading a binary (cores.lock: `source.archive` + `build`, and `built` on a platform's entry;
 // today mGBA, Trello #88). Used by scripts/cores.mjs: its `build` command (behind
-// scripts/build-mgba.ps1 / build-mgba.sh) and `fetch`, when a built core's files are not in place.
+// scripts/build-mgba.ps1 / build-mgba.sh) and `fetch`, when a built core's files are not in place and
+// cannot be downloaded from EmuDome's release of the build (`built.release`), or with --build.
 //
 // Steps, every one checked:
 //   1. the source archive of the pinned commit, downloaded once into the work folder, sha256-checked

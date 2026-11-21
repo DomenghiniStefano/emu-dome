@@ -84,10 +84,11 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
 ## Commands
 
 ```powershell
-./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar|all]  # cores pinned by cores.lock into cores/, sha256-checked
-                                              # (default: the shipped ones; sh scripts/fetch-cores.sh [--cores ...] on Linux);
-                                              # mGBA is built from source when missing (as build-mgba.ps1)
-./scripts/fetch-cores-android.ps1 [-Cores ...] [-Abi arm64-v8a]  # same, into cores/android/<abi>/ as lib*_libretro_android.so
+./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar|all] [-Build]  # cores pinned by cores.lock into cores/, sha256-checked
+                                              # (default: the shipped ones; sh scripts/fetch-cores.sh [--cores ...] [--build] on Linux);
+                                              # mGBA comes from our release cores-mgba-<commit> (cores.lock built.release), built
+                                              # from source (as build-mgba.ps1) only if that download fails or with -Build
+./scripts/fetch-cores-android.ps1 [-Cores ...] [-Abi arm64-v8a] [-Build]  # same, into cores/android/<abi>/ as lib*_libretro_android.so
 ./scripts/build-mgba.ps1 [-Platform windows-x86_64|android-arm64-v8a] [-Jobs 2]  # mGBA from the source cores.lock
                                               # pins, installed only if its sha256 is the pinned one (scripts/core-build.mjs:
                                               # VS 2022 Build Tools + the NDK's clang-cl, NDK for Android, git; sh build-mgba.sh)
@@ -712,10 +713,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`. mGBA for Windows and Android is built by EmuDome from the pinned source archive
   of the commit the buildbot built (Trello #88, `scripts/build-mgba.ps1`): reproducible, but only with the toolchain
-  `cores.lock` names (another one builds other bytes and is refused), and where the built cores are hosted for other
-  machines is not decided. mGBA for Linux is still the libretro buildbot's `latest/` (`url_stable: false`): packaging
-  refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until it is built on Linux (Trello
-  #92). Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
+  `cores.lock` names (another one builds other bytes and is refused), so the built files are published in our GitHub
+  release `cores-mgba-7a12d6d` (Trello #95, `built.release`) and every other machine downloads them from there
+  (a new pin: `docs/release.md`). mGBA for Linux is still the libretro buildbot's `latest/` (`url_stable: false`):
+  packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until it is built on Linux
+  (Trello #92). Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
   `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
   source-built Android mGBA.
 - Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet; `bundle.targets` is `["nsis"]`

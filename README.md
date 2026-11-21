@@ -33,11 +33,12 @@ Requirements: stable Rust; Node in the range of `engines.node` in `app/package.j
 check stops on another); pnpm as pinned by `packageManager` in `app/package.json` (the frontend refuses npm); the
 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11); and CMake
 for the SDL3 build (on PATH, or in the `CMAKE` variable; VS Build Tools 2022 ships one). The mGBA core is built
-from source (`cores.lock`, Trello #88): it also needs git, VS Build Tools 2022 with the C++ tools and the Android
-NDK that `cores.lock` names (its clang-cl compiles mGBA).
+by EmuDome from source (`cores.lock`, Trello #88) and published in this repository's release `cores-mgba-<commit>`
+(#95), which the fetch script downloads. Building it yourself (`-Build`, or when that download fails) also needs
+git, VS Build Tools 2022 with the C++ tools and the Android NDK that `cores.lock` names (its clang-cl compiles mGBA).
 
 ```powershell
-./scripts/fetch-cores.ps1                     # the cores pinned in cores.lock into cores/ (mGBA is built from source)
+./scripts/fetch-cores.ps1                     # the cores pinned in cores.lock into cores/ (mGBA from our release)
 git config core.hooksPath scripts/git-hooks   # once per clone: the pre-commit hook
 cd app
 pnpm install
