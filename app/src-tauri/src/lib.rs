@@ -291,6 +291,12 @@ pub fn run() {
     let main_wall = SystemTime::now();
     emudome_platform::init_logging();
     log::info!("EmuDome on {}", emudome_platform::OS_NAME);
+    // Trello #94: what decides how deep a 3DS game's save folder may be.
+    log::info!(
+        "long paths: system policy {:?}, this process {}",
+        emudome_platform::long_paths_policy(),
+        emudome_platform::long_paths_enabled()
+    );
     let tuning = Tuning::from_env();
     dirs::set_override(tuning.data_dir.clone());
     for ignored in &tuning.warnings {

@@ -28,7 +28,10 @@
 //!   200 ms, then wait a second (through the shell's pointer value for that screen);
 //! - `--timing N`: run N seconds at 1x, a quick save into slot 5 every 2 s, and print the
 //!   emulation thread's work per frame (p50 / p99 / max, frames over budget), then stop. With
-//!   `--rewind S` rewind records meanwhile, as in the app. Build with `--release` to measure.
+//!   `--rewind S` rewind records meanwhile, as in the app. Build with `--release` to measure;
+//! - `--max-path DIR,FILE`: the longest folder and file path the system allows (default
+//!   `247,259`, Windows without long paths); a game whose core's files would not fit under its
+//!   save folder is refused before the core loads, as in the shell (Trello #94).
 //!
 //! A game runs as the shell runs it: its core's forced options and screen split
 //! (`emudome_core::core_profile`). Every game gets the BIOS rule of its core (`emudome_core::bios`): the
@@ -41,6 +44,7 @@ use std::time::{Duration, Instant};
 use emudome_core::bios;
 use emudome_core::core_profile::{CoreId, Renderer};
 use emudome_core::input::{Button, Source};
+use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::screens::{self, Area, Layout, ScreenId};
 use emudome_core::settings::{ConsoleId, Value};
 use emudome_core::{Command, Session, SessionOptions, Speed};
@@ -76,7 +80,17 @@ struct Args {
     sets: Vec<(String, String)>,
     timing: Option<u32>,
     taps: Vec<(u32, u32)>,
+    max_path: PathLimits,
 }
+
+/// `--max-path` by default: Windows without long paths (folder 247, file 259 characters). This
+/// example carries no long-path manifest, so on Windows these are its limits whatever the
+/// system policy says; elsewhere pass the system's (`--max-path 4095,4095` on Linux).
+const LEGACY_MAX_PATH: PathLimits = PathLimits {
+    dir: 247,
+    file: 259,
+    unit: PathUnit::Utf16,
+};
 
 /// `--tap X,Y`: a touch on pixel (X, Y) of the bottom screen, as the shell would send it.
 fn tap(session: &Session, (x, y): (u32, u32)) -> anyhow::Result<()> {
@@ -184,6 +198,7 @@ fn parse_args() -> anyhow::Result<Args> {
     let mut sets = Vec::new();
     let mut timing = None;
     let mut taps = Vec::new();
+    let mut max_path = LEGACY_MAX_PATH;
     while let Some(a) = it.next() {
         let mut value = || {
             it.next()
@@ -215,6 +230,17 @@ fn parse_args() -> anyhow::Result<Args> {
                     .ok_or_else(|| anyhow::anyhow!("--tap wants X,Y, got {xy}"))?;
                 taps.push((x.trim().parse()?, y.trim().parse()?));
             }
+            "--max-path" => {
+                let v = value()?;
+                let (d, f) = v
+                    .split_once(',')
+                    .ok_or_else(|| anyhow::anyhow!("--max-path wants DIR,FILE, got {v}"))?;
+                max_path = PathLimits {
+                    dir: d.trim().parse()?,
+                    file: f.trim().parse()?,
+                    unit: max_path.unit,
+                };
+            }
             "--fast-audio" => {
                 let id = value()?;
                 fast_audio = Some(
@@ -245,6 +271,7 @@ fn parse_args() -> anyhow::Result<Args> {
         sets,
         timing,
         taps,
+        max_path,
     })
 }
 
@@ -494,13 +521,26 @@ pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
     let game = emudome_core::library::identify(std::path::Path::new(&args.rom))
         .map_err(|e| anyhow::anyhow!("{}: {e}", args.rom))?
         .id;
+    let saves_root = tmp.join("saves");
+    // As the shell: a save folder too deep for the core's own files is refused before the core
+    // loads (Azahar would abort the process, Trello #94).
+    if let Err(e) = profile.check_save_dir(
+        emudome_core::GameFiles::new(&saves_root, &game).dir(),
+        args.max_path,
+    ) {
+        println!(
+            "refused: {:?} ({e})",
+            emudome_core::ErrorCode::from(e.clone())
+        );
+        return Ok(());
+    }
     let (tx, rx) = mpsc::channel();
     let session = Session::start(
         SessionOptions {
             core_path: args.core.clone().into(),
             game_path: args.rom.clone().into(),
             system_dir,
-            save_dir: tmp.join("saves"),
+            save_dir: saves_root,
             game: game.clone(),
             autosave_every: None,
             autosave_on_exit: false,

@@ -9,6 +9,9 @@
 //! the `cores.lock` key), its [`CoreProfile`] in [`CoreId::profile`], then its option and BIOS
 //! tables if it has any. The compiler lists every `match` that has to learn it.
 
+use std::path::Path;
+
+use crate::save_path::{PathLimits, SaveDepth, SavePathTooLong};
 use crate::screens::Split;
 use crate::settings::core_values::{self, CoreTable};
 use crate::settings::ConsoleId;
@@ -158,6 +161,11 @@ pub struct CoreProfile {
     pub split: Split,
     pub hw_render: HwRender,
     pub save_model: SaveModel,
+    /// The deepest paths the core creates by itself under the game's folder when it loads a
+    /// game, for a core that aborts the process past the system's path limit (Azahar); the
+    /// shell checks them first ([`CoreProfile::check_save_dir`]). `None`: nothing deep, or a
+    /// core that reports the failure itself.
+    pub save_depth: Option<SaveDepth>,
     /// Settings that act through cores but have no equivalent in this one: on its consoles the
     /// interface shows them disabled with the reason (`unsupportedConsoles` in the schema).
     pub unsupported_settings: &'static [&'static str],
@@ -214,6 +222,20 @@ impl CoreProfile {
             .map(|(k, v)| (k.to_owned(), v.to_owned()))
             .collect()
     }
+
+    /// Whether the files the core creates by itself fit under `save_dir` (the game's folder,
+    /// [`crate::GameFiles::dir`]) within `limits` (this process's, from the platform): checked
+    /// before the core loads, since past them Azahar aborts the whole process (Trello #94).
+    pub fn check_save_dir(
+        &self,
+        save_dir: &Path,
+        limits: PathLimits,
+    ) -> Result<(), SavePathTooLong> {
+        match &self.save_depth {
+            Some(depth) => crate::save_path::check(save_dir, depth, limits),
+            None => Ok(()),
+        }
+    }
 }
 
 /// The consoles on which `setting` cannot work, because their core has no equivalent
@@ -239,6 +261,7 @@ static MGBA: CoreProfile = CoreProfile {
         renderer_option: None,
     },
     save_model: SaveModel::SaveRam,
+    save_depth: None,
     // 3D rendering settings (Azahar's): a 2D core has no internal resolution, texture filter
     // or CPU clock option.
     unsupported_settings: &["video.res3d", "video.texf", "perf.cpuclock"],
@@ -266,6 +289,8 @@ static MELONDSDS: CoreProfile = CoreProfile {
         renderer_option: None,
     },
     save_model: SaveModel::SaveRamAndCoreFiles,
+    // Its DLDI / DSi SD card images sit one folder down (`melonDS DS/`).
+    save_depth: None,
     // melonDS DS has no frameskip option (1.4.0, `config/constants.hpp`), no texture filter or
     // CPU clock; its internal resolution belongs to the OpenGL renderer the shell refuses.
     unsupported_settings: &[
@@ -303,6 +328,7 @@ static AZAHAR: CoreProfile = CoreProfile {
         }),
     },
     save_model: SaveModel::CoreFiles,
+    save_depth: Some(crate::n3ds::SAVE_DEPTH),
     // Azahar 2126.2 has no frameskip option (`headless --list-options`).
     unsupported_settings: &["perf.frameskip"],
     options_row: "cores.azall",
@@ -423,6 +449,29 @@ mod tests {
             let h = core.profile().hw_render;
             assert_eq!(h.renderer(true), Renderer::Software);
             assert!(!h.falls_back_from_vulkan(Renderer::Software));
+        }
+    }
+
+    /// Trello #94: only Azahar's save folder is checked before the load.
+    #[test]
+    fn only_azahar_checks_how_deep_its_files_go() {
+        use crate::save_path::{PathLimits, PathUnit};
+        let legacy = PathLimits {
+            dir: 247,
+            file: 259,
+            unit: PathUnit::Utf16,
+        };
+        let deep = std::path::PathBuf::from(format!("C:/{}", "d".repeat(200)));
+        assert!(CoreId::Azahar
+            .profile()
+            .check_save_dir(&deep, legacy)
+            .is_err());
+        assert!(CoreId::Azahar
+            .profile()
+            .check_save_dir(std::path::Path::new("C:/emudome/saves/3ds/00"), legacy)
+            .is_ok());
+        for core in [CoreId::Mgba, CoreId::MelonDsDs] {
+            assert!(core.profile().check_save_dir(&deep, legacy).is_ok());
         }
     }
 

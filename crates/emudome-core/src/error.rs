@@ -42,6 +42,15 @@ pub enum ErrorCode {
     /// E10: the 3DS game is encrypted; EmuDome plays decrypted games only (it never decrypts,
     /// and never adds an encrypted game to the library).
     GameEncrypted,
+    /// The game's save folder (`folder`) is too deep for the files its core creates under it on
+    /// this system: the deepest would be `length` characters, over the `limit` the system allows
+    /// (Windows without long paths: 259). Refused before the core loads, which would otherwise
+    /// abort EmuDome (Azahar, Trello #94).
+    SavePathTooLong {
+        folder: String,
+        length: usize,
+        limit: usize,
+    },
     /// A game on this core stopped answering and was let go (E11): its thread may still hold
     /// the core, so the core cannot open another game until EmuDome is restarted. `core` is the
     /// core's name (e.g. `mgba`).
@@ -186,9 +195,34 @@ impl crate::StartError {
     }
 }
 
+impl From<crate::save_path::SavePathTooLong> for ErrorCode {
+    fn from(e: crate::save_path::SavePathTooLong) -> Self {
+        ErrorCode::SavePathTooLong {
+            folder: e.save_dir.display().to_string(),
+            length: e.length,
+            limit: e.limit,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::ErrorCode;
+
+    #[test]
+    fn a_save_folder_too_deep_says_where_and_by_how_much() {
+        let e = crate::save_path::SavePathTooLong {
+            save_dir: "C:/deep/saves/3ds/00".into(),
+            path: "C:/deep/saves/3ds/00/Azahar/x".into(),
+            length: 260,
+            limit: 259,
+        };
+        assert_eq!(
+            serde_json::to_value(ErrorCode::from(e)).unwrap(),
+            serde_json::json!({ "code": "savePathTooLong",
+                "params": { "folder": "C:/deep/saves/3ds/00", "length": 260, "limit": 259 } })
+        );
+    }
 
     #[test]
     fn a_start_error_becomes_a_code_the_interface_can_explain() {
