@@ -59,7 +59,8 @@ pub struct CallbackStats {
     pub frames_per_callback_max: u64,
     /// Callbacks that found the queue empty before filling their buffer.
     pub underrun_callbacks: u64,
-    /// Output frames written from an empty queue (fade-out instead of the game's audio).
+    /// Input frames the queue did not have: the fade-out of an empty queue, then the silence
+    /// until it is refilled to its target.
     pub underrun_frames: u64,
     /// Queue fill when a callback starts, in ms of audio at the core's rate.
     pub fill_ms_min: f64,
@@ -350,11 +351,24 @@ impl Output {
     }
 }
 
-/// State of the linear resampler.
+/// How long the sound takes to come back after a refill (a fade-in, not a step).
+const REFILL_FADE_SECONDS: f64 = 0.005;
+
+/// State of the linear resampler, and of the refill after the queue ran dry.
+///
+/// An empty queue fades the sound out. Then, instead of playing each sample as it arrives (the
+/// queue would hover around empty, every late frame another fade and step: a crackle for the
+/// many seconds the ±0.5 % control needs to refill it), the output stays silent until the
+/// queue holds its target again, then fades back in. A stall of the emulation thread (a 3DS
+/// quick save on Vulkan, Trello #98), a pause or a game's start is then one clean gap.
 struct Resampler {
     pos: f64,
     prev: [f32; 2],
     next: [f32; 2],
+    /// The queue ran dry: nothing is read until it holds the target again.
+    refilling: bool,
+    /// The output's gain: 1, or rising back to 1 after a refill.
+    gain: f32,
 }
 
 impl Resampler {
@@ -363,7 +377,55 @@ impl Resampler {
             pos: 1.0,
             prev: [0.0; 2],
             next: [0.0; 2],
+            // A game's start fills the queue first, like any refill.
+            refilling: true,
+            gain: 0.0,
         }
+    }
+
+    /// At the start of a callback, with `queued` samples waiting and the queue's `target`: a
+    /// refill ends once the target is reached, and the sound fades back in from there.
+    fn begin(&mut self, queued: f64, target: f64) {
+        if self.refilling && queued >= target {
+            self.refilling = false;
+            self.gain = 0.0;
+        }
+    }
+
+    /// One output frame, `step` input frames after the last one, reading the queue with `pop`
+    /// (`None`: empty); the gain rises by `gain_step` per frame after a refill. Counts in
+    /// `underruns` the input frames that were not the game's audio (a fade-out or a refill).
+    fn frame(
+        &mut self,
+        step: f64,
+        gain_step: f32,
+        underruns: &mut u64,
+        mut pop: impl FnMut() -> Option<[i16; 2]>,
+    ) -> [f32; 2] {
+        while self.pos >= 1.0 {
+            self.prev = self.next;
+            let read = if self.refilling { None } else { pop() };
+            self.next = match read {
+                Some([l, r]) => [f32::from(l) / 32768.0, f32::from(r) / 32768.0],
+                None => {
+                    *underruns += 1;
+                    self.refilling = true;
+                    // Empty queue: fade out.
+                    [self.prev[0] * 0.98, self.prev[1] * 0.98]
+                }
+            };
+            self.pos -= 1.0;
+        }
+        let t = self.pos as f32;
+        let g = self.gain;
+        if !self.refilling && self.gain < 1.0 {
+            self.gain = (self.gain + gain_step).min(1.0);
+        }
+        self.pos += step;
+        [
+            (self.prev[0] + (self.next[0] - self.prev[0]) * t) * g,
+            (self.prev[1] + (self.next[1] - self.prev[1]) * t) * g,
+        ]
     }
 }
 
@@ -486,24 +548,13 @@ impl Fill {
         let fill_err = ((queued - target) / target).clamp(-1.0, 1.0);
         let ratio = 1.0 + 0.005 * fill_err;
         let step = rate / self.out_rate * ratio;
+        let gain_step = (1.0 / (self.out_rate * REFILL_FADE_SECONDS)) as f32;
         let mut underrun_frames = 0u64;
         let mut discontinuities = 0u64;
         let rs = &mut self.rs;
+        rs.begin(queued, target);
         for frame in out.chunks_mut(self.channels) {
-            while rs.pos >= 1.0 {
-                rs.prev = rs.next;
-                rs.next = match reader.pop_frame() {
-                    Some([l, r]) => [f32::from(l) / 32768.0, f32::from(r) / 32768.0],
-                    None => {
-                        underrun_frames += 1;
-                        [rs.prev[0] * 0.98, rs.prev[1] * 0.98] // empty queue: fade out
-                    }
-                };
-                rs.pos -= 1.0;
-            }
-            let t = rs.pos as f32;
-            let l = rs.prev[0] + (rs.next[0] - rs.prev[0]) * t;
-            let r = rs.prev[1] + (rs.next[1] - rs.prev[1]) * t;
+            let [l, r] = rs.frame(step, gain_step, &mut underrun_frames, || reader.pop_frame());
             if let Some(c) = &mut self.check {
                 discontinuities += u64::from(c.step(l));
             }
@@ -705,6 +756,70 @@ mod tests {
         assert!(!needs_rebuild(cpal::ErrorKind::Xrun));
         assert!(!needs_rebuild(cpal::ErrorKind::DeviceChanged));
         assert!(!needs_rebuild(cpal::ErrorKind::RealtimeDenied));
+    }
+
+    /// Trello #98: the emulation thread stops for 0.3 s (a 3DS quick save on Vulkan). The
+    /// output fades out once, stays silent until the queue is back at its target, fades in, and
+    /// never runs dry again: one gap, no crackle while the queue would refill slowly.
+    #[test]
+    fn a_stall_is_one_clean_gap_and_the_queue_refills_to_its_target() {
+        use std::collections::VecDeque;
+
+        let rate = 48000.0;
+        let target = rate * 0.060 * 2.0; // samples, as `play` counts them
+        let frame_len = 800u64; // one 60 Hz frame of audio
+        let callback_len = 480u64;
+        let gain_step = (1.0 / (rate * REFILL_FADE_SECONDS)) as f32;
+        let w = std::f64::consts::TAU * TEST_TONE_HZ / rate;
+        let (stall_from, stall_to) = (96_000u64, 96_000 + 14_400); // 2 s in, 0.3 s long
+
+        let mut queue: VecDeque<[i16; 2]> = VecDeque::new();
+        let mut produced = 0u64;
+        let mut rs = Resampler::new();
+        let mut out = Vec::new();
+        let mut dry_spells = 0;
+        let mut underruns = 0u64;
+        let mut t = 0u64;
+        while t < 6 * 48_000 {
+            // The core: a frame of a 440 Hz tone every 800 output frames, except while stalled.
+            while produced <= t {
+                if !(stall_from..stall_to).contains(&produced) {
+                    let start = produced;
+                    queue.extend((start..start + frame_len).map(|n| {
+                        let s = ((n as f64 * w).sin() * 8000.0) as i16;
+                        [s, s]
+                    }));
+                }
+                produced += frame_len;
+            }
+            // One callback.
+            let was_playing = !rs.refilling;
+            rs.begin((queue.len() * 2) as f64, target);
+            for _ in 0..callback_len {
+                out.push(rs.frame(1.0, gain_step, &mut underruns, || queue.pop_front())[0]);
+            }
+            if was_playing && rs.refilling {
+                dry_spells += 1;
+            }
+            t += callback_len;
+        }
+        assert_eq!(dry_spells, 1, "the queue ran dry only at the stall");
+        assert!(
+            queue.len() * 2 >= (target as usize) - (frame_len as usize) * 2,
+            "the queue is back near its target: {}",
+            queue.len()
+        );
+        // No click: a 440 Hz tone of 8000 moves at most ~0.014 per sample at 48 kHz; a step
+        // from silence to the tone would be up to 0.24.
+        let jump = out
+            .windows(2)
+            .map(|p| (p[1] - p[0]).abs())
+            .fold(0.0f32, f32::max);
+        assert!(jump < 0.02, "largest step {jump}");
+        // Silent for the stall and the refill, then the tone at full level.
+        let tail = &out[out.len() - 48_000..];
+        let peak = tail.iter().fold(0.0f32, |m, s| m.max(s.abs()));
+        assert!(peak > 0.24, "peak {peak}");
     }
 
     #[test]
