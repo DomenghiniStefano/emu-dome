@@ -36,6 +36,12 @@ pub struct Opened {
 type OpenedFn = Box<dyn Fn(&Opened) + Send + Sync>;
 type ClosedFn = Box<dyn Fn() + Send + Sync>;
 
+/// A check of what one game's session left behind, run once after its thread ended (Azahar's own
+/// folder, Trello #97): taken with [`Leaving::take_after_end`] by the close flow's worker and run
+/// off every lock. A game let go ([`Leaving::abandon`], [`Leaving::close`] on `RunEvent::Exit`)
+/// drops it unrun: its thread may still be writing, or the app is exiting.
+pub type AfterEnd = Box<dyn FnOnce() + Send>;
+
 /// A part of the app that lives as long as a game is open: told when one opens, and when it
 /// leaves (before its thread is waited for). Opened in the order given, closed in reverse.
 pub struct Hooks {
@@ -60,6 +66,7 @@ struct Running {
     session: Session,
     key: GameKey,
     core: CoreId,
+    after_end: Option<AfterEnd>,
 }
 
 /// The key of the game whose files are in use: set when it opens, cleared once its thread has
@@ -114,8 +121,9 @@ impl GameSession {
     }
 
     /// A started session becomes the open game: the real-time readers see it, then each part
-    /// is told. The previous game must be closed first (the close flow does it).
-    pub fn open(&self, session: Session, opened: &Opened) {
+    /// is told. The previous game must be closed first (the close flow does it). `after_end`
+    /// runs once its thread ended ([`AfterEnd`]).
+    pub fn open(&self, session: Session, opened: &Opened, after_end: Option<AfterEnd>) {
         let previous = {
             let mut running = self.running.lock();
             let previous = running.take();
@@ -123,6 +131,7 @@ impl GameSession {
                 session,
                 key: opened.key.clone(),
                 core: opened.core,
+                after_end,
             });
             previous
         };
@@ -152,6 +161,7 @@ impl GameSession {
             key: running.key,
             core: running.core,
             in_use: self.in_use.clone(),
+            after_end: running.after_end,
         })
     }
 
@@ -182,11 +192,18 @@ pub struct Leaving {
     key: GameKey,
     core: CoreId,
     in_use: InUse,
+    after_end: Option<AfterEnd>,
 }
 
 impl Leaving {
     pub fn core(&self) -> CoreId {
         self.core
+    }
+
+    /// The check to run now that its thread ended ([`Leaving::wait`] answered), once; the caller
+    /// runs it outside its locks.
+    pub fn take_after_end(&mut self) -> Option<AfterEnd> {
+        self.after_end.take()
     }
 
     /// Asks the thread to stop (it writes the in-game save, and the auto quick save with
@@ -333,6 +350,16 @@ mod tests {
     }
 
     fn open_with(games: &GameSession, opts: SessionOptions, fake: FakeCore, wait_frames: bool) {
+        open_after(games, opts, fake, wait_frames, None);
+    }
+
+    fn open_after(
+        games: &GameSession,
+        opts: SessionOptions,
+        fake: FakeCore,
+        wait_frames: bool,
+        after_end: Option<super::AfterEnd>,
+    ) {
         let game = opts.game.clone();
         let (tx, _rx) = std::sync::mpsc::channel();
         let session = Session::start_with(opts, tx, fake).unwrap();
@@ -347,6 +374,7 @@ mod tests {
                 core_options: Vec::new(),
                 shared: shared.clone(),
             },
+            after_end,
         );
         if wait_frames {
             let started = Instant::now();
@@ -408,6 +436,31 @@ mod tests {
                 "renderer closed",
             ]
         );
+    }
+
+    #[test]
+    fn the_after_end_check_is_handed_over_once_the_thread_ended() {
+        let dir = Dir::new("gs-after-end");
+        let log = Log::default();
+        let games = games(&log);
+        let game = key("0a");
+        let ran = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = ran.clone();
+        open_after(
+            &games,
+            options(&dir.0, &game, "k_libretro.dll", true),
+            FakeCore::new(),
+            true,
+            Some(Box::new(move || flag.store(true, Ordering::SeqCst))),
+        );
+        let mut leaving = games.take().unwrap();
+        leaving.stop();
+        while leaving.wait(Duration::from_millis(100)).is_none() {}
+        let check = leaving.take_after_end().expect("the check");
+        assert!(leaving.take_after_end().is_none(), "handed over once");
+        assert!(!ran.load(Ordering::SeqCst));
+        check();
+        assert!(ran.load(Ordering::SeqCst));
     }
 
     #[test]

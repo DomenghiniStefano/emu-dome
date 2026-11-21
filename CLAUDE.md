@@ -422,7 +422,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://health` (the whole list of `ErrorCode`s of what is not working, see below).
 - Health (Trello #79, `app/src-tauri/src/health.rs`): backend failures that change what the user gets are one
   `ErrorCode` per part (native video fallen back `nativeVideoFallback`, surface `videoSurfaceFailed`, audio output
-  `audioUnavailable`, controllers `controllersUnavailable`, a thread that panicked `threadStopped`), set and cleared
+  `audioUnavailable`, controllers `controllersUnavailable`, a thread that panicked `threadStopped`, a 3DS session that
+  wrote into Azahar's own folder `coreSavedOutsideGame`, kept until restart), set and cleared
   by that part; each change sends the whole list on `emu://health`, the `diagnostics` command answers it. The shell
   (`useShellEvents.ts`) toasts each code once while it lasts. The audio thread rebuilds its stream on a stream error
   or a change of the default output (polled every 2 s when no device is forced), retrying with a growing pause
@@ -464,8 +465,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   path limit (Windows without long paths: 259 for a file) it aborts the whole process, no error (Trello #94). And when
   it cannot use its save directory at all (a folder it cannot reach, e.g. over 260 characters without long paths) it
   silently falls back to `%APPDATA%\Azahar`, shared by every game. Hence the app's `longPathAware` manifest
-  (`app/src-tauri/windows-app-manifest.xml`, embedded by `build.rs`) and the guard before the load
-  (`CoreProfile::check_save_dir`, `savePathTooLong`). Test executables carry no manifest: on Windows they keep the
+  (`app/src-tauri/windows-app-manifest.xml`, embedded by `build.rs`), the guard before the load
+  (`CoreProfile::check_save_dir`, `savePathTooLong`), the refused start when the game's folder cannot be created
+  (`saveFolderUnavailable`) and the watch on Azahar's own folder after the session (`coreSavedOutsideGame`, #97). Test executables carry no manifest: on Windows they keep the
   260 limit whatever the policy says (the headless example's `--max-path`).
 - A Windows audio device can open with 8 channels: `audio.rs` writes left/right on the first two and zeroes the rest.
 - Branches developed in parallel break each other without a textual conflict (2026-11-20: #70 renamed
@@ -745,10 +747,20 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`.3dsx` homebrew: its pipeline cache is skipped for title 0); a core's log lines (`GET_LOG_INTERFACE`) are logged as their format
   string without the arguments (variadic C, no C shim); `GET_LANGUAGE` always answers English; `SET_MESSAGE` is
   logged, not shown; no sensors (plan in `docs/feasibility-hw-render.md`).
-  Azahar's path limit (#94) is guarded for the NAND it creates at load (measured on homebrew); the saves a retail
-  game writes on the emulated SD card while it runs (`Azahar/sdmc/Nintendo 3DS/<32>/<32>/title/...`, names chosen
-  by the game, deeper) are not covered and were not measured. The session ignores a failure to create the game's
-  folder (`create_dir_all(...).ok()` in `session.rs`): Azahar then falls back to `%APPDATA%\Azahar`.
+  Azahar's path limit (#94) is guarded for the NAND tail only: what it creates at load (`n3ds::SAVE_DEPTH`, measured
+  on homebrew). The SD-card tail, the saves a retail game writes on the emulated SD card while it runs
+  (`Azahar/sdmc/Nintendo 3DS/<32>/<32>/title/...`, names chosen by the game, deeper), is not covered: it cannot be
+  measured without a retail game, and EmuDome never uses Nintendo material (#97). It matters only on Windows with the
+  long-path policy off. To measure it in the owner's UAT, with the owner's own decrypted game in the installed app:
+  play until the game has saved, close it, then in PowerShell, with `$g` the game's folder
+  (`<data>\saves\3ds\<hex>`), `Get-ChildItem -LiteralPath $g -Recurse -Force | Sort-Object { $_.FullName.Length }
+  -Descending | Select-Object -First 2 @{ n = 'tail'; e = { $_.FullName.Length - $g.Length } }, FullName`; the
+  deepest folder's and file's tails become `SAVE_DEPTH`'s SD entries (with the game's names replaced by the longest
+  the format allows). A game folder that cannot be created refuses the start (`saveFolderUnavailable`); a folder
+  Azahar still cannot use makes it fall back to its own user folder (`%APPDATA%\Azahar` on Windows,
+  `emudome_platform::azahar_user_dirs`), which the app sees only after the session, by comparing that folder's
+  entries before and after (`n3ds::fallback`, `coreSavedOutsideGame` on `emu://health`, read only): a write there by
+  another program (the standalone Azahar) during the session looks the same, and nothing is moved back.
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
 
 ## Handoff with Cowork

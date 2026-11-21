@@ -18,6 +18,9 @@ pub fn extra_core_dirs() -> Vec<PathBuf> {
     Vec::new()
 }
 
+/// Azahar's default user folder: the XDG data folder, else Application Support.
+pub const AZAHAR_LAYOUT: crate::azahar::Layout = crate::azahar::Layout::MacOs;
+
 /// Game drawn natively under the transparent webview: to be verified in Phase 0.
 pub const NATIVE_VIDEO_DEFAULT: bool = true;
 

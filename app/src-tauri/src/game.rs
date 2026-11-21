@@ -4,6 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use emudome_core::core_profile::{CoreId, Renderer};
+use emudome_core::n3ds::fallback::FallbackWatch;
 use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::settings::ConsoleId;
 use emudome_core::{ErrorCode, Event, GameKey, Session, SessionOptions, VideoSetup};
@@ -12,7 +13,7 @@ use serde::Serialize;
 use tauri::{Emitter, Manager};
 use ts_rs::TS;
 
-use crate::game_session::Opened;
+use crate::game_session::{AfterEnd, Opened};
 use crate::health::{Part, SharedHealth};
 use crate::{bios, closing, library, migration, saves, settings, AppState};
 
@@ -85,6 +86,36 @@ fn refuse_deep_save_dir(core: CoreId, saves_root: &Path, game: &GameKey) -> Resu
             );
             ErrorCode::from(e)
         })
+}
+
+/// Trello #97: a core that cannot reach the game's folder may write into its own user folder,
+/// shared by every game (Azahar). Its folders are looked at now, before the session, and again
+/// once its thread ended ([`AfterEnd`]); a write there is reported once on `emu://health`
+/// (`coreSavedOutsideGame`). Read only: nothing is created, written or deleted there.
+fn watch_core_user_folder(app: &tauri::AppHandle, core: CoreId) -> Option<AfterEnd> {
+    let folders = match core {
+        CoreId::Azahar => emudome_platform::azahar_user_dirs(),
+        // Neither writes outside the folders it is given.
+        CoreId::Mgba | CoreId::MelonDsDs => return None,
+    };
+    let watch = FallbackWatch::before(folders);
+    let app = app.clone();
+    Some(Box::new(move || {
+        if let Some(folder) = watch.written() {
+            log::warn!(
+                "{} wrote into its own folder {} instead of the game's",
+                core.name(),
+                folder.display()
+            );
+            app.state::<SharedHealth>().set(
+                Part::CoreUserFolder,
+                Some(ErrorCode::CoreSavedOutsideGame {
+                    core: core.name().into(),
+                    folder: folder.display().to_string(),
+                }),
+            );
+        }
+    }))
 }
 
 /// This process's path limits (`emudome_platform`), in the core's terms.
@@ -244,6 +275,8 @@ fn open_path(
     saves::before_open(app, &save_dir, &game)?;
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
     let (renderer, video) = game_video(app, state, core);
+    // After the previous game closed: its writes are in the "before".
+    let after_end = watch_core_user_folder(app, core);
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(
@@ -294,6 +327,7 @@ fn open_path(
             core_options: flow.core_options,
             shared,
         },
+        after_end,
     );
     bios::emit_fallbacks(app, &flow.bios.fallbacks);
 

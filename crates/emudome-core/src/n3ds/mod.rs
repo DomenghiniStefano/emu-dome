@@ -12,11 +12,14 @@
 //!   (`input/mouse_tracker.cpp`), as melonDS DS does. Its cursor is drawn only after the right
 //!   stick moved it, and that stick is the C-stick only here, so no cursor shows.
 //! - Saves: Azahar keeps the emulated SD card and NAND under the frontend's save directory (the
-//!   game's own folder, `GameFiles`), never its own default location.
+//!   game's own folder, `GameFiles`). When it cannot reach that folder it falls back to its own
+//!   user folder, shared by every game: the session refuses a game folder it cannot create, and
+//!   the shell watches Azahar's own folders for what slips through ([`fallback`], Trello #97).
 //! - Encrypted games are never added to the library and are refused before the core sees them
 //!   ([`rom`], E10, `gameEncrypted`): identification only, nothing is ever decrypted.
 //! - System files: EmuDome supplies none (no firmware, no keys, no system archives).
 
+pub mod fallback;
 pub mod rom;
 
 use crate::screens::Split;

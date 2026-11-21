@@ -453,8 +453,22 @@ impl Session {
         if core_needs_restart(&opts.core_path) {
             return Err(StartError::CoreNeedsRestart);
         }
-        std::fs::create_dir_all(&opts.system_dir).ok();
-        std::fs::create_dir_all(GameFiles::new(&opts.save_dir, &opts.game).dir()).ok();
+        // A missing system folder only hides the user's BIOS files, which the BIOS status reports.
+        if let Err(e) = std::fs::create_dir_all(&opts.system_dir) {
+            log::warn!(
+                "system folder {} not created: {e}",
+                opts.system_dir.display()
+            );
+        }
+        // The game's folder is the core's save directory: without it a core writes elsewhere
+        // (Azahar into its own user folder, shared by every game), so the game does not start.
+        let game_dir = GameFiles::new(&opts.save_dir, &opts.game)
+            .dir()
+            .to_path_buf();
+        std::fs::create_dir_all(&game_dir).map_err(|e| StartError::SaveFolderUnavailable {
+            folder: game_dir.clone(),
+            detail: e.to_string(),
+        })?;
 
         let shared = Arc::new(Shared::default());
         let dead = Arc::new(AtomicBool::new(false));
@@ -1112,6 +1126,50 @@ mod tests {
         let events: Vec<Event> = rx.try_iter().collect();
         assert!(matches!(events.first(), Some(Event::Started { .. })));
         assert!(matches!(events.last(), Some(Event::Stopped)));
+    }
+
+    #[test]
+    fn a_game_whose_save_folder_cannot_be_made_does_not_start() {
+        let dir = TestDir::new("session-no-save-folder");
+        // A file where the game's console folder should be: its folder cannot be created.
+        dir.write("saves/gba", "not a folder");
+        let (events, rx) = mpsc::channel();
+        let core = FakeCore::new();
+        let calls = core.calls.clone();
+        let opts = SessionOptions {
+            core_path: dir.path("fake_libretro.dll"),
+            game_path: dir.path("Game.gba"),
+            system_dir: dir.path("system"),
+            save_dir: dir.path("saves"),
+            game: key(),
+            autosave_every: None,
+            autosave_on_exit: true,
+            resume_auto: false,
+            app_version: "test".into(),
+            core_options: Vec::new(),
+            rewind_seconds: None,
+            split: crate::screens::Split::Whole,
+            username: None,
+            fast_audio: crate::speed_audio::FastAudio::Mute,
+            video: Default::default(),
+        };
+        let Err(e) = Session::start_with(opts, events, core) else {
+            panic!("the session started without its save folder");
+        };
+        let folder = GameFiles::new(&dir.path("saves"), &key())
+            .dir()
+            .to_path_buf();
+        assert!(
+            matches!(&e, crate::StartError::SaveFolderUnavailable { folder: f, .. } if *f == folder),
+            "{e:?}"
+        );
+        assert!(matches!(
+            e.into_code("mgba"),
+            ErrorCode::SaveFolderUnavailable { .. }
+        ));
+        // Refused before the core loaded the game: no thread, no event, no call.
+        assert!(rx.try_recv().is_err());
+        assert_eq!(*calls.lock(), crate::testing::FakeCalls::default());
     }
 
     #[test]

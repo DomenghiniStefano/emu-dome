@@ -10,6 +10,7 @@
   "gameUnidentified",
   "gameEncrypted",
   "savePathTooLong",
+  "saveFolderUnavailable",
   "coreNeedsRestart",
   "noGame",
   "appClosing",
@@ -53,5 +54,6 @@
   "videoSurfaceFailed",
   "audioUnavailable",
   "controllersUnavailable",
+  "coreSavedOutsideGame",
   "threadStopped"
 ]

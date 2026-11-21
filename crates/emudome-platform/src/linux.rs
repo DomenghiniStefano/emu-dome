@@ -24,6 +24,9 @@ pub fn extra_core_dirs() -> Vec<PathBuf> {
     ]
 }
 
+/// Azahar's default user folder: in the working folder, else the XDG data folder.
+pub const AZAHAR_LAYOUT: crate::azahar::Layout = crate::azahar::Layout::Xdg;
+
 /// On Linux (GTK) the native surface covers the webview: the canvas in the webview is used.
 /// Verified in Phase 0 on X11: wgpu drawing on the window hides the interface.
 pub const NATIVE_VIDEO_DEFAULT: bool = false;

@@ -33,6 +33,9 @@ pub enum Part {
     Controllers,
     /// The one-time copy of the data to the new app identifier's folders (`data_move.rs`).
     DataFolder,
+    /// A core that wrote into its own user folder instead of the game's (Azahar, Trello #97):
+    /// set once seen, kept until EmuDome restarts.
+    CoreUserFolder,
 }
 
 impl Part {
@@ -42,8 +45,9 @@ impl Part {
             Part::NativeVideo | Part::Surface | Part::HwRender => "video",
             Part::Audio => "audio",
             Part::Controllers => "controllers",
-            // Runs at start on the main thread, never in a guarded thread.
-            Part::DataFolder => "data",
+            // Run at start on the main thread, or by the close flow's worker: never in a
+            // guarded thread.
+            Part::DataFolder | Part::CoreUserFolder => "data",
         }
     }
 }
