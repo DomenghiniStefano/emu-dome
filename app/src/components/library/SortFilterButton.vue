@@ -5,7 +5,7 @@
 // kept as the button's accessible name.
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronDown } from '@lucide/vue'
+import { ChevronDown, RotateCcw } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import type { ShowKey, Sort } from './librarySort'
@@ -54,8 +54,10 @@ function close() {
           :show="show"
           @sort="s => emit('sort', s)"
           @toggle="k => emit('toggle', k)"
-          @reset="emit('reset')"
         />
+        <template #footer>
+          <Button :icon="RotateCcw" @click="emit('reset')">{{ t('library.filters.reset') }}</Button>
+        </template>
       </PopoverContent>
     </Popover>
   </div>

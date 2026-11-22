@@ -35,7 +35,10 @@ prove that a refactor changes nothing on screen (Trello #62).
 - `libraryView: "list" | "grid"` fixes `library.view` (#29; otherwise the list on `device: "phone"`,
   the grid elsewhere, and the toolbar's switch writes it). The phone's library: the `phone-library*`
   scenarios of `phone-shell.mjs` (the list, the compact grid, the switch, the regional versions, L03);
-  the desktop at 1280 × 800: `lib-desk-grid`, `lib-desk-list`.
+  the desktop at 1280 × 800: `lib-desk-grid`, `lib-desk-list`. L03 when the window is short (#106):
+  `phone-library-filters-end-*` walks the panel down to its last row with the controller (its body
+  scrolls, «Ripristina» stays in view); `lib-desk-filters` and `lib-desk-filters-zoom120` (120 %
+  interface scale, 1280 × 600) on the desktop.
 - `screenshots: true` gives every game two screenshots (a GBA one and a DS one, drawn as SVG) for L12
   «Da uno screenshot» and «Adatta la copertina» (the `lib-cover-shots-*` / `lib-cover-crop*` scenarios, #85).
 - `cloud` sets the Google Drive status (#31): `"in"`, `"conflict"`, `"offline"`, `"notConfigured"`, else signed

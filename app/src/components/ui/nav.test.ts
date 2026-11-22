@@ -560,10 +560,17 @@ describe('Popover', () => {
             },
             () => 'Sort',
           ),
-          h(PopoverContent, { anchor: anchor.value, 'aria-label': 'Sort and filter' }, () => [
-            h(Button, { id: 'first' }, () => 'Recent'),
-            h(Button, { id: 'second', 'data-nav-initial': '' }, () => 'Title'),
-          ]),
+          h(
+            PopoverContent,
+            { anchor: anchor.value, 'aria-label': 'Sort and filter' },
+            {
+              default: () => [
+                h(Button, { id: 'first' }, () => 'Recent'),
+                h(Button, { id: 'second', 'data-nav-initial': '' }, () => 'Title'),
+              ],
+              footer: () => h(Button, { id: 'reset' }, () => 'Reset'),
+            },
+          ),
         ]),
       screenBack,
     )
@@ -594,10 +601,33 @@ describe('Popover', () => {
     place(toggle, 0, 0)
     place(one('#first'), 0, 40)
     place(one('#second'), 0, 80)
+    place(one('#reset'), 0, 120)
     dispatchNav('up')
     expect(document.activeElement?.id).toBe('first')
     dispatchNav('up')
     expect(document.activeElement?.id).toBe('first')
+  })
+
+  it('a Panel scrolls its body and keeps its footer out of it, reached by the steps (#106)', async () => {
+    mountPopover()
+    one('#toggle').focus()
+    dispatchNav('confirm')
+    await settle()
+    const body = one('[data-slot="popover-body"]')
+    const footer = one('[data-slot="popover-footer"]')
+    expect(body.className).toContain('overflow-y-auto')
+    expect(body.contains(one('#second'))).toBe(true)
+    expect(body.contains(one('#reset'))).toBe(false)
+    expect(footer.contains(one('#reset'))).toBe(true)
+    expect(one('[aria-label="Sort and filter"]').className).toContain(
+      'max-h-(--reka-popover-content-available-height)',
+    )
+    place(one('#toggle'), 0, 0)
+    place(one('#first'), 0, 40)
+    place(one('#second'), 0, 80)
+    place(one('#reset'), 0, 120)
+    dispatchNav('down')
+    expect(document.activeElement?.id).toBe('reset')
   })
 })
 

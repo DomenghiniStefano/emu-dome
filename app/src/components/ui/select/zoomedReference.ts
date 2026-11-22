@@ -30,3 +30,24 @@ export function zoomedReference(el: HTMLElement) {
     },
   }
 }
+
+/**
+ * The window as a Floating UI collision boundary in the zoomed page's CSS px. Floating UI's own
+ * viewport is `html.clientWidth` / `clientHeight`, in screen px whatever the zoom: at 120% a
+ * popover under its button believed it had the window's 360 px of room where the page has 300,
+ * and its available height (`--reka-popover-content-available-height`) ran past the window's
+ * bottom (#106). Floating UI takes a plain rectangle as a boundary; its getters are read at each
+ * placement, so a resized window or a new scale is followed. At 100% it is the viewport itself.
+ */
+export function zoomedViewport() {
+  return {
+    x: 0,
+    y: 0,
+    get width() {
+      return window.innerWidth / pageZoom()
+    },
+    get height() {
+      return window.innerHeight / pageZoom()
+    },
+  }
+}

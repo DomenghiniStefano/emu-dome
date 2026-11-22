@@ -39,6 +39,19 @@ const SHELL = {
     mock: {},
     steps: [`document.querySelector('main [aria-haspopup=dialog]').click()`],
   },
+  // The same, walked down to its last «Mostra» row with the controller (#106): the panel's body
+  // scrolls it into view, «Ripristina» stays in view under it.
+  "library-filters-end": {
+    mock: {},
+    steps: [
+      `document.querySelector('main [aria-haspopup=dialog]').click()`,
+      ...Array.from(
+        { length: 7 },
+        () => `window.__emit('emu://nav', { action: 'down' }); true`,
+      ),
+    ],
+    focus: true,
+  },
   saves: { mock: {}, steps: [section(1)] },
   controls: { mock: {}, steps: [section(2)] },
   cloud: { mock: {}, steps: [section(3)] },
