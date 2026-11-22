@@ -25,6 +25,7 @@ import type {
 } from '@/emu'
 import LicencesPage from '@/components/about/LicencesPage.vue'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
+import TouchEditor from '@/components/touch/TouchEditor.vue'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { uiMode } from '@/composables/useUiMode'
 import type { GameFocus } from '@/lib/gameDetails'
@@ -114,15 +115,24 @@ function openRecent(r: SettingRecent) {
 const root = ref<HTMLElement | null>(null)
 useNavSection(root, { tab: scopeBar.tab })
 
-// `screens.custom` (C09): the screens editor over the whole window, at the page's scope; closed,
-// the focus goes back to the row's button.
-const editing = ref<{ scope: SettingsScope; console: ConsoleId } | null>(null)
+// `screens.custom` (C09): the screens editor over the whole window, at the page's scope;
+// `touch.tedit` (C06): the touch controls editor for the page's console. Closed, the focus goes
+// back to the row's button.
+const editing = ref<{
+  scope: SettingsScope
+  console: ConsoleId
+  editor: 'screens' | 'touch'
+} | null>(null)
 let editOpener: HTMLElement | null = null
-function editScreens() {
+function editScreens(key: SettingKey = 'screens.custom') {
   const s = scope.value
   if (!('console' in s)) return
   editOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  editing.value = { scope: s, console: s.console }
+  editing.value = {
+    scope: s,
+    console: s.console,
+    editor: key === 'touch.tedit' ? 'touch' : 'screens',
+  }
 }
 function closeEditor() {
   editing.value = null
@@ -274,7 +284,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
             @open="emit('openControls')"
             @open-cloud="emit('openCloud')"
             @choose="choose(e.key)"
-            @edit="editScreens"
+            @edit="editScreens(e.key)"
             @animationend="lit = null"
           />
         </SettingsSection>
@@ -298,8 +308,14 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       </template>
     </SectionPage>
 
+    <TouchEditor
+      v-if="editing?.editor === 'touch'"
+      :console="editing.console"
+      :live="false"
+      @close="closeEditor"
+    />
     <ScreenEditor
-      v-if="editing"
+      v-else-if="editing"
       :console="editing.console"
       :scope="editing.scope"
       :status="null"

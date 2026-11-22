@@ -1,13 +1,17 @@
 <script setup lang="ts">
 // The C09 editor's keys, in a glass pill at the bottom: the controller's with a controller in
-// use, the keyboard's otherwise, none on touch (as the quick menu's hints).
+// use, the keyboard's otherwise, none on touch (as the quick menu's hints). The C06 touch
+// controls editor shows the same keys, with its own words for what picking does (`pick`).
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Kbd } from '@/components/ui/kbd'
 import { posName } from '@/lib/controls'
 import { inputMode } from '@/lib/inputMode'
 
+const props = withDefaults(defineProps<{ pick?: string }>(), { pick: '' })
 const { t } = useI18n()
+const said = (does: string) =>
+  does === 'pick' && props.pick ? props.pick : t(`screenEditor.hint.${does}`)
 
 interface Hint {
   keys: string[]
@@ -45,7 +49,7 @@ const hints = computed<Hint[]>(() =>
   >
     <li v-for="h in hints" :key="h.does" class="flex items-center gap-6">
       <Kbd v-for="k in h.keys" :key="k">{{ k }}</Kbd>
-      {{ t(`screenEditor.hint.${h.does}`) }}
+      {{ said(h.does) }}
     </li>
   </ul>
 </template>

@@ -64,7 +64,8 @@ const emit = defineEmits<{
   /** A file row with a backend (`video.surroundImg`): open its picker at the page's scope; a
    * link row the page opens (`about.lic`): open it. */
   choose: []
-  /** A screen layout (`screens.custom`): open the C09 screens editor at the page's scope. */
+  /** A screen layout (`screens.custom`): open the C09 screens editor at the page's scope; the
+   * touch controls (`touch.tedit`): the C06 editor for the page's console. */
   edit: []
   /** The Google account (`cloud.acct`, #31): open the Cloud section, where it is signed in / out. */
   openCloud: []
@@ -210,6 +211,16 @@ async function choose() {
           :variant="ButtonVariant.Soft"
           :fade="ButtonFade.None"
           :disabled="disabled || compact || !twoScreens"
+          @click="emit('edit')"
+        >
+          {{ buttonText }}
+        </Button>
+        <!-- touch controls: edited in the C06 editor, for one console at a time -->
+        <Button
+          v-else-if="kind.type === 'touchLayout'"
+          :variant="ButtonVariant.Soft"
+          :fade="ButtonFade.None"
+          :disabled="disabled || compact || !console"
           @click="emit('edit')"
         >
           {{ buttonText }}
