@@ -615,7 +615,7 @@
       },
       "api": {
         "name": "API grafica",
-        "desc": "Cambiala solo se vedi problemi di immagine. Si applica al prossimo avvio del gioco.",
+        "desc": "Cambiala solo se vedi problemi di immagine. Si applica al prossimo avvio di EmuDome.",
         "option": {
           "auto": "Automatica",
           "vulkan": "Vulkan",

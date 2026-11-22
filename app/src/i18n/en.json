@@ -615,7 +615,7 @@
       },
       "api": {
         "name": "Graphics API",
-        "desc": "Change it only if you see image problems. Applies the next time the game starts.",
+        "desc": "Change it only if you see image problems. Applies the next time EmuDome starts.",
         "option": {
           "auto": "Automatic",
           "vulkan": "Vulkan",
