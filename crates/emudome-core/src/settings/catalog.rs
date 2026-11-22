@@ -637,10 +637,9 @@ pub static ENTRIES: &[Entry] = &[
     // The built-in styles (C08, owner 2026-11-22): «Fumé», dark see-through glass, and
     // «Contorno», the outline alone, both drawn from the design system's tokens and faded as a
     // whole; the old `glass` / `outlines` / `contrast` are read as these (store.rs, layout 2).
-    // Imported skins (`.deltaskin`, RetroArch overlays) are Phase 5.
-    seg("touch.tskin", &["smoke", "outline"], "smoke", G)
-        .phone()
-        .phase(4),
+    // Imported skins (`.deltaskin`, RetroArch overlays) are Phase 5. Phase 1 (owner, 2026-11-22:
+    // the style is picked in Settings now), the only row of «Controlli touch» shown before phase 4.
+    seg("touch.tskin", &["smoke", "outline"], "smoke", G).phone(),
     // Multiplies the style's own fade (each style draws the controls at about 60 %): at 100 they
     // show as the style draws them.
     slider("touch.topac", 100, (10, 100, 5), Unit::Percent, ALL)

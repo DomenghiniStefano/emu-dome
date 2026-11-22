@@ -1026,9 +1026,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   own size in C06 (`minSize`); the face buttons (48) and the d-pad (116, the whole box) are not. Not yet: imported skins (our pack format, `.deltaskin`, RetroArch overlays: Phase 5,
   `docs/decisions.md`), more than one control of the same kind (a second, turbo A), a layout per game, the C06
   editor's controls drawn over the real screen layout of a DS game (they are placed over the window, not the
-  screens), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4, so Settings ›
-  Controlli touch stays hidden while `CURRENT_PHASE` is 1: the editor opens from the quick menu's «Controlli» on
-  a touch screen, and the rows keep their defaults (E14 «Pausa e domanda», «Fumé», 100 %, vibration 40 %).
+  screens), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4 except the style
+  (`touch.tskin`, phase 1, owner 2026-11-22), so Settings › Controlli touch shows that one row while `CURRENT_PHASE`
+  is 1 (on the phone; on the desktop disabled with «Solo su questo telefono.»): the editor opens from the quick menu's
+  «Controlli» on a touch screen, and the other rows keep their defaults (E14 «Pausa e domanda», 100 %, vibration
+  40 %).
 - Android controllers (Trello #47): built from Android's input events (`pads/android.rs`, `GamepadInput.kt`) but
   not run on a device yet. To verify there: which physical button a Nintendo-layout pad (Switch Pro, an 8BitDo in
   Switch mode) reports as `KEYCODE_BUTTON_A` (the table reads it as the bottom one, as SDL does); whether Guide /
