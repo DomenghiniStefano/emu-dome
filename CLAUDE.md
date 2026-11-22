@@ -744,6 +744,13 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   «pending» comment (decided with the owner), never literals in a screen. Internal design variables only, not user settings.
 - **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
   components never take a `phone` / `touch` prop just to change their look.
+- **TV mode** (Trello #30): one `data-layout="tv"` on `<html>` (`composables/useUiMode.ts`, the decision pure in
+  `lib/uiMode.ts`: `general.ui`, or Automatica = full screen with a controller connected; never on a phone) and the
+  `tv:` variant. TV sizes are the «TV» tokens (`typography.css`, `spacing.css`, `border.css`), drawn for 1920 × 1080
+  and grown by `--tv-scale` on a larger screen. Its own parts: the shell's `TvTabs` (sections, L1 / R1 from
+  anywhere), `TvButtonBar` and `TvGlyph` (the connected controller's glyphs by position and `pad.confirm`,
+  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`); the quick menu and the other sections keep
+  the desk's layout scaled up (`zoom-tv`).
 - **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
 - **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
   by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its
@@ -806,7 +813,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 29 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 28 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Window, video and audio settings (Trello #100): `video.winsize` «free» is not remembered across starts (a start
   opens at 1280×800); `video.api` applies at the next start and nothing says a restart is waiting (no general
@@ -829,6 +836,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   frame, so a curved CRT bends the frame as the core stacks it, not each screen. `screens.gap` is in the frame's
   pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
+- TV mode (#30): Settings in TV is not built (an open point with the owner: one column of large rows, LT / RT for
+  the categories); in TV it keeps the desk's layout scaled up, as Saves, Controls, Cloud and a game's details do.
+  There a section's own L1 / R1 (the settings levels, the controls tabs) comes before the section switch. The
+  library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves. The Y
+  «Cerca» hint is shown before the search exists (#32).
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`. mGBA for Windows and Android is built by EmuDome from the pinned source archive
