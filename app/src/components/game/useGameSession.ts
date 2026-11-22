@@ -9,6 +9,7 @@ import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
 import { insetShares, NO_INSET, sameInset, type InsetPx } from './inset'
 import { NORMAL } from '@/lib/speeds'
+import { quickSlotSteps } from '@/components/quick-menu/phoneMenu'
 import { createGameState } from './gameState'
 import { useGameEnding } from './useGameEnding'
 import { useGameEvents } from './useGameEvents'
@@ -93,6 +94,42 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
   /** Salva in the quick menu (the event `stateSaved` follows). */
   const save = (slot: number) => emu.saveState(slot)
 
+  /** The phone quick menu's «Rendi rapido»: `slot` becomes the current slot (the quick slot the
+   * shortcuts and «Salva / Carica rapido» use). Rust has no command that sets it at once, so it
+   * takes the shorter way round with the slot steps (L3 + ← →, F2 / F3); like them, the slot
+   * lives in Rust's memory for the whole run and every game, not saved. */
+  async function setQuickSlot(slot: number) {
+    try {
+      let now = await emu.controls.currentSlot()
+      const { forward, count } = quickSlotSteps(now, slot)
+      for (let i = 0; i < count; i++) now = await emu.controls.stepSlot(forward)
+      comboSlot.value = now
+    } catch (e) {
+      toasts.failWith(e)
+    }
+  }
+
+  /** The phone quick menu's «Riavvolgi», held: the game runs backwards while held (a paused
+   * session holds rewind still, so it runs meanwhile), then pauses again under the menu. Presses
+   * and releases go to Rust in order, so a quick tap never leaves rewind on. */
+  let rewinds = Promise.resolve()
+  function holdRewind(on: boolean) {
+    rewinds = rewinds.then(async () => {
+      try {
+        if (on) {
+          await emu.setPaused(false)
+          await emu.rewind(true)
+        } else {
+          await emu.rewind(false)
+          if (menuOpen.value) await emu.setPaused(true)
+        }
+      } catch (e) {
+        toasts.failWith(e)
+      }
+    })
+    return rewinds
+  }
+
   /** G11 «Riavvia»: the game starts over and resumes. */
   async function restart() {
     try {
@@ -161,6 +198,8 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     toggleMenu,
     setSpeed,
     save,
+    setQuickSlot,
+    holdRewind,
     loadFromMenu: events.loadFromMenu,
     undoLoad: events.undoLoad,
     restart,

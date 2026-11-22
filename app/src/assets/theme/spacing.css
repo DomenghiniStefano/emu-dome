@@ -177,16 +177,22 @@
   --spacing-menu-min: 220px;
   --spacing-toast: 420px;
 
-  /* The quick menu: the desktop panel, the G09 bar, the sheet's grip, where the G09 sheet starts
-     under the game (beyond its 3:2 picture), a tool tile's height. */
+  /* The quick menu: the desktop panel, the G09 bar, where the G09 sheet starts under the game
+     (beyond its 3:2 picture), a tool tile's height. */
   --spacing-panel: 640px;
   --spacing-bar: 1040px;
-  --spacing-grip: 40px;
   --spacing-sheet-screens: 112px;
-  /* The phone on its side (#29): the side panel's width (the card's 440), and its room above
-     (the status bar, at least 12) and at its right edge (the camera when turned that way, at
-     least 16). */
-  --spacing-side-panel: 440px;
+  /* Pending (owner, 2026-11-22, the phone quick menu's mockup): a tile of the first level's row
+     of three, and the least of the game the sheet leaves above it when a page grows (Altro ›
+     Salvataggi: about 150 on a 780 tall phone). */
+  --spacing-quick-tile: 72px;
+  /* The frame just saved, on the line «Salvato nello slot N · Annulla». */
+  --spacing-thumb-sm: 40px;
+  --spacing-sheet-game-min: 144px;
+  /* The phone on its side (#29): the side panel's width (owner, 2026-11-22: 300, was the card's
+     440; the game keeps 480 × 360 of a 780 × 360 phone), and its room above (the status bar, at
+     least 12) and at its right edge (the camera when turned that way, at least 16). */
+  --spacing-side-panel: 300px;
   --spacing-side-panel-top: max(var(--spacing-12), env(safe-area-inset-top, 0px));
   --spacing-side-panel-end: max(var(--spacing-16), env(safe-area-inset-right, 0px));
   --spacing-tool: 56px;

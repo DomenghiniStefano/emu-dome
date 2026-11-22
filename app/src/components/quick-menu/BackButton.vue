@@ -1,17 +1,16 @@
 <script setup lang="ts">
-// «‹ Menu rapido»: back one level (B / Esc). On the phone's sheet the chevron alone, at the
-// touch minimum.
+// «‹ Menu rapido»: back one level (B / Esc). On the phone «‹ Indietro» (owner, 2026-11-22: icon
+// and name), at the touch minimum.
 import { ChevronLeft } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { FocusMark } from './view'
 import { Kbd, KbdSize } from '@/components/ui/kbd'
 
 defineProps<{
-  /** Where back leads: the button's text, or its accessible name when the chevron is alone. */
+  /** Where back leads: the button's text. */
   label: string
   /** The key that goes back with the input in use, or null. */
   hint: string | null
-  iconOnly?: boolean
 }>()
 defineEmits<{ click: [] }>()
 
@@ -20,18 +19,6 @@ const mark = { [FocusMark.Back]: '' }
 
 <template>
   <Button
-    v-if="iconOnly"
-    v-bind="mark"
-    :variant="ButtonVariant.Ghost"
-    :size="ButtonSize.IconTouch"
-    class="-ml-10 self-start"
-    :label="label"
-    @click="$emit('click')"
-  >
-    <ChevronLeft :size="22" :stroke-width="1.75" aria-hidden="true" />
-  </Button>
-  <Button
-    v-else
     v-bind="mark"
     :variant="ButtonVariant.Ghost"
     :size="ButtonSize.Back"

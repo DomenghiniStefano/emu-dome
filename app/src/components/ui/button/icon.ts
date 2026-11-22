@@ -25,6 +25,8 @@ const PX_18: ButtonSize[] = [
   ButtonSize.MenuMain,
   ButtonSize.ToolIcon,
   ButtonSize.IconTouch,
+  ButtonSize.QuickTile,
+  ButtonSize.QuickTileGrow,
 ]
 const PX_24: ButtonSize[] = [ButtonSize.Tv, ButtonSize.TvTab]
 

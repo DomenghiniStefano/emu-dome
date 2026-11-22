@@ -15,26 +15,25 @@ export const PanelLayout = {
   /** G09 on desktop: a bar at the bottom, 1040 px, the game visible above it. */
   Bar: 'bar',
   /**
-   * Phone in portrait: a bottom sheet under the game (board «Tel-MenuRapido3», 390 × 844: the top
-   * is 44 px + the 3:2 game image; G08 starts higher, G09 lower).
+   * Phone in portrait: a bottom sheet under the game, as tall as its content (owner, 2026-11-22:
+   * the first level is one row of tiles and a strip, «Altro» grows the same sheet), never higher
+   * than leaves `sheet-game-min` of the game above it; no handle. G09 starts at a fixed place.
    */
   Sheet: 'sheet',
   /**
-   * Phone on its side (#29, the card: «landscape: 440 px panel from the right»): the sheet's
-   * content in a column as tall as the window at its right edge, the game beside it; clear of
-   * the status bar and, turned the other way, of the camera.
+   * Phone on its side (#29; owner, 2026-11-22: 300 px, was the card's 440): the sheet's content in
+   * a column as tall as the window at its right edge, the game beside it; clear of the status bar
+   * and, turned the other way, of the camera.
    */
   Side: 'side',
 } as const
 export type PanelLayout = (typeof PanelLayout)[keyof typeof PanelLayout]
 
-/** Where the phone's sheet starts, under the game's 3:2 image. */
+/** Where the phone's sheet starts. */
 export const SheetTop = {
-  /** The main screen and its pages. */
-  Page: 'page',
-  /** G08, the slots: higher, more room for them. */
-  Slots: 'slots',
-  /** G09, the screens: lower, more of the game above. */
+  /** The levels and their pages: as tall as the content. */
+  Content: 'content',
+  /** G09, the screens: under the game's 3:2 image and lower, more of the game above. */
   Screens: 'screens',
 } as const
 export type SheetTop = (typeof SheetTop)[keyof typeof SheetTop]
@@ -48,13 +47,12 @@ export const panelVariants = cva('glass-thick-flat flex flex-col border-line', {
       [PanelLayout.Bar]:
         'absolute bottom-16 left-1/2 w-bar max-w-[calc(100vw-var(--spacing-window-margin))] -translate-x-1/2 gap-12 rounded-panel border shadow-panel',
       [PanelLayout.Sheet]:
-        'absolute inset-x-0 bottom-0 gap-10 rounded-t-panel border-t px-16 pt-8 pb-16 text-lead shadow-sheet',
+        'absolute inset-x-0 bottom-0 max-h-[calc(100%-var(--spacing-sheet-game-min))] gap-8 rounded-t-panel border-t px-12 pt-12 pb-16 text-lead shadow-sheet',
       [PanelLayout.Side]:
-        'absolute inset-y-0 right-0 w-side-panel max-w-full gap-10 border-l pt-side-panel-top pr-side-panel-end pb-12 pl-16 text-lead shadow-sheet',
+        'absolute inset-y-0 right-0 w-side-panel max-w-full gap-8 border-l pt-side-panel-top pr-side-panel-end pb-12 pl-12 text-lead shadow-sheet',
     },
     top: {
-      [SheetTop.Page]: 'top-[calc(100vw*2/3+var(--spacing-touch))]',
-      [SheetTop.Slots]: 'top-[calc(100vw*2/3-var(--spacing-24))]',
+      [SheetTop.Content]: '',
       [SheetTop.Screens]: 'top-[calc(100vw*2/3+var(--spacing-sheet-screens))]',
     },
   },
@@ -64,14 +62,9 @@ export const MENU_PANEL = panelVariants({ layout: PanelLayout.Menu })
 export const BAR_PANEL = panelVariants({ layout: PanelLayout.Bar })
 export const SIDE_PANEL = panelVariants({ layout: PanelLayout.Side })
 
-/** The phone's sheet for a view: where it starts depends on the page. */
+/** The phone's sheet for a view: G09 starts at its place, every other view is as tall as it is. */
 export function sheetPanel(view: QuickMenuView): string {
-  const top =
-    view === QuickMenuView.Slots
-      ? SheetTop.Slots
-      : view === QuickMenuView.Screens
-        ? SheetTop.Screens
-        : SheetTop.Page
+  const top = view === QuickMenuView.Screens ? SheetTop.Screens : SheetTop.Content
   return panelVariants({ layout: PanelLayout.Sheet, top })
 }
 

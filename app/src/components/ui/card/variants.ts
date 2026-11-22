@@ -32,11 +32,15 @@ export const CardVariant = {
   // A small choice among a row of them, on surface (a quick-save slot, G07); `selected` marks the
   // chosen one. On the phone a 2px edge when chosen.
   Tile: 'tile',
+  // Tile without the accent (the phone's «Altro › Salvataggi», owner 2026-11-22: the sheet's only
+  // amber is «Riprendi»): the chosen one on surface-hover with an ink edge, 2px on the phone.
+  TileQuiet: 'tileQuiet',
   // A tool to run or switch on and off (G07 Strumenti), its icon over its name; `selected` = on.
   // On the phone a row on surface: icon beside the name, 44 tall.
   Tool: 'tool',
   // A row that leads to another page: icon, name, chevron (G07, G08). Not ui/link-row: its own edge
-  // and fill, control-lg tall.
+  // and fill, control-lg tall; on the phone the touch minimum (its «Altro» list). `selected`: a
+  // row that is on (the phone's «Scambia gli schermi»), neutral, never the accent.
   NavRow: 'navRow',
   // A line of a list, no edge of its own (G10): the list draws the box.
   ListRow: 'listRow',
@@ -77,10 +81,12 @@ export const cardVariants = cva('flex flex-col text-left', {
         'm-0 list-none overflow-hidden rounded-card border border-line bg-surface p-0',
       [CardVariant.Tile]:
         'rounded-card border border-line bg-surface p-4 data-selected:border-accent-text data-selected:bg-accent-soft touch:data-selected:border-strong',
+      [CardVariant.TileQuiet]:
+        'rounded-card border border-line bg-surface p-4 data-selected:border-ink data-selected:bg-surface-hover touch:data-selected:border-strong',
       [CardVariant.Tool]:
         'h-tool items-center justify-center rounded-card border border-line bg-surface-raised px-8 text-center text-caption-inline font-semibold whitespace-nowrap enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-dim data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text touch:h-touch touch:flex-row touch:justify-start touch:bg-surface touch:px-10 touch:text-left touch:text-cta-inline touch:enabled:hover:bg-surface-hover touch:data-selected:bg-accent-soft',
       [CardVariant.NavRow]:
-        'h-control-lg flex-row items-center rounded-card border border-line bg-surface px-10 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
+        'h-control-lg flex-row items-center rounded-card border border-line bg-surface px-10 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked data-selected:border-line-strong data-selected:bg-surface-hover touch:h-touch',
       [CardVariant.ListRow]:
         'min-h-control-lg flex-row items-center border-0 bg-transparent px-10 py-4 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
     },

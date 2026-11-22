@@ -85,11 +85,9 @@
      same in every theme, named once here until Cowork places them.
      - game-scrim: the paused game behind the menu (the design system's `scene-scrim` is not
        decided yet);
-     - grip: the handle of the phone's sheet;
      - on-accent-edge: a key hint's edge on the main action's accent fill, half of the text on
        it (`--on-accent`: white or dark, accent.ts), so it follows the accent. */
   --game-scrim: #00000099;
-  --grip: #ffffff33;
   --on-accent-edge: color-mix(in srgb, var(--on-accent) 50%, transparent);
   /* Pending (owner, 2026-11-22): the touch controls' two styles (`touch.tskin`, components/touch),
      the same in every theme: they lie over the game, not over the interface. Every value is
@@ -222,7 +220,6 @@
   --color-dot-done: var(--dot-done);
   /* The quick menu (pending Cowork) */
   --color-game-scrim: var(--game-scrim);
-  --color-grip: var(--grip);
   --color-on-accent-edge: var(--on-accent-edge);
   /* The touch controls' styles (pending owner) */
   --color-pad-smoke: var(--pad-smoke);

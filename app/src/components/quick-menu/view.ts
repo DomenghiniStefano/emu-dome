@@ -5,8 +5,10 @@ import type { SettingKey } from '@/emu'
 export const QuickMenuView = {
   /** The main screen: quick saves, speed, tools, the rows to the other pages. */
   Home: 'home',
-  /** G08: every quick-save slot. */
+  /** G08: every quick-save slot (the phone: «Altro › Salvataggi»). */
   Slots: 'slots',
+  /** The phone's second level, «Altro» (owner, 2026-11-22): the pages and the rarer actions. */
+  More: 'more',
   /** G09: screens and picture (a bar at the bottom on desktop, the game visible above). */
   Screens: 'screens',
   /** G10: controls. */
@@ -38,6 +40,7 @@ export type SubPage = Exclude<
 /** The title (message key) of each page. */
 export const SUB_PAGE_TITLE: Record<SubPage, string> = {
   [QuickMenuView.Slots]: 'qm.more',
+  [QuickMenuView.More]: 'qm.moreLabel',
   [QuickMenuView.Screens]: 'qm.row.screens.name',
   [QuickMenuView.Controls]: 'qm.row.controls.name',
   [QuickMenuView.Shortcuts]: 'qm.shortcuts',
@@ -51,6 +54,15 @@ export function isSubPage(view: QuickMenuView): view is SubPage {
     view !== QuickMenuView.ScreenEditor &&
     view !== QuickMenuView.TouchEditor
   )
+}
+
+/** The phone's levels (owner, 2026-11-22): «Altro» goes back to the main screen, the pages it
+ * opens (and «Riavvia»'s confirmation) back to «Altro»; the editors and the shortcuts keep their
+ * own way back (useQuickMenuNavigation). */
+export function phoneParent(view: QuickMenuView): QuickMenuView {
+  return view === QuickMenuView.Home || view === QuickMenuView.More
+    ? QuickMenuView.Home
+    : QuickMenuView.More
 }
 
 /** The settings pages whose Session rows the quick menu reads (`screens`: the layout card). */
