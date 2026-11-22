@@ -51,10 +51,15 @@ end yet: no release exists.
   the build is reproducible, but gives the pinned sha256 only with the toolchain `cores.lock` names (Visual Studio
   2022 Build Tools with MSVC 14.44, the Android NDK 27.1 and its clang-cl, the Windows SDK, CMake); another
   toolchain is refused. So the built files are published once, in a GitHub release of this repository named
-  `cores-<core>-<first 7 characters of the commit>` (today `cores-mgba-7a12d6d`, Trello #95), and `cores.lock`
+  `cores-<core>-<first 7 characters of the commit>` (today `cores-mgba-7a12d6d`, Trello #95, and
+  `cores-melondsds-f394adb`), and `cores.lock`
   names its download folder (`built.release`). The fetch scripts download them from there, sha256-checked, and
   build from source only when the download fails or with `-Build` / `--build`. That release hosts binaries only:
-  the source offer is the pinned upstream source archive with the build scripts (`cores/SOURCES.md`). mGBA for
+  the source offer is the pinned upstream source archive with the build scripts (`cores/SOURCES.md`). melonDS DS
+  for Android is built the same way (`scripts/build-melondsds.ps1`, NDK 27.1, 16 KB pages; owner, 2026-11-22), and
+  so are the libraries its CMake would git-clone, each pinned in `cores.lock` (`build.dependencies`: commit, source
+  archive, sha256, licence) and handed to CMake offline; its Windows and Linux files are still upstream's release
+  assets. mGBA for
   Linux is still the libretro buildbot's `latest/`, which has no stable URL: packaging refuses it unless
   `EMUDOME_ALLOW_UNSTABLE_CORES=1`, allowed for local test packages only, never for a release, until it is built on
   Linux (Trello #92, a release blocker for Linux only). Azahar is not packaged (Phase 3).
@@ -103,7 +108,8 @@ end yet: no release exists.
    `target/`, `node_modules/` or `cores/`):
    - `./scripts/check.ps1` (Windows) / `sh scripts/check` (Linux) green in that clone;
    - the cores fetched from `cores.lock` (`./scripts/fetch-cores.ps1`, `sh scripts/fetch-cores.sh`,
-     `./scripts/fetch-cores-android.ps1`; mGBA downloaded from its `cores-mgba-<commit>` release), each checked
+     `./scripts/fetch-cores-android.ps1`; mGBA and Android's melonDS DS downloaded from their `cores-<core>-<commit>`
+     releases), each checked
      against its sha256, with no `EMUDOME_ALLOW_UNSTABLE_CORES`;
    - the update keys in the environment of that shell only (PowerShell: `$env:EMUDOME_UPDATER_PUBKEY = Get-Content
      <folder>\emudome-updater.key.pub -Raw`, `$env:TAURI_SIGNING_PRIVATE_KEY = '<folder>\emudome-updater.key'`,
@@ -122,15 +128,22 @@ end yet: no release exists.
    - **Google Play**, under the DomeHub developer account: the AAB of `-Bundle`.
 5. Merge `main` back into `develop` if anything was committed on the way.
 
-## A new pin of a core EmuDome builds (today mGBA)
+## A new pin of a core EmuDome builds (today mGBA, and melonDS DS for Android)
 
 A new commit, or a toolchain change, gives new bytes: they are built once, checked, published, then pinned.
 
 1. In `cores.lock`, change the core's `source` (commit, version, `archive`, and `archive_sha256`: download the
    archive and hash it) and `license` (`url` at the new commit, its `sha256`); remove `built.release` from the
-   entries being re-pinned (the check refuses a release named after another commit).
+   entries being re-pinned (the check refuses a release named after another commit). A core whose CMake fetches
+   libraries at configure time (melonDS DS: `cmake/FetchDependencies.cmake`) lists each in `build.dependencies`
+   with the name FetchContent gives it, the commit its ref names at the new commit (a branch: its head when the
+   upstream release was built), the archive `https://github.com/<repo>/archive/<commit>.tar.gz`, its sha256 and
+   its licence (checked GPL-compatible first); a library missing from the list fails the configure, since the
+   build passes `FETCHCONTENT_FULLY_DISCONNECTED`.
 2. Build each platform on a machine with the toolchain to record: `./scripts/build-mgba.ps1 -Platform
-   windows-x86_64` and `-Platform android-arm64-v8a` (or `./scripts/fetch-cores.ps1 -Build`). The sha256 differs
+   windows-x86_64` and `-Platform android-arm64-v8a`, `./scripts/build-melondsds.ps1` (or
+   `./scripts/fetch-cores.ps1 -Build`). A notice the build writes (`output`, melonDS DS's
+   `melondsds-LICENSE.txt`) lands in `out/` too, with its sha256 printed. The sha256 differs
    from the old pin, so the install is refused and the file stays in `<work dir>/<core>/<platform>/out/`: put its
    sha256 in the entry's `library.sha256` and the toolchain printed by the build in `built.toolchain`, then build
    again; now it installs. Build twice from a clean work folder to see the same sha256.
@@ -165,18 +178,10 @@ non è compatibile con dimensioni pagina di 16 kB»). Two halves, both needed fo
   - `libmgba_libretro_android.so`: built by EmuDome with `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`
     (`scripts/core-build.mjs`), so the pinned `cores-mgba-7a12d6d` file is already 16 KB-aligned (`LOAD` align
     0x4000, `GNU_RELRO` ending at 0x164000). Nothing to re-pin.
-  - `libmelondsds_libretro_android.so`: **not aligned**. The pinned file is upstream's v1.4.0 release asset,
-    built by its CI with NDK r27d and no 16 KB flag (`LOAD` align 0x1000). Upstream has no newer release and no
-    16 KB change; the libretro buildbot's nightly (NDK r29) is aligned, but its `latest/` URL is not stable, so it
-    cannot be pinned. The way out the owner chooses (both a new pin, steps above for a built core):
-    1. EmuDome builds melonDS DS for Android from the pinned v1.4.0 source, like mGBA: upstream's own Android
-       CMake arguments (`-DENABLE_OGLRENDERER=OFF`, its `.github/workflows/main.yaml`) plus
-       `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` with NDK 27.1, a `build` block and `source.archive` in
-       `cores.lock`, published as `cores-melondsds-f394adb`. Its CMake fetches its dependencies by git at
-       configure time (`cmake/FetchDependencies.cmake`), so the source offer and the reproducibility check
-       must cover those pins too: more work than mGBA.
-    2. Ask upstream (JesseTG/melonds-ds) for a release built 16 KB-aligned (NDK r28+, or the flag above), then
-       re-pin its release asset (url, sha256s) like today. No build of ours, but it waits on upstream.
+  - `libmelondsds_libretro_android.so`: upstream's v1.4.0 release asset was not aligned (built by its CI with
+    NDK r27d, `LOAD` align 0x1000), so EmuDome builds it from the pinned v1.4.0 source and its pinned dependencies
+    with `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` (`scripts/build-melondsds.ps1`, owner, 2026-11-22), published as
+    `cores-melondsds-f394adb`: `LOAD` align 0x4000, `GNU_RELRO` filling its `LOAD`.
 
 ## Still open
 
