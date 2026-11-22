@@ -46,5 +46,16 @@ const filled = ref('Pocket Quest')
         <Input v-model="query" :variant="InputVariant.Bare" type="search" placeholder="Search" />
       </label>
     </KitState>
+    <KitState label="Palette: the search everywhere's field, in its row">
+      <div class="flex h-52 w-panel items-center gap-10 border-b border-line px-16">
+        <Search class="text-ink-muted" :size="20" :stroke-width="1.75" aria-hidden="true" />
+        <Input
+          v-model="query"
+          :variant="InputVariant.Palette"
+          type="search"
+          placeholder="Search games, actions and settings"
+        />
+      </div>
+    </KitState>
   </KitSection>
 </template>

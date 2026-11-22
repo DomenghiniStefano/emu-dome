@@ -11,7 +11,7 @@
 //   section reads it once, when it mounts; the shell then drops it (`arrived`), so coming back to
 //   the section later (after a game, say) does not repeat it.
 // Pure: every move is a function of the route before it.
-import type { GameId, LibraryGame } from '@/emu'
+import type { GameId, LibraryGame, SettingKey } from '@/emu'
 import { gameScopeOf, type GameFocus } from '@/lib/gameDetails'
 import type { Section } from './sections'
 
@@ -21,8 +21,11 @@ export type Arrival =
   | { section: 'library'; cover: GameId }
   /** The Saves section on one game; `importing`: its import (V05) for that game. */
   | { section: 'saves'; game: GameId; importing: boolean }
-  /** L06: the Settings section at «Solo questo gioco». */
-  | { section: 'settings'; game: GameFocus }
+  /**
+   * The Settings section at «Solo questo gioco» (L06, `game`), or on one setting's page with its
+   * row lit (`row`: the search everywhere, X01).
+   */
+  | { section: 'settings'; game: GameFocus | null; row: SettingKey | null }
   /** L07: button remapping (C02) at «Solo questo gioco». */
   | { section: 'controls'; game: GameFocus }
 
@@ -87,7 +90,14 @@ const focusOf = (g: Pick<LibraryGame, 'id' | 'console' | 'title'>): GameFocus =>
 export const settingsFor = (r: Route, g: Pick<LibraryGame, 'id' | 'console' | 'title'>): Route => ({
   ...r,
   section: 'settings',
-  arrival: { section: 'settings', game: focusOf(g) },
+  arrival: { section: 'settings', game: focusOf(g), row: null },
+})
+
+/** X01: the Settings section on `key`'s page, its row lit («Tutti i giochi»). */
+export const settingRowFor = (r: Route, key: SettingKey): Route => ({
+  ...r,
+  section: 'settings',
+  arrival: { section: 'settings', game: null, row: key },
 })
 
 /** L07: button remapping (C02) at «Solo questo gioco». */

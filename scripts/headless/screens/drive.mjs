@@ -796,6 +796,47 @@ async function page() {
   return { send, close };
 }
 
+// Search everywhere and notifications (X01–X03, #32), in Italian as the mockup: the top bar, the
+// palette before typing, with results, with none (X02), a setting opened from it (its row lit,
+// animations frozen on the lit frame), the bell's panel; dark at both sizes, light at the small
+// one, and the phone (magnifier, full-width palette).
+const openSearch = `document.querySelector('header button').click()`;
+const typeQuery = (q) =>
+  `(() => { const i = document.querySelector('[role=dialog] input'); if (!i) return false; i.value = ${JSON.stringify(q)}; i.dispatchEvent(new Event('input', { bubbles: true })) })()`;
+// Taken by the field (cancelled), so `dispatchEvent` answers false: the step answers true.
+const enterInQuery = `(document.querySelector('[role=dialog] input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })), true)`;
+const openBell = `document.querySelector('header [aria-haspopup=dialog]').click()`;
+const SEARCH = {
+  topbar: { steps: [] },
+  open: { steps: [openSearch] },
+  results: { steps: [openSearch, typeQuery("schermi")] },
+  none: { steps: [openSearch, typeQuery("tearing")] },
+  lit: { steps: [openSearch, typeQuery("sincron"), enterInQuery], freeze: true },
+  bell: { steps: [openBell] },
+};
+for (const [screen, s] of Object.entries(SEARCH))
+  for (const [variant, theme, size] of [
+    ["dark-small", "dark", "small"],
+    ["dark-large", "dark", "large"],
+    ["light-small", "light", "small"],
+  ]) {
+    const [width, height] = SIZES[size];
+    SCENARIOS[`search-${screen}-${variant}`] = {
+      ...s,
+      mock: { theme, lang: "it", search: true, notifications: true },
+      width,
+      height,
+    };
+  }
+for (const screen of ["topbar", "results", "bell"])
+  SCENARIOS[`search-${screen}-phone`] = {
+    ...SEARCH[screen],
+    mock: { lang: "it", search: true, notifications: true, device: "phone" },
+    touch: true,
+    width: 390,
+    height: 844,
+  };
+
 /** A trusted key press, or the pointer moved over an element. */
 async function act(p, step) {
   if (step.key) {

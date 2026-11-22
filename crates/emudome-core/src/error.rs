@@ -108,6 +108,11 @@ pub enum ErrorCode {
     /// The library database is there but could not be read: it is not written over, so the
     /// change was not saved. Writes work again once it reads.
     LibraryReadFailed { detail: String },
+    /// The notifications file (`<app local data>/notifications.json`, X03) could not be written.
+    NotificationsWriteFailed { detail: String },
+    /// The notifications file is there but could not be read: it is not written over, so the
+    /// change was not kept. Writes work again once it reads.
+    NotificationsReadFailed { detail: String },
     /// The chosen cover cannot be used (not an image, too large, or no icon in the ROM).
     CoverInvalid { detail: String },
     /// «Annulla il caricamento» with no load to undo in this session.

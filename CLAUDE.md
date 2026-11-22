@@ -58,7 +58,8 @@ quick menu, saves, controls, first run, rewind and screenshots (keyed by the gam
 the user's image framed in «Adatta la copertina» (#85), screen effects (librashader), appearance, and the
 melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
 back to the CPU, encrypted games refused with E10), and the Google Drive sync backend (#20: sign-in, Drive client,
-sync index and conflict rule, tested, not wired into the game flow or the interface yet). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+sync index and conflict rule, tested, not wired into the game flow or the interface yet), and the search everywhere
+and the notification centre in the top bar (#32, X01–X03). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
 before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
@@ -234,6 +235,10 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
+                         notifications.rs (X03, #32: `Notice` codes + values, `Notifications` newest
+                         first, at most 100, a newer kind kept unlisted; `Store` on
+                         `<app local data>/notifications.json`, `$schema` 1, write_atomic, unreadable
+                         never written over; unit-tested)
                          close_flow.rs (closing with a game open: the state machine; pure, unit-tested)
                          game_key.rs (`GameKey`, the one identity of a game: the library's content id;
                          saves in `saves/<console>/<hex>/` (`GameFiles`), settings `game/<console>-<hex>.json`)
@@ -327,6 +332,9 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
+                         notifications.rs (X03: the store of emudome_core::notifications, the
+                         notifications_* commands, notifications://changed; `record` writes off the
+                         caller's thread: gamepad.rs records a controller connected after start)
                          cloud.rs (the Google account: cloud_status / cloud_sign_in / cloud_sign_out, the
                          refresh token through emudome_platform::cloud; no sync wired yet)
                          dirs.rs (the data folders: Tauri's, EMUDOME_DATA_DIR, or the old identifier's for a
@@ -353,7 +361,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          src-tauri/src/first_run.rs), cover (GameCover; L12 CoverPicker: CoverChoices,
                          ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
                          pure, tested; CoverCropDialog for the screenshot toast's «Usa come copertina»,
-                         useCoverRequest), toasts, closing (the loader while a game closes);
+                         useCoverRequest), toasts, closing (the loader while a game closes),
+                         search (X01 / X02, #32: SearchPalette from the top bar, Ctrl + K or Y; search.ts
+                         the matching, pure, tested; useSearchSources the actions, settings and games),
+                         notifications (X03: NotificationBell in the top bar, its panel; notifications.ts
+                         the words, pure, tested);
                          components/ui/ (the primitives),
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
                          lib/settingsModel.ts, lib/cn.ts, lib/design/…),
@@ -452,8 +464,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     the full table and its TODOs are in `docs/combo-tasti.md` section 5;
   - the interface has the input (quick menu open, or no game): the game gets nothing, d-pad / A / B
     become `emu://nav` steps with key repeat (400 ms, then every 120 ms); L1 / R1 `prev` / `next`, X `more`,
-    Select `select`, and the right stick past `pad.stickdpad` (`PadInput::stick`) `stickUp` / `stickDown` /
-    `stickLeft` / `stickRight`, repeating like the d-pad (the C09 screens editor's own steps).
+    Select `select`, Y `search` (the shell opens the search everywhere, X01: a scope's `search` handler,
+    bubbling like `back`), and the right stick past `pad.stickdpad` (`PadInput::stick`) `stickUp` /
+    `stickDown` / `stickLeft` / `stickRight`, repeating like the d-pad (the C09 screens editor's own steps).
   The interface tells Rust the menu is open with the `set_menu_open` command.
 - The library's cover grid is windowed (Trello #91, `components/library/useCoverWindow.ts`, sums in
   `coverWindow.ts`): only the rows near the screen plus 2 are in the DOM, the grid's padding stands for the rest
@@ -514,7 +527,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
   `library://changed` (`LibraryChanged`: the rows that changed, or the whole library), `library://scan`,
-  `saves://migration`, `emu://effect-error`,
+  `saves://migration`, `emu://effect-error`, `notifications://changed` (the whole list, newest first),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
   `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
@@ -846,6 +859,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
+- Search and notifications (#32): the search lives in the shell, which never shows while a game is open, so its
+  actions (the controller's shortcuts) are listed disabled with «Apri un gioco per usarla»; only fullscreen runs.
+  Opening it from the quick menu is not designed. A setting opens at «Tutti i giochi». The only notification
+  recorded today is a controller connected after start; sync done, cover not found and update ready (X06) have
+  no producer and no `Notice` kind yet, and X06's install behaviour waits for the owner's answer and #44.
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`. mGBA for Windows and Android is built by EmuDome from the pinned source archive
   of the commit the buildbot built (Trello #88, `scripts/build-mgba.ps1`): reproducible, but only with the toolchain

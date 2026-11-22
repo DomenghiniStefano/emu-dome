@@ -11,6 +11,8 @@ export const InputVariant = {
   // icon): no edge, no fill, no outline, taking the room left. The browser's own small padding
   // stays, as it does today.
   Bare: 'bare',
+  // Bare in lead's size: the search everywhere's own field (X01), the one line of its panel's top.
+  Palette: 'palette',
 } as const
 export type InputVariant = (typeof InputVariant)[keyof typeof InputVariant]
 
@@ -22,6 +24,8 @@ export const inputVariants = cva('m-0 font-sans text-body text-ink disabled:curs
       [InputVariant.Block]:
         'h-control rounded-control border border-line-strong bg-surface-raised px-field-pad py-0 placeholder:text-ink-muted disabled:opacity-disabled',
       [InputVariant.Bare]: 'min-w-0 flex-1 border-0 bg-transparent outline-none',
+      [InputVariant.Palette]:
+        'min-w-0 flex-1 border-0 bg-transparent text-lead outline-none placeholder:text-ink-muted',
     },
   },
   defaultVariants: { variant: InputVariant.Field },

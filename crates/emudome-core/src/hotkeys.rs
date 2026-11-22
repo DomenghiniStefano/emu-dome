@@ -52,6 +52,9 @@ pub enum Nav {
     More,
     /// Select: a screen's own toggle (the C09 screens editor folds its panel).
     Select,
+    /// Y: open the search (X01, the shell's palette over games, actions and settings). In the
+    /// interface only: in game Y is the game's button, and L3 + Y swaps the screens.
+    Search,
     /// The right stick pushed past `pad.stickdpad`, one step per direction, repeating like the
     /// d-pad: a screen's second pair of arrows (the C09 editor resizes a screen with it).
     #[serde(rename = "stickUp")]
@@ -75,7 +78,13 @@ impl Nav {
             | Nav::StickDown
             | Nav::StickLeft
             | Nav::StickRight => true,
-            Nav::Confirm | Nav::Back | Nav::Prev | Nav::Next | Nav::More | Nav::Select => false,
+            Nav::Confirm
+            | Nav::Back
+            | Nav::Prev
+            | Nav::Next
+            | Nav::More
+            | Nav::Select
+            | Nav::Search => false,
         }
     }
 }
@@ -91,6 +100,7 @@ const NAV_BUTTONS: &[(Button, Nav)] = &[
     (Button::R, Nav::Next),
     (Button::X, Nav::More),
     (Button::Select, Nav::Select),
+    (Button::Y, Nav::Search),
 ];
 
 /// The right stick's directions while the interface has the input ([`PadInput::stick`], as
@@ -600,6 +610,44 @@ mod tests {
     }
 
     #[test]
+    fn y_opens_the_search_in_the_interface_only() {
+        let mut r = router();
+        let t = Instant::now();
+        r.step(pad(&[]), true, t);
+        let out = r.step(pad(&[Button::Y]), true, t);
+        assert_eq!(out.actions, vec![Action::Nav(Nav::Search)]);
+        assert_eq!(out.game_mask, 0);
+        // Held: no repeat.
+        assert!(r
+            .step(pad(&[Button::Y]), true, t + REPEAT_DELAY * 2)
+            .actions
+            .is_empty());
+        // In game Y is the game's button, never a step.
+        let mut game = router();
+        game.step(pad(&[]), false, t);
+        let out = game.step(pad(&[Button::Y]), false, t);
+        assert!(out.actions.is_empty());
+        assert_eq!(out.game_mask, Button::Y.bit());
+        // With the modifier, in the interface: neither the search nor the screens' swap.
+        let mut held = router();
+        held.step(pad(&[Button::L3]), true, t);
+        assert!(held
+            .step(pad(&[Button::L3, Button::Y]), true, t)
+            .actions
+            .is_empty());
+        // With the confirm button moved to B, Y still searches.
+        let mut swapped = Router::new(Bindings {
+            confirm: Button::B,
+            ..Bindings::default()
+        });
+        swapped.step(pad(&[]), true, t);
+        assert_eq!(
+            swapped.step(pad(&[Button::Y]), true, t).actions,
+            vec![Action::Nav(Nav::Search)]
+        );
+    }
+
+    #[test]
     fn the_new_steps_have_the_names_the_interface_reads() {
         for (nav, name) in [
             (Nav::Select, "select"),
@@ -608,6 +656,7 @@ mod tests {
             (Nav::StickLeft, "stickLeft"),
             (Nav::StickRight, "stickRight"),
             (Nav::More, "more"),
+            (Nav::Search, "search"),
         ] {
             assert_eq!(serde_json::to_value(nav).unwrap(), serde_json::json!(name));
         }

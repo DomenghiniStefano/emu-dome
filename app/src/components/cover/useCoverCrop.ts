@@ -119,6 +119,7 @@ export function useCoverCrop(o: CoverCropOptions, frame: Ref<HTMLElement | null>
         void use()
         return true
       case 'back':
+      case 'search':
       case 'stickUp':
       case 'stickDown':
       case 'stickLeft':

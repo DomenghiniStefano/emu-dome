@@ -16,6 +16,7 @@ import type { FolderImport } from '@/generated/FolderImport'
 import type { GameId } from '@/generated/GameId'
 import type { GameOverride } from '@/generated/GameOverride'
 import type { NavAction } from '@/generated/NavAction'
+import type { Notification } from '@/generated/Notification'
 import type { PadFamily } from '@/generated/PadFamily'
 import type { SettingKey } from '@/generated/SettingKey'
 import type { SettingRecent } from '@/generated/SettingRecent'
@@ -85,6 +86,8 @@ export type { HotkeyId } from '@/generated/HotkeyId'
 export type { HotkeyStatus } from '@/generated/HotkeyStatus'
 export type { ImportFormat } from '@/generated/ImportFormat'
 export type { NavAction } from '@/generated/NavAction'
+export type { Notice } from '@/generated/Notice'
+export type { Notification } from '@/generated/Notification'
 export type { PadFamily } from '@/generated/PadFamily'
 export type { Pos } from '@/generated/Pos'
 export type { SettingDevice } from '@/generated/SettingDevice'
@@ -399,6 +402,17 @@ export const emu = {
   /** A game opened without the system files a setting asked for, and fell back (`bios*Missing`). */
   onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
     listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
+  /** X03, the notification centre (per device, kept until read). */
+  notifications: {
+    /** Every notification, newest first. */
+    list: () => invoke<Notification[]>('notifications_list'),
+    markRead: (id: number) => invoke<void>('notifications_mark_read', { id }),
+    /** «Segna tutte come lette». */
+    markAllRead: () => invoke<void>('notifications_mark_all_read'),
+    /** The list changed (`notifications://changed`): the whole list, newest first. */
+    onChanged: (cb: (list: Notification[]) => void): Promise<UnlistenFn> =>
+      listen<Notification[]>('notifications://changed', e => cb(e.payload)),
+  },
   /** What is not working now (native video, surface, audio output, controllers, a stopped thread). */
   diagnostics: () => invoke<ErrorCode[]>('diagnostics'),
   /** The list of what is not working changed (`emu://health`): the whole list, empty when all is well. */

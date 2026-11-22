@@ -20,6 +20,12 @@ import KitState from '@/kit/KitState.vue'
         <Badge :variant="BadgeVariant.Quiet" :size="BadgeSize.Pill">crt.slangp</Badge>
       </div>
     </KitState>
+    <KitState label="Count: one digit, two digits">
+      <div class="flex items-center gap-8">
+        <Badge :variant="BadgeVariant.Count" :size="BadgeSize.Count">2</Badge>
+        <Badge :variant="BadgeVariant.Count" :size="BadgeSize.Count">99</Badge>
+      </div>
+    </KitState>
   </KitSection>
   <KitSection title="Kbd">
     <KitState label="Default: in a line of text, in a list">

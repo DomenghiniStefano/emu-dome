@@ -10,6 +10,7 @@ import {
   pickSection,
   remapFor,
   savesFor,
+  settingRowFor,
   settingsFor,
   showingDetails,
 } from './route'
@@ -58,10 +59,22 @@ describe('the shell route', () => {
       scope: { level: 'game', console: 'gba', game: id },
       title: 'Test',
     })
+    expect(arrivalFor(settings, 'settings')?.row).toBeNull()
     expect(arrivalFor(settings, 'controls')).toBeNull()
     expect(arrivalFor(remapFor(d, game), 'controls')?.game.title).toBe('Test')
     // The details stay remembered behind every jump.
     expect(remapFor(d, game).details).toBe(id)
+  })
+
+  it('the search opens one setting on its page, for every game, the details kept', () => {
+    const r = settingRowFor(openDetails(id), 'video.vsync')
+    expect(r.section).toBe('settings')
+    expect(arrivalFor(r, 'settings')).toEqual({
+      section: 'settings',
+      game: null,
+      row: 'video.vsync',
+    })
+    expect(r.details).toBe(id)
   })
 
   it('an arrival is dropped once read; a route without one is left as it is', () => {

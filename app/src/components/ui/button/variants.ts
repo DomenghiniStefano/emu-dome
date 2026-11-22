@@ -68,6 +68,15 @@ export const ButtonVariant = {
   // A control of the on-screen gamepad (TouchControls): glass with a strong edge, darker while
   // pressed, no fade (a press must show at once). With the Pad sizes.
   Pad: 'pad',
+  // A field that opens something on a click (the top bar's «Cerca giochi, azioni e impostazioni»,
+  // X01): surface with a thin edge, its words muted, from the start. With ButtonSize.Compact.
+  Field: 'field',
+  // An icon alone on the top bar (the notifications' bell, X03): muted, no fill until hovered; the
+  // one whose panel is open (`aria-expanded`) in accent text on accent-soft. With ButtonSize.Icon.
+  BarIcon: 'barIcon',
+  // A result of the search (X01): a full-width row, regular ink, the chosen one (focused) on
+  // accent-soft. With ButtonSize.Result.
+  Result: 'result',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -154,6 +163,12 @@ export const ButtonSize = {
   PadMenu: 'padMenu',
   PadFace: 'padFace',
   PadSystem: 'padSystem',
+  // A search result (ButtonVariant.Result): at least 40px, 12 between its parts, content from the
+  // start.
+  Result: 'result',
+  // A notification (ButtonVariant.Result in the bell's panel, X03): its dot on the first line,
+  // 10 between its parts, 10 / 12 padding.
+  Notice: 'notice',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -223,6 +238,12 @@ export const buttonVariants = cva(
           'rounded-full border-0 aria-checked:outline-ring aria-checked:outline-offset-swatch aria-checked:outline-ink aria-checked:outline-solid',
         [ButtonVariant.Pad]:
           'border-line-strong bg-glass font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-surface-hover',
+        [ButtonVariant.Field]:
+          'justify-start border-line bg-surface font-regular text-ink-muted hover:bg-surface-hover',
+        [ButtonVariant.BarIcon]:
+          'relative border-0 bg-transparent text-ink-muted hover:bg-surface-hover aria-expanded:bg-accent-soft aria-expanded:text-accent-text',
+        [ButtonVariant.Result]:
+          'w-full justify-start border-0 bg-transparent text-left font-regular whitespace-normal text-ink hover:bg-surface-hover focus:bg-accent-soft disabled:hover:bg-transparent',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8 touch:text-label-lead',
@@ -269,6 +290,8 @@ export const buttonVariants = cva(
         [ButtonSize.PadMenu]: 'h-control-lg w-48 rounded-card',
         [ButtonSize.PadFace]: 'size-pad-face rounded-full text-dialog',
         [ButtonSize.PadSystem]: 'h-control rounded-panel px-14 text-overline',
+        [ButtonSize.Result]: 'min-h-control-lg gap-12 px-8 py-4',
+        [ButtonSize.Notice]: 'items-start gap-10 rounded-10 px-12 py-10',
       },
       fade: {
         [ButtonFade.Normal]: 'disabled:opacity-disabled aria-disabled:opacity-disabled',
