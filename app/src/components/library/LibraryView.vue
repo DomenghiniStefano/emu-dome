@@ -14,6 +14,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from '@lucide/vue'
+import CloudDriveShelf from '@/components/cloud/CloudDriveShelf.vue'
 import TvLibrary from '@/components/library/tv/TvLibrary.vue'
 import { Button } from '@/components/ui/button'
 import { uiMode } from '@/composables/useUiMode'
@@ -173,5 +174,7 @@ const shelves = computed(() => uiMode.tv && library.loaded && library.games.leng
         {{ t('library.unreachable.hint') }}
       </p>
     </template>
+    <!-- #31: the games only on Google Drive, «Scarica e gioca». -->
+    <CloudDriveShelf v-if="library.loaded" @play="g => open(g)" />
   </div>
 </template>
