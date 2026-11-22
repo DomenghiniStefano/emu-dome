@@ -3,6 +3,7 @@
 // been open elsewhere (G05), how far a transfer is. Everything comes from the backend's
 // `CloudStatus` / `CloudGame` / `CloudProgress`: nothing here decides what is synced.
 import type {
+  CloudActivity,
   CloudGame,
   CloudGameState,
   CloudProgress,
@@ -10,6 +11,7 @@ import type {
   ErrorCode,
   GameId,
 } from '@/emu'
+import type { CoverGame } from '@/components/cover/GameCover.vue'
 
 /** The status card's state, most pressing first. */
 export type StatusPill =
@@ -108,6 +110,36 @@ export function progressOf(
   game: GameId | null,
 ): CloudProgress | null {
   return p && p.phase === phase && (game === null || p.game === game) ? p : null
+}
+
+/** What a cover shows of a Drive game: the library's own row when this device has it, else its
+ * title on the neutral surface (Drive knows no colour or picture). */
+export function coverOf(g: CloudGame, own: CoverGame | undefined): CoverGame {
+  return (
+    own ?? {
+      console: g.console,
+      title: g.title,
+      colour: 'var(--surface-raised)',
+      cover: 'generated',
+      coverUrl: null,
+    }
+  )
+}
+
+/** One line of «Attività recenti»: its message key, the plural count and the game it names. */
+export interface ActivityLine {
+  key: string
+  n: number
+  /** The game named by the line; null: the line names none (settings, a whole sync). */
+  game: GameId | null
+}
+
+export function activityLine(a: CloudActivity): ActivityLine {
+  const n = a.files
+  if (a.kind === 'settings') return { key: 'cloud.activity.settings', n, game: null }
+  if (a.kind === 'failed' && a.game === null)
+    return { key: 'cloud.activity.failedAll', n, game: null }
+  return { key: `cloud.activity.${a.kind}`, n, game: a.game }
 }
 
 /** A cloud error's identity, for telling it once while it lasts (E07 / E08 / E09). */

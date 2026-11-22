@@ -1,8 +1,10 @@
 // The Cloud section's pure decisions: the status card's pill, the space bar, a game's action and
 // tone, the Drive-only games, G05's minutes, a transfer's share.
 import { describe, expect, it } from 'vitest'
-import type { CloudGame, CloudProgress, CloudStatus, GameId } from '@/emu'
+import type { CloudActivity, CloudGame, CloudProgress, CloudStatus, GameId } from '@/emu'
 import {
+  activityLine,
+  coverOf,
   driveOnly,
   errorKey,
   gameAction,
@@ -153,6 +155,52 @@ describe('transfers', () => {
     expect(progressOf(pull, 'pulling', id('bb'))).toBeNull()
     expect(progressOf(pull, 'pushing', null)).toBeNull()
     expect(progressOf(null, 'pulling', null)).toBeNull()
+  })
+})
+
+describe('coverOf', () => {
+  it('uses the library’s cover, else the title on the neutral surface', () => {
+    const own = {
+      console: 'gba',
+      title: 'Mine',
+      colour: '#123456',
+      cover: 'user',
+      coverUrl: 'emu://cover/x',
+    } as const
+    expect(coverOf(game({}), own)).toBe(own)
+    expect(coverOf(game({ title: 'Drive' }), undefined)).toEqual({
+      console: 'gba',
+      title: 'Drive',
+      colour: 'var(--surface-raised)',
+      cover: 'generated',
+      coverUrl: null,
+    })
+  })
+})
+
+describe('activityLine', () => {
+  const a = (over: Partial<CloudActivity>): CloudActivity => ({
+    at: 1,
+    kind: 'pulled',
+    game: id('aa'),
+    files: 3,
+    error: null,
+    ...over,
+  })
+
+  it('names the game and counts the files', () => {
+    expect(activityLine(a({}))).toEqual({ key: 'cloud.activity.pulled', n: 3, game: id('aa') })
+    expect(activityLine(a({ kind: 'removed', files: 0 }))).toEqual({
+      key: 'cloud.activity.removed',
+      n: 0,
+      game: id('aa'),
+    })
+  })
+
+  it('names no game for the settings or a whole sync that failed', () => {
+    expect(activityLine(a({ kind: 'settings', game: null })).game).toBeNull()
+    expect(activityLine(a({ kind: 'failed', game: null })).key).toBe('cloud.activity.failedAll')
+    expect(activityLine(a({ kind: 'failed' })).key).toBe('cloud.activity.failed')
   })
 })
 

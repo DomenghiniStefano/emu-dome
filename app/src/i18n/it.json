@@ -275,7 +275,6 @@
       "syncNow": "Sincronizza ora"
     },
     "space": {
-      "label": "Spazio su Google Drive",
       "free": "Spazio su Google Drive · {free} liberi di {total}",
       "unlimited": "Spazio su Google Drive · senza limite",
       "unknown": "Spazio su Google Drive · non ancora misurato",
@@ -324,7 +323,7 @@
       "removed": "{title} tolto da Google Drive",
       "failed": "{title}: sincronizzazione non riuscita",
       "someGame": "Un gioco",
-      "allGames": "Sincronizzazione",
+      "failedAll": "Sincronizzazione non riuscita",
       "empty": "Ancora nessuna attività da quando EmuDome è partito."
     },
     "how": {

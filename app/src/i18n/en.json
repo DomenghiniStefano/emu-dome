@@ -275,7 +275,6 @@
       "syncNow": "Sync now"
     },
     "space": {
-      "label": "Google Drive space",
       "free": "Google Drive space · {free} free of {total}",
       "unlimited": "Google Drive space · no limit",
       "unknown": "Google Drive space · not measured yet",
@@ -324,7 +323,7 @@
       "removed": "{title} taken off Google Drive",
       "failed": "{title}: sync didn’t go through",
       "someGame": "A game",
-      "allGames": "Sync",
+      "failedAll": "Sync didn’t go through",
       "empty": "No activity yet since EmuDome started."
     },
     "how": {
