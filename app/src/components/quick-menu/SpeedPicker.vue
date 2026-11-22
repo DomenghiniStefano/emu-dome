@@ -9,6 +9,7 @@ import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segm
 import { msg } from '@/lib/settingsModel'
 import { SpeedChoiceId, chosenSpeed, type SpeedChoice } from './speedChoices'
 import { LabelledBlock } from '@/components/ui/labelled-block'
+import { QuickMenuView, openerMark } from './view'
 
 const props = defineProps<{
   choices: SpeedChoice[]
@@ -21,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{ speed: [Speed]; setSpeeds: [Event] }>()
 
 const { t } = useI18n()
+const setSpeedsMark = openerMark(QuickMenuView.Speed)
 
 const chosen = computed(() => chosenSpeed(props.choices, props.speed))
 
@@ -53,6 +55,7 @@ function choose(id: string) {
   <LabelledBlock :title="t('qm.speedTitle')" :aria-label="t('qm.speedTitle')">
     <template #aside>
       <Button
+        v-bind="setSpeedsMark"
         :variant="ButtonVariant.Link"
         :size="ButtonSize.LabelLink"
         @click="emit('setSpeeds', $event)"

@@ -2,10 +2,36 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { useQuickMenuNavigation } from './useQuickMenuNavigation'
-import { FocusMark, QuickMenuView } from './view'
+import { FocusMark, QuickMenuView, openerMark } from './view'
 
-// A stand-in menu: the main screen's opener buttons, and per page a marked control or only the
-// back button, as the real parts render them.
+// The main screen as its own component, unmounted while a page shows (as QuickMenuHome is), so
+// a control remembered as an element is detached by the time back runs.
+const Home = defineComponent({
+  emits: ['open'],
+  setup(_, { emit }) {
+    return () => [
+      h('button', {
+        id: 'controls',
+        ...openerMark(QuickMenuView.Controls),
+        onClick: (e: Event) => emit('open', QuickMenuView.Controls, e),
+      }),
+      h('button', {
+        id: 'slots',
+        ...openerMark(QuickMenuView.Slots),
+        onClick: (e: Event) => emit('open', QuickMenuView.Slots, e),
+      }),
+      // An opener without the mark: nothing to find again, so back lands on the chosen slot.
+      h('button', {
+        id: 'unmarked',
+        onClick: (e: Event) => emit('open', QuickMenuView.Speed, e),
+      }),
+      h('button', { id: 'chosen', [FocusMark.ChosenSlot]: '' }),
+    ]
+  },
+})
+
+// A stand-in menu: the main screen, and per page a marked control or only the back button, as
+// the real parts render them.
 function harness() {
   const resume = vi.fn()
   const home = vi.fn()
@@ -17,17 +43,7 @@ function harness() {
       return () =>
         h('section', { ref: root }, [
           nav.view.value === QuickMenuView.Home
-            ? [
-                h('button', {
-                  id: 'controls',
-                  onClick: (e: Event) => nav.open(QuickMenuView.Controls, e),
-                }),
-                h('button', {
-                  id: 'slots',
-                  onClick: (e: Event) => nav.open(QuickMenuView.Slots, e),
-                }),
-                h('button', { id: 'chosen', [FocusMark.ChosenSlot]: '' }),
-              ]
+            ? h(Home, { onOpen: (v: QuickMenuView, e: Event) => nav.open(v, e) })
             : [
                 h('button', { id: 'back', [FocusMark.Back]: '' }),
                 nav.view.value === QuickMenuView.Controls
@@ -100,6 +116,50 @@ describe('quick menu navigation', () => {
     expect(nav().view.value).toBe(QuickMenuView.Home)
     expect(home).toHaveBeenCalledOnce()
     expect(focused()).toBe('controls')
+  })
+
+  it('finds the opener again on the remounted main screen, not the detached element', async () => {
+    const { wrapper, nav } = harness()
+    mounted = wrapper
+    const before = wrapper.find('#slots').element
+    await wrapper.find('#slots').trigger('click')
+    await nextTick()
+    expect(before.isConnected).toBe(false)
+
+    nav().back()
+    await nextTick()
+    await nextTick()
+    const after = wrapper.find('#slots').element
+    expect(after).not.toBe(before)
+    expect(document.activeElement).toBe(after)
+  })
+
+  it('lands on the chosen slot when the opener has no mark', async () => {
+    const { wrapper, nav } = harness()
+    mounted = wrapper
+    await wrapper.find('#unmarked').trigger('click')
+    await nextTick()
+    nav().back()
+    await nextTick()
+    await nextTick()
+    expect(focused()).toBe('chosen')
+  })
+
+  it('goes back from a page the search opened onto the chosen slot', async () => {
+    const { wrapper, nav } = harness()
+    mounted = wrapper
+    // A page opened from the main screen first: the search must not bring the focus back to it.
+    await wrapper.find('#controls').trigger('click')
+    await nextTick()
+    nav().back()
+    await nextTick()
+    await nextTick()
+    nav().open(QuickMenuView.Speed, null)
+    await nextTick()
+    nav().back()
+    await nextTick()
+    await nextTick()
+    expect(focused()).toBe('chosen')
   })
 
   it('resumes the game from the main screen', () => {
