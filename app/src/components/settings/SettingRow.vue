@@ -78,6 +78,14 @@ const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
 const disabled = computed(() => state.value.disabled)
+/** Choice cards and a folder list take the card's whole width when the rows sit in columns
+ * (RowColumns). */
+const wide = computed(
+  () =>
+    (kind.value.type === 'choice' && kind.value.style === 'cards') ||
+    kind.value.type === 'apply' ||
+    kind.value.type === 'folders',
+)
 /** A screen layout is edited for one two-screen console (or one of its games) at a time. */
 const twoScreens = computed(() => props.console === 'nds' || props.console === '3ds')
 
@@ -112,7 +120,10 @@ async function choose() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-8 border-t border-line px-12 py-8 first:border-t-0">
+  <div
+    class="flex flex-col gap-8 border-t border-line px-12 py-6 first:border-t-0"
+    :class="{ '[column-span:all]': wide }"
+  >
     <div class="flex flex-wrap items-center gap-x-12 gap-y-8">
       <SettingRowText
         :name="name"
@@ -127,9 +138,9 @@ async function choose() {
         </span>
         <Button
           v-if="state.changedHere && !compact"
-          :variant="ButtonVariant.GhostRegular"
+          :variant="ButtonVariant.Text"
           :fade="ButtonFade.None"
-          :size="ButtonSize.Small"
+          :size="ButtonSize.Bare"
           @click="emit('reset')"
         >
           <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />

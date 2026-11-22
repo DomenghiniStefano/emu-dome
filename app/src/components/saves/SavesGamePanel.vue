@@ -76,7 +76,10 @@ const inGameLine = computed(() =>
       <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03).
            The date only: a quick save has no play time of its own (Cowork, #37).
            `outdated`: an older version of its core made it (saves.rs, `is_outdated`). -->
-      <div v-if="saves.quick.length" class="grid grid-cols-4 gap-8">
+      <div
+        v-if="saves.quick.length"
+        class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))] gap-8"
+      >
         <SlotTile
           v-for="q in saves.quick"
           :key="q.slot"

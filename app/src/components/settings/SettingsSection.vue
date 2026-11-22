@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// A heading of a settings page and its rows on one card. With `note`, a line beside the heading.
+// A heading of a settings page and its rows on one card, in columns on a wide window
+// (RowColumns). With `note`, a line beside the heading.
 import { Card, CardVariant } from '@/components/ui/card'
 import { LabelledBlock } from '@/components/ui/labelled-block'
+import RowColumns from './RowColumns.vue'
 defineProps<{ title: string; note?: string }>()
 </script>
 
@@ -11,7 +13,7 @@ defineProps<{ title: string; note?: string }>()
       <span class="text-caption text-ink-muted">{{ note }}</span>
     </template>
     <Card :variant="CardVariant.List">
-      <slot />
+      <RowColumns><slot /></RowColumns>
     </Card>
   </LabelledBlock>
 </template>

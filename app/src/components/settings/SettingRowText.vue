@@ -21,7 +21,7 @@ const { t } = useI18n()
 
 <template>
   <div
-    class="flex min-w-0 flex-1 basis-setting-text flex-col gap-2"
+    class="flex min-w-0 flex-1 basis-setting-text flex-col"
     :class="{ 'opacity-locked': locked }"
   >
     <div class="flex flex-wrap items-center gap-8">

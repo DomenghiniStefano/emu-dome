@@ -17,7 +17,7 @@ defineProps<{
   >
     <span :class="{ 'text-ink-muted': muted }">{{ action }}</span>
     <span
-      class="inline-flex min-w-shortcut-key items-center justify-end gap-8 text-right font-semibold tabular-nums"
+      class="inline-flex min-h-control-sm min-w-shortcut-key items-center justify-end gap-8 text-right font-semibold tabular-nums"
     >
       <Badge v-if="badge" :variant="BadgeVariant.Reserved">{{ badge }}</Badge>
       <slot />

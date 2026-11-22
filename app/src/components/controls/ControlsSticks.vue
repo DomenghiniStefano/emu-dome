@@ -9,6 +9,7 @@ import { type PadState, type SettingEntry, type SettingRow, type SettingsSchema 
 import { isShown } from '@/lib/settingsModel'
 import type { CaptureDevice } from '@/lib/controls'
 import { Card, CardVariant } from '@/components/ui/card'
+import RowColumns from '@/components/settings/RowColumns.vue'
 import SettingRowView from '@/components/settings/SettingRow.vue'
 import LiveStick from './LiveStick.vue'
 import { axisUnit } from './stick'
@@ -53,18 +54,20 @@ const axes = computed(() => {
         t(`settings.sections.pad.${g.id}`)
       }}</Heading>
       <Card :variant="CardVariant.List">
-        <SettingRowView
-          v-for="e in g.entries"
-          :key="e.key"
-          :entry="e"
-          :row="globalRows[e.key]"
-          :schema="schema"
-          level="global"
-          :level-name="() => t('settingsUi.scope.global')"
-          :scoped="false"
-          @set="v => settings.set(e.key, v)"
-          @reset="settings.reset(e.key)"
-        />
+        <RowColumns>
+          <SettingRowView
+            v-for="e in g.entries"
+            :key="e.key"
+            :entry="e"
+            :row="globalRows[e.key]"
+            :schema="schema"
+            level="global"
+            :level-name="() => t('settingsUi.scope.global')"
+            :scoped="false"
+            @set="v => settings.set(e.key, v)"
+            @reset="settings.reset(e.key)"
+          />
+        </RowColumns>
       </Card>
     </section>
 

@@ -25,9 +25,9 @@ withDefaults(
 </script>
 
 <template>
-  <div class="flex flex-col gap-8 border-t border-line px-12 py-8 first:border-t-0">
+  <div class="flex flex-col gap-8 border-t border-line px-12 py-6 first:border-t-0">
     <div class="flex items-center gap-x-12">
-      <div class="flex min-w-0 flex-1 flex-col gap-2">
+      <div class="flex min-w-0 flex-1 flex-col">
         <div class="flex flex-wrap items-center gap-8">
           <span v-if="changed" class="size-6 rounded-full bg-accent-text" aria-hidden="true"></span>
           <span class="font-medium" :class="{ 'text-ink-muted': locked }">{{ name }}</span>
@@ -41,9 +41,9 @@ withDefaults(
         >
           <Button
             v-if="changed && resetText"
-            :variant="ButtonVariant.GhostRegular"
+            :variant="ButtonVariant.Text"
             :fade="ButtonFade.None"
-            :size="ButtonSize.Small"
+            :size="ButtonSize.Bare"
           >
             <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />
             {{ resetText }}

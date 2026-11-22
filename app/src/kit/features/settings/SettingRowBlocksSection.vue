@@ -115,8 +115,9 @@ const CYCLE = ['Verticale', 'Affiancati', 'Grande e piccolo', 'Solo lo schermo s
         :status="IssueStatus.Proposed"
       >
         Sotto il testo, «Modifica l’elenco» (scelta multipla) è un pulsante fantasma color ambra,
-        «Aggiungi una cartella…» è un pulsante Soft, «Ripristina» fantasma neutro. L’ambra va solo
-        sull’azione principale: qui è un’azione secondaria e attira l’occhio più del valore scelto.
+        «Aggiungi una cartella…» è un pulsante Soft, «Ripristina» sono parole senza riquadro.
+        L’ambra va solo sull’azione principale: qui è un’azione secondaria e attira l’occhio più del
+        valore scelto.
         <template #current>
           <RowCard><KitSettingRow :entry="E.cycle" level="console" console-id="nds" /></RowCard>
         </template>
