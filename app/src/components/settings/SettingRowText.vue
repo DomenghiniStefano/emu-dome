@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // A setting's name and description, with its marks: the accent dot and «Modificato» when it is
-// changed at this level, «Solo su questo computer» for a per-device value. A locked row fades
+// changed at this level, «Solo su questo computer» for a per-device value; the slot is a line under
+// the description (the row's «Ripristina» / «Come in …»). A locked row fades
 // this text and greys the name (the control beside it keeps its colour).
 import { useI18n } from 'vue-i18n'
 import type { SettingDevice } from '@/emu'
@@ -33,5 +34,8 @@ const { t } = useI18n()
       <Badge v-if="onlyOn">{{ t(`settingsUi.onlyHere.${onlyOn}`) }}</Badge>
     </div>
     <div class="text-caption text-ink-muted">{{ desc }}</div>
+    <div v-if="$slots.default" class="flex flex-wrap items-center gap-8 text-caption">
+      <slot />
+    </div>
   </div>
 </template>

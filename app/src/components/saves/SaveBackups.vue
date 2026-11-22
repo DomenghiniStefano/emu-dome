@@ -17,7 +17,7 @@ const { t } = useI18n()
     <div
       v-for="b in backups"
       :key="b.name"
-      class="flex items-center gap-12 px-16 py-10 not-first:border-t not-first:border-line"
+      class="flex items-center gap-8 px-12 py-6 not-first:border-t not-first:border-line"
     >
       <span class="min-w-0 flex-1 tabular-nums">{{ saveWhenLabel(b.at) }}</span>
       <span class="text-caption text-ink-muted">{{ t(`saves.reason.${b.reason}`) }}</span>

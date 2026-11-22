@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Proposal for SettingRow (Kit review, not applied): the row's level marks live in the text
+// Proposal for SettingRow (Kit review; the level marks part is applied in SettingRow.vue, the
+// locked look is not): the row's level marks live in the text
 // column, on a line under the description («Ripristina» / «Usa il valore di …», or «Come in …»),
 // so the control stays alone on the right at every level and never wraps under the text. A locked
 // row fades its control, not its words: the reason stays readable in every theme.
@@ -24,8 +25,8 @@ withDefaults(
 </script>
 
 <template>
-  <div class="flex flex-col gap-12 border-t border-line px-16 py-12 first:border-t-0">
-    <div class="flex items-center gap-12">
+  <div class="flex flex-col gap-8 border-t border-line px-12 py-8 first:border-t-0">
+    <div class="flex items-center gap-x-12">
       <div class="flex min-w-0 flex-1 flex-col gap-2">
         <div class="flex flex-wrap items-center gap-8">
           <span v-if="changed" class="size-6 rounded-full bg-accent-text" aria-hidden="true"></span>
@@ -50,7 +51,7 @@ withDefaults(
           <span v-if="inherited" class="text-ink-muted">{{ inherited }}</span>
         </div>
       </div>
-      <div class="flex flex-none items-center gap-12" :class="{ 'opacity-locked': locked }">
+      <div class="flex flex-none items-center gap-8" :class="{ 'opacity-locked': locked }">
         <slot />
       </div>
     </div>

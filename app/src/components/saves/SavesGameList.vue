@@ -29,7 +29,7 @@ const { t } = useI18n()
 
 <template>
   <aside
-    class="flex min-h-0 flex-none basis-game-list flex-col gap-14 overflow-auto border-r border-line px-16 py-24"
+    class="flex min-h-0 flex-none basis-game-list flex-col gap-8 overflow-auto border-r border-line px-8 py-12"
     :aria-label="t('saves.games')"
   >
     <div class="flex items-center justify-between gap-8">

@@ -1,8 +1,6 @@
 <script setup lang="ts">
 // SettingRow's controls under the text: the multiple choice's chips, the colour swatches, the
 // choice cards, the presets (`apply`) and the game folders.
-import { ref } from 'vue'
-import SettingSwatches from '@/components/settings/SettingSwatches.vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Chip, ChipVariant } from '@/components/ui/chip'
 import KitIssue from '@/kit/KitIssue.vue'
@@ -28,24 +26,23 @@ const surroundSoon = SURROUND.map(o =>
     : o,
 )
 const CYCLE = ['Verticale', 'Affiancati', 'Grande e piccolo', 'Solo lo schermo superiore']
-const accent = ref('#2f7ae5')
 </script>
 
 <template>
   <KitSection title="Setting row · controls under the text" :group="KitGroup.Settings">
-    <KitState label="Multiple choice (chips): the list, «Modifica l’elenco» to edit">
+    <KitState class="w-full" label="Multiple choice (chips): the list, «Modifica l’elenco» to edit">
       <RowCard><KitSettingRow :entry="E.cycle" level="console" console-id="nds" /></RowCard>
     </KitState>
-    <KitState label="Colour swatches, changed">
+    <KitState class="w-full" label="Colour swatches, changed">
       <RowCard><KitSettingRow :entry="E.accent" value="#2f7ae5" source="global" /></RowCard>
     </KitState>
-    <KitState label="Choice cards with a preview">
+    <KitState class="w-full" label="Choice cards with a preview">
       <RowCard><KitSettingRow :entry="E.surround" value="cover" source="global" /></RowCard>
     </KitState>
-    <KitState label="Presets (apply), not wired yet">
+    <KitState class="w-full" label="Presets (apply), not wired yet">
       <RowCard><KitSettingRow :entry="E.preset" /></RowCard>
     </KitState>
-    <KitState label="Game folders, per device (a long path is cut)">
+    <KitState class="w-full" label="Game folders, per device (a long path is cut)">
       <RowCard>
         <KitSettingRow
           :entry="E.folders"
@@ -57,7 +54,7 @@ const accent = ref('#2f7ae5')
         />
       </RowCard>
     </KitState>
-    <KitState label="Game folders, none yet">
+    <KitState class="w-full" label="Game folders, none yet">
       <RowCard><KitSettingRow :entry="E.folders" /></RowCard>
     </KitState>
 
@@ -73,7 +70,7 @@ const accent = ref('#2f7ae5')
           <RowCard><KitSettingRow :entry="E.surround" value="cover" source="global" /></RowCard>
         </template>
         <template #proposed>
-          <div class="w-page max-w-full">
+          <div class="w-full">
             <SettingsCardsProposal
               setting-key="video.surround"
               :options="surroundSoon"
@@ -100,7 +97,7 @@ const accent = ref('#2f7ae5')
           </span>
         </template>
         <template #proposed>
-          <div class="w-page max-w-full">
+          <div class="w-full">
             <SettingsCardsProposal
               setting-key="video.surround"
               :options="surroundSoon"
@@ -155,40 +152,6 @@ const accent = ref('#2f7ae5')
         <template #solution>
           in SettingChips.vue i due pulsanti («Modifica l’elenco», «Fatto») passano da
           `ButtonVariant.GhostAccent` a `ButtonVariant.Soft`, come le altre azioni dentro una riga.
-        </template>
-      </KitIssue>
-      <KitIssue
-        title="Colore d’accento: i pallini vanno a capo e lasciano vuota la destra"
-        :status="IssueStatus.Proposed"
-      >
-        I cinque pallini stanno su una riga loro, sotto il testo, mentre a destra resta solo
-        «Ripristina»: la riga è alta il doppio di un interruttore e metà è vuota. Cinque pallini
-        occupano meno spazio dei segmenti di «Tema», che stanno accanto al testo.
-        <template #current>
-          <RowCard><KitSettingRow :entry="E.accent" value="#2f7ae5" source="global" /></RowCard>
-        </template>
-        <template #proposed>
-          <RowCard>
-            <SettingsRowProposal
-              name="Colore d’accento"
-              desc="Il colore dei pulsanti principali e della selezione."
-              changed
-              reset-text="Ripristina"
-            >
-              <SettingSwatches
-                setting-key="general.accent"
-                label="Colore d’accento"
-                :swatches="['#faa40f', '#7152f7', '#2f7ae5', '#1f9d8a', '#c2417a']"
-                :value="accent"
-                :disabled="false"
-                @set="c => (accent = c)"
-              />
-            </SettingsRowProposal>
-          </RowCard>
-        </template>
-        <template #solution>
-          in SettingRow.vue SettingSwatches passa nella colonna di destra, con i controlli in linea
-          (resta sotto il testo solo quando la riga è stretta, come gli altri).
         </template>
       </KitIssue>
     </template>

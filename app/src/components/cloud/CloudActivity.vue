@@ -48,7 +48,7 @@ function text(a: CloudActivity) {
       <div
         v-for="(a, i) in rows"
         :key="`${a.at}-${i}`"
-        class="flex min-h-52 items-center gap-12 px-12 py-8 not-first:border-t not-first:border-line"
+        class="flex items-center gap-8 px-12 py-6 not-first:border-t not-first:border-line"
       >
         <component
           :is="ICON[a.kind]"

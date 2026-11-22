@@ -132,7 +132,7 @@ const hint = computed(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-18">
+  <div class="flex flex-col gap-12">
     <RemapToolbar
       v-model:level="level"
       v-model:ab="ab"
@@ -141,10 +141,10 @@ const hint = computed(() => {
       :with-ab="family !== 'keyboard'"
     />
 
-    <div class="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start gap-20">
+    <div class="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start gap-12">
       <Card as="section" :variant="CardVariant.List">
         <div
-          class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-12 bg-surface-raised px-16 py-8 text-overline text-ink-muted"
+          class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-8 bg-surface-raised px-12 py-6 text-overline text-ink-muted"
         >
           <span>{{ t('controls.inGame') }}</span>
           <span>{{ family === 'keyboard' ? t('controls.onKeyboard') : t('controls.onPad') }}</span>
@@ -175,7 +175,7 @@ const hint = computed(() => {
         </template>
       </Card>
 
-      <aside class="flex flex-col gap-12">
+      <aside class="flex flex-col gap-8">
         <TesterCard
           :hint="hint"
           :cells="cells"
@@ -183,7 +183,7 @@ const hint = computed(() => {
           :last="tester.last.value"
           :idle="t('controls.noPress')"
         />
-        <Card class="gap-10">
+        <Card class="gap-8">
           <Heading as="h2" :variant="HeadingVariant.Overline">{{
             t('controls.otherActions')
           }}</Heading>

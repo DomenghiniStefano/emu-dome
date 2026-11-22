@@ -29,13 +29,13 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
 
 <template>
   <nav
-    class="flex flex-none basis-sidebar flex-col gap-16 overflow-y-auto border-r border-line px-12 py-24"
+    class="flex flex-none basis-sidebar flex-col gap-12 overflow-y-auto border-r border-line px-8 py-12"
     :aria-label="t('settingsUi.categories')"
   >
-    <div class="flex flex-col gap-12">
+    <div class="flex flex-col gap-8">
       <Heading as="h1" class="px-8">{{ t('settingsUi.title') }}</Heading>
       <label
-        class="flex h-control-lg items-center gap-8 rounded-8 border border-line-strong bg-surface-raised px-12 text-ink-muted"
+        class="flex h-control items-center gap-8 rounded-control border border-line-strong bg-surface-raised px-8 text-ink-muted"
       >
         <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
         <span class="sr-only">{{ t('settingsUi.search') }}</span>

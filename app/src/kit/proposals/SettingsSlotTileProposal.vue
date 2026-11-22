@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Proposal for SlotTile and SaveThumb (Kit review, not applied): the buttons sit at the bottom of
+// Proposal for SlotTile and SaveThumb (Kit review; the buttons part is applied): the buttons sit at the bottom of
 // the tile (`mt-auto`), so a row of tiles keeps them on one line when one tile has «Potrebbe non
 // caricarsi»; a save with no picture shows the raised surface with an icon, not a black box that
 // reads as a black screen.
@@ -16,10 +16,10 @@ withDefaults(
 
 <template>
   <Card :pad="CardPad.Tight" class="min-w-0 gap-6">
-    <SaveThumb v-if="thumbUrl" :src="thumbUrl" class="aspect-4/3 rounded-4" />
+    <SaveThumb v-if="thumbUrl" :src="thumbUrl" class="aspect-4/3 rounded-control" />
     <span
       v-else
-      class="flex aspect-4/3 items-center justify-center rounded-4 bg-surface-raised text-ink-faint"
+      class="flex aspect-4/3 items-center justify-center rounded-control bg-surface-raised text-ink-faint"
       aria-hidden="true"
     >
       <ImageOff :size="20" :stroke-width="1.75" />

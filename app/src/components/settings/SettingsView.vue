@@ -201,7 +201,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       @pick="pick"
     />
 
-    <SectionPage v-if="!uiMode.tv" as="main" :width="SectionWidth.Page">
+    <SectionPage v-if="!uiMode.tv" as="main" :width="SectionWidth.Full">
       <LicencesPage v-if="licences" @close="closeLicences" />
       <SettingsOverview
         v-else-if="page === OVERVIEW && !searching"
@@ -220,7 +220,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           <Heading>{{ t(msg.page(page)) }}</Heading>
           <div class="text-ink-muted">{{ t(msg.summary(page)) }}</div>
         </div>
-        <Card v-if="INTROS.has(page)" :pad="CardPad.Snug" class="flex-row gap-10">
+        <Card v-if="INTROS.has(page)" :pad="CardPad.Snug" class="flex-row gap-8">
           <!-- 1px down to sit on the text's first line -->
           <Info
             class="mt-px flex-none text-accent-text"

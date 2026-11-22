@@ -28,11 +28,11 @@ const POINTS = ['saves', 'settings', 'games'] as const
 
 <template>
   <div class="grid flex-1 place-items-center">
-    <section class="flex w-full max-w-lead flex-col gap-16">
+    <section class="flex w-full max-w-lead flex-col gap-12">
       <Heading as="h1" :variant="HeadingVariant.Display">{{ t('cloud.signedOut.title') }}</Heading>
       <p class="m-0 text-lead text-ink-muted">{{ t('cloud.signedOut.lead') }}</p>
       <ul class="m-0 flex list-none flex-col gap-8 p-0 text-lead">
-        <li v-for="p in POINTS" :key="p" class="flex gap-10">
+        <li v-for="p in POINTS" :key="p" class="flex gap-8">
           <!-- Down to sit on the text's first line. -->
           <Check
             class="mt-4 flex-none text-success"
@@ -43,7 +43,7 @@ const POINTS = ['saves', 'settings', 'games'] as const
           <span>{{ t(`cloud.signedOut.${p}`) }}</span>
         </li>
       </ul>
-      <div class="mt-8 flex flex-wrap items-center gap-12">
+      <div class="mt-4 flex flex-wrap items-center gap-8">
         <Button
           :variant="ButtonVariant.Primary"
           :size="ButtonSize.Large"

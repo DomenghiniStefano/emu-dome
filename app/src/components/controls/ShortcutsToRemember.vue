@@ -22,7 +22,7 @@ const { t } = useI18n()
       <div
         v-for="l in lines"
         :key="l.key"
-        class="flex min-h-control-lg items-center gap-12 border-line px-16 py-4 not-first:border-t"
+        class="flex min-h-control items-center gap-8 border-line px-12 py-2 not-first:border-t"
       >
         <span class="min-w-key-chip flex-none">
           <Kbd>{{ l.chip }}</Kbd>
