@@ -78,7 +78,7 @@ const DEFAULTS: Record<Family, Record<TouchOrientation, Placement>> = {
     },
     portrait: {
       dpad: [0, 1, 96, -150],
-      b: [1, 1, -136, -130],
+      b: [1, 1, -118, -122],
       a: [1, 1, -60, -190],
       select: [0.5, 1, -50, -36],
       start: [0.5, 1, 50, -36],
@@ -100,7 +100,7 @@ const DEFAULTS: Record<Family, Record<TouchOrientation, Placement>> = {
       l: [0, 1, 60, -300],
       r: [1, 1, -60, -300],
       dpad: [0, 1, 96, -150],
-      b: [1, 1, -136, -130],
+      b: [1, 1, -118, -122],
       a: [1, 1, -60, -190],
       select: [0.5, 1, -50, -36],
       start: [0.5, 1, 50, -36],

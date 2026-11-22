@@ -57,6 +57,11 @@ const AREAS: Area[] = [
   { width: 740, height: 360 },
 ]
 const CONSOLES: ConsoleId[] = ['gb', 'gbc', 'gba', 'nds', '3ds']
+/** The narrowest phones (320 px): the two-button consoles fit there too; the DS / 3DS diamond
+ * needs 360. */
+const NARROW: Area = { width: 320, height: 640 }
+const areasOf = (console: ConsoleId) =>
+  console === 'nds' || console === '3ds' ? AREAS : [...AREAS, NARROW]
 
 function setup(console: ConsoleId, saved: Partial<Record<TouchOrientation, TouchLayout>> = {}) {
   return {
@@ -70,7 +75,7 @@ function setup(console: ConsoleId, saved: Partial<Record<TouchOrientation, Touch
 
 describe('default layouts', () => {
   for (const console of CONSOLES) {
-    for (const area of AREAS) {
+    for (const area of areasOf(console)) {
       const o = orientationOf(area)
       it(`${console} ${o} ${area.width}×${area.height}: every control, inside, none on another`, () => {
         const layout = defaultLayout(console, o, area, AVAILABLE[console])
