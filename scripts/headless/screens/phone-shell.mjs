@@ -1,8 +1,9 @@
 // The phone's shell (Trello #29): the tab bar upright, the rail as a column on the camera's edge
 // on its side (both ways round: `orientation` sets `screen.orientation.type`), the quick menu on
 // its side, and E13's warning. Device «phone», a touch screen, in Italian. Named
-// `phone-<screen>-<size>`: `p412` 412 × 892 (Galaxy S23), `p390` 390 × 844 and `p360` 360 × 740
-// upright, `l892` 892 × 412, `l844` 844 × 390 and `l740` 740 × 360 on the side, camera left (`-left`) or right (`-right`).
+// `phone-<screen>-<size>`: `p412` 412 × 892 (Galaxy S23), `p390` 390 × 844, `p360` 360 × 740 and
+// `p780` 360 × 780 (the S23 with its display zoomed, #105) upright, `l892` 892 × 412, `l844`
+// 844 × 390, `l780` 780 × 360 and `l740` 740 × 360 on the side, camera left (`-left`) or right (`-right`).
 
 /** The phone's tab bar or side column: the n-th section. */
 const section = (n) =>
@@ -89,8 +90,18 @@ const GAME = {
   },
 };
 
-const PORTRAIT = { p412: [412, 892], p390: [390, 844], p360: [360, 740] };
-const LANDSCAPE = { l892: [892, 412], l844: [844, 390], l740: [740, 360] };
+const PORTRAIT = {
+  p412: [412, 892],
+  p390: [390, 844],
+  p360: [360, 740],
+  p780: [360, 780],
+};
+const LANDSCAPE = {
+  l892: [892, 412],
+  l844: [844, 390],
+  l780: [780, 360],
+  l740: [740, 360],
+};
 const SIDES = {
   left: { type: "landscapePrimary", angle: 90 },
   right: { type: "landscapeSecondary", angle: 270 },

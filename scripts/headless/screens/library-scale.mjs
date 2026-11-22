@@ -8,12 +8,13 @@
 //   cd app; pnpm exec vite --port <free port> --strictPort
 //   chrome --headless=new --disable-gpu --remote-debugging-port=<cdp> --user-data-dir=<scratch dir>
 //   node scripts/headless/screens/library-scale.mjs <cdp> http://localhost:<port>/ [games] [--check]
-//     [--families] [--phone [--grid]]
+//     [--families] [--phone [--grid] [--side]]
 // Restart vite before measuring code edited in a worktree: its watcher can miss the writes.
 //
 // `--phone` (#29): a phone upright (412 × 892, the Galaxy S23), its library as the list (one row
 // per step, «Gioca» at a row's right); with `--grid` the compact grid (three columns, a cover per
-// step). The checks follow each layout's moves.
+// step). `--side` (#105): the phone on its side (780 × 360, the S23 with its display zoomed), the
+// list in two columns of rows. The checks follow each layout's moves.
 import fs from "node:fs";
 import path from "node:path";
 
@@ -24,13 +25,14 @@ const grouped = args.includes("--families");
 const phone = args.includes("--phone");
 const compact = phone && args.includes("--grid");
 const list = phone && !compact;
-const FLAGS = ["--check", "--families", "--phone", "--grid"];
+const side = phone && args.includes("--side");
+const FLAGS = ["--check", "--families", "--phone", "--grid", "--side"];
 const [cdpPort, baseUrl, count = "3000"] = args.filter(
   (a) => !FLAGS.includes(a),
 );
 if (!cdpPort || !baseUrl) {
   console.error(
-    "usage: node library-scale.mjs <cdpPort> <baseUrl> [games] [--check] [--families] [--phone [--grid]]",
+    "usage: node library-scale.mjs <cdpPort> <baseUrl> [games] [--check] [--families] [--phone [--grid] [--side]]",
   );
   process.exit(2);
 }
@@ -95,9 +97,17 @@ const check = (what, got, want) => {
 await send("Page.enable");
 await send(
   "Emulation.setDeviceMetricsOverride",
-  phone
-    ? { width: 412, height: 892, deviceScaleFactor: 1, mobile: true }
-    : { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false },
+  side
+    ? {
+        width: 780,
+        height: 360,
+        deviceScaleFactor: 1,
+        mobile: true,
+        screenOrientation: { type: "landscapePrimary", angle: 90 },
+      }
+    : phone
+      ? { width: 412, height: 892, deviceScaleFactor: 1, mobile: true }
+      : { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false },
 );
 // The focus ring and `:focus` as in a focused window.
 await send("Emulation.setFocusEmulationEnabled", { enabled: true });
@@ -189,6 +199,26 @@ if (checking) {
   };
 
   check("the list is windowed", (await stats()).tiles < 200, true);
+  if (side && list) {
+    await js(`${main}.scrollTop = 0`);
+    await sleep(300);
+    check(
+      "on its side: two columns of rows",
+      await js(
+        `getComputedStyle(${grid}).gridTemplateColumns.trim().split(/\\s+/).length`,
+      ),
+      2,
+    );
+    // A game is in view when its whole row is inside the main area.
+    const whole = await js(`(() => {
+      const m = ${main}.getBoundingClientRect()
+      return [...document.querySelectorAll('[data-game]')].filter(t => {
+        const r = t.getBoundingClientRect()
+        return r.top >= m.top - 1 && r.bottom <= m.bottom + 1
+      }).length
+    })()`);
+    check(`on its side: at least 6 games in view (${whole})`, whole >= 6, true);
+  }
 
   // Down by rows: two steps on the desk (cover → «Gioca» or «…» → the cover below), one on the
   // phone (the next row, or the cover below), same column, lower.
@@ -216,6 +246,21 @@ if (checking) {
   await js("__step('right')");
   if (list) {
     check("right: the row's «Gioca»", (await js("__at()")).part, "play");
+    if (side) {
+      const from = (await js("__at()")).game;
+      await js("__step('right')");
+      const to = await js("__at()");
+      check(
+        "on its side, right from «Gioca»: the next column's row",
+        to.part === "cover" && to.game !== from,
+        true,
+      );
+      await js("__step('left')");
+      check("and left again: back on that «Gioca»", await js("__at()"), {
+        game: from,
+        part: "play",
+      });
+    }
     await js("__step('left')");
     check("left: back on the row", (await js("__at()")).part, "cover");
   } else {
@@ -264,7 +309,7 @@ if (checking) {
   );
   const below = !phone
     ? { game: parked.game, part: "play" }
-    : { game: topIds[list ? 1 : cols], part: "cover" };
+    : { game: topIds[cols], part: "cover" };
   await js(`${main}.scrollTop = ${main}.scrollHeight`);
   await sleep(400);
   check(
