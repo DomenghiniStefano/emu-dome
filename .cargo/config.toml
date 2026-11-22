@@ -1,0 +1,18 @@
+# Cargo configuration for every build of this workspace (cargo reads it from any folder below this one,
+# app/src-tauri included, where the Tauri CLI runs cargo).
+#
+# Android: 16 KB pages. Google Play requires 16 KB-page support for apps targeting Android 15+ (the app
+# targets SDK 37), and a device with 16 KB pages loads a library whose LOAD segments are 4 KB-aligned
+# only in its compatibility mode, with a warning. NDK r27 (the one we use) still links with 4 KB pages
+# by default, so libemudome_app.so gets both switches Google's guide gives for r27 and lower
+# (https://developer.android.com/guide/practices/page-sizes): max-page-size aligns the LOAD segments,
+# common-page-size ends GNU_RELRO on a 16 KB boundary. Such a library still loads on 4 KB-page devices.
+#
+# This is not OS code in the sense of the OS gate (scripts/check looks at `cfg` in .rs files and
+# `[target...]` tables in Cargo.toml): it only changes how the Android link is made, no code branches.
+# The Tauri CLI passes its own flags in CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS (-landroid,
+# -llog, -lOpenSLES); cargo appends those to the ones below instead of replacing them (checked with
+# cargo 1.95 and `cargo build -v`). A plain RUSTFLAGS or CARGO_ENCODED_RUSTFLAGS in the environment
+# would replace them: readelf -lW on the built library shows `Align 0x4000` on every LOAD when they hold.
+[target.aarch64-linux-android]
+rustflags = ["-C", "link-arg=-Wl,-z,max-page-size=16384", "-C", "link-arg=-Wl,-z,common-page-size=16384"]

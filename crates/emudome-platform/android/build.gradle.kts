@@ -1,5 +1,5 @@
 // EmuDome's Android glue: the SurfaceView under the WebView, the back button, games as documents
-// (see ../src/android.rs).
+// (see ../src/android.rs), the controllers (../src/pads/android.rs).
 // Included in the app's Gradle project by tauri-build (DEP_EMUDOME_PLATFORM_ANDROID_LIBRARY_PATH).
 import groovy.json.JsonSlurper
 import java.security.MessageDigest

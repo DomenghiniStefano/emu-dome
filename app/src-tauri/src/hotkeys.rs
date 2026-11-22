@@ -58,7 +58,6 @@ pub enum HotkeyEvent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Origin {
     Keyboard,
-    #[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
     Pads,
 }
 
@@ -132,7 +131,6 @@ impl HotkeyRunner {
     }
 
     /// The controller router's actions.
-    #[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
     pub fn run(&self, actions: Vec<Action>, from: Origin) {
         if actions.is_empty() {
             return;

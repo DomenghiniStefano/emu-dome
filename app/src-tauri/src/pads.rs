@@ -1,7 +1,7 @@
 //! What the interface knows about the controllers (Controls section, C01–C04), on every
 //! platform: the connected pads, the live state for the tester and the capture field, and the
-//! bindings resolved from the settings. The SDL thread that fills it is `gamepad.rs`
-//! (desktop only: on Android the list stays empty for now).
+//! bindings resolved from the settings. The controller thread that fills it is `gamepad.rs`
+//! (SDL3 on the desktop, Android's input events on Android: `emudome_platform::pads`).
 //!
 //! Commands (called through `app/src/emu.ts` only): `gamepad_list`, `gamepad_watch`,
 //! `gamepad_capture`, `controls_bindings`.
@@ -24,7 +24,7 @@ use ts_rs::TS;
 use crate::settings::SettingsState;
 
 /// A connected controller. Payload of `emu://gamepad-connected|disconnected|changed`.
-/// TypeScript: `PadInfo` (generated). `name` is `None` when SDL knows none.
+/// TypeScript: `PadInfo` (generated). `name` is `None` when the system knows none.
 #[derive(Clone, Debug, Serialize, TS)]
 #[ts(export_to = "app/")]
 pub struct PadInfo {
@@ -33,7 +33,7 @@ pub struct PadInfo {
     pub family: Family,
     pub vendor: u16,
     pub product: u16,
-    /// Battery charge left, 0..=100 (SDL's estimate); `None` when the controller has no battery
+    /// Battery charge left, 0..=100 (the system's estimate); `None` when the controller has no battery
     /// (wired) or does not say.
     pub battery: Option<u8>,
 }
@@ -52,7 +52,6 @@ pub struct PadState {
 
 /// Payload of `emu://gamepad-state`.
 #[derive(Clone, Debug, PartialEq, Serialize, TS)]
-#[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
 #[ts(export_to = "app/")]
 pub struct PadStates {
     pub pads: Vec<PadState>,

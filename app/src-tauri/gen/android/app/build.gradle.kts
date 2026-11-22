@@ -103,6 +103,17 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    // EmuDome: 16 KB pages (Google Play, apps targeting Android 15+). The native libraries stay
+    // uncompressed in the APK / AAB, and AGP (8.5.1 and later) aligns them to 16 KB in the zip, so a
+    // 16 KB-page device maps them in place. It is AGP's default for minSdk 23+; written down so that a
+    // later change to minSdk or a copied template cannot turn it off silently. Check a built APK with
+    // `zipalign -c -P 16 -v 4 <apk>` (SDK build-tools 35+). The libraries' own ELF alignment is the
+    // other half: `.cargo/config.toml` for libemudome_app.so, cores.lock for the cores.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
 }
 
 kotlin {
