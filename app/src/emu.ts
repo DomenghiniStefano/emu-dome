@@ -91,6 +91,7 @@ export type { ErrorCode } from '@/generated/ErrorCode'
 export type { FirstRunStep } from '@/generated/FirstRunStep'
 export type { FolderImport } from '@/generated/FolderImport'
 export type { GameId } from '@/generated/GameId'
+export type { GameFamily } from '@/generated/GameFamily'
 export type { GameOverride } from '@/generated/GameOverride'
 export type { GameRegion } from '@/generated/GameRegion'
 export type { HotkeyId } from '@/generated/HotkeyId'
@@ -359,6 +360,10 @@ export const emu = {
       invoke<void>('library_set_flags', { id, ...flags }),
     /** «Nome mostrato» (L10); blank goes back to the ROM's title. */
     setName: (id: GameId, name: string) => invoke<void>('library_set_name', { id, name }),
+    /** «Mostra questa in libreria» (#102): the library shows `id` for its family; `pin` false
+     * gives the family back to the version launched last. Arrives as `library://changed`
+     * `families`. */
+    pinVersion: (id: GameId, pin: boolean) => invoke<void>('library_pin_version', { id, pin }),
     onScan: (cb: (e: LibraryScanEvent) => void): Promise<UnlistenFn> =>
       listen<LibraryScanEvent>('library://scan', e => cb(e.payload)),
     /** What changed in the library: some games' rows (cover, flags, name, play time), or all of

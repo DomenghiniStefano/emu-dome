@@ -785,8 +785,10 @@ fn is_option_id(id: &str) -> bool {
 #[test]
 fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
     // 157 of the design, less `speed.splist` and `general.qmorder` (owner, 18/11), plus the
-    // GB, GBC, DSi ARM7, DSi ARM9 and DSi firmware rows (owner, 2026-11-21, Trello #89).
-    assert_eq!(ENTRIES.len(), 160);
+    // GB, GBC, DSi ARM7, DSi ARM9 and DSi firmware rows (owner, 2026-11-21, Trello #89), plus
+    // the game clock's offset and date rows (Trello #102), and `library.versions` in place of
+    // `library.region` (owner, 2026-11-22, #102).
+    assert_eq!(ENTRIES.len(), 164);
 }
 
 #[test]
@@ -859,7 +861,8 @@ fn choices_have_unique_well_formed_options() {
             | Kind::Text
             | Kind::Action { .. }
             | Kind::Bindings { .. }
-            | Kind::ScreenLayout => continue,
+            | Kind::ScreenLayout
+            | Kind::DateTime { .. } => continue,
             Kind::Apply { options } => options,
         };
         assert!(!options.is_empty(), "{}: no options", e.key);
@@ -1136,7 +1139,11 @@ fn show_if_names_a_choice_of_the_same_page_and_its_options() {
             "video.surroundSet",
             "video.surroundImg",
             "video.surroundDim",
-            "video.surroundAnim"
+            "video.surroundAnim",
+            "saves.rtcdays",
+            "saves.rtchours",
+            "saves.rtcminutes",
+            "saves.rtcdate"
         ]
     );
 }
@@ -1699,6 +1706,166 @@ fn azahar_takes_the_3ds_settings_as_its_options_when_the_game_opens() {
 }
 
 #[test]
+fn the_game_clock_reaches_melonds_ds_as_its_time_mode_offsets_and_date() {
+    use super::core_values::{mapped, Apply};
+    let options = |rtc: &str| {
+        let out = mapped(CoreId::MelonDsDs, ConsoleId::Nds, |k| match k {
+            "saves.rtc" => Some(Value::Text(rtc.into())),
+            "saves.rtcdays" => Some(Value::Int(-3)),
+            "saves.rtchours" => Some(Value::Int(23)),
+            "saves.rtcminutes" => Some(Value::Int(-59)),
+            "saves.rtcdate" => Some(Value::Text("2024-02-29T07:05".into())),
+            _ => None,
+        });
+        assert!(out.iter().all(|o| o.apply == Apply::Restart), "{out:?}");
+        out.into_iter()
+            .filter(|o| o.key.starts_with("melonds_start_time"))
+            .map(|o| (o.key, o.value))
+            .collect::<Vec<_>>()
+    };
+    let mode = |rtc: &str| {
+        options(rtc)
+            .into_iter()
+            .find(|(k, _)| *k == "melonds_start_time_mode")
+            .map(|(_, v)| v)
+    };
+    assert_eq!(mode("real").as_deref(), Some("real"));
+    assert_eq!(mode("offset").as_deref(), Some("relative"));
+    assert_eq!(mode("fixed").as_deref(), Some("absolute"));
+    let all = options("fixed");
+    let has = |key: &str, value: &str| all.iter().any(|(k, v)| *k == key && v == value);
+    assert!(
+        has("melonds_start_time_relative_day_offset", "-3"),
+        "{all:?}"
+    );
+    assert!(has("melonds_start_time_relative_hour_offset", "23"));
+    assert!(has("melonds_start_time_relative_minute_offset", "-59"));
+    assert!(has("melonds_start_time_absolute_year", "2024"));
+    assert!(has("melonds_start_time_absolute_month", "2"));
+    assert!(has("melonds_start_time_absolute_day", "29"));
+    assert!(has("melonds_start_time_absolute_hour", "7"));
+    assert!(has("melonds_start_time_absolute_minute", "5"));
+    assert!(has("melonds_start_time_absolute_second", "0"));
+    // A text that is not a date asks for no absolute field: the core's own stays.
+    let out = mapped(CoreId::MelonDsDs, ConsoleId::Nds, |k| {
+        (k == "saves.rtcdate").then(|| Value::Text("2024-02-30T07:05".into()))
+    });
+    assert!(out.is_empty(), "{out:?}");
+    // mGBA and Azahar have no clock: nothing reaches them, and the rows say why there.
+    for (core, console) in [
+        (CoreId::Mgba, ConsoleId::Gb),
+        (CoreId::Mgba, ConsoleId::Gbc),
+        (CoreId::Mgba, ConsoleId::Gba),
+        (CoreId::Azahar, ConsoleId::N3ds),
+    ] {
+        let out = mapped(core, console, |k| {
+            (k == "saves.rtc").then(|| Value::Text("fixed".into()))
+        });
+        assert!(out.is_empty(), "{core}: {out:?}");
+    }
+    for key in [
+        "saves.rtc",
+        "saves.rtcdays",
+        "saves.rtchours",
+        "saves.rtcminutes",
+        "saves.rtcdate",
+    ] {
+        assert_eq!(
+            crate::core_profile::unsupported_consoles(key),
+            [
+                ConsoleId::Gb,
+                ConsoleId::Gbc,
+                ConsoleId::Gba,
+                ConsoleId::N3ds
+            ],
+            "{key}"
+        );
+    }
+}
+
+#[test]
+fn a_day_offset_rounds_to_the_nearest_the_core_declares() {
+    use super::core_values::{mapped, nearest};
+    let day = |d: i64| {
+        mapped(CoreId::MelonDsDs, ConsoleId::Nds, |k| {
+            (k == "saves.rtcdays").then_some(Value::Int(d))
+        })
+        .into_iter()
+        .find(|o| o.key == "melonds_start_time_relative_day_offset")
+        .map(|o| o.value)
+    };
+    for d in -14..=14 {
+        assert_eq!(
+            day(d),
+            Some(d.to_string()),
+            "every day up to two weeks is the core's"
+        );
+    }
+    assert_eq!(day(20).as_deref(), Some("14"));
+    assert_eq!(day(23).as_deref(), Some("30"));
+    assert_eq!(day(22).as_deref(), Some("14"), "a tie goes towards zero");
+    assert_eq!(day(-22).as_deref(), Some("-14"));
+    assert_eq!(day(45).as_deref(), Some("30"));
+    assert_eq!(day(300).as_deref(), Some("364"));
+    assert_eq!(day(-364).as_deref(), Some("-364"));
+    assert_eq!(nearest(&[], 3), None);
+}
+
+#[test]
+fn a_date_and_time_is_a_real_minute_within_the_entry_years() {
+    use super::schema::DateTime;
+    let e = entry("saves.rtcdate").expect("saves.rtcdate");
+    let ok = |t: &str| e.accepts_value(&Value::Text(t.into()));
+    assert!(ok("2004-01-01T00:00"));
+    assert!(ok("2099-12-31T23:59"));
+    assert!(ok("2024-02-29T12:30"), "leap year");
+    assert!(ok("2000-02-29T12:30"), "2000 is a leap year");
+    for bad in [
+        "1999-12-31T23:59",
+        "2100-01-01T00:00",
+        "2023-02-29T12:30",
+        "2024-04-31T00:00",
+        "2024-13-01T00:00",
+        "2024-00-01T00:00",
+        "2024-01-00T00:00",
+        "2024-01-01T24:00",
+        "2024-01-01T23:60",
+        "2024-01-01 10:00",
+        "2024-1-01T10:00",
+        "2024-01-01T10:00:00",
+        "+024-01-01T10:00",
+        "",
+    ] {
+        assert!(!ok(bad), "{bad}");
+    }
+    assert!(!e.accepts_value(&Value::Int(2024)));
+    assert_eq!(
+        DateTime::parse("2100-02-29T00:00"),
+        None,
+        "1900 / 2100 are not leap years"
+    );
+    assert_eq!(
+        DateTime::parse("2024-02-29T07:05"),
+        Some(DateTime {
+            year: 2024,
+            month: 2,
+            day: 29,
+            hour: 7,
+            minute: 5
+        })
+    );
+    // The default is valid, and the offset sliders stay within the core's ranges.
+    assert!(ok("2004-01-01T00:00"));
+    let range = |key: &str| match entry(key).map(|e| e.kind) {
+        Some(Kind::Slider { min, max, .. }) => (min, max),
+        other => panic!("{key}: {other:?}"),
+    };
+    assert_eq!(range("saves.rtcdays"), (-364, 364));
+    assert_eq!(range("saves.rtchours"), (-23, 23));
+    assert_eq!(range("saves.rtcminutes"), (-59, 59));
+}
+
+#[test]
 fn a_value_of_the_wrong_kind_or_an_unknown_choice_asks_for_nothing() {
     use super::core_values::mapped;
     let out = mapped(CoreId::Mgba, ConsoleId::Gba, |k| match k {
@@ -1760,6 +1927,13 @@ fn every_core_table_matches_the_catalogue() {
             match (rule.map, &e.kind) {
                 (Map::Toggle { .. }, Kind::Toggle) => {}
                 (Map::Number { .. }, Kind::Slider { .. }) => {}
+                (Map::DateTime(_), Kind::DateTime { .. }) => {}
+                (Map::Nearest { values, .. }, Kind::Slider { min, max, .. }) => {
+                    // Ascending, and covering the slider's ends.
+                    assert!(values.windows(2).all(|w| w[0] < w[1]), "{}", rule.setting);
+                    assert_eq!(values.first(), Some(min), "{}", rule.setting);
+                    assert_eq!(values.last(), Some(max), "{}", rule.setting);
+                }
                 (Map::Percent { .. }, Kind::Slider { min, max, .. }) => {
                     assert_eq!(
                         (*min, *max),
@@ -1984,7 +2158,6 @@ fn the_entries_not_wired_yet_are_these() {
             "screens.stereo",
             "audio.mic",
             "speed.runahead",
-            "saves.rtc",
             "pad.gyro",
             "touch.tport",
             "touch.tland",
@@ -1992,7 +2165,6 @@ fn the_entries_not_wired_yet_are_these() {
             "touch.thide",
             "touch.tpad",
             "library.group",
-            "library.region",
             "library.covers",
             "cloud.swifi",
             "bios.b3ds",

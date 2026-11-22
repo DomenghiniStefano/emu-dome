@@ -216,7 +216,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 160 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 164 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
                          compiled, and `Reader` (a value or the catalogue's default),
@@ -245,7 +245,11 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
-                         store.rs library.json, games never deleted; pure, unit-tested)
+                         store.rs library.json, games never deleted, the user's version pins;
+                         group.rs the regional versions of one game as a family (GBA / NDS code
+                         and 3DS product code without the region letter; never homebrew, GB / GBC
+                         or hidden games), the version shown: the user's pin, else the one
+                         launched last, else the one added first (#102); pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
                          updates.rs (EmuDome updating itself, #44: `UpdateFlow`, `general.updates` auto / ask /
                          off as a state machine, every time passed in; `UpdateStatus` for the interface;
@@ -537,7 +541,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 160 entries on 18 pages: key
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 164 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
   (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
   the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
@@ -572,7 +576,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
-  `library://changed` (`LibraryChanged`: the rows that changed, or the whole library), `library://scan`,
+  `library://changed` (`LibraryChanged`: the rows that changed, the families of regional versions, or the
+  whole library), `library://scan`,
   `saves://migration`, `emu://effect-error`, `notifications://changed` (the whole list, newest first),
   `cloud://status` (the whole `CloudStatus`), `cloud://progress` (`CloudProgress`: pull G03, push G14, sync,
   a game file moving), `cloud://conflict` (`CloudGameConflict`, G04), `cloud://in-use` (`CloudInUseEvent`, G05),
@@ -892,14 +897,26 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   melonDS DS and Azahar (Trello #99); `perf.shcache` Azahar only, forced on where turning it off crashes (Vulkan,
   title ID 0, #93: `StateLoadBlock::forced_options`, the row still shows the user's value). `perf.frameskip`
   drives mGBA only, `video.res3d` / `video.texf` / `perf.cpuclock` Azahar only; elsewhere their rows are disabled
-  with the reason (`CoreProfile::unsupported_settings`). `saves.rtc` stays unwired: mGBA has no clock option, and
-  melonDS DS's relative / absolute start time needs an offset or a date the catalogue has no row for. The 3DS rows are phase 3, so the interface still hides them
+  with the reason (`CoreProfile::unsupported_settings`). The game's clock (`saves.rtc`, Trello #102) drives melonDS
+  DS only (`melonds_start_time_mode` real / relative / absolute, applied when the game opens again): «Shifted» reads
+  `saves.rtcdays` / `rtchours` / `rtcminutes` (days past 14 round to the core's 30, 60… 364), «Fixed» reads
+  `saves.rtcdate` (`Kind::DateTime`, local `YYYY-MM-DDTHH:MM`, 2000–2099); mGBA and Azahar declare no clock
+  option, so the rows are disabled on GB / GBC / GBA / 3DS with the reason. The 3DS rows are phase 3, so the interface still hides them
   (`CURRENT_PHASE`). The interface does not show `emu://core-restart` yet. The «All … options»
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 24 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 21 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
+- Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
+  (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
+  (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`
+  (`library_pin_version`). The interface indexes them once per change (`lib/families.ts`, `libraryFamilies`): the
+  desk's grid and the TV shelves show one tile per family (a deck behind it, the square «N versioni» tag),
+  «Continua a giocare» and the search the versions themselves, and the details' «Versioni» block lists them with
+  «Gioca questa» / «Mostra questa in libreria». No region rule (`library.region` is gone). Game Boy / Game Boy
+  Color are never grouped (the header's licensee and Japan / overseas flag are not read). On a TV shelf the
+  focused cover's ring hides most of the deck behind it.
 - Window, video and audio settings (Trello #100): `video.winsize` «free» is not remembered across starts (a start
   opens at 1280×800); `video.api` applies at the next start and nothing says a restart is waiting (no general
   restart notice; `emu://core-restart` is for core options), and its «Automatic ({api})» value is not shown;

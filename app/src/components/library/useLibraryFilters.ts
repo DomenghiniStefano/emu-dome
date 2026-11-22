@@ -1,8 +1,10 @@
-// What the grid shows: L03's «Mostra» switches and the console chip over the library, in the
-// chosen order. A chip whose console left the list (filters, removal) falls back to «Tutti».
+// What the grid shows: one tile per family of regional versions (#102, its shown version), then
+// L03's «Mostra» switches and the console chip over the library, in the chosen order. A chip
+// whose console left the list (filters, removal) falls back to «Tutti».
 import { computed, reactive, ref, watch, type Ref } from 'vue'
 import type { ConsoleId } from '@/emu'
-import { library } from '@/lib/library'
+import { oneTilePerFamily } from '@/lib/families'
+import { library, libraryFamilies } from '@/lib/library'
 import { SHOW_KEYS, shown, sorted, type ShowKey, type Sort } from './librarySort'
 import { consoleChips, ofConsole } from './libraryView'
 
@@ -15,7 +17,8 @@ export function useLibraryFilters(sort: Ref<Sort>) {
   })
   const consoleFilter = ref<ConsoleId | 'all'>('all')
 
-  const base = computed(() => shown(library.games, show))
+  const tiles = computed(() => oneTilePerFamily(library.games, libraryFamilies.value))
+  const base = computed(() => shown(tiles.value, show))
   const chips = computed(() => consoleChips(base.value))
   watch(chips, list => {
     if (!list.some(c => c.id === consoleFilter.value)) consoleFilter.value = 'all'

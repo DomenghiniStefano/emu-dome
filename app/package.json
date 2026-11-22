@@ -37,6 +37,7 @@
     "package:linux:release": "tauri build --config src-tauri/package/linux-x86_64.json --config src-tauri/package/updater.json"
   },
   "dependencies": {
+    "@internationalized/date": "^3.12.4",
     "@lucide/vue": "^1.73.0",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.0",

@@ -3,4 +3,4 @@
 /**
  * Unit of a slider value.
  */
-export type SliderUnit = "percent" | "px" | "seconds" | "copies";
+export type SliderUnit = "percent" | "px" | "seconds" | "copies" | "days" | "hours" | "minutes";

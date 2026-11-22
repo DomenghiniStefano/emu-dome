@@ -8,14 +8,21 @@
 // `data-shelf-index` say where a cover is.
 import { useI18n } from 'vue-i18n'
 import GameCover from '@/components/cover/GameCover.vue'
-import { CoverSize } from '@/components/cover/variants'
+import { CoverSize, CoverStackLayer, coverStackVariants } from '@/components/cover/variants'
 import { COVER_OF } from '@/components/library/useLibraryFocus'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { LibraryGame } from '@/emu'
 import { cn } from '@/lib/cn'
+import { versionCount } from '@/lib/families'
+import { libraryFamilies } from '@/lib/library'
 import { shelfTitle, type Shelf } from './tvShelves'
 
-defineProps<{ shelf: Shelf; limit: number }>()
+const props = defineProps<{ shelf: Shelf; limit: number }>()
+
+/** A family's tile (#102): its versions, from 2 a deck and the tag. «Continua a giocare» holds
+ * the versions played, each its own. */
+const versions = (g: LibraryGame) =>
+  props.shelf.id === 'continue' ? 0 : versionCount(libraryFamilies.value, g.id)
 const emit = defineEmits<{
   play: [LibraryGame]
   details: [LibraryGame]
@@ -41,7 +48,7 @@ const { t } = useI18n()
         :size="ButtonSize.Area"
         :class="
           cn(
-            'w-tv-cover flex-none scroll-mt-48 scroll-mb-16 rounded-card whitespace-normal transition-[width] duration-fast ease-out focus:w-tv-cover-focus focus:shadow-tv-lift',
+            'relative w-tv-cover flex-none scroll-mt-48 scroll-mb-16 rounded-card whitespace-normal transition-[width] duration-fast ease-out focus:w-tv-cover-focus focus:shadow-tv-lift',
             !g.available && 'opacity-missing',
           )
         "
@@ -52,7 +59,11 @@ const { t } = useI18n()
         @contextmenu.prevent="emit('details', g)"
         @focus="emit('focused', g, i)"
       >
-        <GameCover :game="g" :size="CoverSize.Shelf" />
+        <template v-if="versions(g) > 1">
+          <span :class="coverStackVariants({ layer: CoverStackLayer.Far })" aria-hidden="true" />
+          <span :class="coverStackVariants({ layer: CoverStackLayer.Near })" aria-hidden="true" />
+        </template>
+        <GameCover :game="g" :size="CoverSize.Shelf" :versions="versions(g)" />
       </Button>
     </div>
   </section>

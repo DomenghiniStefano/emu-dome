@@ -388,16 +388,23 @@ export function dispatchNav(action: NavAction) {
 // An open DropdownMenu's arrows are nav.ts's: its scope holds the focus and the items are moved
 // among spatially (Reka's own arrow handling did not move between our `as-child` items, measured
 // headless 2026-11-21), so a menu item owns Enter only.
+// A segment of a Reka date field (the DateTimeField primitive, always inside its popover) owns
+// every arrow, like an open list: up and down its value, left and right along the field (Reka
+// stops at its ends; nothing else is in the popover, and nav.ts would land on the field's hidden
+// native input), and Enter (the primitive's «done»).
 // docs/specs/2026-11-18-design-system-foundations.md, Decision 6.
 
 /** An item of a Reka roving group or a slider thumb: owns the arrows of its `data-orientation`. */
 const ROVING_ITEM = '[data-reka-collection-item][data-orientation]'
 /** An open Reka listbox (a Select's options): owns every arrow. */
 const OPEN_LIST = '[role="listbox"][data-dismissable-layer]'
+/** A segment of a Reka date field (day, month, year, hour…; its literals are not focusable). */
+const DATE_SEGMENT = '[role="spinbutton"][data-reka-date-field-segment]'
 /** Reka elements that act on Enter themselves (`data-state` is Reka's; a menu item has none). */
 const ENTER_OWNER = [
   ...['tab', 'option', 'combobox', 'switch'].map(role => `[role="${role}"][data-state]`),
   `[role="menuitem"]`,
+  DATE_SEGMENT,
 ].join(', ')
 
 const ARROW_KEY: Record<Direction, string> = {
@@ -410,6 +417,7 @@ const ARROW_KEY: Record<Direction, string> = {
 /** Whether `el` handles the arrow of `dir` itself, so nav.ts must not move the focus. */
 export function ownsArrow(el: Element, dir: Direction): boolean {
   if (el.closest(OPEN_LIST)) return true
+  if (el.matches(DATE_SEGMENT)) return true
   if (!(el instanceof HTMLElement) || !el.matches(ROVING_ITEM)) return false
   const horizontal = dir === 'left' || dir === 'right'
   if ((el.dataset.orientation === 'horizontal') !== horizontal) return false

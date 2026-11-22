@@ -207,6 +207,7 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'folders':
     case 'colour':
     case 'text':
+    case 'dateTime':
     case 'bindings':
     case 'screenLayout':
       // A screen layout: edited in the C09 screens editor (components/screen-editor, #28).

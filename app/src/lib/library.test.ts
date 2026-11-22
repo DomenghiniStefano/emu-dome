@@ -1,7 +1,7 @@
 // The library store: loads, the newest of several reloads wins, and L11's per-console count of a
 // scan comes from the ids that were not there when it started.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GameId, LibraryChanged, LibraryGame, LibraryScanEvent } from '@/emu'
+import type { GameFamily, GameId, LibraryChanged, LibraryGame, LibraryScanEvent } from '@/emu'
 import { applyLibraryChange, library, reloadLibrary, startLibrary } from './library'
 
 type Listener<T> = (e: T) => void
@@ -29,7 +29,12 @@ vi.mock('@/emu', () => ({
 const flush = () => new Promise(r => setTimeout(r, 0))
 const game = (id: string, console: LibraryGame['console'] = 'gba') =>
   ({ id: `${console}:${id}` as GameId, console }) as LibraryGame
-const answer = (games: LibraryGame[]) => ({ games, folders: [], scanning: false })
+const answer = (games: LibraryGame[], families: GameFamily[] = []) => ({
+  games,
+  folders: [],
+  scanning: false,
+  families,
+})
 const scan = (e: LibraryScanEvent) => bridge.scan.forEach(cb => cb(e))
 const change = (e: LibraryChanged) => bridge.changed.forEach(cb => cb(e))
 
@@ -40,6 +45,7 @@ beforeEach(() => {
   Object.assign(library, {
     loaded: false,
     games: [],
+    families: [],
     folders: [],
     scanning: false,
     progress: null,
@@ -69,6 +75,25 @@ describe('the library store', () => {
     change({ kind: 'all', library: answer([game('c', 'nds')]) })
     expect(library.games.map(g => g.id)).toEqual(['nds:c'])
     expect(bridge.get).toHaveBeenCalledOnce()
+  })
+
+  it('takes the families Rust grouped, with the library and on their own (#102)', async () => {
+    const family = (shown: string, ...rest: string[]): GameFamily => ({
+      id: 'gba:BPE',
+      shown: `gba:${shown}` as GameId,
+      versions: [shown, ...rest].map(id => `gba:${id}` as GameId),
+      pinned: false,
+    })
+    bridge.get.mockResolvedValue(answer([game('a'), game('b')], [family('a', 'b')]))
+    await startLibrary()
+    expect(library.families.map(f => f.shown)).toEqual(['gba:a'])
+    const games = library.games
+    // A pin or `library.versions`: only the families change, the rows stay the same list.
+    change({ kind: 'families', families: [{ ...family('b', 'a'), pinned: true }] })
+    expect(library.families.map(f => [f.shown, f.pinned])).toEqual([['gba:b', true]])
+    expect(library.games).toBe(games)
+    change({ kind: 'all', library: answer([game('c')]) })
+    expect(library.families).toEqual([])
   })
 
   it('a change is newer than a load still answering', async () => {

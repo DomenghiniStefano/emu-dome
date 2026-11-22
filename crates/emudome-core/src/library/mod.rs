@@ -6,15 +6,18 @@
 //! - `store.rs`: the database (`library.json`), the merge of a scan, flags, covers, play time,
 //!   the user's name for a game.
 //! - `details.rs`: what Game details › File e informazioni (L10) derives: region, core.
+//! - `group.rs`: the regional versions of one game as a family, the version shown (#102).
 //!
 //! Pure logic and file I/O only: the Tauri commands are in `app/src-tauri/src/library.rs`.
 
 mod details;
+pub mod group;
 pub mod identity;
 pub mod scan;
 mod store;
 
 pub use details::{console_phase_pending, core_of, open_extensions, opens, region, Region};
+pub use group::Family;
 pub use identity::{
     console_of_extension, identify, read_icon, Icon, Identity, NotAGame, EXTENSIONS,
 };

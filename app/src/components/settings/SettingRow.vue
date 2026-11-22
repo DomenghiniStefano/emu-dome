@@ -26,6 +26,7 @@ import { FILE_PICKERS, ROW_ACTIONS, msg } from '@/lib/settingsModel'
 import SettingSelect from './SettingSelect.vue'
 import SettingCards from './SettingCards.vue'
 import SettingChips from './SettingChips.vue'
+import SettingDateTime from './SettingDateTime.vue'
 import SettingFileAction from './SettingFileAction.vue'
 import SettingFolders from './SettingFolders.vue'
 import SettingRowText from './SettingRowText.vue'
@@ -170,6 +171,15 @@ async function choose() {
           :max="kind.max"
           :step="kind.step"
           :value-text="t(`settingsUi.unit.${kind.unit}`, { v: Number(value ?? 0) })"
+          :disabled="disabled"
+          @set="set"
+        />
+        <SettingDateTime
+          v-else-if="kind.type === 'dateTime'"
+          :label="name"
+          :value="String(value ?? '')"
+          :min-year="kind.minYear"
+          :max-year="kind.maxYear"
           :disabled="disabled"
           @set="set"
         />

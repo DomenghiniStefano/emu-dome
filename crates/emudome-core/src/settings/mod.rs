@@ -29,8 +29,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub use schema::{
-    entry, page_entries, schema, synonyms, ActionStyle, ChoiceStyle, DefaultRule, DefaultValue,
-    Device, Entry, Kind, Level, Levels, Platform, SchemaDto, Unit, Value,
+    entry, page_entries, schema, synonyms, ActionStyle, ChoiceStyle, DateTime, DefaultRule,
+    DefaultValue, Device, Entry, Kind, Level, Levels, Platform, SchemaDto, Unit, Value,
 };
 use store::{Change, FileId, Store};
 

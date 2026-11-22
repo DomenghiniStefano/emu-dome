@@ -350,13 +350,19 @@ static MGBA: CoreProfile = CoreProfile {
     save_depth: None,
     // 3D rendering settings (Azahar's): a 2D core has no internal resolution, texture filter
     // or CPU clock option; no JIT either (an interpreter, 0.11-212 `--list-options`) and no
-    // shader cache.
+    // shader cache. No clock option either (its 17 options, measured again 2026-11-22): a game
+    // with a clock reads the device's time.
     unsupported_settings: &[
         "video.res3d",
         "video.texf",
         "perf.cpuclock",
         "perf.jit",
         "perf.shcache",
+        "saves.rtc",
+        "saves.rtcdays",
+        "saves.rtchours",
+        "saves.rtcminutes",
+        "saves.rtcdate",
     ],
     // One screen, no lid (the lid rows show on DS and 3DS games only).
     lid: Lid::Unsupported,
@@ -434,8 +440,17 @@ static AZAHAR: CoreProfile = CoreProfile {
     save_depth: Some(crate::n3ds::SAVE_DEPTH),
     // Azahar 2126.2 has no frameskip option (`headless --list-options`), and no lid: nothing in
     // its libretro frontend (`src/citra_libretro/`) closes it, and its PTM service's
-    // `shell_open` is never set to false.
-    unsupported_settings: &["perf.frameskip", "pad.lid"],
+    // `shell_open` is never set to false. No clock option either (`core_settings.cpp` at the
+    // pinned commit declares no time or date option).
+    unsupported_settings: &[
+        "perf.frameskip",
+        "pad.lid",
+        "saves.rtc",
+        "saves.rtcdays",
+        "saves.rtchours",
+        "saves.rtcminutes",
+        "saves.rtcdate",
+    ],
     lid: Lid::Unsupported,
     options_row: "cores.azall",
     // TODO(Phase 3): measured when the headless host runs 3DS games (#46); its row is hidden

@@ -418,6 +418,7 @@ mod tests {
                     Kind::Apply { options } => ("apply", options),
                     Kind::Bindings { .. } => ("bindings", &[]),
                     Kind::ScreenLayout => ("screenLayout", &[]),
+                    Kind::DateTime { .. } => ("dateTime", &[]),
                 };
                 json!({ "key": e.key, "page": e.page(), "kind": kind, "options": options })
             })
@@ -446,7 +447,8 @@ mod tests {
                 | Kind::Action { .. }
                 | Kind::Apply { .. }
                 | Kind::Bindings { .. }
-                | Kind::ScreenLayout => None,
+                | Kind::ScreenLayout
+                | Kind::DateTime { .. } => None,
             })
             .collect();
         json!({
@@ -486,6 +488,7 @@ mod tests {
         g.ts::<crate::library::CoverKind>().unwrap();
         g.ts::<crate::cover::CoverView>().unwrap();
         g.ts::<crate::library::Region>().unwrap();
+        g.ts::<crate::library::Family>().unwrap();
         g.ts::<crate::Speed>().unwrap();
         g.ts::<crate::Event>().unwrap();
         g.ts::<crate::screens::Placement>().unwrap();

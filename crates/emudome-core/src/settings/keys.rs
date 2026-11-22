@@ -47,7 +47,11 @@ const fn stored(kind: &Kind) -> Stored {
     match kind {
         Kind::Toggle => Stored::Bool,
         Kind::Slider { .. } => Stored::Int,
-        Kind::Choice { .. } | Kind::File | Kind::Colour { .. } | Kind::Text => Stored::Text,
+        Kind::Choice { .. }
+        | Kind::File
+        | Kind::Colour { .. }
+        | Kind::Text
+        | Kind::DateTime { .. } => Stored::Text,
         Kind::Multi { .. } | Kind::Folders | Kind::Bindings { .. } | Kind::ScreenLayout => {
             Stored::List
         }
@@ -168,6 +172,7 @@ pub const GENERAL_UPDATES: TextKey = TextKey::new("general.updates");
 pub const LIBRARY_FOLDERS: ListKey = ListKey::new("library.folders");
 pub const LIBRARY_SCAN_AT_START: BoolKey = BoolKey::new("library.scanstart");
 pub const LIBRARY_WATCH: BoolKey = BoolKey::new("library.watch");
+pub const LIBRARY_VERSIONS: BoolKey = BoolKey::new("library.versions");
 pub const A11Y_HOLD_TOGGLE: BoolKey = BoolKey::new("a11y.toggle");
 pub const BIOS_GB: TextKey = TextKey::new("bios.bgb");
 pub const BIOS_GBC: TextKey = TextKey::new("bios.bgbc");
@@ -256,7 +261,8 @@ impl<F: Fn(&str) -> Option<Value>> Reader<F> {
             | Kind::Action { .. }
             | Kind::Apply { .. }
             | Kind::Bindings { .. }
-            | Kind::ScreenLayout => v,
+            | Kind::ScreenLayout
+            | Kind::DateTime { .. } => v,
         }
     }
 

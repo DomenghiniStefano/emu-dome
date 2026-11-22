@@ -3,6 +3,7 @@
 import type { GameOverride, SettingEntry, SettingKey, SettingsSchema, SettingValue } from '@/emu'
 import { isShown, msg } from '@/lib/settingsModel'
 import type { Translator } from '@/i18n/message'
+import { settingDateTimeLabel } from '@/i18n/labels'
 
 /** One setting of the game, named and with its values in words. */
 export interface OverrideRow {
@@ -28,6 +29,8 @@ export function settingValueText(e: SettingEntry, v: SettingValue, { t, te }: Tr
       return Array.isArray(v) ? v.map(option).join(', ') : String(v)
     case 'slider':
       return t(`settingsUi.unit.${e.kind.unit}`, { v: Number(v) })
+    case 'dateTime':
+      return typeof v === 'string' ? settingDateTimeLabel(v) : String(v)
     case 'bindings':
     case 'screenLayout': {
       const k = `settings.${e.key}.value.custom`

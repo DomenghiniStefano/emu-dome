@@ -150,6 +150,18 @@ export function dateTimeLabel(ms: number): string {
   return format(ms, { dateStyle: 'long', timeStyle: 'short' })
 }
 
+/**
+ * A date and time setting's value (`YYYY-MM-DDTHH:MM`, a local time: `saves.rtcdate`) as
+ * "1 Jan 2004, 00:00"; a text that is not one is shown as it is.
+ */
+export function settingDateTimeLabel(text: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(text)
+  if (!m) return text
+  const [year = 0, month = 1, day = 1, hour = 0, minute = 0] = m.slice(1).map(Number)
+  const ms = new Date(year, month - 1, day, hour, minute).getTime()
+  return format(ms, { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 /** When a save was written, as the Saves boards write it: "today at 08:12", "yesterday at
  * 22:41", "12 Nov at 19:02" (with the year when it is not this one). */
 export function saveWhenLabel(ms: number, now = Date.now()): string {
