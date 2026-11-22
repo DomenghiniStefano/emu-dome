@@ -73,6 +73,19 @@
   --text-dialog--line-height: 24px;
   --text-dialog--font-weight: 600;
 
+  /* Pending (owner, 2026-11-22): the touch controls' letters (components/touch), large on the
+     face buttons, smaller on L / R and smallest in Select / Start's pills. */
+  --text-pad-face: 20px;
+  --text-pad-face--line-height: 24px;
+  --text-pad-face--font-weight: 700;
+  --text-pad-shoulder: 13px;
+  --text-pad-shoulder--line-height: 16px;
+  --text-pad-shoulder--font-weight: 700;
+  --text-pad-system: 9px;
+  --text-pad-system--line-height: 12px;
+  --text-pad-system--font-weight: 600;
+  --text-pad-system--letter-spacing: 0.06em;
+
   /* Pending Cowork (spec Decision 5, «Handed back to design»): steps in use today, off the
      scale, named once here until Cowork places them. No weight where the screens inherit it.
      - caption-tall: caption on the body's 18px line (key caps, a tester's key, hints beside a

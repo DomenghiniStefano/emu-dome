@@ -19,6 +19,10 @@
   --opacity-missing-label: 0.6;
   /* The low point of a pulsing sign (the save icon while a game closes, `animate-save-pulse`). */
   --opacity-pulse: 0.35;
+  /* Pending (owner, 2026-11-22): the touch controls over the game, both styles (`touch.tskin`):
+     the game shows through each whole control. `touch.topac` and a control's own opacity
+     multiply it. */
+  --opacity-pad: 0.6;
 }
 
 /* The ambient haze's strength behind the shell (`ambient-strength`), per theme; Nero and
