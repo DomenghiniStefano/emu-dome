@@ -239,7 +239,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          `compose` places each screen, `touch_at` / `pointer_value` map a touch back;
                          `ScreenSettings` the `screens.*` values, `CustomLayout` the editor's
                          `screens.custom`, `ScreenSession` the layout shown, the swap and the lid,
-                         `ScreenStatus` what the interface shows; pure, unit-tested)
+                         `ScreenStatus` what the interface shows; `Inset` the window's edges kept clear
+                         of the game (quick menu, touch controls) and `fit` the game in the rest,
+                         centred or against the bottom; pure, unit-tested)
                          touch.rs (the touch controls, #29: `ControlId` and the controls each console
                          has (`ControlId::of`), `Layout` / `Layouts` the user's layout per orientation as
                          `touch.tedit` stores it (per device, per console), what a valid one is (each
@@ -419,8 +421,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          LidClosedCard: G15 «Coperchio chiuso»),
                          touch (#29: TouchLayer, the touch controls over the game (App.vue, a touch screen):
                          the layout of the console and orientation (touchLayout.ts: the defaults anchored
-                         to the window's edges, the geometry, the 8 px grid, the band kept at the bottom
-                         in portrait), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
+                         to the window's edges, the geometry, the 8 px grid, the edges kept clear of the
+                         game: the band at the bottom in portrait, the side columns in landscape), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
                          (touchPress.ts), `touch.topac` / `thapt` / `thide` / `tpad`
                          (touchVisibility.ts); TouchEditor C06 over the game (from G10 and from the
                          `touch.tedit` row at a console's scope; useTouchEditor the state, editorHistory.ts
@@ -959,7 +961,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   Controlli touch stays hidden while `CURRENT_PHASE` is 1: the editor opens from the quick menu's «Controlli» on
   a touch screen, and the rows keep their defaults (E14 «Pausa e domanda», the glass skin, 60 %, vibration 40 %).
   Turning the phone while C06 is open switches to that orientation's layout, dropping the unsaved changes. Not
-  run on a device yet (vibration, the Circle Pad on Azahar, the band kept in portrait with the native video).
+  run on a device yet (vibration, the Circle Pad on Azahar). The game is fitted in what the controls leave
+  (`reservedInset`, the video inset of `screens::Inset`): upright against the band at the bottom (what the
+  window has left over is one band at its top, the picture keeping its integer scale), on the side between the two
+  columns, Select / Start / menu in the columns; the quick menu's sheet and side panel keep their own edges the
+  same way, measured again when the phone turns.
 - Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
   (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
   (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`
@@ -1000,9 +1006,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
   (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu's 440 px side
   panel on its side, E13's warning (`storage_status`), Android's back at the shell's root. Not yet: the «Gestisci lo
-  spazio» screen (not designed: the button is faded and a press says it arrives later); on G09 on its side the game
-  stays centred under the panel (the video's inset is bottom-only); the safe areas, the camera side and
-  `moveTaskToBack` are checked headless and by review only, not on a device yet.
+  spazio» screen (not designed: the button is faded and a press says it arrives later); the safe areas, the camera
+  side and `moveTaskToBack` are checked headless and by review only, not on a device yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
   hint in the menu's foot). In the shell the controller's shortcuts are disabled with «Apri un gioco per usarla»

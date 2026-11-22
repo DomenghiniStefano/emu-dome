@@ -14,6 +14,8 @@ import {
   rectOf,
   remove,
   reservedBottom,
+  reservedInset,
+  reservedSides,
   resizeTo,
   withOpacity,
   type Area,
@@ -49,12 +51,15 @@ const AVAILABLE: Record<ConsoleId, TouchControlId[]> = {
 }
 const LIMITS = { sizeMin: 50, sizeMax: 200, opacityMin: 20, opacityMax: 100 }
 
-/** The phones of the card's checks: portrait 390 × 844 and 360 × 740, landscape both ways. */
+/** The phones of the card's checks: portrait 390 × 844 and 360 × 740, landscape both ways, and
+ * the Galaxy S23 (412 × 892, #29). */
 const AREAS: Area[] = [
   { width: 390, height: 844 },
   { width: 360, height: 740 },
+  { width: 412, height: 892 },
   { width: 844, height: 390 },
   { width: 740, height: 360 },
+  { width: 892, height: 412 },
 ]
 const CONSOLES: ConsoleId[] = ['gb', 'gbc', 'gba', 'nds', '3ds']
 /** The narrowest phones (320 px): the two-button consoles fit there too; the DS / 3DS diamond
@@ -201,5 +206,81 @@ describe('the band a portrait layout keeps', () => {
     expect(reservedBottom(layout, area, boxOf)).toBe(300 + 22 + 8)
     expect(reservedBottom(layout, { width: 844, height: 390 }, boxOf)).toBe(0)
     expect(reservedBottom({ controls: [] }, area, boxOf)).toBe(0)
+  })
+})
+
+describe('the edges a layout keeps clear of the game (#29)', () => {
+  /** The part of `area` the game may use once `reservedInset` is kept clear. */
+  const free = (area: Area, layout: TouchLayout): Rect => {
+    const i = reservedInset(layout, area, boxOf)
+    return { left: i.left, top: i.top, right: area.width - i.right, bottom: area.height - i.bottom }
+  }
+
+  for (const console of CONSOLES) {
+    for (const area of areasOf(console)) {
+      const o = orientationOf(area)
+      it(`${console} ${o} ${area.width}×${area.height}: no default control over the game's part`, () => {
+        const layout = defaultLayout(console, o, area, AVAILABLE[console])
+        const game = free(area, layout)
+        for (const c of layout.controls)
+          expect(overlaps(rectOf(c, area, boxOf(c.id)), game), c.id).toBe(false)
+        // The game keeps a useful part of the window: a third of it at least, either way.
+        if (o === 'landscape') expect(game.right - game.left).toBeGreaterThan(area.width / 3)
+        else expect(game.bottom - game.top).toBeGreaterThan(area.height / 3)
+      })
+    }
+  }
+
+  it('upright: the band at the bottom, the game against it', () => {
+    const area = { width: 412, height: 892 }
+    const layout = defaultLayout('gba', 'portrait', area, AVAILABLE.gba)
+    expect(reservedInset(layout, area, boxOf)).toEqual({
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 300 + 22 + 8,
+      align: 'bottom',
+    })
+  })
+
+  it('on the side: the two columns, the game centred between them', () => {
+    // GBA at 892 × 412: the d-pad (148 px centred 104 px in) and the menu (48 px, 150 px from the
+    // right, beside R).
+    const area = { width: 892, height: 412 }
+    const layout = defaultLayout('gba', 'landscape', area, AVAILABLE.gba)
+    expect(reservedSides(layout, area, boxOf)).toEqual({ left: 104 + 74 + 8, right: 150 + 24 + 8 })
+    expect(reservedInset(layout, area, boxOf)).toEqual({
+      left: 186,
+      top: 0,
+      right: 182,
+      bottom: 0,
+      align: 'centre',
+    })
+    expect(reservedSides(layout, { width: 412, height: 892 }, boxOf)).toEqual({ left: 0, right: 0 })
+  })
+
+  it('leaves out a control the user put across the middle, and keeps nothing with none', () => {
+    const area = { width: 844, height: 390 }
+    const menu = {
+      id: 'menu' as const,
+      x: 0.5,
+      y: 0.1,
+      size: 100,
+      opacity: 100,
+      behaviour: 'tap' as const,
+    }
+    const a = { ...menu, id: 'a' as const, x: 0.9, y: 0.5 }
+    expect(reservedSides({ controls: [menu, a] }, area, boxOf)).toEqual({
+      left: 0,
+      right: Math.round(844 - (0.9 * 844 - 32) + 8),
+    })
+    expect(reservedInset({ controls: [] }, area, boxOf)).toEqual({
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      align: 'centre',
+    })
+    expect(reservedInset({ controls: [] }, { width: 390, height: 844 }, boxOf).bottom).toBe(0)
   })
 })
