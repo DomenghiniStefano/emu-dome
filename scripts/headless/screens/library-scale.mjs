@@ -8,7 +8,12 @@
 //   cd app; pnpm exec vite --port <free port> --strictPort
 //   chrome --headless=new --disable-gpu --remote-debugging-port=<cdp> --user-data-dir=<scratch dir>
 //   node scripts/headless/screens/library-scale.mjs <cdp> http://localhost:<port>/ [games] [--check]
+//     [--families] [--phone [--grid]]
 // Restart vite before measuring code edited in a worktree: its watcher can miss the writes.
+//
+// `--phone` (#29): a phone upright (412 × 892, the Galaxy S23), its library as the list (one row
+// per step, «Gioca» at a row's right); with `--grid` the compact grid (three columns, a cover per
+// step). The checks follow each layout's moves.
 import fs from "node:fs";
 import path from "node:path";
 
@@ -16,28 +21,33 @@ const args = process.argv.slice(2);
 const checking = args.includes("--check");
 // `--families` (#102): the generated games grouped two by two (one tile per pair).
 const grouped = args.includes("--families");
+const phone = args.includes("--phone");
+const compact = phone && args.includes("--grid");
+const list = phone && !compact;
+const FLAGS = ["--check", "--families", "--phone", "--grid"];
 const [cdpPort, baseUrl, count = "3000"] = args.filter(
-  (a) => a !== "--check" && a !== "--families",
+  (a) => !FLAGS.includes(a),
 );
 if (!cdpPort || !baseUrl) {
   console.error(
-    "usage: node library-scale.mjs <cdpPort> <baseUrl> [games] [--check] [--families]",
+    "usage: node library-scale.mjs <cdpPort> <baseUrl> [games] [--check] [--families] [--phone [--grid]]",
   );
   process.exit(2);
 }
 const here = path.dirname(
   new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"),
 );
-const mock = fs
-  .readFileSync(path.join(here, "mock.js"), "utf8")
-  .replace(
-    "__SCENARIO__",
-    JSON.stringify({
-      lang: "en",
-      manyGames: Number(count),
-      manyFamilies: grouped,
-    }),
-  );
+const mock = fs.readFileSync(path.join(here, "mock.js"), "utf8").replace(
+  "__SCENARIO__",
+  JSON.stringify({
+    lang: "en",
+    manyGames: Number(count),
+    manyFamilies: grouped,
+    ...(phone
+      ? { device: "phone", libraryView: compact ? "grid" : "list" }
+      : {}),
+  }),
+);
 
 const res = await fetch(`http://127.0.0.1:${cdpPort}/json/new?about:blank`, {
   method: "PUT",
@@ -83,12 +93,12 @@ const check = (what, got, want) => {
 };
 
 await send("Page.enable");
-await send("Emulation.setDeviceMetricsOverride", {
-  width: 1920,
-  height: 1080,
-  deviceScaleFactor: 1,
-  mobile: false,
-});
+await send(
+  "Emulation.setDeviceMetricsOverride",
+  phone
+    ? { width: 412, height: 892, deviceScaleFactor: 1, mobile: true }
+    : { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false },
+);
 // The focus ring and `:focus` as in a focused window.
 await send("Emulation.setFocusEmulationEnabled", { enabled: true });
 await send("Page.addScriptToEvaluateOnNewDocument", { source: mock });
@@ -180,14 +190,15 @@ if (checking) {
 
   check("the list is windowed", (await stats()).tiles < 200, true);
 
-  // Down by rows: two steps (cover → «Gioca» or «…» → the cover below), same column, lower.
+  // Down by rows: two steps on the desk (cover → «Gioca» or «…» → the cover below), one on the
+  // phone (the next row, or the cover below), same column, lower.
   await focusFirst();
   const start = await place();
   let ok = true;
   let last = start.top;
   for (let i = 0; i < 20; i++) {
     await js("__step('down')");
-    await js("__step('down')");
+    if (!phone) await js("__step('down')");
     const at = await js("__at()");
     const p = await place();
     if (at.part !== "cover" || p.left !== start.left || p.top <= last)
@@ -203,14 +214,22 @@ if (checking) {
     true,
   );
   await js("__step('right')");
-  check("right: the next cover", (await js("__at()")).part, "cover");
-  await js("__step('down')");
-  await js("__step('right')");
-  check(
-    "right along the strip: a «Gioca» or a «…»",
-    ["play", "more"].includes((await js("__at()")).part),
-    true,
-  );
+  if (list) {
+    check("right: the row's «Gioca»", (await js("__at()")).part, "play");
+    await js("__step('left')");
+    check("left: back on the row", (await js("__at()")).part, "cover");
+  } else {
+    check("right: the next cover", (await js("__at()")).part, "cover");
+  }
+  if (!phone) {
+    await js("__step('down')");
+    await js("__step('right')");
+    check(
+      "right along the strip: a «Gioca» or a «…»",
+      ["play", "more"].includes((await js("__at()")).part),
+      true,
+    );
+  }
 
   // Leaving the grid at its edges, by nav.ts's spatial rule.
   await focusFirst();
@@ -222,18 +241,30 @@ if (checking) {
     ),
     true,
   );
-  await focusFirst();
-  await js("__step('left')");
-  check(
-    "left from the first column reaches the rail",
-    await js("!!document.activeElement.closest('nav')"),
-    true,
-  );
+  // The phone upright has its tab bar at the bottom, no rail at the left.
+  if (!phone) {
+    await focusFirst();
+    await js("__step('left')");
+    check(
+      "left from the first column reaches the rail",
+      await js("!!document.activeElement.closest('nav')"),
+      true,
+    );
+  }
 
   // Scrolled away with the wheel: the focused tile leaves the DOM, the grid holds the focus
   // (no ring), a step goes on from that tile.
   await focusFirst();
   const parked = await js("__at()");
+  // Where a step down from it lands: its «Gioca» on the desk, the next row (the list) or the
+  // cover below (the compact grid, no «Riprendi» on the first game here) on the phone.
+  const topIds = await js("__ids()");
+  const cols = await js(
+    `getComputedStyle(${grid}).gridTemplateColumns.trim().split(/\\s+/).length`,
+  );
+  const below = !phone
+    ? { game: parked.game, part: "play" }
+    : { game: topIds[list ? 1 : cols], part: "cover" };
   await js(`${main}.scrollTop = ${main}.scrollHeight`);
   await sleep(400);
   check(
@@ -258,7 +289,7 @@ if (checking) {
   check(
     "a step from the parked grid moves from that tile",
     await js("__at()"),
-    { game: parked.game, part: "play" },
+    below,
   );
   // Scrolling back by hand gives the focus back to the parked tile.
   await focusFirst();

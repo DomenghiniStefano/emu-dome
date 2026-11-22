@@ -254,6 +254,17 @@
       { type: "multi", options: ["protan", "deutan", "tritan"] },
       ["deutan"],
     ),
+    // The library as a list or a grid (#29): per device, the list by default on a phone (the
+    // catalogue's default rule). `libraryView` fixes it; the toolbar's switch writes it.
+    entry(
+      "library.view",
+      "library",
+      choice("segments", ["list", "grid"]),
+      (scenario.device ?? (scenario.phone ? "phone" : "desktop")) === "phone"
+        ? "list"
+        : "grid",
+      { levels: ["default", "global"], perDevice: true },
+    ),
   ];
   // Controls (C01–C04): the `pad` page, only in the scenarios with a controller connected.
   if (scenario.pads) {
@@ -482,6 +493,7 @@
   const values = { "general.bgpause": true, "general.confirmdel": false };
   // TV mode (#30): `ui` fixes `general.ui` ("tv" / "desktop"; Automatica otherwise).
   if (scenario.ui) values["general.ui"] = scenario.ui;
+  if (scenario.libraryView) values["library.view"] = scenario.libraryView;
   // The touch controls (#29): `touchRows` gives the touch page's values (`touch.tskin`,
   // `touch.tlost`, `touch.tland`…), each a row of the page.
   for (const [key, value] of Object.entries(scenario.touchRows ?? {}))
@@ -1389,6 +1401,9 @@
           50,
         );
       if (cmd === "plugin:event|unlisten") return null;
+      // The library's Lista / Griglia (#29) reads back what it wrote.
+      if (cmd === "settings_set" && args.key === "library.view")
+        values["library.view"] = args.value;
       if (cmd === "settings_page")
         return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);
       if (cmd === "library_scan") return null;

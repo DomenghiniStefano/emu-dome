@@ -210,6 +210,20 @@ const SCENARIOS = {
   "lib-versions": { mock: { versions: true }, steps: [] },
   "lib-versions-light": { mock: { versions: true, theme: "light" }, steps: [] },
   "lib-versions-small": { mock: { versions: true }, steps: [], width: 1024, height: 640 },
+  // The library's view on the desktop (#29): the grid by default, unchanged; the list when the
+  // user picks it in Settings (`library.view`), «Continua a giocare» kept above it.
+  "lib-desk-grid": {
+    mock: { manyGames: 12, gameSaves: true },
+    steps: [],
+    width: 1280,
+    height: 800,
+  },
+  "lib-desk-list": {
+    mock: { manyGames: 12, gameSaves: true, libraryView: "list" },
+    steps: [],
+    width: 1280,
+    height: 800,
+  },
   "details-versions": {
     mock: { versions: true },
     steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
