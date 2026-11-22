@@ -5,7 +5,7 @@ import { nextTick, onMounted, ref } from 'vue'
 import { flow } from '@/components/game/gameFlow'
 import { START, type Route } from '@/components/shell/route'
 import { useDensity } from '@/composables/useDensity'
-import { useUiMode } from '@/composables/useUiMode'
+import { uiMode, useUiMode } from '@/composables/useUiMode'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useClosing } from '@/components/closing/useClosing'
 import { useDropTarget } from '@/components/library/useDropTarget'
@@ -30,8 +30,10 @@ import GameFlowOverlays from '@/components/game/GameFlowOverlays.vue'
 import GameSurround from '@/components/game/GameSurround.vue'
 import LibraryDropTarget from '@/components/library/LibraryDropTarget.vue'
 import QuickMenu from '@/components/quick-menu/QuickMenu.vue'
+import SearchPalette from '@/components/search/SearchPalette.vue'
 import ToastStack from '@/components/toasts/ToastStack.vue'
 import TouchControls from '@/components/game/TouchControls.vue'
+import TvModeDialog from '@/components/tv-mode/TvModeDialog.vue'
 import GameHud from '@/components/game/GameHud.vue'
 import LidClosedCard from '@/components/game/LidClosedCard.vue'
 
@@ -69,7 +71,7 @@ useScreenTouch(
 // The phone's layout (a phone held upright) sets the touch density for the whole interface.
 const layout = useDeviceLayout()
 useDensity(layout.phone)
-// TV mode (#30): `general.ui`, or by itself full screen with a controller connected.
+// TV mode (#30): `general.ui`, or at Automatica the answer to the TV question (TvModeDialog).
 useUiMode(session.fullscreen, layout.device)
 
 // Startup: the keys and the backend's events first, so the controller works whatever fails
@@ -160,10 +162,16 @@ onMounted(async () => {
       @swap-screens="screens.swap"
       @toggle-lid="screens.toggleLid"
       @layout="screens.setLayout"
+      @fps="session.toggleFps"
+      @next-layout="screens.nextLayout"
+      @open-game="launch.switchToLibraryGame"
     />
   </template>
 
   <LibraryDropTarget v-if="drop.dragOver.value && !game" />
+
+  <!-- The search everywhere (X01): over the shell or the quick menu, whichever is its host. -->
+  <SearchPalette />
 
   <!-- «Adatta la copertina» for a screenshot taken in game: over the quick menu, or after the
        game has closed. -->
@@ -185,6 +193,16 @@ onMounted(async () => {
     @broken-use="launch.useLatestBackup"
     @broken-play="launch.playWithoutSave"
     @broken-close="launch.closeBroken"
+  />
+
+  <!-- The TV question (#30): a controller connected / the last one gone; not over the first run,
+       nor while a game closes. -->
+  <TvModeDialog
+    v-if="uiMode.ask && (game || firstRun === false) && !flow.ending"
+    :key="uiMode.ask"
+    :ask="uiMode.ask"
+    :in-game="!!game"
+    :menu-open="menuOpen"
   />
 
   <!-- Closing with a game open: saving, saved, or the question when it does not end well. -->

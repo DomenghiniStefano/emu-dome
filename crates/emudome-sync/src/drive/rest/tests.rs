@@ -394,3 +394,47 @@ async fn folders_properties_copies_downloads_quota_and_changes() {
     assert_eq!(last.query_value("pageToken").as_deref(), Some("100"));
     assert_eq!(last.query_value("includeRemoved").as_deref(), Some("true"));
 }
+
+#[tokio::test]
+async fn a_game_file_streams_to_the_disk_lists_all_and_goes_to_the_trash() {
+    let big = vec![9u8; 300_000];
+    let body = big.clone();
+    let server = MockServer::start(move |r| match (r.method.as_str(), r.path()) {
+        ("GET", "/drive/v3/files/rom") => Reply::bytes(200, &body),
+        ("GET", "/drive/v3/files") => Reply::json(
+            200,
+            json!({ "files": [file_json("a", "1a2b.gba", "aa", 1)] }),
+        ),
+        ("PATCH", "/drive/v3/files/rom") => Reply::json(200, json!({ "id": "rom" })),
+        _ => Reply::bytes(404, b""),
+    })
+    .await;
+    let d = drive(&server);
+    let dir = TestDir::new("rest-download-to");
+    let to = dir.path("rom.part");
+    let seen = Arc::new(AtomicUsize::new(0));
+    let s = seen.clone();
+    let progress = move |done: u64| s.store(done as usize, Ordering::SeqCst);
+    let got = d.download_to("rom", &to, &progress).await.unwrap();
+    assert_eq!(got.size, 300_000);
+    assert_eq!(got.md5, crate::drive::md5_hex(&big));
+    assert_eq!(std::fs::read(&to).unwrap(), big);
+    assert_eq!(seen.load(Ordering::SeqCst), 300_000);
+    assert_eq!(
+        server.requests()[0].query_value("alt").as_deref(),
+        Some("media")
+    );
+    assert_eq!(d.list_all().await.unwrap().len(), 1);
+    assert_eq!(
+        server.requests()[1].query_value("q").as_deref(),
+        Some("trashed = false")
+    );
+    d.trash("rom").await.unwrap();
+    assert_eq!(server.requests()[2].json(), json!({ "trashed": true }));
+    // Gone on Drive: told apart, nothing written.
+    let missing = d.download_to("nope", &dir.path("nope.part"), &|_| {}).await;
+    assert!(
+        matches!(missing, Err(SyncError::NotFound(_))),
+        "{missing:?}"
+    );
+}

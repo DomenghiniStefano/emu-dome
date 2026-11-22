@@ -57,8 +57,9 @@ Phase 0 (feasibility) is done. On `develop` now: shell and themes, settings engi
 quick menu, saves, controls, first run, rewind and screenshots (keyed by the game, #85), covers from a screenshot or
 the user's image framed in «Adatta la copertina» (#85), screen effects (librashader), appearance, and the
 melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
-back to the CPU, encrypted games refused with E10), and the Google Drive sync backend (#20: sign-in, Drive client,
-sync index and conflict rule, tested, not wired into the game flow or the interface yet), and the search everywhere
+back to the CPU, encrypted games refused with E10), and the Google Drive sync (#20 backend; #31 wiring: pull
+before launch, heartbeat, push after exit, «Sincronizza ora», games on Drive, the `cloud_*` commands and
+`cloud://` events; the Cloud screens are the interface half of #31), and the search everywhere
 and the notification centre in the top bar (#32, X01–X03), and the release plumbing (#44: per-user installer, Linux
 package targets, the Android App Bundle, EmuDome updating itself with X06, the licences page, the log file and its
 export; no release built yet, see «Known gaps»). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
@@ -305,8 +306,9 @@ crates/emudome-sync      Google Drive sync (Trello #20), no OS code: oauth.rs (P
                          checked), auth.rs (`Auth`: refresh token in a `SecretStore`, access token
                          refreshed in memory, sign-in / sign-out), http.rs (reqwest 0.12 + rustls/ring,
                          the system's root certificates), drive/ (`DriveApi`; rest.rs Drive REST v3:
-                         multipart up to 5 MiB, resumable chunks above, retries, 401 → new token;
-                         fake.rs `FakeDrive` in memory with failure injection), index.rs (the sync
+                         multipart up to 5 MiB, resumable chunks above, retries, 401 → new token,
+                         `download_to` streamed to the disk, `list_all` (every app file in one listing),
+                         `trash`; fake.rs `FakeDrive` in memory with failure injection), index.rs (the sync
                          index `<app data>/sync/index.json`: last synced md5 / Drive id per file, the
                          device id; write_atomic, unreadable never written over), decide.rs (the
                          conflict rule: none / push / pull / conflict, pure, tested exhaustively),
@@ -314,8 +316,16 @@ crates/emudome-sync      Google Drive sync (Trello #20), no OS code: oauth.rs (P
                          heartbeat 2 min, stale after 10), sync.rs (`Area` (a game's saves folder ↔
                          `EmuDome/<console>/<hex>/`, settings ↔ `EmuDome/settings/`), `Syncer`: plan,
                          pull before launch, push after exit, conflicts resolved keeping the other side
-                         under `conflicts/`, the library list `EmuDome/library/<device id>.json`;
-                         data-survival tests on `FakeDrive`)
+                         under `conflicts/` (or both sides, «Tieni entrambe»), `cloud.squick`'s quick
+                         saves filter, a cancel flag and a progress callback, the library list
+                         `EmuDome/library/<device id>.json`, game files `EmuDome/games/<console>/<hex>.<ext>`;
+                         data-survival tests on `FakeDrive`), service.rs (#31: `CloudService`, the sync as
+                         the app runs it, no Tauri: `pull_game` / `skip_pull`, `claim` / `heartbeat`,
+                         `mark_pending` + `push_game` / `push_pending` (a game stays pending in
+                         `<app data>/sync/state.json` until a push goes through), `sync_all` / `sync_start`,
+                         `games` / `upload_game` (quota checked) / `download_game` (temp file, MD5, free
+                         name) / `remove_game` (Drive's trash), `devices`, `conflict` / `resolve`, the
+                         activity (in memory), every Cloud DTO; tests on `FakeDrive`)
 app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, the per-game hooks, setup, the
                          command list, `blocking()` for heavy commands), game_session.rs (`GameSession`: the
                          open game and what lives as long as it does, open / take / close / abandon; exit-path
@@ -355,8 +365,12 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          notifications.rs (X03: the store of emudome_core::notifications, the
                          notifications_* commands, notifications://changed; `record` writes off the
                          caller's thread: gamepad.rs records a controller connected after start)
-                         cloud.rs (the Google account: cloud_status / cloud_sign_in / cloud_sign_out, the
-                         refresh token through emudome_platform::cloud; no sync wired yet)
+                         cloud.rs (Google Drive: the account, the refresh token through
+                         emudome_platform::cloud, the `cloud_*` commands, the `cloud://` events, the
+                         `cloud.*` settings read into `Prefs`; the game flow's hooks: `before_launch`
+                         (pull in the open's thread, then pending), `heartbeat_hooks` (the marker while
+                         the game runs), `after_exit` (the push once the exit writes are done, in the
+                         background), `startup` (pending pushes, settings, library list))
                          updates.rs (#44: `UpdateFlow` carried out on the `emudome-updates` thread,
                          updates_status / _check / _later / _install, `updates://changed`, the
                          `updateReady` notification; installing refused while a game is open)
@@ -387,8 +401,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
                          pure, tested; CoverCropDialog for the screenshot toast's «Usa come copertina»,
                          useCoverRequest), toasts, closing (the loader while a game closes),
-                         search (X01 / X02, #32: SearchPalette from the top bar, Ctrl + K or Y; search.ts
-                         the matching, pure, tested; useSearchSources the actions, settings and games),
+                         search (X01 / X02, #32: SearchPalette, mounted once in App.vue, opens over its
+                         host (useSearch.ts: the shell or the quick menu, Ctrl + K or Y); searchContext.ts
+                         what can be chosen there, search.ts the matching, both pure, tested;
+                         useSearchSources the actions, settings and games; the quick menu's side is
+                         quick-menu/useMenuSearch.ts),
                          notifications (X03: NotificationBell in the top bar, its panel; notifications.ts
                          the words, pure, tested), about (`about.lic`'s licences page, a functional
                          placeholder), updates (X06, the update card in the shell; the shared status in
@@ -422,7 +439,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`onPause`) sends `Command::Flush` (the same writes; the game keeps running, or pauses with `general.bgpause`
   until `onResume`, `background_pause.rs`). A thread that does not stop in
   time, or is abandoned after E11, is let go: the session is dead (no file, no event, no `retro_unload_game` /
-  `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
+  `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts. With Drive sync on, the
+  session's end-of-thread check (`AfterEnd`) also starts the game's push in the background (`cloud::after_exit`);
+  nothing waits for it, and a game let go or ended by `RunEvent::Exit` stays pending for the next start.
 - Writes while the game runs (quick saves, the periodic auto quick save and `.sav` flush, «Annulla» of a save,
   screenshots) go to the session's I/O worker (`session/io.rs`, thread `emudome-io`): the emulation thread only
   serializes and copies the bytes; the worker reads what the slot held, writes atomically, encodes the PNG and sends
@@ -555,6 +574,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
   `library://changed` (`LibraryChanged`: the rows that changed, or the whole library), `library://scan`,
   `saves://migration`, `emu://effect-error`, `notifications://changed` (the whole list, newest first),
+  `cloud://status` (the whole `CloudStatus`), `cloud://progress` (`CloudProgress`: pull G03, push G14, sync,
+  a game file moving), `cloud://conflict` (`CloudGameConflict`, G04), `cloud://in-use` (`CloudInUseEvent`, G05),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
   `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
@@ -802,12 +823,19 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
   components never take a `phone` / `touch` prop just to change their look.
 - **TV mode** (Trello #30): one `data-layout="tv"` on `<html>` (`composables/useUiMode.ts`, the decision pure in
-  `lib/uiMode.ts`: `general.ui`, or Automatica = full screen with a controller connected; never on a phone) and the
+  `lib/uiMode.ts`: `general.ui`, or at Automatica the answer to the TV question, `components/tv-mode/TvModeDialog.vue`:
+  a controller connecting, or connected at startup, outside TV asks «Passare alla modalità TV?», the last one leaving
+  TV asks to go back (in place of the «controller disconnected» toast, closed by a reconnection); the answer holds for
+  the run, «Non chiederlo più» saves it as `general.ui`; in game the game pauses meanwhile; full screen no longer
+  decides; never on a phone) and the
   `tv:` variant. TV sizes are the «TV» tokens (`typography.css`, `spacing.css`, `border.css`), drawn for 1920 × 1080
   and grown by `--tv-scale` on a larger screen. Its own parts: the shell's `TvTabs` (sections, L1 / R1 from
   anywhere), `TvButtonBar` and `TvGlyph` (the connected controller's glyphs by position and `pad.confirm`,
-  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`); the quick menu and the other sections keep
-  the desk's layout scaled up (`zoom-tv`).
+  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`), Settings (`components/settings/tv/`, the
+  owner's option B: the desk's structure with the TV sizes, the pages on the left, large rows on the right; ◀ ▶
+  change a short choice / switch / slider / colour in place, A opens long choices in a full-screen sheet, X resets,
+  a kind it does not draw keeps the desk's row; `tvSettingRow.ts` decides, pure); the quick menu and the other
+  sections keep the desk's layout scaled up (`zoom-tv`).
 - **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
 - **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
   by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its
@@ -870,7 +898,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 28 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 24 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Window, video and audio settings (Trello #100): `video.winsize` «free» is not remembered across starts (a start
   opens at 1280×800); `video.api` applies at the next start and nothing says a restart is waiting (no general
@@ -893,14 +921,23 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   frame, so a curved CRT bends the frame as the core stacks it, not each screen. `screens.gap` is in the frame's
   pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
-- TV mode (#30): Settings in TV is not built (an open point with the owner: one column of large rows, LT / RT for
-  the categories); in TV it keeps the desk's layout scaled up, as Saves, Controls, Cloud and a game's details do.
-  There a section's own L1 / R1 (the settings levels, the controls tabs) comes before the section switch. The
+- TV mode (#30): Saves, Controls, Cloud and a game's details keep the desk's layout scaled up in TV. Settings in TV
+  has no «In primo piano» (T01), no search field (Y opens the search everywhere) and no «Mostra solo le impostazioni
+  modificate»; a text and the game folders keep the desk's row scaled up; on a row that changes in place ◀ ▶ are
+  the row's, so the pages are reached with B (or left from a row that does not take them). A section's own L1 / R1
+  (the settings levels, the controls tabs) comes before the section switch; a settings page with one level lets
+  it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
-- Search and notifications (#32): the search lives in the shell, which never shows while a game is open, so its
-  actions (the controller's shortcuts) are listed disabled with «Apri un gioco per usarla»; only fullscreen runs.
-  Opening it from the quick menu is not designed. A setting opens at «Tutti i giochi». The only notification
+- Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
+  hint in the menu's foot). In the shell the controller's shortcuts are disabled with «Apri un gioco per usarla»
+  (only fullscreen runs) and a setting opens at «Tutti i giochi». In the quick menu the shortcuts run as the
+  menu's own controls do (Salva / Carica and the slot steps on the menu's chosen slot, not Rust's current slot);
+  the held ones (fast forward held, rewind) and the pause stay disabled with a reason; a setting opens only if a
+  menu page shows it «in prova» (G09, G10, G16: seven rows), every other is disabled with «Aprila dalle
+  Impostazioni della libreria»; another game closes this one as «Chiudi il gioco» does (G14, close flow) and
+  then opens, with no question before (none designed). The page opened shows its first control, the row is not
+  lit. The only notification
   recorded today is a controller connected after start; sync done, cover not found and update ready (X06) have
   no producer and no `Notice` kind yet, and X06's install behaviour waits for the owner's answer and #44.
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
@@ -962,15 +999,24 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   entries before and after (`n3ds::fallback`, `coreSavedOutsideGame` on `emu://health`, read only): a write there by
   another program (the standalone Azahar) during the session looks the same, and nothing is moved back.
   Cheats (L08) and patches (L09) have no backend yet. Screen effects run on the native video path only.
-- Google Drive sync (Trello #20, `crates/emudome-sync`): the backend is there and tested on `FakeDrive` and a local
-  mock server, never against Google by the checks (`drive_probe` is the owner's UAT). Not wired yet: nothing calls
-  `Syncer` (no pull before launch, push after exit, periodic push, heartbeat, library list or settings sync in the
-  game flow), the interface has no Cloud screens (#31) and does not call `cloud_*`; the `cloud.*` settings stay
-  unwired (`cloud.ssaves`, `cloud.squick`, `cloud.ssettings`, `cloud.sauto`, `cloud.swifi` are what the wiring
-  will read; `cloud.acct`, `cloud.space`, `cloud.sgames` are the account, quota and games rows). Games are not
-  synced (no streaming download to disk yet). A resumable upload resumes within its call, not after a restart.
-  Deletions never travel (a file missing on one side is copied back). `changes.list` is implemented but no run uses
-  it yet. Android: sign-in refused (`cloudSignInUnsupported`; plan in `emudome-platform/src/cloud.rs`) and no TLS
+- Google Drive sync (Trello #20 backend, #31 wiring; `crates/emudome-sync`, `app/src-tauri/src/cloud.rs`): tested on
+  `FakeDrive` and a local mock server, never against Google by the checks (`drive_probe` and the app's real sign-in
+  are the owner's UAT). Wired: pull before launch (in the open, before anything reads the saves; «Gioca senza
+  aspettare» stops it before its next file, a file already moving finishes), the «in use» marker and its heartbeat
+  while the game runs, push after exit (background, after the exit writes; the close never waits; a game is pending
+  in `sync/state.json` from its open until a push goes through, so a cut push, a quit or a crash is redone at the
+  next start), at start the pending pushes, the settings and the library list, «Sincronizza ora» (every game's
+  saves both ways, not the open game's), game files up / down / to Drive's trash on request only, devices, G04's
+  answers. `cloud.ssaves`, `cloud.squick`, `cloud.ssettings`, `cloud.sauto` are read; `cloud.swifi` is not (nothing
+  tells Wi-Fi from mobile data yet); `cloud.acct`, `cloud.space`, `cloud.sgames` are the account, space and games
+  rows. Not yet: the Cloud screens (the interface half of #31); a periodic push while playing (only the marker beats);
+  pulled settings reach the open screens only when the settings store reads the file again (no `settings://changed`
+  for them); the activity list lives in memory (empty after a restart); a game file going up reports only its start
+  and end (no per-chunk progress), and a resumable upload resumes within its call, not after a restart; the
+  download has no free-disk check before it starts; G04's `thumb` is always null; `games()` lists every app file
+  in one `list_all` and downloads each device's library list (one request per device). Deletions never travel (a
+  file missing on one side is copied back). `changes.list` is implemented but no run uses it yet. Android: sign-in
+  refused (`cloudSignInUnsupported`; plan in `emudome-platform/src/cloud.rs`), so nothing syncs there, and no TLS
   roots there (`emudome-sync/src/http.rs`). Linux: the Secret Service backend is not compiled or tried on this
   machine. The browser page after the sign-in shows the texts `cloud_sign_in` receives from the interface.
 

@@ -657,11 +657,13 @@ pub static ENTRIES: &[Entry] = &[
     // ---- Cloud (cloud) ----
     act("cloud.acct", G).device(),
     action("cloud.space", ActionStyle::Storage, G),
-    sw("cloud.ssaves", true, G).not_wired(),
-    seg("cloud.squick", &["all", "last", "none"], "all", GC).not_wired(),
-    sw("cloud.ssettings", true, G).not_wired(),
+    // Read by the Drive sync (`app/src-tauri/src/cloud.rs`, `emudome_sync::service::Prefs`).
+    sw("cloud.ssaves", true, G),
+    seg("cloud.squick", &["all", "last", "none"], "all", GC),
+    sw("cloud.ssettings", true, G),
     link("cloud.sgames", G),
-    seg("cloud.sauto", &["game", "manual"], "game", G).not_wired(),
+    seg("cloud.sauto", &["game", "manual"], "game", G),
+    // Phone only, and nothing tells Wi-Fi from mobile data yet (nor can Android sign in).
     sw("cloud.swifi", true, G).device().phone().not_wired(),
     // ---- Accessibilità (a11y) ----
     slider("a11y.textsize", 100, (80, 150, 10), Unit::Percent, G).device(),

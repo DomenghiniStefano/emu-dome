@@ -18,6 +18,9 @@
 //! - [`marker`]: «in use on <device>», a pure decision on a heartbeat.
 //! - [`sync`]: the Drive layout, the plan of a folder (a game's saves, the settings) and its
 //!   execution: pull before launch, push after exit, conflicts kept both ways.
+//! - [`service`]: the sync as the app runs it (#31): the game flow's pull, heartbeat and push,
+//!   the pending pushes, «Sincronizza ora», the games on Drive, the devices, the conflicts'
+//!   answers, the activity, and every DTO of the Cloud screens.
 
 pub mod auth;
 pub mod decide;
@@ -28,6 +31,7 @@ pub mod index;
 pub mod loopback;
 pub mod marker;
 pub mod oauth;
+pub mod service;
 pub mod sync;
 pub mod time;
 

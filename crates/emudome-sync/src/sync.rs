@@ -32,9 +32,10 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use emudome_core::GameKey;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::decide::{decide, Decision};
@@ -49,6 +50,17 @@ pub const ROOT_FOLDER: &str = "EmuDome";
 pub const CONFLICTS: &str = "conflicts";
 /// Files at most this big are read whole to be uploaded; bigger ones are streamed from the disk.
 const READ_WHOLE: u64 = crate::drive::rest::MULTIPART_MAX;
+
+/// Where the game files themselves go when the user uploads one («Carica»):
+/// `EmuDome/games/<console>/<hex>.<ext>`, never synced on their own.
+pub const GAMES_FOLDER: &str = "games";
+/// Where each device's library list goes: `EmuDome/library/<device id>.json`.
+pub const LIBRARY_FOLDER: &str = "library";
+
+/// The folder names of a game's saves under `EmuDome/`: `[<console>, <hex>]`.
+pub fn game_folder(game: &GameKey) -> Vec<String> {
+    vec![game.console().id().to_owned(), game.hex().to_owned()]
+}
 
 /// This device, as the other devices see it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -68,6 +80,45 @@ pub struct Area {
     /// `appProperties` every file pushed from it carries (the game id, its play time, the core
     /// version), besides the device.
     pub props: Properties,
+    /// Which quick saves of a game's folder sync (`cloud.squick`).
+    pub quick: QuickSync,
+}
+
+/// Which quick saves sync (`cloud.squick`): a quick save is its `.state` with its thumbnail
+/// (`.png`) and record (`.json`), `auto` or `slotN`, at the top of the game's folder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum QuickSync {
+    /// Every one (`all`).
+    #[default]
+    All,
+    /// Only the newest, on either side (`last`): the others stay where they are.
+    Last,
+    /// None (`none`): only the in-game save and what the core keeps in the folder.
+    None,
+}
+
+impl QuickSync {
+    /// The setting's value (`all` / `last` / `none`); anything else is the default.
+    pub fn from_id(id: &str) -> Self {
+        match id {
+            "last" => QuickSync::Last,
+            "none" => QuickSync::None,
+            _ => QuickSync::All,
+        }
+    }
+}
+
+/// The quick save `rel` belongs to (`auto`, `slot3`), if it is one of a quick save's files.
+fn quick_stem(rel: &str) -> Option<&str> {
+    if rel.contains('/') {
+        return None;
+    }
+    let (stem, ext) = rel.rsplit_once('.')?;
+    let slot = stem == "auto"
+        || stem
+            .strip_prefix("slot")
+            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()));
+    (slot && matches!(ext, "state" | "png" | "json")).then_some(stem)
 }
 
 impl Area {
@@ -77,9 +128,16 @@ impl Area {
         props.insert("game".into(), game.as_str().to_owned());
         Self {
             local: saves_root.join(game.dir()),
-            remote: vec![game.console().id().to_owned(), game.hex().to_owned()],
+            remote: game_folder(game),
             props,
+            quick: QuickSync::All,
         }
+    }
+
+    /// The same area syncing only the quick saves `quick` allows.
+    pub fn with_quick(mut self, quick: QuickSync) -> Self {
+        self.quick = quick;
+        self
     }
 
     /// The portable settings (`<app data>/settings/`) ↔ `EmuDome/settings/`. The per-device
@@ -89,7 +147,33 @@ impl Area {
             local: settings_dir.to_path_buf(),
             remote: vec!["settings".into()],
             props: Properties::new(),
+            quick: QuickSync::All,
         }
+    }
+
+    /// Leaves out of both sides the quick saves [`Area::quick`] does not sync.
+    fn filter_quick(
+        &self,
+        local: &mut BTreeMap<String, LocalFile>,
+        remote: &mut BTreeMap<String, RemoteFile>,
+    ) {
+        let keep: Box<dyn Fn(&str) -> bool> = match self.quick {
+            QuickSync::All => return,
+            QuickSync::None => Box::new(|rel| quick_stem(rel).is_none()),
+            QuickSync::Last => {
+                let newest = local
+                    .iter()
+                    .map(|(rel, f)| (rel.as_str(), f.modified))
+                    .chain(remote.iter().map(|(rel, f)| (rel.as_str(), f.modified)))
+                    .filter(|(rel, _)| rel.ends_with(".state") && quick_stem(rel).is_some())
+                    .max_by_key(|(_, modified)| *modified)
+                    .and_then(|(rel, _)| quick_stem(rel))
+                    .map(str::to_owned);
+                Box::new(move |rel| quick_stem(rel).is_none_or(|s| Some(s) == newest.as_deref()))
+            }
+        };
+        local.retain(|rel, _| keep(rel));
+        remote.retain(|rel, _| keep(rel));
     }
 
     /// The prefix of this area's paths in the index (`gba/<hex>/`).
@@ -133,7 +217,7 @@ pub struct Step {
 }
 
 /// What a conflict shows the user. TypeScript: `CloudConflict`.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = "app/", rename = "CloudConflict")]
 pub struct Conflict {
@@ -180,6 +264,9 @@ pub struct Outcome {
 pub enum Keep {
     Local,
     Remote,
+    /// This device's goes on (as `Local`), and Drive's copy is kept on both sides: under
+    /// `conflicts/` on Drive and in this device's game folder («Tieni entrambe»).
+    Both,
 }
 
 /// The syncing of this device against `drive`, recording into `index`.
@@ -187,6 +274,10 @@ pub struct Syncer<'a, D> {
     drive: &'a D,
     index: &'a mut SyncIndex,
     device: Device,
+    /// Set: the run stops before its next transfer (the rest waits for the next sync).
+    cancel: Option<&'a AtomicBool>,
+    /// Told `(bytes done, bytes in all)` of the run's transfers, after each one.
+    progress: Option<&'a (dyn Fn(u64, u64) + Send + Sync)>,
 }
 
 impl<'a, D: DriveApi> Syncer<'a, D> {
@@ -195,17 +286,37 @@ impl<'a, D: DriveApi> Syncer<'a, D> {
             drive,
             index,
             device,
+            cancel: None,
+            progress: None,
         }
+    }
+
+    /// A run that stops before its next transfer once `flag` is set (a file already moving
+    /// finishes: nothing is left half written, the index stays true).
+    pub fn with_cancel(mut self, flag: &'a AtomicBool) -> Self {
+        self.cancel = Some(flag);
+        self
+    }
+
+    /// A run that tells `progress(done, total)` (bytes of its transfers) after each file.
+    pub fn with_progress(mut self, progress: &'a (dyn Fn(u64, u64) + Send + Sync)) -> Self {
+        self.progress = Some(progress);
+        self
+    }
+
+    fn cancelled(&self) -> bool {
+        self.cancel.is_some_and(|c| c.load(Ordering::SeqCst))
     }
 
     /// The decision for every file of `area`, nothing changed.
     pub async fn plan(&mut self, area: &Area) -> Result<Vec<Step>, SyncError> {
         self.index.readable()?;
-        let local = scan_local(&area.local).await?;
-        let remote = match self.find_folder(&area.remote).await? {
+        let mut local = scan_local(&area.local).await?;
+        let mut remote = match self.find_folder(&area.remote).await? {
             Some(folder) => self.list_tree(&folder).await?,
             None => BTreeMap::new(),
         };
+        area.filter_quick(&mut local, &mut remote);
         let prefix = area.prefix();
         let mut rels: Vec<&String> = local.keys().chain(remote.keys()).collect();
         rels.sort();
@@ -235,8 +346,27 @@ impl<'a, D: DriveApi> Syncer<'a, D> {
         let steps = self.plan(area).await?;
         let prefix = area.prefix();
         let mut out = Outcome::default();
+        let moves = |s: &Step| match s.decision {
+            Decision::Pull => direction != Direction::Push,
+            Decision::Push => direction != Direction::Pull,
+            Decision::InSync | Decision::Conflict => false,
+        };
+        let size = |s: &Step| match s.decision {
+            Decision::Pull => s.remote.as_ref().and_then(|r| r.size).unwrap_or(0),
+            Decision::Push => s.local.as_ref().map_or(0, |l| l.size),
+            Decision::InSync | Decision::Conflict => 0,
+        };
+        let total: u64 = steps.iter().filter(|s| moves(s)).map(size).sum();
+        let mut done = 0u64;
         for step in steps {
             let path = format!("{prefix}{}", step.rel);
+            if moves(&step) && self.cancelled() {
+                out.waiting.push(path);
+                continue;
+            }
+            if moves(&step) {
+                done += size(&step);
+            }
             match step.decision {
                 Decision::InSync => self.record_in_sync(&path, &step)?,
                 Decision::Conflict => out.conflicts.push(conflict_of(&path, &step)),
@@ -255,6 +385,11 @@ impl<'a, D: DriveApi> Syncer<'a, D> {
                     }
                 }
                 Decision::Pull | Decision::Push => out.waiting.push(path),
+            }
+            if moves(&step) {
+                if let Some(progress) = self.progress {
+                    progress(done, total);
+                }
             }
         }
         Ok(out)
@@ -295,11 +430,22 @@ impl<'a, D: DriveApi> Syncer<'a, D> {
         };
         let (dir, name) = split_rel(rel);
         match keep {
-            Keep::Local => {
+            Keep::Local | Keep::Both => {
                 let who = remote
                     .app_properties
                     .get("deviceName")
                     .map_or("drive", String::as_str);
+                if keep == Keep::Both {
+                    // The other side's copy comes here too, under `conflicts/`, beside this one.
+                    let bytes = self.drive.download(&remote.id).await?;
+                    if remote.md5.as_deref() != Some(md5_hex(&bytes).as_str()) {
+                        return Err(SyncError::Request(format!(
+                            "{rel}: the download does not match Drive's checksum"
+                        )));
+                    }
+                    let to = area.local_path(&format!("{CONFLICTS}/{}/{rel}", stamp(now, who)));
+                    write_file(&to, bytes).await?;
+                }
                 let mut folder = area.remote.clone();
                 folder.push(CONFLICTS.into());
                 folder.push(stamp(now, who));
@@ -516,7 +662,7 @@ impl<'a, D: DriveApi> Syncer<'a, D> {
     }
 
     /// The id of `EmuDome/<path...>`, if it exists.
-    async fn find_folder(&self, path: &[String]) -> Result<Option<String>, SyncError> {
+    pub async fn find_folder(&self, path: &[String]) -> Result<Option<String>, SyncError> {
         let Some(mut id) = self
             .drive
             .find(ROOT, ROOT_FOLDER)
@@ -536,7 +682,7 @@ impl<'a, D: DriveApi> Syncer<'a, D> {
     }
 
     /// The id of `EmuDome/<path...>`, made where missing.
-    async fn ensure_folder(&self, path: &[String]) -> Result<String, SyncError> {
+    pub async fn ensure_folder(&self, path: &[String]) -> Result<String, SyncError> {
         let mut id = ROOT.to_owned();
         let names = std::iter::once(ROOT_FOLDER).chain(path.iter().map(String::as_str));
         for name in names {
@@ -698,7 +844,7 @@ fn scan_into(
 
 /// One game of this device's library list (`EmuDome/library/<device id>.json`), so another
 /// device can show «on the PC, not on this device».
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryGame {
     pub id: GameKey,

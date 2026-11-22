@@ -22,6 +22,10 @@ export const DialogSize = {
   // (`palette-top`, the whole width on the phone), no padding of its own (its rows are edge to
   // edge); its list scrolls when the window is short.
   Palette: 'palette',
+  // A choice from the sofa (Settings in TV mode, #30, TvChoiceSheet): the whole screen, the
+  // glass over the blurred screen behind, no edge, corners or padding of its own (the sheet
+  // lays out its column).
+  TvSheet: 'tvSheet',
 } as const
 export type DialogSize = (typeof DialogSize)[keyof typeof DialogSize]
 
@@ -32,6 +36,7 @@ export const dialogOverlayVariants = cva('fixed inset-0 z-dialog grid bg-scrim p
       [DialogSize.Wide]: 'place-items-center backdrop-blur-dim',
       [DialogSize.Palette]:
         'grid-cols-[minmax(0,1fr)] items-start justify-items-center pt-palette-top touch:pt-16',
+      [DialogSize.TvSheet]: 'grid-cols-[minmax(0,1fr)] p-0 backdrop-blur-dim',
     },
   },
   defaultVariants: { size: DialogSize.Default },
@@ -43,6 +48,8 @@ export const dialogContentVariants = cva('glass-thick flex flex-col', {
       [DialogSize.Default]: 'w-full max-w-dialog gap-12 p-dialog-pad',
       [DialogSize.Wide]: 'max-h-full w-panel max-w-full gap-14 overflow-auto p-24',
       [DialogSize.Palette]: 'max-h-full w-panel max-w-full gap-0 overflow-hidden p-0',
+      [DialogSize.TvSheet]:
+        'size-full min-h-0 gap-0 overflow-hidden rounded-none border-0 p-0 shadow-none',
     },
   },
   defaultVariants: { size: DialogSize.Default },
@@ -53,8 +60,30 @@ export const DialogTitleSize = {
   Dialog: 'dialog',
   // The title over a wide choice (L12), in the heading step.
   Heading: 'heading',
+  // The title of a full-screen choice from the sofa (DialogSize.TvSheet), and its description
+  // (DialogDescriptionSize.Tv): the TV display and lead types.
+  Tv: 'tv',
 } as const
 export type DialogTitleSize = (typeof DialogTitleSize)[keyof typeof DialogTitleSize]
+
+export const DialogDescriptionSize = {
+  // Under a dialog's title: the body's type.
+  Default: 'default',
+  // Under a TV sheet's title (DialogTitleSize.Tv): the TV lead's type.
+  Tv: 'tv',
+} as const
+export type DialogDescriptionSize =
+  (typeof DialogDescriptionSize)[keyof typeof DialogDescriptionSize]
+
+export const dialogDescriptionVariants = cva('m-0 text-ink-muted', {
+  variants: {
+    size: {
+      [DialogDescriptionSize.Default]: 'text-body',
+      [DialogDescriptionSize.Tv]: 'text-tv-lead',
+    },
+  },
+  defaultVariants: { size: DialogDescriptionSize.Default },
+})
 
 export const dialogTitleVariants = cva('m-0', {
   variants: {
@@ -66,6 +95,7 @@ export const dialogTitleVariants = cva('m-0', {
     size: {
       [DialogTitleSize.Dialog]: 'text-dialog',
       [DialogTitleSize.Heading]: 'text-heading',
+      [DialogTitleSize.Tv]: 'text-tv-display',
     },
   },
   defaultVariants: { tone: DialogTone.Default, size: DialogTitleSize.Dialog },

@@ -49,3 +49,12 @@ pub const SAVES_MIGRATION: &str = "saves://migration";
 pub const NOTIFICATIONS_CHANGED: &str = "notifications://changed";
 /// Where EmuDome's own update stands (`emudome_core::updates::UpdateStatus`), after every change.
 pub const UPDATES_CHANGED: &str = "updates://changed";
+/// The Cloud status changed: the whole `CloudStatus` (`cloud.rs`).
+pub const CLOUD_STATUS: &str = "cloud://status";
+/// A pull before launch (G03), a push after exit (G14), a sync or a game file moving
+/// (`CloudProgress`).
+pub const CLOUD_PROGRESS: &str = "cloud://progress";
+/// A game's save changed on both sides (G04): its `CloudGameConflict`.
+pub const CLOUD_CONFLICT: &str = "cloud://conflict";
+/// A game opened while another device has it open (G05): `CloudInUseEvent`.
+pub const CLOUD_IN_USE: &str = "cloud://in-use";
