@@ -181,6 +181,10 @@ pub struct CoreOptionInfo {
 pub struct SessionOptions {
     pub core_path: PathBuf,
     pub game_path: PathBuf,
+    /// Where the game's bytes are read from when not by opening `game_path`: an Android document
+    /// read through its descriptor, whose `game_path` names it (extension, title) but may not
+    /// open again. `None`: `game_path` is opened.
+    pub game_file: Option<GameReader>,
     /// Folder of the BIOS and system files (empty is fine: the cores have replacements).
     pub system_dir: PathBuf,
     /// The saves root: the game's own files are in its folder under it ([`GameFiles`]), which is
@@ -221,6 +225,14 @@ pub struct SessionOptions {
     /// Where the frames go and how hardware rendering is answered; default: today's (RGBA8 in
     /// [`Shared::frame`], hardware rendering refused).
     pub video: VideoSetup,
+}
+
+/// The game as an open file ([`SessionOptions::game_file`]).
+pub struct GameReader {
+    pub file: std::fs::File,
+    /// Whether `game_path` opens the same file: a core that opens the game by itself
+    /// (`need_fullpath`) is refused without it ([`crate::StartError::GameNeedsPath`]).
+    pub path_opens: bool,
 }
 
 /// The session's video seam ([`crate::video_sink`], [`crate::hw_render`]); `None` = the default.
@@ -1077,6 +1089,7 @@ mod tests {
             SessionOptions {
                 core_path: core,
                 game_path: dir.path("Game.gba"),
+                game_file: None,
                 system_dir: dir.path("system"),
                 save_dir: dir.path("saves"),
                 game: key(),
@@ -1106,6 +1119,7 @@ mod tests {
         let opts = SessionOptions {
             core_path: dir.path("fake_libretro.dll"),
             game_path: dir.path("Game.gba"),
+            game_file: None,
             system_dir: dir.path("system"),
             save_dir: dir.path("saves"),
             game: key(),
@@ -1148,6 +1162,7 @@ mod tests {
         let opts = SessionOptions {
             core_path: dir.path("fake_libretro.dll"),
             game_path: dir.path("Game.gba"),
+            game_file: None,
             system_dir: dir.path("system"),
             save_dir: dir.path("saves"),
             game: key(),

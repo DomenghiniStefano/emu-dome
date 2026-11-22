@@ -762,6 +762,7 @@ mod tests {
         SessionOptions {
             core_path: dir.path("fake_libretro.dll"),
             game_path: dir.path("Game.gba"),
+            game_file: None,
             system_dir: dir.path("system"),
             save_dir: dir.path("saves"),
             game: crate::GameKey::parse("gba:9a3e").unwrap(),

@@ -357,18 +357,26 @@ pub fn set_window_inner_size(window: &tauri::Window, size: (u32, u32)) -> tauri:
     imp::set_window_inner_size(window, size)
 }
 
-/// A `content://` document opened for a core ([`open_content`]): a path with the document's name
-/// and extension that reads it in this process, valid while this value lives. Keep it until the
-/// core is done with the game; dropping it closes the document and removes the path.
+/// A `content://` document opened for a core ([`open_content`]): its descriptor (read through
+/// [`ContentFile::reader`]) and a path with the document's name and extension, valid while this
+/// value lives. Keep it until the core is done with the game; dropping it closes the document and
+/// removes the path.
 pub struct ContentFile {
     path: PathBuf,
     name: Option<String>,
-    /// The descriptor and the link, released on drop.
+    /// The link, removed on drop (declared before `file`: dropped first, so a new descriptor
+    /// with the same number never finds it).
     _hold: Box<dyn Send>,
+    /// The provider's descriptor, read through duplicates of it ([`ContentFile::reader`]).
+    file: std::fs::File,
+    /// Whether [`ContentFile::path`] can be opened (Android 17 refuses it for some providers).
+    reopenable: bool,
 }
 
 impl ContentFile {
-    /// The path the core and EmuDome read the game from.
+    /// A path named after the document (its name and extension: the console is chosen by it).
+    /// It opens the document only when [`ContentFile::reopenable`]: read it with
+    /// [`ContentFile::reader`] instead.
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -377,6 +385,90 @@ impl ContentFile {
     pub fn name(&self) -> Option<&str> {
         self.name.as_deref()
     }
+
+    /// The document for reading, at its start: a duplicate of the provider's descriptor. The
+    /// duplicates share one position, so read them one at a time (each call seeks to the start).
+    pub fn reader(&self) -> std::io::Result<std::fs::File> {
+        use std::io::{Seek, SeekFrom};
+        let mut file = self.file.try_clone()?;
+        file.seek(SeekFrom::Start(0))?;
+        Ok(file)
+    }
+
+    /// Whether [`ContentFile::path`] opens the document (what a core that reads the file by
+    /// itself needs). False where the system refuses to open the descriptor again by its path.
+    pub fn reopenable(&self) -> bool {
+        self.reopenable
+    }
+}
+
+/// One child of a folder of a picked document tree ([`list_document_tree`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeEntry {
+    /// The child's document URI: how it is opened ([`open_content`]) and listed (a folder).
+    pub uri: String,
+    /// Its display name (file name with extension).
+    pub name: String,
+    /// Bytes; 0 when the provider does not say.
+    pub size: u64,
+    /// Last modified, Unix ms; 0 when the provider does not say.
+    pub mtime: u64,
+    pub dir: bool,
+}
+
+/// What the system's picker gave ([`pick_document_tree`], [`pick_document`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickedDocument {
+    /// The `content://` URI of the tree or document: what is stored, never turned into a path.
+    pub uri: String,
+    /// Its display name, as the provider tells it.
+    pub name: Option<String>,
+}
+
+/// True where library folders and game files are picked through the system's document pickers
+/// and are `content://` URIs (Android's Storage Access Framework, Trello #47); false where they
+/// are paths from the file dialog (the desktop).
+pub const DOCUMENT_PICKERS: bool = imp::DOCUMENT_PICKERS;
+
+/// Shows the system's folder picker (Android: `ACTION_OPEN_DOCUMENT_TREE`, the read permission
+/// persisted across restarts) and waits for the answer: `Ok(None)` when cancelled. Blocks until
+/// the user answers: never call it on the main thread. [`ContentError::Unsupported`] on the
+/// desktop.
+pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
+    imp::pick_document_tree()
+}
+
+/// Shows the system's file picker for one document (Android: `ACTION_OPEN_DOCUMENT`, every file
+/// offered: ROMs have no registered MIME type; the read permission persisted). Blocks until the
+/// user answers. [`ContentError::Unsupported`] on the desktop.
+pub fn pick_document() -> Result<Option<PickedDocument>, ContentError> {
+    imp::pick_document()
+}
+
+/// The children of one folder of the picked tree `tree`: its root when `dir` is `None`, else the
+/// folder whose document URI (a [`TreeEntry::uri`]) is `dir`. One call into the system per
+/// folder. [`ContentError::Unreadable`] when it cannot be listed (permission revoked, folder
+/// gone). Blocks on the provider.
+pub fn list_document_tree(tree: &str, dir: Option<&str>) -> Result<Vec<TreeEntry>, ContentError> {
+    imp::list_document_tree(tree, dir)
+}
+
+/// The display name of the picked tree `tree` (its root folder's name); `None` when it cannot be
+/// read. Blocks on the provider.
+pub fn document_tree_name(tree: &str) -> Option<String> {
+    imp::document_tree_name(tree)
+}
+
+/// Gives back the persisted read permission of the tree `tree` (a folder removed from the
+/// library). Nothing on the desktop.
+pub fn release_document_tree(tree: &str) {
+    imp::release_document_tree(tree);
+}
+
+/// The display name of the `content://` document `uri` (its file name, as the provider tells
+/// it); `None` when it cannot be read, and on the desktop. Blocks on the provider.
+pub fn document_name(uri: &str) -> Option<String> {
+    imp::document_name(uri)
 }
 
 /// Why a `content://` document could not be opened ([`open_content`]).
@@ -392,7 +484,7 @@ pub enum ContentError {
 }
 
 /// Opens the `content://` document `uri` for reading, without copying it (`content.rs` says how):
-/// the link it reads through goes under `cache_dir` (the app's private cache). Blocks on the
+/// the link named after it goes under `cache_dir` (the app's private cache). Blocks on the
 /// provider: never call it on the main thread. Takes the persistable read permission when the
 /// system granted one (a document picked with `ACTION_OPEN_DOCUMENT`), so that game opens again
 /// after a restart. [`ContentError::Unsupported`] on the desktop.

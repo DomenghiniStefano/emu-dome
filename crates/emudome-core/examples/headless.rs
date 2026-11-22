@@ -550,6 +550,7 @@ pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
         SessionOptions {
             core_path: args.core.clone().into(),
             game_path: args.rom.clone().into(),
+            game_file: None,
             system_dir,
             save_dir: saves_root,
             game: game.clone(),

@@ -372,6 +372,7 @@ fn an_encrypted_3ds_game_is_not_a_game_and_never_added() {
 fn input(folders: &[&Path], lib: &Library) -> ScanInput {
     ScanInput {
         folders: folders.iter().map(|f| f.to_path_buf()).collect(),
+        trees: Vec::new(),
         files: lib.single_files(),
         cache: lib.cache().clone(),
     }
@@ -429,6 +430,7 @@ fn rescan_uses_the_cache_while_size_and_mtime_hold() {
     let outcome = scan(
         ScanInput {
             folders: vec![dir.path("roms")],
+            trees: Vec::new(),
             files: Vec::new(),
             cache: cache.clone(),
         },
@@ -444,6 +446,7 @@ fn rescan_uses_the_cache_while_size_and_mtime_hold() {
     let outcome = scan(
         ScanInput {
             folders: vec![dir.path("roms")],
+            trees: Vec::new(),
             files: Vec::new(),
             cache,
         },
@@ -528,6 +531,7 @@ fn single_files_are_rechecked_by_every_scan() {
     let outcome = scan(
         ScanInput {
             folders: Vec::new(),
+            trees: Vec::new(),
             files: vec![path.clone()],
             cache: Default::default(),
         },
@@ -1004,4 +1008,169 @@ fn a_pin_is_refused_while_the_database_cannot_be_read() {
         Err(ErrorCode::LibraryReadFailed { .. })
     ));
     assert_eq!(dir.read("db/library.json/inside.txt"), "kept");
+}
+
+// ---- Document trees (Android's picked folders, Trello #47) ----
+
+/// A folder on disk seen as a document tree: `content://fake/tree/root`, its documents
+/// `<tree>/document/<relative path>`. Counts the documents opened; `reachable` off answers every
+/// listing with an error (permission given back).
+struct FakeTree {
+    root: PathBuf,
+    reachable: std::cell::Cell<bool>,
+    opened: std::cell::Cell<usize>,
+}
+
+const TREE: &str = "content://fake/tree/root";
+
+impl FakeTree {
+    fn new(root: PathBuf) -> Self {
+        Self {
+            root,
+            reachable: std::cell::Cell::new(true),
+            opened: std::cell::Cell::new(0),
+        }
+    }
+
+    fn file_of(&self, uri: &str) -> PathBuf {
+        let rel = uri.strip_prefix(&format!("{TREE}/document/")).unwrap();
+        self.root.join(rel)
+    }
+}
+
+impl super::Documents for FakeTree {
+    fn children(&self, tree: &str, dir: Option<&str>) -> Result<Vec<super::DocEntry>, String> {
+        assert_eq!(tree, TREE);
+        if !self.reachable.get() {
+            return Err(format!("{tree}: permission gone"));
+        }
+        let folder = dir.map_or_else(|| self.root.clone(), |d| self.file_of(d));
+        let entries = fs::read_dir(&folder).map_err(|e| e.to_string())?;
+        Ok(entries
+            .map(|e| {
+                let e = e.unwrap();
+                let meta = e.metadata().unwrap();
+                let rel = e.path().strip_prefix(&self.root).unwrap().to_owned();
+                let rel = rel.to_string_lossy().replace('\\', "/");
+                super::DocEntry {
+                    uri: format!("{TREE}/document/{rel}"),
+                    name: e.file_name().to_string_lossy().into_owned(),
+                    size: if meta.is_dir() { 0 } else { meta.len() },
+                    mtime: 1000,
+                    dir: meta.is_dir(),
+                }
+            })
+            .collect())
+    }
+
+    fn open(&self, uri: &str) -> Result<super::OpenedDocument, String> {
+        self.opened.set(self.opened.get() + 1);
+        let file = fs::File::open(self.file_of(uri)).map_err(|e| e.to_string())?;
+        Ok(super::OpenedDocument {
+            file,
+            hold: Box::new(()),
+        })
+    }
+}
+
+fn scan_tree(lib: &mut Library, tree: &FakeTree) -> super::ScanReport {
+    let outcome = super::scan_with_documents(
+        ScanInput {
+            folders: Vec::new(),
+            trees: vec![TREE.to_owned()],
+            files: Vec::new(),
+            cache: lib.cache().clone(),
+        },
+        tree,
+        &mut |_, _| {},
+    );
+    lib.apply_scan(outcome, 0).unwrap()
+}
+
+#[test]
+fn a_document_tree_is_walked_like_a_folder() {
+    let dir = TestDir::new("lib-tree");
+    write(&dir, "roms/Pocket Quest.gba", &gba_rom("ONE", 0));
+    write(&dir, "roms/sub/b.nds", &nds_rom());
+    write(&dir, "roms/notes.txt", b"hello");
+    write(&dir, "roms/broken.gba", &[1, 2, 3]);
+    let tree = FakeTree::new(dir.path("roms"));
+    let mut lib = Library::open(&dir.path("db"));
+    let report = scan_tree(&mut lib, &tree);
+    assert_eq!((report.found, report.added), (2, 2));
+    assert!(report.unreachable.is_empty());
+    // The text file is never opened; the broken ROM is, and skipped.
+    assert_eq!(tree.opened.get(), 3);
+    let gba = lib.games().find(|g| g.console == ConsoleId::Gba).unwrap();
+    assert_eq!(gba.path, format!("{TREE}/document/Pocket Quest.gba"));
+    assert_eq!(gba.folder.as_deref(), Some(TREE));
+    // The title comes from the document's name, never from its URI.
+    assert_eq!(gba.title, "Pocket Quest");
+    let nds = lib.games().find(|g| g.console == ConsoleId::Nds).unwrap();
+    assert_eq!(nds.path, format!("{TREE}/document/sub/b.nds"));
+    // The same content as a file on disk: the same key.
+    assert_eq!(nds.id, identify(&dir.path("roms/sub/b.nds")).unwrap().id);
+}
+
+#[test]
+fn a_tree_rescan_uses_the_cache_by_uri_size_and_mtime() {
+    let dir = TestDir::new("lib-tree-cache");
+    write(&dir, "roms/a.gba", &gba_rom("ONE", 0));
+    let tree = FakeTree::new(dir.path("roms"));
+    let mut lib = Library::open(&dir.path("db"));
+    scan_tree(&mut lib, &tree);
+    assert_eq!(tree.opened.get(), 1);
+    assert!(lib.cache().contains_key(&format!("{TREE}/document/a.gba")));
+    scan_tree(&mut lib, &tree);
+    assert_eq!(tree.opened.get(), 1, "unchanged: served from the cache");
+    write(
+        &dir,
+        "roms/a.gba",
+        &[gba_rom("ONE", 0), vec![0; 16]].concat(),
+    );
+    scan_tree(&mut lib, &tree);
+    assert_eq!(tree.opened.get(), 2, "another size: read again");
+    // A document gone from a reachable tree leaves the cache; the game stays, unavailable.
+    fs::remove_file(dir.path("roms/a.gba")).unwrap();
+    scan_tree(&mut lib, &tree);
+    assert!(lib.cache().is_empty());
+    assert!(!lib.games().next().unwrap().available);
+}
+
+#[test]
+fn an_unreachable_tree_keeps_its_games() {
+    let dir = TestDir::new("lib-tree-lost");
+    write(&dir, "roms/a.gba", &gba_rom("ONE", 0));
+    let tree = FakeTree::new(dir.path("roms"));
+    let mut lib = Library::open(&dir.path("db"));
+    scan_tree(&mut lib, &tree);
+    let id = lib.games().next().unwrap().id.clone();
+    lib.add_play_time(&id, 60).unwrap();
+
+    tree.reachable.set(false);
+    let report = scan_tree(&mut lib, &tree);
+    assert_eq!(report.unreachable, vec![TREE.to_owned()]);
+    let game = lib.game(&id).unwrap();
+    assert!(!game.available);
+    assert_eq!(game.play_time_secs, 60);
+    assert_eq!(lib.cache().len(), 1, "kept for when it comes back");
+
+    tree.reachable.set(true);
+    assert_eq!(scan_tree(&mut lib, &tree).added, 0);
+    assert!(lib.game(&id).unwrap().available);
+}
+
+#[test]
+fn without_documents_a_tree_is_unreachable() {
+    let outcome = scan(
+        ScanInput {
+            folders: Vec::new(),
+            trees: vec![TREE.to_owned()],
+            files: Vec::new(),
+            cache: Default::default(),
+        },
+        &mut |_, _| {},
+    );
+    assert_eq!(outcome.unreachable, vec![TREE.to_owned()]);
+    assert_eq!(outcome.folders, vec![TREE.to_owned()]);
 }
