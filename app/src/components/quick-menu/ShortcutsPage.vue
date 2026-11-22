@@ -18,7 +18,7 @@ const initial = { [FocusMark.SubInitial]: '' }
       :key="r.hotkey"
       v-bind="i === 0 ? initial : {}"
       :variant="CardVariant.ListRow"
-      class="gap-12"
+      class="gap-8"
       tabindex="0"
     >
       <span class="block min-w-0 flex-1 font-medium">{{ hotkeyName(r.hotkey) }}</span>

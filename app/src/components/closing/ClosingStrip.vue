@@ -30,7 +30,7 @@ const doneText = computed(() => props.done ?? t('closing.saved'))
 
 <template>
   <div
-    class="glass-thick-flat flex items-center gap-12 rounded-card border border-line py-10 pr-18 pl-14 shadow-glass"
+    class="glass-thick-flat flex items-center gap-8 rounded-card border border-line py-6 pr-12 pl-10 shadow-glass"
     role="status"
   >
     <Check v-if="saved" class="text-success" :size="20" :stroke-width="2" aria-hidden="true" />

@@ -22,7 +22,7 @@ import UndoLoadBannerSection from './UndoLoadBannerSection.vue'
 </script>
 
 <template>
-  <div class="flex flex-col gap-24">
+  <div class="flex flex-col gap-16">
     <QuickSavesSection />
     <SpeedPickerSection />
     <ToolTilesSection />

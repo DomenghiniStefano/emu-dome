@@ -50,30 +50,6 @@ import { SCREEN_CARDS } from './mock'
           in ascolto di RemapTableRow (vedi la sua sezione).
         </template>
       </KitIssue>
-      <KitIssue
-        title="Il motivo di una card bloccata viene tagliato"
-        :status="IssueStatus.Proposed"
-      >
-        Una card che non si può cambiare qui scrive il motivo al posto della provenienza, ma la riga
-        è <code>truncate</code>: nella barra (cinque card in 1040 px) di «Su questo sistema il
-        metodo Accelerato non è disponibile.» si legge solo l’inizio, e il motivo è l’unica cosa che
-        spiega perché ‹ › mancano.
-        <template #current>
-          <div class="w-card-min">
-            <ScreenCard :card="SCREEN_CARDS.locked" />
-          </div>
-        </template>
-        <template #proposed>
-          <div class="w-card-min">
-            <GameScreenCardProposal :card="SCREEN_CARDS.locked" />
-          </div>
-        </template>
-        <template #solution>
-          in ScreenCard.vue la riga sotto passa da <code>truncate</code> a
-          <code>line-clamp-2</code>; le card di una riga della griglia restano alte uguali, perché
-          la griglia le allunga già tutte alla più alta.
-        </template>
-      </KitIssue>
     </template>
   </KitSection>
 </template>

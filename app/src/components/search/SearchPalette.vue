@@ -101,7 +101,7 @@ function typeInField(e: KeyboardEvent) {
   <Dialog v-model:open="open">
     <DialogContent :size="DialogSize.Palette" :aria-describedby="undefined" @keydown="typeInField">
       <DialogTitle class="sr-only">{{ t('search.title') }}</DialogTitle>
-      <div class="flex h-52 flex-none items-center gap-10 border-b border-line px-16">
+      <div class="flex h-control-lg flex-none items-center gap-8 border-b border-line px-12">
         <Search
           class="flex-none text-ink-muted"
           :size="20"
@@ -122,7 +122,7 @@ function typeInField(e: KeyboardEvent) {
         <Kbd class="touch:hidden">{{ t('search.key.esc') }}</Kbd>
       </div>
 
-      <div v-if="groups.length || nothing" class="min-h-0 flex-1 overflow-auto px-8 pt-4 pb-8">
+      <div v-if="groups.length || nothing" class="min-h-0 flex-1 overflow-auto px-4 pt-4 pb-4">
         <template v-for="g in groups" :key="g.id">
           <div class="px-8 pt-8 pb-2 text-overline text-ink-muted uppercase">
             {{ t(`search.groups.${g.id}`) }}
@@ -136,7 +136,7 @@ function typeInField(e: KeyboardEvent) {
         </template>
 
         <!-- X02 -->
-        <div v-if="nothing" class="flex flex-col gap-10 px-8 py-12">
+        <div v-if="nothing" class="flex flex-col gap-8 px-8 py-8">
           <span class="text-heading">{{ t('search.noResults', { query: query.trim() }) }}</span>
           <template v-if="suggestions.length">
             <span class="text-ink-muted">{{ t('search.didYouMean') }}</span>
@@ -153,7 +153,7 @@ function typeInField(e: KeyboardEvent) {
       </div>
 
       <footer
-        class="flex flex-none flex-wrap items-center gap-16 border-t border-line px-16 py-10 text-caption text-ink-muted touch:hidden"
+        class="flex flex-none flex-wrap items-center gap-12 border-t border-line px-12 py-6 text-caption text-ink-muted touch:hidden"
       >
         <span class="inline-flex items-center gap-6">
           <Kbd>{{ t('search.key.up') }}</Kbd>

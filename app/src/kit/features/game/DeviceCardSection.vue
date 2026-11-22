@@ -72,9 +72,9 @@ const chosen = ref('pad')
         </template>
         <template #proposed>
           <div class="w-tile-min">
-            <Card as="div" :variant="CardVariant.Choice" class="flex-row items-center gap-12">
+            <Card as="div" :variant="CardVariant.Choice" class="flex-row items-center gap-8">
               <span
-                class="grid size-control-lg flex-none place-items-center rounded-10 bg-surface-raised text-ink-muted"
+                class="grid size-control-lg flex-none place-items-center rounded-control bg-surface-raised text-ink-muted"
               >
                 <Gamepad2 :size="22" :stroke-width="1.75" aria-hidden="true" />
               </span>
@@ -89,10 +89,10 @@ const chosen = ref('pad')
               as="div"
               :variant="CardVariant.Choice"
               selected
-              class="flex-row items-center gap-12"
+              class="flex-row items-center gap-8"
             >
               <span
-                class="grid size-control-lg flex-none place-items-center rounded-10 bg-surface-raised text-accent-text"
+                class="grid size-control-lg flex-none place-items-center rounded-control bg-surface-raised text-accent-text"
               >
                 <Gamepad2 :size="22" :stroke-width="1.75" aria-hidden="true" />
               </span>

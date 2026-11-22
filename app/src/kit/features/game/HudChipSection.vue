@@ -34,9 +34,9 @@ import GameStage from './GameStage.vue'
       <KitIssue title="Tre vetri diversi in cima al gioco" :status="IssueStatus.Proposed">
         Sopra il gioco compaiono tre cose nella stessa fascia in alto: i chip dell’HUD, il
         suggerimento del menu rapido e i toast del gioco. Il suggerimento e i toast usano
-        <code>glass-thick</code> (sfocatura, bordo luminoso, ombra, raggio 10); il chip dell’HUD ha
-        solo il riempimento <code>bg-glass-thick</code>, senza sfocatura, con raggio 6. Su un gioco
-        chiaro o in movimento il chip si legge peggio e sembra di un’altra famiglia.
+        <code>glass-thick</code> (sfocatura, bordo luminoso, ombra); il chip dell’HUD ha solo il
+        riempimento <code>bg-glass-thick</code>, senza sfocatura. Su un gioco chiaro o in movimento
+        il chip si legge peggio e sembra di un’altra famiglia.
         <template #current>
           <GameStage :scrim="false">
             <div class="flex gap-8">
@@ -49,12 +49,12 @@ import GameStage from './GameStage.vue'
           <GameStage :scrim="false">
             <div class="flex gap-8">
               <div
-                class="flex h-control-sm items-center rounded-10 px-10 font-semibold glass-thick"
+                class="flex h-control-sm items-center rounded-card px-8 font-semibold glass-thick"
               >
                 4×
               </div>
               <div
-                class="flex h-control-sm items-center rounded-10 px-10 font-semibold glass-thick"
+                class="flex h-control-sm items-center rounded-card px-8 font-semibold glass-thick"
               >
                 In pausa
               </div>
@@ -62,9 +62,9 @@ import GameStage from './GameStage.vue'
           </GameStage>
         </template>
         <template #solution>
-          in HudChip.vue sostituire <code>rounded-6 border border-line bg-glass-thick</code> con
-          <code>glass-thick rounded-10</code>, come QuickMenuHint e i toast del gioco. Se l’ombra
-          del vetro è troppo per un indicatore discreto, un’utility <code>glass-chip</code> in
+          in HudChip.vue sostituire <code>border border-line bg-glass-thick</code> con
+          <code>glass-thick</code>, come QuickMenuHint e i toast del gioco. Se l’ombra del vetro è
+          troppo per un indicatore discreto, un’utility <code>glass-chip</code> in
           <code>utilities.css</code> usata da tutti e tre.
         </template>
       </KitIssue>

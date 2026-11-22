@@ -139,13 +139,17 @@ const go = (to: Route) => (route.value = to)
         :content-has-initial="hasOwnInitialFocus(section)"
         @pick="s => go(pickSection(route, s))"
       />
+      <!-- A section (or a game's details) coming in fades in with 4 px of rise (motion.css
+           `enter-rise`): keyed by what it shows, so each change mounts it again and plays it.
+           «Riduci le animazioni» cuts it to its last frame (styles.css). -->
       <main
+        :key="details ?? section"
         :class="
           cn(
-            'flex min-w-0 flex-1 flex-col',
+            'flex min-w-0 flex-1 flex-col animate-[enter-rise_var(--transition-duration-fast)_var(--ease-out)]',
             isFlush(section, details !== null, uiMode.tv)
               ? 'overflow-hidden p-0'
-              : 'overflow-auto p-32',
+              : 'overflow-auto p-16',
             // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, a game's
             // details) keep the desk's layout, scaled up as it is.
             !isTvLaidOut(section, details !== null) && 'tv:zoom-tv',

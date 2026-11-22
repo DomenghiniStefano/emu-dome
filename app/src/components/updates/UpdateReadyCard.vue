@@ -36,7 +36,7 @@ async function restart() {
 <template>
   <section
     v-if="shown"
-    class="pointer-events-auto fixed right-16 bottom-16 z-toast flex max-w-toast flex-col gap-12 rounded-12 px-16 py-12 glass-thick"
+    class="pointer-events-auto fixed right-12 bottom-12 z-toast flex max-w-toast flex-col gap-8 rounded-card p-card-pad glass-thick"
     :aria-label="t('updates.title')"
     aria-live="polite"
   >

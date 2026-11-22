@@ -40,7 +40,7 @@ onMounted(async () => {
     role="status"
   >
     <div
-      class="pointer-events-auto flex w-lid-card max-w-[calc(100vw-var(--spacing-window-margin))] flex-col items-center gap-12 p-dialog-pad text-center glass-thick"
+      class="pointer-events-auto flex w-lid-card max-w-[calc(100vw-var(--spacing-window-margin))] flex-col items-center gap-8 p-dialog-pad text-center glass-thick"
     >
       <Laptop class="text-ink-muted" :size="24" :stroke-width="1.75" aria-hidden="true" />
       <Heading as="h2" :variant="HeadingVariant.PageTitle">{{ t('flow.lid.title') }}</Heading>

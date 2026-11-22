@@ -91,7 +91,7 @@ const isEmpty = (slot: number) => !SLOTS.find(s => s.slot === slot)?.savedAt
               Carica dallo slot automatico
             </Button>
             <span
-              class="flex h-touch items-center justify-center rounded-10 border border-dashed border-line-strong px-8 text-center text-caption-inline text-ink-muted"
+              class="flex items-center justify-center self-stretch rounded-control border border-dashed border-line-strong px-8 text-center text-caption-inline text-ink-muted"
             >
               Lo slot automatico si aggiorna da solo
             </span>

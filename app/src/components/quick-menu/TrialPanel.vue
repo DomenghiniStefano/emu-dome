@@ -16,7 +16,7 @@ const { t } = useI18n()
 
 <template>
   <div
-    class="flex flex-col gap-8 rounded-10 border border-accent-text bg-surface p-12"
+    class="flex flex-col gap-8 rounded-card border border-accent-text bg-surface p-card-pad"
     role="status"
   >
     <div>

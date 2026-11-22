@@ -39,7 +39,7 @@ defineExpose({ focusCurrent })
   <!-- The rail's 76px width is its own (the design system's `sidebar` is 56: Cowork). -->
   <nav
     ref="nav"
-    class="flex shrink-0 basis-rail flex-col items-center gap-4 border-r border-line bg-glass-thin py-12"
+    class="flex shrink-0 basis-rail flex-col items-center gap-4 border-r border-line bg-glass-thin py-8"
     :aria-label="t('shell.sections')"
   >
     <template v-for="s in SECTIONS" :key="s">
