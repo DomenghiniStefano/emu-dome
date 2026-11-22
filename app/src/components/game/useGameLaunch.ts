@@ -4,6 +4,7 @@
 import { useI18n } from 'vue-i18n'
 import { open } from '@tauri-apps/plugin-dialog'
 import { AUTO_SLOT, emu, type GameId, type GameInfo, type LibraryGame } from '@/emu'
+import { clearToLaunch } from '@/components/cloud/cloudState'
 import { flow } from './gameFlow'
 import { errorText } from '@/i18n/labels'
 import { launchFailure, type Launch } from './launch'
@@ -24,11 +25,17 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
   // dropped rather than racing the first to the core.
   let starting = false
 
-  /** Opens the game; resolves whether it runs. */
-  async function start(launch: Launch, resumeAuto = false): Promise<boolean> {
+  /** Opens the game; resolves whether it runs. `before`: a question first (G05), inside the one
+   * launch at a time; false opens nothing. */
+  async function start(
+    launch: Launch,
+    resumeAuto = false,
+    before?: () => Promise<boolean>,
+  ): Promise<boolean> {
     if (starting) return false
     starting = true
     try {
+      if (before && !(await before())) return false
       const info = await openCore(launch)
       if (!info) return false
       last = launch
@@ -94,11 +101,12 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
    * loaded once the game runs.
    */
   async function openLibraryGame(g: LibraryGame, slot?: number) {
-    const started = await start({
-      opened: { kind: 'library', game: g },
-      title: g.title,
-      colour: g.colour,
-    })
+    const started = await start(
+      { opened: { kind: 'library', game: g }, title: g.title, colour: g.colour },
+      false,
+      // G05 (#31): open on another device → asked first; «Annulla» opens nothing.
+      () => clearToLaunch(g),
+    )
     if (!started || slot === undefined) return
     // The quick save asked for wins over the resume question.
     flow.resumeAsk = false

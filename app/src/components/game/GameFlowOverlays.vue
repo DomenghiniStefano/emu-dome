@@ -1,9 +1,14 @@
 <script setup lang="ts">
 // What the game flow shows over the game or the shell (boards «Stati» and «Errori»):
-// G01 starting, G02 cannot start, G06 the quick-menu hint, G14 closing, the resume question,
-// E04 the in-game save cannot be read, E11 the emulator stopped, E12 slower than normal.
+// G01 starting (with G03, the saves coming down from Google Drive), G02 cannot start, G06 the
+// quick-menu hint, G14 closing, the resume question, E04 the in-game save cannot be read, E11 the
+// emulator stopped, E12 slower than normal.
 // State in gameFlow.ts; App.vue reacts to the emitted choices.
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import CloudPull from '@/components/cloud/CloudPull.vue'
+import { progressOf, transferShare } from '@/components/cloud/cloud'
+import { cloud } from '@/components/cloud/cloudState'
 import { flow } from './gameFlow'
 import CrashDialog from './CrashDialog.vue'
 import GameScene from './GameScene.vue'
@@ -31,11 +36,19 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const pull = computed(() => progressOf(cloud.progress, 'pulling', null))
 </script>
 
 <template>
-  <GameScene v-if="flow.launching" :title="flow.launching.title" :colour="flow.launching.colour">
-    <div class="text-ink-muted">{{ t('flow.starting') }}</div>
+  <GameScene
+    v-if="flow.launching"
+    :title="flow.launching.title"
+    :colour="flow.launching.colour"
+    :value="transferShare(pull)"
+  >
+    <!-- G03 (#31): the newest saves coming down from Google Drive first. -->
+    <CloudPull v-if="pull" :progress="pull" />
+    <div v-else class="text-ink-muted">{{ t('flow.starting') }}</div>
   </GameScene>
 
   <GameScene v-if="flow.closing" :title="t('flow.closing', { title: flow.closing.title })">

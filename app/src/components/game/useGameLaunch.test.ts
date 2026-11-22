@@ -21,7 +21,10 @@ const bridge = vi.hoisted(() => ({
   restoreLatest: vi.fn(),
   pick: vi.fn(),
   openExtensions: vi.fn(),
+  clearToLaunch: vi.fn(),
 }))
+// G05 (#31): the cloud's question before a library game opens.
+vi.mock('@/components/cloud/cloudState', () => ({ clearToLaunch: bridge.clearToLaunch }))
 vi.mock('@/emu', () => ({
   AUTO_SLOT: 0,
   emu: {
@@ -88,6 +91,7 @@ beforeEach(() => {
   bridge.openGame.mockResolvedValue(info('MINISH'))
   bridge.libraryOpen.mockResolvedValue(info('MINISH'))
   bridge.openExtensions.mockResolvedValue(['gb', 'gbc', 'gba', 'nds'])
+  bridge.clearToLaunch.mockResolvedValue(true)
   for (const f of [bridge.setPaused, bridge.loadState, bridge.abandonGame, bridge.restoreLatest])
     f.mockResolvedValue(undefined)
 })
@@ -217,6 +221,19 @@ describe('useGameLaunch', () => {
     expect(flow.startError).toBeNull()
     expect(flow.launching).toBeNull()
     expect(toasts.failWith).toHaveBeenCalledWith({ code: 'stateInvalid', params: { slot: 0 } })
+  })
+
+  it('G05: a game open on another device opens only on «Gioca comunque»', async () => {
+    const { launch, session } = setup()
+    bridge.clearToLaunch.mockResolvedValueOnce(false)
+    await launch.openLibraryGame(minish, 3)
+    expect(bridge.clearToLaunch).toHaveBeenCalledWith(minish)
+    expect(bridge.libraryOpen).not.toHaveBeenCalled()
+    expect(session.begin).not.toHaveBeenCalled()
+    expect(flow.launching).toBeNull()
+    // The answer let go of the launch: the next one goes through.
+    await launch.openLibraryGame(minish)
+    expect(bridge.libraryOpen).toHaveBeenCalledWith(minish.id)
   })
 
   it('a second launch while one is opening is dropped', async () => {

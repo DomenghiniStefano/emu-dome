@@ -25,6 +25,7 @@ import { hideSplash } from '@/lib/splash'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
 import ClosingOverlay from '@/components/closing/ClosingOverlay.vue'
+import CloudFlowOverlays from '@/components/cloud/CloudFlowOverlays.vue'
 import FirstRun from '@/components/first-run/FirstRun.vue'
 import GameCanvas from '@/components/game/GameCanvas.vue'
 import GameFlowOverlays from '@/components/game/GameFlowOverlays.vue'
@@ -190,6 +191,9 @@ onMounted(async () => {
     @broken-play="launch.playWithoutSave"
     @broken-close="launch.closeBroken"
   />
+
+  <!-- Google Drive sync (#31): G05, G04 outside the game, G14's strip after a game closed. -->
+  <CloudFlowOverlays v-if="game || firstRun === false" :in-game="!!game" />
 
   <!-- Closing with a game open: saving, saved, or the question when it does not end well. -->
   <ClosingOverlay
