@@ -300,6 +300,7 @@
     "cloudCredentialsUnavailable": "EmuDome non riesce a conservare l’accesso a Google su questo computer ({detail}). Attiva il portachiavi o il gestore delle password del sistema, poi accedi di nuovo.",
     "nativeVideoFallback": "Il video nativo non è partito ({detail}), quindi il gioco si vede nell’interfaccia. Puoi continuare a giocare; aggiorna il driver grafico e riavvia EmuDome per riprovare.",
     "hwRenderFallback": "I giochi 3DS non possono usare la scheda grafica ({detail}), quindi usano il renderer software, più lento. Aggiorna il driver grafico e riavvia EmuDome per riprovare.",
+    "graphicsApiUnavailable": "{api} non si può usare su questo sistema, quindi EmuDome ha scelto da sé l’API grafica. Scegline un’altra in Impostazioni › Video e riavvia EmuDome, oppure aggiorna il driver grafico.",
     "videoSurfaceFailed": "Non riesco a disegnare sullo schermo ({detail}), quindi il gioco non si vede. Passa a un’altra app e torna qui, oppure riavvia EmuDome.",
     "audioUnavailable": "Niente audio: non riesco a usare l’uscita audio ({detail}). EmuDome continua a riprovare; controlla che casse o cuffie siano collegate.",
     "controllersUnavailable": "Questa volta non riesco a usare i controller ({detail}). Usa la tastiera, oppure riavvia EmuDome per riprovare.",

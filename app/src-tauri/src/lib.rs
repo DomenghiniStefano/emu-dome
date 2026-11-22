@@ -372,7 +372,14 @@ pub fn run() {
             let back_app = app.handle().clone();
             emudome_platform::attach_system(&ui, move || hotkeys::back_button(&back_app));
             let surface = video::SurfaceSettings::from_tuning(&tuning.video);
-            let gpu = video::GpuService::new();
+            // `video.api`: read once, the GPU is the run's (a change applies at the next start).
+            let api = emudome_core::settings::keys::Reader::new(settings::resolver(
+                app.handle(),
+                &Scope::Global,
+            ))
+            .text(emudome_core::settings::keys::VIDEO_API);
+            let (gpu, api_problem) = video::GpuService::with_api(video::GraphicsApi::from_id(&api));
+            health.set(health::Part::GraphicsApi, api_problem);
             let mut native_error = None;
             let renderer = if native {
                 let spawned = if emudome_platform::EXTERNAL_SURFACE {

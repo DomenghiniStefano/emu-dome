@@ -15,6 +15,8 @@ use tauri::{AppHandle, Emitter};
 /// The pieces of EmuDome that report here, each with at most one code at a time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Part {
+    /// The graphics API of `video.api` has no GPU here (wgpu chose another), set at startup.
+    GraphicsApi,
     /// The native renderer could not start (the webview canvas is used).
     NativeVideo,
     /// The surface the renderer draws on.
@@ -42,7 +44,7 @@ impl Part {
     /// The name `threadStopped` carries for a thread of this part.
     pub fn thread(self) -> &'static str {
         match self {
-            Part::NativeVideo | Part::Surface | Part::HwRender => "video",
+            Part::GraphicsApi | Part::NativeVideo | Part::Surface | Part::HwRender => "video",
             Part::Audio => "audio",
             Part::Controllers => "controllers",
             // Run at start on the main thread, or by the close flow's worker: never in a

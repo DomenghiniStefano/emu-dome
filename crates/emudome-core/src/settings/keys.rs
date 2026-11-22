@@ -128,6 +128,7 @@ pub const VIDEO_SURROUND_IMG: TextKey = TextKey::new("video.surroundImg");
 pub const VIDEO_ASPECT: TextKey = TextKey::new("video.aspect");
 pub const VIDEO_WINDOW: TextKey = TextKey::new("video.window");
 pub const VIDEO_WINDOW_SIZE: TextKey = TextKey::new("video.winsize");
+pub const VIDEO_API: TextKey = TextKey::new("video.api");
 pub const FX_PICK: TextKey = TextKey::new("fx.fxpick");
 pub const FX_INTENSITY: IntKey = IntKey::new("fx.fxint");
 pub const FX_BRIGHTNESS: IntKey = IntKey::new("fx.fxbright");

@@ -1952,7 +1952,6 @@ fn the_entries_not_wired_yet_are_these() {
             "video.fps",
             "video.portrait",
             "video.orient",
-            "video.api",
             "screens.second",
             "screens.stereo",
             "audio.mic",

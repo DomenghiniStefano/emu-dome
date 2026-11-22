@@ -423,7 +423,8 @@ pub static ENTRIES: &[Entry] = &[
         G,
     )
     .device()
-    .not_wired(),
+    // Direct3D 12 is a Windows API: never on a phone (on Linux it falls back, with the reason).
+    .options_on(&[("d3d12", Platform::Desktop)]),
     // 3DS only (Azahar, `core_values/azahar.rs`); the other cores list them as unsupported.
     sel("video.res3d", &["1x", "2x", "3x", "4x"], "1x", CG).phase(2),
     sel(
