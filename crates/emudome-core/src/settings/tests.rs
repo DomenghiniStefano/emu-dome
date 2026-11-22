@@ -1961,7 +1961,6 @@ fn the_entries_not_wired_yet_are_these() {
             "audio.mic",
             "audio.out",
             "audio.lat",
-            "speed.ffmode",
             "speed.runahead",
             "saves.rtc",
             "pad.gyro",

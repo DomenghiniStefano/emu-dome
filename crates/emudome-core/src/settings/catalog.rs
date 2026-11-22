@@ -514,7 +514,7 @@ pub static ENTRIES: &[Entry] = &[
         .not_wired(),
     // ---- Velocità di gioco (speed) ----
     seg("speed.spstart", &["0.5", "1", "2"], "1", GG),
-    seg("speed.ffmode", &["hold", "toggle"], "hold", G).not_wired(),
+    seg("speed.ffmode", &["hold", "toggle"], "hold", G),
     seg("speed.ffval", &["2", "3", "4", "max"], "4", GG).most_used(),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
     // On by default for GB, GBC, GBA and NDS on a computer; off on a phone (memory, battery) and
