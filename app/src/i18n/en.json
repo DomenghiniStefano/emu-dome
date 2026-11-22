@@ -2368,6 +2368,11 @@
     "settingWhere": "Settings · {page}",
     "gameWhere": "{console} · {time}",
     "needsGame": "Open a game to use it",
+    "heldInGame": "Hold its shortcut while you play",
+    "pausedInMenu": "The game is already paused while the menu is open",
+    "twoScreensOnly": "Only for games with two screens",
+    "settingInLibrary": "Open it from Settings in the library",
+    "playingNow": "You’re playing it now",
     "noResults": "No results for “{query}”",
     "didYouMean": "Did you mean:",
     "hint": {
