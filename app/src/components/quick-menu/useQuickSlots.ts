@@ -21,6 +21,9 @@ export function useQuickSlots(o: QuickSlotsOptions) {
   const chosen = ref(o.initial)
   /** The slot a save made here went to, while its «Annulla» is offered. */
   const savedSlot = ref<number | null>(null)
+  /** The slot of the last save seen while the menu is open (here or with a shortcut), until it is
+   * undone: the phone's «Annulla l'ultimo salvataggio». */
+  const lastSaved = ref<number | null>(null)
   /** The slot a save asked here is going to, until its event arrives. */
   let saving: number | null = null
 
@@ -39,10 +42,11 @@ export function useQuickSlots(o: QuickSlotsOptions) {
     chosen.value = slot
     savedSlot.value = null
   }
-  function save() {
-    saving = chosen.value
+  /** Saves to the chosen slot, or to `slot` (the phone's «Salva rapido»: the quick slot). */
+  function save(slot: number = chosen.value) {
+    saving = slot
     savedSlot.value = null
-    o.onSave(chosen.value)
+    o.onSave(slot)
   }
   /** Carica loads and resumes at once (App.vue shows G17). */
   function loadChosen() {
@@ -60,11 +64,13 @@ export function useQuickSlots(o: QuickSlotsOptions) {
   function onEvent(ev: EmuEvent) {
     if (ev.type === 'stateSaved') {
       if (ev.slot === saving) savedSlot.value = ev.slot
+      if (ev.slot !== AUTO_SLOT) lastSaved.value = ev.slot
       saving = null
       void load()
     }
     if (ev.type === 'saveUndone') {
       savedSlot.value = null
+      lastSaved.value = null
       void load()
     }
     if (ev.type === 'error') saving = null
@@ -78,6 +84,7 @@ export function useQuickSlots(o: QuickSlotsOptions) {
     chosenEmpty,
     autoChosen,
     savedSlot,
+    lastSaved,
     load,
     pick,
     save,

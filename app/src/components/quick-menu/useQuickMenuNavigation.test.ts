@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { useQuickMenuNavigation } from './useQuickMenuNavigation'
-import { FocusMark, QuickMenuView, openerMark } from './view'
+import { FocusMark, QuickMenuView, openerMark, phoneParent } from './view'
 
 // The main screen as its own component, unmounted while a page shows (as QuickMenuHome is), so
 // a control remembered as an element is detached by the time back runs.
@@ -26,20 +26,26 @@ const Home = defineComponent({
         onClick: (e: Event) => emit('open', QuickMenuView.Speed, e),
       }),
       h('button', { id: 'chosen', [FocusMark.ChosenSlot]: '' }),
+      // The phone's «Altro».
+      h('button', {
+        id: 'more',
+        ...openerMark(QuickMenuView.More),
+        onClick: (e: Event) => emit('open', QuickMenuView.More, e),
+      }),
     ]
   },
 })
 
 // A stand-in menu: the main screen, and per page a marked control or only the back button, as
 // the real parts render them.
-function harness() {
+function harness(parent?: (v: QuickMenuView) => QuickMenuView) {
   const resume = vi.fn()
   const home = vi.fn()
   let nav!: ReturnType<typeof useQuickMenuNavigation>
   const Menu = defineComponent({
     setup() {
       const root = ref<HTMLElement | null>(null)
-      nav = useQuickMenuNavigation(root, { resume, home })
+      nav = useQuickMenuNavigation(root, { resume, home, parent })
       return () =>
         h('section', { ref: root }, [
           nav.view.value === QuickMenuView.Home
@@ -55,6 +61,16 @@ function harness() {
                   : null,
                 nav.view.value === QuickMenuView.Shortcuts
                   ? h('div', { [FocusMark.SubInitial]: '' }, [h('button', { id: 'first-combo' })])
+                  : null,
+                nav.view.value === QuickMenuView.More
+                  ? [
+                      h('button', { id: 'first-row', [FocusMark.SubInitial]: '' }),
+                      h('button', {
+                        id: 'saves-row',
+                        ...openerMark('saves'),
+                        onClick: (e: Event) => nav.open(QuickMenuView.Slots, e),
+                      }),
+                    ]
                   : null,
                 nav.view.value === QuickMenuView.Screens
                   ? h('button', {
@@ -188,5 +204,49 @@ describe('quick menu navigation', () => {
     expect(nav().view.value).toBe(QuickMenuView.Screens)
     expect(focused()).toBe('customise')
     expect(home).not.toHaveBeenCalled()
+  })
+})
+
+describe('quick menu navigation on the phone (two levels)', () => {
+  it('goes back from a page to «Altro», on the row that opened it, then to the main screen', async () => {
+    const { wrapper, nav, home, resume } = harness(phoneParent)
+    mounted = wrapper
+    await wrapper.find('#more').trigger('click')
+    await nextTick()
+    expect(nav().view.value).toBe(QuickMenuView.More)
+    expect(focused()).toBe('first-row')
+
+    await wrapper.find('#saves-row').trigger('click')
+    await nextTick()
+    expect(nav().view.value).toBe(QuickMenuView.Slots)
+
+    nav().back()
+    await nextTick()
+    await nextTick()
+    expect(nav().view.value).toBe(QuickMenuView.More)
+    expect(focused()).toBe('saves-row')
+    expect(home).not.toHaveBeenCalled()
+
+    nav().back()
+    await nextTick()
+    await nextTick()
+    expect(nav().view.value).toBe(QuickMenuView.Home)
+    expect(home).toHaveBeenCalledOnce()
+    expect(focused()).toBe('more')
+
+    nav().back()
+    expect(resume).toHaveBeenCalledOnce()
+  })
+
+  it('goes back from a page the search opened to «Altro»', async () => {
+    const { wrapper, nav } = harness(phoneParent)
+    mounted = wrapper
+    nav().open(QuickMenuView.Speed, null)
+    await nextTick()
+    nav().back()
+    await nextTick()
+    await nextTick()
+    expect(nav().view.value).toBe(QuickMenuView.More)
+    expect(focused()).toBe('first-row')
   })
 })

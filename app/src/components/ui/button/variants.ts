@@ -94,6 +94,11 @@ export const ButtonVariant = {
   // A result of the search (X01): a full-width row, regular ink, the chosen one (focused) on
   // accent-soft. With ButtonSize.Result.
   Result: 'result',
+  // One of the phone quick menu's strip (owner, 2026-11-22: «Accelera», «Silenzia», «Altro»): no
+  // fill, muted words under an ink icon; one that is on (`aria-pressed`) on surface-hover with a
+  // strong edge, in ink. Never the accent: the sheet's only amber is «Riprendi». With
+  // ButtonSize.Strip.
+  Strip: 'strip',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -215,6 +220,19 @@ export const ButtonSize = {
   // A notification (ButtonVariant.Result in the bell's panel, X03): its dot on the first line,
   // 8 between its parts, 6 / 8 padding.
   Notice: 'notice',
+  // The phone quick menu's first level (owner, 2026-11-22): a tile of the row of three («Salva
+  // rapido», «Carica rapido», «Riprendi»), its icon at the top and its name with a line under it
+  // at the bottom, 72 tall (pending token `quick-tile`).
+  QuickTile: 'quickTile',
+  // The same action as a row (the phone on its side: «Salva rapido»), the touch minimum tall,
+  // content from the start.
+  QuickRow: 'quickRow',
+  // The same tile growing into the side panel's free height («Carica rapido» with the picture it
+  // goes back to), content in a row from the start.
+  QuickTileGrow: 'quickTileGrow',
+  // A button of the phone quick menu's strip (ButtonVariant.Strip): an equal share of the row,
+  // 48 tall, icon over a short name.
+  Strip: 'strip',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -299,6 +317,8 @@ export const buttonVariants = cva(
           'relative border-0 bg-transparent text-ink-muted hover:bg-surface-hover aria-expanded:bg-accent-soft aria-expanded:text-accent-text',
         [ButtonVariant.Result]:
           'w-full justify-start border-0 bg-transparent text-left font-regular whitespace-normal text-ink hover:bg-surface-hover focus:bg-accent-soft disabled:hover:bg-transparent',
+        [ButtonVariant.Strip]:
+          'bg-transparent text-ink-muted hover:bg-surface-hover aria-pressed:border-line-strong aria-pressed:bg-surface-hover aria-pressed:text-ink [&_svg]:text-ink',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-6 touch:text-label-lead',
@@ -325,7 +345,7 @@ export const buttonVariants = cva(
         [ButtonSize.TileAction]:
           'h-control-sm px-8 text-caption-tall font-medium whitespace-normal',
         [ButtonSize.TextLine]: 'gap-2 py-2 pr-8 pl-4 touch:min-h-touch',
-        [ButtonSize.Back]: 'h-control gap-4 pr-8 pl-4',
+        [ButtonSize.Back]: 'h-control gap-4 pr-8 pl-4 touch:h-touch',
         [ButtonSize.Step]: 'size-control p-0 touch:size-touch',
         [ButtonSize.Menu]: 'h-control-lg gap-6 px-12 font-semibold touch:h-48 touch:text-cta',
         [ButtonSize.MenuCompact]:
@@ -359,6 +379,13 @@ export const buttonVariants = cva(
         [ButtonSize.Tv]: 'h-tv-action gap-12 rounded-card px-32 text-tv-action',
         [ButtonSize.Result]: 'min-h-control-lg gap-8 px-8 py-4',
         [ButtonSize.Notice]: 'items-start gap-8 rounded-card px-8 py-6',
+        [ButtonSize.QuickTile]:
+          'h-quick-tile min-w-0 flex-col items-start justify-between gap-2 p-8 text-left',
+        [ButtonSize.QuickRow]: 'h-touch min-w-0 justify-start gap-8 px-12 text-left',
+        [ButtonSize.QuickTileGrow]:
+          'h-auto min-h-0 min-w-0 flex-1 items-stretch justify-start gap-8 p-8 text-left',
+        [ButtonSize.Strip]:
+          'h-48 min-w-0 flex-1 basis-0 flex-col gap-2 overflow-hidden px-2 text-caption font-medium',
       },
       fade: {
         [ButtonFade.Normal]: 'disabled:opacity-disabled aria-disabled:opacity-disabled',

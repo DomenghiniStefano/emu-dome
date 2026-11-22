@@ -12,16 +12,25 @@ export interface NavigationHooks {
   resume: () => void
   /** Back on the main screen from a page. */
   home: () => void
+  /**
+   * The level a page goes back to (the phone: the pages opened from «Altro» go back to it, and
+   * «Altro» to the main screen); none: the main screen.
+   */
+  parent?: (view: QuickMenuView) => QuickMenuView
 }
+
+type Opener = { id: string | null; el: HTMLElement }
 
 export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: NavigationHooks) {
   const view = ref<QuickMenuView>(QuickMenuView.Home)
   /**
-   * The control a page was opened from, focused again on the way back: by its `FocusMark.Opener`
-   * identity, since the main screen is unmounted while a page shows and the element itself is
-   * gone by then (the element is kept only for a control without the mark that is still there).
+   * The control each level opened its page from, focused again on the way back: by its
+   * `FocusMark.Opener` identity, since the level is unmounted while the page shows and the
+   * element itself is gone by then (the element is kept only for a control without the mark that
+   * is still there).
    */
-  let opener: { id: string | null; el: HTMLElement } | null = null
+  const openers = new Map<QuickMenuView, Opener | null>()
+  let opener: Opener | null = null
 
   function openerOf(e: Event | null) {
     const el = e?.currentTarget instanceof HTMLElement ? e.currentTarget : null
@@ -30,15 +39,17 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
     return { id: marked?.getAttribute(FocusMark.Opener) ?? null, el }
   }
 
-  /** The opener back on the remounted main screen, else the chosen slot. */
-  function focusOpener() {
+  /** The opener back on the remounted level, else the chosen slot (the main screen) or the
+   * level's first control. */
+  function focusOpener(level: QuickMenuView) {
     const target = opener?.id
       ? find(`[${FocusMark.Opener}="${CSS.escape(opener.id)}"]`)
       : opener?.el.isConnected
         ? opener.el
         : null
     if (target) target.focus()
-    else void focusChosenSlot()
+    else if (level === QuickMenuView.Home) void focusChosenSlot()
+    else focusPage()
   }
 
   const find = (selector: string) => root.value?.querySelector<HTMLElement>(selector) ?? null
@@ -54,7 +65,7 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
 
   /** Opens a page; `e` is the click that opened it (null: the search). */
   function open(next: QuickMenuView, e: Event | null) {
-    if (view.value === QuickMenuView.Home) opener = openerOf(e)
+    if (parentOf(next) === view.value) openers.set(view.value, openerOf(e))
     view.value = next
     void nextTick(focusPage)
   }
@@ -78,10 +89,14 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
       void nextTick(() => find(`[${FocusMark.TouchEdit}]`)?.focus())
       return
     }
-    view.value = QuickMenuView.Home
-    hooks.home()
-    void nextTick(focusOpener)
+    const level = parentOf(view.value)
+    opener = openers.get(level) ?? null
+    view.value = level
+    if (level === QuickMenuView.Home) hooks.home()
+    void nextTick(() => focusOpener(level))
   }
+
+  const parentOf = (v: QuickMenuView) => hooks.parent?.(v) ?? QuickMenuView.Home
 
   /** Back to the main screen without moving the focus (Riavvia confirmed). */
   function home() {

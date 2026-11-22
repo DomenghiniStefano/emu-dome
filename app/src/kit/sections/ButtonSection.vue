@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Ellipsis,
   EllipsisVertical,
+  FastForward,
   Heart,
   Library,
   Play,
@@ -13,8 +14,10 @@ import {
   Search,
   Settings,
   Star,
+  RotateCcw,
   Trash2,
   Undo2,
+  VolumeX,
 } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
@@ -448,6 +451,53 @@ const PAD_STYLES = [
         </Button>
         <div data-density="touch" class="grid w-field text-lead">
           <Button :variant="ButtonVariant.Primary" :size="ButtonSize.MenuMain">Resume</Button>
+        </div>
+      </div>
+    </KitState>
+    <KitState
+      label="The phone quick menu's first level: QuickTile (Soft, Primary), QuickRow, Strip (on: aria-pressed)"
+    >
+      <div data-density="touch" class="flex w-panel flex-col gap-8 text-lead">
+        <div class="grid grid-cols-3 gap-8">
+          <Button :variant="ButtonVariant.Soft" :size="ButtonSize.QuickTile" :icon="Save">
+            <span class="flex flex-col">
+              <span class="font-semibold">Quick save</span>
+              <span class="text-fine text-ink-muted">Slot 1</span>
+            </span>
+          </Button>
+          <Button :variant="ButtonVariant.Soft" :size="ButtonSize.QuickTile" :icon="RotateCcw">
+            <span class="flex flex-col">
+              <span class="font-semibold">Quick load</span>
+              <span class="text-fine text-ink-muted">Slot 1 · 21:39</span>
+            </span>
+          </Button>
+          <Button
+            :variant="ButtonVariant.Primary"
+            :size="ButtonSize.QuickTile"
+            :icon="Play"
+            icon-filled
+          >
+            Resume
+          </Button>
+        </div>
+        <Button :variant="ButtonVariant.Soft" :size="ButtonSize.QuickRow" :icon="Save">
+          Quick save
+        </Button>
+        <div class="flex gap-4">
+          <Button :variant="ButtonVariant.Strip" :size="ButtonSize.Strip" :icon="FastForward">
+            Speed up
+          </Button>
+          <Button
+            :variant="ButtonVariant.Strip"
+            :size="ButtonSize.Strip"
+            :icon="VolumeX"
+            aria-pressed="true"
+          >
+            Unmute
+          </Button>
+          <Button :variant="ButtonVariant.Strip" :size="ButtonSize.Strip" :icon="Ellipsis">
+            More
+          </Button>
         </div>
       </div>
     </KitState>

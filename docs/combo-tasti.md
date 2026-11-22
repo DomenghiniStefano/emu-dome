@@ -318,10 +318,14 @@ what the controller hotkey with the same id does.
 
 The current slot lives in Rust (`Pads::slot`, `app/src-tauri/src/pads.rs`): the controller thread and
 the keyboard's F1–F4 (commands `current_slot`, `step_slot`) use the same one, and the quick menu opens on it.
+On the phone it is the quick menu's «slot rapido»: «Salva rapido» / «Carica rapido» use it, and «Altro ›
+Salvataggi › Rendi rapido» moves it to the chosen slot with the same `step_slot` steps (no command sets it at
+once).
 
 Known limits of this version:
 
-- The current slot starts at 1 at every launch of the app; it is not remembered per game.
+- The current slot starts at 1 at every launch of the app; it is not remembered per game (so neither is
+  the phone's «Rendi rapido»: it holds for every game until the app quits).
 - Backspace was Select's default key (`KEYBOARD_DEFAULTS`, `bindings.rs`) until rewind took it
   (Trello #42): Select's default is now the right Shift, RetroArch's. A keyboard remap saved
   with Backspace on Select is kept, and then the rewind key wins (it is checked first).

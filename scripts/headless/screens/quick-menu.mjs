@@ -72,16 +72,43 @@ const STATES = {
   },
 };
 
+// The phone (owner, 2026-11-22, proposal «A»): the first level, «Altro» and its pages.
+const more = click("^(More|Altro)$");
 const PHONE_STATES = {
   home: { mock: { slots: "full" }, steps: [escape] },
-  slots: { mock: { slots: "full" }, steps: [escape, click("^(More slots|Altri slot)$")] },
-  speed: { mock: { trial: true }, steps: [escape, click("^(Set speeds|Imposta le velocità)$")] },
-  screens: { mock: { trial: true }, steps: [escape, click("^(Screens and picture|Schermi e immagine)$")] },
+  slots: { mock: { slots: "full" }, steps: [escape, more, click("^(Saves|Salvataggi)")] },
+  speed: { mock: { trial: true }, steps: [escape, more, click("^(Speed|Velocità)")] },
+  screens: { mock: { trial: true }, steps: [escape, more, click("^(Screens and picture|Schermi e immagine)$")] },
   effects: {
     mock: { nativeVideo: true, trial: "crt" },
-    steps: [escape, click("^(Screens and picture|Schermi e immagine)$")],
+    steps: [escape, more, click("^(Screens and picture|Schermi e immagine)$")],
   },
-  restart: { mock: {}, steps: [escape, click("^(Restart game|Riavvia il gioco)$")] },
+  restart: { mock: {}, steps: [escape, more, click("^(Restart game|Riavvia il gioco)$")] },
+};
+// The same on the Galaxy S23 as its webview reports itself (360 × 780 upright, 780 × 360 on its
+// side), a touch screen over a game picture, in Italian; GBA and DS: `qm-s23-*`.
+const S23 = { p780: [360, 780], l780: [780, 360] };
+const S23_STATES = {
+  home: { mock: { slots: "some" }, steps: [escape] },
+  "home-empty": { mock: {}, steps: [escape] },
+  "home-rewind": { mock: { slots: "some", rewind: true }, steps: [escape] },
+  "home-on": {
+    mock: { slots: "some", rewind: true },
+    steps: [escape, click("^(Speed up|Accelera)$"), click("^(Mute|Silenzia)$")],
+  },
+  saved: { mock: { slots: "some" }, steps: [escape, click("^(Quick save|Salva rapido)")] },
+  loaded: {
+    mock: { slots: "some" },
+    steps: [`window.__emit('emu://session',{ type: 'stateLoaded', slot: 1 })`, escape],
+  },
+  more: { mock: { slots: "some" }, steps: [escape, more] },
+  saves: { mock: { slots: "some" }, steps: [escape, more, click("^(Saves|Salvataggi)")] },
+  "saves-auto": {
+    mock: { slots: "some" },
+    steps: [escape, more, click("^(Saves|Salvataggi)"), click("(Automatic|Automatico)")],
+  },
+  speed: { mock: { slots: "some" }, steps: [escape, more, click("^(Speed|Velocità)")] },
+  restart: { mock: {}, steps: [escape, more, click("^(Restart game|Riavvia il gioco)$")] },
 };
 
 const THEMES = ["dark", "black", "light"];
@@ -108,6 +135,31 @@ for (const theme of THEMES) {
     };
   }
 }
+for (const game of ["gba", "nds"])
+  for (const [state, s] of Object.entries(S23_STATES))
+    for (const [size, [width, height]] of Object.entries(S23))
+      quickMenuScenarios[`qm-s23-${game}-${state}-${size}`] = {
+        mock: { game, phone: true, frame: true, lang: "it", ...s.mock, theme: "dark" },
+        steps: s.steps,
+        touch: true,
+        width,
+        height,
+      };
+quickMenuScenarios["qm-s23-gba-home-en-p780"] = {
+  mock: { game: "gba", phone: true, frame: true, lang: "en", slots: "some", rewind: true },
+  steps: [escape],
+  touch: true,
+  width: 360,
+  height: 780,
+};
+// The desktop quick menu at 1280 × 800, which the phone's changes leave as it was.
+for (const state of ["home", "slots", "controls"])
+  quickMenuScenarios[`qm-desk-${state}`] = {
+    mock: { game: "gba", ...STATES[state].mock, theme: "dark" },
+    steps: STATES[state].steps,
+    width: 1280,
+    height: 800,
+  };
 
 // The search everywhere from the quick menu (#32), in Italian as the mockup: Ctrl + K over the
 // menu (keyboard) or Y (`emu://nav` `search`, controller); before typing (the games played last,

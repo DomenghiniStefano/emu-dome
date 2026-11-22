@@ -7,8 +7,12 @@
 // stays visible above it) and «Controlli» (G10), then «Chiudi il gioco» and «Riprendi il gioco».
 // NDS / 3DS: swap and the lid among the tools, the layout card first on G09, and from there the
 // C09 screens editor over the whole game (Trello #28).
-// Phone in portrait: a bottom sheet under the game, same order for the thumb. Phone on its side
-// (#29): the same content in a 440 px panel at the right edge, the game beside it.
+// The phone (owner, 2026-11-22, proposal «A»): a basic first level (PhoneHome: «Salva rapido»,
+// «Carica rapido» on the quick slot, «Riprendi», the strip) and a second level «Altro» growing
+// the same sheet (PhoneMore; «Altro › Salvataggi» is PhoneSaves, the pages G16 / G09 / G10 as
+// on desktop). In portrait a bottom sheet under the game, as tall as its content, no handle; on
+// its side (#29) a 300 px panel at the right edge, the game beside it. A tap on the game resumes;
+// B / Android's back go back one level.
 // Settings changed here are «in prova» (Session level): live, listed, saved for this game or its
 // console, or undone; closing the game drops them.
 //
@@ -34,6 +38,11 @@ import { lockReason } from '@/lib/settingsModel'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import ControlsPage from './ControlsPage.vue'
 import MenuFooter from './MenuFooter.vue'
+import PhoneHome from './PhoneHome.vue'
+import PhoneMore from './PhoneMore.vue'
+import PhoneSaves from './PhoneSaves.vue'
+import { MoreId, StripId, moreRows, stripButtons, type MoreRow } from './phoneMenu'
+import { sameSpeed } from '@/lib/speeds'
 import QuickMenuHome from './QuickMenuHome.vue'
 import QuickSaves from './QuickSaves.vue'
 import RestartConfirm from './RestartConfirm.vue'
@@ -58,7 +67,14 @@ import {
 import { pickChanges, screenPicks, type ScreenPickId } from './screenPicks'
 import { slotCount } from '@/components/details/gameSaves'
 import { loadedLine, mainSlotCount } from './slots'
-import { followedSpeed, modeSpeeds, speedChoices } from './speedChoices'
+import {
+  SpeedChoiceId,
+  chosenSpeed,
+  followedSpeed,
+  modeSpeeds,
+  speedChoices,
+  toggledSpeed,
+} from './speedChoices'
 import { ToolId, type Tool } from './tools'
 import { useControllerShortcuts } from './useControllerShortcuts'
 import { useMenuInset } from './useMenuInset'
@@ -68,7 +84,7 @@ import { useQuickMenuNavigation } from './useQuickMenuNavigation'
 import { useQuickSlots } from './useQuickSlots'
 import { useSay } from '@/i18n/message'
 import { useTrialSession } from './useTrialSession'
-import { QuickMenuView, SESSION_VIEWS, SUB_PAGE_TITLE, isSubPage } from './view'
+import { QuickMenuView, SESSION_VIEWS, SUB_PAGE_TITLE, isSubPage, phoneParent } from './view'
 
 const props = defineProps<{
   game: GameInfo
@@ -91,6 +107,10 @@ const emit = defineEmits<{
   resume: []
   speed: [Speed]
   save: [number]
+  /** The phone's «Rendi rapido»: this slot becomes the quick slot. */
+  quickSlot: [number]
+  /** The phone's «Riavvolgi» pressed (true) and let go (false). */
+  rewind: [boolean]
   load: [number]
   undoLoad: []
   reset: []
@@ -134,6 +154,7 @@ const {
   chosenEmpty,
   autoChosen,
   savedSlot,
+  lastSaved,
   load: loadSlots,
   pick,
   save,
@@ -150,6 +171,7 @@ const { combos, modifier, boundCount, load: loadShortcuts } = useControllerShort
 const { view, open, back, home, focusChosenSlot } = useQuickMenuNavigation(root, {
   resume: () => emit('resume'),
   home: () => void loadSlots(),
+  parent: v => (phone.value ? phoneParent(v) : QuickMenuView.Home),
 })
 
 // ---- Layout: desktop panel, G09 bar, phone sheet, phone side panel ----
@@ -196,12 +218,19 @@ const backKey = computed(() => {
   const key = backKeyLabel(inputMode.value)
   return key ? t(key) : null
 })
-const pageTitle = computed(() => (isSubPage(view.value) ? t(SUB_PAGE_TITLE[view.value]) : ''))
-/** Where back leads from a page: Controlli from the shortcuts, else the menu. */
+const pageTitle = computed(() => {
+  if (!isSubPage(view.value)) return ''
+  if (phone.value && view.value === QuickMenuView.Slots) return t('qm.savesPage')
+  return t(SUB_PAGE_TITLE[view.value])
+})
+/** Where back leads from a page: Controlli from the shortcuts, else the menu; on the phone
+ * «Indietro» (one level up). */
 const backLabel = computed(() =>
-  !phone.value && view.value === QuickMenuView.Shortcuts
-    ? t('qm.row.controls.name')
-    : t('qm.label'),
+  phone.value
+    ? t('qm.back')
+    : view.value === QuickMenuView.Shortcuts
+      ? t('qm.row.controls.name')
+      : t('qm.label'),
 )
 
 // ---- Quick saves ----
@@ -210,14 +239,82 @@ const shownSlots = computed(() =>
     ? slots.value.slice(0, mainSlotCount(phone.value))
     : slots.value,
 )
-/** With a controller, «Annulla il caricamento» sits at the top until the next save or load. */
+/** A load that can be undone (`saves.undo` on): its slot, else null. */
+const undoableLoad = computed(() =>
+  settingValue('saves.undo') !== false ? props.undoLoadSlot : null,
+)
+/** With a controller, «Annulla il caricamento» sits at the top until the next save or load; on
+ * the phone always (the toast told where to undo it). */
 const showUndoLoad = computed(
-  () =>
-    props.undoLoadSlot !== null &&
-    settingValue('saves.undo') !== false &&
-    inputMode.value === 'controller',
+  () => undoableLoad.value !== null && (phone.value || inputMode.value === 'controller'),
 )
 const loadedText = computed(() => say(loadedLine(props.undoLoadSlot ?? 0)))
+
+// ---- The phone's first level and «Altro» (owner, 2026-11-22) ----
+/** The quick slot: Rust's current slot, the controller shortcuts' («Salva / Carica rapido»). */
+const quickInfo = computed(() => slots.value.find(s => s.slot === props.currentSlot))
+const savedLine = computed(() =>
+  savedSlot.value === null
+    ? null
+    : {
+        slot: savedSlot.value,
+        thumb: slots.value.find(s => s.slot === savedSlot.value)?.thumbUrl ?? null,
+      },
+)
+const strip = computed(() =>
+  stripButtons({
+    rewind: settingValue('speed.rew') === true,
+    fastForward: sameSpeed(props.speed, modes.value.ff),
+    muted: props.muted,
+  }),
+)
+function runStrip(id: StripId, e: Event) {
+  switch (id) {
+    case StripId.FastForward:
+      return emit('speed', toggledSpeed(props.speed, modes.value.ff))
+    case StripId.Mute:
+      return emit('mute', !props.muted)
+    case StripId.More:
+      return open(QuickMenuView.More, e)
+    case StripId.Rewind:
+      // Held: PhoneHome sends the press and the release.
+      return
+  }
+}
+const more = computed(() => moreRows({ dualScreen: dualScreen.value, screens: props.screens }))
+const SPEED_NAME: Record<SpeedChoiceId, string> = {
+  [SpeedChoiceId.Normal]: 'qm.normal',
+  [SpeedChoiceId.FastForward]: 'qm.ff',
+  [SpeedChoiceId.SlowMotion]: 'qm.slow',
+}
+const moreValues = computed<Partial<Record<MoreId, string>>>(() => {
+  const speedId = chosenSpeed(choices.value, props.speed)
+  return {
+    [MoreId.Saves]: t('qm.quickSlotIs', { slot: props.currentSlot }),
+    ...(speedId ? { [MoreId.Speed]: t(SPEED_NAME[speedId]) } : {}),
+  }
+})
+function runMore(row: MoreRow, e: Event) {
+  if (row.page) return open(row.page, e)
+  switch (row.id) {
+    case MoreId.Screenshot:
+      return emit('screenshot')
+    case MoreId.SwapScreens:
+      return emit('swapScreens')
+    case MoreId.CloseLid:
+      return emit('toggleLid')
+    case MoreId.Restart:
+      return open(QuickMenuView.Restart, e)
+    case MoreId.Close:
+      return emit('close')
+    case MoreId.Saves:
+    case MoreId.Speed:
+    case MoreId.Screens:
+    case MoreId.Controls:
+      // Pages: opened above.
+      return
+  }
+}
 
 // ---- Speed (G07, G16) ----
 const modes = computed(() => modeSpeeds(settingValue('speed.ffval'), settingValue('speed.slow')))
@@ -365,6 +462,13 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
       class="absolute inset-0 bg-game-scrim backdrop-blur-veil"
       aria-hidden="true"
     ></div>
+    <!-- The phone: a tap on the game beside or above the menu resumes it (there is no handle). -->
+    <div
+      v-if="phone && !editorShown && !touchEditorShown"
+      class="absolute inset-0"
+      aria-hidden="true"
+      @click="emit('resume')"
+    ></div>
 
     <section
       v-if="barShown"
@@ -405,12 +509,6 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
       :role="view === QuickMenuView.Restart ? 'alertdialog' : 'dialog'"
       :aria-label="view === QuickMenuView.Restart ? t('qm.restartTitle') : t('qm.label')"
     >
-      <span
-        v-if="sheet"
-        class="h-4 w-grip shrink-0 self-center rounded-full bg-grip"
-        aria-hidden="true"
-      ></span>
-
       <RestartConfirm v-if="view === QuickMenuView.Restart" @cancel="back" @confirm="restart" />
 
       <template v-else>
@@ -420,7 +518,7 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
         </header>
 
         <UndoLoadBanner
-          v-if="showUndoLoad && view === QuickMenuView.Home"
+          v-if="!phone && showUndoLoad && view === QuickMenuView.Home"
           :text="loadedText"
           @undo="emit('undoLoad')"
         />
@@ -437,10 +535,53 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
         <!-- The middle scrolls when it does not fit (the phone on its side): the header and the
              footer stay; a swipe pans it and never reaches the game behind. -->
         <div
-          class="-mr-8 flex min-h-0 touch-pan-y flex-col gap-12 overflow-y-auto overscroll-contain pr-8 touch:flex-1 touch:gap-10"
+          class="-mr-8 flex min-h-0 touch-pan-y flex-col gap-12 overflow-y-auto overscroll-contain pr-8 touch:flex-1 touch:gap-8"
         >
+          <!-- The phone's levels (owner, 2026-11-22). -->
+          <PhoneHome
+            v-if="phone && view === QuickMenuView.Home"
+            :side="!sheet"
+            :quick-slot="currentSlot"
+            :quick-info="quickInfo"
+            :load-block="game.stateLoadBlock"
+            :strip="strip"
+            :saved="savedLine"
+            :undo-load-text="showUndoLoad ? loadedText : null"
+            @quick-save="save(currentSlot)"
+            @quick-load="emit('load', currentSlot)"
+            @resume="emit('resume')"
+            @undo-save="undoSave"
+            @undo-load="emit('undoLoad')"
+            @strip="runStrip"
+            @rewind="on => emit('rewind', on)"
+          />
+          <PhoneMore
+            v-else-if="phone && view === QuickMenuView.More"
+            :rows="more"
+            :values="moreValues"
+            @run="runMore"
+          />
+          <PhoneSaves
+            v-else-if="phone && view === QuickMenuView.Slots"
+            :slots="slots"
+            :chosen="chosen"
+            :chosen-empty="chosenEmpty"
+            :auto-chosen="autoChosen"
+            :quick-slot="currentSlot"
+            :saved-slot="savedSlot"
+            :load-block="game.stateLoadBlock"
+            :undo-load-slot="undoableLoad"
+            :last-saved="lastSaved"
+            @pick="pick"
+            @load="loadChosen"
+            @save="save()"
+            @make-quick="emit('quickSlot', chosen)"
+            @undo-save="undoSave"
+            @undo-load="emit('undoLoad')"
+          />
+
           <QuickSaves
-            v-if="view === QuickMenuView.Home || view === QuickMenuView.Slots"
+            v-else-if="view === QuickMenuView.Home || view === QuickMenuView.Slots"
             :slots="shownSlots"
             :chosen="chosen"
             :chosen-empty="chosenEmpty"
@@ -457,7 +598,7 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
           />
 
           <QuickMenuHome
-            v-if="view === QuickMenuView.Home"
+            v-if="!phone && view === QuickMenuView.Home"
             :choices="choices"
             :speed="speed"
             :ff-option="settingValue('speed.ffval')"
@@ -520,7 +661,7 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
         />
 
         <MenuFooter
-          v-if="view === QuickMenuView.Home"
+          v-if="!phone && view === QuickMenuView.Home"
           :hint="backKey"
           :search-keys="searchKeys"
           :touch="phone"

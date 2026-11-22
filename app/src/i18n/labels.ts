@@ -189,6 +189,14 @@ export function slotDateLabel(ms: number): string {
   return format(ms, { dateStyle: 'short', timeStyle: 'short' })
 }
 
+/** The quick slot's time on the phone's «Carica rapido» tile (owner, 2026-11-22: «Slot 1 ·
+ * 21:39»): the time alone today, else the short date, so it fits a third of the sheet. */
+export function slotTimeLabel(ms: number, now = Date.now()): string {
+  return daysApart(ms, now) === 0
+    ? format(ms, { hour: '2-digit', minute: '2-digit' })
+    : format(ms, { dateStyle: 'short' })
+}
+
 /** When a setting was last changed, as the T01 board writes it: "today", "yesterday", "12 Nov"
  * (with the year when it is not this one). */
 export function changedWhenLabel(ms: number, now = Date.now()): string {

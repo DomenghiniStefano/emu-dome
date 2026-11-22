@@ -369,6 +369,9 @@
         60,
         { phase: 4 },
       ),
+      // `rewind` (the phone quick menu's «Riavvolgi», owner 2026-11-22): `speed.rew` on for the
+      // game; off by default, as Rust resolves it on a phone.
+      entry("speed.rew", "speed", { type: "toggle" }, !!scenario.rewind),
     );
   }
   // Changes «in prova» (Session level) in the quick menu.
