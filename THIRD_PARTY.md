@@ -185,7 +185,7 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 permission with no condition at all (ISC without the notice requirement); the owner allowed it on
 2026-11-18, and `scripts/npm-licenses.mjs` lists it.
 
-### Rust crates (687)
+### Rust crates (689)
 
 | Crate | Version | Licence |
 | --- | --- | --- |
@@ -426,6 +426,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | idna | 1.1.0 | MIT OR Apache-2.0 |
 | idna_adapter | 1.2.2 | Apache-2.0 OR MIT |
 | image | 0.25.10 | MIT OR Apache-2.0 |
+| image-webp | 0.2.4 | MIT OR Apache-2.0 |
 | indexmap | 1.9.3 | Apache-2.0 OR MIT |
 | indexmap | 2.14.2 | Apache-2.0 OR MIT |
 | infer | 0.22.0 | MIT |
@@ -588,6 +589,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | proc-macro2 | 1.0.107 | MIT OR Apache-2.0 |
 | profiling | 1.0.18 | MIT OR Apache-2.0 |
 | pxfm | 0.1.30 | BSD-3-Clause OR Apache-2.0 |
+| quick-error | 2.0.1 | MIT/Apache-2.0 |
 | quick-xml | 0.42.0 | MIT |
 | quote | 1.0.47 | MIT OR Apache-2.0 |
 | r-efi | 5.3.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later |

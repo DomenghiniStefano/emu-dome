@@ -14,6 +14,8 @@
   --transition-duration-ambient: 1200ms;
   /* Pending Cowork: the quick menu's hint (G06) fading out. */
   --transition-duration-hint: 600ms;
+  /* A setting opened from the search (X01, #32): its row stays lit this long (the owner's 1.2 s). */
+  --transition-duration-highlight: 1200ms;
 
   --ease-*: initial;
   /* Everything that enters. `--ease-out` is also the name the screens' scoped CSS reads. */

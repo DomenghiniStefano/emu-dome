@@ -42,6 +42,8 @@ interface Scope {
    * Asked only when its scope is the one the focus moves in; `false`: nav.ts goes on as usual.
    */
   own?: Handler<[action: NavAction]>
+  /** Y (`search`, X01): the shell opens its search. Bubbles like `back`, so a dialog stops it. */
+  search?: Handler<[]>
   /** A scope keeps the focus inside its root; a section (false) only adds handlers. */
   contain: boolean
   /** The scopes registered inside this one, oldest first. */
@@ -326,6 +328,9 @@ export function dispatchNav(action: NavAction) {
       bubble(path, s => (s.tab ? s.tab(dir) : false))
       return
     }
+    case 'search':
+      bubble(path, s => (s.search ? s.search() : false))
+      return
     // X: the focused item's other actions, as a right click (a cover opens its game details).
     case 'more':
       current(root)?.dispatchEvent(
@@ -479,6 +484,7 @@ export function useNavScope(
     back?: Handler<[]>
     tab?: Handler<[dir: -1 | 1]>
     own?: Handler<[action: NavAction]>
+    search?: Handler<[]>
     autofocus?: boolean
     escape?: boolean
   } = {},
@@ -488,6 +494,7 @@ export function useNavScope(
     back: options.back,
     tab: options.tab,
     own: options.own,
+    search: options.search,
     contain: true,
     children: [],
   })

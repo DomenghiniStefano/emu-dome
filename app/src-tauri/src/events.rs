@@ -45,3 +45,5 @@ pub const LIBRARY_CHANGED: &str = "library://changed";
 pub const LIBRARY_SCAN: &str = "library://scan";
 /// The one-time move of old save names ended (`migration::Status`).
 pub const SAVES_MIGRATION: &str = "saves://migration";
+/// The notifications changed (X03): the whole list, newest first (`notifications::Notification`).
+pub const NOTIFICATIONS_CHANGED: &str = "notifications://changed";

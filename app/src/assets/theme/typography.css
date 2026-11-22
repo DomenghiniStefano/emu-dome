@@ -123,7 +123,8 @@
        without its tracking;
      - rail: a rail section's name, 10 / 12;
      - wordmark: the top bar's «EmuDome», 14 semibold at -0.025em;
-     - console-badge: a cover's console badge, 11 / 16 semibold at 0.04em. */
+     - console-badge: a cover's console badge, 11 / 16 semibold at 0.04em;
+     - count: a count over an icon (the top bar's unread notifications, #32), 10 / 16 semibold. */
   --text-page-title: 17px;
   --text-page-title--line-height: 22px;
   --text-page-title--font-weight: 600;
@@ -139,6 +140,9 @@
   --text-console-badge--line-height: 16px;
   --text-console-badge--font-weight: 600;
   --text-console-badge--letter-spacing: 0.04em;
+  --text-count: 10px;
+  --text-count--line-height: 16px;
+  --text-count--font-weight: 600;
 
   /* A step's size alone, on the line of the text around it: for the boxes whose line their
      container sets (the quick menu's cards sit on the panel's line, which the phone's sheet

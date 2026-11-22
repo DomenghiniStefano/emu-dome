@@ -40,6 +40,7 @@ mod hotkeys;
 mod hw_render;
 mod library;
 mod migration;
+mod notifications;
 mod pads;
 mod protocol;
 mod saves;
@@ -432,6 +433,8 @@ pub fn run() {
             let menu_open = Arc::new(AtomicBool::new(false));
             let pads = pads::PadsState::default();
             app.manage(pads.clone());
+            // Before the controllers' thread, which records their connections (X03).
+            app.manage(notifications::open(app.handle()));
             let hotkeys =
                 hotkeys::HotkeyRunner::new(app.handle().clone(), current.clone(), pads.clone());
             #[cfg(desktop)]
@@ -562,6 +565,9 @@ pub fn run() {
             library::library_scan,
             library::library_open,
             library::library_set_cover,
+            library::library_pick_cover_image,
+            library::library_set_cover_image,
+            library::library_screenshots,
             library::library_set_flags,
             library::library_set_name,
             saves::saves_summary,
@@ -579,6 +585,9 @@ pub fn run() {
             first_run::first_run_steps,
             first_run::first_run_done,
             health::diagnostics,
+            notifications::notifications_list,
+            notifications::notifications_mark_read,
+            notifications::notifications_mark_all_read,
             cloud::cloud_status,
             cloud::cloud_sign_in,
             cloud::cloud_sign_out,

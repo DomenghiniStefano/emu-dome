@@ -484,6 +484,7 @@ mod tests {
         g.ts::<crate::saves::ImportFormat>().unwrap();
         g.ts::<crate::saves::FolderImport>().unwrap();
         g.ts::<crate::library::CoverKind>().unwrap();
+        g.ts::<crate::cover::CoverView>().unwrap();
         g.ts::<crate::library::Region>().unwrap();
         g.ts::<crate::Speed>().unwrap();
         g.ts::<crate::Event>().unwrap();
@@ -491,6 +492,7 @@ mod tests {
         g.ts::<crate::screens::LayoutId>().unwrap();
         g.ts::<crate::screens::CustomLayout>().unwrap();
         g.ts::<crate::screens::ScreenStatus>().unwrap();
+        g.ts::<crate::notifications::Notification>().unwrap();
         let codes = error_codes(g.get("ErrorCode.ts").unwrap());
         g.file("error-codes.json", pretty(&json!(codes)));
         g.file("settings-catalog.json", pretty(&catalog()));

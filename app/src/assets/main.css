@@ -32,6 +32,9 @@
 @source '../components/details/*.vue';
 @source '../components/settings';
 @source '../components/screen-editor';
+/* Written in the structure from the start (#32). */
+@source '../components/search';
+@source '../components/notifications';
 
 /* The touch density: `touch:` styles an element while the interface is laid out for a finger
    (`data-density="touch"` on <html>, set once by composables/useDensity.ts: a phone held upright,

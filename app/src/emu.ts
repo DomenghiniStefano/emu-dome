@@ -8,6 +8,7 @@ import type { Button } from '@/generated/Button'
 import type { ClosingProgress } from '@/generated/ClosingProgress'
 import type { ConsoleId } from '@/generated/ConsoleId'
 import type { CoverKind } from '@/generated/CoverKind'
+import type { CoverView } from '@/generated/CoverView'
 import type { EmuEvent } from '@/generated/EmuEvent'
 import type { ErrorCode } from '@/generated/ErrorCode'
 import type { FirstRunStep } from '@/generated/FirstRunStep'
@@ -15,6 +16,7 @@ import type { FolderImport } from '@/generated/FolderImport'
 import type { GameId } from '@/generated/GameId'
 import type { GameOverride } from '@/generated/GameOverride'
 import type { NavAction } from '@/generated/NavAction'
+import type { Notification } from '@/generated/Notification'
 import type { PadFamily } from '@/generated/PadFamily'
 import type { SettingKey } from '@/generated/SettingKey'
 import type { SettingRecent } from '@/generated/SettingRecent'
@@ -26,6 +28,9 @@ import type { Speed } from '@/generated/Speed'
 import type { BiosRow } from '@/generated/app/BiosRow'
 import type { ControlsBindings } from '@/generated/app/ControlsBindings'
 import type { CoreRestart } from '@/generated/app/CoreRestart'
+import type { CoverSource } from '@/generated/app/CoverSource'
+import type { GameScreenshot } from '@/generated/app/GameScreenshot'
+import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
 import type { GameInfo } from '@/generated/app/GameInfo'
 import type { GameSaves } from '@/generated/app/GameSaves'
@@ -69,6 +74,7 @@ export type { ClosingPurpose } from '@/generated/ClosingPurpose'
 export type { CommitTarget } from '@/generated/CommitTarget'
 export type { ConsoleId } from '@/generated/ConsoleId'
 export type { CoverKind } from '@/generated/CoverKind'
+export type { CoverView } from '@/generated/CoverView'
 export type { EmuEvent } from '@/generated/EmuEvent'
 export type { ErrorCode } from '@/generated/ErrorCode'
 export type { FirstRunStep } from '@/generated/FirstRunStep'
@@ -80,6 +86,8 @@ export type { HotkeyId } from '@/generated/HotkeyId'
 export type { HotkeyStatus } from '@/generated/HotkeyStatus'
 export type { ImportFormat } from '@/generated/ImportFormat'
 export type { NavAction } from '@/generated/NavAction'
+export type { Notice } from '@/generated/Notice'
+export type { Notification } from '@/generated/Notification'
 export type { PadFamily } from '@/generated/PadFamily'
 export type { Pos } from '@/generated/Pos'
 export type { SettingDevice } from '@/generated/SettingDevice'
@@ -113,6 +121,9 @@ export type { BiosRow } from '@/generated/app/BiosRow'
 export type { ComboRow } from '@/generated/app/ComboRow'
 export type { ControlsBindings } from '@/generated/app/ControlsBindings'
 export type { CoreRestart } from '@/generated/app/CoreRestart'
+export type { CoverSource } from '@/generated/app/CoverSource'
+export type { GameScreenshot } from '@/generated/app/GameScreenshot'
+export type { PickedImage } from '@/generated/app/PickedImage'
 export type { FolderSaves } from '@/generated/app/FolderSaves'
 export type { GameInfo } from '@/generated/app/GameInfo'
 export type { GameSaves } from '@/generated/app/GameSaves'
@@ -303,8 +314,16 @@ export const emu = {
     scan: () => invoke<void>('library_scan'),
     /** Opens the game (like `openGame`) and counts its play time until it closes. */
     open: (id: GameId) => invoke<GameInfo>('library_open', { id }),
-    /** L12. `user` opens an image picker first; resolves false if it was cancelled. */
-    setCover: (id: GameId, kind: CoverKind) => invoke<boolean>('library_set_cover', { id, kind }),
+    /** L12: the generated cover, the ROM's icon, or the user cover the game already has. */
+    setCover: (id: GameId, kind: CoverKind) => invoke<void>('library_set_cover', { id, kind }),
+    /** L12 «Immagine tua»: the native image picker; the image is kept for «Adatta la copertina».
+     * null = cancelled. */
+    pickCoverImage: () => invoke<PickedImage | null>('library_pick_cover_image'),
+    /** «Usa questa copertina»: the cover made from `source` showing `view` (600 × 900, in Rust). */
+    setCoverImage: (id: GameId, source: CoverSource, view: CoverView) =>
+      invoke<void>('library_set_cover_image', { id, source, view }),
+    /** The game's screenshots, newest first (L12 «Da uno screenshot»). */
+    screenshots: (id: GameId) => invoke<GameScreenshot[]>('library_screenshots', { id }),
     setFlags: (id: GameId, flags: { favourite?: boolean; hidden?: boolean }) =>
       invoke<void>('library_set_flags', { id, ...flags }),
     /** «Nome mostrato» (L10); blank goes back to the ROM's title. */
@@ -383,6 +402,17 @@ export const emu = {
   /** A game opened without the system files a setting asked for, and fell back (`bios*Missing`). */
   onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
     listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
+  /** X03, the notification centre (per device, kept until read). */
+  notifications: {
+    /** Every notification, newest first. */
+    list: () => invoke<Notification[]>('notifications_list'),
+    markRead: (id: number) => invoke<void>('notifications_mark_read', { id }),
+    /** «Segna tutte come lette». */
+    markAllRead: () => invoke<void>('notifications_mark_all_read'),
+    /** The list changed (`notifications://changed`): the whole list, newest first. */
+    onChanged: (cb: (list: Notification[]) => void): Promise<UnlistenFn> =>
+      listen<Notification[]>('notifications://changed', e => cb(e.payload)),
+  },
   /** What is not working now (native video, surface, audio output, controllers, a stopped thread). */
   diagnostics: () => invoke<ErrorCode[]>('diagnostics'),
   /** The list of what is not working changed (`emu://health`): the whole list, empty when all is well. */

@@ -14,8 +14,10 @@ import { useGameEnding } from './useGameEnding'
 import { useGameEvents } from './useGameEvents'
 import { useGameSettings } from './useGameSettings'
 import type { Toasts } from '@/composables/useToasts'
+import type { CoverRequest } from '@/components/cover/useCoverRequest'
 
-export function useGameSession(toasts: Toasts) {
+/** `useAsCover`: the screenshot toast's «Usa come copertina» (Trello #85, App.vue's request). */
+export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) => void) {
   const state = createGameState()
   const {
     game,
@@ -31,7 +33,11 @@ export function useGameSession(toasts: Toasts) {
   } = state
   const { settings, load: loadSettings, concerns: settingsConcern } = useGameSettings(game, toasts)
   const ending = useGameEnding(state)
-  const events = useGameEvents(state, settings, toasts, { setMenu, stopped: ending.stopped })
+  const events = useGameEvents(state, settings, toasts, {
+    setMenu,
+    stopped: ending.stopped,
+    useAsCover,
+  })
 
   // While the menu is open, Rust sends the controllers to the menu (emu://nav), not to the game.
   watch(menuOpen, open => report(emu.setMenuOpen(open)))

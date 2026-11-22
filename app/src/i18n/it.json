@@ -97,8 +97,37 @@
       "iconDesc": "Quella contenuta nel file del gioco",
       "user": "Immagine tua",
       "userDesc": "Scegli un file immagine",
+      "screenshot": "Da uno screenshot",
+      "screenshotDesc": "{count} screenshot | {count} screenshot",
+      "screenshotNone": "Ancora nessuno: catturane uno in gioco",
       "cancel": "Annulla",
-      "use": "Usa questa copertina"
+      "back": "Indietro",
+      "continue": "Continua",
+      "use": "Usa questa copertina",
+      "shots": {
+        "title": "Scegli uno screenshot",
+        "taken": "Screenshot del {date}"
+      },
+      "crop": {
+        "title": "Adatta la copertina",
+        "frame": "Anteprima della copertina",
+        "mode": "Come entra l’immagine",
+        "whole": "Intera",
+        "fill": "Riempi",
+        "zoom": "Zoom",
+        "zoomValue": "{value}%",
+        "drag": "Trascina l’immagine per spostarla.",
+        "hintsLabel": "Tasti",
+        "keyZoomOut": "−",
+        "keyZoomIn": "+",
+        "hint": {
+          "move": "Sposta",
+          "zoom": "Zoom",
+          "mode": "Intera / Riempi",
+          "use": "Usa",
+          "back": "Indietro"
+        }
+      }
     },
     "clearFilters": "Togli i filtri",
     "continue": {
@@ -242,7 +271,8 @@
     "autoLoaded": "Caricato lo slot automatico",
     "undo": "Annulla",
     "undoFromMenu": "Annulla dal menu rapido",
-    "screenshotSaved": "Schermata salvata"
+    "screenshotSaved": "Schermata salvata",
+    "useAsCover": "Usa come copertina"
   },
   "console": {
     "gb": "Game Boy",
@@ -280,6 +310,8 @@
     "libraryGameUnavailable": "Il file del gioco non si trova più. Ricollega il disco o aggiungi di nuovo la sua cartella.",
     "libraryWriteFailed": "Impossibile salvare la libreria: controlla lo spazio libero sul disco e riprova.",
     "libraryReadFailed": "Non riesco a leggere il file della libreria, quindi la modifica non è stata salvata e il file è rimasto com’era. Controlla che il disco sia collegato e che il file si possa aprire, poi riprova.",
+    "notificationsWriteFailed": "Impossibile salvare le notifiche: controlla lo spazio libero sul disco e riprova.",
+    "notificationsReadFailed": "Non riesco a leggere il file delle notifiche, quindi la modifica non è stata tenuta e il file è rimasto com’era. Controlla che il file si possa aprire, poi riprova.",
     "coverInvalid": "Questa immagine non si apre. Scegli un file JPG o PNG.",
     "unexpected": "Qualcosa è andato storto: {detail}",
     "nothingToUndo": "Non c’è un caricamento da annullare.",
@@ -297,6 +329,7 @@
     "dataMoveFailed": "Non riesco a copiare i tuoi dati nella nuova cartella di EmuDome. Non hai perso nulla: per ora EmuDome continua a usare la vecchia cartella ({old}) e riprova al prossimo avvio. Dettagli: {detail}",
     "dataMoveConflict": "La nuova cartella dei dati di EmuDome ({new}) conteneva già dei dati, quindi i tuoi dati precedenti non sono stati copiati sopra. Sono ancora in {old}, intatti: copia a mano quello che ti serve. Vedi {report}.",
     "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
+    "screenshotsUnreadable": "Non riesco a leggere gli screenshot di questo gioco: {detail}. Controlla che la cartella dei salvataggi si possa aprire, poi riprova.",
     "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio. Metti in pausa il gioco dal menu rapido.",
     "screenLayoutUnavailable": "Questa disposizione degli schermi non è disponibile per questo gioco. Scegline un’altra dal menu rapido.",
     "effectNotLoaded": "Non riesco a usare l’effetto «{name}», quindi il gioco si vede senza. Scegli un altro effetto o un altro file.",
@@ -2315,6 +2348,41 @@
       "otherDesc": "File .sav, .dsv o backup Action Replay (.duc)",
       "hintDesktop": "In gioco premi Esc o il pulsante Home del controller per il menu rapido.",
       "hintPhone": "In gioco premi il pulsante menu in basso a destra per il menu rapido."
+    }
+  },
+  "notifications": {
+    "title": "Notifiche",
+    "bell": "Notifiche | Notifiche, 1 da leggere | Notifiche, {n} da leggere",
+    "markAll": "Segna tutte come lette",
+    "empty": "Nessuna notifica",
+    "controllerConnected": "Controller collegato"
+  },
+  "search": {
+    "title": "Cerca",
+    "field": "Cerca giochi, azioni e impostazioni",
+    "groups": {
+      "actions": "Azioni",
+      "settings": "Impostazioni",
+      "games": "Giochi"
+    },
+    "settingWhere": "Impostazioni · {page}",
+    "gameWhere": "{console} · {time}",
+    "needsGame": "Apri un gioco per usarla",
+    "noResults": "Nessun risultato per «{query}»",
+    "didYouMean": "Forse cercavi:",
+    "hint": {
+      "choose": "Scegli",
+      "open": "Apri",
+      "close": "Chiudi",
+      "controller": "Con il controller: Y apre la ricerca"
+    },
+    "key": {
+      "ctrl": "Ctrl",
+      "k": "K",
+      "enter": "Invio",
+      "esc": "Esc",
+      "up": "↑",
+      "down": "↓"
     }
   },
   "screenEditor": {

@@ -22,6 +22,15 @@ const rail = (n) =>
 const SIZES = { small: [1024, 640], large: [1920, 1080] };
 const THEMES = ["dark", "black", "light"];
 const firstCover = "[data-game] button";
+// L12 «Scegli la copertina» from the first game's details (#85), a choice in it, its main button.
+const openCoverPicker = [
+  `document.querySelector('${firstCover}').click()`,
+  `document.querySelector('main [aria-haspopup=menu]').click()`,
+  `document.querySelector('[role=menuitem]').click()`,
+];
+const coverRadio = (n) =>
+  `document.querySelectorAll('[role=dialog] [role=radio]')[${n}].click()`;
+const coverPrimary = `[...document.querySelectorAll('[role=dialog] button')].at(-1).click()`;
 const LIBRARY = {
   lib: { mock: {}, steps: [] },
   "lib-empty": { mock: { emptyLibrary: true }, steps: [] },
@@ -74,6 +83,61 @@ const LIBRARY = {
       `document.querySelector('main [aria-haspopup=menu]').click()`,
       `document.querySelector('[role=menuitem]').click()`,
     ],
+  },
+  // #85: «Da uno screenshot» (disabled with none, with two), «Scegli uno screenshot», «Adatta la
+  // copertina» (whole on its blurred backdrop; filled and zoomed; the DS one; the user's image).
+  "lib-cover-shots-choice": {
+    mock: { screenshots: true },
+    steps: openCoverPicker,
+  },
+  "lib-cover-shots-grid": {
+    mock: { screenshots: true },
+    steps: [...openCoverPicker, coverRadio(1), coverPrimary],
+  },
+  "lib-cover-crop": {
+    mock: { screenshots: true },
+    steps: [...openCoverPicker, coverRadio(1), coverPrimary, coverPrimary],
+  },
+  "lib-cover-crop-fill": {
+    mock: { screenshots: true },
+    steps: [
+      ...openCoverPicker,
+      coverRadio(1),
+      coverPrimary,
+      coverPrimary,
+      `document.querySelectorAll('[role=dialog] [data-slot=segmented-item]')[1].click()`,
+      { key: "Equal" },
+      { key: "Equal" },
+      { key: "Equal" },
+      { key: "ArrowRight" },
+    ],
+  },
+  "lib-cover-crop-ds": {
+    mock: { screenshots: true },
+    steps: [
+      ...openCoverPicker,
+      coverRadio(1),
+      coverPrimary,
+      coverRadio(1),
+      coverPrimary,
+    ],
+  },
+  // With the controller: R1 three times (zoom 130%), X (Riempi), the d-pad left; its hints.
+  "lib-cover-crop-pad": {
+    mock: { screenshots: true },
+    steps: [
+      ...openCoverPicker,
+      coverRadio(1),
+      coverPrimary,
+      coverPrimary,
+      ...["next", "next", "next", "more", "left"].map(
+        (action) => `__emit('emu://nav', { action: '${action}' })`,
+      ),
+    ],
+  },
+  "lib-cover-crop-image": {
+    mock: { screenshots: true },
+    steps: [...openCoverPicker, coverRadio(2), coverPrimary],
   },
   placeholder: { mock: {}, steps: [rail(3)] },
   // A library of thousands (Trello #91: the grid renders only the rows near the screen).
@@ -775,6 +839,47 @@ async function page() {
   };
   return { send, close };
 }
+
+// Search everywhere and notifications (X01–X03, #32), in Italian as the mockup: the top bar, the
+// palette before typing, with results, with none (X02), a setting opened from it (its row lit,
+// animations frozen on the lit frame), the bell's panel; dark at both sizes, light at the small
+// one, and the phone (magnifier, full-width palette).
+const openSearch = `document.querySelector('header button').click()`;
+const typeQuery = (q) =>
+  `(() => { const i = document.querySelector('[role=dialog] input'); if (!i) return false; i.value = ${JSON.stringify(q)}; i.dispatchEvent(new Event('input', { bubbles: true })) })()`;
+// Taken by the field (cancelled), so `dispatchEvent` answers false: the step answers true.
+const enterInQuery = `(document.querySelector('[role=dialog] input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })), true)`;
+const openBell = `document.querySelector('header [aria-haspopup=dialog]').click()`;
+const SEARCH = {
+  topbar: { steps: [] },
+  open: { steps: [openSearch] },
+  results: { steps: [openSearch, typeQuery("schermi")] },
+  none: { steps: [openSearch, typeQuery("tearing")] },
+  lit: { steps: [openSearch, typeQuery("sincron"), enterInQuery], freeze: true },
+  bell: { steps: [openBell] },
+};
+for (const [screen, s] of Object.entries(SEARCH))
+  for (const [variant, theme, size] of [
+    ["dark-small", "dark", "small"],
+    ["dark-large", "dark", "large"],
+    ["light-small", "light", "small"],
+  ]) {
+    const [width, height] = SIZES[size];
+    SCENARIOS[`search-${screen}-${variant}`] = {
+      ...s,
+      mock: { theme, lang: "it", search: true, notifications: true },
+      width,
+      height,
+    };
+  }
+for (const screen of ["topbar", "results", "bell"])
+  SCENARIOS[`search-${screen}-phone`] = {
+    ...SEARCH[screen],
+    mock: { lang: "it", search: true, notifications: true, device: "phone" },
+    touch: true,
+    width: 390,
+    height: 844,
+  };
 
 /** A trusted key press, or the pointer moved over an element. */
 async function act(p, step) {

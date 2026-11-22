@@ -2,7 +2,9 @@
 
 use std::path::Path;
 
-use super::{is_done, legacy_backup, legacy_path_id, legacy_save, run, LeftReason, Paths};
+use super::{
+    is_done, legacy_backup, legacy_path_id, legacy_save, run, run_screenshots, LeftReason, Paths,
+};
 use crate::settings::test_dir::TestDir;
 use crate::GameKey;
 
@@ -325,6 +327,72 @@ fn with_no_game_in_the_library_old_files_wait_for_a_later_start() {
     let report = run(&p, &library(), 2);
     assert!(report.done);
     assert_eq!(dir.read("data/saves/gba/1a/game.sav"), "battery");
+}
+
+#[test]
+fn screenshots_named_by_rom_move_once_to_the_games_folder() {
+    let dir = TestDir::new("migrate-screenshots");
+    let saves = dir.path("data/saves");
+    let work = dir.path("data/migration-85");
+    let shots = "data/saves/screenshots";
+    for (name, text) in [
+        ("Lanterna 2026-11-18 10-00-00.png", "one"),
+        ("lanterna 2026-11-18 10-00-00-2.png", "two"),
+        ("Volo 2026-11-19 08-30-00.png", "ds"),
+        ("Altro 2026-11-19 08-30-00.png", "no game"),
+        ("notes.txt", "unknown"),
+    ] {
+        dir.write(&format!("{shots}/{name}"), text);
+    }
+    // A screenshot already in the new layout is not touched.
+    dir.write(&format!("{shots}/gba/1a/2026-11-20_00-00-00.png"), "new");
+    let report = run_screenshots(&saves, &work, &library(), 7);
+    assert!(report.errors.is_empty(), "{:?}", report.errors);
+    assert!(report.done);
+    assert!(work.join("done").is_file());
+    assert_eq!(report.moved.len(), 3);
+    assert_eq!(
+        dir.read(&format!("{shots}/gba/1a/2026-11-18_10-00-00.png")),
+        "one"
+    );
+    assert_eq!(
+        dir.read(&format!("{shots}/gba/1a/2026-11-18_10-00-00-2.png")),
+        "two"
+    );
+    assert_eq!(
+        dir.read(&format!("{shots}/gba/1a/2026-11-20_00-00-00.png")),
+        "new"
+    );
+    assert_eq!(
+        dir.read(&format!("{shots}/nds/2b/2026-11-19_08-30-00.png")),
+        "ds"
+    );
+    // Every moved file has its copy under its old name; what has no game stays and is reported.
+    assert_eq!(
+        dir.read("data/migration-85/backup/screenshots/Lanterna 2026-11-18 10-00-00.png"),
+        "one"
+    );
+    assert!(!dir
+        .path(&format!("{shots}/Lanterna 2026-11-18 10-00-00.png"))
+        .exists());
+    assert_eq!(
+        dir.read(&format!("{shots}/Altro 2026-11-19 08-30-00.png")),
+        "no game"
+    );
+    assert_eq!(dir.read(&format!("{shots}/notes.txt")), "unknown");
+    let reasons: Vec<LeftReason> = report.left.iter().map(|l| l.reason).collect();
+    assert_eq!(reasons, vec![LeftReason::NoGame, LeftReason::UnknownName]);
+    // What the listing of the game reads.
+    let listed = crate::screenshot::list(&crate::screenshot::game_dir(&saves, &key("gba:1a")));
+    assert_eq!(listed.unwrap().len(), 3);
+    // A taken place is never written over.
+    dir.write(&format!("{shots}/Volo 2026-11-19 08-30-00.png"), "ds again");
+    let again = run_screenshots(&saves, &work, &library(), 8);
+    assert_eq!(again.left[1].reason, LeftReason::DestinationExists);
+    assert_eq!(
+        dir.read(&format!("{shots}/nds/2b/2026-11-19_08-30-00.png")),
+        "ds"
+    );
 }
 
 #[test]

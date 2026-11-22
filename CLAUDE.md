@@ -54,10 +54,12 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
 ## Current state: Phase 1 desktop shell, Phase 2 core work started
 
 Phase 0 (feasibility) is done. On `develop` now: shell and themes, settings engine and pages, library, game flow,
-quick menu, saves, controls, first run, rewind and screenshots, screen effects (librashader), appearance, and the
+quick menu, saves, controls, first run, rewind and screenshots (keyed by the game, #85), covers from a screenshot or
+the user's image framed in «Adatta la copertina» (#85), screen effects (librashader), appearance, and the
 melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
 back to the CPU, encrypted games refused with E10), and the Google Drive sync backend (#20: sign-in, Drive client,
-sync index and conflict rule, tested, not wired into the game flow or the interface yet). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+sync index and conflict rule, tested, not wired into the game flow or the interface yet), and the search everywhere
+and the notification centre in the top bar (#32, X01–X03). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
 before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
@@ -233,12 +235,24 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
+                         notifications.rs (X03, #32: `Notice` codes + values, `Notifications` newest
+                         first, at most 100, a newer kind kept unlisted; `Store` on
+                         `<app local data>/notifications.json`, `$schema` 1, write_atomic, unreadable
+                         never written over; unit-tested)
                          close_flow.rs (closing with a game open: the state machine; pure, unit-tested)
                          game_key.rs (`GameKey`, the one identity of a game: the library's content id;
                          saves in `saves/<console>/<hex>/` (`GameFiles`), settings `game/<console>-<hex>.json`)
                          migration.rs (the one-time move of saves named by ROM file stem and settings named
                          by path hash to the key: facts from the library only, copies in `migration-70/backup/`,
-                         `migration-70/report.json`, marker `migration-70/done`; unit-tested)
+                         `migration-70/report.json`, marker `migration-70/done`; and, by the same rules, of
+                         the screenshots named by ROM stem, `run_screenshots`, `migration-85/`; unit-tested)
+                         screenshot.rs (screenshots keyed by the game, #85:
+                         `saves/screenshots/<console>/<hex>/<YYYY-MM-DD_HH-MM-SS>.png`, outside the game's
+                         saves folder (not synced, not in a core's path budget); listing, plain-name check)
+                         cover.rs (#85: a cover from the user's image or a screenshot: PNG / JPEG / WebP at
+                         most 16 MiB and 8192 px a side, EXIF orientation applied, the 2:3 `CoverView` the
+                         interface chose, the spare space the image blurred and dimmed, 600 × 900, JPEG 90,
+                         no metadata; pure, unit-tested)
                          data_move.rs (the one-time copy of the old identifier's data folders to the new
                          ones, #90: copy + fsync + size/MD5 check per file, the old folders only read, a stamp
                          per new folder until `migration-90/done`, a new folder with data of its own never
@@ -318,12 +332,19 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
+                         notifications.rs (X03: the store of emudome_core::notifications, the
+                         notifications_* commands, notifications://changed; `record` writes off the
+                         caller's thread: gamepad.rs records a controller connected after start)
                          cloud.rs (the Google account: cloud_status / cloud_sign_in / cloud_sign_out, the
                          refresh token through emudome_platform::cloud; no sync wired yet)
                          dirs.rs (the data folders: Tauri's, EMUDOME_DATA_DIR, or the old identifier's for a
                          run whose copy did not finish), data_move.rs (that copy, first thing in setup)
                          library.rs (library commands, background scans, library://scan and library://changed,
-                         play time, covers on emu://cover/<id>, library.watch with notify on desktop)
+                         play time, covers on emu://cover/<id>, library.watch with notify on desktop; user
+                         covers made by `emudome_core::cover` and written with write_atomic as
+                         `covers/<console>-<hex>.user-<rev>.jpg`: the picked image kept in memory on
+                         emu://picked/<token>, a game's screenshots listed and served on
+                         emu://screenshot/<console>-<hex>/<name>, #85)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
                          emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
@@ -337,7 +358,14 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          G09 and from the `screens.custom` row; useScreenEditor the state, the live preview
                          at the Session level and the steps; screenEditor.ts the geometry, pure, tested),
                          first-run (FirstRun, 4 steps, once per device: marker `<app local data>/first-run/done`,
-                         src-tauri/src/first_run.rs), cover, toasts, closing (the loader while a game closes);
+                         src-tauri/src/first_run.rs), cover (GameCover; L12 CoverPicker: CoverChoices,
+                         ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
+                         pure, tested; CoverCropDialog for the screenshot toast's «Usa come copertina»,
+                         useCoverRequest), toasts, closing (the loader while a game closes),
+                         search (X01 / X02, #32: SearchPalette from the top bar, Ctrl + K or Y; search.ts
+                         the matching, pure, tested; useSearchSources the actions, settings and games),
+                         notifications (X03: NotificationBell in the top bar, its panel; notifications.ts
+                         the words, pure, tested);
                          components/ui/ (the primitives),
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
                          lib/settingsModel.ts, lib/cn.ts, lib/design/…),
@@ -436,8 +464,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     the full table and its TODOs are in `docs/combo-tasti.md` section 5;
   - the interface has the input (quick menu open, or no game): the game gets nothing, d-pad / A / B
     become `emu://nav` steps with key repeat (400 ms, then every 120 ms); L1 / R1 `prev` / `next`, X `more`,
-    Select `select`, and the right stick past `pad.stickdpad` (`PadInput::stick`) `stickUp` / `stickDown` /
-    `stickLeft` / `stickRight`, repeating like the d-pad (the C09 screens editor's own steps).
+    Select `select`, Y `search` (the shell opens the search everywhere, X01: a scope's `search` handler,
+    bubbling like `back`), and the right stick past `pad.stickdpad` (`PadInput::stick`) `stickUp` /
+    `stickDown` / `stickLeft` / `stickRight`, repeating like the d-pad (the C09 screens editor's own steps).
   The interface tells Rust the menu is open with the `set_menu_open` command.
 - The library's cover grid is windowed (Trello #91, `components/library/useCoverWindow.ts`, sums in
   `coverWindow.ts`): only the rows near the screen plus 2 are in the DOM, the grid's padding stands for the rest
@@ -498,7 +527,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
   `library://changed` (`LibraryChanged`: the rows that changed, or the whole library), `library://scan`,
-  `saves://migration`, `emu://effect-error`,
+  `saves://migration`, `emu://effect-error`, `notifications://changed` (the whole list, newest first),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
   `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
@@ -842,6 +871,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves. The Y
   «Cerca» hint is shown before the search exists (#32).
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
+- Search and notifications (#32): the search lives in the shell, which never shows while a game is open, so its
+  actions (the controller's shortcuts) are listed disabled with «Apri un gioco per usarla»; only fullscreen runs.
+  Opening it from the quick menu is not designed. A setting opens at «Tutti i giochi». The only notification
+  recorded today is a controller connected after start; sync done, cover not found and update ready (X06) have
+  no producer and no `Notice` kind yet, and X06's install behaviour waits for the owner's answer and #44.
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`. mGBA for Windows and Android is built by EmuDome from the pinned source archive
   of the commit the buildbot built (Trello #88, `scripts/build-mgba.ps1`): reproducible, but only with the toolchain
@@ -859,7 +893,16 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   shared by several library games, no library game, the new place already taken); the app no longer reads those.
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
   (`saves/nds/<hex>/melonDS DS/`); an existing shared `saves/melonDS DS/` is left untouched and not read any more.
-- Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
+- Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown": on DS / 3DS
+  both screens as the core stacks them, whatever layout is on screen), and the user frames that in «Adatta la
+  copertina» when one becomes a cover (#85).
+- Covers from a screenshot or an image (#85): the screenshot toast's «Usa come copertina» is a button for the mouse
+  and touch; in game the controller has no way to press it (the cover is still reachable from L12 «Da uno
+  screenshot»). A pressed one opens «Adatta la copertina» with the quick menu or once the game has closed. Zoom on
+  the controller is L1 / R1 (LT / RT reach the interface as no step); no pinch zoom on touch (the slider). The
+  picked image is kept in memory until used (one at a time); Android has no image picker yet. Covers are not synced
+  (#31). The old screenshots the move could not give to one game stay in `saves/screenshots/` (listed in
+  `migration-85/report.json`, not shown in the interface).
 - Core host (#78, #46): hardware rendering is Vulkan only, for Azahar (`Renderer::Vulkan` when the app's device
   is on Vulkan, else software with `hwRenderFallback` in `emu://health`); OpenGL (melonDS DS upscaling) is refused.
   Every Vulkan frame is read back into `Shared::frame` (the native renderer does not sample the GPU frame yet).

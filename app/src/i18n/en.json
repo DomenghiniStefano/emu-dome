@@ -97,8 +97,37 @@
       "iconDesc": "The one inside the game file",
       "user": "Your image",
       "userDesc": "Choose an image file",
+      "screenshot": "From a screenshot",
+      "screenshotDesc": "{count} screenshot | {count} screenshots",
+      "screenshotNone": "None yet: take one in game",
       "cancel": "Cancel",
-      "use": "Use this cover"
+      "back": "Back",
+      "continue": "Continue",
+      "use": "Use this cover",
+      "shots": {
+        "title": "Choose a screenshot",
+        "taken": "Screenshot from {date}"
+      },
+      "crop": {
+        "title": "Fit the cover",
+        "frame": "Cover preview",
+        "mode": "How the image fits",
+        "whole": "Whole",
+        "fill": "Fill",
+        "zoom": "Zoom",
+        "zoomValue": "{value}%",
+        "drag": "Drag the image to move it.",
+        "hintsLabel": "Keys",
+        "keyZoomOut": "−",
+        "keyZoomIn": "+",
+        "hint": {
+          "move": "Move",
+          "zoom": "Zoom",
+          "mode": "Whole / Fill",
+          "use": "Use",
+          "back": "Back"
+        }
+      }
     },
     "clearFilters": "Clear filters",
     "continue": {
@@ -242,7 +271,8 @@
     "autoLoaded": "Loaded the automatic slot",
     "undo": "Undo",
     "undoFromMenu": "Undo from the quick menu",
-    "screenshotSaved": "Screenshot saved"
+    "screenshotSaved": "Screenshot saved",
+    "useAsCover": "Use as cover"
   },
   "console": {
     "gb": "Game Boy",
@@ -280,6 +310,8 @@
     "libraryGameUnavailable": "The game file can’t be found any more. Reconnect the drive or add its folder again.",
     "libraryWriteFailed": "Couldn’t save the library: check the free disk space and try again.",
     "libraryReadFailed": "Couldn’t read the library file, so the change wasn’t saved and the file was left as it is. Check that the drive is connected and the file can be opened, then try again.",
+    "notificationsWriteFailed": "Couldn’t save the notifications: check the free disk space and try again.",
+    "notificationsReadFailed": "Couldn’t read the notifications file, so the change wasn’t kept and the file was left as it is. Check that the file can be opened, then try again.",
     "coverInvalid": "This image can’t be opened. Choose a JPG or PNG file.",
     "unexpected": "Something went wrong: {detail}",
     "nothingToUndo": "There’s no load to undo.",
@@ -297,6 +329,7 @@
     "dataMoveFailed": "Couldn’t copy your data to EmuDome’s new folder. Nothing was lost: for now EmuDome keeps using the old folder ({old}) and tries again at the next start. Details: {detail}",
     "dataMoveConflict": "EmuDome’s new data folder ({new}) already held data, so your earlier data wasn’t copied over it. It’s still in {old}, untouched: copy what you need by hand. See {report}.",
     "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again.",
+    "screenshotsUnreadable": "Couldn’t read this game’s screenshots: {detail}. Check that the saves folder can be opened, then try again.",
     "lidUnsupported": "This game’s emulator can’t close the lid. Pause the game from the quick menu instead.",
     "screenLayoutUnavailable": "This screen layout isn’t available for this game. Pick another one in the quick menu.",
     "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file.",
@@ -2315,6 +2348,41 @@
       "otherDesc": ".sav, .dsv files or Action Replay backups (.duc)",
       "hintDesktop": "In game, press Esc or the controller's Home button for the quick menu.",
       "hintPhone": "In game, press the menu button at the bottom right for the quick menu."
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications | Notifications, 1 unread | Notifications, {n} unread",
+    "markAll": "Mark all as read",
+    "empty": "No notifications",
+    "controllerConnected": "Controller connected"
+  },
+  "search": {
+    "title": "Search",
+    "field": "Search games, actions and settings",
+    "groups": {
+      "actions": "Actions",
+      "settings": "Settings",
+      "games": "Games"
+    },
+    "settingWhere": "Settings · {page}",
+    "gameWhere": "{console} · {time}",
+    "needsGame": "Open a game to use it",
+    "noResults": "No results for “{query}”",
+    "didYouMean": "Did you mean:",
+    "hint": {
+      "choose": "Choose",
+      "open": "Open",
+      "close": "Close",
+      "controller": "With the controller: Y opens the search"
+    },
+    "key": {
+      "ctrl": "Ctrl",
+      "k": "K",
+      "enter": "Enter",
+      "esc": "Esc",
+      "up": "↑",
+      "down": "↓"
     }
   },
   "screenEditor": {

@@ -5,7 +5,9 @@
 //! - `emu://cover/<id>`: covers (`library.rs`);
 //! - `emu://background/<name>`: the user's background, `video.surroundImg` (`settings.rs`);
 //! - `emu://slot/<n>`: slot thumbnails of the open game;
-//! - `emu://savethumb/<game>/<n>`: those of any game, for the Saves section (`saves.rs`).
+//! - `emu://savethumb/<game>/<n>`: those of any game, for the Saves section (`saves.rs`);
+//! - `emu://screenshot/<game>/<name>`: a game's screenshots, for «Da uno screenshot» (`library.rs`);
+//! - `emu://picked/<token>`: the image picked for a cover, for «Adatta la copertina» (`library.rs`).
 //!
 //! Only the interface's own page may read them from script (`cors.rs`).
 
@@ -22,6 +24,8 @@ enum Route<'a> {
     Background(&'a str),
     SaveThumb(&'a str),
     SlotThumb(&'a str),
+    Screenshot(&'a str),
+    Picked(&'a str),
     NotFound,
 }
 
@@ -34,6 +38,10 @@ fn route(path: &str) -> Route<'_> {
         Route::SaveThumb(rest)
     } else if let Some(slot) = path.strip_prefix("/slot/") {
         Route::SlotThumb(slot)
+    } else if let Some(rest) = path.strip_prefix("/screenshot/") {
+        Route::Screenshot(rest)
+    } else if let Some(token) = path.strip_prefix("/picked/") {
+        Route::Picked(token)
     } else if path == "/frame" || path == "/frame/" {
         Route::Frame
     } else {
@@ -49,6 +57,8 @@ pub fn handle(app: &AppHandle, req: &Request<Vec<u8>>) -> Response<Vec<u8>> {
         Route::Background(name) => settings::background_response(app, name),
         Route::SaveThumb(rest) => saves::thumb_response(app, rest),
         Route::SlotThumb(slot) => slot_thumb_response(app, slot),
+        Route::Screenshot(rest) => library::screenshot_response(app, rest),
+        Route::Picked(token) => library::picked_response(app, token),
         Route::NotFound => {
             log::warn!("emu:// has no resource at {}", req.uri().path());
             not_found()
@@ -149,6 +159,11 @@ mod tests {
             Route::SaveThumb("gba-0a1b/3")
         );
         assert_eq!(route("/slot/2"), Route::SlotThumb("2"));
+        assert_eq!(
+            route("/screenshot/gba-0a1b/2026-11-22_10-11-12.png"),
+            Route::Screenshot("gba-0a1b/2026-11-22_10-11-12.png")
+        );
+        assert_eq!(route("/picked/3"), Route::Picked("3"));
         assert_eq!(route("/"), Route::NotFound);
         assert_eq!(route("/framez"), Route::NotFound);
         assert_eq!(route("/covers/x"), Route::NotFound);

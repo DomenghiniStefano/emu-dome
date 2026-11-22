@@ -18,7 +18,9 @@ BIOS and firmware replacements; you can point EmuDome at your own dumps if you h
 ## What it has
 
 - A library of your games, identified by their content (not the file name), with covers and play time; the cover
-  grid draws only the rows near the screen, so it stays quick with thousands of games.
+  grid draws only the rows near the screen, so it stays quick with thousands of games. A cover can be generated,
+  the ROM's icon, or made from one of your screenshots or your own image, framed in the 2:3 cover (never
+  downloaded).
 - Two video paths: **native** (wgpu draws on the window, the transparent webview sits on top; the default on
   Windows and Android) and **in the webview** (frames reach a canvas through the `emu://` protocol; the default on
   Linux). Screen effects (librashader presets) on the native path.

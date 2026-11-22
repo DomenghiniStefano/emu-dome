@@ -18,27 +18,31 @@ export const DialogSize = {
   // blurred; the panel scrolls when the window is short. The 8px blur and the 640px width are
   // not design system values yet (Cowork, spec Decision 5).
   Wide: 'wide',
+  // The search everywhere (X01, #32): the panel's width, near the top of the window
+  // (`palette-top`, the whole width on the phone), no padding of its own (its rows are edge to
+  // edge); its list scrolls when the window is short.
+  Palette: 'palette',
 } as const
 export type DialogSize = (typeof DialogSize)[keyof typeof DialogSize]
 
-export const dialogOverlayVariants = cva(
-  'fixed inset-0 z-dialog grid place-items-center bg-scrim p-16',
-  {
-    variants: {
-      size: {
-        [DialogSize.Default]: '',
-        [DialogSize.Wide]: 'backdrop-blur-dim',
-      },
+export const dialogOverlayVariants = cva('fixed inset-0 z-dialog grid bg-scrim p-16', {
+  variants: {
+    size: {
+      [DialogSize.Default]: 'place-items-center',
+      [DialogSize.Wide]: 'place-items-center backdrop-blur-dim',
+      [DialogSize.Palette]:
+        'grid-cols-[minmax(0,1fr)] items-start justify-items-center pt-palette-top touch:pt-16',
     },
-    defaultVariants: { size: DialogSize.Default },
   },
-)
+  defaultVariants: { size: DialogSize.Default },
+})
 
 export const dialogContentVariants = cva('glass-thick flex flex-col', {
   variants: {
     size: {
       [DialogSize.Default]: 'w-full max-w-dialog gap-12 p-dialog-pad',
       [DialogSize.Wide]: 'max-h-full w-panel max-w-full gap-14 overflow-auto p-24',
+      [DialogSize.Palette]: 'max-h-full w-panel max-w-full gap-0 overflow-hidden p-0',
     },
   },
   defaultVariants: { size: DialogSize.Default },

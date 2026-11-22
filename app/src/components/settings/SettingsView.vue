@@ -13,7 +13,14 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Info } from '@lucide/vue'
-import type { ConsoleId, SettingEntry, SettingRecent, SettingsSchema, SettingsScope } from '@/emu'
+import type {
+  ConsoleId,
+  SettingEntry,
+  SettingKey,
+  SettingRecent,
+  SettingsSchema,
+  SettingsScope,
+} from '@/emu'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
 import type { GameFocus } from '@/lib/gameDetails'
@@ -45,6 +52,8 @@ const props = defineProps<{
   /** L06 «Apri tutte le impostazioni di questo gioco»: the game this section opened for (the
    * shell's route, read on mount). */
   game: GameFocus | null
+  /** X01, the search everywhere: the setting whose page opens with its row lit (read on mount). */
+  row?: SettingKey | null
 }>()
 const emit = defineEmits<{ openControls: [] }>()
 const { t } = useI18n()
@@ -115,10 +124,29 @@ function closeEditor() {
   void nextTick(() => editOpener?.focus())
 }
 
+// X01: the row the search opened this section for, lit for `duration-highlight` (its animation
+// ends it) and focused, on its page.
+const lit = ref<SettingKey | null>(null)
+const litRow = props.row ?? null
+async function lightRow() {
+  const e = litRow ? byKey.value.get(litRow) : undefined
+  if (!e) return
+  pick(e.page)
+  await nextTick()
+  const el = root.value?.querySelector<HTMLElement>(`[data-setting-key="${e.key}"]`)
+  if (!el) return
+  lit.value = e.key
+  el.scrollIntoView({ block: 'center' })
+  el.querySelector<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')?.focus({
+    preventScroll: true,
+  })
+}
+
 onMounted(async () => {
   schema.value = await loadSchema()
   await scopeBar.findContextConsole()
   await store.loadAll()
+  await lightRow()
   await store.loadRecent()
 })
 useSettingsChanged(EVERY_SETTING, store.onChanged)
@@ -190,6 +218,8 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         <SettingRowView
           v-for="e in sec.entries"
           :key="e.key"
+          :data-setting-key="e.key"
+          :class="lit === e.key ? 'animate-row-highlight' : undefined"
           :entry="e"
           :row="values[sec.page]?.[e.key]"
           :schema="schema"
@@ -203,6 +233,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           @open="emit('openControls')"
           @choose="store.chooseBackground"
           @edit="editScreens"
+          @animationend="lit = null"
         />
       </SettingsSection>
 
