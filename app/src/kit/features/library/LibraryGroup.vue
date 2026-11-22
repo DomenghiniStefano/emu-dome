@@ -15,7 +15,7 @@ import UnreachableBannerSection from './UnreachableBannerSection.vue'
 </script>
 
 <template>
-  <div class="flex flex-col gap-24">
+  <div class="flex flex-col gap-16">
     <GameCoverSection />
     <CoverTileSection />
     <ContinueCardSection />

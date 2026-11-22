@@ -24,7 +24,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-12">
+  <div class="flex flex-wrap items-center gap-8">
     <Heading class="mr-8">{{ t('library.yourGames') }}</Heading>
     <ConsoleChips v-model="consoleFilter" :chips="chips" :initial="initialChip" />
     <div class="flex-1"></div>

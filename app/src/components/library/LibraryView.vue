@@ -108,7 +108,7 @@ const shelves = computed(() => uiMode.tv && library.loaded && library.games.leng
   />
   <!-- In TV mode the shell leaves the library flush (its shelves reach the edge): the desk's
        view keeps its own room. -->
-  <div v-else ref="root" class="flex flex-1 flex-col gap-24 tv:p-32">
+  <div v-else ref="root" class="flex flex-1 flex-col gap-16 tv:p-32">
     <UnreachableBanner
       v-for="f in unreachable"
       :key="f.path"
@@ -160,7 +160,7 @@ const shelves = computed(() => uiMode.tv && library.loaded && library.games.leng
         @flags="setFlags"
         @foreground="foreground"
       />
-      <div v-if="games.length === 0" class="flex flex-wrap items-center gap-12">
+      <div v-if="games.length === 0" class="flex flex-wrap items-center gap-8">
         <p class="m-0 text-ink-muted">{{ t('library.noneShown') }}</p>
         <Button v-if="filtering" @click="clearFilters">{{ t('library.clearFilters') }}</Button>
       </div>

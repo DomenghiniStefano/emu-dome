@@ -45,29 +45,6 @@ const BROKEN = { ...N3DS_USER, coverUrl: 'emu://cover/broken.jpg' }
     </KitState>
     <template #review>
       <KitIssue
-        title="Il titolo lungo sale sotto il badge della console"
-        :status="IssueStatus.Proposed"
-      >
-        Il titolo sulla copertina generata non ha un limite di righe: cresce verso l’alto finché
-        serve. Nella copertina Small (96 px, la usano «Solo su Google Drive» e il primo avvio) un
-        titolo di quattro parole lunghe finisce sotto il badge «GB» e i due testi si sovrappongono;
-        nella Fill ci arriva a un soffio.
-        <template #current>
-          <GameCover :game="GB_LONG" :size="CoverSize.Small" />
-          <div class="w-capsule-medium"><GameCover :game="GB_LONG" /></div>
-        </template>
-        <template #proposed>
-          <LibraryGameCoverProposal :game="GB_LONG" :size="CoverSize.Small" />
-          <div class="w-capsule-medium"><LibraryGameCoverProposal :game="GB_LONG" /></div>
-        </template>
-        <template #solution>
-          in <code>cover/variants.ts</code> ogni misura di <code>coverVariants</code> dice quante
-          righe tiene il titolo (<code>line-clamp-3</code> Small, <code>line-clamp-4</code> Fill,
-          Hero, Choice), e <code>GameCover.vue</code> lo applica allo span del titolo. Il titolo
-          intero resta sotto la copertina e nei dettagli.
-        </template>
-      </KitIssue>
-      <KitIssue
         title="Copertina «mancante» illeggibile nel tema Chiaro"
         :status="IssueStatus.Proposed"
       >

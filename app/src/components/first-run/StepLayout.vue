@@ -6,7 +6,7 @@ defineProps<{ centred?: boolean; wide?: boolean }>()
 
 <template>
   <section
-    class="my-16 flex flex-col gap-16"
+    class="my-12 flex flex-col gap-12"
     :class="[centred && 'items-center text-center', wide && 'w-step max-w-full touch:w-full']"
   >
     <slot />

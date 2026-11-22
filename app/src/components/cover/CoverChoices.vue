@@ -67,13 +67,13 @@ const nextLabel = computed(() =>
 </script>
 
 <template>
-  <div ref="root" class="flex flex-col gap-14">
+  <div ref="root" class="flex flex-col gap-12">
     <DialogTitle as="div" :size="DialogTitleSize.Heading">
       {{ t('library.cover.title', { title: game.title }) }}
     </DialogTitle>
     <RadioGroup
       :model-value="choice"
-      class="grid gap-12"
+      class="grid gap-8"
       :class="choices.length > 3 ? 'grid-cols-4' : 'grid-cols-3'"
       :aria-label="t('library.cover.title', { title: game.title })"
       @update:model-value="choose"
@@ -85,7 +85,7 @@ const nextLabel = computed(() =>
           :selected="choice === c"
           :disabled="disabled(c)"
           :data-empty="isEmpty(c) ? '' : undefined"
-          class="gap-8"
+          class="gap-6"
           :data-nav-initial="choice === c ? '' : undefined"
         >
           <GameCover
@@ -96,12 +96,16 @@ const nextLabel = computed(() =>
           />
           <span
             v-else
-            class="relative grid aspect-2/3 place-items-center overflow-hidden rounded-6 text-ink-muted"
+            class="relative grid aspect-2/3 place-items-center overflow-hidden rounded-control text-ink-muted"
             :class="{ 'bg-surface-raised': !isEmpty(c) }"
           >
             <template v-if="c === 'icon'">
               <img v-if="iconUrl" class="pixelated size-48" :src="iconUrl" alt="" />
-              <span v-else class="size-48 rounded-6" :style="{ background: game.colour }"></span>
+              <span
+                v-else
+                class="size-48 rounded-control"
+                :style="{ background: game.colour }"
+              ></span>
             </template>
             <template v-else-if="c === 'screenshot'">
               <template v-if="shotUrl">
@@ -131,7 +135,9 @@ const nextLabel = computed(() =>
     </RadioGroup>
     <p v-if="error" class="m-0 text-danger" role="alert">{{ error }}</p>
     <div class="flex justify-end gap-8">
-      <Button @click="emit('cancel')">{{ t('library.cover.cancel') }}</Button>
+      <Button :size="ButtonSize.Medium" @click="emit('cancel')">{{
+        t('library.cover.cancel')
+      }}</Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"

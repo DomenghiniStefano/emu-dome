@@ -29,7 +29,7 @@ import { GB_LONG, GBA, GBC_MISSING, N3DS_USER } from './mock'
     </KitState>
     <KitState label="Details card with an action (DetailsAction)">
       <div class="w-dialog max-w-full">
-        <DetailsCard class="gap-14">
+        <DetailsCard class="gap-10">
           <Heading as="h2" :variant="HeadingVariant.Overline">Salvataggio del gioco</Heading>
           <span class="tabular-nums">Ultima modifica: oggi, 21:14</span>
           <div class="flex flex-wrap gap-8">

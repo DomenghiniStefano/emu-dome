@@ -12,7 +12,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div class="flex items-center gap-12 px-16 py-12">
+  <div class="flex items-center gap-10 px-12 py-8">
     <span class="size-6 flex-none rounded-full bg-accent-text" aria-hidden="true" />
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       <span class="font-medium">{{ row.name }}</span>

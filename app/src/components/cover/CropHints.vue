@@ -43,7 +43,7 @@ const hints = computed<Hint[]>(() =>
 <template>
   <ul
     v-if="inputMode !== 'touch'"
-    class="m-0 flex list-none flex-wrap items-center gap-14 p-0 text-caption text-ink-muted"
+    class="m-0 flex list-none flex-wrap items-center gap-12 p-0 text-caption text-ink-muted"
     :aria-label="t('library.cover.crop.hintsLabel')"
   >
     <li v-for="h in hints" :key="h.does" class="flex items-center gap-6">

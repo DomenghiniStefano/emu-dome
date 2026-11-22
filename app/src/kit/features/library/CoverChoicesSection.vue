@@ -5,12 +5,12 @@
 import { ref } from 'vue'
 import CoverChoices from '@/components/cover/CoverChoices.vue'
 import type { CoverChoice } from '@/components/cover/coverChoice'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogSize, DialogTrigger } from '@/components/ui/dialog'
 import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
-import { IssueStatus, KitGroup } from '@/kit/review'
+import { KitGroup } from '@/kit/review'
 import { GBA, N3DS_USER, SHOTS } from './mock'
 
 const openIcon = ref(false)
@@ -54,31 +54,6 @@ const noneChoice = ref<CoverChoice>('generated')
       </Dialog>
     </KitState>
     <template #review>
-      <KitIssue
-        title="«Annulla» e il pulsante principale hanno altezze diverse"
-        :status="IssueStatus.Proposed"
-      >
-        In fondo al dialogo «Annulla» è Default (32 px) e «Continua» / «Usa questa copertina» è
-        Medium (36 px): affiancati, i due pulsanti non sono allineati né in alto né in basso. La
-        coppia di azioni di un dialogo è Medium per tutte e due (il commento di
-        <code>ButtonSize.Medium</code>).
-        <template #current>
-          <div class="flex gap-8">
-            <Button>Annulla</Button>
-            <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Continua</Button>
-          </div>
-        </template>
-        <template #proposed>
-          <div class="flex gap-8">
-            <Button :size="ButtonSize.Medium">Annulla</Button>
-            <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Continua</Button>
-          </div>
-        </template>
-        <template #solution>
-          in <code>cover/CoverChoices.vue</code> <code>:size="ButtonSize.Medium"</code> anche su
-          «Annulla». Da controllare lo stesso nei passi successivi (ScreenshotGrid, CoverCrop).
-        </template>
-      </KitIssue>
       <KitIssue title="Con tre scelte le schede diventano grandi e vuote">
         Le scelte stanno in <code>grid-cols-3</code> o <code>grid-cols-4</code> nella stessa
         larghezza del dialogo: senza l’icona della ROM ogni scheda si allarga di un terzo e il

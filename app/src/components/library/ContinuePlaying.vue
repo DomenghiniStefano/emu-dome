@@ -18,12 +18,12 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <section class="flex flex-col gap-10" :aria-label="t('library.continue.title')">
+  <section class="flex flex-col gap-8" :aria-label="t('library.continue.title')">
     <div class="flex flex-wrap items-baseline justify-between gap-8">
       <Heading as="h1">{{ t('library.continue.title') }}</Heading>
       <span class="text-caption text-ink-muted">{{ t('library.continue.lead') }}</span>
     </div>
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-tile-min),1fr))] gap-12">
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-tile-min),1fr))] gap-8">
       <ContinueCard
         v-for="(g, i) in games"
         :key="g.id"
