@@ -209,6 +209,35 @@
   --spacing-pad-lift: 64px;
 }
 
+/* TV (Trello #30, the owner's mockup of 2026-11-21, drawn at 1920 × 1080): the sizes of the TV
+   layout's own parts (components/shell/Tv*, components/library/tv/), and after `tv:` on the
+   shared ones; times `--tv-scale` (typography.css) on a screen larger than the mockup's. */
+@theme {
+  /* The band of the section tabs at the top, a tab's pill, the button bar at the bottom. */
+  --spacing-tv-tabs: calc(96px * var(--tv-scale));
+  --spacing-tv-tab: calc(52px * var(--tv-scale));
+  --spacing-tv-bar: calc(72px * var(--tv-scale));
+  /* A controller button drawn as a key (the bar's glyphs, the hero's actions). */
+  --spacing-tv-glyph: calc(30px * var(--tv-scale));
+  /* The hero's actions: «Riprendi» / «Gioca» and «Dettagli del gioco». */
+  --spacing-tv-action: calc(64px * var(--tv-scale));
+  /* The focused game on top: the band's height and its cover's width. */
+  --spacing-tv-hero: calc(400px * var(--tv-scale));
+  --spacing-tv-hero-cover: calc(240px * var(--tv-scale));
+  /* A shelf's cover, and the focused one, grown (168 -> 200). */
+  --spacing-tv-cover: calc(168px * var(--tv-scale));
+  --spacing-tv-cover-focus: calc(200px * var(--tv-scale));
+  /* The room from the screen's edge: the hero and the shelves (128), the tabs and the bar (64);
+     between the hero's text and its cover (64). */
+  --spacing-tv-gutter: calc(128px * var(--tv-scale));
+  --spacing-tv-edge: calc(64px * var(--tv-scale));
+  --spacing-tv-hero-gap: calc(64px * var(--tv-scale));
+  /* Roles: between two shelves, between two covers of a shelf, between the bar's hints. */
+  --spacing-tv-shelf-gap: calc(var(--spacing-32) * var(--tv-scale));
+  --spacing-tv-cover-gap: calc(var(--spacing-24) * var(--tv-scale));
+  --spacing-tv-hint-gap: calc(var(--spacing-32) * var(--tv-scale));
+}
+
 /* Tailwind's container sizes (max-w-md…) and breakpoints (`md:`, `max-lg:`…) are not ours either:
    a window width where a layout changes is a token here, used as `max-<name>:` (below it). */
 @theme {

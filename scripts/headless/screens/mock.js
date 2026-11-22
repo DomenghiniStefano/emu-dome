@@ -382,6 +382,8 @@
       ]
     : [];
   const values = { "general.bgpause": true, "general.confirmdel": false };
+  // TV mode (#30): `ui` fixes `general.ui` ("tv" / "desktop"; Automatica otherwise).
+  if (scenario.ui) values["general.ui"] = scenario.ui;
   const rows = (page) =>
     entries
       .filter((e) => e.page === page)
@@ -918,7 +920,8 @@
       : gameInfo,
     // `nativeVideo`: the Accelerated method in use (the screen effects can change).
     video_mode: scenario.nativeVideo ? ["native", true] : ["webview", false],
-    is_fullscreen: false,
+    // `fullscreen`: the window is full screen (with `pads`, TV mode turns on by itself, #30).
+    is_fullscreen: !!scenario.fullscreen,
     current_slot: 1,
     first_run_show: !!scenario.firstRun,
     // `game: true`: a game opens at startup (the shell's in-game screens). The quick menu's

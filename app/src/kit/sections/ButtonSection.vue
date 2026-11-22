@@ -254,6 +254,20 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         </Button>
       </div>
     </KitState>
+    <KitState label="TvTab · current and not (TV mode's section tabs)">
+      <div class="flex items-center gap-24">
+        <Button :variant="ButtonVariant.TvTab" :size="ButtonSize.TvTab" aria-current="page">
+          Library
+        </Button>
+        <Button :variant="ButtonVariant.TvTab" :size="ButtonSize.TvTab">Saves</Button>
+      </div>
+    </KitState>
+    <KitState label="Primary · Tv, Soft · Tv (TV mode's hero actions)">
+      <div class="flex items-center gap-16">
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Tv">Resume</Button>
+        <Button :size="ButtonSize.Tv">Game details</Button>
+      </div>
+    </KitState>
     <KitState label="Inverse · CoverAction, Veil · CoverActionIcon">
       <div class="flex w-field gap-6 rounded-10 bg-cover-2 p-8">
         <Button :variant="ButtonVariant.Inverse" :size="ButtonSize.CoverAction" class="flex-1">

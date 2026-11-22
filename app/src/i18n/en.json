@@ -7,6 +7,24 @@
     "cloud": "Cloud",
     "settings": "Settings"
   },
+  "tv": {
+    "hint": {
+      "play": "Play",
+      "details": "Game details",
+      "search": "Search",
+      "back": "Back",
+      "sections": "Switch section",
+      "choose": "Choose"
+    },
+    "hero": {
+      "meta": "{console} · {time} played · {when}",
+      "metaNew": "{console} · Never played"
+    },
+    "shelf": {
+      "favourites": "Favourites",
+      "shelves": "Your games by shelf"
+    }
+  },
   "library": {
     "emptyTitle": "Add your games",
     "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, or drag them here.",

@@ -28,4 +28,7 @@ prove that a refactor changes nothing on screen (Trello #62).
   «Da uno screenshot» and «Adatta la copertina» (the `lib-cover-shots-*` / `lib-cover-crop*` scenarios, #85).
 - In-game scenarios set `game` in the mock: the game opens at startup (`true` for the shell's
   screens, `"gba"` / `"nds"` for the quick menu's).
+- TV mode (#30, the `tv-*` scenarios at 1280 × 720, 1920 × 1080 and 3840 × 2160): `fullscreen` with
+  `pads` turns it on by itself, `ui: "tv"` fixes it (no controller: the Nintendo letters); the steps
+  play the controller with `emu://nav` and `emu://menu`.
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.

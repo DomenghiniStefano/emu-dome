@@ -85,6 +85,15 @@ describe('themeKeys', () => {
       'caption-inline',
       'label-inline',
       'cta-inline',
+      'tv-display',
+      'tv-lead',
+      'tv-heading',
+      'tv-action',
+      'tv-label',
+      'tv-cover',
+      'tv-hint',
+      'tv-overline',
+      'tv-badge',
     ])
     expect(themeKeys(radius, ThemeNamespace.Radius)).toEqual([
       '4',

@@ -116,6 +116,17 @@ The phone layout sets `data-density="touch"` on `<html>` once (`composables/useD
 A component never takes a `phone` / `touch` prop only to change its look; such a prop is fine only
 when it changes structure (what is rendered, `v-if`).
 
+## TV mode
+
+The same rule for the sofa (Trello #30): `data-layout="tv"` on `<html>`, set once by
+`composables/useUiMode.ts` (called by `App.vue`; the decision is `lib/uiMode.ts`'s, tested), and the
+`tv:` variant. The TV sizes are the «TV» tokens (`text-tv-*`, `*-tv-*` spacing, the 4px TV focus
+ring), drawn for 1920 × 1080 and multiplied by `--tv-scale` on a larger screen. A screen whose
+structure changes in TV reads `uiMode.tv` and renders its TV part (`shell/TvTabs.vue`,
+`library/tv/`); a screen not laid out for TV yet keeps the desk's layout scaled up (`zoom-tv`;
+inside it, viewport units grow with the zoom, so a `vh` / `vw` limit is divided back). Controller
+glyphs come from `lib/padGlyphs.ts` (by position and `pad.confirm`), drawn by `shell/TvGlyph.vue`.
+
 ## Controller navigation (`nav.ts`)
 
 - Every screen calls `useNavScope(root, { back })` and marks its first element `data-nav-initial`;

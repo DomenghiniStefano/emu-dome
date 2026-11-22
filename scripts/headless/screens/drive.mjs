@@ -762,6 +762,50 @@ for (const theme of ["dark", "light"])
       stepMs: 600,
     };
 
+// TV mode (#30): on by itself (full screen + a controller: `fullscreen`, `pads`) or fixed
+// (`ui: "tv"`, no controller: the Nintendo letters). Steps play the controller (`emu://nav`,
+// `emu://menu`). At 1280 × 720, 1920 × 1080 (the mockup's) and 3840 × 2160, for the «no empty
+// space» rule; `focus` shows the TV focus ring.
+const nav = (action) => `window.__emit('emu://nav', { action: '${action}' })`;
+const TV_AUTO = { fullscreen: true, pads: true };
+const TV = {
+  lib: { mock: TV_AUTO, steps: [] },
+  "lib-nopad": { mock: { ui: "tv" }, steps: [] },
+  "lib-shelf": { mock: TV_AUTO, steps: [nav("down"), nav("right"), nav("right")], focus: true },
+  "lib-shelf2": {
+    mock: TV_AUTO,
+    steps: [nav("down"), nav("down"), nav("right")],
+    focus: true,
+  },
+  // A library of thousands loads later: the steps wait for it.
+  "lib-many": {
+    mock: { ...TV_AUTO, manyGames: 3000 },
+    steps: [
+      `new Promise((r) => setTimeout(r, 3000))`,
+      nav("down"),
+      nav("down"),
+      nav("right"),
+      `document.activeElement?.getAttribute('aria-label') ?? 'none'`,
+    ],
+    focus: true,
+  },
+  saves: { mock: TV_AUTO, steps: [nav("next")] },
+  settings: { mock: TV_AUTO, steps: [nav("prev")] },
+  qm: { mock: { ...TV_AUTO, game: "nds", slots: "full" }, steps: [`window.__emit('emu://menu')`] },
+  desktop: { mock: { pads: true }, steps: [] },
+};
+const TV_SIZES = { "720p": [1280, 720], "1080p": [1920, 1080], "4k": [3840, 2160] };
+for (const [name, s] of Object.entries(TV))
+  for (const theme of ["dark", "light"])
+    for (const [size, [width, height]] of Object.entries(TV_SIZES))
+      SCENARIOS[`tv-${name}-${theme}-${size}`] = {
+        mock: { ...s.mock, theme },
+        steps: s.steps,
+        focus: s.focus,
+        width,
+        height,
+      };
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function page() {

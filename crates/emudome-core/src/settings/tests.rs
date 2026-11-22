@@ -1991,7 +1991,6 @@ fn the_entries_not_wired_yet_are_these() {
             "touch.thapt",
             "touch.thide",
             "touch.tpad",
-            "general.ui",
             "general.updates",
             "library.group",
             "library.region",

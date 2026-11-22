@@ -45,5 +45,12 @@ import KitState from '@/kit/KitState.vue'
         </span>
       </div>
     </KitState>
+    <KitState label="TvFace, TvShoulder: TV mode's button bar and the hero's actions">
+      <div class="flex items-center gap-8 text-tv-hint text-ink-muted">
+        <Kbd :size="KbdSize.TvFace">A</Kbd> Play
+        <Kbd :size="KbdSize.TvShoulder">LB</Kbd>
+        <Kbd :size="KbdSize.TvShoulder">RB</Kbd> Switch section
+      </div>
+    </KitState>
   </KitSection>
 </template>

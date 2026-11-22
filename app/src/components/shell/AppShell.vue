@@ -22,7 +22,8 @@
 // The search everywhere (X01, #32): the top bar's field, Ctrl + K, or Y on the controller (the
 // `search` step, which a dialog or a menu open above the shell stops) open SearchPalette; a
 // setting chosen there opens its page with the row lit (`settingRowFor`), a game its details.
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { uiMode } from '@/composables/useUiMode'
 import { cn } from '@/lib/cn'
 import { activeScopeRoot, useNavScope } from '@/nav'
 import type { LibraryGame, SettingKey } from '@/emu'
@@ -35,6 +36,9 @@ import SettingsView from '@/components/settings/SettingsView.vue'
 import AppRail from './AppRail.vue'
 import AppTopBar from './AppTopBar.vue'
 import SectionPlaceholder from './SectionPlaceholder.vue'
+import TvButtonBar from './TvButtonBar.vue'
+import TvTabs from './TvTabs.vue'
+import { tvHints } from './tvHints'
 import {
   arrivalFor,
   arrived,
@@ -49,7 +53,7 @@ import {
   showingDetails,
   type Route,
 } from './route'
-import { hasOwnInitialFocus, isFlush } from './shellLayout'
+import { hasOwnInitialFocus, isFlush, isTvLaidOut, sectionStep } from './shellLayout'
 import { useCoverHaze } from './useCoverHaze'
 
 const emit = defineEmits<{
@@ -65,11 +69,21 @@ const hazeStyle = useCoverHaze(section)
 
 const root = ref<HTMLElement | null>(null)
 const rail = ref<InstanceType<typeof AppRail> | null>(null)
+// TV mode (#30): the tabs at the top instead of the rail, L1 / R1 switch section from anywhere
+// (a section's own L1 / R1, the settings levels or the controls tabs, come first).
+const tabs = ref<InstanceType<typeof TvTabs> | null>(null)
+function stepSection(dir: -1 | 1) {
+  if (!uiMode.tv) return false
+  const onTabs = tabs.value?.hasFocus() ?? false
+  go(pickSection(route.value, sectionStep(section.value, dir)))
+  if (onTabs) void nextTick(() => tabs.value?.focusCurrent())
+}
 const searching = ref(false)
 const openSearch = () => (searching.value = true)
 useNavScope(root, {
   autofocus: true,
-  back: () => rail.value?.focusCurrent(),
+  back: () => (uiMode.tv ? tabs.value : rail.value)?.focusCurrent(),
+  tab: stepSection,
   search: openSearch,
 })
 
@@ -106,15 +120,23 @@ const go = (to: Route) => (route.value = to)
 <template>
   <div ref="root" class="relative isolate flex h-full flex-col overflow-hidden bg-bg">
     <div class="ambient-haze" aria-hidden="true" :style="hazeStyle"></div>
-    <AppTopBar @search="openSearch" />
     <SearchPalette
       v-model:open="searching"
       @open-setting="openSetting"
       @details="g => go(openDetails(g.id))"
       @play="g => emit('openGame', g)"
     />
+    <AppTopBar v-if="!uiMode.tv" @search="openSearch" />
+    <TvTabs
+      v-else
+      ref="tabs"
+      :current="section"
+      :content-has-initial="hasOwnInitialFocus(section)"
+      @pick="s => go(pickSection(route, s))"
+    />
     <div class="flex min-h-0 flex-1">
       <AppRail
+        v-if="!uiMode.tv"
         ref="rail"
         :current="section"
         :content-has-initial="hasOwnInitialFocus(section)"
@@ -124,7 +146,12 @@ const go = (to: Route) => (route.value = to)
         :class="
           cn(
             'flex min-w-0 flex-1 flex-col',
-            isFlush(section, details !== null) ? 'overflow-hidden p-0' : 'overflow-auto p-32',
+            isFlush(section, details !== null, uiMode.tv)
+              ? 'overflow-hidden p-0'
+              : 'overflow-auto p-32',
+            // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, Settings, a
+            // game's details) keep the desk's layout, scaled up as it is.
+            !isTvLaidOut(section, details !== null) && 'tv:zoom-tv',
           )
         "
       >
@@ -168,5 +195,6 @@ const go = (to: Route) => (route.value = to)
         <SectionPlaceholder v-else :section="section" />
       </main>
     </div>
+    <TvButtonBar v-if="uiMode.tv" :hints="tvHints(section, details !== null)" />
   </div>
 </template>
