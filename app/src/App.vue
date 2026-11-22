@@ -72,9 +72,9 @@ useScreenTouch(
   videoMode,
   () => menuInset.value,
 )
-// The phone's layout (a phone held upright) sets the touch density for the whole interface.
+// The phone, upright or on its side (#29), sets the touch density for the whole interface.
 const layout = useDeviceLayout()
-useDensity(layout.phone)
+useDensity(layout.touchDensity)
 // TV mode (#30): `general.ui`, or at Automatica the answer to the TV question (TvModeDialog).
 useUiMode(session.fullscreen, layout.device)
 

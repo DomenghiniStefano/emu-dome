@@ -254,6 +254,18 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         </Button>
       </div>
     </KitState>
+    <KitState label="PhoneTab · current and not (the phone's tab bar, #29)">
+      <div class="flex w-full border-t border-line glass-thick px-4 pt-4 pb-4">
+        <Button :variant="ButtonVariant.PhoneTab" :size="ButtonSize.PhoneTab" aria-current="page">
+          <Library :size="24" :stroke-width="1.75" aria-hidden="true" />
+          <span class="text-fine font-medium">Library</span>
+        </Button>
+        <Button :variant="ButtonVariant.PhoneTab" :size="ButtonSize.PhoneTab">
+          <Save :size="24" :stroke-width="1.75" aria-hidden="true" />
+          <span class="text-fine font-medium">Saves</span>
+        </Button>
+      </div>
+    </KitState>
     <KitState label="TvTab · current and not (TV mode's section tabs)">
       <div class="flex items-center gap-24">
         <Button :variant="ButtonVariant.TvTab" :size="ButtonSize.TvTab" aria-current="page">

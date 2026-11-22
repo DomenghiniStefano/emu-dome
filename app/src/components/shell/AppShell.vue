@@ -3,6 +3,10 @@
 // rail with the five sections, the current section on the right. Hidden while a game is open:
 // App.vue keeps the route, so closing the game comes back to it.
 //
+// The phone (#29): held upright the sections are a tab bar at the bottom (PhoneTabBar); on its
+// side the rail is a column on the camera's edge, the top bar and the section beside it. The
+// whole shell keeps clear of the system's bars and the notch (the `safe` spacing tokens).
+//
 // Where the shell is, is one typed `Route` (route.ts), held by App.vue: each move is one of its
 // pure functions, and each section gets what it is opened for as props, read when it mounts;
 // once it has mounted the shell drops that arrival (`arrived`).
@@ -39,8 +43,11 @@ import { SHELL } from '@/components/search/searchContext'
 import { useSearchHost } from '@/components/search/useSearch'
 import SettingsView from '@/components/settings/SettingsView.vue'
 import UpdateReadyCard from '@/components/updates/UpdateReadyCard.vue'
+import { useDeviceLayout } from '@/composables/useDeviceLayout'
+import { ShellNav } from '@/lib/phoneLayout'
 import AppRail from './AppRail.vue'
 import AppTopBar from './AppTopBar.vue'
+import PhoneTabBar from './PhoneTabBar.vue'
 import TvButtonBar from './TvButtonBar.vue'
 import TvTabs from './TvTabs.vue'
 import { tvHints } from './tvHints'
@@ -73,7 +80,25 @@ const details = computed(() => (showingDetails(route.value) ? route.value.detail
 const hazeStyle = useCoverHaze(section)
 
 const root = ref<HTMLElement | null>(null)
+// Where the sections sit (#29): the desktop's rail, the phone's tab bar (upright) or the rail as
+// a column on the camera's edge (on its side). TV mode's tabs come before all of them.
+const layout = useDeviceLayout()
+const nav = computed(() => (uiMode.tv ? null : layout.nav.value))
 const rail = ref<InstanceType<typeof AppRail> | null>(null)
+const tabBar = ref<InstanceType<typeof PhoneTabBar> | null>(null)
+/** The phone's room for the system's bars and the notch, around the whole shell. */
+const shellClass = computed(() => {
+  switch (nav.value) {
+    case ShellNav.Tabs:
+      return 'flex-col pt-safe-top'
+    case ShellNav.Column:
+      return layout.camera.value === 'left'
+        ? 'flex-row pt-safe-top pr-safe-right'
+        : 'flex-row-reverse pt-safe-top pl-safe-left'
+    default:
+      return 'flex-col'
+  }
+})
 // TV mode (#30): the tabs at the top instead of the rail, L1 / R1 switch section from anywhere
 // (a section's own L1 / R1, the settings levels or the controls tabs, come first).
 const tabs = ref<InstanceType<typeof TvTabs> | null>(null)
@@ -95,7 +120,7 @@ const { openSearch } = useSearchHost({
 })
 useNavScope(root, {
   autofocus: true,
-  back: () => (uiMode.tv ? tabs.value : rail.value)?.focusCurrent(),
+  back: () => (uiMode.tv ? tabs.value : (rail.value ?? tabBar.value))?.focusCurrent(),
   tab: stepSection,
   search: openSearch,
 })
@@ -121,79 +146,96 @@ const go = (to: Route) => (route.value = to)
 </script>
 
 <template>
-  <div ref="root" class="relative isolate flex h-full flex-col overflow-hidden bg-bg">
+  <div ref="root" :class="cn('relative isolate flex h-full overflow-hidden bg-bg', shellClass)">
     <div class="ambient-haze" aria-hidden="true" :style="hazeStyle"></div>
-    <AppTopBar v-if="!uiMode.tv" @search="openSearch" />
-    <TvTabs
-      v-else
-      ref="tabs"
+    <AppRail
+      v-if="nav === ShellNav.Column"
+      ref="rail"
+      :edge="layout.camera.value"
       :current="section"
       :content-has-initial="hasOwnInitialFocus(section)"
       @pick="s => go(pickSection(route, s))"
     />
-    <div class="flex min-h-0 flex-1">
-      <AppRail
-        v-if="!uiMode.tv"
-        ref="rail"
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <AppTopBar v-if="!uiMode.tv" @search="openSearch" />
+      <TvTabs
+        v-else
+        ref="tabs"
         :current="section"
         :content-has-initial="hasOwnInitialFocus(section)"
         @pick="s => go(pickSection(route, s))"
       />
-      <main
-        :class="
-          cn(
-            'flex min-w-0 flex-1 flex-col',
-            isFlush(section, details !== null, uiMode.tv)
-              ? 'overflow-hidden p-0'
-              : 'overflow-auto p-32',
-            // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, a game's
-            // details) keep the desk's layout, scaled up as it is.
-            !isTvLaidOut(section, details !== null) && 'tv:zoom-tv',
-          )
-        "
-      >
-        <GameDetails
-          v-if="details"
-          :id="details"
-          :key="details"
-          @back="go(closeDetails(route))"
-          @play="(g, slot) => emit('openGame', g, slot)"
-          @backups="g => go(savesFor(route, g.id))"
-          @import="g => go(savesFor(route, g.id, true))"
-          @settings="g => go(settingsFor(route, g))"
-          @remap="g => go(remapFor(route, g))"
+      <div class="flex min-h-0 flex-1">
+        <AppRail
+          v-if="nav === ShellNav.Rail"
+          ref="rail"
+          :current="section"
+          :content-has-initial="hasOwnInitialFocus(section)"
+          @pick="s => go(pickSection(route, s))"
         />
-        <LibraryView
-          v-else-if="section === 'library'"
-          :return-to="arrivalFor(route, 'library')?.cover ?? null"
-          @open="(g, slot) => emit('openGame', g, slot)"
-          @open-saves="g => go(savesFor(route, g.id))"
-          @details="g => go(openDetails(g.id))"
-          @open-file="emit('openFile')"
-        />
-        <SavesView
-          v-else-if="section === 'saves'"
-          :arrival="arrivalFor(route, 'saves')"
-          @open-game="(g, slot) => emit('openGame', g, slot)"
-          @open-details="g => go(openDetails(g.id))"
-          @open-library="go(openSection(route, 'library'))"
-        />
-        <SettingsView
-          v-else-if="section === 'settings'"
-          :key="settingsVisit"
-          :game="arrivalFor(route, 'settings')?.game ?? null"
-          :row="arrivalFor(route, 'settings')?.row ?? null"
-          @open-controls="go(openSection(route, 'controls'))"
-          @open-cloud="go(openSection(route, 'cloud'))"
-        />
-        <ControlsView
-          v-else-if="section === 'controls'"
-          :game="arrivalFor(route, 'controls')?.game ?? null"
-        />
-        <CloudView v-else />
-      </main>
+        <main
+          :class="
+            cn(
+              'flex min-w-0 flex-1 flex-col',
+              isFlush(section, details !== null, uiMode.tv)
+                ? 'overflow-hidden p-0'
+                : 'overflow-auto p-32',
+              // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, a game's
+              // details) keep the desk's layout, scaled up as it is.
+              !isTvLaidOut(section, details !== null) && 'tv:zoom-tv',
+            )
+          "
+        >
+          <GameDetails
+            v-if="details"
+            :id="details"
+            :key="details"
+            @back="go(closeDetails(route))"
+            @play="(g, slot) => emit('openGame', g, slot)"
+            @backups="g => go(savesFor(route, g.id))"
+            @import="g => go(savesFor(route, g.id, true))"
+            @settings="g => go(settingsFor(route, g))"
+            @remap="g => go(remapFor(route, g))"
+          />
+          <LibraryView
+            v-else-if="section === 'library'"
+            :return-to="arrivalFor(route, 'library')?.cover ?? null"
+            @open="(g, slot) => emit('openGame', g, slot)"
+            @open-saves="g => go(savesFor(route, g.id))"
+            @details="g => go(openDetails(g.id))"
+            @open-file="emit('openFile')"
+          />
+          <SavesView
+            v-else-if="section === 'saves'"
+            :arrival="arrivalFor(route, 'saves')"
+            @open-game="(g, slot) => emit('openGame', g, slot)"
+            @open-details="g => go(openDetails(g.id))"
+            @open-library="go(openSection(route, 'library'))"
+          />
+          <SettingsView
+            v-else-if="section === 'settings'"
+            :key="settingsVisit"
+            :game="arrivalFor(route, 'settings')?.game ?? null"
+            :row="arrivalFor(route, 'settings')?.row ?? null"
+            @open-controls="go(openSection(route, 'controls'))"
+            @open-cloud="go(openSection(route, 'cloud'))"
+          />
+          <ControlsView
+            v-else-if="section === 'controls'"
+            :game="arrivalFor(route, 'controls')?.game ?? null"
+          />
+          <CloudView v-else />
+        </main>
+      </div>
+      <PhoneTabBar
+        v-if="nav === ShellNav.Tabs"
+        ref="tabBar"
+        :current="section"
+        :content-has-initial="hasOwnInitialFocus(section)"
+        @pick="s => go(pickSection(route, s))"
+      />
+      <TvButtonBar v-if="uiMode.tv" :hints="tvHints(section, details !== null)" />
     </div>
-    <TvButtonBar v-if="uiMode.tv" :hints="tvHints(section, details !== null)" />
     <!-- X06: a new version ready to install (inside the nav scope: reachable by the steps). -->
     <UpdateReadyCard />
   </div>
