@@ -5,7 +5,7 @@ defineProps<{ n: number; title: string; detail: string; done: boolean }>()
 </script>
 
 <template>
-  <div class="flex items-center gap-12">
+  <div class="flex items-center gap-8">
     <span
       class="grid size-24 flex-none place-items-center rounded-full text-caption font-semibold"
       :class="done ? 'bg-success-soft text-success' : 'bg-surface-raised text-ink-muted'"

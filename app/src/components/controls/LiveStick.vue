@@ -30,7 +30,7 @@ const deadStyle = computed(() => {
 </script>
 
 <template>
-  <Card class="flex-row items-center gap-24">
+  <Card class="flex-row items-center gap-16">
     <div
       class="relative flex-none rounded-full border border-line bg-surface-raised"
       role="img"

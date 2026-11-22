@@ -33,8 +33,11 @@ const focus = {
 
 <template>
   <KitSection title="Settings scope bar" :group="KitGroup.Settings">
-    <KitState label="Two levels (Tutti i giochi / a console's games), the console's menu">
-      <div class="w-page max-w-full">
+    <KitState
+      class="w-full"
+      label="Two levels (Tutti i giochi / a console's games), the console's menu"
+    >
+      <div class="w-full">
         <SettingsScopeBar
           v-model:only-changed="onlyA"
           :levels="['global', 'console']"
@@ -49,8 +52,11 @@ const focus = {
         />
       </div>
     </KitState>
-    <KitState label="Three levels, opened for a game (long title), only changed on, locked note">
-      <div class="w-page max-w-full">
+    <KitState
+      class="w-full"
+      label="Three levels, opened for a game (long title), only changed on, locked note"
+    >
+      <div class="w-full">
         <SettingsScopeBar
           v-model:only-changed="onlyB"
           :levels="['global', 'console', 'game']"

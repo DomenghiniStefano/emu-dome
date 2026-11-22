@@ -28,11 +28,11 @@ async function add() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-6">
+  <div class="flex flex-col gap-4">
     <div
       v-for="path in folders"
       :key="path"
-      class="flex h-control-md items-center gap-10 rounded-6 bg-surface-raised px-10"
+      class="flex h-control items-center gap-8 rounded-control bg-surface-raised px-8"
     >
       <Folder :size="16" :stroke-width="1.75" aria-hidden="true" />
       <span class="min-w-0 flex-1 truncate">{{ path }}</span>

@@ -36,7 +36,7 @@ const statusText = computed(() => {
 
 <template>
   <div
-    class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-12 border-t border-line px-16 py-8 data-listening:bg-violet-tint"
+    class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-8 border-t border-line px-12 py-6 data-listening:bg-violet-tint"
     :data-listening="listening ? '' : undefined"
   >
     <span class="font-semibold">{{ button }}</span>

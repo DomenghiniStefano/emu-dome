@@ -113,9 +113,9 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
 </script>
 
 <template>
-  <div class="flex flex-col gap-12">
+  <div class="flex flex-col gap-8">
     <template v-if="family !== 'keyboard'">
-      <Card v-if="modEntry" :variant="CardVariant.List" class="pb-12">
+      <Card v-if="modEntry" :variant="CardVariant.List" class="pb-8">
         <SettingRowView
           :entry="modEntry"
           :row="globalRows['pad.mod']"
@@ -126,7 +126,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
           @set="v => settings.set('pad.mod', v)"
           @reset="settings.reset('pad.mod')"
         />
-        <p class="m-0 px-16 text-caption-tall text-ink-muted">
+        <p class="m-0 px-12 text-caption-tall text-ink-muted">
           {{ t('controls.modNote') }}
         </p>
       </Card>

@@ -47,8 +47,8 @@ const inGameLine = computed(() =>
 </script>
 
 <template>
-  <section class="flex flex-col gap-18">
-    <div class="flex items-center gap-14">
+  <section class="flex flex-col gap-12">
+    <div class="flex items-center gap-12">
       <GameCover
         :size="CoverSize.Row"
         class="flex-none"
@@ -66,7 +66,7 @@ const inGameLine = computed(() =>
     </div>
 
     <LabelledBlock title-as="h3" :title="t('saves.inGameTitle')">
-      <Card :pad="CardPad.Snug" class="flex-row items-center gap-12">
+      <Card :pad="CardPad.Snug" class="flex-row items-center gap-8">
         <span class="min-w-0 flex-1 tabular-nums">{{ inGameLine }}</span>
         <Button v-if="saves.inGame" @click="emit('exportInGame')">{{ t('saves.export') }}</Button>
       </Card>
@@ -76,7 +76,7 @@ const inGameLine = computed(() =>
       <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03).
            The date only: a quick save has no play time of its own (Cowork, #37).
            `outdated`: an older version of its core made it (saves.rs, `is_outdated`). -->
-      <div v-if="saves.quick.length" class="grid grid-cols-4 gap-10">
+      <div v-if="saves.quick.length" class="grid grid-cols-4 gap-8">
         <SlotTile
           v-for="q in saves.quick"
           :key="q.slot"

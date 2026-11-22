@@ -29,10 +29,10 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <Card :pad="CardPad.Tight" class="min-w-0 gap-6">
+  <Card :pad="CardPad.Tight" class="min-w-0 gap-4">
     <SaveThumb
       :src="empty ? null : thumbUrl"
-      :class="cn('aspect-4/3 rounded-4', empty && 'bg-surface-raised')"
+      :class="cn('aspect-4/3 rounded-control', empty && 'bg-surface-raised')"
     />
     <span class="font-semibold">{{ name }}</span>
     <span v-if="when" class="text-caption text-ink-muted tabular-nums">{{ when }}</span>
@@ -43,7 +43,8 @@ const { t } = useI18n()
       <TriangleAlert :size="12" :stroke-width="1.75" aria-hidden="true" />
       {{ t('saves.quick.mightNotLoad') }}
     </span>
-    <span v-if="!empty" class="mt-2 flex gap-6">
+    <!-- at the bottom: a row of tiles keeps its buttons on one line when one has a line more -->
+    <span v-if="!empty" class="mt-auto flex gap-6 pt-2">
       <Button
         :variant="ButtonVariant.SoftAccent"
         :size="ButtonSize.TileAction"

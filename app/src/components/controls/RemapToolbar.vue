@@ -26,8 +26,8 @@ function chooseLevel(value: string) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-12">
-    <div v-if="levels.length > 1" class="flex items-center gap-10">
+  <div class="flex flex-wrap items-center justify-between gap-8">
+    <div v-if="levels.length > 1" class="flex items-center gap-8">
       <span class="font-medium text-ink-muted">{{ t('controls.appliesTo') }}</span>
       <Segmented
         :model-value="level"
@@ -40,7 +40,7 @@ function chooseLevel(value: string) {
         </SegmentedItem>
       </Segmented>
     </div>
-    <div v-if="withAb" class="flex items-center gap-10">
+    <div v-if="withAb" class="flex items-center gap-8">
       <span class="font-medium text-ink-muted">{{ t('settings.pad.ab.name') }}</span>
       <Segmented
         v-model="ab"

@@ -17,7 +17,7 @@ import { E } from './mock'
 
 <template>
   <KitSection title="Setting row · controls beside the text" :group="KitGroup.Settings">
-    <KitState label="Every inline kind on one card (toggle … screen layout)">
+    <KitState class="w-full" label="Every inline kind on one card (toggle … screen layout)">
       <RowCard>
         <KitSettingRow :entry="E.toggle" />
         <KitSettingRow :entry="E.autoq" />

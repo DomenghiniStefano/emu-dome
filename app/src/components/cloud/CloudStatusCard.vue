@@ -54,7 +54,7 @@ const lastLine = computed(() => {
 </script>
 
 <template>
-  <Card class="flex-row flex-wrap items-center gap-x-24 gap-y-16">
+  <Card class="flex-row flex-wrap items-center gap-x-16 gap-y-8">
     <div class="flex min-w-0 flex-1 basis-tile-min flex-col gap-4">
       <div class="flex flex-wrap items-center gap-8">
         <Badge :variant="BADGE[pill.kind]" :size="BadgeSize.Pill">{{ pillText }}</Badge>

@@ -15,7 +15,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="grid grid-cols-[repeat(auto-fit,minmax(var(--spacing-stat-min),1fr))] gap-10">
+  <div class="grid grid-cols-[repeat(auto-fit,minmax(var(--spacing-stat-min),1fr))] gap-8">
     <Card
       v-for="(o, i) in options"
       :key="o.id"
@@ -26,7 +26,7 @@ defineProps<{
       :class="{ 'opacity-locked': o.notYet }"
     >
       <span
-        class="block h-thumb rounded-6 border border-line"
+        class="block h-thumb rounded-control border border-line"
         aria-hidden="true"
         :style="{ background: cardPreview(settingKey, o.id, i) }"
       ></span>

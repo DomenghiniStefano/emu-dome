@@ -14,13 +14,13 @@ const text = (autoq: string) => t(emptyTextKey(autoq), { combo: 'L3 + R1 o F5' }
 
 <template>
   <KitSection title="Saves empty" :group="KitGroup.Settings">
-    <KitState label="Auto quick save every 5 minutes (default)">
-      <div class="w-page max-w-full rounded-card border border-line">
+    <KitState class="w-full" label="Auto quick save every 5 minutes (default)">
+      <div class="w-full rounded-card border border-line">
         <SavesEmpty :text="text('5min')" />
       </div>
     </KitState>
-    <KitState label="Auto quick save off">
-      <div class="w-page max-w-full rounded-card border border-line">
+    <KitState class="w-full" label="Auto quick save off">
+      <div class="w-full rounded-card border border-line">
         <SavesEmpty :text="text('never')" />
       </div>
     </KitState>

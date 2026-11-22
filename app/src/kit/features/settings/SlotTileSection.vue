@@ -13,61 +13,32 @@ import { THUMB_GBA, THUMB_NDS, THUMB_TALL } from './mock'
 
 <template>
   <KitSection title="Quick-save slot" :group="KitGroup.Settings">
-    <KitState label="Four to a row (Saves panel): auto, saved, outdated, no thumbnail">
-      <div class="grid w-page max-w-full grid-cols-4 gap-10">
+    <KitState
+      class="w-full"
+      label="Four to a row (Saves panel): auto, saved, outdated, no thumbnail"
+    >
+      <div class="grid w-full grid-cols-4 gap-8">
         <SlotTile name="Automatico" when="Oggi, 18:32" :thumb-url="THUMB_GBA" />
         <SlotTile name="Slot 1" when="Ieri, 22:10" :thumb-url="THUMB_NDS" />
         <SlotTile name="Slot 2" when="3 nov 2026, 09:05" :thumb-url="THUMB_GBA" outdated />
         <SlotTile name="Slot 3" when="1 nov 2026, 14:47" />
       </div>
     </KitState>
-    <KitState label="Empty slot next to a saved one, portrait thumbnail letterboxed">
-      <div class="grid w-page max-w-full grid-cols-4 gap-10">
+    <KitState class="w-full" label="Empty slot next to a saved one, portrait thumbnail letterboxed">
+      <div class="grid w-full grid-cols-4 gap-8">
         <SlotTile name="Slot 4" when="Oggi, 18:40" :thumb-url="THUMB_TALL" />
         <SlotTile name="Slot 5" empty />
       </div>
     </KitState>
-    <KitState label="SaveThumb · letterboxed (default), cropped, none">
+    <KitState class="w-full" label="SaveThumb · letterboxed (default), cropped, none">
       <div class="flex items-start gap-12">
-        <SaveThumb :src="THUMB_TALL" class="aspect-4/3 w-cover-small rounded-4" />
-        <SaveThumb :src="THUMB_TALL" crop class="aspect-4/3 w-cover-small rounded-4" />
-        <SaveThumb :src="null" class="aspect-4/3 w-cover-small rounded-4" />
+        <SaveThumb :src="THUMB_TALL" class="aspect-4/3 w-cover-small rounded-control" />
+        <SaveThumb :src="THUMB_TALL" crop class="aspect-4/3 w-cover-small rounded-control" />
+        <SaveThumb :src="null" class="aspect-4/3 w-cover-small rounded-control" />
       </div>
     </KitState>
 
     <template #review>
-      <KitIssue title="I pulsanti degli slot non sono allineati" :status="IssueStatus.Proposed">
-        Quando uno slot ha «Potrebbe non caricarsi», è più alto degli altri: la riga si allunga e
-        negli altri slot «Gioca da qui» resta più in alto, con uno spazio vuoto sotto. Lo stesso
-        succede in «Tieni questa» del conflitto quando un lato non ha il tempo di gioco.
-        <template #current>
-          <div class="grid w-panel max-w-full grid-cols-3 gap-10">
-            <SlotTile name="Slot 1" when="Ieri, 22:10" :thumb-url="THUMB_NDS" />
-            <SlotTile name="Slot 2" when="3 nov 2026, 09:05" :thumb-url="THUMB_GBA" outdated />
-            <SlotTile name="Slot 3" when="1 nov 2026, 14:47" :thumb-url="THUMB_GBA" />
-          </div>
-        </template>
-        <template #proposed>
-          <div class="grid w-panel max-w-full grid-cols-3 gap-10">
-            <SettingsSlotTileProposal name="Slot 1" when="Ieri, 22:10" :thumb-url="THUMB_NDS" />
-            <SettingsSlotTileProposal
-              name="Slot 2"
-              when="3 nov 2026, 09:05"
-              :thumb-url="THUMB_GBA"
-              outdated
-            />
-            <SettingsSlotTileProposal
-              name="Slot 3"
-              when="1 nov 2026, 14:47"
-              :thumb-url="THUMB_GBA"
-            />
-          </div>
-        </template>
-        <template #solution>
-          in SlotTile.vue la riga dei pulsanti prende `mt-auto` (al fondo della scheda); lo stesso
-          per «Tieni questa» in ConflictSide.vue.
-        </template>
-      </KitIssue>
       <KitIssue title="Salvataggio senza immagine: un riquadro nero" :status="IssueStatus.Proposed">
         Senza immagine SaveThumb mostra il nero del letterbox: «Slot 3» sembra un gioco fermo su una
         schermata nera, non un salvataggio senza anteprima. Lo stesso nel conflitto («Galaxy A71») e

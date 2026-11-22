@@ -22,11 +22,11 @@ const percent = (share: number) => `${(share * 100).toFixed(2)}%`
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-6">
+  <div class="flex min-w-0 flex-col gap-4">
     <span class="text-caption text-ink-muted">{{ line }}</span>
     <div
       v-if="bar && bar.limit !== null"
-      class="flex h-8 overflow-hidden rounded-full bg-surface-raised"
+      class="flex h-8 overflow-hidden rounded-badge bg-surface-raised"
       role="img"
       :aria-label="line"
     >

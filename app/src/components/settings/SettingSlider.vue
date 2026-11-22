@@ -24,7 +24,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex items-center gap-12">
+  <div class="flex items-center gap-8">
     <Slider
       v-model="shown"
       :variant="SliderVariant.EdgeFill"

@@ -22,10 +22,10 @@ defineProps<{
     :selected="chosen"
     role="radio"
     :aria-checked="chosen"
-    class="flex-row items-center gap-12"
+    class="flex-row items-center gap-8"
   >
     <span
-      class="grid size-control-lg flex-none place-items-center rounded-10 bg-surface-raised text-success"
+      class="grid size-control-lg flex-none place-items-center rounded-control bg-surface-raised text-success"
       aria-hidden="true"
     >
       <component :is="icon" :size="22" :stroke-width="1.75" />

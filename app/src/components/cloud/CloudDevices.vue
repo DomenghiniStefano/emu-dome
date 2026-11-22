@@ -29,7 +29,7 @@ const meta = (d: CloudDevice) =>
       <div
         v-for="d in rows"
         :key="d.id"
-        class="flex min-h-52 items-center gap-12 px-12 py-8 not-first:border-t not-first:border-line"
+        class="flex items-center gap-8 px-12 py-6 not-first:border-t not-first:border-line"
       >
         <MonitorSmartphone
           class="flex-none text-ink-muted"

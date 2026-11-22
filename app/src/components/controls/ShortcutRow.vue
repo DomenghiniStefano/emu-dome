@@ -13,7 +13,7 @@ defineProps<{
 
 <template>
   <div
-    class="grid grid-cols-[minmax(0,1fr)_auto_var(--spacing-shortcut-col)] items-center gap-12 border-line px-16 py-10 not-first:border-t"
+    class="grid grid-cols-[minmax(0,1fr)_auto_var(--spacing-shortcut-col)] items-center gap-8 border-line px-12 py-6 not-first:border-t"
   >
     <span :class="{ 'text-ink-muted': muted }">{{ action }}</span>
     <span

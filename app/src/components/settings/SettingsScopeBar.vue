@@ -69,10 +69,10 @@ const line = computed(() => {
 </script>
 
 <template>
-  <!-- Thick glass with radius 12 (pending Cowork): the glass's material, edge and shadow, its
+  <!-- Thick glass with a panel's corners: the glass's material, edge and shadow, its
        own corners. Sticks over the rows that scroll under it. -->
   <div
-    class="glass-thick-flat sticky top-0 z-sticky flex flex-col gap-10 rounded-12 border border-line px-16 py-14 shadow-glass"
+    class="glass-thick-flat sticky top-0 z-sticky flex flex-col gap-8 rounded-panel border border-line px-12 py-8 shadow-glass"
     role="region"
     :aria-label="t('settingsUi.scopeRegion')"
   >
@@ -99,7 +99,7 @@ const line = computed(() => {
           :as="l === 'console' ? 'div' : 'button'"
           :variant="CardVariant.RaisedAccent"
           :selected="effective === l"
-          class="min-h-level flex-row items-start gap-10 px-12"
+          class="flex-row items-start gap-8"
         >
           <component :is="ICONS[l]" :size="20" :stroke-width="1.75" aria-hidden="true" />
           <span class="flex flex-col gap-2">
