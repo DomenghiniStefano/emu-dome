@@ -66,8 +66,9 @@
 [data-slot='tabs-content'][data-state='active'] {
   animation: enter-rise 180ms var(--ease-out);
 }
-/* A press gives a little. */
-[data-slot='button']:active:not(:disabled, [aria-disabled='true']),
-button[data-slot='card']:active:not(:disabled) {
+/* A press gives a little (not with «Riduci le animazioni»: that would still move it, unanimated). */
+:root:not([data-motion='reduce'])
+  [data-slot='button']:active:not(:disabled, [aria-disabled='true']),
+:root:not([data-motion='reduce']) button[data-slot='card']:active:not(:disabled) {
   transform: scale(0.98);
 }
