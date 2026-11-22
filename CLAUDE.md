@@ -92,12 +92,16 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
 ```powershell
 ./scripts/fetch-cores.ps1 [-Cores mgba,melondsds,azahar|all] [-Build]  # cores pinned by cores.lock into cores/, sha256-checked
                                               # (default: the shipped ones; sh scripts/fetch-cores.sh [--cores ...] [--build] on Linux);
-                                              # mGBA comes from our release cores-mgba-<commit> (cores.lock built.release), built
-                                              # from source (as build-mgba.ps1) only if that download fails or with -Build
+                                              # mGBA (and Android's melonDS DS) come from our releases cores-<core>-<commit>
+                                              # (cores.lock built.release), built from source (as build-mgba.ps1 /
+                                              # build-melondsds.ps1) only if that download fails or with -Build
 ./scripts/fetch-cores-android.ps1 [-Cores ...] [-Abi arm64-v8a] [-Build]  # same, into cores/android/<abi>/ as lib*_libretro_android.so
 ./scripts/build-mgba.ps1 [-Platform windows-x86_64|android-arm64-v8a] [-Jobs 2]  # mGBA from the source cores.lock
                                               # pins, installed only if its sha256 is the pinned one (scripts/core-build.mjs:
                                               # VS 2022 Build Tools + the NDK's clang-cl, NDK for Android, git; sh build-mgba.sh)
+./scripts/build-melondsds.ps1 [-Jobs 2]          # melonDS DS for Android from the source cores.lock pins, with every
+                                              # library its CMake would git-clone pinned there (build.dependencies) and
+                                              # fed to CMake offline; 16 KB pages (NDK 27.1, git; sh build-melondsds.sh)
 ./scripts/android-build.ps1 [-Install] [-Release] [-Bundle] [-DryRun]  # the Android APK (arm64-v8a) from a clean
                                               # clone: cores, frontend, Rust, Gradle; prints the APK; -Install = adb
                                               # install -r; -Bundle = the signed AAB for Google Play (a release)
@@ -1022,7 +1026,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   release `cores-mgba-7a12d6d` (Trello #95, `built.release`) and every other machine downloads them from there
   (a new pin: `docs/release.md`). mGBA for Linux is still the libretro buildbot's `latest/` (`url_stable: false`):
   packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until it is built on Linux
-  (Trello #92). Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
+  (Trello #92). melonDS DS for Android is built by EmuDome too (owner, 2026-11-22: upstream's asset has 4 KB pages,
+  refused by Google Play), from v1.4.0's source archive and the pinned archives of the libraries its CMake fetches
+  (`build.dependencies`, configured with `FETCHCONTENT_FULLY_DISCONNECTED`), published as `cores-melondsds-f394adb`;
+  its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
   `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
   source-built Android mGBA.
 - Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet, no release built. Windows: a
