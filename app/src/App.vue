@@ -50,7 +50,7 @@ const { videoMode, nativeAvailable, load: loadVideoMode, setVideoMode } = useVid
 // game has closed, so «Adatta la copertina» never covers the game being played.
 const coverRequest = createCoverRequest()
 const session = useGameSession(toast, coverRequest.ask)
-const { game, menuOpen, paused, stats, showFps, speed, settings, menuInset } = session
+const { game, menuOpen, paused, stats, showFps, speed, settings, videoInset } = session
 const launch = useGameLaunch(session, toast)
 const keys = useGameKeys(session)
 const drop = useDropTarget(game, toast)
@@ -70,7 +70,7 @@ const touch = coarsePointer()
 useScreenTouch(
   () => game.value?.consoleId === 'nds' && !menuOpen.value,
   videoMode,
-  () => menuInset.value,
+  () => videoInset.value,
 )
 // The phone, upright or on its side (#29), sets the touch density for the whole interface.
 const layout = useDeviceLayout()
@@ -118,12 +118,12 @@ onMounted(async () => {
     <GameSurround
       :mode="videoMode"
       :game-size="session.gameSize.value"
-      :inset-bottom="menuInset"
+      :inset="videoInset"
       :game="session.playingGame.value"
     />
     <GameCanvas
       v-if="videoMode === 'webview'"
-      :inset-bottom="menuInset"
+      :inset="videoInset"
       :colour-blind="settings.colourBlind"
       surround
     />

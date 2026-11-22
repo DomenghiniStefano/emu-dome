@@ -1,8 +1,8 @@
 // The phone's shell (Trello #29): the tab bar upright, the rail as a column on the camera's edge
 // on its side (both ways round: `orientation` sets `screen.orientation.type`), the quick menu on
 // its side, and E13's warning. Device «phone», a touch screen, in Italian. Named
-// `phone-<screen>-<size>`: `p390` 390 × 844 and `p360` 360 × 740 upright, `l844` 844 × 390 and
-// `l740` 740 × 360 on the side, camera left (`-left`) or right (`-right`).
+// `phone-<screen>-<size>`: `p412` 412 × 892 (Galaxy S23), `p390` 390 × 844 and `p360` 360 × 740
+// upright, `l892` 892 × 412, `l844` 844 × 390 and `l740` 740 × 360 on the side, camera left (`-left`) or right (`-right`).
 
 /** The phone's tab bar or side column: the n-th section. */
 const section = (n) =>
@@ -32,6 +32,15 @@ const SHELL = {
     ],
   },
   storage: { mock: { storage: "low" }, steps: [] },
+  // The status bar's room (#29): headless Chrome has no safe area, so the step gives the shell a
+  // 32 px one (the S23's status bar) and the top bar and the side column must reach under it;
+  // the empty library on a touch screen offers no dragging.
+  "safe-empty": {
+    mock: { emptyLibrary: true },
+    steps: [
+      `document.documentElement.style.setProperty('--spacing-safe-top', '32px'); true`,
+    ],
+  },
   // Android's back at the shell's root: Cloud, back to Saves, back to the Library, then the app
   // to the background (the mock's calls list `leave_to_background`). Settings › Generale, back
   // returns to the list first.
@@ -57,8 +66,8 @@ const GAME = {
   },
 };
 
-const PORTRAIT = { p390: [390, 844], p360: [360, 740] };
-const LANDSCAPE = { l844: [844, 390], l740: [740, 360] };
+const PORTRAIT = { p412: [412, 892], p390: [390, 844], p360: [360, 740] };
+const LANDSCAPE = { l892: [892, 412], l844: [844, 390], l740: [740, 360] };
 const SIDES = {
   left: { type: "landscapePrimary", angle: 90 },
   right: { type: "landscapeSecondary", angle: 270 },

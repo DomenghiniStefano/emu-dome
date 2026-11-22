@@ -12,7 +12,7 @@ import SpeedPicker from './SpeedPicker.vue'
 import ToolTiles from './ToolTiles.vue'
 import type { SpeedChoice } from './speedChoices'
 import { quickTools, toolReasons, toolsNotYet, type Tool } from './tools'
-import { QuickMenuView } from './view'
+import { QuickMenuView, openerMark } from './view'
 
 const props = defineProps<{
   choices: SpeedChoice[]
@@ -76,11 +76,13 @@ const note = computed(() => {
     />
     <nav class="grid grid-cols-[1fr_1fr] gap-8" :aria-label="t('qm.moreLabel')">
       <PageRow
+        v-bind="openerMark(QuickMenuView.Screens)"
         :icon="Rows2"
         :label="t('qm.row.screens.name')"
         @click="e => emit('open', QuickMenuView.Screens, e)"
       />
       <PageRow
+        v-bind="openerMark(QuickMenuView.Controls)"
         :icon="Gamepad2"
         :label="t('qm.row.controls.name')"
         @click="e => emit('open', QuickMenuView.Controls, e)"

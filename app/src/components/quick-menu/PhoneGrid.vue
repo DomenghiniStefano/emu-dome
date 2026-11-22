@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { Gamepad2, Rows2 } from '@lucide/vue'
 import { Card, CardVariant } from '@/components/ui/card'
 import type { Tool } from './tools'
-import { QuickMenuView } from './view'
+import { QuickMenuView, openerMark } from './view'
 
 defineProps<{
   tools: Tool[]
@@ -31,6 +31,7 @@ const PAGES: { view: QuickMenuView; icon: Component; label: string }[] = [
     <Card
       v-for="p in PAGES"
       :key="p.view"
+      v-bind="openerMark(p.view)"
       as="button"
       :variant="CardVariant.Tool"
       class="min-w-0 gap-8"
@@ -48,6 +49,7 @@ const PAGES: { view: QuickMenuView; icon: Component; label: string }[] = [
     <Card
       v-for="x in tools"
       :key="x.id"
+      v-bind="openerMark(x.id)"
       as="button"
       :variant="CardVariant.Tool"
       :selected="x.pressed"

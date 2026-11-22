@@ -1271,6 +1271,75 @@
     for (const id of listeners.get(event) ?? [])
       callbacks.get(id)?.({ event, id: 0, payload });
   };
+  // `frame: true` (#29, the phone's layouts): the webview canvas gets a game picture, a GBA frame
+  // (240 × 160, a magenta field with a lighter border) from `emu://frame`, placed where Rust's
+  // `screens::fit` would put it (`screens_placements`: integer scale when it fits, in the part
+  // the inset leaves, centred or against its bottom). The fit is worked out at `frameDpr` device
+  // pixels per CSS pixel (default 2.625, the Galaxy S23) as the native video does on a phone, so
+  // the picture has the size it has there. `window.__lastArea` keeps the last area.
+  const FRAME = { w: 240, h: 160 };
+  const frameBytes = () => {
+    const px = new Uint8ClampedArray(FRAME.w * FRAME.h * 4);
+    for (let y = 0; y < FRAME.h; y++)
+      for (let x = 0; x < FRAME.w; x++) {
+        const edge = x < 4 || y < 4 || x >= FRAME.w - 4 || y >= FRAME.h - 4;
+        px.set(edge ? [255, 220, 255, 255] : [220, 110, 230, 255], (y * FRAME.w + x) * 4);
+      }
+    return px;
+  };
+  const insetShares = (inset) =>
+    typeof inset === "number"
+      ? { left: 0, top: 0, right: 0, bottom: inset, align: "centre" }
+      : inset;
+  const placements = (area) => {
+    window.__lastArea = area;
+    const i = insetShares(area.inset);
+    const axis = (a, b) => {
+      const c = (v) => (Number.isFinite(v) ? Math.min(Math.max(v, 0), 0.9) : 0);
+      const [s, e] = [c(a), c(b)];
+      return s + e > 0.9 ? [(s * 0.9) / (s + e), (e * 0.9) / (s + e)] : [s, e];
+    };
+    const [l, r] = axis(i.left, i.right);
+    const [t, b] = axis(i.top, i.bottom);
+    const k = scenario.frameDpr ?? 2.625;
+    const free = {
+      x: area.width * k * l,
+      y: area.height * k * t,
+      w: area.width * k * (1 - l - r),
+      h: area.height * k * (1 - t - b),
+    };
+    const fit = Math.min(free.w / FRAME.w, free.h / FRAME.h);
+    const scale = fit >= 1 ? Math.floor(fit) : fit;
+    const [w, h] = [FRAME.w * scale, FRAME.h * scale];
+    const y = i.align === "bottom" ? free.y + free.h - h : free.y + (free.h - h) / 2;
+    const dst = {
+      x: Math.floor(free.x + (free.w - w) / 2) / k,
+      y: Math.floor(y) / k,
+      w: w / k,
+      h: h / k,
+    };
+    return {
+      frameWidth: FRAME.w,
+      frameHeight: FRAME.h,
+      placements: [
+        { id: "main", src: { x: 0, y: 0, w: FRAME.w, h: FRAME.h }, dst, rotation: "none" },
+      ],
+    };
+  };
+  if (scenario.frame) {
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, init) => {
+      if (!String(url).includes("emu.localhost/frame")) return realFetch(url, init);
+      if (!String(url).endsWith("since=-1")) {
+        await new Promise((r) => setTimeout(r, 200));
+        return new Response(null, { status: 204 });
+      }
+      return new Response(frameBytes(), {
+        status: 200,
+        headers: { "x-width": "240", "x-height": "160", "x-seq": "1" },
+      });
+    };
+  }
   // A pointer press as a user makes it (Reka's tabs act on mousedown, not on click).
   window.__press = (el) => {
     const opts = {
@@ -1323,6 +1392,8 @@
       if (cmd === "settings_page")
         return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);
       if (cmd === "library_scan") return null;
+      if (cmd === "screens_placements" && scenario.frame) return placements(args.area);
+      if (cmd === "set_video_inset") window.__videoInset = args;
       // The touch controls (#29): a console's controls as `ControlId::of`, no layout saved
       // unless the scenario gives one (`touchSaved`: a landscape layout).
       if (cmd === "touch_layouts") {

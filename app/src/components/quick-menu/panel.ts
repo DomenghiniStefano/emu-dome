@@ -2,6 +2,7 @@
 // G09 bar, the phone's sheet, the phone's side panel. Its shadows (`shadow-panel`, `shadow-sheet`), the sheet's 20 radius
 // and the 640 / 1040 widths are pending tokens, awaiting Cowork (spec Decision 5).
 import { cva } from 'class-variance-authority'
+import { NO_INSET, type InsetPx } from '@/components/game/inset'
 import { QuickMenuView } from './view'
 
 export const PanelLayout = {
@@ -72,4 +73,39 @@ export function sheetPanel(view: QuickMenuView): string {
         ? SheetTop.Screens
         : SheetTop.Page
   return panelVariants({ layout: PanelLayout.Sheet, top })
+}
+
+/** What the quick menu keeps clear of the game: the phone's sheet (the bottom), its side panel
+ * (the right), nothing (the desktop's panel over the dimmed game, the editors over the game at
+ * its real size), or `bar` (G09 on desktop: ScreensBar measures its own). */
+export const MenuInset = {
+  Sheet: 'sheet',
+  Side: 'side',
+  None: 'none',
+  Bar: 'bar',
+} as const
+export type MenuInset = (typeof MenuInset)[keyof typeof MenuInset]
+
+/**
+ * The edges of the window the phone's panel keeps clear of the game (#29), from where the panel
+ * is (`rect`, CSS px) in a window of `view` size: above the sheet the game sits against it (the
+ * board's game image over the sheet), beside the side panel it is centred in what is left.
+ */
+export function panelInset(
+  kind: Exclude<MenuInset, 'bar'>,
+  rect: { left: number; top: number },
+  view: { width: number; height: number },
+): InsetPx {
+  switch (kind) {
+    case MenuInset.Sheet:
+      return {
+        ...NO_INSET,
+        bottom: Math.max(0, Math.ceil(view.height - rect.top)),
+        align: 'bottom',
+      }
+    case MenuInset.Side:
+      return { ...NO_INSET, right: Math.max(0, Math.ceil(view.width - rect.left)) }
+    case MenuInset.None:
+      return NO_INSET
+  }
 }

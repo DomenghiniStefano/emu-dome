@@ -83,7 +83,7 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
   controllers ok through SDL3 (Steam Controller, 8BitDo). Last reported open: the window turns transparent in webview mode.
 - **Android** (Galaxy A71, 2026-11-16): `SurfaceView` under the WebView ok, ≈ 59.8 FPS (Vulkan), touch controls,
   surface survives background/resume. Not tested yet: audio quality and delay (the test ROM is silent),
-  Android controllers (SDL3 not built for Android), landscape layout.
+  Android controllers (read through Android's input events since #47, not run on a device yet), landscape layout.
 - Since then, on `develop`: L3 controller combos, controller navigation in every menu, the L01 app shell and themes,
   the settings engine (2a).
 
@@ -142,7 +142,8 @@ cargo clippy --target aarch64-linux-android -p libretro-sys -p emudome-core -p e
 cargo fmt --all
 cargo run -p emudome-core --example headless -- <core> tools/test-rom/emudome-test.gba   # windowless core host
                                               # (--release ... --timing 20 --rewind 30: per-frame work p50/p99/max)
-cargo run -p emudome --example gamepad_probe  # windowless SDL3 controller probe (app/src-tauri/examples)
+cargo run -p emudome --example gamepad_probe  # windowless controller probe on emudome_platform::pads (SDL3 on
+                                              # the desktop; app/src-tauri/examples)
 cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|sign-out|list|quota|upload <f>|download <n> <out>
                                               # the real Google sign-in and Drive calls (owner's UAT only: it opens
                                               # the browser, talks to Google, keeps the refresh token in the system's
@@ -243,7 +244,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          `compose` places each screen, `touch_at` / `pointer_value` map a touch back;
                          `ScreenSettings` the `screens.*` values, `CustomLayout` the editor's
                          `screens.custom`, `ScreenSession` the layout shown, the swap and the lid,
-                         `ScreenStatus` what the interface shows; pure, unit-tested)
+                         `ScreenStatus` what the interface shows; `Inset` the window's edges kept clear
+                         of the game (quick menu, touch controls) and `fit` the game in the rest,
+                         centred or against the bottom; pure, unit-tested)
                          touch.rs (the touch controls, #29: `ControlId` and the controls each console
                          has (`ControlId::of`), `Layout` / `Layouts` the user's layout per orientation as
                          `touch.tedit` stores it (per device, per console), what a valid one is (each
@@ -304,7 +307,13 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          false on the desktop);
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView;
                          SystemBridge: the back button, the launch intent's game, `content://` documents;
+                         GamepadInput: the controllers' key / motion events and device list;
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked);
+                         pads/ (the controllers, #47: `PadSource` (open / poll / read), `PadEvent`,
+                         `PadReading` (buttons by position, six axes in SDL's ranges); sdl.rs SDL3 on the
+                         desktop; android.rs the JNI side of GamepadInput.kt; android_map.rs Android's key
+                         codes and axes as positions, the right stick / triggers layout from the motion
+                         ranges, the pads' state: pure, tested on every system),
                          content.rs (games as `content://` documents, opened without a copy: the
                          provider's file descriptor kept open for the session, read through a link
                          `<cache>/content/<fd>/<name>` → `/proc/self/fd/<fd>`; pure parts tested),
@@ -374,7 +383,8 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          image as a texture, raw barriers), hw_render.rs (a Vulkan core's frames: GPU copy
                          of the core's image into a game texture, readback into `Shared::frame`;
                          `headless_setup` for `examples/headless_gpu.rs`),
-                         audio.rs (cpal), gamepad.rs (SDL3), commands,
+                         audio.rs (cpal), gamepad.rs (the controller thread on emudome_platform::pads,
+                         the same on every system), commands,
                          settings.rs (settings commands, file locations, settings://changed),
                          effects.rs (screen effects: built-in .slangp presets from effects/, fx.* → renderer,
                          emu://effect-error), video.rs runs them through librashader (native path only)
@@ -423,8 +433,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          LidClosedCard: G15 «Coperchio chiuso»),
                          touch (#29: TouchLayer, the touch controls over the game (App.vue, a touch screen):
                          the layout of the console and orientation (touchLayout.ts: the defaults anchored
-                         to the window's edges, the geometry, the 8 px grid, the band kept at the bottom
-                         in portrait), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
+                         to the window's edges, the geometry, the 8 px grid, the edges kept clear of the
+                         game: the band at the bottom in portrait, the side columns in landscape), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
                          (touchPress.ts), `touch.topac` / `thapt` / `thide` / `tpad`
                          (touchVisibility.ts); TouchEditor C06 over the game (from G10 and from the
                          `touch.tedit` row at a console's scope; useTouchEditor the state, editorHistory.ts
@@ -542,8 +552,15 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   source (`input::Source::Touch`, so letting go of the keyboard never drops a finger's button), and the 3DS Circle
   Pad drawn on screen (`touch_stick`) is the left stick while moved (`InputState::set_touch_stick`, merged into the
   snapshot).
-  Controllers go through an SDL3 thread
-  (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
+  Controllers go through one controller thread (`gamepad.rs`, the same on every system) reading
+  `emudome_platform::pads::PadSource`: SDL3 on the desktop; on Android (#47) the system's own `KeyEvent` /
+  `MotionEvent` of gamepad and joystick devices, taken by `GamepadInput.kt` in a wrapper of the activity window's
+  `Window.Callback` before the WebView sees them (touch, the phone's own back key, keyboards and IME go on to the
+  system, and so does a pad key EmuDome does not read), raw codes and axis values over JNI, mapped in Rust
+  (`pads/android_map.rs`: `KEYCODE_BUTTON_A` the bottom button as SDL reads it, the right stick on `AXIS_Z` /
+  `AXIS_RZ` or `AXIS_RX` / `AXIS_RY` and the triggers chosen from the device's motion ranges, a digital L2 / R2 a full
+  axis; the kind from the USB vendor id, then the name). Logcat: `android pad connected: <name> <vid>:<pid>` and,
+  in a debug build, a line per key and per coarse change. RetroArch-style positional mapping; triggers and the left stick past half travel
   count as L2/R2 and d-pad. Both sticks also reach the core as `RETRO_DEVICE_ANALOG` while the game has the
   input (`Routed::game_has_input`). The core reads a frozen `input::Snapshot`, taken before each frame and at
   its `input_poll`, never the live state mid-frame.
@@ -778,7 +795,7 @@ duration / edge width / outline offset, no `!` override, no string variant, no r
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
 `unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
-`lib.rs`, `library.rs`, `saves.rs` and the SDL3 table of `app/src-tauri`, moved in #72 phase 2), tauri / wgpu /
+`lib.rs`, `library.rs` and `saves.rs` of `app/src-tauri`, moved in #72 phase 2; no target table left there), tauri / wgpu /
 librashader pinned with `=`, `invoke` only in `app/src/emu.ts`, no emoji,
 no Nintendo files by name, no signing keystore (`*.jks`, `*.keystore`, `*.p12`, `*.pfx`) in the repo, no hardcoded
 visible text in `.vue` templates (`scripts/visible-text.mjs`), and the cores (`scripts/cores.mjs check --self-test`:
@@ -962,8 +979,19 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   screens), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4, so Settings ›
   Controlli touch stays hidden while `CURRENT_PHASE` is 1: the editor opens from the quick menu's «Controlli» on
   a touch screen, and the rows keep their defaults (E14 «Pausa e domanda», the glass skin, 60 %, vibration 40 %).
+- Android controllers (Trello #47): built from Android's input events (`pads/android.rs`, `GamepadInput.kt`) but
+  not run on a device yet. To verify there: which physical button a Nintendo-layout pad (Switch Pro, an 8BitDo in
+  Switch mode) reports as `KEYCODE_BUTTON_A` (the table reads it as the bottom one, as SDL does); whether Guide /
+  Home reaches the app (`KEYCODE_BUTTON_MODE`) or the system takes it; the right stick and trigger guess on pads
+  without a key layout file of their own. The battery is read once, at connection (no `emu://gamepad-changed` on
+  Android yet); no rumble, no gamepad motion sensors; a keyboard or a TV remote that has arrow keys only
+  (`SOURCE_DPAD`) is not a controller and stays the system's.
   Turning the phone while C06 is open switches to that orientation's layout, dropping the unsaved changes. Not
-  run on a device yet (vibration, the Circle Pad on Azahar, the band kept in portrait with the native video).
+  run on a device yet (vibration, the Circle Pad on Azahar). The game is fitted in what the controls leave
+  (`reservedInset`, the video inset of `screens::Inset`): upright against the band at the bottom (what the
+  window has left over is one band at its top, the picture keeping its integer scale), on the side between the two
+  columns, Select / Start / menu in the columns; the quick menu's sheet and side panel keep their own edges the
+  same way, measured again when the phone turns.
 - Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
   (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
   (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`
@@ -1004,9 +1032,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
   (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu's 440 px side
   panel on its side, E13's warning (`storage_status`), Android's back at the shell's root. Not yet: the «Gestisci lo
-  spazio» screen (not designed: the button is faded and a press says it arrives later); on G09 on its side the game
-  stays centred under the panel (the video's inset is bottom-only); the safe areas, the camera side and
-  `moveTaskToBack` are checked headless and by review only, not on a device yet.
+  spazio» screen (not designed: the button is faded and a press says it arrives later); the safe areas, the camera
+  side and `moveTaskToBack` are checked headless and by review only, not on a device yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
   hint in the menu's foot). In the shell the controller's shortcuts are disabled with «Apri un gioco per usarla»
@@ -1031,7 +1058,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`build.dependencies`, configured with `FETCHCONTENT_FULLY_DISCONNECTED`), published as `cores-melondsds-f394adb`;
   its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
   `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
-  source-built Android mGBA.
+  source-built Android mGBA. 16 KB pages (Google Play, `docs/release.md` «Android: 16 KB pages»): the APK stores
+  its libraries 16 KB-aligned, `libemudome_app.so` links with 16 KB pages (`.cargo/config.toml`), mGBA and the
+  NDK's `libc++_shared.so` are aligned; the pinned melonDS DS v1.4.0 Android asset is not (4 KB `LOAD`
+  segments): a new pin, the owner's choice there, is a Play release blocker.
 - Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet, no release built. Windows: a
   per-user NSIS installer, data kept on uninstall unless the uninstaller's box is ticked, unsigned (SmartScreen).
   Linux: AppImage and deb targets, never built (no Linux here; mGBA for Linux unpinned, #92). Android: `-Bundle`

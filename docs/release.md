@@ -159,6 +159,38 @@ A new commit, or a toolchain change, gives new bytes: they are built once, check
 
 A published release is never replaced or edited: a new build is a new pin and a new tag.
 
+## Android: 16 KB pages
+
+Google Play takes an app targeting Android 15+ only if it supports 16 KB memory pages (updates without it are
+refused from 2027-02-01), and a device with 16 KB pages runs an app with a 4 KB-aligned library only in its
+compatibility mode, with a warning on first launch (seen on 2026-11-22 on a Galaxy S23, Android 17: «Questa app
+non è compatibile con dimensioni pagina di 16 kB»). Two halves, both needed for every library in the APK:
+
+- **In the zip**: libraries stored uncompressed and 16 KB-aligned. AGP 8.5.1+ does it with
+  `packaging.jniLibs.useLegacyPackaging = false` (written in `app/src-tauri/gen/android/app/build.gradle.kts`;
+  AGP 9.3.1 today). Check: `zipalign -c -P 16 -v 4 <apk>` (SDK build-tools 35+) ends with «Verification
+  successful».
+- **In the ELF**: every `LOAD` segment `Align 0x4000`, and `GNU_RELRO` either ending on a 16 KB boundary or filling
+  its `LOAD` segment. Check: `llvm-readelf -lW <lib>.so` (the NDK's) on each library taken out of the APK.
+  - `libemudome_app.so` (ours): linked with `-z max-page-size=16384 -z common-page-size=16384`
+    (`.cargo/config.toml`), because NDK 27 links with 4 KB pages by default.
+  - `libc++_shared.so`: the NDK 27.1 one is already 16 KB-aligned.
+  - `libmgba_libretro_android.so`: built by EmuDome with `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`
+    (`scripts/core-build.mjs`), so the pinned `cores-mgba-7a12d6d` file is already 16 KB-aligned (`LOAD` align
+    0x4000, `GNU_RELRO` ending at 0x164000). Nothing to re-pin.
+  - `libmelondsds_libretro_android.so`: **not aligned**. The pinned file is upstream's v1.4.0 release asset,
+    built by its CI with NDK r27d and no 16 KB flag (`LOAD` align 0x1000). Upstream has no newer release and no
+    16 KB change; the libretro buildbot's nightly (NDK r29) is aligned, but its `latest/` URL is not stable, so it
+    cannot be pinned. The way out the owner chooses (both a new pin, steps above for a built core):
+    1. EmuDome builds melonDS DS for Android from the pinned v1.4.0 source, like mGBA: upstream's own Android
+       CMake arguments (`-DENABLE_OGLRENDERER=OFF`, its `.github/workflows/main.yaml`) plus
+       `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` with NDK 27.1, a `build` block and `source.archive` in
+       `cores.lock`, published as `cores-melondsds-f394adb`. Its CMake fetches its dependencies by git at
+       configure time (`cmake/FetchDependencies.cmake`), so the source offer and the reproducibility check
+       must cover those pins too: more work than mGBA.
+    2. Ask upstream (JesseTG/melonds-ds) for a release built 16 KB-aligned (NDK r28+, or the flag above), then
+       re-pin its release asset (url, sha256s) like today. No build of ours, but it waits on upstream.
+
 ## Still open
 
 - No release was built yet: the per-user installer, the uninstaller keeping the data, an update from one version

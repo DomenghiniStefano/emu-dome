@@ -25,11 +25,12 @@ const { t } = useI18n()
 
 const isCurrent = (s: Section) => s === props.current
 
-/** Where the rail sits: the desktop's left, or the camera's edge with room for the notch. */
+/** Where the rail sits: the desktop's left, or the camera's edge with room for the notch, its
+ * glass under the status bar and its items below it. */
 const placement = {
   desktop: 'basis-rail border-r py-12',
-  left: 'border-r py-8 pr-6 pl-camera-left',
-  right: 'border-l py-8 pr-camera-right pl-6',
+  left: 'border-r pt-[calc(var(--spacing-8)+var(--spacing-safe-top))] pr-6 pb-8 pl-camera-left',
+  right: 'border-l pt-[calc(var(--spacing-8)+var(--spacing-safe-top))] pr-camera-right pb-8 pl-6',
 } as const
 
 const nav = ref<HTMLElement | null>(null)
