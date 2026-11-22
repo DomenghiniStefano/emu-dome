@@ -12,16 +12,21 @@ import { Progress } from '@/components/ui/progress'
 import type { ConsoleId } from '@/emu'
 import { consoleCounts } from '@/lib/consoleCounts'
 
-const props = defineProps<
-  | { kind: 'progress'; found: number | null }
-  | { kind: 'summary'; added: number; perConsole: Partial<Record<ConsoleId, number>> }
-  | { kind: 'unreachable'; path: string; count: number }
->()
+// One props object, each field read only by its kind: Vue turns a union of props into every field
+// required, which warns for the kinds that leave them out.
+const props = defineProps<{
+  kind: 'progress' | 'summary' | 'unreachable'
+  found?: number | null
+  added?: number
+  perConsole?: Partial<Record<ConsoleId, number>>
+  path?: string
+  count?: number
+}>()
 
 const { t } = useI18n()
 
 const counts = computed(() =>
-  props.kind === 'summary' ? consoleCounts(props.perConsole, { hideEmpty: true }) : [],
+  props.kind === 'summary' ? consoleCounts(props.perConsole ?? {}, { hideEmpty: true }) : [],
 )
 </script>
 
@@ -38,13 +43,13 @@ const counts = computed(() =>
     <template v-if="props.kind === 'progress'">
       <span class="font-medium">{{ t('library.scan.title') }}</span>
       <Progress class="max-w-scan min-w-0 flex-1" :label="t('library.scan.title')" />
-      <span v-if="props.found !== null" class="text-ink-muted tabular-nums">
+      <span v-if="props.found != null" class="text-ink-muted tabular-nums">
         {{ t('library.scan.found', { found: props.found }, props.found) }}
       </span>
     </template>
     <template v-else-if="props.kind === 'summary'">
       <span class="font-semibold">
-        {{ t('library.added.title', { n: props.added }, props.added) }}
+        {{ t('library.added.title', { n: props.added ?? 0 }, props.added ?? 0) }}
       </span>
       <span class="min-w-0 flex-1 text-ink-muted tabular-nums">
         <template v-for="(c, i) in counts" :key="c.id">
@@ -70,7 +75,11 @@ const counts = computed(() =>
           aria-hidden="true"
         />
         <span class="min-w-0 wrap-anywhere">{{
-          t('library.unreachable.text', { path: props.path, count: props.count }, props.count)
+          t(
+            'library.unreachable.text',
+            { path: props.path ?? '', count: props.count ?? 0 },
+            props.count ?? 0,
+          )
         }}</span>
       </span>
       <Button class="ml-auto">{{ t('library.unreachable.choose') }}</Button>
