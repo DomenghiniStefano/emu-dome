@@ -1965,7 +1965,6 @@ fn the_entries_not_wired_yet_are_these() {
             "touch.thide",
             "touch.tpad",
             "general.ui",
-            "general.start",
             "general.confirmdel",
             "general.updates",
             "library.group",

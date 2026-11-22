@@ -75,12 +75,6 @@ pub(crate) fn video_mode(state: tauri::State<'_, AppState>) -> (VideoMode, bool)
     (*state.video_mode.lock(), state.renderer.is_some())
 }
 
-/// Game given on the command line (`emudome game.gba`), opened at startup.
-#[tauri::command]
-pub(crate) fn startup_game() -> Option<String> {
-    emudome_platform::startup_game()
-}
-
 /// Switches mode live (only where the native renderer exists), to compare the two.
 #[tauri::command]
 pub(crate) fn set_video_mode(

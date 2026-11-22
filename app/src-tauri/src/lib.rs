@@ -45,6 +45,7 @@ mod protocol;
 mod saves;
 mod screens;
 mod settings;
+mod startup;
 mod theme;
 mod tuning;
 mod video;
@@ -523,7 +524,8 @@ pub fn run() {
             commands::video_mode,
             commands::set_video_mode,
             commands::set_video_inset,
-            commands::startup_game,
+            startup::startup_game,
+            startup::startup_last_game,
             game::open_extensions,
             commands::set_menu_open,
             commands::window_focus,

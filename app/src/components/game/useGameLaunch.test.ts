@@ -14,6 +14,7 @@ const bridge = vi.hoisted(() => ({
   openGame: vi.fn(),
   libraryOpen: vi.fn(),
   startupGame: vi.fn(),
+  startupLastGame: vi.fn(),
   setPaused: vi.fn(),
   loadState: vi.fn(),
   abandonGame: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('@/emu', () => ({
     openGame: bridge.openGame,
     library: { open: bridge.libraryOpen },
     startupGame: bridge.startupGame,
+    startupLastGame: bridge.startupLastGame,
     openExtensions: bridge.openExtensions,
     setPaused: bridge.setPaused,
     loadState: bridge.loadState,
@@ -165,6 +167,20 @@ describe('useGameLaunch', () => {
     await launch.openStartupGame()
     expect(bridge.openGame).toHaveBeenCalledWith('C:/roms/kirby.gba')
     expect(bridge.pick).not.toHaveBeenCalled()
+  })
+
+  it('opens the last game when Rust names one and no game was given', async () => {
+    const { launch, session } = setup()
+    bridge.startupGame.mockResolvedValueOnce(null)
+    bridge.startupLastGame.mockResolvedValueOnce(minish)
+    await launch.openStartupGame()
+    expect(bridge.libraryOpen).toHaveBeenCalledWith(minish.id)
+    expect(session.begin).toHaveBeenCalledWith(info('MINISH'), minish, false)
+    // A game given at startup wins: the last game is not even asked for.
+    bridge.startupLastGame.mockClear()
+    bridge.startupGame.mockResolvedValueOnce('C:/roms/kirby.gba')
+    await launch.openStartupGame()
+    expect(bridge.startupLastGame).not.toHaveBeenCalled()
   })
 
   it('opens a library game by its id, over its cover colour, and counts it as that game', async () => {

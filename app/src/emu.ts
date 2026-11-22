@@ -33,6 +33,7 @@ import type { HotkeyEvent } from '@/generated/app/HotkeyEvent'
 import type { ImportCandidate } from '@/generated/app/ImportCandidate'
 import type { Library } from '@/generated/app/Library'
 import type { LibraryChanged } from '@/generated/app/LibraryChanged'
+import type { LibraryGame } from '@/generated/app/LibraryGame'
 import type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
 import type { PadInfo } from '@/generated/app/PadInfo'
 import type { PadState } from '@/generated/app/PadState'
@@ -163,6 +164,8 @@ export const backgroundUrl = (name: string) =>
 
 export const emu = {
   startupGame: () => invoke<string | null>('startup_game'),
+  /** `general.start` = «last game»: the library game to open at startup (none: the library). */
+  startupLastGame: () => invoke<LibraryGame | null>('startup_last_game'),
   /** The file extensions «Apri un file» offers (every console whose games open today). */
   openExtensions: () => invoke<string[]>('open_extensions'),
   videoMode: () => invoke<[VideoMode, boolean]>('video_mode'),
