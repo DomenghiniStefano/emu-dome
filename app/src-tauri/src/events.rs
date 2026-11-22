@@ -47,3 +47,5 @@ pub const LIBRARY_SCAN: &str = "library://scan";
 pub const SAVES_MIGRATION: &str = "saves://migration";
 /// The notifications changed (X03): the whole list, newest first (`notifications::Notification`).
 pub const NOTIFICATIONS_CHANGED: &str = "notifications://changed";
+/// Where EmuDome's own update stands (`emudome_core::updates::UpdateStatus`), after every change.
+pub const UPDATES_CHANGED: &str = "updates://changed";

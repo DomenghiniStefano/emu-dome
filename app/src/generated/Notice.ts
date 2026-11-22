@@ -3,4 +3,4 @@
 /**
  * What a notification says. TypeScript: `Notice` (generated).
  */
-export type Notice = { "kind": "controllerConnected", name: string, };
+export type Notice = { "kind": "controllerConnected", name: string, } | { "kind": "updateReady", version: string, };

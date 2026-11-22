@@ -32,6 +32,9 @@ pub enum Notice {
     /// A controller was connected while EmuDome ran (`name`: the device's own name, as SDL
     /// reports it; empty when it has none).
     ControllerConnected { name: String },
+    /// A new version of EmuDome is ready to install (X06, Trello #44): downloaded with
+    /// `general.updates` on automatic, found with «ask first». `version` as the release names it.
+    UpdateReady { version: String },
 }
 
 /// One notification. TypeScript: `Notification` (generated).

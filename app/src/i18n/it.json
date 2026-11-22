@@ -356,7 +356,16 @@
     "audioUnavailable": "Niente audio: non riesco a usare l’uscita audio ({detail}). EmuDome continua a riprovare; controlla che casse o cuffie siano collegate.",
     "controllersUnavailable": "Questa volta non riesco a usare i controller ({detail}). Usa la tastiera, oppure riavvia EmuDome per riprovare.",
     "coreSavedOutsideGame": "Nell’ultima partita 3DS l’emulatore non ha raggiunto la cartella dei salvataggi del gioco, quindi ha salvato nella sua cartella ({folder}), condivisa da tutti i giochi 3DS. Quei progressi non sono con i salvataggi del gioco. Non cancellare quella cartella; controlla che la cartella dei dati di EmuDome sia scrivibile, poi apri di nuovo il gioco.",
-    "threadStopped": "Una parte di EmuDome si è fermata per un errore interno ({thread}). Se puoi, salva dal menu rapido, poi riavvia EmuDome."
+    "threadStopped": "Una parte di EmuDome si è fermata per un errore interno ({thread}). Se puoi, salva dal menu rapido, poi riavvia EmuDome.",
+    "updateUnavailable": "Questa versione di EmuDome non si aggiorna da sola. Scarica le nuove versioni dalla pagina delle versioni di EmuDome.",
+    "updateCheckFailed": "Non riesco a controllare gli aggiornamenti ({detail}). Controlla la connessione e riprova.",
+    "updateDownloadFailed": "L’aggiornamento non si è scaricato ({detail}), quindi non è stato installato niente. Riprova più tardi.",
+    "updateInstallFailed": "L’aggiornamento non è partito ({detail}). EmuDome resta com’è: riprova, oppure scaricalo dalla pagina delle versioni di EmuDome.",
+    "updateNotReady": "Non c’è ancora un aggiornamento pronto. Controlla in Impostazioni › Informazioni.",
+    "updateGameOpen": "Chiudi prima il gioco, poi riavvia per aggiornare. I salvataggi restano come sono.",
+    "logUnavailable": "In questa sessione non c’è un file di registro. Riavvia EmuDome e riprova.",
+    "logExportFailed": "Non riesco a salvare il registro ({detail}). Scegli un’altra cartella e riprova.",
+    "licenceUnreadable": "Non riesco a leggere questa licenza ({detail}). Reinstalla EmuDome per riaverla."
   },
   "consoleShort": {
     "gb": "GB",
@@ -1752,7 +1761,17 @@
       "upd": {
         "name": "Aggiornamenti",
         "desc": "Ultimo controllo: {when}",
-        "button": "Controlla ora"
+        "button": "Controlla ora",
+        "status": {
+          "unavailable": "Questa versione non si aggiorna da sola.",
+          "idle": "Non ancora controllato.",
+          "checking": "Controllo in corso…",
+          "upToDate": "Aggiornato. Ultimo controllo: {when}",
+          "available": "È disponibile EmuDome {version}.",
+          "downloading": "Download di EmuDome {version} in corso…",
+          "ready": "EmuDome {version} è pronto: riavvia per aggiornare.",
+          "installing": "Installazione di EmuDome {version} in corso…"
+        }
       },
       "emgba": {
         "name": "mGBA",
@@ -1774,7 +1793,8 @@
       "log": {
         "name": "Esporta il registro",
         "desc": "Un file da allegare quando segnali un problema.",
-        "button": "Esporta…"
+        "button": "Esporta…",
+        "saved": "Registro salvato come {name}"
       }
     },
     "groups": {
@@ -1849,7 +1869,8 @@
       "mostUsed": "USATE PIÙ SPESSO",
       "mostUsedNote": "Valgono per tutti i giochi · per un solo gioco usa il menu rapido",
       "recent": "MODIFICATE DI RECENTE"
-    }
+    },
+    "lockedNoUpdates": "Questa versione di EmuDome non si aggiorna da sola."
   },
   "closing": {
     "saving": "Salvataggio in corso",
@@ -2355,7 +2376,9 @@
     "bell": "Notifiche | Notifiche, 1 da leggere | Notifiche, {n} da leggere",
     "markAll": "Segna tutte come lette",
     "empty": "Nessuna notifica",
-    "controllerConnected": "Controller collegato"
+    "controllerConnected": "Controller collegato",
+    "updateReady": "EmuDome {version} è pronto",
+    "updateReadySub": "Riavvia per aggiornare"
   },
   "search": {
     "title": "Cerca",
@@ -2434,6 +2457,25 @@
       "pageDown": "PagGiù",
       "arrows": "Frecce",
       "shiftArrows": "Maiusc + Frecce"
+    }
+  },
+  "updates": {
+    "title": "Aggiornamento disponibile",
+    "ready": "EmuDome {version} è pronto",
+    "note": "Riavvia per aggiornare. I giochi e i salvataggi non cambiano.",
+    "later": "Più tardi",
+    "restart": "Riavvia e aggiorna",
+    "installing": "Aggiornamento…"
+  },
+  "about": {
+    "licences": {
+      "title": "Licenze open source",
+      "intro": "EmuDome è software libero con licenza GNU GPL, versione 3 o successiva. I motori di emulazione e gli altri componenti hanno ciascuno la propria licenza.",
+      "components": "Altri componenti",
+      "appLine": "{spdx} · versione {version}",
+      "coreLine": "{consoles} · {spdx} · versione {version}",
+      "componentsLine": "Le librerie con cui è fatto EmuDome, ciascuna con la sua licenza",
+      "source": "Codice sorgente: {url}"
     }
   }
 }

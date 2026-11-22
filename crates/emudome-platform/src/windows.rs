@@ -30,3 +30,6 @@ pub const NATIVE_VIDEO_DEFAULT: bool = true;
 /// WebView2's profile, which Tauri keeps in the local data folder: a cache the webview makes
 /// again (the interface keeps nothing there that matters).
 pub const WEBVIEW_PROFILE_DIRS: &[&str] = &["EBWebView"];
+
+/// The platform key of `cores.lock` this build ships cores for.
+pub const CORES_PLATFORM: Option<&str> = CORES_LOCK_PLATFORM;

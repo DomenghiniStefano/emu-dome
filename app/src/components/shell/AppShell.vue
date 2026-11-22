@@ -33,6 +33,7 @@ import LibraryView from '@/components/library/LibraryView.vue'
 import SavesView from '@/components/saves/SavesView.vue'
 import SearchPalette from '@/components/search/SearchPalette.vue'
 import SettingsView from '@/components/settings/SettingsView.vue'
+import UpdateReadyCard from '@/components/updates/UpdateReadyCard.vue'
 import AppRail from './AppRail.vue'
 import AppTopBar from './AppTopBar.vue'
 import SectionPlaceholder from './SectionPlaceholder.vue'
@@ -196,5 +197,7 @@ const go = (to: Route) => (route.value = to)
       </main>
     </div>
     <TvButtonBar v-if="uiMode.tv" :hints="tvHints(section, details !== null)" />
+    <!-- X06: a new version ready to install (inside the nav scope: reachable by the steps). -->
+    <UpdateReadyCard />
   </div>
 </template>

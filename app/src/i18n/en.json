@@ -356,7 +356,16 @@
     "audioUnavailable": "No sound: the audio output can’t be used ({detail}). EmuDome keeps trying; check that speakers or headphones are connected.",
     "controllersUnavailable": "Controllers can’t be used this time ({detail}). Use the keyboard, or restart EmuDome to try again.",
     "coreSavedOutsideGame": "Your last 3DS session couldn’t reach the game’s save folder, so the emulator saved into its own folder ({folder}), shared by every 3DS game. That progress isn’t with the game’s saves. Don’t delete that folder; check that EmuDome’s data folder is writable, then open the game again.",
-    "threadStopped": "Part of EmuDome stopped after an internal error ({thread}). Save from the quick menu if you can, then restart EmuDome."
+    "threadStopped": "Part of EmuDome stopped after an internal error ({thread}). Save from the quick menu if you can, then restart EmuDome.",
+    "updateUnavailable": "This version of EmuDome can’t update itself. Download new versions from the EmuDome releases page.",
+    "updateCheckFailed": "Couldn’t check for updates ({detail}). Check your connection, then try again.",
+    "updateDownloadFailed": "The update didn’t download ({detail}), so nothing was installed. Try again later.",
+    "updateInstallFailed": "The update couldn’t start ({detail}). EmuDome stays as it is; try again, or download it from the EmuDome releases page.",
+    "updateNotReady": "No update is ready yet. Check for updates in Settings › About.",
+    "updateGameOpen": "Close the game first, then restart to update. Your saves stay as they are.",
+    "logUnavailable": "There’s no log file in this session. Restart EmuDome and try again.",
+    "logExportFailed": "Couldn’t save the log ({detail}). Choose another folder and try again.",
+    "licenceUnreadable": "Couldn’t read this licence ({detail}). Reinstall EmuDome to get it back."
   },
   "consoleShort": {
     "gb": "GB",
@@ -1752,7 +1761,17 @@
       "upd": {
         "name": "Updates",
         "desc": "Last checked: {when}",
-        "button": "Check now"
+        "button": "Check now",
+        "status": {
+          "unavailable": "This version can’t update itself.",
+          "idle": "Not checked yet.",
+          "checking": "Checking…",
+          "upToDate": "Up to date. Last checked: {when}",
+          "available": "EmuDome {version} is available.",
+          "downloading": "Downloading EmuDome {version}…",
+          "ready": "EmuDome {version} is ready: restart to update.",
+          "installing": "Installing EmuDome {version}…"
+        }
       },
       "emgba": {
         "name": "mGBA",
@@ -1774,7 +1793,8 @@
       "log": {
         "name": "Export the log",
         "desc": "A file to attach when you report a problem.",
-        "button": "Export…"
+        "button": "Export…",
+        "saved": "Log saved as {name}"
       }
     },
     "groups": {
@@ -1849,7 +1869,8 @@
       "mostUsed": "MOST USED",
       "mostUsedNote": "These apply to all games · for one game only, use the quick menu",
       "recent": "RECENTLY CHANGED"
-    }
+    },
+    "lockedNoUpdates": "This version of EmuDome can’t update itself."
   },
   "closing": {
     "saving": "Saving",
@@ -2355,7 +2376,9 @@
     "bell": "Notifications | Notifications, 1 unread | Notifications, {n} unread",
     "markAll": "Mark all as read",
     "empty": "No notifications",
-    "controllerConnected": "Controller connected"
+    "controllerConnected": "Controller connected",
+    "updateReady": "EmuDome {version} is ready",
+    "updateReadySub": "Restart to update"
   },
   "search": {
     "title": "Search",
@@ -2434,6 +2457,25 @@
       "pageDown": "PgDn",
       "arrows": "Arrows",
       "shiftArrows": "Shift + Arrows"
+    }
+  },
+  "updates": {
+    "title": "Update available",
+    "ready": "EmuDome {version} is ready",
+    "note": "Restart to update. Your games and saves don’t change.",
+    "later": "Later",
+    "restart": "Restart and update",
+    "installing": "Updating…"
+  },
+  "about": {
+    "licences": {
+      "title": "Open source licences",
+      "intro": "EmuDome is free software under the GNU GPL, version 3 or later. The emulation engines and the other components keep their own licences.",
+      "components": "Other components",
+      "appLine": "{spdx} · version {version}",
+      "coreLine": "{consoles} · {spdx} · version {version}",
+      "componentsLine": "The libraries EmuDome is built with, each with its licence",
+      "source": "Source code: {url}"
     }
   }
 }

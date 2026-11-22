@@ -38,6 +38,7 @@ fn generate() -> Result<Generated, String> {
     g.ts::<crate::pads::PadStates>()?;
     g.ts::<crate::pads::ControlsBindings>()?;
     g.ts::<crate::cloud::CloudStatus>()?;
+    g.ts::<crate::about::Licence>()?;
     // What the Cloud screens (#31) will show: generated now so their shape is the backend's.
     g.ts::<emudome_sync::drive::Quota>()?;
     g.ts::<emudome_sync::marker::InUse>()?;

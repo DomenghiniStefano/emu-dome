@@ -20,6 +20,21 @@ describe('notifications', () => {
     expect(noticeView(pad(1, false, ''), { t }).sub).toBe('<toast.gamepadUnnamed>')
   })
 
+  it('an update ready names its version, in the accent', () => {
+    const tv = (key: string, p?: Record<string, unknown>) => `<${key}${p ? JSON.stringify(p) : ''}>`
+    const n: Notification = {
+      id: 2,
+      at: 0,
+      read: false,
+      notice: { kind: 'updateReady', version: '0.0.2' },
+    }
+    expect(noticeView(n, { t: tv })).toEqual({
+      title: '<notifications.updateReady{"version":"0.0.2"}>',
+      sub: '<notifications.updateReadySub>',
+      tone: NoticeTone.Accent,
+    })
+  })
+
   it('counts the unread ones, and the badge stops at 99+', () => {
     expect(unreadCount([pad(1, false), pad(2, true), pad(3, false)])).toBe(2)
     expect(badgeText(0)).toBe('')

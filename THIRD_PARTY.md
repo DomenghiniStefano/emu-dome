@@ -32,7 +32,9 @@ API, unmodified.
   each shipped core's library, its licence file at the pinned commit (`cores/notices/`), the
   licences of what it bundles where its release (or, for a built core, its source) has them,
   `cores/SOURCES.md` (the source offer: core, licence, repository, commit, download URLs or source
-  archive and build scripts) and EmuDome's `LICENSE`. Nothing else from
+  archive and build scripts), EmuDome's `LICENSE` and this file (`THIRD_PARTY.md`: the licences page,
+  `about.lic`, shows both). Its `targets` are the package formats: NSIS on Windows, AppImage and deb on
+  Linux (Trello #44). Nothing else from
   `cores/` goes in. A listed file that is missing stops the build (Tauri), one with the wrong hash
   stops it before bundling (`cores.mjs verify --package`). A plain `pnpm tauri build` makes no
   installer (`bundle.active` is false in `tauri.windows.conf.json` / `tauri.linux.conf.json`).
@@ -76,6 +78,7 @@ bundle lists, `cores/SOURCES.md`, the Gradle build and this file (each core's co
 | --- | --- | --- | --- |
 | Tauri 2 (`tauri`, `tauri-build`, `tauri-plugin-dialog`, `wry`) | app shell, webview | Apache-2.0 OR MIT | `tao` (windowing) is Apache-2.0. |
 | `@tauri-apps/api`, `@tauri-apps/plugin-dialog` | interface to the shell | Apache-2.0 OR MIT | |
+| `tauri-plugin-updater`, minisign-verify | EmuDome updating itself (desktop only, `emudome-platform/src/updater.rs`, Trello #44) | Apache-2.0 OR MIT; minisign-verify MIT | Built with `native-tls` instead of its default rustls: TLS through SChannel on Windows and the system's OpenSSL on Linux (`openssl` Apache-2.0, `openssl-sys` MIT; OpenSSL 3 itself is Apache-2.0). The default would bring `webpki-root-certs` (CDLA-Permissive-2.0), not on `deny.toml`'s list. Not compiled for Android (updates from Google Play). |
 | wgpu, naga, ash | native video; ash: the raw Vulkan types of wgpu's backend (`gpu_interop.rs`) | MIT OR Apache-2.0 | |
 | cpal | audio output | Apache-2.0 | Apache-2.0 is compatible with GPL-3.0 (not with GPL-2.0-only). |
 | SDL3 (`sdl3-sys`, `sdl3-src`) | controllers; built from source and linked statically | Zlib | SDL bundles HIDAPI, offered under GPL-3.0, a BSD-style licence or the original HIDAPI licence (`src/hidapi/LICENSE.txt` in SDL): every option is compatible. |
@@ -185,7 +188,7 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 permission with no condition at all (ISC without the notice requirement); the owner allowed it on
 2026-11-18, and `scripts/npm-licenses.mjs` lists it.
 
-### Rust crates (689)
+### Rust crates (709)
 
 | Crate | Version | Licence |
 | --- | --- | --- |
@@ -278,6 +281,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | cookie | 0.18.2 | MIT OR Apache-2.0 |
 | core_detect | 1.0.0 | MIT/Apache-2.0 |
 | core-foundation | 0.10.1 | MIT OR Apache-2.0 |
+| core-foundation | 0.9.4 | MIT OR Apache-2.0 |
 | core-foundation-sys | 0.8.7 | MIT OR Apache-2.0 |
 | core-graphics | 0.25.0 | MIT OR Apache-2.0 |
 | core-graphics-types | 0.2.0 | MIT OR Apache-2.0 |
@@ -344,14 +348,17 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | fastrand | 2.5.0 | Apache-2.0 OR MIT |
 | fdeflate | 0.3.7 | MIT OR Apache-2.0 |
 | field-offset | 0.3.6 | MIT OR Apache-2.0 |
+| filetime | 0.2.30 | MIT/Apache-2.0 |
 | find-msvc-tools | 0.1.15 | MIT OR Apache-2.0 |
 | fixedbitset | 0.5.9 | MIT OR Apache-2.0 |
 | flate2 | 1.1.11 | MIT OR Apache-2.0 |
 | fnv | 1.0.7 | Apache-2.0 / MIT |
 | foldhash | 0.1.5 | Zlib |
 | foldhash | 0.2.0 | Zlib |
+| foreign-types | 0.3.2 | MIT/Apache-2.0 |
 | foreign-types | 0.5.0 | MIT/Apache-2.0 |
 | foreign-types-macros | 0.2.4 | MIT/Apache-2.0 |
+| foreign-types-shared | 0.1.1 | MIT/Apache-2.0 |
 | foreign-types-shared | 0.3.1 | MIT/Apache-2.0 |
 | form_urlencoded | 1.2.2 | MIT OR Apache-2.0 |
 | fs2 | 0.4.3 | MIT/Apache-2.0 |
@@ -411,6 +418,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | httparse | 1.10.1 | MIT OR Apache-2.0 |
 | hyper | 1.12.0 | MIT |
 | hyper-rustls | 0.27.10 | Apache-2.0 OR ISC OR MIT |
+| hyper-tls | 0.6.0 | MIT/Apache-2.0 |
 | hyper-util | 0.1.21 | MIT |
 | iana-time-zone | 0.1.65 | MIT OR Apache-2.0 |
 | iana-time-zone-haiku | 0.1.2 | MIT OR Apache-2.0 |
@@ -491,6 +499,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | memchr | 2.8.3 | Unlicense OR MIT |
 | memoffset | 0.9.1 | MIT |
 | mime | 0.3.18 | MIT OR Apache-2.0 |
+| minisign-verify | 0.3.0 | MIT |
 | miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 |
 | miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 |
 | mio | 1.2.5 | MIT |
@@ -499,6 +508,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | multiversion_no_op | 1.0.0 | Apache-2.0 OR MIT |
 | naga | 30.0.2 | MIT OR Apache-2.0 |
 | naga-types | 30.0.2 | MIT OR Apache-2.0 |
+| native-tls | 0.2.18 | MIT OR Apache-2.0 |
 | ndk | 0.9.0 | MIT OR Apache-2.0 |
 | ndk-context | 0.1.1 | MIT OR Apache-2.0 |
 | ndk-sys | 0.6.0+11769913 | MIT OR Apache-2.0 |
@@ -538,16 +548,21 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | objc2-foundation | 0.3.2 | MIT |
 | objc2-io-surface | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | objc2-metal | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
+| objc2-osa-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | objc2-quartz-core | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | objc2-ui-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | objc2-user-notifications | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | objc2-web-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 |
 | once_cell_polyfill | 1.70.2 | MIT OR Apache-2.0 |
+| openssl | 0.10.82 | Apache-2.0 |
+| openssl-macros | 0.1.1 | MIT/Apache-2.0 |
 | openssl-probe | 0.2.2 | MIT OR Apache-2.0 |
+| openssl-sys | 0.9.118 | MIT |
 | option-ext | 0.2.0 | MPL-2.0 |
 | ordered-float | 5.5.1 | MIT |
 | ordered-stream | 0.2.0 | MIT OR Apache-2.0 |
+| osakit | 0.3.1 | MIT OR Apache-2.0 |
 | pango | 0.18.3 | MIT |
 | pango-sys | 0.18.0 | MIT |
 | parking | 2.2.1 | Apache-2.0 OR MIT |
@@ -697,9 +712,12 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | syn | 3.0.10 | MIT OR Apache-2.0 |
 | sync_wrapper | 1.0.2 | Apache-2.0 |
 | synstructure | 0.14.0 | MIT |
+| system-configuration | 0.7.0 | MIT OR Apache-2.0 |
+| system-configuration-sys | 0.6.0 | MIT OR Apache-2.0 |
 | system-deps | 6.2.2 | MIT OR Apache-2.0 |
 | tao | 0.37.2 | Apache-2.0 |
 | tao-macros | 0.1.4 | MIT OR Apache-2.0 |
+| tar | 0.4.46 | MIT OR Apache-2.0 |
 | target-lexicon | 0.12.16 | Apache-2.0 WITH LLVM-exception |
 | tauri | 2.12.5 | Apache-2.0 OR MIT |
 | tauri-build | 2.7.4 | Apache-2.0 OR MIT |
@@ -708,6 +726,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | tauri-plugin | 2.7.2 | Apache-2.0 OR MIT |
 | tauri-plugin-dialog | 2.8.4 | Apache-2.0 OR MIT |
 | tauri-plugin-fs | 2.7.1 | Apache-2.0 OR MIT |
+| tauri-plugin-updater | 2.14.1 | Apache-2.0 OR MIT |
 | tauri-runtime | 2.12.2 | Apache-2.0 OR MIT |
 | tauri-runtime-wry | 2.12.3 | Apache-2.0 OR MIT |
 | tauri-utils | 2.10.2 | Apache-2.0 OR MIT |
@@ -726,6 +745,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT |
 | tokio | 1.54.1 | MIT |
 | tokio-macros | 2.7.2 | MIT |
+| tokio-native-tls | 0.3.1 | MIT |
 | tokio-rustls | 0.26.6 | MIT OR Apache-2.0 |
 | tokio-util | 0.7.20 | MIT |
 | toml | 0.8.2 | MIT OR Apache-2.0 |
@@ -763,6 +783,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | utf8_iter | 1.1.0 | Apache-2.0 OR MIT |
 | utf8parse | 0.2.2 | Apache-2.0 OR MIT |
 | uuid | 1.29.2 | Apache-2.0 OR MIT |
+| vcpkg | 0.2.15 | MIT/Apache-2.0 |
 | vec_extract_if_polyfill | 0.1.0 | MIT |
 | version_check | 0.9.5 | MIT/Apache-2.0 |
 | version-compare | 0.2.1 | MIT |
@@ -834,6 +855,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | windows-interface | 0.59.3 | MIT OR Apache-2.0 |
 | windows-link | 0.2.1 | MIT OR Apache-2.0 |
 | windows-numerics | 0.3.1 | MIT OR Apache-2.0 |
+| windows-registry | 0.6.1 | MIT OR Apache-2.0 |
 | windows-result | 0.4.1 | MIT OR Apache-2.0 |
 | windows-strings | 0.5.1 | MIT OR Apache-2.0 |
 | windows-sys | 0.45.0 | MIT OR Apache-2.0 |
@@ -854,6 +876,7 @@ permission with no condition at all (ISC without the notice requirement); the ow
 | wry | 0.57.2 | Apache-2.0 OR MIT |
 | x11 | 2.21.0 | MIT |
 | x11-dl | 2.21.0 | MIT |
+| xattr | 1.7.0 | MIT OR Apache-2.0 |
 | xdg-home | 1.3.0 | MIT |
 | xml-rs | 0.8.29 | MIT |
 | yoke | 0.8.4 | Unicode-3.0 |

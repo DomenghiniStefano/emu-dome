@@ -17,6 +17,7 @@ import type { GameId } from '@/generated/GameId'
 import type { GameOverride } from '@/generated/GameOverride'
 import type { NavAction } from '@/generated/NavAction'
 import type { Notification } from '@/generated/Notification'
+import type { UpdateStatus } from '@/generated/UpdateStatus'
 import type { PadFamily } from '@/generated/PadFamily'
 import type { SettingKey } from '@/generated/SettingKey'
 import type { SettingRecent } from '@/generated/SettingRecent'
@@ -29,6 +30,7 @@ import type { BiosRow } from '@/generated/app/BiosRow'
 import type { ControlsBindings } from '@/generated/app/ControlsBindings'
 import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { CoverSource } from '@/generated/app/CoverSource'
+import type { Licence } from '@/generated/app/Licence'
 import type { GameScreenshot } from '@/generated/app/GameScreenshot'
 import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -107,6 +109,8 @@ export type { SettingValue } from '@/generated/SettingValue'
 export type { SliderUnit } from '@/generated/SliderUnit'
 export type { Speed } from '@/generated/Speed'
 export type { StateLoadBlock } from '@/generated/StateLoadBlock'
+export type { UpdateState } from '@/generated/UpdateState'
+export type { UpdateStatus } from '@/generated/UpdateStatus'
 export type { CustomLayout } from '@/generated/CustomLayout'
 export type { CustomScreen } from '@/generated/CustomScreen'
 export type { PxRect } from '@/generated/PxRect'
@@ -122,6 +126,8 @@ export type { ComboRow } from '@/generated/app/ComboRow'
 export type { ControlsBindings } from '@/generated/app/ControlsBindings'
 export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { CoverSource } from '@/generated/app/CoverSource'
+export type { Licence } from '@/generated/app/Licence'
+export type { LicenceKind } from '@/generated/app/LicenceKind'
 export type { GameScreenshot } from '@/generated/app/GameScreenshot'
 export type { PickedImage } from '@/generated/app/PickedImage'
 export type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -403,6 +409,27 @@ export const emu = {
   onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
     listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
   /** X03, the notification centre (per device, kept until read). */
+  /** EmuDome updating itself (Trello #44, `updates.rs`). */
+  updates: {
+    status: () => invoke<UpdateStatus>('updates_status'),
+    /** «Controlla ora» (`about.upd`): one check, whatever `general.updates` says. */
+    check: () => invoke<UpdateStatus>('updates_check'),
+    /** X06 «Più tardi». */
+    later: () => invoke<UpdateStatus>('updates_later'),
+    /** X06 «Riavvia e aggiorna»: refused while a game is open. */
+    install: () => invoke<UpdateStatus>('updates_install'),
+    /** The status changed (`updates://changed`). */
+    onChanged: (cb: (s: UpdateStatus) => void): Promise<UnlistenFn> =>
+      listen<UpdateStatus>('updates://changed', e => cb(e.payload)),
+  },
+  /** The «Informazioni» page's actions (`about.rs`). */
+  about: {
+    /** `about.lic`: EmuDome, the shipped cores and the other components, with their licences. */
+    licences: () => invoke<Licence[]>('about_licences'),
+    licenceText: (id: string, file: string) => invoke<string>('about_licence_text', { id, file }),
+    /** `about.log`: the log through the save dialog; the file's name, or null when cancelled. */
+    exportLog: () => invoke<string | null>('about_export_log'),
+  },
   notifications: {
     /** Every notification, newest first. */
     list: () => invoke<Notification[]>('notifications_list'),
