@@ -113,6 +113,13 @@ for (const [style, rows] of [
     add(`look-${style}-${game}`, { mock, steps: [camera("left", 38)] }, ["l780"]);
   }
 }
+// `video.scale` on the S23 (#105): a GBA as large as fits by default (`touch-frame-gba-*`,
+// `touch-look-*-gba-*`), and each choice fixed: «Adatta», «Pixel interi» (floored), «Riempi».
+for (const scale of ["fit", "integer", "fill"])
+  add(`scale-${scale}-gba`, { mock: { game: "gba", frame: true, videoScale: scale } }, [
+    "p780",
+    "l780",
+  ]);
 // The quick menu over the game, upright and on its side; opened upright then turned, and back.
 add("qm-frame", { mock: { frame: true, slots: "some" }, steps: [escape] }, ALL);
 add(

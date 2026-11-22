@@ -721,6 +721,41 @@ fn the_library_is_a_list_on_a_phone_and_a_grid_on_a_computer() {
 }
 
 #[test]
+fn games_are_as_large_as_fits_on_a_phone_and_whole_pixels_on_a_computer() {
+    // Trello #105 (owner, 2026-11-22): `video.scale` by the device, every console and level.
+    let dir = TestDir::new("scale-defaults");
+    let text = |v: &str| (Some(Value::Text(v.into())), Level::Default);
+    let mut desktop = settings(&dir);
+    let mut phone = phone_settings(&dir);
+    for console in [
+        ConsoleId::Gb,
+        ConsoleId::Gba,
+        ConsoleId::Nds,
+        ConsoleId::N3ds,
+    ] {
+        for scope in [Scope::Console { console }, scope_of(console)] {
+            assert_eq!(
+                value_of(&mut desktop, "video.scale", &scope),
+                text("integer")
+            );
+            assert_eq!(value_of(&mut phone, "video.scale", &scope), text("fit"));
+        }
+    }
+    assert_eq!(
+        value_of(&mut phone, "video.scale", &Scope::Global),
+        text("fit")
+    );
+    // The user's «Pixel interi» on the phone holds.
+    phone
+        .set("video.scale", &Scope::Global, Value::Text("integer".into()))
+        .unwrap();
+    assert_eq!(
+        value_of(&mut phone, "video.scale", &scope_of(ConsoleId::Gba)),
+        (Some(Value::Text("integer".into())), Level::Global)
+    );
+}
+
+#[test]
 fn a_user_value_wins_over_a_default_rule_at_every_level() {
     let dir = TestDir::new("rewind-user");
     let mut s = phone_settings(&dir);

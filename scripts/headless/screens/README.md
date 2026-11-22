@@ -62,7 +62,9 @@ prove that a refactor changes nothing on screen (Trello #62).
   a game picture.
 - The phone's layouts with a game picture (#29, `touch-frame-*`, `touch-qm-frame-*`, `touch-qm-turned*`,
   `touch-start-failed-*`, also at 412 × 892 and 892 × 412): `frame: true` gives the webview canvas
-  a GBA frame placed as `screens::fit` places it (mirrored in `mock.js`, at `frameDpr` device pixels per CSS pixel,
+  a GBA frame placed as `screens::compose` places it at `video.scale` (as large as fits on a phone, whole pixels on
+  a computer; `videoScale: "fit" | "integer" | "fill"` fixes it, the `touch-scale-<scale>-gba-<p780|l780>` scenarios,
+  #105) (mirrored in `mock.js`, at `frameDpr` device pixels per CSS pixel,
   2.625 by default, as the native video on that phone); with `game: "nds"` / `"3ds"` the frame has two screens
   (the top magenta, the touch screen teal) placed as `screens::compose` places them on a phone (`auto`, filling its
   room, the inset's `between`, `apart` / `top`; the `touch-apart-*` scenarios, the S23 ones with the camera's 32 px

@@ -2,6 +2,13 @@
 (() => {
   const scenario = __SCENARIO__;
   const FIXED = 1795000000000;
+  // `video.scale` as Rust resolves it (#105): `videoScale` fixes it, else the device's default,
+  // as large as fits on a phone and whole pixels on a computer (the catalogue's default rule).
+  const videoScale =
+    scenario.videoScale ??
+    ((scenario.device ?? (scenario.phone ? "phone" : "desktop")) === "phone"
+      ? "fit"
+      : "integer");
   // `lang: "en"`: the interface in English whatever the machine's locale, for steps that find
   // elements by their text.
   if (scenario.lang) {
@@ -304,11 +311,13 @@
   // In game (quick menu scenarios, quick-menu.mjs): the rows the quick menu reads.
   if (scenario.game) {
     entries.push(
+      // As large as fits on a phone, whole pixels on a computer (the catalogue's default rule,
+      // #105); `videoScale` fixes it.
       entry(
         "video.scale",
         "video",
         choice("segments", ["fit", "integer", "fill"]),
-        "fit",
+        videoScale,
       ),
       entry(
         "video.filter",
@@ -1301,9 +1310,10 @@
   };
   // `frame: true` (#29, the phone's layouts): the webview canvas gets a game picture, a GBA frame
   // (240 × 160, a magenta field with a lighter border) from `emu://frame`, placed where Rust's
-  // `screens::fit` would put it (`screens_placements`: integer scale when it fits, in the part
-  // the inset leaves, centred or against its bottom). The fit is worked out at `frameDpr` device
-  // pixels per CSS pixel (default 2.625, the Galaxy S23) as the native video does on a phone, so
+  // `screens::compose` would put it (`screens_placements`: sized by `video.scale`, as large as
+  // fits on a phone by default, in the part the inset leaves, centred or against its bottom;
+  // `videoScale: "integer"` floors it as the desktop does). The fit is worked out at `frameDpr`
+  // device pixels per CSS pixel (default 2.625, the Galaxy S23) as the native video does on a phone, so
   // the picture has the size it has there. `window.__lastArea` keeps the last area.
   //
   // A DS or 3DS game (`game: "nds" | "3ds"`) gets its two-screen frame instead (DS 256 × 384, 3DS
@@ -1359,13 +1369,15 @@
       h: area.height * k * (1 - t - b),
     };
     if (dual) return dualPlacements(area, i, free, k);
+    // `video.scale` (`screens::Scale`): fit at any scale, integer floored from 1×, fill stretched.
     const fit = Math.min(free.w / FRAME.w, free.h / FRAME.h);
-    const scale = fit >= 1 ? Math.floor(fit) : fit;
-    const [w, h] = [FRAME.w * scale, FRAME.h * scale];
+    const scale = videoScale === "integer" && fit >= 1 ? Math.floor(fit) : fit;
+    const [w, h] = videoScale === "fill" ? [free.w, free.h] : [FRAME.w * scale, FRAME.h * scale];
     const y = i.align === "bottom" ? free.y + free.h - h : free.y + (free.h - h) / 2;
+    const whole = (v) => Math.floor(v + 1e-3);
     const dst = {
-      x: Math.floor(free.x + (free.w - w) / 2) / k,
-      y: Math.floor(y) / k,
+      x: whole(free.x + (free.w - w) / 2) / k,
+      y: whole(y) / k,
       w: w / k,
       h: h / k,
     };
