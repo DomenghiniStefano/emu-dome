@@ -4,8 +4,13 @@
   },
   "bundle": {
     "active": true,
+    "targets": [
+      "appimage",
+      "deb"
+    ],
     "resources": {
       "../../LICENSE": "LICENSE.txt",
+      "../../THIRD_PARTY.md": "THIRD_PARTY.md",
       "../../cores/SOURCES.md": "cores/SOURCES.md",
       "../../cores/mgba_libretro.so": "cores/mgba_libretro.so",
       "../../cores/notices/linux-x86_64/mgba-LICENSE.txt": "cores/notices/mgba-LICENSE.txt",
