@@ -7,6 +7,7 @@ import { inputMode } from '@/lib/inputMode'
 import type { GameState } from './gameState'
 import type { useGameSettings } from './useGameSettings'
 import type { Toasts } from '@/composables/useToasts'
+import { screenshotName, type CoverRequest } from '@/components/cover/useCoverRequest'
 
 export function useGameEvents(
   state: GameState,
@@ -17,10 +18,25 @@ export function useGameEvents(
     setMenu: (open: boolean) => Promise<void>
     /** The core stopped. */
     stopped: () => void
+    /** «Usa come copertina» on the screenshot toast of a library game (Trello #85). */
+    useAsCover?: (r: CoverRequest) => void
   },
 ) {
   const { t } = useI18n()
   const { menuOpen, showFps, speed, turboHeld, paused, comboSlot, undoLoadSlot, gameSize } = state
+
+  /** G13 «Schermata salvata», with «Usa come copertina» for a library game. */
+  function screenshotToast(path: string) {
+    const text = t('toast.screenshotSaved')
+    const library = state.playingGame.value
+    const useAsCover = game.useAsCover
+    if (!library || !useAsCover) return toasts.notify(text)
+    const request = { game: library.id, name: screenshotName(path) }
+    toasts.notify(text, {
+      ms: 5000,
+      action: { label: t('toast.useAsCover'), run: () => useAsCover(request) },
+    })
+  }
 
   // A load asked from the quick menu: its `stateLoaded` shows G17.
   let menuLoad: number | null = null
@@ -96,7 +112,7 @@ export function useGameEvents(
       else if (ev.slot !== AUTO_SLOT) toasts.notify(t('toast.stateLoaded', { slot: ev.slot }))
       menuLoad = null
     }
-    if (ev.type === 'screenshotSaved') toasts.notify(t('toast.screenshotSaved'))
+    if (ev.type === 'screenshotSaved') screenshotToast(ev.path)
     if (ev.type === 'loadUndone') {
       undoLoadSlot.value = null
       toasts.notify(t('toast.loadUndone'))

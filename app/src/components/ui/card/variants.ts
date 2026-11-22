@@ -14,7 +14,8 @@ export const CardVariant = {
   // «Giochi <console>», «Solo questo gioco»).
   RaisedAccent: 'raisedAccent',
   // One of a choice of pictures (the cover picker): opaque surface, `selected` on accent-soft with
-  // an accent-text edge; `data-empty` (nothing to show yet, «add one») draws a dashed strong edge.
+  // an accent-text edge; `data-empty` (nothing to show yet, «add one») draws a dashed strong edge;
+  // disabled (L12 «Da uno screenshot» with none yet, the reason in its text) fades to `dim`.
   PictureChoice: 'pictureChoice',
   // One of a few cards to choose from on a page (the controllers in Controls, the A/B layout of
   // the first run): Surface's fill, hovered, and the chosen one on accent-soft with an accent-text
@@ -67,7 +68,7 @@ export const cardVariants = cva('flex flex-col text-left', {
       [CardVariant.RaisedAccent]:
         'rounded-card border border-line bg-surface-raised p-card-pad-sm data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text',
       [CardVariant.PictureChoice]:
-        'rounded-card border border-line bg-surface p-card-pad-sm data-empty:not-data-selected:border-dashed data-empty:not-data-selected:border-line-strong data-selected:border-accent-text data-selected:bg-accent-soft',
+        'rounded-card border border-line bg-surface p-card-pad-sm disabled:cursor-not-allowed disabled:opacity-dim data-empty:not-data-selected:border-dashed data-empty:not-data-selected:border-line-strong data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.Choice]:
         'rounded-card border border-line bg-surface px-14 py-12 enabled:hover:not-data-selected:bg-surface-hover data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.ListItem]:

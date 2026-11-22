@@ -16,6 +16,8 @@ import { useScreenStatus } from '@/components/game/useScreenStatus'
 import { useScreenTouch } from '@/components/game/useScreenTouch'
 import { useShellEvents } from '@/components/shell/useShellEvents'
 import { createToasts, provideToasts } from '@/composables/useToasts'
+import { createCoverRequest } from '@/components/cover/useCoverRequest'
+import CoverCropDialog from '@/components/cover/CoverCropDialog.vue'
 import { setErrorSink, settle } from '@/lib/errors'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
@@ -38,7 +40,10 @@ provideToasts(toast)
 setErrorSink(toast.failWith)
 const { firstRun, decide: decideFirstRun, finish: finishFirstRun } = useFirstRun(toast)
 const { videoMode, nativeAvailable, load: loadVideoMode, setVideoMode } = useVideoMode(toast)
-const session = useGameSession(toast)
+// «Usa come copertina» on the screenshot toast (#85): kept until the quick menu is open or the
+// game has closed, so «Adatta la copertina» never covers the game being played.
+const coverRequest = createCoverRequest()
+const session = useGameSession(toast, coverRequest.ask)
 const { game, menuOpen, paused, stats, showFps, speed, settings, menuInset } = session
 const launch = useGameLaunch(session, toast)
 const keys = useGameKeys(session)
@@ -151,6 +156,15 @@ onMounted(async () => {
   </template>
 
   <LibraryDropTarget v-if="drop.dragOver.value && !game" />
+
+  <!-- «Adatta la copertina» for a screenshot taken in game: over the quick menu, or after the
+       game has closed. -->
+  <CoverCropDialog
+    v-if="coverRequest.pending.value && (game ? menuOpen && !flow.ending : !firstRun)"
+    :key="coverRequest.pending.value.name"
+    :request="coverRequest.pending.value"
+    @close="coverRequest.clear"
+  />
 
   <GameFlowOverlays
     :load-block="game?.stateLoadBlock ?? null"

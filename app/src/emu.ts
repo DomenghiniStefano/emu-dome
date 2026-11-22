@@ -8,6 +8,7 @@ import type { Button } from '@/generated/Button'
 import type { ClosingProgress } from '@/generated/ClosingProgress'
 import type { ConsoleId } from '@/generated/ConsoleId'
 import type { CoverKind } from '@/generated/CoverKind'
+import type { CoverView } from '@/generated/CoverView'
 import type { EmuEvent } from '@/generated/EmuEvent'
 import type { ErrorCode } from '@/generated/ErrorCode'
 import type { FirstRunStep } from '@/generated/FirstRunStep'
@@ -26,6 +27,9 @@ import type { Speed } from '@/generated/Speed'
 import type { BiosRow } from '@/generated/app/BiosRow'
 import type { ControlsBindings } from '@/generated/app/ControlsBindings'
 import type { CoreRestart } from '@/generated/app/CoreRestart'
+import type { CoverSource } from '@/generated/app/CoverSource'
+import type { GameScreenshot } from '@/generated/app/GameScreenshot'
+import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
 import type { GameInfo } from '@/generated/app/GameInfo'
 import type { GameSaves } from '@/generated/app/GameSaves'
@@ -68,6 +72,7 @@ export type { ClosingPurpose } from '@/generated/ClosingPurpose'
 export type { CommitTarget } from '@/generated/CommitTarget'
 export type { ConsoleId } from '@/generated/ConsoleId'
 export type { CoverKind } from '@/generated/CoverKind'
+export type { CoverView } from '@/generated/CoverView'
 export type { EmuEvent } from '@/generated/EmuEvent'
 export type { ErrorCode } from '@/generated/ErrorCode'
 export type { FirstRunStep } from '@/generated/FirstRunStep'
@@ -112,6 +117,9 @@ export type { BiosRow } from '@/generated/app/BiosRow'
 export type { ComboRow } from '@/generated/app/ComboRow'
 export type { ControlsBindings } from '@/generated/app/ControlsBindings'
 export type { CoreRestart } from '@/generated/app/CoreRestart'
+export type { CoverSource } from '@/generated/app/CoverSource'
+export type { GameScreenshot } from '@/generated/app/GameScreenshot'
+export type { PickedImage } from '@/generated/app/PickedImage'
 export type { FolderSaves } from '@/generated/app/FolderSaves'
 export type { GameInfo } from '@/generated/app/GameInfo'
 export type { GameSaves } from '@/generated/app/GameSaves'
@@ -296,8 +304,16 @@ export const emu = {
     scan: () => invoke<void>('library_scan'),
     /** Opens the game (like `openGame`) and counts its play time until it closes. */
     open: (id: GameId) => invoke<GameInfo>('library_open', { id }),
-    /** L12. `user` opens an image picker first; resolves false if it was cancelled. */
-    setCover: (id: GameId, kind: CoverKind) => invoke<boolean>('library_set_cover', { id, kind }),
+    /** L12: the generated cover, the ROM's icon, or the user cover the game already has. */
+    setCover: (id: GameId, kind: CoverKind) => invoke<void>('library_set_cover', { id, kind }),
+    /** L12 «Immagine tua»: the native image picker; the image is kept for «Adatta la copertina».
+     * null = cancelled. */
+    pickCoverImage: () => invoke<PickedImage | null>('library_pick_cover_image'),
+    /** «Usa questa copertina»: the cover made from `source` showing `view` (600 × 900, in Rust). */
+    setCoverImage: (id: GameId, source: CoverSource, view: CoverView) =>
+      invoke<void>('library_set_cover_image', { id, source, view }),
+    /** The game's screenshots, newest first (L12 «Da uno screenshot»). */
+    screenshots: (id: GameId) => invoke<GameScreenshot[]>('library_screenshots', { id }),
     setFlags: (id: GameId, flags: { favourite?: boolean; hidden?: boolean }) =>
       invoke<void>('library_set_flags', { id, ...flags }),
     /** «Nome mostrato» (L10); blank goes back to the ROM's title. */

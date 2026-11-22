@@ -79,8 +79,37 @@
       "iconDesc": "The one inside the game file",
       "user": "Your image",
       "userDesc": "Choose an image file",
+      "screenshot": "From a screenshot",
+      "screenshotDesc": "{count} screenshot | {count} screenshots",
+      "screenshotNone": "None yet: take one in game",
       "cancel": "Cancel",
-      "use": "Use this cover"
+      "back": "Back",
+      "continue": "Continue",
+      "use": "Use this cover",
+      "shots": {
+        "title": "Choose a screenshot",
+        "taken": "Screenshot from {date}"
+      },
+      "crop": {
+        "title": "Fit the cover",
+        "frame": "Cover preview",
+        "mode": "How the image fits",
+        "whole": "Whole",
+        "fill": "Fill",
+        "zoom": "Zoom",
+        "zoomValue": "{value}%",
+        "drag": "Drag the image to move it.",
+        "hintsLabel": "Keys",
+        "keyZoomOut": "−",
+        "keyZoomIn": "+",
+        "hint": {
+          "move": "Move",
+          "zoom": "Zoom",
+          "mode": "Whole / Fill",
+          "use": "Use",
+          "back": "Back"
+        }
+      }
     },
     "clearFilters": "Clear filters",
     "continue": {
@@ -224,7 +253,8 @@
     "autoLoaded": "Loaded the automatic slot",
     "undo": "Undo",
     "undoFromMenu": "Undo from the quick menu",
-    "screenshotSaved": "Screenshot saved"
+    "screenshotSaved": "Screenshot saved",
+    "useAsCover": "Use as cover"
   },
   "console": {
     "gb": "Game Boy",
