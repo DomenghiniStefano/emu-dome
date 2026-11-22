@@ -88,10 +88,12 @@ export function useSettingsScope(pageEntries: Ref<SettingEntry[]>, gameFocus: Ga
     return t('settingsUi.scope.global')
   }
 
-  /** L1 / R1: the previous / next level of the scope bar. */
-  function tab(dir: -1 | 1) {
+  /** L1 / R1: the previous / next level of the scope bar; `false` on a page with one level, so
+   * the step goes on to the shell (in TV mode it switches section). */
+  function tab(dir: -1 | 1): boolean | void {
     const next = stepLevel(levels.value, effective.value, dir)
-    if (next) level.value = next
+    if (!next) return false
+    level.value = next
   }
 
   /** A recent change opens at the level it was made, when its console is offered. */

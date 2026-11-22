@@ -1,6 +1,7 @@
 //! The static catalogue: every setting of the app, page by page, in the design's order
 //! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17), plus the Game Boy,
-//! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89): 160.
+//! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89), plus the game clock's
+//! offset and date rows (Trello #102): 164 (`library.versions` replaced `library.region`, #102).
 //!
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
@@ -321,6 +322,14 @@ impl Entry {
         }
     }
 
+    /// An action or link the interface carries out (actions start not wired).
+    const fn carried_out(self) -> Self {
+        Self {
+            wired: true,
+            ..self
+        }
+    }
+
     /// Ships in a later roadmap phase.
     const fn phase(self, phase: u8) -> Self {
         Self { phase, ..self }
@@ -537,7 +546,26 @@ pub static ENTRIES: &[Entry] = &[
     seg("saves.resume", &["ask", "always", "ingame"], "always", ALL),
     sw("saves.undo", true, G),
     slider("saves.backups", 5, (0, 10, 1), Unit::Copies, G),
-    seg("saves.rtc", &["real", "offset", "fixed"], "real", GM).not_wired(),
+    // The game's clock (Trello #102): melonDS DS only (`core_values/melondsds.rs`); mGBA and
+    // Azahar declare no clock option (`CoreProfile::unsupported_settings`). «Shifted» is an
+    // offset from the device's clock, «Fixed» a date and time; the core reads both at start.
+    seg("saves.rtc", &["real", "offset", "fixed"], "real", GM),
+    slider("saves.rtcdays", 0, (-364, 364, 1), Unit::Days, GM).show_if("saves.rtc", &["offset"]),
+    slider("saves.rtchours", 0, (-23, 23, 1), Unit::Hours, GM).show_if("saves.rtc", &["offset"]),
+    slider("saves.rtcminutes", 0, (-59, 59, 1), Unit::Minutes, GM)
+        .show_if("saves.rtc", &["offset"]),
+    e(
+        "saves.rtcdate",
+        // The years the DS clock holds (its year is two digits from 2000).
+        Kind::DateTime {
+            min_year: 2000,
+            max_year: 2099,
+        },
+        // melonDS DS's own default absolute time.
+        DefaultValue::Text("2004-01-01T00:00"),
+        GM,
+    )
+    .show_if("saves.rtc", &["fixed"]),
     act("saves.import", GM),
     act("saves.savedir", G).device(),
     // ---- Controller e tastiera (pad) ----
@@ -621,9 +649,11 @@ pub static ENTRIES: &[Entry] = &[
     seg("general.start", &["library", "last_game"], "library", G),
     sw("general.bgpause", true, G).device(),
     sw("general.confirmdel", true, G),
+    // Read by the shell's updater (`emudome_core::updates`, Trello #44). Desktop only: Android
+    // updates come from Google Play.
     seg("general.updates", &["auto", "ask", "off"], "ask", G)
         .device()
-        .not_wired(),
+        .pc(),
     // ---- Libreria (library) ----
     e("library.folders", Kind::Folders, DefaultValue::List(&[]), G).device(),
     sw("library.scanstart", true, G).device(),
@@ -635,7 +665,10 @@ pub static ENTRIES: &[Entry] = &[
         G,
     ),
     sw("library.group", false, G).not_wired(),
-    sel("library.region", &["eu_us", "us_eu", "jp"], "eu_us", G).not_wired(),
+    // One tile per game for its regional versions (Trello #102, `library::group`); in place of
+    // `library.region` (owner, 2026-11-22: no region rule, the tile shows the version launched
+    // last).
+    sw("library.versions", true, G),
     link("library.hidden", G),
     sel(
         "library.covers",
@@ -783,12 +816,16 @@ pub static ENTRIES: &[Entry] = &[
         .not_wired(),
     // ---- Informazioni (about) ----
     info("about.ver", G),
-    act("about.upd", G),
+    // «Controlla ora»: one check whatever `general.updates` says (Trello #44). Desktop only, like
+    // the updates themselves.
+    act("about.upd", G).pc().carried_out(),
     info("about.emgba", G),
     info("about.emds", G).phase(2),
     info("about.emaz", G).phase(3),
-    link("about.lic", G),
-    act("about.log", G),
+    // The licences page (EmuDome, the cores, the other components), built from cores.lock.
+    link("about.lic", G).carried_out(),
+    // The log file through the system's save dialog; Android has no save dialog yet (SAF).
+    act("about.log", G).pc().carried_out(),
 ];
 
 /// Extra words the settings search matches, in every language, beside the entry's name and
@@ -950,7 +987,15 @@ pub static SECTIONS: &[Section] = &[
     Section {
         page: "saves",
         id: "ingame",
-        keys: &["saves.backups", "saves.rtc", "saves.import"],
+        keys: &[
+            "saves.backups",
+            "saves.rtc",
+            "saves.rtcdays",
+            "saves.rtchours",
+            "saves.rtcminutes",
+            "saves.rtcdate",
+            "saves.import",
+        ],
     },
     Section {
         page: "saves",
@@ -1030,7 +1075,7 @@ pub static SECTIONS: &[Section] = &[
         keys: &[
             "library.sort",
             "library.group",
-            "library.region",
+            "library.versions",
             "library.hidden",
             "library.covers",
         ],
@@ -1200,8 +1245,9 @@ mod tests {
 
     #[test]
     fn has_the_designs_entries_with_unique_keys_on_known_pages() {
-        // The design's 155, plus five BIOS rows (Trello #89).
-        assert_eq!(ENTRIES.len(), 160);
+        // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102);
+        // `library.versions` took the place of `library.region` (#102).
+        assert_eq!(ENTRIES.len(), 164);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),

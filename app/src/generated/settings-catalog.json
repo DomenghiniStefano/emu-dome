@@ -447,6 +447,30 @@
       "page": "saves"
     },
     {
+      "key": "saves.rtcdays",
+      "kind": "slider",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "saves.rtchours",
+      "kind": "slider",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "saves.rtcminutes",
+      "kind": "slider",
+      "options": [],
+      "page": "saves"
+    },
+    {
+      "key": "saves.rtcdate",
+      "kind": "dateTime",
+      "options": [],
+      "page": "saves"
+    },
+    {
       "key": "saves.import",
       "kind": "action",
       "options": [],
@@ -741,13 +765,9 @@
       "page": "library"
     },
     {
-      "key": "library.region",
-      "kind": "choice",
-      "options": [
-        "eu_us",
-        "us_eu",
-        "jp"
-      ],
+      "key": "library.versions",
+      "kind": "toggle",
+      "options": [],
       "page": "library"
     },
     {

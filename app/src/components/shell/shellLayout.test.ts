@@ -22,10 +22,12 @@ describe('isFlush', () => {
 })
 
 describe('isTvLaidOut', () => {
-  it('has a TV layout for the library only, not for a game’s details or the others', () => {
+  it('has a TV layout for the library and the settings, not for a game’s details or the others', () => {
     expect(isTvLaidOut('library', false)).toBe(true)
     expect(isTvLaidOut('library', true)).toBe(false)
-    expect(isTvLaidOut('settings', false)).toBe(false)
+    expect(isTvLaidOut('settings', false)).toBe(true)
+    expect(isTvLaidOut('saves', false)).toBe(false)
+    expect(isTvLaidOut('controls', false)).toBe(false)
   })
 })
 
@@ -51,8 +53,18 @@ describe('tvHints', () => {
 
   it('names choose, back and the sections elsewhere and in a game’s details', () => {
     const elsewhere = ['tv.hint.choose', 'tv.hint.back', 'tv.hint.sections']
-    expect(tvHints('settings').map(h => h.label)).toEqual(elsewhere)
+    expect(tvHints('saves').map(h => h.label)).toEqual(elsewhere)
     expect(tvHints('library', true).map(h => h.label)).toEqual(elsewhere)
+  })
+
+  it('names choose, ◀ ▶ change, reset, back and the levels in the settings', () => {
+    expect(tvHints('settings').map(h => [h.actions.join(' '), h.label])).toEqual([
+      ['confirm', 'tv.hint.choose'],
+      ['left right', 'tv.hint.change'],
+      ['more', 'settingsUi.reset'],
+      ['back', 'tv.hint.back'],
+      ['prev next', 'tv.hint.levels'],
+    ])
   })
 })
 

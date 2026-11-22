@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Chip } from '@/components/ui/chip'
+import { DateTimeField } from '@/components/ui/date-time-field'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -597,6 +598,88 @@ describe('Popover', () => {
     expect(document.activeElement?.id).toBe('first')
     dispatchNav('up')
     expect(document.activeElement?.id).toBe('first')
+  })
+})
+
+describe('DateTimeField (Reka DateField in a Popover)', () => {
+  const mountField = (screenBack = vi.fn()) => {
+    const value = ref('2004-01-02T03:04')
+    screen(
+      () =>
+        h(DateTimeField, {
+          id: 'field',
+          modelValue: value.value,
+          'onUpdate:modelValue': (v: string) => (value.value = v),
+          label: 'Date and time',
+          text: value.value,
+          minYear: 2000,
+          maxYear: 2099,
+          locale: 'en-GB',
+        }),
+      screenBack,
+    )
+    return value
+  }
+
+  it('opens on A on its first segment; up / down are the segment’s, B closes it, not the screen', async () => {
+    const screenBack = vi.fn()
+    const value = mountField(screenBack)
+    one('#field').focus()
+    dispatchNav('confirm')
+    await settle()
+    const segments = all('[role="spinbutton"][data-reka-date-field-segment]')
+    expect(segments.map(s => s.dataset.rekaDateFieldSegment)).toEqual([
+      'day',
+      'month',
+      'year',
+      'hour',
+      'minute',
+    ])
+    expect(document.activeElement).toBe(segments[0])
+    expect(ownsArrow(segments[0]!, 'up')).toBe(true)
+    expect(ownsArrow(segments[0]!, 'down')).toBe(true)
+    expect(ownsEnter(segments[0]!)).toBe(true)
+    const seen = keysOn(segments[0]!)
+    dispatchNav('up')
+    expect(seen).toEqual(['ArrowUp'])
+    await settle()
+    dispatchNav('back')
+    await settle()
+    expect(screenBack).not.toHaveBeenCalled()
+    expect(value.value).toBe('2004-01-03T03:04')
+    expect(document.activeElement?.id).toBe('field')
+  })
+
+  it('hands left / right to Reka, which moves along the segments and stops at their ends', async () => {
+    mountField()
+    one('#field').focus()
+    dispatchNav('confirm')
+    await settle()
+    const segments = all('[role="spinbutton"][data-reka-date-field-segment]')
+    const at = () => (document.activeElement as HTMLElement).dataset.rekaDateFieldSegment
+    for (const s of segments)
+      for (const d of ['left', 'right'] as const) expect(ownsArrow(s, d)).toBe(true)
+    dispatchNav('right')
+    expect(at()).toBe('month')
+    key(document.activeElement!, 'ArrowRight')
+    expect(at()).toBe('year')
+    dispatchNav('left')
+    dispatchNav('left')
+    dispatchNav('left')
+    expect(at()).toBe('day')
+    for (let i = 0; i < 6; i++) dispatchNav('right')
+    expect(at()).toBe('minute')
+  })
+
+  it('closes on A (Enter) and writes nothing when nothing changed', async () => {
+    const value = mountField()
+    one('#field').focus()
+    dispatchNav('confirm')
+    await settle()
+    dispatchNav('confirm')
+    await settle()
+    expect(all('[role="spinbutton"]')).toHaveLength(0)
+    expect(value.value).toBe('2004-01-02T03:04')
   })
 })
 

@@ -8,6 +8,7 @@
 //!
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
+mod about;
 mod audio;
 mod background_pause;
 // Bench mode only in builds with the `bench` feature (off by default, never packaged).
@@ -49,6 +50,7 @@ mod settings;
 mod startup;
 mod theme;
 mod tuning;
+mod updates;
 mod video;
 mod window;
 
@@ -335,12 +337,15 @@ pub fn run() {
     }
     let bench = bench::Bench::new(&tuning, main_start, main_wall);
 
-    tauri::Builder::default()
+    // The updater plugin only in a build that can update itself (`emudome_platform::updater`).
+    emudome_platform::updater::with_updater(tauri::Builder::default())
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| protocol::handle(ctx.app_handle(), &req))
         .setup(move |app| {
             // First of all: it decides which data folders this run uses (Trello #90).
             let data_move_problem = data_move::run(app);
+            // The log file, once the data folders are decided (`about.log` exports it).
+            about::attach_log(app.handle());
             let data_dir = dirs::data(app)?;
             log::info!("data in {}", data_dir.display());
             // Before the window, the GPU and the audio: they start from the settings.
@@ -437,6 +442,8 @@ pub fn run() {
             app.manage(pads.clone());
             // Before the controllers' thread, which records their connections (X03).
             app.manage(notifications::open(app.handle()));
+            // After the settings (`general.updates`) and the notifications (X06's record).
+            app.manage(updates::start(app.handle()));
             let hotkeys =
                 hotkeys::HotkeyRunner::new(app.handle().clone(), current.clone(), pads.clone());
             #[cfg(desktop)]
@@ -574,6 +581,7 @@ pub fn run() {
             library::library_screenshots,
             library::library_set_flags,
             library::library_set_name,
+            library::library_pin_version,
             saves::saves_summary,
             saves::saves_game,
             saves::saves_restore,
@@ -595,6 +603,13 @@ pub fn run() {
             cloud::cloud_status,
             cloud::cloud_sign_in,
             cloud::cloud_sign_out,
+            updates::updates_status,
+            updates::updates_check,
+            updates::updates_later,
+            updates::updates_install,
+            about::about_licences,
+            about::about_licence_text,
+            about::about_export_log,
             cloud::cloud_sync_now,
             cloud::cloud_games,
             cloud::cloud_game_upload,

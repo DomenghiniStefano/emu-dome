@@ -49,6 +49,17 @@ describe('tvShelves', () => {
     expect(shelves.map(s => s.id)).toEqual(['gbc'])
   })
 
+  it('shows one tile per family, but «Continua a giocare» the versions played (#102)', () => {
+    const us = game('us', 'nds', { lastPlayed: 5, favourite: true })
+    const eu = game('eu', 'nds', { lastPlayed: 9, favourite: true })
+    const shelves = tvShelves([us, eu], new Set([us.id]))
+    expect(shelves.map(s => [s.id, s.games.map(g => g.id)])).toEqual([
+      ['continue', ['eu', 'us']],
+      ['favourites', ['eu']],
+      ['nds', ['eu']],
+    ])
+  })
+
   it('keeps at most the TV count in «Continua a giocare»', () => {
     const many = Array.from({ length: 20 }, (_, i) => game(`g${i}`, 'gb', { lastPlayed: i }))
     expect(tvShelves(many)[0]?.games).toHaveLength(TV_CONTINUE_COUNT)

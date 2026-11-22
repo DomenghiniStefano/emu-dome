@@ -33,3 +33,6 @@ pub const NATIVE_VIDEO_DEFAULT: bool = false;
 
 /// WebKitGTK's files have no single folder name to leave out: copied with the rest (small).
 pub const WEBVIEW_PROFILE_DIRS: &[&str] = &[];
+
+/// The platform key of `cores.lock` this build ships cores for.
+pub const CORES_PLATFORM: Option<&str> = CORES_LOCK_PLATFORM;

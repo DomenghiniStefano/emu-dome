@@ -72,5 +72,14 @@
   "audioUnavailable",
   "controllersUnavailable",
   "coreSavedOutsideGame",
-  "threadStopped"
+  "threadStopped",
+  "updateUnavailable",
+  "updateCheckFailed",
+  "updateDownloadFailed",
+  "updateInstallFailed",
+  "updateNotReady",
+  "updateGameOpen",
+  "logUnavailable",
+  "logExportFailed",
+  "licenceUnreadable"
 ]

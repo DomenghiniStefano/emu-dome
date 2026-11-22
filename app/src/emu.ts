@@ -17,6 +17,7 @@ import type { GameId } from '@/generated/GameId'
 import type { GameOverride } from '@/generated/GameOverride'
 import type { NavAction } from '@/generated/NavAction'
 import type { Notification } from '@/generated/Notification'
+import type { UpdateStatus } from '@/generated/UpdateStatus'
 import type { PadFamily } from '@/generated/PadFamily'
 import type { SettingKey } from '@/generated/SettingKey'
 import type { SettingRecent } from '@/generated/SettingRecent'
@@ -38,6 +39,7 @@ import type { CloudStatus } from '@/generated/app/CloudStatus'
 import type { ControlsBindings } from '@/generated/app/ControlsBindings'
 import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { CoverSource } from '@/generated/app/CoverSource'
+import type { Licence } from '@/generated/app/Licence'
 import type { GameScreenshot } from '@/generated/app/GameScreenshot'
 import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -89,6 +91,7 @@ export type { ErrorCode } from '@/generated/ErrorCode'
 export type { FirstRunStep } from '@/generated/FirstRunStep'
 export type { FolderImport } from '@/generated/FolderImport'
 export type { GameId } from '@/generated/GameId'
+export type { GameFamily } from '@/generated/GameFamily'
 export type { GameOverride } from '@/generated/GameOverride'
 export type { GameRegion } from '@/generated/GameRegion'
 export type { HotkeyId } from '@/generated/HotkeyId'
@@ -116,6 +119,8 @@ export type { SettingValue } from '@/generated/SettingValue'
 export type { SliderUnit } from '@/generated/SliderUnit'
 export type { Speed } from '@/generated/Speed'
 export type { StateLoadBlock } from '@/generated/StateLoadBlock'
+export type { UpdateState } from '@/generated/UpdateState'
+export type { UpdateStatus } from '@/generated/UpdateStatus'
 export type { CustomLayout } from '@/generated/CustomLayout'
 export type { CustomScreen } from '@/generated/CustomScreen'
 export type { PxRect } from '@/generated/PxRect'
@@ -147,6 +152,8 @@ export type { ComboRow } from '@/generated/app/ComboRow'
 export type { ControlsBindings } from '@/generated/app/ControlsBindings'
 export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { CoverSource } from '@/generated/app/CoverSource'
+export type { Licence } from '@/generated/app/Licence'
+export type { LicenceKind } from '@/generated/app/LicenceKind'
 export type { GameScreenshot } from '@/generated/app/GameScreenshot'
 export type { PickedImage } from '@/generated/app/PickedImage'
 export type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -353,6 +360,10 @@ export const emu = {
       invoke<void>('library_set_flags', { id, ...flags }),
     /** «Nome mostrato» (L10); blank goes back to the ROM's title. */
     setName: (id: GameId, name: string) => invoke<void>('library_set_name', { id, name }),
+    /** «Mostra questa in libreria» (#102): the library shows `id` for its family; `pin` false
+     * gives the family back to the version launched last. Arrives as `library://changed`
+     * `families`. */
+    pinVersion: (id: GameId, pin: boolean) => invoke<void>('library_pin_version', { id, pin }),
     onScan: (cb: (e: LibraryScanEvent) => void): Promise<UnlistenFn> =>
       listen<LibraryScanEvent>('library://scan', e => cb(e.payload)),
     /** What changed in the library: some games' rows (cover, flags, name, play time), or all of
@@ -428,6 +439,27 @@ export const emu = {
   onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
     listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
   /** X03, the notification centre (per device, kept until read). */
+  /** EmuDome updating itself (Trello #44, `updates.rs`). */
+  updates: {
+    status: () => invoke<UpdateStatus>('updates_status'),
+    /** «Controlla ora» (`about.upd`): one check, whatever `general.updates` says. */
+    check: () => invoke<UpdateStatus>('updates_check'),
+    /** X06 «Più tardi». */
+    later: () => invoke<UpdateStatus>('updates_later'),
+    /** X06 «Riavvia e aggiorna»: refused while a game is open. */
+    install: () => invoke<UpdateStatus>('updates_install'),
+    /** The status changed (`updates://changed`). */
+    onChanged: (cb: (s: UpdateStatus) => void): Promise<UnlistenFn> =>
+      listen<UpdateStatus>('updates://changed', e => cb(e.payload)),
+  },
+  /** The «Informazioni» page's actions (`about.rs`). */
+  about: {
+    /** `about.lic`: EmuDome, the shipped cores and the other components, with their licences. */
+    licences: () => invoke<Licence[]>('about_licences'),
+    licenceText: (id: string, file: string) => invoke<string>('about_licence_text', { id, file }),
+    /** `about.log`: the log through the save dialog; the file's name, or null when cancelled. */
+    exportLog: () => invoke<string | null>('about_export_log'),
+  },
   notifications: {
     /** Every notification, newest first. */
     list: () => invoke<Notification[]>('notifications_list'),

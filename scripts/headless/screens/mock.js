@@ -110,6 +110,51 @@
     last.path = `D:/Old games/${last.title}.${last.console}`;
     last.available = false;
   }
+  // The regional versions grouped (#102), as Rust sends them. `versions`: «Dual Screen Tales»
+  // (nds:02, American, played 3 days ago: the tile) in three versions, the European one played a
+  // month ago, the Japanese one never. `manyFamilies`: the generated games two by two, the first of
+  // each pair the tile.
+  const families = [];
+  if (scenario.versions) {
+    Object.assign(games[1], { region: "usa", code: "ADAE" });
+    games.push(
+      {
+        ...games[1],
+        id: "nds:21",
+        settingsGame: "nds:21",
+        title: "Dual Screen Tales",
+        region: "europe",
+        code: "ADAP",
+        playTimeSecs: 2 * 3600,
+        lastPlayed: FIXED - 30 * day,
+      },
+      {
+        ...games[1],
+        id: "nds:22",
+        settingsGame: "nds:22",
+        title: "Futari no Monogatari",
+        romTitle: "Futari no Monogatari",
+        region: "japan",
+        code: "ADAJ",
+        playTimeSecs: 0,
+        lastPlayed: null,
+      },
+    );
+    families.push({
+      id: "nds:ADA",
+      shown: "nds:02",
+      versions: ["nds:02", "nds:21", "nds:22"],
+      pinned: false,
+    });
+  }
+  if (scenario.manyFamilies)
+    for (let i = 5; i + 1 < games.length; i += 2)
+      families.push({
+        id: `many:${i}`,
+        shown: games[i].id,
+        versions: [games[i].id, games[i + 1].id],
+        pinned: false,
+      });
   // `withheld`: the last N games arrive with a scan; a step puts them back with
   // `__mockLibrary.games = __mockAllGames` between the scan's `started` and `done` events.
   const listed = games.slice(0, games.length - (scenario.withheld ?? 0));
@@ -124,6 +169,7 @@
             : []),
         ],
     scanning: !!scenario.scanning,
+    families,
   };
   window.__mockLibrary = library;
   window.__mockAllGames = games;
@@ -142,6 +188,9 @@
     needsNativeVideo: false,
     // `SettingEntry.unsupportedConsoles` (#78): always present in the generated type.
     unsupportedConsoles: [],
+    // `wiredSettings` (the TV settings' scenarios, #30): every row has a reader, so the rows show
+    // their controls usable; without it the field is absent and the rows show «Arriva…».
+    ...(scenario.wiredSettings ? { wired: true } : {}),
     ...extra,
   });
   const choice = (style, options) => ({
@@ -373,7 +422,38 @@
     schema.sections.push({
       page: "video",
       id: "gpu",
-      keys: ["video.vsync", "video.path"],
+      // In game (the search in the quick menu): two rows G09 shows «in prova» beside two it does not.
+      keys: scenario.game
+        ? ["video.scale", "video.filter", "video.vsync", "video.path"]
+        : ["video.vsync", "video.path"],
+    });
+  }
+  // `rtc` (#102): a Saves page with the game clock's rows, `saves.rtc` set to `rtc` ("offset" or
+  // "fixed"), so its offset sliders or its date and time show.
+  if (scenario.rtc) {
+    const GM = ["default", "global", "game", "session"];
+    const clock = { levels: GM, mostUsed: false, wired: true };
+    const offset = { ...clock, showIf: { key: "saves.rtc", values: ["offset"], not: false } };
+    const slider = (min, max, unit) => ({ type: "slider", min, max, step: 1, unit });
+    entries.push(
+      entry("saves.rtc", "saves", choice("segments", ["real", "offset", "fixed"]), "real", clock),
+      entry("saves.rtcdays", "saves", slider(-364, 364, "days"), 0, offset),
+      entry("saves.rtchours", "saves", slider(-23, 23, "hours"), 0, offset),
+      entry("saves.rtcminutes", "saves", slider(-59, 59, "minutes"), 0, offset),
+      entry(
+        "saves.rtcdate",
+        "saves",
+        { type: "dateTime", minYear: 2000, maxYear: 2099 },
+        "2004-01-01T00:00",
+        { ...clock, showIf: { key: "saves.rtc", values: ["fixed"], not: false } },
+      ),
+    );
+    schema.pages.push("saves");
+    schema.groups.push({ id: "game", pages: ["saves"] });
+    schema.sections.push({
+      page: "saves",
+      id: "ingame",
+      keys: ["saves.rtc", "saves.rtcdays", "saves.rtchours", "saves.rtcminutes", "saves.rtcdate"],
     });
   }
   // `notifications` (X03, #32): what the bell shows, newest first, two unread.
@@ -402,6 +482,12 @@
   const values = { "general.bgpause": true, "general.confirmdel": false };
   // TV mode (#30): `ui` fixes `general.ui` ("tv" / "desktop"; Automatica otherwise).
   if (scenario.ui) values["general.ui"] = scenario.ui;
+  if (scenario.rtc) {
+    values["saves.rtc"] = scenario.rtc;
+    values["saves.rtcdays"] = -3;
+    values["saves.rtchours"] = 5;
+    values["saves.rtcdate"] = "2024-02-29T07:05";
+  }
   const rows = (page) =>
     entries
       .filter((e) => e.page === page)
@@ -910,6 +996,8 @@
       };
     });
   const gameInfo = {
+    // The library's game of the same title (the search in the quick menu: «Ci stai giocando ora»).
+    id: scenario.game === "nds" ? "nds:02" : "gba:01",
     title:
       scenario.game === "nds" ? "Dual Screen Tales" : "Pocket Quest Advance",
     console: scenario.game === "nds" ? "NDS" : "GBA",
@@ -917,6 +1005,8 @@
     core: scenario.game === "nds" ? "melondsds" : "mgba",
     resumable: false,
     autosaveOnExit: true,
+    // Loading states works (Trello #93: none of these games is blocked).
+    stateLoadBlock: null,
   };
   const answers = {
     // `game` (the quick menu's, named by console) or `inGame` (the settings' row hosts): a game

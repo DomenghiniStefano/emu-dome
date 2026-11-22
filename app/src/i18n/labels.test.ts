@@ -6,6 +6,7 @@ import {
   lastPlayedLabel,
   saveWhenLabel,
   errorText,
+  settingDateTimeLabel,
   slotDateLabel,
   stateLoadBlockText,
   timeAgoLabel,
@@ -66,6 +67,18 @@ describe('changedWhenLabel', () => {
     expect(changedWhenLabel(at(2026, 11, 18, 8), NOW)).toBe('yesterday')
     expect(changedWhenLabel(at(2026, 11, 12, 8), NOW)).toBe('Nov 12')
     expect(changedWhenLabel(at(2025, 11, 12, 8), NOW)).toBe('Nov 12, 2025')
+  })
+})
+
+describe('settingDateTimeLabel', () => {
+  it('writes a date and time setting as a local date and time', () => {
+    const text = settingDateTimeLabel('2004-01-02T13:05')
+    expect(text).toContain('2004')
+    expect(text).toContain('Jan 2')
+    expect(text).toMatch(/1:05/)
+  })
+  it('shows a text that is not one as it is', () => {
+    expect(settingDateTimeLabel('soon')).toBe('soon')
   })
 })
 

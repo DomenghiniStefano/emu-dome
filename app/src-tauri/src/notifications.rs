@@ -5,8 +5,9 @@
 //! The file is `<app local data>/notifications.json`: per device, never synced, like
 //! `local-settings/device.json`. Recording happens off the thread that saw the event (the
 //! controllers' thread must not wait for the disk); the commands run on a blocking thread.
-//! What records a notification today: a controller connected while EmuDome runs (gamepad.rs).
-//! Sync done, cover not found and update ready have no event yet.
+//! What records a notification today: a controller connected while EmuDome runs (gamepad.rs), and
+//! a new version of EmuDome ready to install (updates.rs, X06). Sync done and cover not found have
+//! no event yet.
 
 use std::sync::Arc;
 
@@ -66,7 +67,6 @@ fn now_ms() -> u64 {
 
 /// Records `notice` on a blocking thread and tells the interface. A failure is logged: the
 /// short toast the interface showed for the same event already told the user.
-#[allow(dead_code, reason = "called by gamepad.rs, desktop only (SDL3)")]
 pub fn record(app: &AppHandle, notice: Notice) {
     let Some(state) = app.try_state::<Notifications>().map(|s| s.inner().clone()) else {
         return;

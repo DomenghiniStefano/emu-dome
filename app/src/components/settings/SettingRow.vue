@@ -21,11 +21,12 @@ import type {
   SettingsSchema,
   SettingValue,
 } from '@/emu'
-import { useErrorSink } from '@/composables/useToasts'
-import { FILE_PICKERS, msg } from '@/lib/settingsModel'
+import { useErrorSink, useToasts } from '@/composables/useToasts'
+import { FILE_PICKERS, ROW_ACTIONS, msg } from '@/lib/settingsModel'
 import SettingSelect from './SettingSelect.vue'
 import SettingCards from './SettingCards.vue'
 import SettingChips from './SettingChips.vue'
+import SettingDateTime from './SettingDateTime.vue'
 import SettingFileAction from './SettingFileAction.vue'
 import SettingFolders from './SettingFolders.vue'
 import SettingRowText from './SettingRowText.vue'
@@ -60,7 +61,8 @@ const emit = defineEmits<{
   reset: []
   /** A binding list (`pad.remap`, `pad.combos`): open the Controls section, where it is edited. */
   open: []
-  /** A file row with a backend (`video.surroundImg`): open its picker at the page's scope. */
+  /** A file row with a backend (`video.surroundImg`): open its picker at the page's scope; a
+   * link row the page opens (`about.lic`): open it. */
   choose: []
   /** A screen layout (`screens.custom`): open the C09 screens editor at the page's scope. */
   edit: []
@@ -70,6 +72,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const failWith = useErrorSink()
+const toasts = useToasts()
 const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
@@ -81,9 +84,21 @@ function set(v: SettingValue) {
   if (!disabled.value) emit('set', v)
 }
 
-/** A file row with its own picker (FILE_PICKERS) opens it here, the others let the page do it. */
+/** A file row with its own picker (FILE_PICKERS) opens it here, an action row with a backend
+ * (ROW_ACTIONS) runs it here, the others let the page do it. */
 async function choose() {
   if (key.value === 'cloud.acct') return emit('openCloud')
+  const act = ROW_ACTIONS[key.value]
+  if (act) {
+    if (disabled.value) return
+    try {
+      const done = await act()
+      if (done) toasts.notify(t(done.key, done.params ?? {}))
+    } catch (e) {
+      failWith(e)
+    }
+    return
+  }
   const pick = FILE_PICKERS[key.value]
   if (!pick) return emit('choose')
   if (disabled.value) return
@@ -159,6 +174,15 @@ async function choose() {
           :max="kind.max"
           :step="kind.step"
           :value-text="t(`settingsUi.unit.${kind.unit}`, { v: Number(value ?? 0) })"
+          :disabled="disabled"
+          @set="set"
+        />
+        <SettingDateTime
+          v-else-if="kind.type === 'dateTime'"
+          :label="name"
+          :value="String(value ?? '')"
+          :min-year="kind.minYear"
+          :max-year="kind.maxYear"
           :disabled="disabled"
           @set="set"
         />

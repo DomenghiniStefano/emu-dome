@@ -6,10 +6,11 @@
 // The games list is replaced as a whole on every change and never changed in place, so it is kept
 // out of Vue's deep reactivity (`markRaw`): assigning a new list is what the screens react to, and
 // a library of thousands of games is not wrapped in proxies object by object on each change.
-import { markRaw, reactive } from 'vue'
+import { computed, markRaw, reactive } from 'vue'
 import {
   emu,
   type ConsoleId,
+  type GameFamily,
   type GameId,
   type Library,
   type LibraryChanged,
@@ -17,6 +18,7 @@ import {
   type LibraryGame,
 } from '@/emu'
 import { errorText } from '@/i18n/labels'
+import { familyIndex } from '@/lib/families'
 import { latest } from '@/lib/latest'
 
 /** What L11 «N giochi aggiunti» shows after a scan that added games. */
@@ -32,6 +34,8 @@ export const library = reactive({
   /** Replaced whole, never changed in place (not deeply reactive). */
   games: markRaw([]) as LibraryGame[],
   folders: [] as LibraryFolder[],
+  /** The regional versions grouped by Rust (#102), replaced whole like `games`. */
+  families: markRaw([]) as GameFamily[],
   scanning: false,
   /** Latest `progress` of the running scan. */
   progress: null as { checked: number; found: number } | null,
@@ -40,6 +44,9 @@ export const library = reactive({
   error: null as string | null,
 })
 
+/** The families indexed (lib/families.ts): rebuilt only when `library.families` is replaced. */
+export const libraryFamilies = computed(() => familyIndex(library.families))
+
 let before: Set<GameId> | null = null
 
 // Rule 7: only the newest answer counts; a change event is newer than any `get` still on its way.
@@ -47,6 +54,7 @@ const reloads = latest()
 
 function apply(l: Library) {
   library.games = markRaw(l.games)
+  library.families = markRaw(l.families)
   library.folders = l.folders
   library.scanning = l.scanning
   library.error = null
@@ -67,13 +75,18 @@ export async function reloadLibrary() {
 }
 
 /**
- * `library://changed`: the whole library replaces ours, or each row sent replaces the row with its
- * id (a new list either way; ids the list does not show are left out).
+ * `library://changed`: the whole library replaces ours, the families replace ours, or each row
+ * sent replaces the row with its id (a new list either way; ids the list does not show are left
+ * out).
  */
 export function applyLibraryChange(change: LibraryChanged) {
   // Any `get` still answering is older than this.
   reloads.next()
   if (change.kind === 'all') return apply(change.library)
+  if (change.kind === 'families') {
+    library.families = markRaw(change.families)
+    return
+  }
   const rows = new Map(change.games.map(g => [g.id, g]))
   library.games = markRaw(library.games.map(g => rows.get(g.id) ?? g))
 }

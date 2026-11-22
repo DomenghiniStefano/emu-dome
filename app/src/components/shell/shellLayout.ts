@@ -15,11 +15,12 @@ export function isFlush(section: Section, showingDetails: boolean, tv = false): 
 }
 
 /**
- * TV mode (#30): whether the screen has a TV layout of its own (the library's shelves); the others
- * keep the desk's, scaled up (`zoom-tv`). Settings in TV is an open point on the card.
+ * TV mode (#30): whether the screen has a TV layout of its own (the library's shelves, the
+ * settings' column of large rows); the others keep the desk's, scaled up (`zoom-tv`).
  */
 export function isTvLaidOut(section: Section, showingDetails: boolean): boolean {
-  return section === 'library' && !showingDetails
+  if (showingDetails) return false
+  return section === 'library' || section === 'settings'
 }
 
 /** TV mode's L1 / R1 (#30): the section before or after `section`, round the ends. */

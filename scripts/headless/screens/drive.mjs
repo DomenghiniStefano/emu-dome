@@ -15,6 +15,8 @@ fs.mkdirSync(outDir, { recursive: true });
 // The shell's rail is the first <nav> of the page (no class: it survives the migration).
 const rail = (n) =>
   `document.querySelector('nav').querySelectorAll('button')[${n}].click()`;
+// Settings › Salvataggi, by its category's text in English or Italian.
+const openSaves = `(() => { const b = [...document.querySelectorAll('main button')].find(b => /^\\s*(Saves|Salvataggi)/i.test(b.textContent)); b && b.click(); return !!b })()`;
 
 // Library and shell (stream A of #62): every state in the three themes, at the smallest and the
 // largest window. A step is a script, `{ key }` (a trusted key press, so nav.ts shows its focus
@@ -175,6 +177,51 @@ const SCENARIOS = {
     ],
   },
   "settings-light": { mock: { theme: "light" }, steps: [rail(4)] },
+  // The game clock's rows (#102): «Shifted» with its sliders, «Fixed» with its date and time,
+  // the date field opened by the keyboard (Enter), in light too, and at the small window. The
+  // mock's fixed clock stops Vue's second handler of one event (its timestamp check), so a key
+  // that two handlers share (Reka's left / right between segments) does not move here.
+  "settings-rtc-offset": { mock: { rtc: "offset" }, steps: [rail(4), openSaves] },
+  "settings-rtc-fixed": { mock: { rtc: "fixed" }, steps: [rail(4), openSaves] },
+  "settings-rtc-fixed-open": {
+    mock: { rtc: "fixed" },
+    steps: [
+      rail(4),
+      openSaves,
+      `document.querySelector('[data-slot=date-time-field]').focus()`,
+      { key: "Enter" },
+      { key: "ArrowUp" },
+    ],
+  },
+  "settings-rtc-fixed-open-light": {
+    mock: { rtc: "fixed", theme: "light" },
+    steps: [rail(4), openSaves, `document.querySelector('[data-slot=date-time-field]').click()`],
+  },
+  "settings-rtc-fixed-small": {
+    mock: { rtc: "fixed" },
+    steps: [rail(4), openSaves],
+    width: 1024,
+    height: 640,
+  },
+  // Regional versions (#102): the grid with a family's tile (a deck behind it, «3 versioni»), its
+  // details' «Versioni» block (dark and light, the small window), the Library settings' switch.
+  "lib-versions": { mock: { versions: true }, steps: [] },
+  "lib-versions-light": { mock: { versions: true, theme: "light" }, steps: [] },
+  "lib-versions-small": { mock: { versions: true }, steps: [], width: 1024, height: 640 },
+  "details-versions": {
+    mock: { versions: true },
+    steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
+  },
+  "details-versions-light": {
+    mock: { versions: true, theme: "light" },
+    steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
+  },
+  "details-versions-small": {
+    mock: { versions: true },
+    steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
+    width: 1024,
+    height: 640,
+  },
   "first-run": { mock: { firstRun: true }, steps: [] },
   "kit-dark": { mock: {}, steps: [], hash: "#kit", height: 1500 },
   "kit-black": {
@@ -207,6 +254,12 @@ const SCENARIOS = {
       `document.querySelectorAll('[data-slot=segmented-item]')[7].click()`,
       `document.querySelectorAll('[data-slot=segmented-item]')[3].click()`,
     ],
+    hash: "#kit",
+    height: 1500,
+  },
+  "kit-datetime-open": {
+    mock: {},
+    steps: [`document.querySelector('[data-slot=date-time-field]').click()`],
     hash: "#kit",
     height: 1500,
   },
@@ -762,13 +815,18 @@ for (const theme of ["dark", "light"])
       stepMs: 600,
     };
 
-// TV mode (#30): on by itself (full screen + a controller: `fullscreen`, `pads`) or fixed
-// (`ui: "tv"`, no controller: the Nintendo letters). Steps play the controller (`emu://nav`,
-// `emu://menu`). At 1280 × 720, 1920 × 1080 (the mockup's) and 3840 × 2160, for the «no empty
-// space» rule; `focus` shows the TV focus ring.
+// TV mode (#30): fixed with a controller (`ui: "tv"`, `pads`: the Xbox glyphs) or without one
+// (`ui: "tv"` alone: the Nintendo letters). At Automatica a controller asks first (the `ask-*`
+// scenarios: the question at startup, then the last controller gone in TV). Steps play the
+// controller (`emu://nav`, `emu://menu`). At 1280 × 720, 1920 × 1080 (the mockup's) and
+// 3840 × 2160, for the «no empty space» rule; `focus` shows the TV focus ring.
 const nav = (action) => `window.__emit('emu://nav', { action: '${action}' })`;
-const TV_AUTO = { fullscreen: true, pads: true };
+const TV_AUTO = { ui: "tv", pads: true };
+const padGone = `window.__emit('emu://gamepad-disconnected', { id: 1, name: 'Xbox Wireless Controller', family: 'xbox', vendor: 1118, product: 2835, battery: 80 })`;
 const TV = {
+  "ask-connect": { mock: { pads: true }, steps: [], focus: true },
+  "ask-disconnect": { mock: { pads: true }, steps: [nav("confirm"), padGone], focus: true },
+  "ask-game": { mock: { pads: true, game: "gba" }, steps: [], focus: true },
   lib: { mock: TV_AUTO, steps: [] },
   "lib-nopad": { mock: { ui: "tv" }, steps: [] },
   "lib-shelf": { mock: TV_AUTO, steps: [nav("down"), nav("right"), nav("right")], focus: true },
@@ -789,8 +847,33 @@ const TV = {
     ],
     focus: true,
   },
+  // #102: «Dual Screen Tales» in three versions, one tile on its console's shelf.
+  "lib-versions": {
+    mock: { ...TV_AUTO, versions: true },
+    // Hero, «Continua a giocare», «Preferiti», Game Boy, Game Boy Color, GBA, then DS.
+    steps: [nav("down"), nav("down"), nav("down"), nav("down"), nav("down"), nav("down")],
+    focus: true,
+  },
   saves: { mock: TV_AUTO, steps: [nav("next")] },
   settings: { mock: TV_AUTO, steps: [nav("prev")] },
+  // Settings in TV (#30, option B: the pages on the left, large rows on the right): every kind
+  // of row (`richSettings`, `wiredSettings`), a row's value stepped with ◀ ▶, the full-screen
+  // sheet of a long choice (the screen effects' six), and the scope's sheet.
+  "settings-rows": {
+    mock: { ...TV_AUTO, richSettings: true, wiredSettings: true },
+    steps: [nav("prev"), nav("right"), nav("down"), nav("down"), nav("down"), nav("right")],
+    focus: true,
+  },
+  "settings-sheet": {
+    mock: { ...TV_AUTO, richSettings: true, wiredSettings: true },
+    steps: [nav("prev"), nav("down"), nav("confirm"), nav("right"), nav("down"), nav("confirm")],
+    focus: true,
+  },
+  "settings-scope": {
+    mock: { ...TV_AUTO, richSettings: true, wiredSettings: true },
+    steps: [nav("prev"), nav("right"), nav("confirm")],
+    focus: true,
+  },
   qm: { mock: { ...TV_AUTO, game: "nds", slots: "full" }, steps: [`window.__emit('emu://menu')`] },
   desktop: { mock: { pads: true }, steps: [] },
 };

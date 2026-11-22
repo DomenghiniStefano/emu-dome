@@ -118,6 +118,16 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     }
   }
 
+  /**
+   * Another library game while one is open (the search from the quick menu, #32): the open one
+   * closes as «Chiudi il gioco» does (G14, the close flow #86 with its «Wait» / «Close anyway»),
+   * then this one opens.
+   */
+  async function switchToLibraryGame(g: LibraryGame) {
+    await session.close()
+    await openLibraryGame(g)
+  }
+
   /** The game given on the command line, if any; else, with `general.start` = «last game», the
    * library game played last (Rust decides, and answers none when a game was given). */
   async function openStartupGame() {
@@ -202,6 +212,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
   return {
     openFile,
     openLibraryGame,
+    switchToLibraryGame,
     openStartupGame,
     answerResume,
     useLatestBackup,

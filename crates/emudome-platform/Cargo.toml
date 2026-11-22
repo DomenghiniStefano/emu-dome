@@ -22,7 +22,8 @@ workspace = true
 dev-core-paths = []
 
 [dependencies]
-log = "0.4"
+# `std`: the boxed logger that also writes the log file (`log_file.rs`).
+log = { version = "0.4", features = ["std"] }
 raw-window-handle = "0.6"
 # The release build checks its cores against cores.lock (`cores.rs`).
 serde_json = "1"
@@ -36,6 +37,16 @@ tauri = { version = "=2.12.5", default-features = false, features = ["wry", "uns
 env_logger = "0.11"
 # The native file picker (`pick_file`); Android has no file-path picker yet (TODO with the SAF).
 tauri-plugin-dialog = "2.8"
+# EmuDome updating itself (`updater.rs`, Trello #44): Tauri's updater, desktop only (Android
+# updates come from Google Play). Apache-2.0 OR MIT. Its tauri requirement (2.10) is met by the
+# exact pin above; it moves with tauri. TLS through the system (`native-tls`: SChannel on
+# Windows, OpenSSL on Linux), not its default rustls: that one brings rustls-platform-verifier
+# and webpki-root-certs (CDLA-Permissive-2.0, not on deny.toml's list; the owner decides). No
+# `zip`: the update packages are the v2 ones (the installer itself), never Tauri v1's archives.
+tauri-plugin-updater = { version = "2.10", default-features = false, features = [
+    "native-tls",
+    "system-proxy",
+] }
 
 # The Drive sign-in's refresh token in the system's credential store (`cloud.rs`), under
 # the service `it.domehub.emudome`. MIT OR Apache-2.0. One backend per system, each pure Rust:

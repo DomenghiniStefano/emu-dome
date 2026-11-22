@@ -9,6 +9,8 @@
 // column (useCoverGridNav.ts), and leave it at its edges by nav.ts's spatial rule.
 import { ref, watch } from 'vue'
 import type { GameId, LibraryGame } from '@/emu'
+import { versionCount } from '@/lib/families'
+import { libraryFamilies } from '@/lib/library'
 import CoverTile from './CoverTile.vue'
 import { useCoverGridNav } from './useCoverGridNav'
 import { useCoverWindow } from './useCoverWindow'
@@ -51,6 +53,7 @@ watch(visible, shown => {
       v-for="g in visible"
       :key="g.id"
       :game="g"
+      :versions="versionCount(libraryFamilies, g.id)"
       :menu-open="menuFor === g.id"
       @mouseenter="emit('foreground', g)"
       @focusin="emit('foreground', g)"

@@ -61,6 +61,7 @@ const kirbyUnreadable = {
 function setup() {
   const session = {
     begin: vi.fn(async () => {}),
+    close: vi.fn(async () => {}),
     end: vi.fn(),
     game: ref<GameInfo | null>(null),
   }
@@ -127,6 +128,20 @@ describe('useGameLaunch', () => {
     expect(shownWhileLoading).toEqual({ title: 'Minish Cap', colour: null })
     expect(flow.launching).toBeNull()
     expect(session.begin).toHaveBeenCalledWith(info('MINISH'), null, false)
+  })
+
+  it('opens another library game only once the open one has closed (#32, the quick menu search)', async () => {
+    const { launch, session } = setup()
+    const order: string[] = []
+    session.close.mockImplementationOnce(async () => void order.push('close'))
+    bridge.libraryOpen.mockImplementationOnce(async () => {
+      order.push('open')
+      return info('MINISH')
+    })
+    await launch.switchToLibraryGame(minish)
+    expect(order).toEqual(['close', 'open'])
+    expect(bridge.libraryOpen).toHaveBeenCalledWith('gba:01')
+    expect(session.begin).toHaveBeenCalledWith(info('MINISH'), minish, false)
   })
 
   it('asks for a file when none is given; a cancelled picker opens nothing', async () => {

@@ -1,7 +1,7 @@
 //! The library database: one JSON file, `library.json`, in a folder the shell chooses.
 //!
-//! `{ "games": { "<id>": GameRecord }, "hashCache": { "<path>": CacheEntry } }`, plus any key a
-//! newer version wrote (kept). Games are never deleted: a game whose file or folder is gone is
+//! `{ "games": { "<id>": GameRecord }, "hashCache": { "<path>": CacheEntry }, "versionPins":
+//! ["<id>"] }` (the pins only when there are some), plus any key a newer version wrote (kept). Games are never deleted: a game whose file or folder is gone is
 //! kept with `available: false`; one whose folder left `library.folders` is kept with
 //! `listed: false` (hidden from the interface), so its play time, flags and cover come back with
 //! it. Written atomically (`crate::write_atomic`). A file that cannot be parsed is moved aside
@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
 use ts_rs::TS;
 
+use super::group::{families, family_key, Family, Member, Pins};
 use super::identity::Identity;
 use super::scan::ScanOutcome;
 use crate::settings::ConsoleId;
@@ -101,6 +102,11 @@ struct Db {
     games: BTreeMap<String, GameRecord>,
     #[serde(default)]
     hash_cache: HashCache,
+    /// The versions the user pinned in their families («Usa questa», Trello #102), by content
+    /// id; text, so an id this version cannot parse is skipped, never a reason to set the
+    /// whole file aside.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    version_pins: BTreeSet<String>,
     /// Anything else a newer version wrote.
     #[serde(flatten)]
     other: Map<String, Json>,
@@ -378,6 +384,44 @@ impl Library {
     pub fn add_play_time(&mut self, id: &GameKey, secs: u64) -> Result<(), ErrorCode> {
         let game = self.game_mut(id)?;
         game.play_time_secs = game.play_time_secs.saturating_add(secs);
+        self.save()
+    }
+
+    /// The versions the user pinned in their families.
+    pub fn pins(&self) -> Pins {
+        self.db
+            .version_pins
+            .iter()
+            .filter_map(|id| GameKey::parse(id).ok())
+            .collect()
+    }
+
+    /// The families of regional versions among the games shown (Trello #102).
+    pub fn families(&self) -> Vec<Family> {
+        families(self.games().map(Member::from), &self.pins())
+    }
+
+    /// «Mostra questa in libreria» (`pin`): the library shows `id` for its family, whichever was
+    /// launched last; any other pin of the family goes. Not `pin`: the family goes back to the
+    /// version launched last.
+    /// A game in no family has nothing to pin (nothing changes, nothing is written).
+    pub fn pin_version(&mut self, id: &GameKey, pin: bool) -> Result<(), ErrorCode> {
+        let game = self.game_mut(id)?;
+        let Some(family) = family_key(game.console, game.code.as_deref()) else {
+            return Ok(());
+        };
+        // Every game of the family, shown or not: an unlisted one's pin would come back with it.
+        let members: Vec<String> = self
+            .db
+            .games
+            .values()
+            .filter(|g| family_key(g.console, g.code.as_deref()).as_deref() == Some(&family))
+            .map(|g| g.id.as_str().to_owned())
+            .collect();
+        self.db.version_pins.retain(|p| !members.contains(p));
+        if pin {
+            self.db.version_pins.insert(id.as_str().to_owned());
+        }
         self.save()
     }
 

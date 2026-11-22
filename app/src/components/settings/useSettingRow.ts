@@ -12,12 +12,14 @@ import {
   type SettingsSchema,
 } from '@/emu'
 import { LOCALE } from '@/i18n'
-import { errorText, sizeLabel } from '@/i18n/labels'
+import { errorText, saveWhenLabel, sizeLabel } from '@/i18n/labels'
 import { spaceBar } from '@/components/cloud/cloud'
 import { cloud } from '@/components/cloud/cloudState'
+import { useUpdates } from '@/composables/useUpdates'
 import { biosStatus, refreshBiosStatus } from '@/lib/biosStatus'
 import { report } from '@/lib/errors'
 import { FILE_PICKERS, msg, optionNotYet } from '@/lib/settingsModel'
+import { UPDATE_ROWS, updateLine } from '@/lib/updates'
 import {
   chosenFileName,
   descNotes,
@@ -69,6 +71,10 @@ export function useSettingRow(props: SettingRowInput) {
   // Unknown (no backend, as in tests): the row keeps saying «built-in».
   if (key.value.startsWith('bios.') && FILE_PICKERS[key.value])
     watch(value, () => void refreshBiosStatus().catch(() => {}), { immediate: true })
+
+  // The rows about EmuDome's own update follow its status (`general.updates` locked in a build
+  // that cannot update itself, `about.upd`'s line).
+  const updates = UPDATE_ROWS.includes(props.entry.key) ? useUpdates() : null
 
   const version = ref('')
   onMounted(async () => {
@@ -129,8 +135,12 @@ export function useSettingRow(props: SettingRowInput) {
         return cloudAccountText()
       case 'cloud.space':
         return cloudSpaceText()
-      case 'about.upd':
-        return t('settingsUi.notYet')
+      case 'about.upd': {
+        const s = updates?.status.value
+        if (!s) return ''
+        const line = updateLine(s, ms => saveWhenLabel(ms))
+        return 'error' in line ? errorText(line.error) : t(line.key, line.params ?? {})
+      }
       case 'about.ver':
         return t('settings.about.ver.desc', { version: version.value })
       default:

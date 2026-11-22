@@ -15,10 +15,12 @@ pub mod cloud;
 mod content;
 mod cores;
 mod cpu;
+pub mod log_file;
 mod paths;
+pub mod updater;
 
 pub use content::is_content_uri;
-pub use cores::CoreLookupError;
+pub use cores::{shipped_cores, CoreLookupError, ShippedCore};
 pub use paths::{long_paths_enabled, long_paths_policy, path_limits, PathLimits};
 
 #[cfg(target_os = "android")]
@@ -276,6 +278,22 @@ pub fn create_window(
 pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> Option<PathBuf> {
     imp::pick_file(app, filter, extensions)
 }
+
+/// Asks the user where to save a file, proposing `name` and offering the extensions
+/// `extensions` (listed as `filter`). `None` when the user cancels, or where no save dialog exists
+/// yet (Android: logged; the system's document picker comes later).
+pub fn save_file(
+    app: &tauri::AppHandle,
+    name: &str,
+    filter: &str,
+    extensions: &[&str],
+) -> Option<PathBuf> {
+    imp::save_file(app, name, filter, extensions)
+}
+
+/// The platform key of `cores.lock` this build ships cores for (`windows-x86_64`,
+/// `linux-x86_64`, `android-arm64-v8a`); `None` where none is packaged (macOS, another CPU).
+pub const CORES_PLATFORM: Option<&str> = imp::CORES_PLATFORM;
 
 /// Puts `window` in fullscreen or takes it out. Android has no such call (Tauri's mobile window):
 /// there the app already fills the screen, so it does nothing and succeeds.

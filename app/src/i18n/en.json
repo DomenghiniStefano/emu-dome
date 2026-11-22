@@ -14,7 +14,29 @@
       "search": "Search",
       "back": "Back",
       "sections": "Switch section",
-      "choose": "Choose"
+      "choose": "Choose",
+      "change": "Change",
+      "levels": "Switch level"
+    },
+    "value": {
+      "on": "On",
+      "off": "Off"
+    },
+    "ask": {
+      "connect": {
+        "title": "Switch to TV mode?",
+        "text": "You connected a controller. TV mode shows larger menus, made for playing with a controller.",
+        "main": "Switch to TV mode",
+        "other": "Stay on desktop"
+      },
+      "disconnect": {
+        "title": "Controller disconnected",
+        "text": "Go back to desktop mode?",
+        "main": "Back to desktop",
+        "other": "Stay in TV mode"
+      },
+      "remember": "Don’t ask again",
+      "where": "You can change this in Settings."
     },
     "hero": {
       "meta": "{console} · {time} played · {when}",
@@ -38,6 +60,9 @@
     "open": "Open {title}",
     "openDetails": "Open the details of {title}",
     "neverPlayed": "Never played",
+    "versions": {
+      "tag": "{n} version | {n} version | {n} versions"
+    },
     "meta": "{time} · {when}",
     "noneShown": "No games match these filters.",
     "drop": "Drop games or folders to add them",
@@ -154,6 +179,30 @@
     "meta": "{time} played · last played {when}",
     "metaShort": "{time} · {when}",
     "notYet": "This section arrives in a future update.",
+    "versions": {
+      "title": "Versions",
+      "inLibrary": "In the library",
+      "play": "Play this one",
+      "pin": "Show this one in the library",
+      "meta": "{region} · {time} played · {when}",
+      "metaNew": "{region} · Never played",
+      "noRegion": "Region unknown",
+      "regionTag": {
+        "japan": "JP",
+        "usa": "US",
+        "europe": "EU",
+        "germany": "DE",
+        "france": "FR",
+        "italy": "IT",
+        "spain": "ES",
+        "netherlands": "NL",
+        "australia": "AU",
+        "korea": "KR",
+        "china": "CN",
+        "world": "ALL",
+        "none": "?"
+      }
+    },
     "tabs": {
       "saves": "Saves",
       "settings": "Game settings",
@@ -487,7 +536,16 @@
     "audioUnavailable": "No sound: the audio output can’t be used ({detail}). EmuDome keeps trying; check that speakers or headphones are connected.",
     "controllersUnavailable": "Controllers can’t be used this time ({detail}). Use the keyboard, or restart EmuDome to try again.",
     "coreSavedOutsideGame": "Your last 3DS session couldn’t reach the game’s save folder, so the emulator saved into its own folder ({folder}), shared by every 3DS game. That progress isn’t with the game’s saves. Don’t delete that folder; check that EmuDome’s data folder is writable, then open the game again.",
-    "threadStopped": "Part of EmuDome stopped after an internal error ({thread}). Save from the quick menu if you can, then restart EmuDome."
+    "threadStopped": "Part of EmuDome stopped after an internal error ({thread}). Save from the quick menu if you can, then restart EmuDome.",
+    "updateUnavailable": "This version of EmuDome can’t update itself. Download new versions from the EmuDome releases page.",
+    "updateCheckFailed": "Couldn’t check for updates ({detail}). Check your connection, then try again.",
+    "updateDownloadFailed": "The update didn’t download ({detail}), so nothing was installed. Try again later.",
+    "updateInstallFailed": "The update couldn’t start ({detail}). EmuDome stays as it is; try again, or download it from the EmuDome releases page.",
+    "updateNotReady": "No update is ready yet. Check for updates in Settings › About.",
+    "updateGameOpen": "Close the game first, then restart to update. Your saves stay as they are.",
+    "logUnavailable": "There’s no log file in this session. Restart EmuDome and try again.",
+    "logExportFailed": "Couldn’t save the log ({detail}). Choose another folder and try again.",
+    "licenceUnreadable": "Couldn’t read this licence ({detail}). Reinstall EmuDome to get it back."
   },
   "consoleShort": {
     "gb": "GB",
@@ -1077,6 +1135,22 @@
           "fixed": "Fixed date"
         }
       },
+      "rtcdays": {
+        "name": "Shift by days",
+        "desc": "Forward or back from your device’s date. Past 14 days it rounds to 30, 60, 90, 120, 150, 180 or 364."
+      },
+      "rtchours": {
+        "name": "Shift by hours",
+        "desc": "Forward or back from your device’s time."
+      },
+      "rtcminutes": {
+        "name": "Shift by minutes",
+        "desc": "Forward or back from your device’s time."
+      },
+      "rtcdate": {
+        "name": "Date and time",
+        "desc": "The game starts at this moment every time you open it."
+      },
       "import": {
         "name": "Import saves from other emulators",
         "desc": "DeSmuME (.dsv), Action Replay backups (.duc) and .sav files.",
@@ -1295,7 +1369,7 @@
       },
       "ui": {
         "name": "Interface",
-        "desc": "TV mode uses large text and is driven with the controller. Automatic turns it on in full screen with a controller connected.",
+        "desc": "TV mode uses large text and is driven with the controller. Automatic asks when you connect a controller.",
         "option": {
           "auto": "Automatic",
           "desktop": "Desktop mode",
@@ -1359,14 +1433,9 @@
         "name": "Group by console",
         "desc": "Splits the library into sections by console."
       },
-      "region": {
-        "name": "Preferred region for names",
-        "desc": "When a game has different names in different regions.",
-        "option": {
-          "eu_us": "Europe, then America",
-          "us_eu": "America, then Europe",
-          "jp": "Japan"
-        }
+      "versions": {
+        "name": "Group versions of the same game",
+        "desc": "One tile per game, with its versions in the details."
       },
       "hidden": {
         "name": "Hidden games",
@@ -1884,7 +1953,17 @@
       "upd": {
         "name": "Updates",
         "desc": "Last checked: {when}",
-        "button": "Check now"
+        "button": "Check now",
+        "status": {
+          "unavailable": "This version can’t update itself.",
+          "idle": "Not checked yet.",
+          "checking": "Checking…",
+          "upToDate": "Up to date. Last checked: {when}",
+          "available": "EmuDome {version} is available.",
+          "downloading": "Downloading EmuDome {version}…",
+          "ready": "EmuDome {version} is ready: restart to update.",
+          "installing": "Installing EmuDome {version}…"
+        }
       },
       "emgba": {
         "name": "mGBA",
@@ -1906,7 +1985,8 @@
       "log": {
         "name": "Export the log",
         "desc": "A file to attach when you report a problem.",
-        "button": "Export…"
+        "button": "Export…",
+        "saved": "Log saved as {name}"
       }
     },
     "groups": {
@@ -1964,7 +2044,10 @@
       "percent": "{v}%",
       "px": "{v} px",
       "seconds": "{v} s",
-      "copies": "{v} copies"
+      "copies": "{v} copies",
+      "days": "{v} d",
+      "hours": "{v} h",
+      "minutes": "{v} min"
     },
     "choose": "Choose",
     "none": "None",
@@ -1981,7 +2064,8 @@
       "mostUsed": "MOST USED",
       "mostUsedNote": "These apply to all games · for one game only, use the quick menu",
       "recent": "RECENTLY CHANGED"
-    }
+    },
+    "lockedNoUpdates": "This version of EmuDome can’t update itself."
   },
   "closing": {
     "saving": "Saving",
@@ -2487,7 +2571,9 @@
     "bell": "Notifications | Notifications, 1 unread | Notifications, {n} unread",
     "markAll": "Mark all as read",
     "empty": "No notifications",
-    "controllerConnected": "Controller connected"
+    "controllerConnected": "Controller connected",
+    "updateReady": "EmuDome {version} is ready",
+    "updateReadySub": "Restart to update"
   },
   "search": {
     "title": "Search",
@@ -2500,6 +2586,11 @@
     "settingWhere": "Settings · {page}",
     "gameWhere": "{console} · {time}",
     "needsGame": "Open a game to use it",
+    "heldInGame": "Hold its shortcut while you play",
+    "pausedInMenu": "The game is already paused while the menu is open",
+    "twoScreensOnly": "Only for games with two screens",
+    "settingInLibrary": "Open it from Settings in the library",
+    "playingNow": "You’re playing it now",
     "noResults": "No results for “{query}”",
     "didYouMean": "Did you mean:",
     "hint": {
@@ -2566,6 +2657,25 @@
       "pageDown": "PgDn",
       "arrows": "Arrows",
       "shiftArrows": "Shift + Arrows"
+    }
+  },
+  "updates": {
+    "title": "Update available",
+    "ready": "EmuDome {version} is ready",
+    "note": "Restart to update. Your games and saves don’t change.",
+    "later": "Later",
+    "restart": "Restart and update",
+    "installing": "Updating…"
+  },
+  "about": {
+    "licences": {
+      "title": "Open source licences",
+      "intro": "EmuDome is free software under the GNU GPL, version 3 or later. The emulation engines and the other components keep their own licences.",
+      "components": "Other components",
+      "appLine": "{spdx} · version {version}",
+      "coreLine": "{consoles} · {spdx} · version {version}",
+      "componentsLine": "The libraries EmuDome is built with, each with its licence",
+      "source": "Source code: {url}"
     }
   }
 }

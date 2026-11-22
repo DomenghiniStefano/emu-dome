@@ -15,7 +15,7 @@ import { computed, ref, watch, type HTMLAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/cn'
 import type { LibraryGame } from '@/emu'
-import { CoverSize, coverBadgeVariants, coverVariants } from './variants'
+import { CoverSize, coverBadgeVariants, coverVariants, coverVersionsVariants } from './variants'
 
 /** What a cover shows of a game: a library game, or one known only by its title (Drive). */
 export type CoverGame = Pick<LibraryGame, 'console' | 'title' | 'colour' | 'cover' | 'coverUrl'>
@@ -29,9 +29,11 @@ const props = withDefaults(
     /** The game's title over a cover without a picture (off on the thumbnails). */
     title?: boolean
     missing?: boolean
+    /** How many regional versions its family holds (#102): the «N versioni» tag from 2. */
+    versions?: number
     class?: HTMLAttributes['class']
   }>(),
-  { size: CoverSize.Fill, badge: true, title: true, missing: false, class: undefined },
+  { size: CoverSize.Fill, badge: true, title: true, missing: false, versions: 0, class: undefined },
 )
 
 const { t } = useI18n()
@@ -82,6 +84,9 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
     />
     <span v-if="badge" :class="coverBadgeVariants({ size })">{{
       t(`consoleShort.${game.console}`)
+    }}</span>
+    <span v-if="versions > 1" :class="coverVersionsVariants({ size })">{{
+      t('library.versions.tag', { n: versions }, versions)
     }}</span>
     <span v-if="title && !userImage" class="relative wrap-anywhere">{{ game.title }}</span>
   </div>

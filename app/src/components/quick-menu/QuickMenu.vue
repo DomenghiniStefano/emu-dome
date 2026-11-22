@@ -14,12 +14,14 @@
 // Controller / keyboard: opening the menu focuses the selected slot; B / Esc go back one level
 // (App.vue sends Esc here as a «back» step), and from the main screen resume the game.
 // Hints show only the input in use: Esc with mouse and keyboard, B with a controller, none on touch.
+// Y (the `search` step) or Ctrl + K open the search everywhere over the menu (X01, #32,
+// useMenuSearch.ts): the game's shortcuts run, a setting opens the page here that shows it.
 //
 // This component wires the state (quick-menu/use*.ts) to the parts (quick-menu/*.vue).
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { GameInfo, ScreenLayoutId, ScreenStatus, Speed, VideoMode } from '@/emu'
+import type { GameInfo, LibraryGame, ScreenLayoutId, ScreenStatus, Speed, VideoMode } from '@/emu'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 
 import { useNavScope } from '@/nav'
@@ -40,7 +42,7 @@ import SpeedPage from './SpeedPage.vue'
 import SubPageHeader from './SubPageHeader.vue'
 import TrialPanel from './TrialPanel.vue'
 import UndoLoadBanner from './UndoLoadBanner.vue'
-import { backKeyLabel } from './hints'
+import { backKeyLabel, searchKeyLabels } from './hints'
 import { BAR_PANEL, MENU_PANEL, sheetPanel } from './panel'
 import {
   cycleStartingAt,
@@ -56,12 +58,13 @@ import { loadedLine, mainSlotCount } from './slots'
 import { followedSpeed, modeSpeeds, speedChoices } from './speedChoices'
 import { ToolId, type Tool } from './tools'
 import { useControllerShortcuts } from './useControllerShortcuts'
+import { useMenuSearch } from './useMenuSearch'
 
 import { useQuickMenuNavigation } from './useQuickMenuNavigation'
 import { useQuickSlots } from './useQuickSlots'
 import { useSay } from '@/i18n/message'
 import { useTrialSession } from './useTrialSession'
-import { QuickMenuView, SUB_PAGE_TITLE, isSubPage } from './view'
+import { QuickMenuView, SESSION_VIEWS, SUB_PAGE_TITLE, isSubPage } from './view'
 
 const props = defineProps<{
   game: GameInfo
@@ -97,6 +100,10 @@ const emit = defineEmits<{
   swapScreens: []
   toggleLid: []
   layout: [ScreenLayoutId]
+  /** From the search (X01): the FPS shown or hidden, the next layout, another game opened. */
+  fps: []
+  nextLayout: []
+  openGame: [LibraryGame]
 }>()
 
 const { t } = useI18n()
@@ -139,7 +146,6 @@ const { view, open, back, home, focusChosenSlot } = useQuickMenuNavigation(root,
   resume: () => emit('resume'),
   home: () => void loadSlots(),
 })
-useNavScope(root, { back, autofocus: true })
 
 // ---- Layout: desktop panel, G09 bar, phone sheet ----
 const layout = useDeviceLayout()
@@ -278,6 +284,44 @@ const picks = computed(() => {
 async function applyPick(id: ScreenPickId) {
   for (const [key, v] of pickChanges(id, settingValue)) await setSession(key, v)
 }
+
+// ---- The search everywhere (X01, #32) ----
+/** The settings the menu's pages show «in prova». */
+const menuSettings = computed(() => SESSION_VIEWS.flatMap(v => entriesOf(v).map(e => e.key)))
+const { openSearch } = useMenuSearch({
+  root,
+  context: () => ({
+    playing: props.game.id,
+    dualScreen: dualScreen.value,
+    lidSupported: props.screens?.lidSupported ?? true,
+    loadBlock: props.game.stateLoadBlock,
+    slot: { chosen: chosen.value, empty: chosenEmpty.value, auto: autoChosen.value },
+    settings: menuSettings.value,
+  }),
+  slots: {
+    numbers: () => slots.value.map(s => s.slot),
+    chosen: () => chosen.value,
+    pick,
+    save,
+    loadChosen,
+  },
+  speed: () => props.speed,
+  modes: () => modes.value,
+  run: {
+    resume: () => emit('resume'),
+    speed: s => emit('speed', s),
+    screenshot: () => emit('screenshot'),
+    fps: () => emit('fps'),
+    swapScreens: () => emit('swapScreens'),
+    nextLayout: () => emit('nextLayout'),
+    toggleLid: () => emit('toggleLid'),
+    fullscreen: () => emit('fullscreen'),
+    openGame: g => emit('openGame', g),
+  },
+  openPage: v => open(v, null),
+})
+useNavScope(root, { back, autofocus: true, search: openSearch })
+const searchKeys = computed(() => searchKeyLabels(inputMode.value).map(k => t(k)))
 
 onMounted(async () => {
   await startSession()
@@ -442,6 +486,7 @@ onBeforeUnmount(() => emit('inset', 0))
         <MenuFooter
           v-if="view === QuickMenuView.Home"
           :hint="backKey"
+          :search-keys="searchKeys"
           :touch="sheet"
           @close="emit('close')"
           @resume="emit('resume')"

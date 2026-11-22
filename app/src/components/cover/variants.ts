@@ -48,6 +48,45 @@ export const coverVariants = cva(
 )
 export type CoverVariants = VariantProps<typeof coverVariants>
 
+// A game in several regional versions (#102, owner R1): the edges of two more covers behind its
+// tile, as a deck, the near one wider and lower. Opaque surfaces, so the theme decides them.
+export const CoverStackLayer = {
+  Near: 'near',
+  Far: 'far',
+} as const
+export type CoverStackLayer = (typeof CoverStackLayer)[keyof typeof CoverStackLayer]
+
+export const coverStackVariants = cva(
+  'pointer-events-none absolute h-full rounded-card border border-line',
+  {
+    variants: {
+      layer: {
+        [CoverStackLayer.Near]: 'inset-x-5 -top-5 bg-surface-hover',
+        [CoverStackLayer.Far]: 'inset-x-10 -top-10 bg-surface-raised',
+      },
+    },
+  },
+)
+
+// The «N versioni» tag (#102, owner R1): square like the console badge, its look and type, in
+// the opposite corner.
+const TV_VERSIONS = 'top-10 right-10 px-8 text-tv-badge'
+export const coverVersionsVariants = cva('absolute rounded-badge bg-cover-badge py-px', {
+  variants: {
+    size: {
+      [CoverSize.Fill]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.Choice]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.Thumb]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.Row]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.Small]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.Hero]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.Shelf]: TV_VERSIONS,
+      [CoverSize.TvHero]: TV_VERSIONS,
+    },
+  },
+  defaultVariants: { size: CoverSize.Fill },
+})
+
 // The console badge in a corner, per cover size: the small type everywhere, the TV type on a
 // shelf's cover and the focused game's big one (TV mode, #30: no text under 18px).
 const TV_BADGE = 'top-10 left-10 px-8 text-tv-badge'
