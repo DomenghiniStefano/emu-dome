@@ -188,6 +188,9 @@
     needsNativeVideo: false,
     // `SettingEntry.unsupportedConsoles` (#78): always present in the generated type.
     unsupportedConsoles: [],
+    // `wiredSettings` (the TV settings' scenarios, #30): every row has a reader, so the rows show
+    // their controls usable; without it the field is absent and the rows show «Arriva…».
+    ...(scenario.wiredSettings ? { wired: true } : {}),
     ...extra,
   });
   const choice = (style, options) => ({
@@ -401,7 +404,10 @@
     schema.sections.push({
       page: "video",
       id: "gpu",
-      keys: ["video.vsync", "video.path"],
+      // In game (the search in the quick menu): two rows G09 shows «in prova» beside two it does not.
+      keys: scenario.game
+        ? ["video.scale", "video.filter", "video.vsync", "video.path"]
+        : ["video.vsync", "video.path"],
     });
   }
   // `rtc` (#102): a Saves page with the game clock's rows, `saves.rtc` set to `rtc` ("offset" or
@@ -972,6 +978,8 @@
       };
     });
   const gameInfo = {
+    // The library's game of the same title (the search in the quick menu: «Ci stai giocando ora»).
+    id: scenario.game === "nds" ? "nds:02" : "gba:01",
     title:
       scenario.game === "nds" ? "Dual Screen Tales" : "Pocket Quest Advance",
     console: scenario.game === "nds" ? "NDS" : "GBA",
@@ -979,6 +987,8 @@
     core: scenario.game === "nds" ? "melondsds" : "mgba",
     resumable: false,
     autosaveOnExit: true,
+    // Loading states works (Trello #93: none of these games is blocked).
+    stateLoadBlock: null,
   };
   const answers = {
     // `game` (the quick menu's, named by console) or `inGame` (the settings' row hosts): a game

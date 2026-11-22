@@ -17,6 +17,7 @@ import type { GameId } from '@/generated/GameId'
 import type { GameOverride } from '@/generated/GameOverride'
 import type { NavAction } from '@/generated/NavAction'
 import type { Notification } from '@/generated/Notification'
+import type { UpdateStatus } from '@/generated/UpdateStatus'
 import type { PadFamily } from '@/generated/PadFamily'
 import type { SettingKey } from '@/generated/SettingKey'
 import type { SettingRecent } from '@/generated/SettingRecent'
@@ -26,9 +27,19 @@ import type { SettingsSchema } from '@/generated/SettingsSchema'
 import type { SettingsScope } from '@/generated/SettingsScope'
 import type { Speed } from '@/generated/Speed'
 import type { BiosRow } from '@/generated/app/BiosRow'
+import type { CloudActivity } from '@/generated/app/CloudActivity'
+import type { CloudChoice } from '@/generated/app/CloudChoice'
+import type { CloudDevice } from '@/generated/app/CloudDevice'
+import type { CloudGame } from '@/generated/app/CloudGame'
+import type { CloudGameConflict } from '@/generated/app/CloudGameConflict'
+import type { CloudInUse } from '@/generated/app/CloudInUse'
+import type { CloudInUseEvent } from '@/generated/app/CloudInUseEvent'
+import type { CloudProgress } from '@/generated/app/CloudProgress'
+import type { CloudStatus } from '@/generated/app/CloudStatus'
 import type { ControlsBindings } from '@/generated/app/ControlsBindings'
 import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { CoverSource } from '@/generated/app/CoverSource'
+import type { Licence } from '@/generated/app/Licence'
 import type { GameScreenshot } from '@/generated/app/GameScreenshot'
 import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -108,6 +119,8 @@ export type { SettingValue } from '@/generated/SettingValue'
 export type { SliderUnit } from '@/generated/SliderUnit'
 export type { Speed } from '@/generated/Speed'
 export type { StateLoadBlock } from '@/generated/StateLoadBlock'
+export type { UpdateState } from '@/generated/UpdateState'
+export type { UpdateStatus } from '@/generated/UpdateStatus'
 export type { CustomLayout } from '@/generated/CustomLayout'
 export type { CustomScreen } from '@/generated/CustomScreen'
 export type { PxRect } from '@/generated/PxRect'
@@ -119,10 +132,28 @@ export type { ScreenRotation } from '@/generated/ScreenRotation'
 export type { ScreenStatus } from '@/generated/ScreenStatus'
 export type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
 export type { BiosRow } from '@/generated/app/BiosRow'
+export type { CloudAccount } from '@/generated/app/CloudAccount'
+export type { CloudActivity } from '@/generated/app/CloudActivity'
+export type { CloudActivityKind } from '@/generated/app/CloudActivityKind'
+export type { CloudChoice } from '@/generated/app/CloudChoice'
+export type { CloudConflict } from '@/generated/app/CloudConflict'
+export type { CloudDevice } from '@/generated/app/CloudDevice'
+export type { CloudGame } from '@/generated/app/CloudGame'
+export type { CloudGameConflict } from '@/generated/app/CloudGameConflict'
+export type { CloudGameState } from '@/generated/app/CloudGameState'
+export type { CloudInUse } from '@/generated/app/CloudInUse'
+export type { CloudInUseEvent } from '@/generated/app/CloudInUseEvent'
+export type { CloudPhase } from '@/generated/app/CloudPhase'
+export type { CloudProgress } from '@/generated/app/CloudProgress'
+export type { CloudStatus } from '@/generated/app/CloudStatus'
+export type { CloudVersion } from '@/generated/app/CloudVersion'
+export type { DriveQuota } from '@/generated/app/DriveQuota'
 export type { ComboRow } from '@/generated/app/ComboRow'
 export type { ControlsBindings } from '@/generated/app/ControlsBindings'
 export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { CoverSource } from '@/generated/app/CoverSource'
+export type { Licence } from '@/generated/app/Licence'
+export type { LicenceKind } from '@/generated/app/LicenceKind'
 export type { GameScreenshot } from '@/generated/app/GameScreenshot'
 export type { PickedImage } from '@/generated/app/PickedImage'
 export type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -408,6 +439,27 @@ export const emu = {
   onBiosFallback: (cb: (e: ErrorCode) => void): Promise<UnlistenFn> =>
     listen<ErrorCode>('emu://bios-fallback', e => cb(e.payload)),
   /** X03, the notification centre (per device, kept until read). */
+  /** EmuDome updating itself (Trello #44, `updates.rs`). */
+  updates: {
+    status: () => invoke<UpdateStatus>('updates_status'),
+    /** «Controlla ora» (`about.upd`): one check, whatever `general.updates` says. */
+    check: () => invoke<UpdateStatus>('updates_check'),
+    /** X06 «Più tardi». */
+    later: () => invoke<UpdateStatus>('updates_later'),
+    /** X06 «Riavvia e aggiorna»: refused while a game is open. */
+    install: () => invoke<UpdateStatus>('updates_install'),
+    /** The status changed (`updates://changed`). */
+    onChanged: (cb: (s: UpdateStatus) => void): Promise<UnlistenFn> =>
+      listen<UpdateStatus>('updates://changed', e => cb(e.payload)),
+  },
+  /** The «Informazioni» page's actions (`about.rs`). */
+  about: {
+    /** `about.lic`: EmuDome, the shipped cores and the other components, with their licences. */
+    licences: () => invoke<Licence[]>('about_licences'),
+    licenceText: (id: string, file: string) => invoke<string>('about_licence_text', { id, file }),
+    /** `about.log`: the log through the save dialog; the file's name, or null when cancelled. */
+    exportLog: () => invoke<string | null>('about_export_log'),
+  },
   notifications: {
     /** Every notification, newest first. */
     list: () => invoke<Notification[]>('notifications_list'),
@@ -417,6 +469,50 @@ export const emu = {
     /** The list changed (`notifications://changed`): the whole list, newest first. */
     onChanged: (cb: (list: Notification[]) => void): Promise<UnlistenFn> =>
       listen<Notification[]>('notifications://changed', e => cb(e.payload)),
+  },
+  /** Google Drive (#31): the account, the sync, the games on Drive, the game flow's questions. */
+  cloud: {
+    /** The whole status (the account and its space follow on `onStatus` when not known yet). */
+    status: () => invoke<CloudStatus>('cloud_status'),
+    /** Opens the system browser on Google's page; `done` / `failed` are shown back in the browser. */
+    signIn: (done: string, failed: string) =>
+      invoke<CloudStatus>('cloud_sign_in', { done, failed }),
+    signOut: () => invoke<CloudStatus>('cloud_sign_out'),
+    /** «Sincronizza ora»: settings, every game's saves (not the open game's), the library list. */
+    syncNow: () => invoke<CloudStatus>('cloud_sync_now'),
+    /** «Giochi su Google Drive»: every library game and every game file on Drive. */
+    games: () => invoke<CloudGame[]>('cloud_games'),
+    /** «Carica»: the game file goes to Drive (`cloudQuotaFull` when it does not fit). */
+    upload: (id: GameId) => invoke<CloudGame>('cloud_game_upload', { id }),
+    /** «Scarica»: the game file comes here and joins the library (`library://changed`). */
+    download: (id: GameId) => invoke<CloudGame>('cloud_game_download', { id }),
+    /** «Rimuovi da Drive»: the game file goes to Drive's trash; saves and local files stay. */
+    remove: (id: GameId) => invoke<CloudGame>('cloud_game_remove', { id }),
+    /** «I tuoi dispositivi»: this device first. */
+    devices: () => invoke<CloudDevice[]>('cloud_devices'),
+    /** «Attività recenti», newest first (this run's). */
+    activity: () => invoke<CloudActivity[]>('cloud_activity'),
+    /** G04: the two versions of a game's save; null when it has no conflict. */
+    conflict: (id: GameId) => invoke<CloudGameConflict | null>('cloud_conflict', { id }),
+    /** G04's answer (`saveGameOpen` while the game is open). */
+    resolve: (id: GameId, choice: CloudChoice) =>
+      invoke<CloudStatus>('cloud_resolve', { id, choice }),
+    /** G05, before opening a library game: `elsewhere` when another device has it open. */
+    launchCheck: (id: GameId) => invoke<CloudInUse>('cloud_launch_check', { id }),
+    /** G03's «Gioca senza aspettare»: false when no pull of that game is running. */
+    skipPull: (id: GameId) => invoke<boolean>('cloud_skip_pull', { id }),
+    /** The status changed (`cloud://status`): the whole status. */
+    onStatus: (cb: (s: CloudStatus) => void): Promise<UnlistenFn> =>
+      listen<CloudStatus>('cloud://status', e => cb(e.payload)),
+    /** A pull (G03), push (G14), sync or game file moving (`cloud://progress`). */
+    onProgress: (cb: (p: CloudProgress) => void): Promise<UnlistenFn> =>
+      listen<CloudProgress>('cloud://progress', e => cb(e.payload)),
+    /** A game's save changed on both sides (`cloud://conflict`): G04. */
+    onConflict: (cb: (c: CloudGameConflict) => void): Promise<UnlistenFn> =>
+      listen<CloudGameConflict>('cloud://conflict', e => cb(e.payload)),
+    /** A game opened while another device has it open (`cloud://in-use`), without G05 first. */
+    onInUse: (cb: (e: CloudInUseEvent) => void): Promise<UnlistenFn> =>
+      listen<CloudInUseEvent>('cloud://in-use', e => cb(e.payload)),
   },
   /** What is not working now (native video, surface, audio output, controllers, a stopped thread). */
   diagnostics: () => invoke<ErrorCode[]>('diagnostics'),

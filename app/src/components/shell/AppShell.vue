@@ -19,20 +19,25 @@
 // «Importa…» (L05), «Apri tutte le impostazioni…» (L06) and «Rimappa…» (L07) jump to the
 // Saves, Settings and Controls sections for that one game.
 //
-// The search everywhere (X01, #32): the top bar's field, Ctrl + K, or Y on the controller (the
-// `search` step, which a dialog or a menu open above the shell stops) open SearchPalette; a
-// setting chosen there opens its page with the row lit (`settingRowFor`), a game its details.
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+// The search everywhere (X01, #32): the shell is the search's host while it shows
+// (search/useSearch.ts; the palette is App.vue's). The top bar's field, Ctrl + K, or Y on the
+// controller (the `search` step, which a dialog or a menu open above the shell stops) open it; a
+// setting chosen there opens its page with the row lit (`settingRowFor`), a game its details
+// (Ctrl + Enter starts it), and of the actions only fullscreen runs (the others need a game).
+import { computed, nextTick, ref, watch } from 'vue'
 import { uiMode } from '@/composables/useUiMode'
 import { cn } from '@/lib/cn'
-import { activeScopeRoot, useNavScope } from '@/nav'
-import type { LibraryGame, SettingKey } from '@/emu'
+import { report } from '@/lib/errors'
+import { useNavScope } from '@/nav'
+import { emu, type LibraryGame, type SettingKey } from '@/emu'
 import ControlsView from '@/components/controls/ControlsView.vue'
 import GameDetails from '@/components/details/GameDetails.vue'
 import LibraryView from '@/components/library/LibraryView.vue'
 import SavesView from '@/components/saves/SavesView.vue'
-import SearchPalette from '@/components/search/SearchPalette.vue'
+import { SHELL } from '@/components/search/searchContext'
+import { useSearchHost } from '@/components/search/useSearch'
 import SettingsView from '@/components/settings/SettingsView.vue'
+import UpdateReadyCard from '@/components/updates/UpdateReadyCard.vue'
 import AppRail from './AppRail.vue'
 import AppTopBar from './AppTopBar.vue'
 import SectionPlaceholder from './SectionPlaceholder.vue'
@@ -78,24 +83,22 @@ function stepSection(dir: -1 | 1) {
   go(pickSection(route.value, sectionStep(section.value, dir)))
   if (onTabs) void nextTick(() => tabs.value?.focusCurrent())
 }
-const searching = ref(false)
-const openSearch = () => (searching.value = true)
+const { openSearch } = useSearchHost({
+  root,
+  context: () => SHELL,
+  // Outside a game only the keyboard's fullscreen runs (the others carry a reason).
+  action: id => {
+    if (id === 'fullscreen') report(emu.toggleFullscreen())
+  },
+  setting: key => openSetting(key),
+  game: (g, start) => (start ? emit('openGame', g) : go(openDetails(g.id))),
+})
 useNavScope(root, {
   autofocus: true,
   back: () => (uiMode.tv ? tabs.value : rail.value)?.focusCurrent(),
   tab: stepSection,
   search: openSearch,
 })
-
-/** Ctrl + K (⌘ K): the search, unless a dialog or a menu above the shell has the steps. */
-function onKey(e: KeyboardEvent) {
-  if (e.code !== 'KeyK' || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
-  if (activeScopeRoot() !== root.value) return
-  e.preventDefault()
-  openSearch()
-}
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 // A setting chosen in the search: the Settings section mounts again for it, even when shown.
 const settingsVisit = ref(0)
@@ -120,12 +123,6 @@ const go = (to: Route) => (route.value = to)
 <template>
   <div ref="root" class="relative isolate flex h-full flex-col overflow-hidden bg-bg">
     <div class="ambient-haze" aria-hidden="true" :style="hazeStyle"></div>
-    <SearchPalette
-      v-model:open="searching"
-      @open-setting="openSetting"
-      @details="g => go(openDetails(g.id))"
-      @play="g => emit('openGame', g)"
-    />
     <AppTopBar v-if="!uiMode.tv" @search="openSearch" />
     <TvTabs
       v-else
@@ -149,8 +146,8 @@ const go = (to: Route) => (route.value = to)
             isFlush(section, details !== null, uiMode.tv)
               ? 'overflow-hidden p-0'
               : 'overflow-auto p-32',
-            // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, Settings, a
-            // game's details) keep the desk's layout, scaled up as it is.
+            // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, a game's
+            // details) keep the desk's layout, scaled up as it is.
             !isTvLaidOut(section, details !== null) && 'tv:zoom-tv',
           )
         "
@@ -196,5 +193,7 @@ const go = (to: Route) => (route.value = to)
       </main>
     </div>
     <TvButtonBar v-if="uiMode.tv" :hints="tvHints(section, details !== null)" />
+    <!-- X06: a new version ready to install (inside the nav scope: reachable by the steps). -->
+    <UpdateReadyCard />
   </div>
 </template>

@@ -40,6 +40,13 @@ pub fn core_file_name(core: &str) -> String {
 /// The cores are loaded by name from the APK (signed as a whole): no checksum of our own.
 pub const CORES_LOCK_PLATFORM: Option<&str> = None;
 
+/// The platform key of `cores.lock` the APK's cores come from (the Gradle build packs them).
+pub const CORES_PLATFORM: Option<&str> = if cfg!(target_arch = "aarch64") {
+    Some("android-arm64-v8a")
+} else {
+    None
+};
+
 pub fn extra_core_dirs() -> Vec<PathBuf> {
     Vec::new()
 }
@@ -69,11 +76,15 @@ pub const EXTERNAL_SURFACE: bool = true;
 pub const PHONE: bool = true;
 
 pub fn init_logging() {
-    android_logger::init_once(
+    let logger = android_logger::AndroidLogger::new(
         android_logger::Config::default()
             .with_max_level(log::LevelFilter::Info)
             .with_tag("EmuDome"),
     );
+    // Also into the log file (`log_file.rs`), beside logcat.
+    if log::set_boxed_logger(Box::new(crate::log_file::Tee::new(Box::new(logger)))).is_ok() {
+        log::set_max_level(log::LevelFilter::Info);
+    }
 }
 
 /// The launch intent's game (`SystemBridge.startupGame`: the `game` extra, else the document of
@@ -484,6 +495,16 @@ pub fn create_window(
 /// No file-path picker on Android yet (TODO with the SAF).
 pub fn pick_file(_app: &tauri::AppHandle, _filter: &str, _extensions: &[&str]) -> Option<PathBuf> {
     log::warn!("file picker not available on this platform yet");
+    None
+}
+
+pub fn save_file(
+    _app: &tauri::AppHandle,
+    _name: &str,
+    _filter: &str,
+    _extensions: &[&str],
+) -> Option<PathBuf> {
+    log::warn!("save dialog not available on this platform yet");
     None
 }
 

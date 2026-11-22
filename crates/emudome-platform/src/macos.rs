@@ -26,3 +26,6 @@ pub const NATIVE_VIDEO_DEFAULT: bool = true;
 
 /// WKWebView keeps its profile outside the app's data folder.
 pub const WEBVIEW_PROFILE_DIRS: &[&str] = &[];
+
+/// The platform key of `cores.lock` this build ships cores for.
+pub const CORES_PLATFORM: Option<&str> = None;

@@ -32,6 +32,12 @@ export function noticeView(n: Notification, { t }: Pick<Translator, 't'>): Notic
         sub: n.notice.name || t('toast.gamepadUnnamed'),
         tone: NoticeTone.Faint,
       }
+    case 'updateReady':
+      return {
+        title: t('notifications.updateReady', { version: n.notice.version }),
+        sub: t('notifications.updateReadySub'),
+        tone: NoticeTone.Accent,
+      }
   }
 }
 

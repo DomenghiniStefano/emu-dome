@@ -7,8 +7,8 @@
 // Pure: the component turns a message key into text and an icon name into a Lucide icon.
 import type { PadFamily, Pos } from '@/emu'
 
-/** What the TV layout names a button for. */
-export type PadAction = 'confirm' | 'back' | 'more' | 'search' | 'prev' | 'next'
+/** What the TV layout names a button for (`left` / `right`: the d-pad's, a TV setting's ◀ ▶). */
+export type PadAction = 'confirm' | 'back' | 'more' | 'search' | 'prev' | 'next' | 'left' | 'right'
 
 /** `pad.confirm`: the right face button confirms (Nintendo's way) or the bottom one (Xbox's). */
 export type ConfirmSide = 'right' | 'bottom'
@@ -32,11 +32,15 @@ export function actionPos(action: PadAction, confirm: ConfirmSide): Pos {
       return 'l1'
     case 'next':
       return 'r1'
+    case 'left':
+      return 'left'
+    case 'right':
+      return 'right'
   }
 }
 
-/** PlayStation's face shapes, as Lucide icon names. */
-export type PadShape = 'cross' | 'circle' | 'square' | 'triangle'
+/** PlayStation's face shapes, and the d-pad's arrows every family draws alike. */
+export type PadShape = 'cross' | 'circle' | 'square' | 'triangle' | 'left' | 'right'
 
 /** A glyph: a message key for a letter or a name, or a shape drawn as an icon. */
 export type PadGlyph = { key: string } | { shape: PadShape }
@@ -60,6 +64,7 @@ const NINTENDO: Partial<Record<Pos, string>> = {
 
 /** How the controller of `family` prints `pos`; null for no controller. */
 export function padGlyph(family: PadFamily | null, pos: Pos): PadGlyph {
+  if (pos === 'left' || pos === 'right') return { shape: pos }
   switch (family) {
     case 'playstation': {
       const shape = SHAPES[pos]

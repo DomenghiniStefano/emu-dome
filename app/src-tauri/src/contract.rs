@@ -37,8 +37,21 @@ fn generate() -> Result<Generated, String> {
     g.ts::<crate::pads::PadInfo>()?;
     g.ts::<crate::pads::PadStates>()?;
     g.ts::<crate::pads::ControlsBindings>()?;
-    g.ts::<crate::cloud::CloudStatus>()?;
-    // What the Cloud screens (#31) will show: generated now so their shape is the backend's.
+    g.ts::<crate::about::Licence>()?;
+    // The Cloud screens (#31): the commands' and the `cloud://` events' types.
+    g.ts::<emudome_sync::service::CloudStatus>()?;
+    g.ts::<emudome_sync::service::AccountDto>()?;
+    g.ts::<emudome_sync::service::CloudGame>()?;
+    g.ts::<emudome_sync::service::GameState>()?;
+    g.ts::<emudome_sync::service::DeviceDto>()?;
+    g.ts::<emudome_sync::service::Activity>()?;
+    g.ts::<emudome_sync::service::ActivityKind>()?;
+    g.ts::<emudome_sync::service::GameConflict>()?;
+    g.ts::<emudome_sync::service::Version>()?;
+    g.ts::<emudome_sync::service::Choice>()?;
+    g.ts::<emudome_sync::service::Progress>()?;
+    g.ts::<emudome_sync::service::Phase>()?;
+    g.ts::<emudome_sync::service::InUseEvent>()?;
     g.ts::<emudome_sync::drive::Quota>()?;
     g.ts::<emudome_sync::marker::InUse>()?;
     g.ts::<emudome_sync::sync::Conflict>()?;

@@ -322,6 +322,14 @@ impl Entry {
         }
     }
 
+    /// An action or link the interface carries out (actions start not wired).
+    const fn carried_out(self) -> Self {
+        Self {
+            wired: true,
+            ..self
+        }
+    }
+
     /// Ships in a later roadmap phase.
     const fn phase(self, phase: u8) -> Self {
         Self { phase, ..self }
@@ -641,9 +649,11 @@ pub static ENTRIES: &[Entry] = &[
     seg("general.start", &["library", "last_game"], "library", G),
     sw("general.bgpause", true, G).device(),
     sw("general.confirmdel", true, G),
+    // Read by the shell's updater (`emudome_core::updates`, Trello #44). Desktop only: Android
+    // updates come from Google Play.
     seg("general.updates", &["auto", "ask", "off"], "ask", G)
         .device()
-        .not_wired(),
+        .pc(),
     // ---- Libreria (library) ----
     e("library.folders", Kind::Folders, DefaultValue::List(&[]), G).device(),
     sw("library.scanstart", true, G).device(),
@@ -670,11 +680,13 @@ pub static ENTRIES: &[Entry] = &[
     // ---- Cloud (cloud) ----
     act("cloud.acct", G).device(),
     action("cloud.space", ActionStyle::Storage, G),
-    sw("cloud.ssaves", true, G).not_wired(),
-    seg("cloud.squick", &["all", "last", "none"], "all", GC).not_wired(),
-    sw("cloud.ssettings", true, G).not_wired(),
+    // Read by the Drive sync (`app/src-tauri/src/cloud.rs`, `emudome_sync::service::Prefs`).
+    sw("cloud.ssaves", true, G),
+    seg("cloud.squick", &["all", "last", "none"], "all", GC),
+    sw("cloud.ssettings", true, G),
     link("cloud.sgames", G),
-    seg("cloud.sauto", &["game", "manual"], "game", G).not_wired(),
+    seg("cloud.sauto", &["game", "manual"], "game", G),
+    // Phone only, and nothing tells Wi-Fi from mobile data yet (nor can Android sign in).
     sw("cloud.swifi", true, G).device().phone().not_wired(),
     // ---- Accessibilità (a11y) ----
     slider("a11y.textsize", 100, (80, 150, 10), Unit::Percent, G).device(),
@@ -804,12 +816,16 @@ pub static ENTRIES: &[Entry] = &[
         .not_wired(),
     // ---- Informazioni (about) ----
     info("about.ver", G),
-    act("about.upd", G),
+    // «Controlla ora»: one check whatever `general.updates` says (Trello #44). Desktop only, like
+    // the updates themselves.
+    act("about.upd", G).pc().carried_out(),
     info("about.emgba", G),
     info("about.emds", G).phase(2),
     info("about.emaz", G).phase(3),
-    link("about.lic", G),
-    act("about.log", G),
+    // The licences page (EmuDome, the cores, the other components), built from cores.lock.
+    link("about.lic", G).carried_out(),
+    // The log file through the system's save dialog; Android has no save dialog yet (SAF).
+    act("about.log", G).pc().carried_out(),
 ];
 
 /// Extra words the settings search matches, in every language, beside the entry's name and

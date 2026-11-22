@@ -272,6 +272,11 @@ run 'cores: lock, bundle lists, sources, android project, docs' node scripts/cor
 # --self-test feeds it broken inputs first. What it cannot see is in the script.
 run 'version in one place' node scripts/versions.mjs --self-test
 
+# --- The update manifest (Trello #44): the release build's key check (no key file inside the
+# repository) and latest.json's shape (version, signature, download address). --self-test only:
+# the real keys exist only in the owner's release environment. What it cannot see is in the script.
+run 'update manifest and release keys' node scripts/updater-manifest.mjs --self-test
+
 # --- Frontend (app/)
 run_script typecheck
 run_script test

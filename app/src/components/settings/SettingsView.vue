@@ -10,6 +10,8 @@
 // settingsPage.ts's.
 // Controller: the shell's nav scope; L1 / R1 change level (this section's own `tab`, nav.ts
 // `useNavSection`).
+// TV mode (#30): the same state and structure with the TV sizes (tv/TvSettings: the pages on the
+// left, large rows on the right, ◀ ▶ change a value in place).
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Info } from '@lucide/vue'
@@ -21,8 +23,10 @@ import type {
   SettingsSchema,
   SettingsScope,
 } from '@/emu'
+import LicencesPage from '@/components/about/LicencesPage.vue'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
+import { uiMode } from '@/composables/useUiMode'
 import type { GameFocus } from '@/lib/gameDetails'
 import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
@@ -43,6 +47,7 @@ import {
 } from './settingsPage'
 import { useSettingsScope } from './useSettingsScope'
 import { useSettingsValues } from './useSettingsValues'
+import TvSettings from '@/components/settings/tv/TvSettings.vue'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
 import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
 import { Card, CardPad } from '@/components/ui/card'
@@ -124,6 +129,20 @@ function closeEditor() {
   void nextTick(() => editOpener?.focus())
 }
 
+// `about.lic` (Trello #44): the licences page in the page's place; closed, the focus goes back
+// to the row's button. Another row's `choose` is the background image's picker.
+const licences = ref(false)
+let licencesOpener: HTMLElement | null = null
+function choose(key: SettingKey) {
+  if (key !== 'about.lic') return store.chooseBackground()
+  licencesOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  licences.value = true
+}
+function closeLicences() {
+  licences.value = false
+  void nextTick(() => licencesOpener?.focus())
+}
+
 // X01: the row the search opened this section for, lit for `duration-highlight` (its animation
 // ends it) and focused, on its page.
 const lit = ref<SettingKey | null>(null)
@@ -154,7 +173,27 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
 
 <template>
   <div v-if="schema" ref="root" class="flex min-h-0 flex-1">
+    <TvSettings
+      v-if="uiMode.tv"
+      :schema="schema"
+      :page="page"
+      :sections="sections"
+      :values="values"
+      :scope-bar="scopeBar"
+      :game-focus="gameFocus"
+      :locked-note="lockedNote"
+      :lit="lit"
+      @pick="pick"
+      @set="store.set"
+      @reset="store.reset"
+      @open-controls="emit('openControls')"
+      @choose="store.chooseBackground"
+      @edit="editScreens"
+      @unlit="lit = null"
+      @level="l => (scopeBar.level.value = l)"
+    />
     <SettingsCategories
+      v-if="!uiMode.tv"
       v-model:query="query"
       :schema="schema"
       :page="page"
@@ -162,9 +201,10 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       @pick="pick"
     />
 
-    <SectionPage as="main" :width="SectionWidth.Page">
+    <SectionPage v-if="!uiMode.tv" as="main" :width="SectionWidth.Page">
+      <LicencesPage v-if="licences" @close="closeLicences" />
       <SettingsOverview
-        v-if="page === OVERVIEW && !searching"
+        v-else-if="page === OVERVIEW && !searching"
         :schema="schema"
         :values="values"
         :recent="store.recent.value"
@@ -210,49 +250,51 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         {{ t('settingsUi.resultsTitle', { query: query.trim() }) }}
       </Heading>
 
-      <SettingsSection
-        v-for="sec in sections"
-        :key="`${sec.page}.${sec.id}`"
-        :title="sec.id === RESULTS ? t(msg.page(sec.page)) : t(msg.section(sec.page, sec.id))"
-      >
-        <SettingRowView
-          v-for="e in sec.entries"
-          :key="e.key"
-          :data-setting-key="e.key"
-          :class="lit === e.key ? 'animate-row-highlight' : undefined"
-          :entry="e"
-          :row="values[sec.page]?.[e.key]"
-          :schema="schema"
-          :level="effective"
-          :level-name="levelName"
-          :scoped="scopeBar.scoped.value"
-          :console="'console' in scope ? scope.console : null"
-          lock-note
-          @set="v => store.set(e.key, v)"
-          @reset="store.reset(e.key)"
-          @open="emit('openControls')"
-          @choose="store.chooseBackground"
-          @edit="editScreens"
-          @animationend="lit = null"
+      <template v-if="!licences">
+        <SettingsSection
+          v-for="sec in sections"
+          :key="`${sec.page}.${sec.id}`"
+          :title="sec.id === RESULTS ? t(msg.page(sec.page)) : t(msg.section(sec.page, sec.id))"
+        >
+          <SettingRowView
+            v-for="e in sec.entries"
+            :key="e.key"
+            :data-setting-key="e.key"
+            :class="lit === e.key ? 'animate-row-highlight' : undefined"
+            :entry="e"
+            :row="values[sec.page]?.[e.key]"
+            :schema="schema"
+            :level="effective"
+            :level-name="levelName"
+            :scoped="scopeBar.scoped.value"
+            :console="'console' in scope ? scope.console : null"
+            lock-note
+            @set="v => store.set(e.key, v)"
+            @reset="store.reset(e.key)"
+            @open="emit('openControls')"
+            @choose="choose(e.key)"
+            @edit="editScreens"
+            @animationend="lit = null"
+          />
+        </SettingsSection>
+
+        <EmptyState
+          v-if="searching && sections.length === 0"
+          as="div"
+          :variant="EmptyStateVariant.Card"
+          :text="t('settingsUi.noResults', { query: query.trim() })"
         />
-      </SettingsSection>
+        <EmptyState
+          v-else-if="onlyChanged && sections.length === 0"
+          as="div"
+          :variant="EmptyStateVariant.Card"
+          :text="t('settingsUi.emptyOnly')"
+        />
 
-      <EmptyState
-        v-if="searching && sections.length === 0"
-        as="div"
-        :variant="EmptyStateVariant.Card"
-        :text="t('settingsUi.noResults', { query: query.trim() })"
-      />
-      <EmptyState
-        v-else-if="onlyChanged && sections.length === 0"
-        as="div"
-        :variant="EmptyStateVariant.Card"
-        :text="t('settingsUi.emptyOnly')"
-      />
-
-      <div v-if="page !== OVERVIEW || searching" class="text-caption text-ink-muted">
-        {{ t('settingsUi.hint') }}
-      </div>
+        <div v-if="page !== OVERVIEW || searching" class="text-caption text-ink-muted">
+          {{ t('settingsUi.hint') }}
+        </div>
+      </template>
     </SectionPage>
 
     <ScreenEditor

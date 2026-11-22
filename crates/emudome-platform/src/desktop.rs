@@ -25,7 +25,13 @@ pub fn old_data_dirs(data: &Path, local: &Path) -> Option<DataDirs> {
 }
 
 pub fn init_logging() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    let logger =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).build();
+    let level = logger.filter();
+    // Also into the log file (`log_file.rs`); stderr stays as it was.
+    if log::set_boxed_logger(Box::new(crate::log_file::Tee::new(Box::new(logger)))).is_ok() {
+        log::set_max_level(level);
+    }
 }
 
 pub fn startup_game() -> Option<String> {
@@ -101,6 +107,25 @@ pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> O
     picked
         .into_path()
         .inspect_err(|e| log::warn!("picked file: {e}"))
+        .ok()
+}
+
+pub fn save_file(
+    app: &tauri::AppHandle,
+    name: &str,
+    filter: &str,
+    extensions: &[&str],
+) -> Option<PathBuf> {
+    use tauri_plugin_dialog::DialogExt;
+    let picked = app
+        .dialog()
+        .file()
+        .set_file_name(name)
+        .add_filter(filter, extensions)
+        .blocking_save_file()?;
+    picked
+        .into_path()
+        .inspect_err(|e| log::warn!("save target: {e}"))
         .ok()
 }
 

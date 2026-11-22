@@ -8,7 +8,7 @@
 
 use std::collections::BTreeMap;
 use std::future::Future;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use ts_rs::TS;
@@ -88,6 +88,14 @@ impl Quota {
     pub fn fits(&self, bytes: u64) -> bool {
         self.available().is_none_or(|a| bytes <= a)
     }
+}
+
+/// What [`DriveApi::download_to`] wrote.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Downloaded {
+    /// Lowercase hex, as Drive's `md5Checksum`.
+    pub md5: String,
+    pub size: u64,
 }
 
 /// Who is signed in (`about.user`), for the account row.
@@ -173,6 +181,24 @@ pub trait DriveApi: Send + Sync {
 
     /// The content of the file `id`.
     fn download(&self, id: &str) -> impl Future<Output = Result<Vec<u8>, SyncError>> + Send;
+
+    /// The content of the file `id` streamed into the new file `to` (made, or emptied), never
+    /// held whole in memory (a game of several GB); `progress` gets the bytes written so far.
+    /// Returns what was written: its MD5 (to compare with Drive's) and size. The caller owns
+    /// `to` (a temporary name, renamed once checked).
+    fn download_to(
+        &self,
+        id: &str,
+        to: &Path,
+        progress: &(dyn Fn(u64) + Send + Sync),
+    ) -> impl Future<Output = Result<Downloaded, SyncError>> + Send;
+
+    /// Every file and folder the app can see, not trashed: with the `drive.file` scope, only
+    /// the ones EmuDome made. One request per thousand, instead of one per folder.
+    fn list_all(&self) -> impl Future<Output = Result<Vec<RemoteFile>, SyncError>> + Send;
+
+    /// Moves the file `id` to Drive's trash (the user can restore it there for 30 days).
+    fn trash(&self, id: &str) -> impl Future<Output = Result<(), SyncError>> + Send;
 
     fn quota(&self) -> impl Future<Output = Result<Quota, SyncError>> + Send;
 

@@ -835,6 +835,22 @@ pub fn path_of(app: &AppHandle, id: &GameKey) -> Option<PathBuf> {
     lib.game(id).ok().map(|g| PathBuf::from(&g.path))
 }
 
+/// Every library game as stored, copied out of the lock (the cloud sync works on the copy).
+pub fn records(app: &AppHandle) -> Vec<library::GameRecord> {
+    app.try_state::<LibraryState>()
+        .map(|state| state.lib.lock().games().cloned().collect())
+        .unwrap_or_default()
+}
+
+/// A game file that arrived outside the library folders (downloaded from Google Drive) joins
+/// the library at the next scan, started now; `library://changed` tells when it is in.
+pub fn add_file(app: &AppHandle, path: PathBuf) {
+    if let Some(state) = app.try_state::<LibraryState>() {
+        state.pending.lock().push(path);
+        start_scan(app);
+    }
+}
+
 /// What a file opened by its path is. The library's hash cache entry for that path is copied
 /// out first, so hashing a large ROM never holds the library's lock (nor any lock the audio or
 /// the renderer takes).

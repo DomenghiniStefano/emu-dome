@@ -1,6 +1,7 @@
 // Moving between the quick menu's screens with the focus where the hand expects it: a page opens
 // on its marked control (else its back button); B / Esc go back one level and focus the control
-// the page was opened from; from the main screen they resume the game.
+// the page was opened from (the chosen slot for a page the search opened); from the main screen
+// they resume the game.
 import { nextTick, ref, type Ref } from 'vue'
 import { FocusMark, QuickMenuView } from './view'
 
@@ -29,9 +30,10 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
     ;(first ?? find(`[${FocusMark.Back}]`))?.focus()
   }
 
-  function open(next: QuickMenuView, e: Event) {
+  /** Opens a page; `e` is the click that opened it (null: the search). */
+  function open(next: QuickMenuView, e: Event | null) {
     if (view.value === QuickMenuView.Home)
-      opener = e.currentTarget instanceof HTMLElement ? e.currentTarget : null
+      opener = e?.currentTarget instanceof HTMLElement ? e.currentTarget : null
     view.value = next
     void nextTick(focusPage)
   }
@@ -51,7 +53,7 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
     }
     view.value = QuickMenuView.Home
     hooks.home()
-    void nextTick(() => opener?.focus())
+    void nextTick(() => (opener ? opener.focus() : void focusChosenSlot()))
   }
 
   /** Back to the main screen without moving the focus (Riavvia confirmed). */

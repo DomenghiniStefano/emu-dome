@@ -123,9 +123,15 @@ The same rule for the sofa (Trello #30): `data-layout="tv"` on `<html>`, set onc
 `tv:` variant. The TV sizes are the «TV» tokens (`text-tv-*`, `*-tv-*` spacing, the 4px TV focus
 ring), drawn for 1920 × 1080 and multiplied by `--tv-scale` on a larger screen. A screen whose
 structure changes in TV reads `uiMode.tv` and renders its TV part (`shell/TvTabs.vue`,
-`library/tv/`); a screen not laid out for TV yet keeps the desk's layout scaled up (`zoom-tv`;
-inside it, viewport units grow with the zoom, so a `vh` / `vw` limit is divided back). Controller
-glyphs come from `lib/padGlyphs.ts` (by position and `pad.confirm`), drawn by `shell/TvGlyph.vue`.
+`library/tv/`, `settings/tv/`) from the same state as the desk's (Settings: SettingsView keeps the
+schema, the level and the writes, TvSettings only lays them out); a screen not laid out for TV yet
+keeps the desk's layout scaled up (`zoom-tv`; inside it, viewport units grow with the zoom, so a
+`vh` / `vw` limit is divided back). A shared primitive never gets a `tv:` size it would also get
+inside a zoomed screen (the quick menu, Controls): a TV look is its own variant or size
+(`ButtonVariant.TvRow`, `ButtonSize.TvNavItem`, `DialogSize.TvSheet`). A part with steps of its own
+in a section (a TV settings row's ◀ ▶) takes them with `useNavSection`'s `own`. Controller glyphs
+come from `lib/padGlyphs.ts` (by position and `pad.confirm`; the d-pad's ◀ ▶ as arrows), drawn by
+`shell/TvGlyph.vue`.
 
 ## Controller navigation (`nav.ts`)
 

@@ -8,6 +8,7 @@
 //!
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
+mod about;
 mod audio;
 mod background_pause;
 // Bench mode only in builds with the `bench` feature (off by default, never packaged).
@@ -49,6 +50,7 @@ mod settings;
 mod startup;
 mod theme;
 mod tuning;
+mod updates;
 mod video;
 mod window;
 
@@ -161,7 +163,7 @@ impl AppState {
 /// What lives as long as a game is open, in the order it starts (it stops in reverse): the
 /// native renderer's source, the settings session («in prova»), the core options that follow
 /// the settings, the screens' layout and lid (after the session it reads), the window's size
-/// (`video.winsize`), the library's play time.
+/// (`video.winsize`), the library's play time, the Drive marker's heartbeat.
 fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
     let (a, b) = (app.clone(), app.clone());
     let renderer = Hooks::new(
@@ -214,6 +216,8 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         screens,
         window_size,
         play_time,
+        // The Drive «in use» marker and its heartbeat (#31), while sync is on.
+        cloud::heartbeat_hooks(app),
     ]
 }
 
@@ -333,12 +337,15 @@ pub fn run() {
     }
     let bench = bench::Bench::new(&tuning, main_start, main_wall);
 
-    tauri::Builder::default()
+    // The updater plugin only in a build that can update itself (`emudome_platform::updater`).
+    emudome_platform::updater::with_updater(tauri::Builder::default())
         .plugin(tauri_plugin_dialog::init())
         .register_uri_scheme_protocol("emu", |ctx, req| protocol::handle(ctx.app_handle(), &req))
         .setup(move |app| {
             // First of all: it decides which data folders this run uses (Trello #90).
             let data_move_problem = data_move::run(app);
+            // The log file, once the data folders are decided (`about.log` exports it).
+            about::attach_log(app.handle());
             let data_dir = dirs::data(app)?;
             log::info!("data in {}", data_dir.display());
             // Before the window, the GPU and the audio: they start from the settings.
@@ -435,6 +442,8 @@ pub fn run() {
             app.manage(pads.clone());
             // Before the controllers' thread, which records their connections (X03).
             app.manage(notifications::open(app.handle()));
+            // After the settings (`general.updates`) and the notifications (X06's record).
+            app.manage(updates::start(app.handle()));
             let hotkeys =
                 hotkeys::HotkeyRunner::new(app.handle().clone(), current.clone(), pads.clone());
             #[cfg(desktop)]
@@ -489,6 +498,8 @@ pub fn run() {
             // After the library is read, before any game opens (opening waits for it).
             migration::start(app);
             library::startup(app.handle());
+            // Drive (#31): the sign-in kept, the pushes left pending, the settings; off the loop.
+            cloud::startup(app.handle());
             if let Some(bench) = bench.clone() {
                 bench::spawn(app.handle().clone(), bench);
             }
@@ -592,6 +603,24 @@ pub fn run() {
             cloud::cloud_status,
             cloud::cloud_sign_in,
             cloud::cloud_sign_out,
+            updates::updates_status,
+            updates::updates_check,
+            updates::updates_later,
+            updates::updates_install,
+            about::about_licences,
+            about::about_licence_text,
+            about::about_export_log,
+            cloud::cloud_sync_now,
+            cloud::cloud_games,
+            cloud::cloud_game_upload,
+            cloud::cloud_game_download,
+            cloud::cloud_game_remove,
+            cloud::cloud_devices,
+            cloud::cloud_activity,
+            cloud::cloud_conflict,
+            cloud::cloud_resolve,
+            cloud::cloud_launch_check,
+            cloud::cloud_skip_pull,
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")

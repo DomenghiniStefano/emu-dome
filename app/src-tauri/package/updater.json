@@ -1,0 +1,8 @@
+{
+  "build": {
+    "beforeBuildCommand": "node ../scripts/updater-manifest.mjs check-env && pnpm build"
+  },
+  "bundle": {
+    "createUpdaterArtifacts": true
+  }
+}

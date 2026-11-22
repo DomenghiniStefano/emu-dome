@@ -47,4 +47,12 @@ describe('padGlyph', () => {
     expect(padGlyph('keyboard', 'west')).toEqual({ key: 'controls.button.y' })
     expect(padGlyph(null, 'l1')).toEqual({ key: 'controls.button.l' })
   })
+
+  it('draws the d-pad left and right as arrows for every family', () => {
+    expect(actionPos('left', 'right')).toBe('left')
+    expect(actionPos('right', 'bottom')).toBe('right')
+    expect(padGlyph('xbox', 'left')).toEqual({ shape: 'left' })
+    expect(padGlyph('playstation', 'right')).toEqual({ shape: 'right' })
+    expect(padGlyph(null, 'left')).toEqual({ shape: 'left' })
+  })
 })

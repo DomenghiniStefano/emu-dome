@@ -168,6 +168,7 @@ pub const PAD_REPEAT: TextKey = TextKey::new("pad.repeat");
 pub const GENERAL_THEME: TextKey = TextKey::new("general.theme");
 pub const GENERAL_BACKGROUND_PAUSE: BoolKey = BoolKey::new("general.bgpause");
 pub const GENERAL_START: TextKey = TextKey::new("general.start");
+pub const GENERAL_UPDATES: TextKey = TextKey::new("general.updates");
 pub const LIBRARY_FOLDERS: ListKey = ListKey::new("library.folders");
 pub const LIBRARY_SCAN_AT_START: BoolKey = BoolKey::new("library.scanstart");
 pub const LIBRARY_WATCH: BoolKey = BoolKey::new("library.watch");
@@ -186,6 +187,10 @@ pub const BIOS_DSI: TextKey = TextKey::new("bios.bdsi");
 pub const CONSOLES_DS_MODE: TextKey = TextKey::new("consoles.dsmode");
 pub const CONSOLES_DS_NAME: TextKey = TextKey::new("consoles.dsname");
 pub const CORES_DS_BOOT: TextKey = TextKey::new("cores.mdsboot");
+pub const CLOUD_SAVES: BoolKey = BoolKey::new("cloud.ssaves");
+pub const CLOUD_QUICK: TextKey = TextKey::new("cloud.squick");
+pub const CLOUD_SETTINGS: BoolKey = BoolKey::new("cloud.ssettings");
+pub const CLOUD_AUTO: TextKey = TextKey::new("cloud.sauto");
 
 /// The `pad.*` settings the controller thread reads (`pads::settings_changed` follows them).
 pub const PAD_KEYS: [&str; 9] = [

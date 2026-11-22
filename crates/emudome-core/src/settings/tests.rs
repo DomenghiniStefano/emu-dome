@@ -2164,13 +2164,8 @@ fn the_entries_not_wired_yet_are_these() {
             "touch.thapt",
             "touch.thide",
             "touch.tpad",
-            "general.updates",
             "library.group",
             "library.covers",
-            "cloud.ssaves",
-            "cloud.squick",
-            "cloud.ssettings",
-            "cloud.sauto",
             "cloud.swifi",
             "bios.b3ds",
             "adv.advon",
@@ -2179,8 +2174,11 @@ fn the_entries_not_wired_yet_are_these() {
             "online.discord",
         ]
     );
-    // Actions and preset cards are carried out by the interface: none is yet.
-    for e in ENTRIES.iter().filter(|e| !e.has_value()) {
-        assert!(!e.wired, "{}", e.key);
-    }
+    // Actions and preset cards are carried out by the interface: these are.
+    let carried_out: Vec<&str> = ENTRIES
+        .iter()
+        .filter(|e| !e.has_value() && e.wired)
+        .map(|e| e.key)
+        .collect();
+    assert_eq!(carried_out, ["about.upd", "about.lic", "about.log"]);
 }

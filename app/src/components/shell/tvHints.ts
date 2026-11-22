@@ -14,7 +14,11 @@ export interface TvHint {
 const SECTIONS_HINT: TvHint = { actions: ['prev', 'next'], label: 'tv.hint.sections' }
 const BACK: TvHint = { actions: ['back'], label: 'tv.hint.back' }
 
-/** The hints of `section`: the library's games, or choosing elsewhere (a game's details too). */
+/**
+ * The hints of `section`: the library's games; the settings' rows (◀ ▶ change a value in place,
+ * X resets one changed at this level, L1 R1 change the level: settings/tv/); or choosing
+ * elsewhere (a game's details too).
+ */
 export function tvHints(section: Section, showingDetails = false): TvHint[] {
   if (section === 'library' && !showingDetails)
     return [
@@ -23,6 +27,14 @@ export function tvHints(section: Section, showingDetails = false): TvHint[] {
       { actions: ['search'], label: 'tv.hint.search' },
       BACK,
       SECTIONS_HINT,
+    ]
+  if (section === 'settings')
+    return [
+      { actions: ['confirm'], label: 'tv.hint.choose' },
+      { actions: ['left', 'right'], label: 'tv.hint.change' },
+      { actions: ['more'], label: 'settingsUi.reset' },
+      BACK,
+      { actions: ['prev', 'next'], label: 'tv.hint.levels' },
     ]
   return [{ actions: ['confirm'], label: 'tv.hint.choose' }, BACK, SECTIONS_HINT]
 }
