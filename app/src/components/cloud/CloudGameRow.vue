@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // One game of «Giochi su Google Drive» (Trello #31, mockup option A): cover, title, console and
 // size, the state pill (Su entrambi / Solo su Drive / Solo qui / Due versioni) and its action
-// (Carica / Scarica / Rimuovi da Drive). While the game file moves, a bar under its line.
-import { computed } from 'vue'
+// (Carica / Scarica / Rimuovi da Drive, its icon alone with the words as its name and tooltip). While
+// the game file moves, a bar under its line.
+import { computed, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { CloudDownload, CloudUpload, Trash2 } from '@lucide/vue'
 import type { CloudGame } from '@/emu'
 import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
 import { Button, ButtonSize } from '@/components/ui/button'
@@ -31,6 +33,13 @@ const TONE: Record<GameTone, BadgeVariant> = {
   ok: BadgeVariant.Success,
   warn: BadgeVariant.Warning,
   quiet: BadgeVariant.Quiet,
+}
+
+/** Each row's action as its icon alone (#104: repeated on every game). */
+const ACTION_ICON: Record<GameAction, Component> = {
+  upload: CloudUpload,
+  download: CloudDownload,
+  remove: Trash2,
 }
 
 const own = computed(() => library.games.find(g => g.id === props.game.id))
@@ -75,12 +84,12 @@ const transfer = computed(() => {
         </Badge>
         <Button
           v-if="action"
-          :size="ButtonSize.Default"
+          :size="ButtonSize.ToolIcon"
+          :icon="ACTION_ICON[action]"
+          :label="t(`cloud.games.${action}`)"
           :disabled="busy"
           @click="emit('act', action)"
-        >
-          {{ t(`cloud.games.${action}`) }}
-        </Button>
+        />
       </div>
     </div>
   </div>

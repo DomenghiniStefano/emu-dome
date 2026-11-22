@@ -1,8 +1,10 @@
 <script setup lang="ts">
 // A multiple choice (`multi`): the chosen options in order, numbered; «Modifica l’elenco» turns
-// every option into a chip to switch on or off, «Fatto» goes back.
+// every option into a chip to switch on or off, «Fatto» goes back; both as their icon alone beside
+// the chips (#104), the words their name and tooltip.
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Check, Pencil } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Chip, ChipVariant } from '@/components/ui/chip'
 import { toggleChosen } from './settingRowModel'
@@ -42,12 +44,12 @@ function toggle(id: string) {
       <Button
         :variant="ButtonVariant.GhostAccent"
         :fade="ButtonFade.None"
-        :size="ButtonSize.Small"
+        :size="ButtonSize.IconRow"
+        :icon="Pencil"
+        :label="editText"
         :disabled="disabled"
         @click="editing = true"
-      >
-        {{ editText }}
-      </Button>
+      />
     </template>
     <template v-else>
       <Chip
@@ -65,11 +67,11 @@ function toggle(id: string) {
       <Button
         :variant="ButtonVariant.GhostAccent"
         :fade="ButtonFade.None"
-        :size="ButtonSize.Small"
+        :size="ButtonSize.IconRow"
+        :icon="Check"
+        :label="t('settingsUi.done')"
         @click="editing = false"
-      >
-        {{ t('settingsUi.done') }}
-      </Button>
+      />
     </template>
   </div>
 </template>

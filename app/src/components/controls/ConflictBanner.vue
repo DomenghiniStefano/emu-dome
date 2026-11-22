@@ -3,6 +3,7 @@
 // It takes the focus as it appears, on «Scambia», so A answers it at once.
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ArrowLeftRight, Undo2 } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 
 defineProps<{ text: string }>()
@@ -19,7 +20,9 @@ onMounted(() => swapButton.value?.$el.focus())
     role="alert"
   >
     <span class="flex-1">{{ text }}</span>
-    <Button ref="swapButton" @click="emit('swap')">{{ t('controls.swap') }}</Button>
-    <Button @click="emit('cancel')">{{ t('controls.cancel') }}</Button>
+    <Button ref="swapButton" :icon="ArrowLeftRight" @click="emit('swap')">
+      {{ t('controls.swap') }}
+    </Button>
+    <Button :icon="Undo2" @click="emit('cancel')">{{ t('controls.cancel') }}</Button>
   </div>
 </template>

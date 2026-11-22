@@ -37,8 +37,12 @@ const { t } = useI18n()
       :aria-label="t('library.moreFor', { title: props.game.title })"
     >
       <DropdownMenuItem v-if="props.items.includes('cover')" @select.prevent="emit('cover')">
-        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem" data-nav-initial>
-          <ImageIcon :size="16" :stroke-width="1.75" aria-hidden="true" />
+        <Button
+          :variant="ButtonVariant.Menu"
+          :size="ButtonSize.MenuItem"
+          :icon="ImageIcon"
+          data-nav-initial
+        >
           {{ t('library.menu.cover') }}
         </Button>
       </DropdownMenuItem>
@@ -46,13 +50,11 @@ const { t } = useI18n()
         v-if="props.items.includes('favourite')"
         @select.prevent="emit('flags', { favourite: !props.game.favourite })"
       >
-        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
-          <component
-            :is="props.game.favourite ? StarOff : Star"
-            :size="16"
-            :stroke-width="1.75"
-            aria-hidden="true"
-          />
+        <Button
+          :variant="ButtonVariant.Menu"
+          :size="ButtonSize.MenuItem"
+          :icon="props.game.favourite ? StarOff : Star"
+        >
           {{ t(props.game.favourite ? 'library.menu.unfavourite' : 'library.menu.favourite') }}
         </Button>
       </DropdownMenuItem>
@@ -60,13 +62,11 @@ const { t } = useI18n()
         v-if="props.items.includes('hide')"
         @select.prevent="emit('flags', { hidden: !props.game.hidden })"
       >
-        <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
-          <component
-            :is="props.game.hidden ? Eye : EyeOff"
-            :size="16"
-            :stroke-width="1.75"
-            aria-hidden="true"
-          />
+        <Button
+          :variant="ButtonVariant.Menu"
+          :size="ButtonSize.MenuItem"
+          :icon="props.game.hidden ? Eye : EyeOff"
+        >
           {{ t(props.game.hidden ? 'library.menu.unhide' : 'library.menu.hide') }}
         </Button>
       </DropdownMenuItem>

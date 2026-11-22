@@ -3,6 +3,7 @@
 // built yet, another folder or emulator), and how to open the quick menu.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { LogIn } from '@lucide/vue'
 import { Button, ButtonFade } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import type { FolderImport } from '@/emu'
@@ -56,7 +57,7 @@ const count = computed(() => library.games.length)
         <!-- Muted like the line above, not faint (Cowork: faint for «not yet»?). -->
         <div class="text-caption text-ink-muted wrap-anywhere">{{ t('settingsUi.notYet') }}</div>
         <template #action>
-          <Button :fade="ButtonFade.Dim" disabled :title="t('settingsUi.notYet')">
+          <Button :fade="ButtonFade.Dim" :icon="LogIn" disabled :title="t('settingsUi.notYet')">
             {{ t('firstRun.ready.driveSignIn') }}
           </Button>
         </template>

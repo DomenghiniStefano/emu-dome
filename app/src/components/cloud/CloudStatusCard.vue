@@ -5,6 +5,7 @@
 // sync went through, the Drive space, and «Sincronizza ora».
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RefreshCw } from '@lucide/vue'
 import type { CloudStatus, GameId } from '@/emu'
 import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -77,6 +78,7 @@ const lastLine = computed(() => {
     <Button
       :size="ButtonSize.Tall"
       :disabled="status.syncing"
+      :icon="RefreshCw"
       data-nav-initial
       @click="emit('syncNow')"
     >

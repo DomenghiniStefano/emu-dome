@@ -3,7 +3,7 @@
 // games found per console.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Folder } from '@lucide/vue'
+import { Folder, FolderPlus, X } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -55,21 +55,21 @@ const found = computed(() => library.progress?.found ?? 0)
         <span class="min-w-0 flex-1 truncate text-ink">{{
           f.name ?? t('library.folderUnnamed')
         }}</span>
+        <!-- Repeated on every folder: the icon alone (#104), «Rimuovi» its tooltip. -->
         <Button
           :variant="ButtonVariant.GhostRegular"
-          :size="ButtonSize.Small"
-          :aria-label="
-            t('firstRun.games.removeFolder', { path: f.name ?? t('library.folderUnnamed') })
-          "
+          :size="ButtonSize.IconRow"
+          :icon="X"
+          :label="t('firstRun.games.removeFolder', { path: f.name ?? t('library.folderUnnamed') })"
+          :title="t('firstRun.games.remove')"
           @click="removeFolder(f.path)"
-        >
-          {{ t('firstRun.games.remove') }}
-        </Button>
+        />
       </li>
     </Card>
     <Button
       :size="ButtonSize.Tall"
       class="self-start"
+      :icon="FolderPlus"
       :data-nav-initial="library.folders.length ? undefined : ''"
       @click="addFolder"
     >

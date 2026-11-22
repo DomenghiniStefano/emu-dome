@@ -67,9 +67,9 @@ watch(() => [signedIn.value, cloud.status?.lastSync], reload)
           :variant="ButtonVariant.Primary"
           :size="ButtonSize.Large"
           :disabled="downloading !== null"
+          :icon="Download"
           @click="downloadAndPlay(chosen)"
         >
-          <Download :size="16" :stroke-width="2" aria-hidden="true" />
           {{ t('cloud.drive.play') }}
         </Button>
         <Progress

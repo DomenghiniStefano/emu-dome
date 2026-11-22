@@ -36,6 +36,7 @@ import SettingSlider from './SettingSlider.vue'
 import SettingSwatches from './SettingSwatches.vue'
 import SettingTextField from './SettingTextField.vue'
 import SettingToggle from './SettingToggle.vue'
+import { rowActionIcon } from './rowActionIcon'
 import { chosenList } from './settingRowModel'
 import { useSettingRow } from './useSettingRow'
 
@@ -78,6 +79,8 @@ const toasts = useToasts()
 const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
+/** The icon on the row's own button, by its kind (#104). */
+const actionIcon = computed(() => rowActionIcon(kind.value))
 const disabled = computed(() => state.value.disabled)
 /** Choice cards and a folder list take the card's whole width when the rows sit in columns
  * (RowColumns). */
@@ -142,9 +145,9 @@ async function choose() {
           :variant="ButtonVariant.Text"
           :fade="ButtonFade.None"
           :size="ButtonSize.Bare"
+          :icon="Undo2"
           @click="emit('reset')"
         >
-          <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />
           {{
             state.fallback
               ? t('settingsUi.useValueOf', { level: levelName(state.fallback) })
@@ -211,6 +214,7 @@ async function choose() {
           :variant="ButtonVariant.Soft"
           :fade="ButtonFade.None"
           :disabled="disabled || compact"
+          :icon="actionIcon"
           @click="emit('open')"
         >
           {{ t('settingsUi.openControls') }}
@@ -221,6 +225,7 @@ async function choose() {
           :variant="ButtonVariant.Soft"
           :fade="ButtonFade.None"
           :disabled="disabled || compact || !twoScreens"
+          :icon="actionIcon"
           @click="emit('edit')"
         >
           {{ buttonText }}
@@ -231,6 +236,7 @@ async function choose() {
           :variant="ButtonVariant.Soft"
           :fade="ButtonFade.None"
           :disabled="disabled || compact || !console"
+          :icon="actionIcon"
           @click="emit('edit')"
         >
           {{ buttonText }}
@@ -238,6 +244,7 @@ async function choose() {
         <SettingFileAction
           v-else-if="kind.type === 'file' || kind.type === 'action'"
           :text="buttonText"
+          :icon="actionIcon"
           :file-state="fileName || noFile"
           :not-yet="state.notYet"
           :disabled="disabled"

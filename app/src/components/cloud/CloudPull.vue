@@ -5,6 +5,7 @@
 // its own so A presses the button.
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { SkipForward } from '@lucide/vue'
 import { emu, type CloudProgress } from '@/emu'
 import { Button, ButtonSize } from '@/components/ui/button'
 import { useNavScope } from '@/nav'
@@ -34,7 +35,13 @@ async function skip() {
     <p class="m-0 text-center text-ink-muted">
       {{ skipped ? t('cloud.pull.skipped') : t('cloud.pull.text') }}
     </p>
-    <Button :size="ButtonSize.Medium" :disabled="skipped" data-nav-initial @click="skip">
+    <Button
+      :size="ButtonSize.Medium"
+      :icon="SkipForward"
+      :disabled="skipped"
+      data-nav-initial
+      @click="skip"
+    >
       {{ t('cloud.pull.skip') }}
     </Button>
   </div>

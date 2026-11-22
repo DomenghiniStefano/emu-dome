@@ -10,6 +10,7 @@
 // controls/useRemapLevel.ts's, the capture's conflicts controls/useBindingConflict.ts's.
 import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Copy, RotateCcw, Zap } from '@lucide/vue'
 import { type Button as GameButton, type PadFamily, type PadState, type SettingRow } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
 import type { GameFocus } from '@/lib/gameDetails'
@@ -187,12 +188,13 @@ const hint = computed(() => {
           <Heading as="h2" :variant="HeadingVariant.Overline">{{
             t('controls.otherActions')
           }}</Heading>
-          <Button class="self-start" @click="restoreDefaults">
+          <Button class="self-start" :icon="RotateCcw" @click="restoreDefaults">
             {{ t('controls.restoreDefaults') }}
           </Button>
           <Button
             :fade="ButtonFade.Dim"
             class="self-start"
+            :icon="Copy"
             disabled
             :title="t('settingsUi.notYet')"
           >
@@ -201,6 +203,7 @@ const hint = computed(() => {
           <Button
             :fade="ButtonFade.Dim"
             class="self-start"
+            :icon="Zap"
             disabled
             :title="t('settingsUi.notYet')"
           >

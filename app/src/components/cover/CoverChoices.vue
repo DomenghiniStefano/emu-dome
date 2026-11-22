@@ -7,7 +7,7 @@
 // cancel.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus } from '@lucide/vue'
+import { ArrowRight, Check, Plus } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import { DialogTitle, DialogTitleSize } from '@/components/ui/dialog'
@@ -59,10 +59,10 @@ const desc = (c: CoverChoice) => {
   return t('library.cover.screenshotDesc', { count: props.shots.length }, props.shots.length)
 }
 /** Generated and icon apply at once; a screenshot and an image go on to «Adatta la copertina». */
+/** «Continua» to another step (an arrow), or «Usa questa copertina» at once (a check, #104). */
+const goesOn = computed(() => choice.value === 'screenshot' || choice.value === 'user')
 const nextLabel = computed(() =>
-  choice.value === 'screenshot' || choice.value === 'user'
-    ? t('library.cover.continue')
-    : t('library.cover.use'),
+  goesOn.value ? t('library.cover.continue') : t('library.cover.use'),
 )
 </script>
 
@@ -141,6 +141,7 @@ const nextLabel = computed(() =>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="goesOn ? ArrowRight : Check"
         :disabled="busy"
         @click="emit('next')"
       >
