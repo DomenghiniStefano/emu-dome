@@ -35,6 +35,7 @@
 /* Written in the structure from the start (#32). */
 @source '../components/search';
 @source '../components/notifications';
+@source '../components/cloud';
 @source '../components/about';
 @source '../components/updates';
 @source '../components/tv-mode';

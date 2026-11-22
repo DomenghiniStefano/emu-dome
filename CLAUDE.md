@@ -59,7 +59,7 @@ the user's image framed in «Adatta la copertina» (#85), screen effects (libras
 melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
 back to the CPU, encrypted games refused with E10), and the Google Drive sync (#20 backend; #31 wiring: pull
 before launch, heartbeat, push after exit, «Sincronizza ora», games on Drive, the `cloud_*` commands and
-`cloud://` events; the Cloud screens are the interface half of #31), and the search everywhere
+`cloud://` events; the Cloud section, G03 / G04 / G05 / G14 and Drive-only games in the library), and the search everywhere
 and the notification centre in the top bar (#32, X01–X03), and the release plumbing (#44: per-user installer, Linux
 package targets, the Android App Bundle, EmuDome updating itself with X06, the licences page, the log file and its
 export; no release built yet, see «Known gaps»). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
@@ -405,6 +405,12 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
                          pure, tested; CoverCropDialog for the screenshot toast's «Usa come copertina»,
                          useCoverRequest), toasts, closing (the loader while a game closes),
+                         cloud (#31: CloudView, the Cloud section signed out / in with its status card and
+                         tabs; cloudState.ts the app's copy of `CloudStatus`, the transfer running, the
+                         Drive games, the G04 queue and G05's question, started by useCloudEvents in
+                         App.vue; CloudFlowOverlays G04 / G05 / G14's strip, CloudPull G03 in the starting
+                         scene, `clearToLaunch` before a library game opens; CloudDriveShelf the library's
+                         games only on Drive; cloud.ts the pure decisions, tested),
                          search (X01 / X02, #32: SearchPalette, mounted once in App.vue, opens over its
                          host (useSearch.ts: the shell or the quick menu, Ctrl + K or Y); searchContext.ts
                          what can be chosen there, search.ts the matching, both pure, tested;
@@ -1026,7 +1032,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   saves both ways, not the open game's), game files up / down / to Drive's trash on request only, devices, G04's
   answers. `cloud.ssaves`, `cloud.squick`, `cloud.ssettings`, `cloud.sauto` are read; `cloud.swifi` is not (nothing
   tells Wi-Fi from mobile data yet); `cloud.acct`, `cloud.space`, `cloud.sgames` are the account, space and games
-  rows. Not yet: the Cloud screens (the interface half of #31); a periodic push while playing (only the marker beats);
+  rows. Not yet: a periodic push while playing (only the marker beats);
   pulled settings reach the open screens only when the settings store reads the file again (no `settings://changed`
   for them); the activity list lives in memory (empty after a restart); a game file going up reports only its start
   and end (no per-chunk progress), and a resumable upload resumes within its call, not after a restart; the
@@ -1036,6 +1042,14 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   refused (`cloudSignInUnsupported`; plan in `emudome-platform/src/cloud.rs`), so nothing syncs there, and no TLS
   roots there (`emudome-sync/src/http.rs`). Linux: the Secret Service backend is not compiled or tried on this
   machine. The browser page after the sign-in shows the texts `cloud_sign_in` receives from the interface.
+- Cloud interface (Trello #31, `components/cloud`): the games only on Drive are a block «Solo su Google Drive»
+  under the library's grid (and under L02), not tiles of the windowed grid, and «Scarica e gioca» lives there,
+  not in the game details (a Drive-only game has no `LibraryGame`; open question for the owner on the card); the
+  TV shelves do not show them. After «Scarica e gioca» the game opens once `library://changed` lists it (20 s at
+  most, else a notice). G04 shows outside the game only (its answer writes the saves the core holds); a conflict
+  met while a game starts waits in the queue and in the status card. G04's versions have no picture (`thumb` is
+  null). «Cosa sincronizzare» edits at «Tutti i giochi» only (`cloud.squick` per console stays in Settings ›
+  Cloud). A failed `cloud_launch_check` never blocks an open.
 
 ## Design and interface work
 

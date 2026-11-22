@@ -4,6 +4,7 @@ import { defineComponent, h, reactive } from 'vue'
 import type { SettingEntry, SettingKey, SettingRow, SettingsSchema } from '@/emu'
 import { i18n } from '@/i18n'
 import { refreshBiosStatus } from '@/lib/biosStatus'
+import { cloud } from '@/components/cloud/cloudState'
 import { useSettingRow, type SettingRowInput } from './useSettingRow'
 
 const bridge = vi.hoisted(() => ({ appVersion: vi.fn(), biosStatus: vi.fn() }))
@@ -121,7 +122,35 @@ describe('useSettingRow', () => {
       t('settings.bios.bgba.status.builtin'),
     )
     expect(setup(entry('cloud.acct')).row.desc.value).toBe(t('settings.cloud.acct.value.signedOut'))
-    expect(setup(entry('cloud.space')).row.desc.value).toBe(t('settingsUi.notYet'))
+    expect(setup(entry('cloud.space')).row.desc.value).toBe(
+      t('settings.cloud.acct.value.signedOut'),
+    )
+  })
+
+  it('shows the Google account and its space as the sync has them (#31)', () => {
+    const status = {
+      configured: true,
+      supported: true,
+      signedIn: true,
+      account: { name: 'Ada', email: null },
+      quota: { limit: 15 * 1024 ** 3, usage: 6 * 1024 ** 3 },
+      emudomeBytes: 1024 ** 3,
+      syncing: false,
+      lastSync: 1,
+      conflicts: [],
+      pending: [],
+      error: null,
+    }
+    cloud.status = status
+    const acct = setup(entry('cloud.acct')).row
+    expect(acct.desc.value).toBe(t('settings.cloud.acct.desc', { name: 'Ada' }))
+    expect(acct.buttonText.value).toBe(t('settings.cloud.acct.value.open'))
+    expect(setup(entry('cloud.space')).row.desc.value).toBe(
+      t('settings.cloud.space.desc', { used: '1 GB', free: '9 GB', total: '15 GB' }),
+    )
+    cloud.status = { ...status, signedIn: false, configured: false }
+    expect(setup(entry('cloud.acct')).row.desc.value).toBe(t('errors.cloudNotConfigured'))
+    cloud.status = null
   })
 
   it('shows the app’s version once the bridge answers; other rows never ask', async () => {

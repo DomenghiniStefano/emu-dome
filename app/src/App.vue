@@ -8,6 +8,7 @@ import { useDensity } from '@/composables/useDensity'
 import { uiMode, useUiMode } from '@/composables/useUiMode'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useClosing } from '@/components/closing/useClosing'
+import { useCloudEvents } from '@/components/cloud/useCloudEvents'
 import { useDropTarget } from '@/components/library/useDropTarget'
 import { useFirstRun } from '@/components/first-run/useFirstRun'
 import { useGameKeys } from '@/components/game/useGameKeys'
@@ -24,6 +25,7 @@ import { hideSplash } from '@/lib/splash'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
 import ClosingOverlay from '@/components/closing/ClosingOverlay.vue'
+import CloudFlowOverlays from '@/components/cloud/CloudFlowOverlays.vue'
 import FirstRun from '@/components/first-run/FirstRun.vue'
 import GameCanvas from '@/components/game/GameCanvas.vue'
 import GameFlowOverlays from '@/components/game/GameFlowOverlays.vue'
@@ -54,6 +56,8 @@ const keys = useGameKeys(session)
 const drop = useDropTarget(game, toast)
 const events = useShellEvents(session, toast, drop.listen)
 const closing = useClosing(toast)
+// Google Drive sync (#31): the status, the transfers, G04 and G05 (CloudFlowOverlays).
+const cloudEvents = useCloudEvents(session)
 // NDS / 3DS: the layout shown, swapped, the lid (quick menu, G15).
 const screens = useScreenStatus(toast)
 
@@ -85,6 +89,7 @@ onMounted(async () => {
   await Promise.all([
     settle(events.listen()),
     settle(closing.listen()),
+    settle(cloudEvents.listen()),
     settle(screens.listen()),
     settle(decideFirstRun()),
     settle(loadVideoMode()),
@@ -195,6 +200,8 @@ onMounted(async () => {
     @broken-close="launch.closeBroken"
   />
 
+  <!-- Google Drive sync (#31): G05, G04 outside the game, G14's strip after a game closed. -->
+  <CloudFlowOverlays v-if="game || firstRun === false" :in-game="!!game" />
   <!-- The TV question (#30): a controller connected / the last one gone; not over the first run,
        nor while a game closes. -->
   <TvModeDialog

@@ -4,12 +4,12 @@ import { tvHints } from './tvHints'
 import { hazeStyle } from './useCoverHaze'
 
 describe('isFlush', () => {
-  it('is flush for Settings, Controls and Saves, padded for Library and Cloud', () => {
+  it('is flush for Settings, Controls, Saves and Cloud, padded for Library', () => {
     expect(isFlush('settings', false)).toBe(true)
     expect(isFlush('controls', false)).toBe(true)
     expect(isFlush('saves', false)).toBe(true)
+    expect(isFlush('cloud', false)).toBe(true)
     expect(isFlush('library', false)).toBe(false)
-    expect(isFlush('cloud', false)).toBe(false)
   })
 
   it('is flush while a game’s details are shown', () => {
@@ -18,7 +18,6 @@ describe('isFlush', () => {
 
   it('is flush for the TV library, whose shelves reach the edge', () => {
     expect(isFlush('library', false, true)).toBe(true)
-    expect(isFlush('cloud', false, true)).toBe(false)
   })
 })
 
@@ -70,10 +69,10 @@ describe('tvHints', () => {
 })
 
 describe('hasOwnInitialFocus', () => {
-  it('leaves the first focus on the rail for a placeholder section only', () => {
+  it('gives every section its own first focus', () => {
     expect(hasOwnInitialFocus('library')).toBe(true)
     expect(hasOwnInitialFocus('saves')).toBe(true)
-    expect(hasOwnInitialFocus('cloud')).toBe(false)
+    expect(hasOwnInitialFocus('cloud')).toBe(true)
   })
 })
 

@@ -30,6 +30,7 @@ import { cn } from '@/lib/cn'
 import { report } from '@/lib/errors'
 import { useNavScope } from '@/nav'
 import { emu, type LibraryGame, type SettingKey } from '@/emu'
+import CloudView from '@/components/cloud/CloudView.vue'
 import ControlsView from '@/components/controls/ControlsView.vue'
 import GameDetails from '@/components/details/GameDetails.vue'
 import LibraryView from '@/components/library/LibraryView.vue'
@@ -40,7 +41,6 @@ import SettingsView from '@/components/settings/SettingsView.vue'
 import UpdateReadyCard from '@/components/updates/UpdateReadyCard.vue'
 import AppRail from './AppRail.vue'
 import AppTopBar from './AppTopBar.vue'
-import SectionPlaceholder from './SectionPlaceholder.vue'
 import TvButtonBar from './TvButtonBar.vue'
 import TvTabs from './TvTabs.vue'
 import { tvHints } from './tvHints'
@@ -184,12 +184,13 @@ const go = (to: Route) => (route.value = to)
           :game="arrivalFor(route, 'settings')?.game ?? null"
           :row="arrivalFor(route, 'settings')?.row ?? null"
           @open-controls="go(openSection(route, 'controls'))"
+          @open-cloud="go(openSection(route, 'cloud'))"
         />
         <ControlsView
           v-else-if="section === 'controls'"
           :game="arrivalFor(route, 'controls')?.game ?? null"
         />
-        <SectionPlaceholder v-else :section="section" />
+        <CloudView v-else />
       </main>
     </div>
     <TvButtonBar v-if="uiMode.tv" :hints="tvHints(section, details !== null)" />

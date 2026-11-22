@@ -66,6 +66,8 @@ const emit = defineEmits<{
   choose: []
   /** A screen layout (`screens.custom`): open the C09 screens editor at the page's scope. */
   edit: []
+  /** The Google account (`cloud.acct`, #31): open the Cloud section, where it is signed in / out. */
+  openCloud: []
 }>()
 
 const { t } = useI18n()
@@ -85,6 +87,7 @@ function set(v: SettingValue) {
 /** A file row with its own picker (FILE_PICKERS) opens it here, an action row with a backend
  * (ROW_ACTIONS) runs it here, the others let the page do it. */
 async function choose() {
+  if (key.value === 'cloud.acct') return emit('openCloud')
   const act = ROW_ACTIONS[key.value]
   if (act) {
     if (disabled.value) return

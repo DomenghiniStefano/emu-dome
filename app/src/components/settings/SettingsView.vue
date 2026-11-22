@@ -60,7 +60,7 @@ const props = defineProps<{
   /** X01, the search everywhere: the setting whose page opens with its row lit (read on mount). */
   row?: SettingKey | null
 }>()
-const emit = defineEmits<{ openControls: [] }>()
+const emit = defineEmits<{ openControls: []; openCloud: [] }>()
 const { t } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
@@ -272,6 +272,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
             @set="v => store.set(e.key, v)"
             @reset="store.reset(e.key)"
             @open="emit('openControls')"
+            @open-cloud="emit('openCloud')"
             @choose="choose(e.key)"
             @edit="editScreens"
             @animationend="lit = null"

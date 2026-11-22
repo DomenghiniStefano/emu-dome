@@ -384,6 +384,24 @@
     ],
     entries,
   };
+  // `cloud` (#31): the Cloud page of the catalogue, for «Cosa sincronizzare».
+  if (scenario.cloud) {
+    const g = { levels: ["default", "global"], mostUsed: false, wired: true };
+    const segments = (options) => choice("segments", options);
+    entries.push(
+      entry("cloud.acct", "cloud", { type: "action" }, null, g),
+      entry("cloud.ssaves", "cloud", { type: "toggle" }, true, g),
+      entry("cloud.squick", "cloud", segments(["all", "last", "none"]), "all", g),
+      entry("cloud.ssettings", "cloud", { type: "toggle" }, true, g),
+      entry("cloud.sauto", "cloud", segments(["game", "manual"]), "game", g),
+    );
+    schema.pages.push("cloud");
+    schema.sections.push(
+      { page: "cloud", id: "account", keys: ["cloud.acct"] },
+      { page: "cloud", id: "what", keys: ["cloud.ssaves", "cloud.squick", "cloud.ssettings"] },
+      { page: "cloud", id: "when", keys: ["cloud.sauto"] },
+    );
+  }
   // `search` (X01, #32): a Video page with the rows the search scenarios find, their synonyms as
   // the catalogue has them («tearing» finds nothing by name and suggests V-Sync).
   if (scenario.search) {
@@ -1109,7 +1127,82 @@
       ],
     },
     "plugin:app|version": "0.0.1",
+    ...cloudAnswers(),
   };
+  // Google Drive sync (#31). `cloud`: "in" (signed in, synced), "conflict" (one game with two
+  // versions), "offline" (E07 in the status), "notConfigured" (a build without the Google
+  // client); anything else, or none, is signed out on a build that can sign in.
+  function cloudAnswers() {
+    const GB = 1024 ** 3;
+    const HOUR = 3600000;
+    const mode = scenario.cloud ?? "out";
+    const signedIn = ["in", "conflict", "offline"].includes(mode);
+    const offline = { code: "cloudOffline", params: { detail: "dns error" } };
+    const status = {
+      configured: mode !== "notConfigured",
+      supported: true,
+      signedIn,
+      account: signedIn ? { name: "Stefano D.", email: null } : null,
+      quota: signedIn ? { limit: 15 * GB, usage: 5.6 * GB } : null,
+      emudomeBytes: signedIn ? 2.1 * GB : null,
+      syncing: false,
+      lastSync: signedIn ? FIXED - HOUR : null,
+      conflicts: mode === "conflict" ? ["nds:02"] : [],
+      pending: [],
+      error: mode === "offline" ? offline : null,
+    };
+    const cloudGame = (id, title, console_, size, state) => ({
+      id,
+      title,
+      console: console_,
+      size,
+      state,
+      here: state !== "driveOnly",
+      onDrive: state !== "localOnly",
+      savesOnDrive: true,
+      devices: ["Galaxy A71"],
+    });
+    const version = (device, modified, playTime) => ({
+      device,
+      modified,
+      playTime,
+      size: 524288,
+      thumb: null,
+    });
+    const dsState = mode === "conflict" ? "conflict" : "both";
+    return {
+      cloud_status: status,
+      cloud_games: signedIn
+        ? [
+            cloudGame("gba:01", "Pocket Quest Advance", "gba", 4194304, "both"),
+            cloudGame("nds:02", "Dual Screen Tales", "nds", 134217728, dsState),
+            cloudGame("gb:03", "Tiny Blocks", "gb", 1048576, "localOnly"),
+            cloudGame("3ds:0a", "Coral Orbit", "3ds", 1.8 * GB, "driveOnly"),
+          ]
+        : [],
+      cloud_devices: signedIn
+        ? [
+            { id: "a", name: "DESKTOP-SALOTTO", updated: FIXED - HOUR, games: 5, thisDevice: true },
+            { id: "b", name: "Galaxy A71", updated: FIXED - day, games: 3, thisDevice: false },
+          ]
+        : [],
+      cloud_activity: signedIn
+        ? [
+            { at: FIXED - HOUR, kind: "pushed", game: "gba:01", files: 2, error: null },
+            { at: FIXED - 2 * HOUR, kind: "settings", game: null, files: 1, error: null },
+            { at: FIXED - day, kind: "failed", game: null, files: 0, error: offline },
+          ]
+        : [],
+      cloud_conflict: {
+        id: "nds:02",
+        title: "Dual Screen Tales",
+        files: [],
+        local: version(null, FIXED - 20 * 60000, 31 * 3600 + 12 * 60),
+        remote: version("Galaxy A71", FIXED - day, 30 * 3600 + 48 * 60),
+      },
+      cloud_launch_check: { kind: "free" },
+    };
+  }
   // Game details (L05, L06) with something in them: quick saves, an in-game save with backups
   // and a set-aside broken one, settings of the game's own.
   if (scenario.gameSaves) {

@@ -8,25 +8,32 @@
 //
 // The images load lazily and decode off the main thread: a library of hundreds of covers fetches
 // only those near the screen.
+//
+// `missing`: the game file is not on this device (a game only on Google Drive, #31): faded to
+// `opacity-missing` and edged in dashes, the look of a game whose folder is not reachable.
 import { computed, ref, watch, type HTMLAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/cn'
 import type { LibraryGame } from '@/emu'
 import { CoverSize, coverBadgeVariants, coverVariants, coverVersionsVariants } from './variants'
 
+/** What a cover shows of a game: a library game, or one known only by its title (Drive). */
+export type CoverGame = Pick<LibraryGame, 'console' | 'title' | 'colour' | 'cover' | 'coverUrl'>
+
 const props = withDefaults(
   defineProps<{
-    game: LibraryGame
+    game: CoverGame
     size?: CoverSize
     /** The console's short name in a corner. */
     badge?: boolean
     /** The game's title over a cover without a picture (off on the thumbnails). */
     title?: boolean
+    missing?: boolean
     /** How many regional versions its family holds (#102): the «N versioni» tag from 2. */
     versions?: number
     class?: HTMLAttributes['class']
   }>(),
-  { size: CoverSize.Fill, badge: true, title: true, versions: 0, class: undefined },
+  { size: CoverSize.Fill, badge: true, title: true, missing: false, versions: 0, class: undefined },
 )
 
 const { t } = useI18n()
@@ -45,7 +52,15 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
 
 <template>
   <div
-    :class="cn(coverVariants({ size }), 'bg-cover-tint', props.class)"
+    :class="
+      cn(
+        coverVariants({ size }),
+        'bg-cover-tint',
+        missing &&
+          'opacity-missing outline outline-offset-inset outline-line-strong outline-dashed',
+        props.class,
+      )
+    "
     :style="{ '--cover-tint': game.colour }"
   >
     <img

@@ -964,6 +964,75 @@ for (const screen of ["topbar", "results", "bell"])
     height: 844,
   };
 
+// Google Drive sync (#31): the Cloud section signed out / not configured / signed in (each tab),
+// a conflict and G04, offline (E07), G05, G03 in the starting scene, G14's strip, and the
+// library's games only on Drive; at the smallest and the largest window, a light one and the
+// phone. The mock's `cloud` option sets the status.
+const toCloud = rail(3);
+const cloudTab = (n) => `__press(document.querySelectorAll('main [role=tab]')[${n}])`;
+const MIN = 60000;
+const CLOUD = {
+  out: { mock: { cloud: "out" }, steps: [toCloud] },
+  "not-configured": { mock: { cloud: "notConfigured" }, steps: [toCloud] },
+  in: { mock: { cloud: "in" }, steps: [toCloud] },
+  "tab-sync": { mock: { cloud: "in" }, steps: [toCloud, cloudTab(1)] },
+  "tab-devices": { mock: { cloud: "in" }, steps: [toCloud, cloudTab(2)] },
+  "tab-activity": { mock: { cloud: "in" }, steps: [toCloud, cloudTab(3)] },
+  "tab-how": { mock: { cloud: "in" }, steps: [toCloud, cloudTab(4)] },
+  conflict: { mock: { cloud: "conflict" }, steps: [toCloud] },
+  g04: {
+    mock: { cloud: "conflict" },
+    steps: [
+      toCloud,
+      `[...document.querySelectorAll('main button')].find(b => b.textContent.includes('Dual Screen Tales')).click()`,
+    ],
+  },
+  offline: { mock: { cloud: "offline" }, steps: [toCloud] },
+  g05: {
+    mock: { cloud: "in" },
+    steps: [
+      `__emit('cloud://in-use', { id: 'nds:02', inUse: { kind: 'elsewhere', name: 'Galaxy A71', since: Date.now() - 12 * ${MIN}, beat: Date.now() } })`,
+    ],
+  },
+  g03: {
+    mock: { cloud: "in" },
+    steps: [
+      `import('/src/components/game/gameFlow.ts').then(m => { m.flow.launching = { title: 'Dual Screen Tales', colour: '#7a3b8c' } })`,
+      `__emit('cloud://progress', { phase: 'pulling', game: 'nds:02', done: 300000, total: 1000000 })`,
+    ],
+  },
+  g14: {
+    mock: { cloud: "in" },
+    steps: [`__emit('cloud://progress', { phase: 'pushing', game: 'gba:01', done: 0, total: 0 })`],
+    freeze: true,
+  },
+  library: { mock: { cloud: "in" }, steps: [`document.querySelector('main').scrollTop = 99999`] },
+  "library-empty": { mock: { cloud: "in", emptyLibrary: true }, steps: [] },
+};
+for (const [screen, s] of Object.entries(CLOUD))
+  for (const [size, [width, height]] of Object.entries(SIZES))
+    SCENARIOS[`cloud-${screen}-dark-${size}`] = {
+      ...s,
+      mock: { ...s.mock, lang: "it" },
+      width,
+      height,
+    };
+for (const screen of ["out", "in", "g04"])
+  SCENARIOS[`cloud-${screen}-light-small`] = {
+    ...CLOUD[screen],
+    mock: { ...CLOUD[screen].mock, lang: "it", theme: "light" },
+    width: SIZES.small[0],
+    height: SIZES.small[1],
+  };
+for (const screen of ["out", "in", "g04", "library"])
+  SCENARIOS[`cloud-${screen}-phone`] = {
+    ...CLOUD[screen],
+    mock: { ...CLOUD[screen].mock, lang: "it", device: "phone" },
+    touch: true,
+    width: 390,
+    height: 844,
+  };
+
 /** A trusted key press, or the pointer moved over an element. */
 async function act(p, step) {
   if (step.key) {
