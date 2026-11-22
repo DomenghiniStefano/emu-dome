@@ -69,7 +69,7 @@ without games there is `tools/test-rom/emudome-test.gba`: magenta screen, it tur
 
 Your data (saves, settings, library, covers, system files) lives in the folders named after the app identifier,
 `it.domehub.emudome`: `%APPDATA%` and `%LOCALAPPDATA%` on Windows, `~/.local/share` on Linux.
-`EMUDOME_DATA_DIR=<folder>` puts all of it in another folder instead (test runs). Builds before 2026-11-21 used
+`EMUDOME_DATA_DIR=<folder>` puts all of it in another folder instead (test runs). Older builds used
 `com.domenghini.emudome`: the first start of a newer build copies those folders to the new ones once, verifies the
 copy, and leaves the old folders as they were (remove them by hand when you are sure). Android does not carry
 over: the new identifier is a different app there, so install it fresh.
@@ -119,17 +119,17 @@ Controllers: positional mapping (right button = A, bottom = B), Home button = me
 
 The full log, entry by entry, is `docs/fase0-esito.md`. In short:
 
-- **Windows** (2026-11-16): native video under the quick menu (wgpu on Vulkan), 59.7 FPS at 1×, audio heard,
+- **Windows**: native video under the quick menu (wgpu on Vulkan), 59.7 FPS at 1×, audio heard,
   controllers through SDL3 (Steam Controller, 8BitDo). Last reported open: the window turns transparent in
   webview mode.
 - **Linux** (virtual X11, mGBA 0.10.2): windowless host 1× ≈ 59.7 FPS, 2× ≈ 120, Max ≈ 900; the app in webview
   mode works. Native mode does not (the GTK surface covers the webview): that is why the webview is the Linux
   default.
-- **Android** (Galaxy A71, 2026-11-16): native video under the WebView, ≈ 59.8 FPS (Vulkan), touch controls, the
+- **Android** (Galaxy A71): native video under the WebView, ≈ 59.8 FPS (Vulkan), touch controls, the
   surface survives background and resume. Not tested yet: audio quality and delay (the test ROM is silent),
   controllers (read through Android's input events since #47, not run on a device yet), landscape layout.
-- **NDS** (melonDS DS, windowless, Windows, 2026-11-19): two screens, touch, 60 FPS at 1× on the test ROM, states.
-- **3DS** (Azahar, windowless, Windows, 2026-11-21, homebrew): through the shell's host on the app's Vulkan
+- **NDS** (melonDS DS, windowless, Windows): two screens, touch, 60 FPS at 1× on the test ROM, states.
+- **3DS** (Azahar, windowless, Windows, homebrew): through the shell's host on the app's Vulkan
   device, 58.7-60.3 FPS at 1× (debug build), Max 685-802, two screens and touch; software renderer 43 FPS.
   Not tested yet in the app window (the owner's UAT), nor audio and controllers. Known Azahar crash: loading a
   state of content without a title ID (all `.3dsx` homebrew).
