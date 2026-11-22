@@ -1,7 +1,6 @@
 # Feasibility: hardware rendering (`SET_HW_RENDER`)
 
-Trello #16. Written 2026-11-19 on `feat/hwrender`. This file collects the whole answer; the step 0 and step 1 entries
-of 2026-11-17/18 stay in `docs/feasibility.md` («Brief for Claude Code · hardware rendering spike» and «Hardware
+Trello #16. This file collects the whole answer; the step 0 and step 1 entries stay in `docs/feasibility.md` («Brief for Claude Code · hardware rendering spike» and «Hardware
 rendering (`SET_HW_RENDER`)»), and the numbers from there are repeated here only where they are needed.
 
 ## Question
@@ -191,7 +190,8 @@ measure of real games.
   wgpu-hal's internal GL adapter: the spike borrows wgpu-hal's to avoid window code, but that context belongs to
   wgpu's GL backend and its API is not meant for a third party driving it.
 - The environment side (`SET_HW_RENDER`, negotiation, interfaces, framebuffer callbacks) belongs in `emudome-core` as
-  plain FFI; device creation, wrapping and interop next to `video.rs` (as decided on 2026-11-18).
+  plain FFI; device creation, wrapping and interop next to `video.rs` (built that way: `hw_render/`,
+  `gpu_interop.rs`, `hw_render.rs`).
 - The settings engine offers `citra_graphics_api` only `Vulkan` and `Software`, and `melonds_render_mode` `opengl` only
   where a desktop GL context exists (shown disabled with the reason elsewhere: project rule).
 
@@ -207,8 +207,8 @@ measure of real games.
 ## Risks
 
 1. **Phone speed** of 3DS emulation: unmeasured, decides whether 3DS ships on Android.
-2. **Vulkan device features** given to Azahar's `create_device` (from 2026-11-18): wgpu may use features the core did
-   not enable; unvalidated.
+2. **Vulkan device features** given to Azahar's `create_device`: wgpu may use features the core did not enable;
+   unvalidated. No longer applies in the shell: the app opens the device itself (below, «Vulkan in the shell»).
 3. **GL/Vulkan interop correctness**: layouts and semaphores follow the `EXT_external_objects` spec as read, but no
    validation layer was run; the spike leaks the three exported Win32 handles per session (closed only at exit); a
    driver without the GL extensions needs the readback fallback (supported by NVIDIA here; AMD/Intel not checked).
@@ -222,11 +222,11 @@ measure of real games.
 
 ## The host side, ready since #78
 
-What the hardware-rendering work builds on (Trello #78, 2026-11-21); nothing here renders on the GPU yet:
+What the hardware-rendering work builds on (Trello #78); the GPU rendering itself is the next section:
 
 - **Hardware-rendering calls** go to the session's `HwRenderHandler` (`crates/emudome-core/src/hw_render/`), told
   apart by their raw number (44 with the experimental flag is `SET_HW_SHARED_CONTEXT`, without it
-  `SET_SERIALIZATION_QUIRKS`). Today's handler, `SoftwareOnly`, refuses them all, as before.
+  `SET_SERIALIZATION_QUIRKS`). `SoftwareOnly` refuses them all; `vulkan::VulkanHandler` (#46) accepts Vulkan.
 - **Frames** go to the session's `VideoSink` (`video_sink.rs`) as `VideoFrame::Cpu` (bytes) or `VideoFrame::Gpu`
   (`GpuFrame`: the core's image and the semaphores to wait for, raw handles as integers). A GPU sink must keep
   `Shared::frame` filled (readback on demand) for screenshots, slot thumbnails and the webview path.
@@ -237,7 +237,7 @@ What the hardware-rendering work builds on (Trello #78, 2026-11-21); nothing her
 - **Callbacks from the core's own threads** find their context (one static slot per loaded core, not a
   `thread_local`), and a `need_fullpath` core gets the path only: a 3DS game is never read into memory.
 
-## Vulkan in the shell (#46, 2026-11-21)
+## Vulkan in the shell (#46)
 
 - **One device, the app's.** `GpuService` opens its Vulkan device with wgpu's extensions and features plus what
   Azahar uses when the GPU has them (`gpu_interop::open_device_for_cores`: `geometryShader`, `logicOp`,

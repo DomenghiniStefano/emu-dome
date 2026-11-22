@@ -1,7 +1,8 @@
-# Screen screenshots (design system migration)
+# Screen screenshots
 
 Headless screenshots of the real interface on a mocked Tauri bridge, and a pixel compare, used to
-prove that a refactor changes nothing on screen (Trello #62).
+prove that a refactor changes nothing on screen and to look at a screen at given window sizes
+without opening the app.
 
 1. Start the interface: `cd app; pnpm dev --port <free port>` (never a port already in use).
 2. Start Chrome headless, never visible: `chrome --headless=new --disable-gpu --remote-debugging-port=<cdp>
@@ -27,7 +28,7 @@ prove that a refactor changes nothing on screen (Trello #62).
   `--phone` does the same on a phone upright (412 × 892) with its list, `--phone --grid` with its
   compact grid (#29), `--phone --side` on its side (780 × 360) with the list in two columns (#105:
   also two columns, at least 6 games in view, right from «Gioca» to the next column).
-- `phone-shell.mjs` also has the Galaxy S23 as the owner set it, 360 × 780 (`p780`) and 780 × 360
+- `phone-shell.mjs` also has the Galaxy S23 as its webview reports itself, 360 × 780 (`p780`) and 780 × 360
   (`l780`), and `phone-surround-<nds|3ds|gba>-<p412|p780|l892|l780>` (#105): the native video with
   a built-in side background (`surround: "builtin"` in the mock gives the video page that row and
   value), one hole per screen where the mock's `screens_placements` puts it (headless has no native
@@ -46,7 +47,9 @@ prove that a refactor changes nothing on screen (Trello #62).
   gains the Cloud page. The `cloud-*` scenarios open the Cloud section, its tabs, G04 / G05 / G03 / G14 and the
   library's «Solo su Google Drive».
 - In-game scenarios set `game` in the mock: the game opens at startup (`true` for the shell's
-  screens, `"gba"` / `"nds"` for the quick menu's).
+  screens, `"gba"` / `"nds"` for the quick menu's). The phone's quick menu (#108): `qm-phone-*` at
+  390 × 844 (`phone: true`), `qm-s23-<gba|nds>-*` on the S23 sizes with a game picture, and
+  `qm-desk-*` at 1280 × 800 for the desktop menu.
 - TV mode (#30, the `tv-*` scenarios at 1280 × 720, 1920 × 1080 and 3840 × 2160): `ui: "tv"` fixes it
   (with `pads` the Xbox glyphs, without the Nintendo letters); `pads` alone (Automatica) shows the TV
   question at startup (`tv-ask-*`); `richSettings` + `wiredSettings` give Settings every row kind,
