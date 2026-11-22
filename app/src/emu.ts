@@ -40,6 +40,7 @@ import type { ControlsBindings } from '@/generated/app/ControlsBindings'
 import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { CoverSource } from '@/generated/app/CoverSource'
 import type { Licence } from '@/generated/app/Licence'
+import type { StorageStatus } from '@/generated/app/StorageStatus'
 import type { GameScreenshot } from '@/generated/app/GameScreenshot'
 import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -162,6 +163,7 @@ export type { ControlsBindings } from '@/generated/app/ControlsBindings'
 export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { CoverSource } from '@/generated/app/CoverSource'
 export type { Licence } from '@/generated/app/Licence'
+export type { StorageStatus } from '@/generated/app/StorageStatus'
 export type { LicenceKind } from '@/generated/app/LicenceKind'
 export type { GameScreenshot } from '@/generated/app/GameScreenshot'
 export type { PickedImage } from '@/generated/app/PickedImage'
@@ -475,6 +477,12 @@ export const emu = {
     onChanged: (cb: (s: UpdateStatus) => void): Promise<UnlistenFn> =>
       listen<UpdateStatus>('updates://changed', e => cb(e.payload)),
   },
+  /** E13 (#29): the room left where the saves are written; null when the system does not say. */
+  storage: {
+    status: () => invoke<StorageStatus | null>('storage_status'),
+  },
+  /** Android's back at the shell's root (#29): the app to the background; false on the desktop. */
+  leaveToBackground: () => invoke<boolean>('leave_to_background'),
   /** The «Informazioni» page's actions (`about.rs`). */
   about: {
     /** `about.lic`: EmuDome, the shipped cores and the other components, with their licences. */

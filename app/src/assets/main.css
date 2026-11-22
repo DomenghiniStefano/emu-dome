@@ -40,10 +40,11 @@
 @source '../components/updates';
 @source '../components/tv-mode';
 @source '../components/touch';
+@source '../components/storage';
 
 /* The touch density: `touch:` styles an element while the interface is laid out for a finger
-   (`data-density="touch"` on <html>, set once by composables/useDensity.ts: a phone held upright,
-   boards «Tel-*»). The primitives grow to their touch sizes with it; a screen never threads a
+   (`data-density="touch"` on <html>, set once by composables/useDensity.ts: the phone, upright
+   or on its side, boards «Tel-*» and Trello #29). The primitives grow to their touch sizes with it; a screen never threads a
    `phone` prop through just to change a look. Any ancestor carrying the attribute counts, so the
    Kit page can show the touch look beside the desktop one. `:where` keeps the specificity of the
    plain utility: the touch class wins by coming later, as any variant does. */

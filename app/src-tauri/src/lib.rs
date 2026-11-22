@@ -48,6 +48,7 @@ mod saves;
 mod screens;
 mod settings;
 mod startup;
+mod storage;
 mod theme;
 mod touch;
 mod tuning;
@@ -512,6 +513,9 @@ pub fn run() {
             closing::close_wait,
             closing::close_anyway,
             game::abandon_game,
+            // The phone (#29): E13's room left, Android's back at the shell's root.
+            storage::storage_status,
+            hotkeys::leave_to_background,
             commands::list_slots,
             commands::set_speed,
             commands::set_paused,

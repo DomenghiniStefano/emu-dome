@@ -384,6 +384,14 @@ pub(crate) fn back_button(app: &AppHandle) {
     }
 }
 
+/// Android's back at the shell's root, with no section to go back to (Trello #29): the app goes
+/// to the background as at any app's first screen, still running. `false` where the system has
+/// no background (the desktop) or the activity could not be reached (logged).
+#[tauri::command]
+pub(crate) fn leave_to_background() -> bool {
+    emudome_platform::move_to_background()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{back_route, BackRoute, Holders, Origin};

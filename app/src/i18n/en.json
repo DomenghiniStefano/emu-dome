@@ -2723,6 +2723,11 @@
       "shiftArrows": "Shift + Arrows"
     }
   },
+  "storage": {
+    "low": "Storage almost full: {free} free",
+    "manage": "Manage storage",
+    "manageNotYet": "Managing storage arrives in a future update."
+  },
   "updates": {
     "title": "Update available",
     "ready": "EmuDome {version} is ready",

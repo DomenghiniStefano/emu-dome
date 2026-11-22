@@ -3,6 +3,7 @@
 // Chrome must already run headless with --remote-debugging-port=<cdpPort>.
 import fs from "node:fs";
 import path from "node:path";
+import { phoneShellScenarios } from "./phone-shell.mjs";
 import { quickMenuScenarios } from "./quick-menu.mjs";
 import { touchScenarios } from "./touch.mjs";
 
@@ -272,6 +273,7 @@ const SCENARIOS = {
   },
   ...quickMenuScenarios,
   ...touchScenarios,
+  ...phoneShellScenarios,
 };
 
 // Saves (V01–V06, and the slot tile in Game details): every state in Scuro / Nero / Chiaro, at
@@ -1071,6 +1073,8 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
     height: s.height ?? 800,
     deviceScaleFactor: 1,
     mobile: !!s.touch,
+    // The phone's way round (`screen.orientation`: the camera's side on its side, #29).
+    ...(s.orientation ? { screenOrientation: s.orientation } : {}),
   });
   // A headless page has no focus of its own, so `:focus` (the focus ring) never matches; the
   // scenarios that show the ring ask for it.

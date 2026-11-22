@@ -2723,6 +2723,11 @@
       "shiftArrows": "Maiusc + Frecce"
     }
   },
+  "storage": {
+    "low": "Spazio quasi finito: {free} liberi",
+    "manage": "Gestisci lo spazio",
+    "manageNotYet": "La gestione dello spazio arriva in un prossimo aggiornamento."
+  },
   "updates": {
     "title": "Aggiornamento disponibile",
     "ready": "EmuDome {version} è pronto",

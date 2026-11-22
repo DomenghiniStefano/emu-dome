@@ -132,6 +132,18 @@
   /* The shell: the rail's width and one of its sections' width. */
   --spacing-rail: 76px;
   --spacing-rail-item: 64px;
+  /* The phone's shell (Trello #29, the owner's mockup «EmuDome sul telefono»). The system's
+     bars and the camera's notch, as the webview reports them (`viewport-fit=cover` in
+     index.html; 0 where nothing is reported): the status bar above, the navigation bar below
+     the tab bar (at least 4 when there is none), each side's inset with the phone on its side.
+     The rail's side column keeps at least 28 from the camera's edge (the mockup's room for the
+     notch), more if the system says so. */
+  --spacing-safe-top: env(safe-area-inset-top, 0px);
+  --spacing-tabbar-bottom: max(var(--spacing-4), env(safe-area-inset-bottom, 0px));
+  --spacing-safe-left: env(safe-area-inset-left, 0px);
+  --spacing-safe-right: env(safe-area-inset-right, 0px);
+  --spacing-camera-left: max(var(--spacing-28), env(safe-area-inset-left, 0px));
+  --spacing-camera-right: max(var(--spacing-28), env(safe-area-inset-right, 0px));
 
   /* Page widths: the game details' and Controls' content, a step of the first run, an empty
      state (its text, and the library's framed one), a lead paragraph, the scan's bar, the button tester. */
@@ -161,6 +173,12 @@
   --spacing-bar: 1040px;
   --spacing-grip: 40px;
   --spacing-sheet-screens: 112px;
+  /* The phone on its side (#29): the side panel's width (the card's 440), and its room above
+     (the status bar, at least 12) and at its right edge (the camera when turned that way, at
+     least 16). */
+  --spacing-side-panel: 440px;
+  --spacing-side-panel-top: max(var(--spacing-12), env(safe-area-inset-top, 0px));
+  --spacing-side-panel-end: max(var(--spacing-16), env(safe-area-inset-right, 0px));
   --spacing-tool: 68px;
   /* Its main action's width on the desktop. */
   --spacing-menu-main: 260px;

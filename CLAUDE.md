@@ -194,8 +194,10 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
 - The executable accepts a game path as an argument and opens it at startup. On Android: the `game` extra of the
   launch intent, else the `content://` document of «Open with» (`ACTION_VIEW`, octet-stream).
 - Android's back button (Trello #14, `SystemBridge.kt` → `hotkeys::back_button`): in game with the quick menu
-  closed it is the controller's menu button (`emu://menu`), anywhere else its B (`emu://nav` back). Not yet: leaving
-  to the background at the shell's root, and «Open with» while the app already runs (both need the interface).
+  closed it is the controller's menu button (`emu://menu`), anywhere else its B (`emu://nav` back). At the shell's
+  root on the phone (#29) B goes to the section left last (the route's `trail`), then the Library, then leaves to the
+  background (`leave_to_background` → `SystemBridge.moveToBack`, the app keeps running). Not yet: «Open with» while
+  the app already runs (needs the interface).
 - Homebrew test ROM: `tools/test-rom/emudome-test.gba`. Magenta screen, green while A is held (X key).
 
 ## Architecture
@@ -293,6 +295,9 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          data folders (old_data_dirs: beside the new ones on desktop, none on Android),
                          paths.rs (how long a path this process can create: `path_limits`, Windows long
                          paths for the process and the `LongPathsEnabled` policy, read only);
+                         storage.rs (`disk_space`: the room on a path's volume, fs2, every system; E13),
+                         `move_to_background` (Android's back at the shell's root: `SystemBridge.moveToBack`;
+                         false on the desktop);
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView;
                          SystemBridge: the back button, the launch intent's game, `content://` documents;
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked);
@@ -374,6 +379,8 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          theme.rs (Scuro / Nero / Chiaro: EMUDOME_THEME, else general.theme, else the system)
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
+                         storage.rs (E13, #29: `storage_status`, the room on the data folder's disk and
+                         whether it is low: under 500 MB; `None` when the system does not say)
                          notifications.rs (X03: the store of emudome_core::notifications, the
                          notifications_* commands, notifications://changed; `record` writes off the
                          caller's thread: gamepad.rs records a controller connected after start)
@@ -404,7 +411,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
                          contract tests, never by hand), nav.ts (controller/keyboard focus navigation),
                          components/<feature>/ one folder per feature: shell (AppShell: rail + sections,
-                         outside the game), library, details, saves, settings, controls, quick-menu,
+                         outside the game; on the phone PhoneTabBar upright, the rail as a column on the
+                         camera's edge on its side, lib/phoneLayout.ts decides, #29), storage (E13's
+                         StorageWarning, phone only), library, details, saves, settings, controls, quick-menu,
                          game (GameCanvas: webview mode, the game flow,
                          useScreenStatus: the open game's `ScreenStatus` from `emu://screens`,
                          LidClosedCard: G15 «Coperchio chiuso»),
@@ -856,7 +865,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `spacing-section-x`…), so changing it everywhere is one edit. Values not decided yet are tokens under a
   «pending» comment (decided with the owner), never literals in a screen. Internal design variables only, not user settings.
 - **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
-  components never take a `phone` / `touch` prop just to change their look.
+  components never take a `phone` / `touch` prop just to change their look. It is on for the phone upright and
+  on its side (#29). The phone's shell keeps clear of the system's bars and the notch with the `safe-*` /
+  `camera-*` spacing tokens (`env(safe-area-inset-*)`, `viewport-fit=cover` in `index.html`).
 - **TV mode** (Trello #30): one `data-layout="tv"` on `<html>` (`composables/useUiMode.ts`, the decision pure in
   `lib/uiMode.ts`: `general.ui`, or at Automatica the answer to the TV question, `components/tv-mode/TvModeDialog.vue`:
   a controller connecting, or connected at startup, outside TV asks «Passare alla modalità TV?», the last one leaving
@@ -986,6 +997,12 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (the settings levels, the controls tabs) comes before the section switch; a settings page with one level lets
   it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
+- The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
+  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu's 440 px side
+  panel on its side, E13's warning (`storage_status`), Android's back at the shell's root. Not yet: the «Gestisci lo
+  spazio» screen (not designed: the button is faded and a press says it arrives later); on G09 on its side the game
+  stays centred under the panel (the video's inset is bottom-only); the safe areas, the camera side and
+  `moveTaskToBack` are checked headless and by review only, not on a device yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
   hint in the menu's foot). In the shell the controller's shortcuts are disabled with «Apri un gioco per usarla»

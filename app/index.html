@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- `viewport-fit=cover`: the phone reports its bars and notch as env(safe-area-inset-*),
+         which the phone's shell keeps clear (theme/spacing.css, Trello #29). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>EmuDome</title>
     <!--
       The startup splash (Trello #101, the owner's mockup, option A): the mark alone, centred on

@@ -19,7 +19,8 @@ import androidx.activity.OnBackPressedCallback
  * on the UI thread once the WebView exists; the document calls come from any thread.
  *
  * - Back: the back button / gesture goes to Rust, which routes it as the controller's menu
- *   button (in game) or its B (anywhere else).
+ *   button (in game) or its B (anywhere else). At the shell's root the interface asks for
+ *   [moveToBack] (Rust's `move_to_background`).
  * - Games as `content://` documents: «Open with» at start ([startupGame]) and [openDocument],
  *   which gives Rust a file descriptor (no copy: a 3DS game is GBs).
  */
@@ -42,6 +43,16 @@ object SystemBridge {
         owner.onBackPressedDispatcher.addCallback(owner, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = nativeBackPressed()
         })
+    }
+
+    /**
+     * Back at the shell's root (Trello #29): what the system's back does at an app's first
+     * screen, without finishing the activity: the task goes behind the others, the app keeps
+     * running (a game's data is already flushed by `onPause`). Called from any thread.
+     */
+    @JvmStatic
+    fun moveToBack(activity: Activity) {
+        activity.runOnUiThread { activity.moveTaskToBack(true) }
     }
 
     /** The game the app was started with: the `game` extra (adb), else the document of «Open with». */

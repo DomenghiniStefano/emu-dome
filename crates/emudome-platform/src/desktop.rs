@@ -38,6 +38,11 @@ pub fn startup_game() -> Option<String> {
     std::env::args().skip(1).find(|a| !a.starts_with('-'))
 }
 
+/// The desktop has no background to leave to: the window stays as it is.
+pub fn move_to_background() -> bool {
+    false
+}
+
 pub fn packaged_core(_name: &str) -> Option<PathBuf> {
     None
 }

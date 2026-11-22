@@ -7,7 +7,8 @@
 // stays visible above it) and «Controlli» (G10), then «Chiudi il gioco» and «Riprendi il gioco».
 // NDS / 3DS: swap and the lid among the tools, the layout card first on G09, and from there the
 // C09 screens editor over the whole game (Trello #28).
-// Phone in portrait: a bottom sheet under the game, same order for the thumb.
+// Phone in portrait: a bottom sheet under the game, same order for the thumb. Phone on its side
+// (#29): the same content in a 440 px panel at the right edge, the game beside it.
 // Settings changed here are «in prova» (Session level): live, listed, saved for this game or its
 // console, or undone; closing the game drops them.
 //
@@ -44,7 +45,7 @@ import SubPageHeader from './SubPageHeader.vue'
 import TrialPanel from './TrialPanel.vue'
 import UndoLoadBanner from './UndoLoadBanner.vue'
 import { backKeyLabel, searchKeyLabels } from './hints'
-import { BAR_PANEL, MENU_PANEL, sheetPanel } from './panel'
+import { BAR_PANEL, MENU_PANEL, SIDE_PANEL, sheetPanel } from './panel'
 import {
   cycleStartingAt,
   layoutCard,
@@ -148,27 +149,29 @@ const { view, open, back, home, focusChosenSlot } = useQuickMenuNavigation(root,
   home: () => void loadSlots(),
 })
 
-// ---- Layout: desktop panel, G09 bar, phone sheet ----
+// ---- Layout: desktop panel, G09 bar, phone sheet, phone side panel ----
 const layout = useDeviceLayout()
 /** The phone, upright or not (its tools, its video methods). */
 const phone = computed(() => layout.device.value === 'phone')
-/** The phone held upright: the bottom sheet. */
+/** The phone held upright: the bottom sheet; on its side, the side panel (the same content). */
 const sheet = layout.phone
 /** G09 on desktop: the bar at the bottom instead of the panel. */
-const barShown = computed(() => view.value === QuickMenuView.Screens && !sheet.value)
+const barShown = computed(() => view.value === QuickMenuView.Screens && !phone.value)
 /** C09: the screens editor over the whole game, in place of the menu. */
 const editorShown = computed(() => view.value === QuickMenuView.ScreenEditor)
 /** C06 (#29): the touch controls editor over the whole game, in place of the menu. */
 const touchEditorShown = computed(() => view.value === QuickMenuView.TouchEditor)
-/** The game shows through on G09 and in the editors (and the phone's sheet sits under it). */
+/** The game shows through on G09 and in the editors (and beside the phone's sheet or panel). */
 const dimmed = computed(
   () =>
     view.value !== QuickMenuView.Screens &&
     view.value !== QuickMenuView.ScreenEditor &&
     view.value !== QuickMenuView.TouchEditor &&
-    !sheet.value,
+    !phone.value,
 )
-const panelClass = computed(() => (sheet.value ? sheetPanel(view.value) : MENU_PANEL))
+const panelClass = computed(() =>
+  sheet.value ? sheetPanel(view.value) : phone.value ? SIDE_PANEL : MENU_PANEL,
+)
 
 const consoleName = computed(() => t(`console.${props.game.consoleId}`))
 const backKey = computed(() => {
@@ -178,7 +181,7 @@ const backKey = computed(() => {
 const pageTitle = computed(() => (isSubPage(view.value) ? t(SUB_PAGE_TITLE[view.value]) : ''))
 /** Where back leads from a page: Controlli from the shortcuts, else the menu. */
 const backLabel = computed(() =>
-  !sheet.value && view.value === QuickMenuView.Shortcuts
+  !phone.value && view.value === QuickMenuView.Shortcuts
     ? t('qm.row.controls.name')
     : t('qm.label'),
 )
@@ -186,7 +189,7 @@ const backLabel = computed(() =>
 // ---- Quick saves ----
 const shownSlots = computed(() =>
   view.value === QuickMenuView.Home
-    ? slots.value.slice(0, mainSlotCount(sheet.value))
+    ? slots.value.slice(0, mainSlotCount(phone.value))
     : slots.value,
 )
 /** With a controller, «Annulla il caricamento» sits at the top until the next save or load. */
@@ -393,7 +396,7 @@ onBeforeUnmount(() => emit('inset', 0))
       <RestartConfirm v-if="view === QuickMenuView.Restart" @cancel="back" @confirm="restart" />
 
       <template v-else>
-        <header v-if="!sheet && view === QuickMenuView.Home" class="flex items-baseline gap-8">
+        <header v-if="!phone && view === QuickMenuView.Home" class="flex items-baseline gap-8">
           <span class="text-heading">{{ game.title }}</span>
           <span class="text-caption text-ink-muted">{{ consoleName }}</span>
         </header>
@@ -409,7 +412,7 @@ onBeforeUnmount(() => emit('inset', 0))
           :title="pageTitle"
           :back-label="backLabel"
           :hint="backKey"
-          :touch="sheet"
+          :touch="phone"
           @back="back"
         />
 
@@ -423,7 +426,7 @@ onBeforeUnmount(() => emit('inset', 0))
             :saved-slot="savedSlot"
             :load-block="game.stateLoadBlock"
             :all="view === QuickMenuView.Slots"
-            :touch="sheet"
+            :touch="phone"
             @pick="pick"
             @more="e => open(QuickMenuView.Slots, e)"
             @load="loadChosen"
@@ -437,7 +440,7 @@ onBeforeUnmount(() => emit('inset', 0))
             :speed="speed"
             :ff-option="settingValue('speed.ffval')"
             :slow-option="settingValue('speed.slow')"
-            :sheet="sheet"
+            :sheet="phone"
             :phone="phone"
             :dual-screen="dualScreen"
             :muted="muted"
@@ -498,7 +501,7 @@ onBeforeUnmount(() => emit('inset', 0))
           v-if="view === QuickMenuView.Home"
           :hint="backKey"
           :search-keys="searchKeys"
-          :touch="sheet"
+          :touch="phone"
           @close="emit('close')"
           @resume="emit('resume')"
         />

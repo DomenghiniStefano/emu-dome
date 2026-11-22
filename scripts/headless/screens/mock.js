@@ -1347,6 +1347,16 @@
       // The shell asks both at start (useShellEvents.ts): nothing moving, nothing broken.
       if (cmd === "saves_migration_status") return { running: false, problem: null };
       if (cmd === "diagnostics") return [];
+      // EmuDome's own update: nothing to say (no X06 card).
+      if (cmd === "updates_status")
+        return { state: { state: "idle" }, checkedAt: null, prompt: false };
+      // E13 (#29): the data folder's room; `storage: "low"` leaves 380 MB of 128 GB.
+      if (cmd === "storage_status")
+        return scenario.storage === "low"
+          ? { free: 380 * 1024 * 1024, total: 128 * 1024 ** 3, low: true }
+          : { free: 40 * 1024 ** 3, total: 128 * 1024 ** 3, low: false };
+      // Android's back at the shell's root (#29): the app went to the background.
+      if (cmd === "leave_to_background") return true;
       if (scenario.saves && cmd.startsWith("saves_")) {
         const a = savesAnswer(cmd, args);
         if (a !== undefined) return JSON.parse(JSON.stringify(a));

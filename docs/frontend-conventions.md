@@ -14,7 +14,7 @@ the EmuDome Design System artifact linked from `CLAUDE.md`.
   with the feature it belongs to and is imported from there (`settings/SettingRow.vue`,
   `cover/GameCover.vue`, `saves/SlotTile.vue`). Features today: `cloud`, `controls`, `cover`, `details`,
   `first-run`, `game`, `library`, `notifications`, `quick-menu`, `saves`, `screen-editor`,
-  `search`, `settings`, `shell`, `toasts`, `touch`. A new feature folder is added to the `@source` list of
+  `search`, `settings`, `shell`, `storage`, `toasts`, `touch`. A new feature folder is added to the `@source` list of
   `assets/main.css`, or Tailwind generates none of its classes.
 - `composables/`: the `useX` functions used by two or more features or by the app root (`useDensity`,
   `useDeviceLayout`, `useListeners`, `useSettingsChanged`, `useToasts` with `useErrorSink`); `lib/`: plain modules and
@@ -111,8 +111,11 @@ initial`): a value that is not a token generates no class. Preflight is off; the
 
 ## Touch density
 
-The phone layout sets `data-density="touch"` on `<html>` once (`composables/useDensity.ts`, called by
-`App.vue`). Primitives and screens style their touch look with the `touch:` variant (`touch:h-touch`).
+The phone, upright or on its side, sets `data-density="touch"` on `<html>` once
+(`composables/useDensity.ts`, called by `App.vue`, Trello #29). Where the shell's sections sit (the
+rail, the phone's tab bar, the rail on the camera's edge) is `lib/phoneLayout.ts`'s decision, read
+through `composables/useDeviceLayout.ts` (`nav`, `camera`); the system's bars and the notch are kept
+clear with the `safe-*` / `camera-*` spacing tokens. Primitives and screens style their touch look with the `touch:` variant (`touch:h-touch`).
 A component never takes a `phone` / `touch` prop only to change its look; such a prop is fine only
 when it changes structure (what is rendered, `v-if`).
 
