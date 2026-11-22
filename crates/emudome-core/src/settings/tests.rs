@@ -2000,7 +2000,6 @@ fn the_entries_not_wired_yet_are_these() {
             "general.ui",
             "general.start",
             "general.bgpause",
-            "general.confirmdel",
             "general.updates",
             "library.group",
             "library.region",

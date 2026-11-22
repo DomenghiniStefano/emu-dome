@@ -626,7 +626,7 @@ pub static ENTRIES: &[Entry] = &[
         .not_wired(),
     seg("general.start", &["library", "last_game"], "library", G).not_wired(),
     sw("general.bgpause", true, G).device().not_wired(),
-    sw("general.confirmdel", true, G).not_wired(),
+    sw("general.confirmdel", true, G),
     seg("general.updates", &["auto", "ask", "off"], "ask", G)
         .device()
         .not_wired(),
