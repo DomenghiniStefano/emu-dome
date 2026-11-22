@@ -74,7 +74,7 @@ function onTarget(to: string) {
 <template>
   <div
     v-bind="panelMark"
-    class="flex max-h-[calc(100vh-var(--spacing-window-margin))] w-editor-panel flex-col gap-16 overflow-y-auto p-20 glass-thick"
+    class="flex max-h-[calc(100vh-var(--spacing-window-margin))] w-editor-panel flex-col gap-12 overflow-y-auto p-card-pad glass-thick"
   >
     <div class="flex items-start gap-8">
       <div class="flex min-w-0 flex-1 flex-col gap-4">

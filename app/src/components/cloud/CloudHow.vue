@@ -19,11 +19,11 @@ const POINTS: { key: string; icon: Component }[] = [
 
 <template>
   <Card>
-    <ul class="m-0 flex list-none flex-col gap-16 p-0">
-      <li v-for="p in POINTS" :key="p.key" class="flex gap-12">
+    <ul class="m-0 flex list-none flex-col gap-12 p-0">
+      <li v-for="p in POINTS" :key="p.key" class="flex gap-8">
         <component
           :is="p.icon"
-          class="mt-px flex-none text-accent-text"
+          class="flex-none text-accent-text"
           :size="18"
           :stroke-width="1.75"
           aria-hidden="true"

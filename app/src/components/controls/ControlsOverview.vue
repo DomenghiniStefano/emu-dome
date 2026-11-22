@@ -119,11 +119,11 @@ const sticksSub = computed(() =>
 </script>
 
 <template>
-  <SectionPage :width="SectionWidth.Wide">
+  <SectionPage :width="SectionWidth.Full">
     <Heading as="h1" :variant="HeadingVariant.Title">{{ t('shell.controls') }}</Heading>
 
     <div
-      class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-tile-min),1fr))] gap-12"
+      class="grid grid-cols-[repeat(auto-fit,minmax(var(--spacing-tile-min),1fr))] gap-8"
       role="radiogroup"
       :aria-label="t('controls.devices')"
     >
@@ -149,7 +149,7 @@ const sticksSub = computed(() =>
     </div>
 
     <div
-      class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-20 max-controls-stack:grid-cols-[minmax(0,1fr)]"
+      class="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-start gap-12 max-controls-stack:grid-cols-[minmax(0,1fr)]"
     >
       <ShortcutsToRemember
         :lines="lines"

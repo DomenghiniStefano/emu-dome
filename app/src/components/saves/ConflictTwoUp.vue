@@ -30,7 +30,7 @@ const sides = computed(() => props.versions.map((version, i) => ({ version, i: i
 <template>
   <FlowDialog :title="t('saves.conflict.title')" escape-closes @back="emit('later')">
     <p class="m-0">{{ t('saves.conflict.text', { title }) }}</p>
-    <div class="mt-6 grid grid-cols-2 gap-16">
+    <div class="mt-4 grid grid-cols-2 gap-12">
       <ConflictSide
         v-for="{ version, i } in sides"
         :key="i"

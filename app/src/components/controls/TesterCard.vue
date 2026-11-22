@@ -19,7 +19,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <Card class="gap-10">
+  <Card class="gap-8">
     <Heading :variant="HeadingVariant.Overline">{{ t('controls.tester') }}</Heading>
     <div v-if="hint" class="text-ink-muted">{{ hint }}</div>
     <ButtonTester

@@ -30,7 +30,7 @@ const LAYOUTS = AB_LAYOUTS
       {{ t('firstRun.controller.lead', { name: gamepadName(pad) }) }}
     </p>
     <div
-      class="grid grid-cols-2 gap-12 touch:grid-cols-1"
+      class="grid grid-cols-2 gap-8 touch:grid-cols-1"
       role="radiogroup"
       :aria-label="t('settings.pad.ab.name')"
     >
@@ -50,7 +50,7 @@ const LAYOUTS = AB_LAYOUTS
         <span class="text-caption text-ink-muted">{{ t(`firstRun.controller.${id}`) }}</span>
       </Card>
     </div>
-    <Card :pad="CardPad.Snug" class="min-h-press flex-row items-center gap-12" aria-live="polite">
+    <Card :pad="CardPad.Snug" class="min-h-press flex-row items-center gap-10" aria-live="polite">
       <span
         v-if="pressed?.button"
         class="grid size-control-lg flex-none place-items-center rounded-full bg-accent-soft font-semibold text-accent-text"

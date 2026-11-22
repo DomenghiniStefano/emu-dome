@@ -50,7 +50,7 @@ async function exportInGame() {
 
 <template>
   <!-- The phone's card text is 14px (spec Decision 5, Cowork); its buttons take it. -->
-  <DetailsCard as="aside" class="gap-10 touch:gap-6 touch:text-cta-inline">
+  <DetailsCard as="aside" class="gap-8 touch:gap-6 touch:text-cta-inline">
     <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('saves.inGameTitle') }}</Heading>
     <div v-if="phone" class="tabular-nums">
       {{
@@ -60,11 +60,11 @@ async function exportInGame() {
     <template v-else>
       <div class="text-ink-muted">{{ t('details.saves.inGameLead') }}</div>
       <div class="flex justify-between gap-12 tabular-nums">
-        <span>{{ t('details.saves.lastChange') }}</span>
+        <span class="flex-none">{{ t('details.saves.lastChange') }}</span>
         <span class="text-right text-ink-muted">{{ lastChange ?? t('saves.noInGame') }}</span>
       </div>
       <div class="flex justify-between gap-12">
-        <span>{{ t('details.saves.backups') }}</span>
+        <span class="flex-none">{{ t('details.saves.backups') }}</span>
         <span class="text-right text-ink-muted tabular-nums">{{ backupsLine }}</span>
       </div>
     </template>

@@ -19,7 +19,7 @@ defineProps<{
       v-for="c in cells"
       :key="c.id"
       :data-lit="held.has(c.id) ? '' : undefined"
-      class="grid h-control-lg place-items-center truncate rounded-8 border border-line bg-surface-raised px-4 text-caption-tall font-semibold data-lit:border-accent-text data-lit:bg-accent-soft data-lit:text-accent-text"
+      class="grid h-control place-items-center truncate rounded-control border border-line bg-surface-raised px-4 text-caption-tall font-semibold data-lit:border-accent-text data-lit:bg-accent-soft data-lit:text-accent-text"
     >
       {{ c.label }}
     </span>

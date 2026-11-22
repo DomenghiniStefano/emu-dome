@@ -55,7 +55,7 @@ onBeforeUnmount(() => {
     <Checkbox v-model="remember">
       <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6 self-start">
         <span
-          class="size-14 shrink-0 rounded-4"
+          class="size-14 shrink-0 rounded-badge"
           :class="remember ? 'bg-accent-text' : 'border border-line-strong'"
           aria-hidden="true"
         ></span>

@@ -32,6 +32,9 @@
 @source '../components/details/*.vue';
 @source '../components/settings';
 @source '../components/screen-editor';
+/* The closing strip and its card (#86): missing here until 2026-11-22, so a class only they used
+   (the strip's `pr-12`) was never generated. */
+@source '../components/closing';
 /* Written in the structure from the start (#32). */
 @source '../components/search';
 @source '../components/notifications';

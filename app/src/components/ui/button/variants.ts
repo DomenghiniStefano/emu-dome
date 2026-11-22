@@ -101,58 +101,59 @@ export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 // design system's scales are pending tokens (assets/theme/*.css); the few literals left are one
 // size's own, written here once.
 export const ButtonSize = {
-  // 28px: actions inside a row. On the phone, lead's size.
+  // 24px (control-sm): actions inside a row. On the phone, lead's size.
   Small: 'small',
-  // 32px: the standard control. On the phone, lead's size.
+  // 28px (control): the standard control. On the phone, lead's size.
   Default: 'default',
-  // 40px: the main action, with its 14px label; on the phone 52px, the label 16 / 22
+  // 32px (control-lg): the main action, with its 14px label; on the phone 52px, the label 16 / 22
   // (Tel-Dettagli «Riprendi», Tel-PrimoAvvio «Continua»).
   Large: 'large',
-  // 40px with the standard label (first run «Aggiungi una cartella», the game details' actions).
+  // 32px with the standard label (first run «Aggiungi una cartella», the game details' actions).
   // On the phone, lead's size.
   Tall: 'tall',
   // A step's way out beside the main action (first run «Indietro», «Salta»): Tall, and on the
   // phone 48px in lead's size.
   Footer: 'footer',
-  // 36px (control-md, pending Cowork): a dialog's and a page's pair of actions. Primary is 16px
+  // 30px (control-md, pending Cowork): a dialog's and a page's pair of actions. Primary is 12px
   // wide on each side here.
   Medium: 'medium',
-  // 28px with the standard padding (the library's «Continua a giocare»).
+  // 24px with the standard padding (the library's «Continua a giocare»).
   Compact: 'compact',
   // Squares for an icon alone, at the two control heights, and at the touch minimum (44: the
   // phone sheet's back, the game details' bar on the phone).
   Icon: 'icon',
   IconSmall: 'iconSmall',
   IconTouch: 'iconTouch',
-  // A section of the rail: 64 x 52, icon over name.
+  // A section of the rail: 64 x 48, icon over name.
   Rail: 'rail',
-  // The actions over a cover (36), «Gioca» and the square «…».
+  // The actions over a cover (control-md), «Gioca» and the square «…».
   CoverAction: 'coverAction',
   CoverActionIcon: 'coverActionIcon',
-  // A menu item (32) and a row of a panel's list (at least 28), content from the start.
+  // A menu item (control) and a row of a panel's list (at least control-sm), content from the
+  // start; on the phone both at least the touch minimum (44).
   MenuItem: 'menuItem',
   MenuRow: 'menuRow',
   // Sized by its container's layout (an absolute click area).
   Area: 'area',
-  // 28px with a 12px label on the 18px line, wrapping when the room is short: the actions inside
+  // control-sm with a 12px label on the 18px line, wrapping when the room is short: the actions inside
   // a save slot's tile.
   TileAction: 'tileAction',
   // As tall as its line of text, an icon leading (Controls «‹ Controlli», the phone's
   // «‹ Impostazioni»); on the phone at least the touch minimum tall (#29).
   TextLine: 'textLine',
-  // The quick menu's (Trello #62): their 36 / 44 / 48 heights and 12 radius are off the design
-  // system's scales, pending tokens.
-  // «‹ Menu rapido»: 32px, tight on the chevron's side.
+  // The quick menu's (Trello #62): the phone's 48 height is off the design system's scales,
+  // pending a token.
+  // «‹ Menu rapido»: control, tight on the chevron's side.
   Back: 'back',
-  // ‹ › beside a value (G09): 32, 44 on the phone.
+  // ‹ › beside a value (G09): control, 44 on the phone.
   Step: 'step',
-  // An action: 44 (the touch minimum, README) in semibold; on the phone 48, the label at 14px.
+  // An action: control-lg in semibold; on the phone 48, the label at 14px.
   Menu: 'menu',
-  // A compact action: 36; on the phone 48, the label at 14px in medium weight.
+  // A compact action: control-md; on the phone 48, the label at 14px in medium weight.
   MenuCompact: 'menuCompact',
   // One of a pair side by side (the changes «in prova»): MenuCompact, 44 on the phone.
   MenuPair: 'menuPair',
-  // The main action (Riprendi il gioco): 44 and 260 wide, and on the phone 48 at 16px, as wide
+  // The main action (Riprendi il gioco): control-lg and 260 wide, and on the phone 48 at 16px, as wide
   // as its place.
   MenuMain: 'menuMain',
   // A link's text alone, in the size around it.
@@ -161,19 +162,19 @@ export const ButtonSize = {
   // and on the phone at least 44 tall, at 13px.
   LabelLink: 'labelLink',
   // An action inside a card (the game details): Default, and on the phone the touch minimum,
-  // radius 10, its label in the size and line of the text around it (the phone's type is
+  // its label in the size and line of the text around it (the phone's type is
   // larger), medium weight, wrapping onto a second line when it is long.
   CardAction: 'cardAction',
   // No box at all, for Text and Link: the words alone, wrapping like text; on the phone at least
   // the touch minimum tall, in lead's size.
   Bare: 'bare',
-  // 32px, 8px side padding and none above or below (a squeezed column shrinks it to its text),
+  // control, 8px side padding and none above or below (a squeezed column shrinks it to its text),
   // the label at the start: an entry of a side list (ButtonVariant.NavItem). On the phone at
   // least the touch minimum tall (it no longer shrinks: the list scrolls), in lead's size (#29).
   NavItem: 'navItem',
-  // At least 56px, 8 / 16 padding, 16 between its parts: a list row (ButtonVariant.LinkRow).
+  // At least link-row, 6 / 12 padding, 12 between its parts: a list row (ButtonVariant.LinkRow).
   LinkRow: 'linkRow',
-  // A toast's action (G17): 32px, radius 8; 44 on the phone (the touch minimum).
+  // A toast's action (G17): control; 44 on the phone (the touch minimum).
   Toast: 'toast',
   // The on-screen gamepad (components/touch), sized for a thumb: the shoulders L / R, the quick
   // menu, the round face buttons, Select / Start, none under the touch minimum (44, Trello #29).
@@ -197,11 +198,11 @@ export const ButtonSize = {
   TvRow: 'tvRow',
   // A settings page in TV mode's list (ButtonVariant.NavItem): 52, the TV label's type.
   TvNavItem: 'tvNavItem',
-  // A search result (ButtonVariant.Result): at least 40px, 12 between its parts, content from the
+  // A search result (ButtonVariant.Result): at least control-lg, 8 between its parts, content from the
   // start.
   Result: 'result',
   // A notification (ButtonVariant.Result in the bell's panel, X03): its dot on the first line,
-  // 10 between its parts, 10 / 12 padding.
+  // 8 between its parts, 6 / 8 padding.
   Notice: 'notice',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
@@ -221,11 +222,12 @@ export type ButtonFade = (typeof ButtonFade)[keyof typeof ButtonFade]
 // Variants only colour, sizes only size, the fade only the disabled look: cva writes them in that
 // order, so a height inside a variant would lose. Primary's hover is flat accent-hover: the dome's
 // gradient is a background image, which `bg-none` drops. The focus ring is the global one
-// (styles.css, `data-nav`), not drawn here. Only the background fades (`transition-[background]`):
-// `transition-colors` would also fade the ring's outline colour, which the pixel compare of the
-// game details catches (Trello #62).
+// (styles.css, `data-nav`), not drawn here. Only the background and the transform move
+// (`transition-[background,transform]`: the press's give, motion.css): `transition-colors` would
+// also fade the ring's outline colour, which the pixel compare of the game details catches
+// (Trello #62).
 export const buttonVariants = cva(
-  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-6 whitespace-nowrap rounded-control border border-transparent font-sans text-label transition-[background] select-none disabled:cursor-not-allowed aria-disabled:cursor-not-allowed [&_svg]:shrink-0',
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-6 whitespace-nowrap rounded-button border border-transparent font-sans text-label transition-[background,transform] select-none disabled:cursor-not-allowed aria-disabled:cursor-not-allowed [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -264,7 +266,7 @@ export const buttonVariants = cva(
         [ButtonVariant.LinkRow]:
           'w-full justify-start whitespace-normal rounded-none border-0 border-t border-line bg-transparent text-left font-regular text-ink-muted first:border-t-0 enabled:hover:bg-surface-hover [&:not(button)]:cursor-default',
         [ButtonVariant.Rail]:
-          'border-0 bg-transparent text-ink-muted transition-[background] hover:not-aria-[current=page]:bg-surface-hover aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent-text aria-[current=page]:shadow-rail aria-[current=page]:[&_svg]:glow-icon',
+          'border-0 bg-transparent text-ink-muted transition-[background,transform] hover:not-aria-[current=page]:bg-surface-hover aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent-text aria-[current=page]:shadow-rail aria-[current=page]:[&_svg]:glow-icon',
         [ButtonVariant.Inverse]: 'border-0 bg-ink font-semibold text-bg',
         [ButtonVariant.Veil]: 'border-0 bg-cover-action text-ink',
         [ButtonVariant.Bare]: 'border-0 bg-transparent',
@@ -290,62 +292,61 @@ export const buttonVariants = cva(
           'w-full justify-start border-0 bg-transparent text-left font-regular whitespace-normal text-ink hover:bg-surface-hover focus:bg-accent-soft disabled:hover:bg-transparent',
       },
       size: {
-        [ButtonSize.Small]: 'h-control-sm gap-4 px-8 touch:text-label-lead',
+        [ButtonSize.Small]: 'h-control-sm gap-4 px-6 touch:text-label-lead',
         [ButtonSize.Default]: 'h-control px-control-pad touch:text-label-lead',
-        [ButtonSize.Large]:
-          'h-control-lg px-18 text-cta touch:h-52 touch:gap-8 touch:rounded-card touch:text-hero',
-        [ButtonSize.Tall]: 'h-control-lg px-16 touch:text-label-lead',
-        [ButtonSize.Footer]: 'h-control-lg px-16 touch:h-48 touch:text-label-lead',
+        [ButtonSize.Large]: 'h-control-lg px-14 text-cta touch:h-52 touch:gap-8 touch:text-hero',
+        [ButtonSize.Tall]: 'h-control-lg px-12 touch:text-label-lead',
+        [ButtonSize.Footer]: 'h-control-lg px-12 touch:h-48 touch:text-label-lead',
         [ButtonSize.Medium]: 'h-control-md px-control-pad py-0',
         [ButtonSize.Compact]: 'h-control-sm px-control-pad py-0',
         [ButtonSize.Icon]: 'size-control p-0',
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
-        [ButtonSize.IconTouch]: 'size-touch rounded-card p-0',
-        [ButtonSize.Rail]: 'h-52 w-rail-item flex-col gap-3 rounded-8 p-0',
-        [ButtonSize.CoverAction]: 'h-control-md rounded-8 px-6 py-px',
-        [ButtonSize.CoverActionIcon]: 'size-control-md rounded-8 px-6 py-px',
-        [ButtonSize.MenuItem]: 'h-control justify-start gap-8 px-10 text-left',
-        [ButtonSize.MenuRow]: 'min-h-control-sm justify-start gap-8 px-6 text-left',
+        [ButtonSize.IconTouch]: 'size-touch p-0',
+        [ButtonSize.Rail]: 'h-48 w-rail-item flex-col gap-3 p-0',
+        [ButtonSize.CoverAction]: 'h-control-md px-6 py-px',
+        [ButtonSize.CoverActionIcon]: 'size-control-md px-6 py-px',
+        [ButtonSize.MenuItem]:
+          'h-control justify-start gap-8 px-8 text-left touch:h-touch touch:text-label-lead',
+        [ButtonSize.MenuRow]:
+          'min-h-control-sm justify-start gap-8 px-6 text-left touch:min-h-touch',
         [ButtonSize.Area]: 'p-0',
         [ButtonSize.TileAction]:
-          'h-control-sm px-10 text-caption-tall font-medium whitespace-normal',
+          'h-control-sm px-8 text-caption-tall font-medium whitespace-normal',
         [ButtonSize.TextLine]: 'gap-2 py-2 pr-8 pl-4 touch:min-h-touch',
-        [ButtonSize.Back]: 'h-control gap-4 pr-10 pl-4',
+        [ButtonSize.Back]: 'h-control gap-4 pr-8 pl-4',
         [ButtonSize.Step]: 'size-control p-0 touch:size-touch',
-        [ButtonSize.Menu]:
-          'h-touch gap-8 rounded-card px-14 font-semibold touch:h-48 touch:rounded-12 touch:text-cta',
+        [ButtonSize.Menu]: 'h-control-lg gap-6 px-12 font-semibold touch:h-48 touch:text-cta',
         [ButtonSize.MenuCompact]:
-          'h-control-md gap-8 rounded-card px-14 touch:h-48 touch:rounded-12 touch:text-cta touch:font-medium',
+          'h-control-md gap-6 px-12 touch:h-48 touch:text-cta touch:font-medium',
         [ButtonSize.MenuPair]:
-          'h-control-md gap-8 rounded-card px-14 touch:h-touch touch:rounded-12 touch:text-cta touch:font-medium',
+          'h-control-md gap-6 px-12 touch:h-touch touch:text-cta touch:font-medium',
         [ButtonSize.MenuMain]:
-          'h-touch w-menu-main gap-8 rounded-card px-18 text-cta touch:h-48 touch:w-auto touch:rounded-12 touch:text-hero',
+          'h-control-lg w-menu-main gap-6 px-14 text-cta touch:h-48 touch:w-auto touch:text-hero',
         [ButtonSize.Text]: 'h-auto p-0 text-[length:inherit] whitespace-normal',
         [ButtonSize.LabelLink]:
           'h-auto p-0 text-[length:inherit] whitespace-normal touch:min-h-touch touch:text-label',
         [ButtonSize.CardAction]:
-          'h-control px-control-pad touch:h-touch touch:rounded-card touch:px-14 touch:text-[length:inherit] touch:leading-[inherit] touch:font-medium touch:whitespace-normal',
+          'h-control px-control-pad touch:h-touch touch:px-12 touch:text-[length:inherit] touch:leading-[inherit] touch:font-medium touch:whitespace-normal',
         [ButtonSize.Bare]:
           'h-auto gap-4 rounded-none p-0 whitespace-normal touch:min-h-touch touch:text-label-lead',
         [ButtonSize.NavItem]:
-          'h-control gap-8 px-8 py-0 touch:h-auto touch:min-h-touch touch:text-label-lead',
-        [ButtonSize.LinkRow]: 'min-h-link-row gap-16 px-16 py-8',
-        [ButtonSize.Toast]: 'h-control rounded-8 px-10 touch:h-touch touch:px-16',
+          'h-control gap-6 px-8 py-0 touch:h-auto touch:min-h-touch touch:text-label-lead',
+        [ButtonSize.LinkRow]: 'min-h-link-row gap-12 px-12 py-6',
+        [ButtonSize.Toast]: 'h-control px-8 touch:h-touch touch:px-16',
         [ButtonSize.PadShoulder]: 'h-touch w-pad-shoulder rounded-card',
         [ButtonSize.PadMenu]: 'h-touch w-48 rounded-card',
         [ButtonSize.PadFace]: 'size-pad-face rounded-full text-dialog',
-        [ButtonSize.PadSystem]: 'h-touch rounded-panel px-14 text-overline',
-        [ButtonSize.Tool]: 'h-control gap-6 rounded-8 px-10 touch:h-touch touch:px-12',
-        [ButtonSize.ToolIcon]: 'size-control rounded-8 p-0 touch:size-touch',
-        [ButtonSize.PhoneTab]:
-          'min-h-touch min-w-touch flex-1 basis-0 flex-col gap-2 rounded-8 px-2 py-4',
+        [ButtonSize.PadSystem]: 'h-touch rounded-panel px-12 text-overline',
+        [ButtonSize.Tool]: 'h-control gap-6 px-8 touch:h-touch touch:px-12',
+        [ButtonSize.ToolIcon]: 'size-control p-0 touch:size-touch',
+        [ButtonSize.PhoneTab]: 'min-h-touch min-w-touch flex-1 basis-0 flex-col gap-2 px-2 py-4',
         [ButtonSize.TvTab]: 'h-tv-tab rounded-full px-24 text-tv-label',
         [ButtonSize.TvRow]:
           'min-h-tv-row gap-tv-row-x rounded-card px-tv-row-x py-tv-row-y text-tv-label',
         [ButtonSize.TvNavItem]: 'h-tv-tab gap-12 rounded-card px-tv-row-y text-tv-label',
         [ButtonSize.Tv]: 'h-tv-action gap-12 rounded-card px-32 text-tv-action',
-        [ButtonSize.Result]: 'min-h-control-lg gap-12 px-8 py-4',
-        [ButtonSize.Notice]: 'items-start gap-10 rounded-10 px-12 py-10',
+        [ButtonSize.Result]: 'min-h-control-lg gap-8 px-8 py-4',
+        [ButtonSize.Notice]: 'items-start gap-8 rounded-card px-8 py-6',
       },
       fade: {
         [ButtonFade.Normal]: 'disabled:opacity-disabled aria-disabled:opacity-disabled',
@@ -356,8 +357,8 @@ export const buttonVariants = cva(
     // The main action keeps its 14px label and wide padding at the smaller heights. A size that
     // sets the medium weight on the phone would win over Strong's semibold: Strong keeps it.
     compoundVariants: [
-      { variant: ButtonVariant.Primary, size: ButtonSize.Compact, class: 'px-18 text-cta' },
-      { variant: ButtonVariant.Primary, size: ButtonSize.Medium, class: 'px-16' },
+      { variant: ButtonVariant.Primary, size: ButtonSize.Compact, class: 'px-12 text-cta' },
+      { variant: ButtonVariant.Primary, size: ButtonSize.Medium, class: 'px-12' },
       { variant: ButtonVariant.Soft, size: ButtonSize.Tv, class: 'px-28 text-tv-label' },
       {
         variant: ButtonVariant.Strong,

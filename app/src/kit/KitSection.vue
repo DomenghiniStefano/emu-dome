@@ -1,13 +1,26 @@
 <script setup lang="ts">
-// One primitive on the Kit page: its name, then its states side by side.
-defineProps<{ title: string }>()
+// One component on the Kit page: its name, its states side by side, then its review issues
+// (KitIssue in the #review slot). Registers on the page's board (review.ts) for the index and the
+// «only with issues» filter.
+import { KitGroup, useKitSection } from '@/kit/review'
+
+const props = withDefaults(defineProps<{ title: string; group?: KitGroup }>(), {
+  group: KitGroup.Primitives,
+})
+const { entry, hidden } = useKitSection(
+  () => props.title,
+  () => props.group,
+)
 </script>
 
 <template>
-  <section class="flex flex-col gap-12 border-t border-line pt-16">
+  <section v-show="!hidden" :id="entry.id" class="flex flex-col gap-8 border-t border-line pt-12">
     <h2 class="m-0 text-heading text-ink">{{ title }}</h2>
-    <div class="flex flex-wrap items-start gap-16">
+    <div class="flex flex-wrap items-start gap-12">
       <slot />
+    </div>
+    <div v-if="$slots.review" class="flex flex-col gap-8">
+      <slot name="review" />
     </div>
   </section>
 </template>

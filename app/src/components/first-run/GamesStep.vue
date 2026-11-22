@@ -49,7 +49,7 @@ const found = computed(() => library.progress?.found ?? 0)
       <li
         v-for="f in library.folders"
         :key="f.path"
-        class="flex items-center gap-10 px-16 py-12 text-ink-muted"
+        class="flex items-center gap-8 px-12 py-8 text-ink-muted"
       >
         <Folder :size="16" :stroke-width="1.75" aria-hidden="true" />
         <span class="min-w-0 flex-1 truncate text-ink">{{
@@ -80,7 +80,7 @@ const found = computed(() => library.progress?.found ?? 0)
       <p v-if="library.scanning" class="m-0 text-ink-muted tabular-nums">
         {{ t('library.scan.found', { found }, found) }}
       </p>
-      <div class="grid grid-cols-4 gap-10 touch:grid-cols-2">
+      <div class="grid grid-cols-4 gap-8 touch:grid-cols-2">
         <StatTile v-for="tile in tiles" :key="tile.id" :value="tile.count" :label="t(tile.label)" />
       </div>
       <p v-if="library.scanning" class="m-0 text-ink-muted">

@@ -12,7 +12,7 @@ const { t } = useI18n()
   <Transition leave-active-class="transition-opacity duration-hint" leave-to-class="opacity-0">
     <div
       v-if="shown"
-      class="glass-thick pointer-events-none fixed top-16 left-1/2 z-overlay flex -translate-x-1/2 items-center gap-6 rounded-10 px-14 py-8 text-ink-muted"
+      class="glass-thick pointer-events-none fixed top-12 left-1/2 z-overlay flex -translate-x-1/2 items-center gap-6 rounded-card px-10 py-6 text-ink-muted"
       role="status"
     >
       <Kbd>{{ t('flow.hintEsc') }}</Kbd>

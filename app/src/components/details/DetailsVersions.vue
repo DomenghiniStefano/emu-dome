@@ -58,15 +58,22 @@ async function pin(g: LibraryGame) {
       <div
         v-for="r in rows"
         :key="r.game.id"
-        class="flex flex-wrap items-center gap-12 border-t border-line px-16 py-8 first:border-t-0"
+        class="flex flex-wrap items-center gap-8 border-t border-line px-12 py-6 first:border-t-0"
         :class="{ 'bg-accent-soft': r.inLibrary }"
       >
-        <Badge :variant="BadgeVariant.Neutral" :size="BadgeSize.Tag">
-          {{ t(regionTagKey(r.game.region)) }}
-        </Badge>
-        <div class="flex min-w-0 flex-1 flex-col">
-          <span class="font-semibold wrap-anywhere">{{ r.game.title }}</span>
-          <span class="text-caption text-ink-muted">{{ meta(r.game) }}</span>
+        <!-- The tag and the text, at least a menu's width: in a narrow window the buttons go
+             under them, not beside a title squeezed over three lines. -->
+        <div class="flex min-w-0 flex-1 basis-menu-min items-center gap-8">
+          <!-- One column for the tags (US, JP… are not as wide): the titles line up. -->
+          <span class="flex w-28 flex-none justify-center">
+            <Badge :variant="BadgeVariant.Neutral" :size="BadgeSize.Tag">
+              {{ t(regionTagKey(r.game.region)) }}
+            </Badge>
+          </span>
+          <div class="flex min-w-0 flex-1 flex-col">
+            <span class="font-semibold wrap-anywhere">{{ r.game.title }}</span>
+            <span class="text-caption text-ink-muted">{{ meta(r.game) }}</span>
+          </div>
         </div>
         <Badge v-if="r.inLibrary" :variant="BadgeVariant.Success" :size="BadgeSize.Pill">
           {{ t('details.versions.inLibrary') }}

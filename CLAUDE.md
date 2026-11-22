@@ -926,8 +926,19 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   ends nav.ts moves spatially. Select, Dialog, Popover and DropdownMenu take B while open; a menu item owns Enter
   (its arrows stay nav.ts's, inside the menu's scope); entering a radio group lands on its chosen radio. Tested in Vitest
   (`components/ui/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
-- **Kit page** (`app/src/kit/`, `#kit`, development only, not in the build): every primitive in every state, the
-  three themes, the five accents. A new primitive or variant is added there first.
+- **Kit page** (`app/src/kit/`, `#kit`, development only, not in the build): every primitive and the main feature
+  components (`kit/features/`) in every state, the three themes, the five accents. A new primitive or variant is
+  added there first. It is also the review board (2026-11-22): under each section `KitIssue`s (problem, «Ora» /
+  «Proposta» rendered with the real components, solution; status open / proposed / decided) and an index with the
+  open count; a decided issue is deleted once the component carries it. It opens in a plain browser (`pnpm dev`,
+  then `#kit`): `lib/devBridge.ts` stands in for Tauri there.
+- **The look** (owner, 2026-11-22): compact and near-square, no empty band, sober motion. Radius roles 2 / 2 / 3 / 4
+  (`badge` / `control` / `card` / `panel`), buttons a little rounder (`radius-button` 4); controls 24 / 28 / 30 / 32;
+  role paddings tight (`card-pad` 10, `dialog-pad` 16, `section-x` 16); appearing things fade with 4 px of rise or a
+  3% pop, a pressed button gives 2% (`theme/motion.css`, keyed by the primitives' `data-slot`); the shell's sections
+  enter the same way. The phone's touch target (44) and the TV sizes stay. A new component folder must be listed as
+  an `@source` in `assets/main.css`, or the classes only it uses are never generated (the closing strip lost its
+  padding that way until 2026-11-22).
 - **Where a file goes** (`app/src/`), by what owns it:
   - `components/ui/<name>/`: the primitives.
   - `components/<feature>/`: everything one feature is: its screen root (`LibraryView.vue`, `QuickMenu.vue`…), its

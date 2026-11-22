@@ -77,7 +77,7 @@ async function deleteIt() {
     escape-closes
     @back="emit('close')"
   >
-    <SaveThumb :src="quick.thumbUrl" class="aspect-4/3 rounded-10" />
+    <SaveThumb :src="quick.thumbUrl" class="aspect-4/3 rounded-card" />
     <p class="m-0 tabular-nums">{{ savedLine }}</p>
     <p class="m-0 text-caption">{{ t('saves.quick.overwriteHint') }}</p>
     <template #actions>

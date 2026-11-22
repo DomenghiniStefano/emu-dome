@@ -55,8 +55,8 @@ useSettingsChanged(settingsUnder('pad.'), () => void load())
 
 <template>
   <!-- A card of this tab: the odd one out at the end takes the whole row, no empty cell beside it. -->
-  <div class="grid grid-cols-2 gap-16 touch:grid-cols-1">
-    <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
+  <div class="grid grid-cols-2 gap-12 touch:grid-cols-1">
+    <DetailsCard class="gap-8 last:odd:col-span-full touch:gap-6">
       <Heading as="h2" :variant="HeadingVariant.Overline">{{
         t('details.controls.padTitle')
       }}</Heading>
@@ -72,13 +72,13 @@ useSettingsChanged(settingsUnder('pad.'), () => void load())
         {{ t('details.controls.remap') }}
       </DetailsAction>
     </DetailsCard>
-    <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
+    <DetailsCard class="gap-8 last:odd:col-span-full touch:gap-6">
       <Heading as="h2" :variant="HeadingVariant.Overline">{{
         t('details.controls.turboTitle')
       }}</Heading>
       <div class="text-ink-muted">{{ t('details.notYet') }}</div>
     </DetailsCard>
-    <DetailsCard class="gap-10 last:odd:col-span-full touch:gap-6">
+    <DetailsCard class="gap-8 last:odd:col-span-full touch:gap-6">
       <Heading as="h2" :variant="HeadingVariant.Overline">{{
         t('details.controls.touchTitle')
       }}</Heading>
@@ -86,7 +86,7 @@ useSettingsChanged(settingsUnder('pad.'), () => void load())
     </DetailsCard>
     <DetailsCard
       v-if="hasTouchScreen(game.console)"
-      class="gap-10 last:odd:col-span-full touch:gap-6"
+      class="gap-8 last:odd:col-span-full touch:gap-6"
     >
       <Heading as="h2" :variant="HeadingVariant.Overline">{{
         t('details.controls.pointerTitle')

@@ -55,13 +55,13 @@ const mark = computed(() => ({ [SCREEN_ATTR]: props.screen.id }))
     </span>
     <span
       v-else
-      class="absolute top-6 left-8 rounded-6 border border-line bg-glass-thick px-6 text-caption font-semibold"
+      class="absolute top-6 left-8 rounded-badge border border-line bg-glass-thick px-6 text-caption font-semibold"
     >
       {{ label }}
     </span>
     <span
       v-if="selected"
-      class="absolute right-0 bottom-0 size-24 cursor-nwse-resize rounded-tl-6 bg-accent"
+      class="absolute right-0 bottom-0 size-24 cursor-nwse-resize rounded-tl-control bg-accent"
       aria-hidden="true"
       @pointerdown.stop="e => emit('press', e, true)"
     ></span>

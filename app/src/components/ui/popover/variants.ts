@@ -15,10 +15,10 @@ export type PopoverVariant = (typeof PopoverVariant)[keyof typeof PopoverVariant
 export const popoverVariants = cva('glass-thick z-raised flex flex-col', {
   variants: {
     variant: {
-      [PopoverVariant.Panel]: 'w-menu gap-14 p-16',
+      [PopoverVariant.Panel]: 'w-menu gap-8 p-10',
       [PopoverVariant.Notifications]:
-        'max-h-[calc(100dvh-var(--spacing-titlebar)-var(--spacing-32))] w-notifications max-w-[calc(100vw-var(--spacing-32))] gap-4 p-12',
-      [PopoverVariant.Fit]: 'w-fit gap-8 p-12',
+        'max-h-[calc(100dvh-var(--spacing-titlebar)-var(--spacing-32))] w-notifications max-w-[calc(100vw-var(--spacing-32))] gap-2 p-6',
+      [PopoverVariant.Fit]: 'w-fit gap-6 p-8',
     },
   },
   defaultVariants: { variant: PopoverVariant.Panel },

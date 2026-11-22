@@ -4,8 +4,8 @@ import { cva } from 'class-variance-authority'
 export const CardVariant = {
   // An opaque card on a page.
   Surface: 'surface',
-  // A card of the game details' tabs: Surface, and on the phone rounder (16) and a little tighter
-  // (14 inside), board «Tel-Dettagli».
+  // A card of the game details' tabs: Surface, and on the phone the panel's corners and the
+  // phone's room inside (`card-pad-touch`), board «Tel-Dettagli».
   Detail: 'detail',
   // A card inside a card, or one of a choice of cards (a setting's choice cards); `selected` marks
   // the chosen one.
@@ -27,28 +27,28 @@ export const CardVariant = {
   // A card that holds rows separated by lines (Controls: shortcut lists, the remap table; the
   // rows of ui/link-row): no padding, the rows draw their own.
   List: 'list',
-  // The quick menu's cards as buttons (Trello #62). Their 44 / 48 / 52 / 68 heights and 12 radius
-  // are off the design system's scales: pending tokens, or literals of this one place.
+  // The quick menu's cards as buttons (Trello #62). Their heights are off the design system's
+  // scales: pending tokens, or literals of this one place.
   // A small choice among a row of them, on surface (a quick-save slot, G07); `selected` marks the
-  // chosen one. On the phone a 12 radius and a 2px edge when chosen.
+  // chosen one. On the phone a 2px edge when chosen.
   Tile: 'tile',
   // A tool to run or switch on and off (G07 Strumenti), its icon over its name; `selected` = on.
   // On the phone a row on surface: icon beside the name, 44 tall.
   Tool: 'tool',
   // A row that leads to another page: icon, name, chevron (G07, G08). Not ui/link-row: its own edge
-  // and fill, 48 tall.
+  // and fill, control-lg tall.
   NavRow: 'navRow',
   // A line of a list, no edge of its own (G10): the list draws the box.
   ListRow: 'listRow',
 } as const
 export type CardVariant = (typeof CardVariant)[keyof typeof CardVariant]
 
-// The room inside a card, when it is not its variant's own (Surface: `card-pad`, 16). Set with
+// The room inside a card, when it is not its variant's own (Surface: `card-pad`, 10). Set with
 // Surface or List; the other variants keep their own.
 export const CardPad = {
-  // 12 (`card-pad-md`): a stat, a line with its action, one side of a save conflict.
+  // 8 (`card-pad-md`): a stat, a line with its action, one side of a save conflict.
   Snug: 'snug',
-  // 10 (`card-pad-sm`): a card packed with a picture and actions (a slot tile, «Continua a
+  // 6 (`card-pad-sm`): a card packed with a picture and actions (a slot tile, «Continua a
   // giocare»), a banner with a button at its end.
   Tight: 'tight',
 } as const
@@ -70,19 +70,19 @@ export const cardVariants = cva('flex flex-col text-left', {
       [CardVariant.PictureChoice]:
         'rounded-card border border-line bg-surface p-card-pad-sm disabled:cursor-not-allowed disabled:opacity-dim data-empty:not-data-selected:border-dashed data-empty:not-data-selected:border-line-strong data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.Choice]:
-        'rounded-card border border-line bg-surface px-14 py-12 enabled:hover:not-data-selected:bg-surface-hover data-selected:border-accent-text data-selected:bg-accent-soft',
+        'rounded-card border border-line bg-surface px-10 py-8 enabled:hover:not-data-selected:bg-surface-hover data-selected:border-accent-text data-selected:bg-accent-soft',
       [CardVariant.ListItem]:
-        'flex-row items-center gap-10 rounded-8 border-0 bg-transparent p-8 hover:not-data-selected:bg-surface-hover data-selected:bg-accent-soft',
+        'flex-row items-center gap-8 rounded-card border-0 bg-transparent p-6 hover:not-data-selected:bg-surface-hover data-selected:bg-accent-soft',
       [CardVariant.List]:
         'm-0 list-none overflow-hidden rounded-card border border-line bg-surface p-0',
       [CardVariant.Tile]:
-        'rounded-card border border-line bg-surface p-6 data-selected:border-accent-text data-selected:bg-accent-soft touch:rounded-12 touch:data-selected:border-strong',
+        'rounded-card border border-line bg-surface p-4 data-selected:border-accent-text data-selected:bg-accent-soft touch:data-selected:border-strong',
       [CardVariant.Tool]:
-        'h-tool items-center justify-center rounded-card border border-line bg-surface-raised px-8 text-center text-caption-inline font-semibold whitespace-nowrap enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-dim data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text touch:h-touch touch:flex-row touch:justify-start touch:rounded-12 touch:bg-surface touch:px-10 touch:text-left touch:text-cta-inline touch:enabled:hover:bg-surface-hover touch:data-selected:bg-accent-soft',
+        'h-tool items-center justify-center rounded-card border border-line bg-surface-raised px-8 text-center text-caption-inline font-semibold whitespace-nowrap enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-dim data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text touch:h-touch touch:flex-row touch:justify-start touch:bg-surface touch:px-10 touch:text-left touch:text-cta-inline touch:enabled:hover:bg-surface-hover touch:data-selected:bg-accent-soft',
       [CardVariant.NavRow]:
-        'h-48 flex-row items-center rounded-card border border-line bg-surface px-12 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
+        'h-control-lg flex-row items-center rounded-card border border-line bg-surface px-10 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
       [CardVariant.ListRow]:
-        'min-h-52 flex-row items-center border-0 bg-transparent px-12 py-8 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
+        'min-h-control-lg flex-row items-center border-0 bg-transparent px-10 py-4 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
     },
     pad: {
       [CardPad.Snug]: 'p-card-pad-md',

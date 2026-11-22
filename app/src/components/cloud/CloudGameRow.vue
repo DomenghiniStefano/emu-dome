@@ -43,7 +43,7 @@ const transfer = computed(() => {
 </script>
 
 <template>
-  <div class="flex items-center gap-12 px-12 py-8 not-first:border-t not-first:border-line">
+  <div class="flex items-center gap-8 px-12 py-6 not-first:border-t not-first:border-line">
     <GameCover
       class="flex-none"
       :game="cover"
@@ -53,7 +53,7 @@ const transfer = computed(() => {
       :missing="!game.here"
     />
     <!-- On a narrow window the state and the action go under the title. -->
-    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-12 gap-y-8">
+    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-8 gap-y-4">
       <div class="flex min-w-0 flex-1 basis-card-min flex-col gap-2">
         <span class="font-medium wrap-anywhere">{{ game.title }}</span>
         <span class="text-caption text-ink-muted tabular-nums">{{
@@ -69,7 +69,7 @@ const transfer = computed(() => {
           :label="game.title"
         />
       </div>
-      <div class="flex min-w-0 flex-wrap items-center gap-x-12 gap-y-8">
+      <div class="flex min-w-0 flex-wrap items-center gap-x-8 gap-y-4">
         <Badge :variant="TONE[gameTone(game.state)]" :size="BadgeSize.Pill">
           {{ t(`cloud.games.state.${game.state}`) }}
         </Badge>

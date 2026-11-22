@@ -34,7 +34,7 @@ const takenAt = (s: GameScreenshot) =>
 </script>
 
 <template>
-  <div ref="root" class="flex flex-col gap-14">
+  <div ref="root" class="flex flex-col gap-12">
     <DialogTitle as="div" :size="DialogTitleSize.Heading">
       {{ t('library.cover.shots.title') }}
     </DialogTitle>
@@ -62,7 +62,7 @@ const takenAt = (s: GameScreenshot) =>
       </RadioGroupItem>
     </RadioGroup>
     <div class="flex justify-between gap-8">
-      <Button @click="emit('back')">{{ t('library.cover.back') }}</Button>
+      <Button :size="ButtonSize.Medium" @click="emit('back')">{{ t('library.cover.back') }}</Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"

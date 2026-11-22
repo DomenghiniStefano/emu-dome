@@ -22,7 +22,7 @@ const free = computed(() => (status.value?.low ? sizeLabel(status.value.free) : 
 <template>
   <div
     v-if="free"
-    class="mx-16 mt-8 flex flex-none items-center gap-12 rounded-10 border border-warning-edge bg-warning-tint px-14 py-10"
+    class="mx-12 mt-8 flex flex-none items-center gap-8 rounded-card border border-warning-edge bg-warning-tint px-10 py-6"
     role="status"
   >
     <HardDrive class="flex-none text-warning" :size="18" :stroke-width="1.75" aria-hidden="true" />

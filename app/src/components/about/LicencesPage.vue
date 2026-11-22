@@ -50,7 +50,7 @@ onMounted(() => root.value && focusInitial(root.value))
 </script>
 
 <template>
-  <div ref="root" class="flex flex-col gap-12">
+  <div ref="root" class="flex flex-col gap-8">
     <Button
       :variant="ButtonVariant.Text"
       :size="ButtonSize.Bare"

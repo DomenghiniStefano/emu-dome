@@ -25,7 +25,7 @@ function swatchName(hex: string): string {
 
 <template>
   <div
-    class="flex gap-10"
+    class="flex gap-8"
     :class="{ 'opacity-locked': disabled }"
     role="radiogroup"
     :aria-label="label"

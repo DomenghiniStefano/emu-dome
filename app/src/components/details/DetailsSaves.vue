@@ -73,16 +73,19 @@ async function onChanged() {
 
 <template>
   <div
-    class="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start gap-20 touch:grid-cols-1 touch:gap-10"
+    class="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] items-start gap-16 touch:grid-cols-1 touch:gap-10"
   >
-    <section class="flex flex-col gap-10">
-      <div class="flex items-center justify-between gap-12">
+    <section class="flex flex-col gap-8">
+      <div class="flex items-center justify-between gap-8">
         <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('saves.quickTitle') }}</Heading>
         <span v-if="!phone" class="text-caption text-ink-muted">
           {{ t('details.saves.quickHint') }}
         </span>
       </div>
-      <div v-if="saves && saves.quick.length" class="grid grid-cols-3 gap-10 touch:grid-cols-2">
+      <div
+        v-if="saves && saves.quick.length"
+        class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-card-min),1fr))] gap-8 touch:grid-cols-2"
+      >
         <SlotTile
           v-for="q in saves.quick"
           :key="q.slot"
