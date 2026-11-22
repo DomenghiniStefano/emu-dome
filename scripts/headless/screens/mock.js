@@ -323,6 +323,52 @@
     ],
     entries,
   };
+  // `search` (X01, #32): a Video page with the rows the search scenarios find, their synonyms as
+  // the catalogue has them («tearing» finds nothing by name and suggests V-Sync).
+  if (scenario.search) {
+    entries.push(
+      entry("video.vsync", "video", { type: "toggle" }, true, {
+        synonyms: ["tearing", "strappo"],
+      }),
+      entry(
+        "video.path",
+        "video",
+        choice("cards", ["accelerated", "compatible"]),
+        "accelerated",
+        { synonyms: ["schermo nero", "black screen", "nativo", "native", "webview"] },
+      ),
+    );
+    schema.pages.push("video");
+    schema.groups.push({ id: "game", pages: ["video"] });
+    schema.sections.push({
+      page: "video",
+      id: "gpu",
+      keys: ["video.vsync", "video.path"],
+    });
+  }
+  // `notifications` (X03, #32): what the bell shows, newest first, two unread.
+  const notifications = scenario.notifications
+    ? [
+        {
+          id: 3,
+          at: Date.now() - 5 * 60_000,
+          read: false,
+          notice: { kind: "controllerConnected", name: "8BitDo Ultimate" },
+        },
+        {
+          id: 2,
+          at: Date.now() - 3 * 3_600_000,
+          read: false,
+          notice: { kind: "controllerConnected", name: "" },
+        },
+        {
+          id: 1,
+          at: Date.now() - 26 * 3_600_000,
+          read: true,
+          notice: { kind: "controllerConnected", name: "Xbox Wireless Controller" },
+        },
+      ]
+    : [];
   const values = { "general.bgpause": true, "general.confirmdel": false };
   const rows = (page) =>
     entries
@@ -888,6 +934,7 @@
         }
       : {}),
     library_get: library,
+    notifications_list: notifications,
     settings_schema: rich ? rich.schema : schema,
     settings_recent: rich ? rich.recent : [],
     settings_game_overrides: [],
