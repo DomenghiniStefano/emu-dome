@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { pageZoom, zoomedReference } from './zoomedReference'
+import { pageZoom, zoomedReference, zoomedViewport } from './zoomedReference'
 
 describe('zoomedReference', () => {
   afterEach(() => {
@@ -22,5 +22,19 @@ describe('zoomedReference', () => {
     document.documentElement.style.setProperty('zoom', '1.1')
     const r = zoomedReference(trigger()).getBoundingClientRect()
     expect([r.x, r.y, r.width, r.height].map(v => Math.round(v))).toEqual([100, 200, 200, 30])
+  })
+})
+
+describe('zoomedViewport', () => {
+  afterEach(() => {
+    document.documentElement.style.removeProperty('zoom')
+  })
+
+  it('is the window at 100%, and the window over the zoom when scaled, read each time', () => {
+    const v = zoomedViewport()
+    expect([v.x, v.y, v.width, v.height]).toEqual([0, 0, window.innerWidth, window.innerHeight])
+    document.documentElement.style.setProperty('zoom', '1.2')
+    expect(v.width).toBeCloseTo(window.innerWidth / 1.2)
+    expect(v.height).toBeCloseTo(window.innerHeight / 1.2)
   })
 })

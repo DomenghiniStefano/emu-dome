@@ -26,7 +26,9 @@ const favourites = ref(true)
 
 <template>
   <KitSection title="Popover">
-    <KitState label="Panel: a panel under its button (L03), with a Checkbox row">
+    <KitState
+      label="Panel: a panel under its button (L03), a Checkbox row in its body (it scrolls in a short window), Reset in its footer (always in view)"
+    >
       <Popover :open="panelOpen" @update:open="o => o || closePanel()">
         <Button
           ref="panelButton"
@@ -49,7 +51,9 @@ const favourites = ref(true)
               Favourites only
             </Button>
           </Checkbox>
-          <Button @click="closePanel">Reset</Button>
+          <template #footer>
+            <Button @click="closePanel">Reset</Button>
+          </template>
         </PopoverContent>
       </Popover>
     </KitState>

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 // Filter and sort panel (board L03, Stati), inside its Popover (SortFilterButton): the order comes
 // from the `library.sort` setting (the parent reads and writes it) as a RadioGroup, the «Mostra»
-// switches, the library view's own state, as Checkboxes.
+// switches, the library view's own state, as Checkboxes. This is the panel's body, which scrolls
+// when the window is short; «Ripristina» is its footer, kept in view (SortFilterButton, #106).
 // Controller / keyboard: the popover's own nav scope while open, the order chosen focused first;
 // B / Esc / a click outside close it.
 import { useI18n } from 'vue-i18n'
-import { RotateCcw } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -13,7 +13,7 @@ import { SHOW_KEYS, SORTS, type ShowKey, type Sort } from './librarySort'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
 
 defineProps<{ sort: Sort; show: Record<ShowKey, boolean> }>()
-const emit = defineEmits<{ sort: [Sort]; toggle: [ShowKey]; reset: [] }>()
+const emit = defineEmits<{ sort: [Sort]; toggle: [ShowKey] }>()
 
 const { t } = useI18n()
 
@@ -66,5 +66,4 @@ function choose(value: unknown) {
       </Button>
     </Checkbox>
   </div>
-  <Button :icon="RotateCcw" @click="emit('reset')">{{ t('library.filters.reset') }}</Button>
 </template>

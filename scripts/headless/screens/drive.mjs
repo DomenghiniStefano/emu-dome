@@ -224,6 +224,21 @@ const SCENARIOS = {
     width: 1280,
     height: 800,
   },
+  // L03 on the desktop (#106): the whole panel, no scrolling, as before; and at 120 % interface
+  // scale (CSS zoom, `richSettings` serves `a11y.textsize`) in a short window, where it scrolls
+  // and still ends inside the window.
+  "lib-desk-filters": {
+    mock: {},
+    steps: [`document.querySelector('main [aria-haspopup=dialog]').click()`],
+    width: 1280,
+    height: 800,
+  },
+  "lib-desk-filters-zoom120": {
+    mock: { richSettings: true, textsize: 120 },
+    steps: [`document.querySelector('main [aria-haspopup=dialog]').click()`],
+    width: 1280,
+    height: 600,
+  },
   "details-versions": {
     mock: { versions: true },
     steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
