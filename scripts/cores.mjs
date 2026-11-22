@@ -148,6 +148,24 @@ const lockProblems = lock => {
         core.build?.git_depth === undefined || Number.isInteger(core.build.git_depth),
         `${at}.build.git_depth must be a whole number`,
       )
+      // What the core's CMake would fetch at configure time: each pinned to a commit and its source
+      // archive (the build feeds them to CMake offline), with its licence for the source offer.
+      need(
+        core.build?.dependencies === undefined || Array.isArray(core.build.dependencies),
+        `${at}.build.dependencies must be a list`,
+      )
+      for (const [i, dep] of (core.build?.dependencies ?? []).entries()) {
+        const dt = `${at}.build.dependencies[${i}]`
+        need(/^[A-Za-z0-9_-]+$/.test(dep?.name ?? ''), `${dt}.name (the FetchContent name)`)
+        need(/^https:\/\/github\.com\/[^/]+\/[^/]+$/.test(dep?.repo ?? ''), `${dt}.repo`)
+        need(HEX40.test(dep?.commit ?? ''), `${dt}.commit must be a full commit hash`)
+        need(
+          /^https:\/\//.test(dep?.archive ?? '') && dep.archive.includes(dep.commit ?? '-'),
+          `${dt}.archive must be the pinned commit's archive`,
+        )
+        need(HEX64.test(dep?.archive_sha256 ?? ''), `${dt}.archive_sha256`)
+        need(typeof dep?.spdx === 'string', `${dt}.spdx (its licence)`)
+      }
     }
     for (const [platform, build] of builds) {
       const bt = `${at}.builds.${platform}`
@@ -171,9 +189,11 @@ const lockProblems = lock => {
       for (const [i, file] of [build.library, ...(build.notices ?? [])].entries()) {
         const ft = i === 0 ? `${bt}.library` : `${bt}.notices[${i - 1}]`
         // member: the file's path in the downloaded archive; for a built core, a notice's path in
-        // the source archive (its library is the build's output: no member).
+        // the source archive, or `output`, a file the build writes in its build folder (its library
+        // is the build's output: neither).
+        const inside = name => typeof name === 'string' && !name.split('/').includes('..')
         need(
-          (isBuilt && i === 0) || (typeof file?.member === 'string' && !file.member.split('/').includes('..')),
+          (isBuilt && i === 0) || inside(file?.member) || (isBuilt && inside(file?.output)),
           `${ft}.member`,
         )
         need(FILE_NAME.test(file?.file ?? ''), `${ft}.file`)
@@ -469,6 +489,16 @@ const sourcesMarkdown = lock => {
               ` (\`cores.lock\`, \`scripts/core-build.mjs\`, ${core.build.scripts.map(s => `\`${s}\``).join(', ')}).`,
           ]
         : []),
+      ...(built && (core.build.dependencies ?? []).length > 0
+        ? [
+            '  It compiles in these libraries, each built from the source archive of its pinned commit:',
+            ...core.build.dependencies.map(
+              d =>
+                `  - ${d.name} (${d.spdx}): ${d.repo}, commit \`${d.commit}\`; ${d.archive}` +
+                ` (sha256 \`${d.archive_sha256}\`).`,
+            ),
+          ]
+        : []),
       `- Builds:`,
       builds,
       '',
@@ -642,6 +672,11 @@ const selfTest = lock => {
         (core, build) => (build.built.release = `${EMUDOME_REPO}/releases/download/cores-mgba-0000000/`),
         isBuilt,
       ),
+      disk,
+    ],
+    [
+      'a built core dependency pinned to no commit',
+      mutated(core => (core.build.dependencies = [{ name: 'dep', repo: 'https://github.com/a/b' }]), isBuilt),
       disk,
     ],
     [
