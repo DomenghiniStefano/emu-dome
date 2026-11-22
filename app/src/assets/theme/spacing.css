@@ -217,6 +217,9 @@
   --spacing-tv-tabs: calc(96px * var(--tv-scale));
   --spacing-tv-tab: calc(52px * var(--tv-scale));
   --spacing-tv-bar: calc(72px * var(--tv-scale));
+  /* What floats at the bottom of the shell (X06's update card) sits this far up: over the bar,
+     with the bar's gap between hints (32) clear of it. */
+  --spacing-tv-over-bar: calc(var(--spacing-tv-bar) + var(--spacing-tv-hint-gap));
   /* A controller button drawn as a key (the bar's glyphs, the hero's actions). */
   --spacing-tv-glyph: calc(30px * var(--tv-scale));
   /* The hero's actions: «Riprendi» / «Gioca» and «Dettagli del gioco». */
