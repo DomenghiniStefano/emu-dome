@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { nativeGameRect } from './surround'
 
-const none = { left: 0, top: 0, right: 0, bottom: 0, align: 'centre' as const }
+const none = { left: 0, top: 0, right: 0, bottom: 0, align: 'centre' as const, between: 0 }
 const gba = { w: 240, h: 160 }
 
 // The cases of `screens::fit`'s tests (crates/emudome-core/src/screens.rs): the mirror must agree.
@@ -50,6 +50,7 @@ describe('nativeGameRect', () => {
         top: Number.NaN,
         bottom: 2,
         align: 'centre',
+        between: 0,
       },
     )
     expect([r.x, r.y]).toEqual([450, 0])
