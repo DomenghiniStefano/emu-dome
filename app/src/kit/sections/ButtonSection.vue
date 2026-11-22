@@ -40,7 +40,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Large" disabled>Play</Button>
     </KitState>
     <KitState label="Medium (dialog actions)">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :size="ButtonSize.Medium">Not now</Button>
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Resume</Button>
       </div>
@@ -115,7 +115,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </Button>
     </KitState>
     <KitState label="Soft · Tall">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :size="ButtonSize.Tall">
           <Heart :size="16" :stroke-width="1.75" aria-hidden="true" />
           Add to favourites
@@ -140,7 +140,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       <Button :variant="ButtonVariant.GhostRegular" :size="ButtonSize.Small">Remove</Button>
     </KitState>
     <KitState label="Soft · fade Dim, and disabled (half faded)">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Soft" :fade="ButtonFade.Dim">Choose a folder</Button>
         <Button :variant="ButtonVariant.Soft" :fade="ButtonFade.Dim" disabled>Sign in</Button>
       </div>
@@ -184,7 +184,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Plain · IconTouch (phone)">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Plain" :size="ButtonSize.IconTouch" aria-label="Back">
           <ChevronLeft :size="24" :stroke-width="1.75" aria-hidden="true" />
         </Button>
@@ -221,7 +221,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </Button>
     </KitState>
     <KitState label="Icon · IconSmall">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :size="ButtonSize.Icon" aria-label="Settings">
           <Settings :size="16" :stroke-width="1.75" aria-hidden="true" />
         </Button>
@@ -234,13 +234,13 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       <Button :variant="ButtonVariant.Quiet">Sort by: last played</Button>
     </KitState>
     <KitState label="Primary and Soft · Compact">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Compact">Resume</Button>
         <Button :size="ButtonSize.Compact">Saves</Button>
       </div>
     </KitState>
     <KitState label="Primary and Soft · Medium">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Choose a folder</Button>
         <Button :size="ButtonSize.Medium">Open a file</Button>
       </div>
@@ -266,13 +266,13 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Primary · Tv, Soft · Tv (TV mode's hero actions)">
-      <div class="flex items-center gap-16">
+      <div class="flex flex-wrap items-center gap-16">
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Tv">Resume</Button>
         <Button :size="ButtonSize.Tv">Game details</Button>
       </div>
     </KitState>
     <KitState label="NavItem · TvNavItem, current and not (TV mode's settings pages)">
-      <div class="flex w-panel flex-col gap-8">
+      <div class="flex w-panel max-w-full flex-col gap-8">
         <Button :variant="ButtonVariant.NavItem" :size="ButtonSize.TvNavItem" aria-current="page">
           Video
         </Button>
@@ -280,7 +280,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="TvRow · TvRow (TV mode's settings rows and sheet options)">
-      <div class="flex w-panel flex-col gap-8">
+      <div class="flex w-panel max-w-full flex-col gap-8">
         <Button :variant="ButtonVariant.TvRow" :size="ButtonSize.TvRow">
           <span>Show FPS</span>
           <span class="text-ink-muted">Off</span>
@@ -325,14 +325,14 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Quick menu · Menu, Menu disabled, MenuCompact">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :size="ButtonSize.Menu">Save to slot 1</Button>
         <Button :size="ButtonSize.Menu" :fade="ButtonFade.Dim" disabled>Slot 2 is empty</Button>
         <Button :size="ButtonSize.MenuCompact">Undo changes</Button>
       </div>
     </KitState>
     <KitState label="Strong · MenuCompact · DangerOutline · Menu">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Strong" :size="ButtonSize.MenuCompact">
           Save for this game
         </Button>
@@ -343,7 +343,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Pick · MenuCompact: one on, one disabled (fade Dim), one on the phone">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Pick" :size="ButtonSize.MenuCompact" :aria-pressed="true">
           Sharp pixels
         </Button>
@@ -371,7 +371,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="MenuPair (Soft, Strong): desktop">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :size="ButtonSize.MenuPair">Undo</Button>
         <Button :variant="ButtonVariant.Strong" :size="ButtonSize.MenuPair">
           Save for this game
@@ -388,7 +388,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Primary · MenuMain: desktop, and on the phone">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.MenuMain">
           <Play :size="18" fill="currentColor" :stroke-width="0" aria-hidden="true" />
           Resume game
@@ -399,7 +399,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Ghost · Back, Step, Step disabled, Step on the phone, IconTouch">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.Back">
           <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
           Quick menu
@@ -426,7 +426,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Link · Text, Link · LabelLink: desktop, and LabelLink on the phone">
-      <div class="flex items-center gap-8">
+      <div class="flex flex-wrap items-center gap-8">
         <Button :variant="ButtonVariant.Link" :size="ButtonSize.Text">Undo</Button>
         <Button :variant="ButtonVariant.Link" :size="ButtonSize.LabelLink"
           >More slots and saves</Button
@@ -464,7 +464,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="NavHead, NavItem · NavItem: a side list, the current page marked">
-      <div class="flex w-sidebar flex-col gap-2">
+      <div class="flex w-sidebar max-w-full flex-col gap-2">
         <Button :variant="ButtonVariant.NavHead" :size="ButtonSize.NavItem">
           <span class="flex-1 text-left">Overview</span>
         </Button>
@@ -477,7 +477,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="LinkRow · LinkRow: rows of a card list that open a page">
-      <div class="flex w-page flex-col rounded-card border border-line bg-surface">
+      <div class="flex w-page max-w-full flex-col rounded-card border border-line bg-surface">
         <Button v-for="n in 2" :key="n" :variant="ButtonVariant.LinkRow" :size="ButtonSize.LinkRow">
           <span class="flex min-w-0 flex-1 flex-col">
             <span class="font-medium text-ink">Screen effect {{ n }}</span>
@@ -504,10 +504,14 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Field · Compact: the top bar's search; BarIcon · Icon: closed and open">
-      <div class="flex items-center gap-8 bg-glass-thin p-6">
-        <Button :variant="ButtonVariant.Field" :size="ButtonSize.Compact" class="w-topbar-search">
+      <div class="flex max-w-full flex-wrap items-center gap-8 bg-glass-thin p-6">
+        <Button
+          :variant="ButtonVariant.Field"
+          :size="ButtonSize.Compact"
+          class="w-topbar-search max-w-full min-w-0 shrink"
+        >
           <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
-          <span class="flex-1 text-left">Search games, actions and settings</span>
+          <span class="min-w-0 flex-1 truncate text-left">Search games, actions and settings</span>
         </Button>
         <Button :variant="ButtonVariant.BarIcon" :size="ButtonSize.Icon" aria-label="Notifications">
           <Bell :size="20" :stroke-width="1.75" aria-hidden="true" />
@@ -523,7 +527,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Result · Result: a search result, one disabled with its reason">
-      <div class="flex w-panel flex-col glass-thick p-8">
+      <div class="flex w-panel max-w-full flex-col glass-thick p-8">
         <Button :variant="ButtonVariant.Result" :size="ButtonSize.Result">
           <Settings :size="20" :stroke-width="1.75" class="text-ink-muted" aria-hidden="true" />
           <span class="flex flex-col">
@@ -542,7 +546,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Result · Notice: a notification, unread and read">
-      <div class="flex w-notifications flex-col divide-y divide-line glass-thick p-12">
+      <div class="flex w-notifications max-w-full flex-col divide-y divide-line glass-thick p-12">
         <Button v-for="n in 2" :key="n" :variant="ButtonVariant.Result" :size="ButtonSize.Notice">
           <span class="mt-5 size-8 flex-none rounded-full bg-ink-faint"></span>
           <span class="flex min-w-0 flex-1 flex-col gap-2">
@@ -554,6 +558,43 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <template #review>
+      <KitIssue title="Un'etichetta lunga esce dal suo posto" :status="IssueStatus.Open">
+        Button, Chip, la tab di Tabs e Badge restano su una riga e non si stringono
+        (whitespace-nowrap, shrink-0): con una traduzione lunga in un posto stretto (un telefono,
+        una colonna) il pulsante esce dal riquadro che lo contiene e fa scorrere la pagina di lato.
+        Segmented e Select invece accorciano con «…». Qui sotto un riquadro largo 200.
+        <template #current>
+          <div class="flex w-field max-w-full border border-dashed border-line">
+            <Button>Ripristina le impostazioni di tutti i giochi</Button>
+          </div>
+        </template>
+        <template #proposed>
+          <div class="flex w-field max-w-full border border-dashed border-line">
+            <Button class="max-w-full min-w-0 shrink">
+              <span class="min-w-0 truncate">Ripristina le impostazioni di tutti i giochi</span>
+            </Button>
+          </div>
+        </template>
+        <template #solution>
+          Da decidere col proprietario: o il pulsante si accorcia con «…» dentro il suo posto
+          (max-w-full nella base di button/variants.ts e l'etichetta in uno span truncate in
+          Button.vue, lo stesso per Chip e la tab), o va a capo su due righe come CardAction; oppure
+          resta così e ogni testo lungo si controlla nelle schermate.
+        </template>
+      </KitIssue>
+      <KitIssue
+        title="Con «Riduci le animazioni» il pulsante si stringe ancora"
+        :status="IssueStatus.Open"
+      >
+        La pressione rimpicciolisce il pulsante al 98% (theme/motion.css). Con «Riduci le
+        animazioni» (styles.css) la transizione di transform non c'è più, ma lo scale resta: il
+        pulsante salta di colpo al 98% e torna, un movimento senza animazione invece di nessun
+        movimento.
+        <template #solution>
+          In theme/motion.css lo scale della pressione vale solo fuori da
+          :root[data-motion='reduce'] (un token o una regola, la sceglie chi tiene il tema).
+        </template>
+      </KitIssue>
       <KitIssue
         title="Sul telefono Small, Default e Tall restano sotto i 44"
         :status="IssueStatus.Proposed"

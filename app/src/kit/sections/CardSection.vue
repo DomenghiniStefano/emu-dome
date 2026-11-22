@@ -27,7 +27,7 @@ const muted = ref(true)
       </Card>
     </KitState>
     <KitState label="Surface · pad Snug (8), Tight (6)">
-      <div class="flex gap-6">
+      <div class="flex flex-wrap gap-6">
         <Card :pad="CardPad.Snug" class="w-field gap-6">
           <CardTitle>Snug</CardTitle>
           <CardDescription>A line with its action.</CardDescription>
@@ -39,7 +39,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="StatTile · a count per console">
-      <div class="grid w-dialog grid-cols-4 gap-6">
+      <div class="grid w-dialog max-w-full grid-cols-4 gap-6">
         <StatTile :value="12" label="Game Boy Advance" />
         <StatTile :value="3" label="Nintendo DS" />
         <StatTile :value="0" label="Nintendo 3DS" />
@@ -47,7 +47,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Detail: desktop, and on the phone (panel corners, the phone room)">
-      <div class="flex gap-6">
+      <div class="flex flex-wrap gap-6">
         <Card :variant="CardVariant.Detail" class="w-field gap-6">
           <CardTitle>Files</CardTitle>
           <CardDescription>A card of the game details.</CardDescription>
@@ -61,7 +61,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Raised · a choice (as button), selected and not">
-      <div class="flex gap-6">
+      <div class="flex flex-wrap gap-6">
         <Card
           v-for="id in ['normal', 'wide']"
           :key="id"
@@ -79,7 +79,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Choice · on a page (first run A/B), selected and not">
-      <div class="flex gap-6">
+      <div class="flex flex-wrap gap-6">
         <Card
           v-for="id in ['nintendo', 'printed']"
           :key="id"
@@ -97,7 +97,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="RaisedAccent · the chosen one's text in accent too (scope levels)">
-      <div class="flex gap-6">
+      <div class="flex flex-wrap gap-6">
         <Card
           v-for="id in ['normal', 'wide']"
           :key="id"
@@ -115,7 +115,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="PictureChoice · selected, not, empty (data-empty)">
-      <div class="flex gap-6">
+      <div class="flex flex-wrap gap-6">
         <Card
           v-for="id in ['generated', 'icon', 'user']"
           :key="id"
@@ -151,7 +151,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Choice · selected and not">
-      <div class="flex gap-6">
+      <div class="flex flex-wrap gap-6">
         <Card
           v-for="id in ['pad', 'keyboard']"
           :key="id"
@@ -169,7 +169,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="List · with LinkRow (button, value, disabled, div)">
-      <Card :variant="CardVariant.List" class="w-dialog">
+      <Card :variant="CardVariant.List" class="w-dialog max-w-full">
         <LinkRow name="Remap buttons" sub="Change what each button does" />
         <LinkRow name="Screen effect" sub="Video" value="CRT" />
         <LinkRow name="Sticks and triggers" sub="Dead zone 15%" disabled />
@@ -177,7 +177,7 @@ const muted = ref(true)
       </Card>
     </KitState>
     <KitState label="Tile · a slot to choose (as button), chosen and not; chosen on the phone">
-      <div class="flex gap-8">
+      <div class="flex flex-wrap gap-8">
         <Card
           v-for="n in [1, 2]"
           :key="n"
@@ -199,7 +199,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Tool (on, off, disabled), and on the phone (off, on)">
-      <div class="flex gap-8">
+      <div class="flex flex-wrap gap-8">
         <Card
           as="button"
           :variant="CardVariant.Tool"
@@ -219,7 +219,7 @@ const muted = ref(true)
           <Camera :size="20" :stroke-width="1.75" aria-hidden="true" />
           Not yet
         </Card>
-        <div data-density="touch" class="flex gap-8">
+        <div data-density="touch" class="flex flex-wrap gap-8">
           <Card as="button" :variant="CardVariant.Tool" class="w-stat-min gap-8">
             <Camera :size="18" :stroke-width="1.75" aria-hidden="true" />
             Screenshot

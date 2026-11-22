@@ -16,7 +16,7 @@ import { IssueStatus } from '@/kit/review'
 <template>
   <KitSection title="LabelledBlock">
     <KitState label="Title only (Saves «In-game save», title-as h3)">
-      <LabelledBlock title="In-game save" title-as="h3" class="w-menu">
+      <LabelledBlock title="In-game save" title-as="h3" class="w-menu max-w-full">
         <Card :pad="CardPad.Snug" class="flex-row items-center gap-8">
           <span class="min-w-0 flex-1 tabular-nums">Saved 21 Nov, 18:42 · 32 KB</span>
           <Button>Export</Button>
@@ -24,7 +24,7 @@ import { IssueStatus } from '@/kit/review'
       </LabelledBlock>
     </KitState>
     <KitState label="Aside · a Link · LabelLink (quick menu «More slots»)">
-      <LabelledBlock title="Quick saves" class="w-menu">
+      <LabelledBlock title="Quick saves" class="w-menu max-w-full">
         <template #aside>
           <Button :variant="ButtonVariant.Link" :size="ButtonSize.LabelLink">
             More slots and saves
@@ -34,7 +34,7 @@ import { IssueStatus } from '@/kit/review'
       </LabelledBlock>
     </KitState>
     <KitState label="Aside · a note, text-caption (SettingsSection)">
-      <LabelledBlock title="Most used" title-as="h3" class="w-menu">
+      <LabelledBlock title="Most used" title-as="h3" class="w-menu max-w-full">
         <template #aside>
           <span class="text-caption text-ink-muted">Apply to every game</span>
         </template>
@@ -44,7 +44,7 @@ import { IssueStatus } from '@/kit/review'
       </LabelledBlock>
     </KitState>
     <KitState label="Aside · a note, text-caption-tall (Controls «Shortcuts to remember»)">
-      <LabelledBlock title="Shortcuts to remember" class="w-menu">
+      <LabelledBlock title="Shortcuts to remember" class="w-menu max-w-full">
         <template #aside>
           <span class="text-caption-tall text-ink-muted">Hold L3 and press a button</span>
         </template>
@@ -57,7 +57,7 @@ import { IssueStatus } from '@/kit/review'
       </LabelledBlock>
     </KitState>
     <KitState label="No head (quick menu's saves page, «all»)">
-      <LabelledBlock class="w-menu" aria-label="Quick saves">
+      <LabelledBlock class="w-menu max-w-full" aria-label="Quick saves">
         <Card :pad="CardPad.Snug">Every slot, no label above</Card>
       </LabelledBlock>
     </KitState>
@@ -81,7 +81,7 @@ import { IssueStatus } from '@/kit/review'
         pagina all'altra, e due blocchi messi in griglia non si allineano. La nota la scrive chi usa
         il blocco, scegliendo ogni volta il tipo.
         <template #current>
-          <div class="grid w-panel grid-cols-3 gap-8">
+          <div class="grid w-panel max-w-full grid-cols-3 gap-8">
             <LabelledBlock title="In-game save" title-as="h3">
               <Card :pad="CardPad.Snug">24</Card>
             </LabelledBlock>
@@ -102,7 +102,7 @@ import { IssueStatus } from '@/kit/review'
           </div>
         </template>
         <template #proposed>
-          <div class="grid w-panel grid-cols-3 gap-8">
+          <div class="grid w-panel max-w-full grid-cols-3 gap-8">
             <LabelledBlockProposal title="In-game save">
               <Card :pad="CardPad.Snug">28</Card>
             </LabelledBlockProposal>

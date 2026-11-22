@@ -15,7 +15,7 @@ const proposed = ref('overview')
 
 <template>
   <KitSection title="Tabs">
-    <KitState label="Default (40)">
+    <KitState label="Default (tab, 32)">
       <Tabs v-model="tab">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -26,7 +26,7 @@ const proposed = ref('overview')
         <TabsContent value="remap" class="pt-12 text-ink-muted">Remap panel</TabsContent>
       </Tabs>
     </KitState>
-    <KitState label="Large (44)">
+    <KitState label="Large (tab-lg, 36)">
       <Tabs v-model="large" :size="TabsSize.Large">
         <TabsList>
           <TabsTrigger value="saves">Saves</TabsTrigger>
@@ -35,7 +35,7 @@ const proposed = ref('overview')
         </TabsList>
       </Tabs>
     </KitState>
-    <KitState label="Large on the phone: pills (36)">
+    <KitState label="Large on the phone: pills (control-md, 30)">
       <Tabs v-model="pill" :size="TabsSize.Large" data-density="touch">
         <TabsList class="gap-8 border-b-0">
           <TabsTrigger value="saves">Saves</TabsTrigger>

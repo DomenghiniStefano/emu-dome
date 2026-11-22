@@ -15,7 +15,7 @@ import { IssueStatus } from '@/kit/review'
 <template>
   <KitSection title="LinkRow">
     <KitState label="Name and line; with a value; disabled; as a div (Controls C01)">
-      <Card :variant="CardVariant.List" class="w-menu">
+      <Card :variant="CardVariant.List" class="w-menu max-w-full">
         <LinkRow name="Remap the buttons" sub="For every game, per console or for one game" />
         <LinkRow name="Screen effect" sub="Screen effects" value="CRT TV" />
         <LinkRow name="Sticks, triggers and rumble" sub="Dead zone 12 % · triggers 30 %" disabled />
@@ -23,7 +23,7 @@ import { IssueStatus } from '@/kit/review'
       </Card>
     </KitState>
     <KitState label="Licences page: many rows, the first one data-nav-initial">
-      <Card :variant="CardVariant.List" class="w-menu">
+      <Card :variant="CardVariant.List" class="w-menu max-w-full">
         <LinkRow name="EmuDome" sub="GPL-3.0-or-later · version 0.1.0" />
         <LinkRow name="mGBA" sub="Game Boy, Game Boy Color, Game Boy Advance · MPL-2.0" />
         <LinkRow name="melonDS DS" sub="Nintendo DS · GPL-3.0-or-later" />

@@ -24,13 +24,13 @@ const it = new Intl.NumberFormat('it')
 <template>
   <KitSection title="StatTile">
     <KitState label="First run S02: four tiles, zeros included">
-      <div class="grid w-panel grid-cols-4 gap-6">
+      <div class="grid w-panel max-w-full grid-cols-4 gap-6">
         <StatTile v-for="c in FIRST_RUN" :key="c.id" :value="c.count" :label="c.label" />
       </div>
     </KitState>
     <KitState label="Library L11 after a scan: auto-fill grid, zeros hidden">
       <div
-        class="grid w-panel grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))] gap-6"
+        class="grid w-panel max-w-full grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))] gap-6"
       >
         <StatTile
           v-for="c in FIRST_RUN.filter(x => x.count > 0)"
@@ -46,7 +46,7 @@ const it = new Intl.NumberFormat('it')
       </div>
     </KitState>
     <KitState label="A four-digit count, and a string value">
-      <div class="grid w-dialog grid-cols-3 gap-6">
+      <div class="grid w-dialog max-w-full grid-cols-3 gap-6">
         <StatTile v-for="c in BIG" :key="c.id" :value="c.count" :label="c.label" />
         <StatTile value="—" label="Nintendo 3DS" />
       </div>
@@ -58,12 +58,12 @@ const it = new Intl.NumberFormat('it')
         come «42», e a colpo d'occhio sembra che ogni console abbia giochi. Durante la ricerca i
         numeri crescono, ma una console senza giochi non si distingue da una che ne ha.
         <template #current>
-          <div class="grid w-panel grid-cols-4 gap-6">
+          <div class="grid w-panel max-w-full grid-cols-4 gap-6">
             <StatTile v-for="c in FIRST_RUN" :key="c.id" :value="c.count" :label="c.label" />
           </div>
         </template>
         <template #proposed>
-          <div class="grid w-panel grid-cols-4 gap-6">
+          <div class="grid w-panel max-w-full grid-cols-4 gap-6">
             <StatTileZeroProposal
               v-for="c in FIRST_RUN"
               :key="c.id"
@@ -83,12 +83,12 @@ const it = new Intl.NumberFormat('it')
         «1,234» in inglese. Con una libreria grande (chi ha tutto il set GBA) il numero più
         importante della schermata è anche il meno leggibile.
         <template #current>
-          <div class="grid w-menu grid-cols-2 gap-6">
+          <div class="grid w-menu max-w-full grid-cols-2 gap-6">
             <StatTile v-for="c in BIG" :key="c.id" :value="c.count" :label="c.label" />
           </div>
         </template>
         <template #proposed>
-          <div class="grid w-menu grid-cols-2 gap-6">
+          <div class="grid w-menu max-w-full grid-cols-2 gap-6">
             <StatTile v-for="c in BIG" :key="c.id" :value="it.format(c.count)" :label="c.label" />
           </div>
         </template>

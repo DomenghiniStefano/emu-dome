@@ -11,7 +11,7 @@ import { IssueStatus } from '@/kit/review'
 <template>
   <KitSection title="EmptyState">
     <KitState label="Page: icon, title, text, actions, footer">
-      <div class="flex w-menu border border-dashed border-line">
+      <div class="flex w-menu max-w-full border border-dashed border-line">
         <EmptyState
           :icon="Save"
           title="Nothing saved yet"
@@ -39,7 +39,7 @@ import { IssueStatus } from '@/kit/review'
       <EmptyState
         as="div"
         :variant="EmptyStateVariant.Card"
-        class="w-menu"
+        class="w-menu max-w-full"
         text="No setting matches “crt”."
       />
     </KitState>
