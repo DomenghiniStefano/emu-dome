@@ -1,12 +1,13 @@
 // The touch controls' scenarios (Trello #29), on a phone (a touch screen, the schema's device a
 // phone), in Italian as the mockup: the overlay in game for GB, GBA, DS and 3DS at the card's four
-// sizes (portrait 390 × 844 and 360 × 740, landscape 844 × 390 and 740 × 360), the built-in skins,
+// sizes (portrait 390 × 844 and 360 × 740, landscape 844 × 390 and 740 × 360), the two styles,
 // the C06 editor (opened from the quick menu's «Controlli»: as it opens, a tool open, «Altro»
 // open, folded into the pill; at 320 px too, the narrowest phone), and E14 (the last controller
 // gone: the question, or the toast with «Passa al tocco»). The phone's layouts with a game
-// picture (`frame`, the `touch-frame-*` / `touch-qm-*` / `touch-start-failed-*` scenarios) add the
-// Galaxy S23's 412 × 892 and 892 × 412: where the game sits beside the controls and the quick
-// menu (opened upright, then the phone turned: the `resize` step), and G02 at phone widths.
+// picture (`frame`, the `touch-frame-*` / `touch-qm-*` / `touch-start-failed-*` scenarios) add
+// 412 × 892 and 892 × 412: where the game sits beside the controls and the quick menu (opened
+// upright, then the phone turned: the `resize` step), and G02 at phone widths. `touch-look-*`:
+// the compact controls on the Galaxy S23 as it reports itself (360 × 780), both styles.
 
 const escape = `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }))`;
 const click = (re) =>
@@ -31,9 +32,12 @@ const SIZES = {
   p360: [360, 740],
   l844: [844, 390],
   l740: [740, 360],
-  // Galaxy S23 (#29, the PM's phone).
+  // A 412 × 892 phone (#29).
   p412: [412, 892],
   l892: [892, 412],
+  // The Galaxy S23 as its webview reports itself (#29, the owner's phone, 2026-11-22).
+  p780: [360, 780],
+  l780: [780, 360],
 };
 /** The card's four sizes, the defaults of `add`. */
 const CARD = ["p390", "p360", "l844", "l740"];
@@ -55,8 +59,8 @@ const add = (name, s, sizes = CARD) => {
 };
 
 for (const game of ["gb", "gba", "nds", "3ds"]) add(`play-${game}`, { mock: { game } });
-add("skin-outlines", { mock: { touchRows: { "touch.tskin": "outlines" } } }, ["p390", "l844"]);
-add("skin-contrast", { mock: { game: "nds", touchRows: { "touch.tskin": "contrast" } } }, [
+add("skin-outline", { mock: { touchRows: { "touch.tskin": "outline" } } }, ["p390", "l844"]);
+add("skin-outline-nds", { mock: { game: "nds", touchRows: { "touch.tskin": "outline" } } }, [
   "p390",
   "l844",
 ]);
@@ -90,12 +94,24 @@ for (const game of ["gb", "gba", "nds"])
 // DS and 3DS on a phone (owner, 2026-11-22): the two screens large and apart, upright with L /
 // menu / R in the strip between them, on its side side by side at the top. The S23 with its
 // camera's 32 px (upright at the top, on its side on the left), as the webview reports it.
-const camera = (side) =>
-  `(() => { document.documentElement.style.setProperty('--spacing-safe-${side}', '32px'); window.dispatchEvent(new Event('resize')); return true })()`;
+const camera = (side, px = 32) =>
+  `(() => { document.documentElement.style.setProperty('--spacing-safe-${side}', '${px}px'); window.dispatchEvent(new Event('resize')); return true })()`;
 for (const game of ["nds", "3ds"]) {
   add(`apart-${game}`, { mock: { game, frame: true } }, ["p360", "l740", "p390", "l844"]);
   add(`apart-${game}`, { mock: { game, frame: true }, steps: [camera("top")] }, ["p412"]);
   add(`apart-${game}`, { mock: { game, frame: true }, steps: [camera("left")] }, ["l892"]);
+}
+// The compact controls (owner, 2026-11-22) on the S23 as it reports itself, its camera's 38 px:
+// the two DS screens edge to edge upright, both styles («Fumé» the default, «Contorno»), and GBA.
+for (const [style, rows] of [
+  ["smoke", {}],
+  ["outline", { "touch.tskin": "outline" }],
+]) {
+  for (const game of ["nds", "3ds", "gba"]) {
+    const mock = { game, frame: true, touchRows: rows };
+    add(`look-${style}-${game}`, { mock, steps: [camera("top", 38)] }, ["p780"]);
+    add(`look-${style}-${game}`, { mock, steps: [camera("left", 38)] }, ["l780"]);
+  }
 }
 // The quick menu over the game, upright and on its side; opened upright then turned, and back.
 add("qm-frame", { mock: { frame: true, slots: "some" }, steps: [escape] }, ALL);
