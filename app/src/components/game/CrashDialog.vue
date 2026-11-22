@@ -3,6 +3,7 @@
 // without one, back to the library is.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ClipboardCopy, Library, Play } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTone } from '@/components/ui/dialog'
 import type { ConsoleId } from '@/emu'
@@ -31,9 +32,12 @@ const savedLine = computed(() =>
       {{ savedLine }}
     </p>
     <template #actions>
-      <Button :size="ButtonSize.Medium" @click="emit('copy')">{{ t('flow.copyDetails') }}</Button>
+      <Button :size="ButtonSize.Medium" :icon="ClipboardCopy" @click="emit('copy')">
+        {{ t('flow.copyDetails') }}
+      </Button>
       <Button
         :size="ButtonSize.Medium"
+        :icon="Library"
         :data-nav-initial="savedAt ? undefined : ''"
         @click="emit('library')"
       >
@@ -43,6 +47,8 @@ const savedLine = computed(() =>
         v-if="savedAt"
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Play"
+        icon-filled
         data-nav-initial
         @click="emit('resume')"
       >

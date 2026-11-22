@@ -5,6 +5,7 @@
 // one does (useControllerLoss). On the game flow's dialog (FlowDialog); B is the safe exit
 // («Aspetta»).
 import { useI18n } from 'vue-i18n'
+import { Gamepad2, Hand } from '@lucide/vue'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 
@@ -16,12 +17,13 @@ const { t } = useI18n()
   <FlowDialog :title="t('touch.lost.title')" @back="emit('wait')">
     <p class="m-0">{{ t('touch.lost.text') }}</p>
     <template #actions>
-      <Button :size="ButtonSize.Medium" @click="emit('wait')">
+      <Button :size="ButtonSize.Medium" :icon="Gamepad2" @click="emit('wait')">
         {{ t('touch.lost.wait') }}
       </Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Hand"
         data-nav-initial
         @click="emit('touch')"
       >

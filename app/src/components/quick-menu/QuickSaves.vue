@@ -5,7 +5,7 @@
 // keeps Carica disabled with the reason.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArchiveRestore, RotateCcw, Save } from '@lucide/vue'
+import { ArchiveRestore, RotateCcw, Save, Undo2 } from '@lucide/vue'
 import type { SlotInfo, StateLoadBlock } from '@/emu'
 import { stateLoadBlockText } from '@/i18n/labels'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -78,9 +78,9 @@ const moreMark = { [FocusMark.MoreSlots]: '', ...openerMark(QuickMenuView.Slots)
         :fade="ButtonFade.Dim"
         class="min-w-0"
         :disabled="chosenEmpty || loadBlock !== null"
+        :icon="RotateCcw"
         @click="emit('load')"
       >
-        <RotateCcw :size="18" :stroke-width="1.75" aria-hidden="true" />
         {{ say(loadLabel(chosen, chosenEmpty)) }}
       </Button>
       <span
@@ -94,9 +94,9 @@ const moreMark = { [FocusMark.MoreSlots]: '', ...openerMark(QuickMenuView.Slots)
         :variant="ButtonVariant.Soft"
         :size="ButtonSize.Menu"
         class="min-w-0"
+        :icon="Save"
         @click="emit('save')"
       >
-        <Save :size="18" :stroke-width="1.75" aria-hidden="true" />
         {{ t('qm.saveSlot', { slot: chosen }) }}
       </Button>
     </div>
@@ -113,6 +113,7 @@ const moreMark = { [FocusMark.MoreSlots]: '', ...openerMark(QuickMenuView.Slots)
         :variant="ButtonVariant.Link"
         :size="ButtonSize.Text"
         class="mx-4"
+        :icon="Undo2"
         @click="emit('undoSave')"
       >
         {{ t('qm.undoSave') }}

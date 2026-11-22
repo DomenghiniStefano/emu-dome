@@ -3,6 +3,7 @@
 // or play without a save; without one: play without a save, or close.
 // TODO(E04): «Apri la cartella» needs an opener for folders (no plugin yet).
 import { useI18n } from 'vue-i18n'
+import { ArchiveRestore, Play } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTone } from '@/components/ui/dialog'
 import { dateTimeLabel } from '@/i18n/labels'
@@ -29,10 +30,13 @@ const { t } = useI18n()
     <p v-else class="m-0">{{ t('flow.brokenNoBackup', { game: title }) }}</p>
     <template #actions>
       <template v-if="backupAt !== null">
-        <Button :size="ButtonSize.Medium" @click="emit('play')">{{ t('flow.brokenPlay') }}</Button>
+        <Button :size="ButtonSize.Medium" :icon="Play" icon-filled @click="emit('play')">
+          {{ t('flow.brokenPlay') }}
+        </Button>
         <Button
           :variant="ButtonVariant.Primary"
           :size="ButtonSize.Medium"
+          :icon="ArchiveRestore"
           data-nav-initial
           @click="emit('use')"
         >
@@ -44,6 +48,8 @@ const { t } = useI18n()
         <Button
           :variant="ButtonVariant.Primary"
           :size="ButtonSize.Medium"
+          :icon="Play"
+          icon-filled
           data-nav-initial
           @click="emit('play')"
         >

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // G02: the game could not start, and why.
 import { useI18n } from 'vue-i18n'
+import { Check } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTone } from '@/components/ui/dialog'
 import FlowDialog from './FlowDialog.vue'
@@ -21,6 +22,7 @@ const { t } = useI18n()
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Check"
         data-nav-initial
         @click="emit('close')"
       >

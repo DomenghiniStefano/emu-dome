@@ -1,3 +1,5 @@
+import type { Component } from 'vue'
+
 /** What a toast says: a notice, or an error (in danger ink, and longer outside the game). */
 export const ToastKind = {
   Info: 'info',
@@ -15,6 +17,8 @@ export function toastDuration(kind: ToastKind, inGame: boolean, asked?: number):
 /** A button on a toast (G17 «Caricato lo slot N · Annulla»): it closes the toast when pressed. */
 export interface ToastAction {
   label: string
+  /** The Lucide icon drawn before the label (#104: «Annulla» Undo2, «Usa come copertina» Image). */
+  icon?: Component
   run: () => void
 }
 export interface ToastOptions {

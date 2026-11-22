@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// G11: the confirmation of «Riavvia il gioco», in place of the menu.
+// G11: the confirmation of «Riavvia il gioco», in place of the menu. «Annulla», the quiet way out,
+// stays words (#104), so the confirmation is the one with an icon.
 import { useI18n } from 'vue-i18n'
 import { RefreshCw } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -29,9 +30,9 @@ const initial = { [FocusMark.SubInitial]: '' }
       :variant="ButtonVariant.DangerOutline"
       :size="ButtonSize.Menu"
       class="min-w-0"
+      :icon="RefreshCw"
       @click="emit('confirm')"
     >
-      <RefreshCw :size="18" :stroke-width="1.75" aria-hidden="true" />
       {{ t('qm.restartConfirm') }}
     </Button>
   </div>

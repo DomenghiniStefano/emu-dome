@@ -75,6 +75,7 @@ const toastClass = (t: Toast) =>
         v-if="t.action"
         :variant="ButtonVariant.RaisedAccent"
         :size="ButtonSize.Toast"
+        :icon="t.action.icon"
         @click="act(t)"
       >
         {{ t.action.label }}

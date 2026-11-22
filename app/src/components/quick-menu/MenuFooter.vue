@@ -43,6 +43,8 @@ const { t } = useI18n()
       v-if="touch"
       :variant="ButtonVariant.Primary"
       :size="ButtonSize.MenuMain"
+      :icon="Play"
+      icon-filled
       @click="$emit('resume')"
     >
       {{ t('qm.resumeShort') }}
@@ -51,9 +53,10 @@ const { t } = useI18n()
       v-else
       :variant="ButtonVariant.Primary"
       :size="ButtonSize.MenuMain"
+      :icon="Play"
+      icon-filled
       @click="$emit('resume')"
     >
-      <Play :size="18" fill="currentColor" :stroke-width="0" aria-hidden="true" />
       {{ t('qm.resume') }}
       <Kbd v-if="hint" :variant="KbdVariant.OnAccent" :size="KbdSize.Small" class="ml-4">
         {{ hint }}

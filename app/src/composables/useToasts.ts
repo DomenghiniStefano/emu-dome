@@ -4,7 +4,7 @@
 //
 // The list lives here, not in ToastStack: a toast pushed before the stack is mounted waits in the
 // list, and shows (its time starting) once the stack is there.
-import { inject, provide, ref, type InjectionKey, type Ref } from 'vue'
+import { inject, markRaw, provide, ref, type InjectionKey, type Ref } from 'vue'
 import { errorText, type ErrorSink } from '@/i18n/labels'
 import { reportError } from '@/lib/errors'
 import { ToastKind, type Toast, type ToastOptions } from '@/components/toasts/toasts'
@@ -26,6 +26,9 @@ export function createToasts(): Toasts {
   const list = ref<Toast[]>([])
   let next = 0
   const push = (text: string, kind: ToastKind, opts: ToastOptions = {}) => {
+    // An action's icon is a component: kept raw, never made reactive with the list.
+    const icon = opts.action?.icon
+    if (icon) markRaw(icon)
     list.value = [...list.value, { ...opts, id: next++, text, kind }]
   }
   return {
