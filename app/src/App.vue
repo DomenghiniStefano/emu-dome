@@ -30,6 +30,7 @@ import GameFlowOverlays from '@/components/game/GameFlowOverlays.vue'
 import GameSurround from '@/components/game/GameSurround.vue'
 import LibraryDropTarget from '@/components/library/LibraryDropTarget.vue'
 import QuickMenu from '@/components/quick-menu/QuickMenu.vue'
+import SearchPalette from '@/components/search/SearchPalette.vue'
 import ToastStack from '@/components/toasts/ToastStack.vue'
 import TouchControls from '@/components/game/TouchControls.vue'
 import TvModeDialog from '@/components/tv-mode/TvModeDialog.vue'
@@ -161,10 +162,16 @@ onMounted(async () => {
       @swap-screens="screens.swap"
       @toggle-lid="screens.toggleLid"
       @layout="screens.setLayout"
+      @fps="session.toggleFps"
+      @next-layout="screens.nextLayout"
+      @open-game="launch.switchToLibraryGame"
     />
   </template>
 
   <LibraryDropTarget v-if="drop.dragOver.value && !game" />
+
+  <!-- The search everywhere (X01): over the shell or the quick menu, whichever is its host. -->
+  <SearchPalette />
 
   <!-- «Adatta la copertina» for a screenshot taken in game: over the quick menu, or after the
        game has closed. -->

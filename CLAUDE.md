@@ -362,8 +362,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
                          pure, tested; CoverCropDialog for the screenshot toast's «Usa come copertina»,
                          useCoverRequest), toasts, closing (the loader while a game closes),
-                         search (X01 / X02, #32: SearchPalette from the top bar, Ctrl + K or Y; search.ts
-                         the matching, pure, tested; useSearchSources the actions, settings and games),
+                         search (X01 / X02, #32: SearchPalette, mounted once in App.vue, opens over its
+                         host (useSearch.ts: the shell or the quick menu, Ctrl + K or Y); searchContext.ts
+                         what can be chosen there, search.ts the matching, both pure, tested;
+                         useSearchSources the actions, settings and games; the quick menu's side is
+                         quick-menu/useMenuSearch.ts),
                          notifications (X03: NotificationBell in the top bar, its panel; notifications.ts
                          the words, pure, tested);
                          components/ui/ (the primitives),
@@ -880,9 +883,15 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
-- Search and notifications (#32): the search lives in the shell, which never shows while a game is open, so its
-  actions (the controller's shortcuts) are listed disabled with «Apri un gioco per usarla»; only fullscreen runs.
-  Opening it from the quick menu is not designed. A setting opens at «Tutti i giochi». The only notification
+- Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
+  hint in the menu's foot). In the shell the controller's shortcuts are disabled with «Apri un gioco per usarla»
+  (only fullscreen runs) and a setting opens at «Tutti i giochi». In the quick menu the shortcuts run as the
+  menu's own controls do (Salva / Carica and the slot steps on the menu's chosen slot, not Rust's current slot);
+  the held ones (fast forward held, rewind) and the pause stay disabled with a reason; a setting opens only if a
+  menu page shows it «in prova» (G09, G10, G16: seven rows), every other is disabled with «Aprila dalle
+  Impostazioni della libreria»; another game closes this one as «Chiudi il gioco» does (G14, close flow) and
+  then opens, with no question before (none designed). The page opened shows its first control, the row is not
+  lit. The only notification
   recorded today is a controller connected after start; sync done, cover not found and update ready (X06) have
   no producer and no `Notice` kind yet, and X06's install behaviour waits for the owner's answer and #44.
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their

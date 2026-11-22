@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // One result of the search everywhere (X01, mockup «Ricerca e notifiche»): an icon or the game's
-// thumbnail, the name over where it lives (or why it cannot be used, X05), and on the right a
+// thumbnail, the name over where it lives (or why it cannot be chosen here, X05), and on the right a
 // setting's value or an action's shortcut. A click, A or Enter chooses it; Ctrl + Enter on a game
 // starts it.
 import { computed, type Component } from 'vue'
@@ -58,15 +58,15 @@ const icon = computed(() => {
 })
 const sub = computed(() => {
   const i = props.item
-  if (i.kind === 'action') return i.reason ?? ''
-  return i.where
+  if (i.reason !== null) return i.reason
+  return i.kind === 'action' ? '' : i.where
 })
 const side = computed(() => {
   const i = props.item
   if (i.kind === 'action') return i.shortcut ?? ''
   return i.kind === 'setting' ? i.value : ''
 })
-const disabled = computed(() => props.item.kind === 'action' && props.item.reason !== null)
+const disabled = computed(() => props.item.reason !== null)
 </script>
 
 <template>

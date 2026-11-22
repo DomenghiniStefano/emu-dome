@@ -358,7 +358,10 @@
     schema.sections.push({
       page: "video",
       id: "gpu",
-      keys: ["video.vsync", "video.path"],
+      // In game (the search in the quick menu): two rows G09 shows «in prova» beside two it does not.
+      keys: scenario.game
+        ? ["video.scale", "video.filter", "video.vsync", "video.path"]
+        : ["video.vsync", "video.path"],
     });
   }
   // `notifications` (X03, #32): what the bell shows, newest first, two unread.
@@ -895,6 +898,8 @@
       };
     });
   const gameInfo = {
+    // The library's game of the same title (the search in the quick menu: «Ci stai giocando ora»).
+    id: scenario.game === "nds" ? "nds:02" : "gba:01",
     title:
       scenario.game === "nds" ? "Dual Screen Tales" : "Pocket Quest Advance",
     console: scenario.game === "nds" ? "NDS" : "GBA",
@@ -902,6 +907,8 @@
     core: scenario.game === "nds" ? "melondsds" : "mgba",
     resumable: false,
     autosaveOnExit: true,
+    // Loading states works (Trello #93: none of these games is blocked).
+    stateLoadBlock: null,
   };
   const answers = {
     // `game` (the quick menu's, named by console) or `inGame` (the settings' row hosts): a game

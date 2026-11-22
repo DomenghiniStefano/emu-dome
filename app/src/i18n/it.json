@@ -2390,6 +2390,11 @@
     "settingWhere": "Impostazioni · {page}",
     "gameWhere": "{console} · {time}",
     "needsGame": "Apri un gioco per usarla",
+    "heldInGame": "Tieni premuta la sua scorciatoia mentre giochi",
+    "pausedInMenu": "Il gioco è già in pausa mentre il menu è aperto",
+    "twoScreensOnly": "Solo per i giochi con due schermi",
+    "settingInLibrary": "Aprila dalle Impostazioni della libreria",
+    "playingNow": "Ci stai giocando ora",
     "noResults": "Nessun risultato per «{query}»",
     "didYouMean": "Forse cercavi:",
     "hint": {
