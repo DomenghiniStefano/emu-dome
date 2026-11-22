@@ -46,6 +46,13 @@
   --spacing-titlebar: 32px;
   /* The least a cover of the library grid shrinks to (tokens.json `capsule-medium`). */
   --spacing-capsule-medium: 156px;
+  /* Pending (owner): the same on the phone (touch density, #47). Upright, 128 gives two columns
+     in a window 300 to 440 px wide, counted after the a11y text size's zoom (a 412 px S23 at
+     up to 130%, a 360 px phone at up to 120%: with 156 a 412 px phone at 120% got one cover as
+     wide as the screen); on its side, 188 gives three beside the side column in a window 740 to
+     920 px wide. A wider touch screen (a tablet) just gets more columns. */
+  --spacing-capsule-touch: 128px;
+  --spacing-capsule-touch-side: 140px;
   /* The phone's touch minimum (README: 44px): its buttons and fields (board «Tel-Dettagli»). */
   --spacing-touch: 44px;
   /* A tab of a section (Controls: 40) and of the game details (44). */

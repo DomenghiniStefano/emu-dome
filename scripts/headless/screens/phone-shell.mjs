@@ -15,6 +15,13 @@ const click = (re) =>
 
 const SHELL = {
   library: { mock: {}, steps: [] },
+  // The cover grid scrolled to the top of the screen (#47): two columns upright, three on the side.
+  "library-grid": {
+    mock: { manyGames: 12 },
+    steps: [
+      `(() => { const t = document.querySelector('[data-game]'); t && t.scrollIntoView({ block: 'start' }); return !!t })()`,
+    ],
+  },
   saves: { mock: {}, steps: [section(1)] },
   controls: { mock: {}, steps: [section(2)] },
   cloud: { mock: {}, steps: [section(3)] },

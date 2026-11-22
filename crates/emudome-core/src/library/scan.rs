@@ -196,10 +196,15 @@ fn mtime_ms(meta: &fs::Metadata) -> u64 {
         .unwrap_or_default()
 }
 
-/// The cached identity, when the file's size and modification time did not change. The display
+/// The cached identity, when the file's size and modification time did not change and its title
+/// was read under a rule still current for its console (else the file is read again). The display
 /// rule may have changed since it was cached: it is applied again, to `name`.
 fn from_cache(name: &Path, size: u64, mtime: u64, cached: Option<&CacheEntry>) -> Option<Identity> {
-    let c = cached.filter(|c| c.size == size && c.mtime == mtime)?;
+    let c = cached.filter(|c| {
+        c.size == size
+            && c.mtime == mtime
+            && !identity::title_outdated(c.identity.console, c.title_rule)
+    })?;
     let mut identity = c.identity.clone();
     identity.title = identity::display_title(identity.console, &identity.title, name);
     Some(identity)
@@ -362,6 +367,7 @@ impl Walker<'_> {
                         size,
                         mtime,
                         identity: identity.clone(),
+                        title_rule: identity::TITLE_RULE,
                     },
                 );
                 self.found.push(Found {
