@@ -7,4 +7,11 @@ import type { VideoAlign } from "./VideoAlign";
  * controls' band or side columns. Each share is taken in 0..0.9 and the two of one axis together
  * leave at least a tenth of the window. TypeScript: `VideoInset` (generated).
  */
-export type VideoInset = { left: number, top: number, right: number, bottom: number, align: VideoAlign, };
+export type VideoInset = { left: number, top: number, right: number, bottom: number, align: VideoAlign, 
+/**
+ * The room kept between two screens laid out one above the other or side by side, as a
+ * share of the window's height (whatever the axis), on top of `screens.gap`: the touch
+ * controls' strip between the screens on a phone (L, menu, R upright; a thin line on its
+ * side). Taken in 0..0.5; ignored for one screen and the other arrangements.
+ */
+between: number, };

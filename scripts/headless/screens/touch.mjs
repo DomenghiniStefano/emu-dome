@@ -87,6 +87,16 @@ add(
 const ALL = Object.keys(SIZES);
 for (const game of ["gb", "gba", "nds"])
   add(`frame-${game}`, { mock: { game, frame: true } }, ALL);
+// DS and 3DS on a phone (owner, 2026-11-22): the two screens large and apart, upright with L /
+// menu / R in the strip between them, on its side side by side at the top. The S23 with its
+// camera's 32 px (upright at the top, on its side on the left), as the webview reports it.
+const camera = (side) =>
+  `(() => { document.documentElement.style.setProperty('--spacing-safe-${side}', '32px'); window.dispatchEvent(new Event('resize')); return true })()`;
+for (const game of ["nds", "3ds"]) {
+  add(`apart-${game}`, { mock: { game, frame: true } }, ["p360", "l740", "p390", "l844"]);
+  add(`apart-${game}`, { mock: { game, frame: true }, steps: [camera("top")] }, ["p412"]);
+  add(`apart-${game}`, { mock: { game, frame: true }, steps: [camera("left")] }, ["l892"]);
+}
 // The quick menu over the game, upright and on its side; opened upright then turned, and back.
 add("qm-frame", { mock: { frame: true, slots: "some" }, steps: [escape] }, ALL);
 add(

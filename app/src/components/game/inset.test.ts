@@ -9,6 +9,7 @@ describe('insetShares', () => {
       right: 182 / 892,
       bottom: 0,
       align: 'centre',
+      between: 0,
     })
     expect(insetShares({ ...bottomInset(330), align: 'bottom' }, 412, 892)).toEqual({
       ...insetShares(NO_INSET, 1, 1),
@@ -21,6 +22,12 @@ describe('insetShares', () => {
     )
   })
 
+  it('takes the room between two screens as a share of the height, half at most', () => {
+    expect(insetShares({ ...NO_INSET, between: 44 }, 412, 892).between).toBe(44 / 892)
+    expect(insetShares({ ...NO_INSET, between: 8 }, 892, 412).between).toBe(8 / 412)
+    expect(insetShares({ ...NO_INSET, between: 900 }, 412, 892).between).toBe(0.5)
+  })
+
   it('keeps nothing of an empty window', () => {
     expect(insetShares(bottomInset(100), 0, 0)).toEqual(insetShares(NO_INSET, 1, 1))
   })
@@ -31,5 +38,6 @@ describe('sameInset', () => {
     expect(sameInset(bottomInset(10), bottomInset(10))).toBe(true)
     expect(sameInset(bottomInset(10), { ...bottomInset(10), align: 'bottom' })).toBe(false)
     expect(sameInset(NO_INSET, { ...NO_INSET, right: 1 })).toBe(false)
+    expect(sameInset(NO_INSET, { ...NO_INSET, between: 44 })).toBe(false)
   })
 })

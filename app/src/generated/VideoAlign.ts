@@ -4,4 +4,4 @@
  * Where the game sits inside the part of the window it may use. TypeScript: `VideoAlign`
  * (generated).
  */
-export type VideoAlign = "centre" | "bottom";
+export type VideoAlign = "centre" | "bottom" | "top" | "apart";

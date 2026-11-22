@@ -49,7 +49,8 @@ function axis(start: number, end: number): [number, number] {
 /**
  * Where the native video draws the game, in physical pixels: a mirror of `screens::fit` in
  * crates/emudome-core (integer scale when it fits, else the largest that keeps the aspect, in the
- * part `inset` leaves: centred, or against its bottom). Keep the two equal.
+ * part `inset` leaves: centred, against its bottom, or its top). One rectangle, the whole frame:
+ * not each screen of a two-screen layout, whose placements only Rust knows. Keep the two equal.
  */
 export function nativeGameRect(
   surface: { w: number; h: number },
@@ -68,7 +69,12 @@ export function nativeGameRect(
   const scale = fit >= 1 ? Math.floor(fit) : fit
   const w = game.w * scale
   const h = game.h * scale
-  const y = inset.align === 'bottom' ? free.y + free.h - h : free.y + (free.h - h) / 2
+  const y =
+    inset.align === 'bottom' || inset.align === 'apart'
+      ? free.y + free.h - h
+      : inset.align === 'top'
+        ? free.y
+        : free.y + (free.h - h) / 2
   return { x: Math.floor(free.x + (free.w - w) / 2), y: Math.floor(y), w, h }
 }
 

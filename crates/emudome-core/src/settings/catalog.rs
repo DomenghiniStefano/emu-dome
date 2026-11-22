@@ -469,12 +469,27 @@ pub static ENTRIES: &[Entry] = &[
     file("fx.fxfile", G).native_video(),
     // ---- Schermi di DS e 3DS (screens) ----
     // `custom`: the user's own layout (`screens.custom`), stepped to only once one is saved.
+    // On a phone a game opens on `auto` (owner, 2026-11-22: the screens apart and large, stacked
+    // upright, side by side on its side); `vertical` and `side` are left out there, `auto` being
+    // each of them in its orientation.
     chips(
         "screens.cycle",
-        &["vertical", "side", "big_small", "top_only", "custom"],
+        &[
+            "vertical",
+            "auto",
+            "side",
+            "big_small",
+            "top_only",
+            "custom",
+        ],
         &["vertical", "side", "big_small", "top_only"],
         CG,
     )
+    .defaults(&[DefaultRule {
+        device: Some(Device::Phone),
+        consoles: &[],
+        value: DefaultValue::List(&["auto", "big_small", "top_only"]),
+    }])
     .phase(2),
     // Per console, not global (owner, 2026-11-21): a DS layout never stretches a 3DS screen.
     e(

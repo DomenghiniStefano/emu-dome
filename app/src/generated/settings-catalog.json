@@ -219,6 +219,7 @@
       "kind": "multi",
       "options": [
         "vertical",
+        "auto",
         "side",
         "big_small",
         "top_only",

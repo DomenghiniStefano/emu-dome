@@ -202,6 +202,9 @@ impl Split {
 pub enum Arrangement {
     /// One above the other («Uno sopra l'altro»): the default.
     Stacked,
+    /// The phone's default (`auto`): [`Arrangement::Stacked`] in a window taller than wide,
+    /// [`Arrangement::SideBySide`] otherwise, decided by the window each time it is composed.
+    Auto,
     /// Next to each other.
     SideBySide,
     /// The first screen large on the left, the second small on its right, top-aligned; the large
@@ -221,6 +224,7 @@ impl Arrangement {
     pub fn from_id(id: &str) -> Option<Self> {
         match id {
             "vertical" => Some(Arrangement::Stacked),
+            "auto" => Some(Arrangement::Auto),
             "side" => Some(Arrangement::SideBySide),
             "big_small" => Some(Arrangement::BigSmall),
             "top_only" => Some(Arrangement::FirstOnly),
@@ -237,8 +241,11 @@ impl Arrangement {
 #[serde(rename_all = "snake_case")]
 #[ts(rename = "ScreenLayoutId")]
 pub enum LayoutId {
-    /// «Uno sopra l'altro»: the default.
+    /// «Uno sopra l'altro»: the default on the desktop.
     Vertical,
+    /// «Automatica»: one above the other upright, side by side on its side; the phone's default
+    /// (`screens.cycle`'s default rule).
+    Auto,
     /// «Affiancati».
     Side,
     /// «Grande e piccolo».
@@ -250,8 +257,9 @@ pub enum LayoutId {
 }
 
 impl LayoutId {
-    pub const ALL: [LayoutId; 5] = [
+    pub const ALL: [LayoutId; 6] = [
         LayoutId::Vertical,
+        LayoutId::Auto,
         LayoutId::Side,
         LayoutId::BigSmall,
         LayoutId::TopOnly,
@@ -262,6 +270,7 @@ impl LayoutId {
     pub fn id(self) -> &'static str {
         match self {
             LayoutId::Vertical => "vertical",
+            LayoutId::Auto => "auto",
             LayoutId::Side => "side",
             LayoutId::BigSmall => "big_small",
             LayoutId::TopOnly => "top_only",
@@ -316,10 +325,15 @@ pub struct Layout {
     pub rotation: Rotation,
     /// `video.aspect`: the proportions of the whole picture as shown.
     pub aspect: Aspect,
+    /// The screens take all the room they have, at any scale: a two-screen game on a phone
+    /// ([`ScreenSession::on_phone`]). Otherwise a picture that fits at 1× or more keeps a whole
+    /// scale (the desktop, and every one-screen game).
+    pub fill: bool,
 }
 
 impl Default for Layout {
-    /// «Uno sopra l'altro»: top above bottom, no gap, not turned, the console's proportions.
+    /// «Uno sopra l'altro»: top above bottom, no gap, not turned, the console's proportions,
+    /// whole scales.
     fn default() -> Self {
         Self {
             arrangement: Arrangement::Stacked,
@@ -328,6 +342,7 @@ impl Default for Layout {
             ratio: 70,
             rotation: Rotation::None,
             aspect: Aspect::Original,
+            fill: false,
         }
     }
 }
@@ -386,6 +401,16 @@ pub enum Align {
     /// Against the bottom edge, centred across: the phone held upright, the touch controls in
     /// their band under the game with no empty band between the two (#29).
     Bottom,
+    /// Against the top edge, centred across: a two-screen game on a phone on its side, the touch
+    /// controls in the strip below the screens and over their lower corners.
+    Top,
+    /// Two screens laid out with a room between them ([`Arrangement::Stacked`] or
+    /// [`Arrangement::SideBySide`]): the first against the start of that axis, the second against
+    /// its end, what is left over going between them (at least [`Inset::between`]); across that
+    /// axis as [`Align::Bottom`]. A two-screen game on a phone held upright: the top screen under
+    /// the top edge, the touch screen on the controls' band, L / menu / R in the strip between.
+    /// Anything else: as [`Align::Bottom`].
+    Apart,
 }
 
 /// The edges of the window kept clear of the game, as shares of its width (`left`, `right`) and
@@ -400,10 +425,17 @@ pub struct Inset {
     pub right: f32,
     pub bottom: f32,
     pub align: Align,
+    /// The room kept between two screens laid out one above the other or side by side, as a
+    /// share of the window's height (whatever the axis), on top of `screens.gap`: the touch
+    /// controls' strip between the screens on a phone (L, menu, R upright; a thin line on its
+    /// side). Taken in 0..0.5; ignored for one screen and the other arrangements.
+    pub between: f32,
 }
 
 /// The most of an axis an inset may take.
 const INSET_MAX: f32 = 0.9;
+/// The most of the window's height [`Inset::between`] may take.
+const BETWEEN_MAX: f32 = 0.5;
 
 impl Inset {
     /// Nothing kept clear: the whole window.
@@ -413,6 +445,7 @@ impl Inset {
         right: 0.0,
         bottom: 0.0,
         align: Align::Centre,
+        between: 0.0,
     };
 
     /// The bottom `share` kept clear, the game centred above it.
@@ -439,6 +472,15 @@ impl Inset {
             (s * INSET_MAX / sum, e * INSET_MAX / sum)
         } else {
             (s, e)
+        }
+    }
+
+    /// [`Inset::between`] in window pixels, for a window `height` tall (a NaN counts as 0).
+    fn between_px(&self, height: f32) -> f32 {
+        if self.between.is_finite() {
+            self.between.clamp(0.0, BETWEEN_MAX) * height
+        } else {
+            0.0
         }
     }
 
@@ -470,27 +512,70 @@ pub struct Placement {
 }
 
 /// A rectangle of `content` size fitted in `area`: integer scale when it fits, otherwise the
-/// largest that keeps the aspect ratio, in the part the inset leaves (centred, or against its
-/// bottom with [`Align::Bottom`]). `(x, y, w, h)`. The one rule of both renderers (native
-/// `video.rs`, webview `GameCanvas.vue`).
+/// largest that keeps the aspect ratio, in the part the inset leaves (centred, against its
+/// bottom with [`Align::Bottom`] / [`Align::Apart`], against its top with [`Align::Top`]).
+/// `(x, y, w, h)`. The one rule of both renderers (native `video.rs`, webview `GameCanvas.vue`).
 pub fn fit(area: Area, content: (f32, f32)) -> Rect {
+    fit_with(area, content, (0.0, 0.0), false)
+}
+
+/// [`fit`] for `content` (scaled) plus `extra` window pixels across and down that do not scale
+/// (the room between two screens), at any scale with `fill`. The rectangle holds both.
+fn fit_with(area: Area, content: (f32, f32), extra: (f32, f32), fill: bool) -> Rect {
     let free = area.inset.usable(area.width, area.height);
     let (w, h) = content;
     if w <= 0.0 || h <= 0.0 {
         return Rect::default();
     }
-    let fit = (free.w / w).min(free.h / h);
-    let scale = if fit >= 1.0 { fit.floor() } else { fit };
-    let (vw, vh) = (w * scale, h * scale);
+    let ex = extra.0.clamp(0.0, free.w);
+    let ey = extra.1.clamp(0.0, free.h);
+    let fit = ((free.w - ex) / w).min((free.h - ey) / h);
+    let scale = if fit >= 1.0 && !fill {
+        fit.floor()
+    } else {
+        fit
+    };
+    let (vw, vh) = (w * scale + ex, h * scale + ey);
     let y = match area.inset.align {
         Align::Centre => free.y + (free.h - vh) / 2.0,
-        Align::Bottom => free.y + free.h - vh,
+        Align::Bottom | Align::Apart => free.y + free.h - vh,
+        Align::Top => free.y,
     };
     Rect {
         x: (free.x + (free.w - vw) / 2.0).floor(),
         y: y.floor(),
         w: vw,
         h: vh,
+    }
+}
+
+/// Where the room between two screens lies once the whole is turned: across (between a left and
+/// a right screen) or down, and which of the two (in the order they were laid out) comes after.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Between {
+    across: bool,
+    second_after: bool,
+}
+
+impl Between {
+    /// For two screens laid out down (`stacked`) or across, turned by `rotation` (see `turn`): a
+    /// quarter turn moves the room to the other axis, and a turn that mirrors that axis puts the
+    /// first screen after it.
+    fn of(stacked: bool, rotation: Rotation) -> Between {
+        let (across, second_after) = match (stacked, rotation) {
+            (true, Rotation::None) => (false, true),
+            (true, Rotation::Flip) => (false, false),
+            (true, Rotation::Left) => (true, true),
+            (true, Rotation::Right) => (true, false),
+            (false, Rotation::None) => (true, true),
+            (false, Rotation::Flip) => (true, false),
+            (false, Rotation::Left) => (false, false),
+            (false, Rotation::Right) => (false, true),
+        };
+        Between {
+            across,
+            second_after,
+        }
     }
 }
 
@@ -528,11 +613,23 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
             .collect();
     }
 
+    // The phone's default: down in a window taller than wide, across otherwise.
+    let arrangement = match &layout.arrangement {
+        Arrangement::Auto if area.height > area.width => &Arrangement::Stacked,
+        Arrangement::Auto => &Arrangement::SideBySide,
+        given @ (Arrangement::Stacked
+        | Arrangement::SideBySide
+        | Arrangement::BigSmall
+        | Arrangement::FirstOnly
+        | Arrangement::SecondOnly
+        | Arrangement::Custom(_)) => given,
+    };
+
     // Each screen's rectangle at its own size, in a canvas starting at (0, 0).
     let gap = layout.gap as f32;
     let size = |s: &SourceScreen| (s.src.w as f32, s.src.h as f32);
     let mut placed: Vec<(SourceScreen, Rect)> = Vec::new();
-    match (&layout.arrangement, order.as_slice()) {
+    match (arrangement, order.as_slice()) {
         (_, []) => {}
         (_, [only])
         | (Arrangement::FirstOnly, [only, ..])
@@ -617,11 +714,19 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
                 },
             ));
         }
-        (Arrangement::Custom(_), _) => {}
+        (Arrangement::Custom(_) | Arrangement::Auto, _) => {}
     }
     if placed.is_empty() {
         return Vec::new();
     }
+    // The room kept between two screens laid out down or across, in window pixels (it does not
+    // scale with them), and where it lies once the whole is turned.
+    let between = match (arrangement, placed.len()) {
+        (Arrangement::Stacked, 2) => Some(Between::of(true, layout.rotation)),
+        (Arrangement::SideBySide, 2) => Some(Between::of(false, layout.rotation)),
+        _ => None,
+    }
+    .map(|b| (b, area.inset.between_px(area.height)));
 
     let canvas_w = placed.iter().map(|(_, r)| r.x + r.w).fold(0.0, f32::max);
     let canvas_h = placed.iter().map(|(_, r)| r.y + r.h).fold(0.0, f32::max);
@@ -635,19 +740,57 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
         None => (turned_w, turned_h),
         Some(ratio) => (turned_h * ratio, turned_h),
     };
-    let target = fit(area, shown);
-    let (scale_x, scale_y) = (target.w / turned_w, target.h / turned_h);
+    let free = area.inset.usable(area.width, area.height);
+    // The room in pixels along its axis, kept inside the free part (`fit_with` does the same).
+    let (extra, mut room) = match between {
+        Some((b, px)) if b.across => {
+            let px = px.clamp(0.0, free.w);
+            ((px, 0.0), px)
+        }
+        Some((_, px)) => {
+            let px = px.clamp(0.0, free.h);
+            ((0.0, px), px)
+        }
+        None => ((0.0, 0.0), 0.0),
+    };
+    let mut target = fit_with(area, shown, extra, layout.fill);
+    let (scale_x, scale_y) = (
+        (target.w - extra.0) / turned_w,
+        (target.h - extra.1) / turned_h,
+    );
+    // Apart: the two screens against both ends of their axis, the room between them growing.
+    if let (Some((b, _)), Align::Apart) = (between, area.inset.align) {
+        if b.across {
+            room += (free.w - target.w).max(0.0);
+            target.x = free.x;
+        } else {
+            room += (free.h - target.h).max(0.0);
+            target.y = free.y;
+        }
+    }
 
     placed
         .into_iter()
-        .map(|(s, r)| {
+        .enumerate()
+        .map(|(i, (s, r))| {
             let turned = turn(r, layout.rotation, canvas_w, canvas_h);
+            // The screen after the room moves on by it, along the room's axis.
+            let (dx, dy) = match between {
+                Some((b, _)) if b.second_after == (i == 1) => {
+                    if b.across {
+                        (room, 0.0)
+                    } else {
+                        (0.0, room)
+                    }
+                }
+                Some(_) | None => (0.0, 0.0),
+            };
             Placement {
                 id: s.id,
                 src: s.src,
                 dst: Rect {
-                    x: target.x + turned.x * scale_x,
-                    y: target.y + turned.y * scale_y,
+                    x: target.x + turned.x * scale_x + dx,
+                    y: target.y + turned.y * scale_y + dy,
                     w: turned.w * scale_x,
                     h: turned.h * scale_y,
                 },
@@ -848,13 +991,15 @@ impl CustomLayout {
     /// window, no inset), as a custom layout: the C09 editor's «Parti da», so the editor never
     /// works the geometry out again. The gap and the ratio are `settings`'; the picture is not
     /// turned (`screens.rot` turns a custom layout as a whole on top); `custom` is the one saved.
-    /// Empty for a one-screen split or an empty area.
+    /// With `fill` (a phone) the screens take all their room, as the game shows them there
+    /// ([`Layout::fill`]). Empty for a one-screen split or an empty area.
     pub fn preset(
         settings: &ScreenSettings,
         layout: LayoutId,
         split: Split,
         width: f32,
         height: f32,
+        fill: bool,
     ) -> CustomLayout {
         if layout == LayoutId::Custom {
             return settings.custom.clone();
@@ -867,6 +1012,7 @@ impl CustomLayout {
         }
         let arranged = Layout {
             rotation: Rotation::None,
+            fill,
             ..settings.layout(layout, false)
         };
         let area = Area {
@@ -982,6 +1128,7 @@ impl ScreenSettings {
     pub fn layout(&self, current: LayoutId, swapped: bool) -> Layout {
         let arrangement = match self.keep(current) {
             LayoutId::Vertical => Arrangement::Stacked,
+            LayoutId::Auto => Arrangement::Auto,
             LayoutId::Side => Arrangement::SideBySide,
             LayoutId::BigSmall => Arrangement::BigSmall,
             LayoutId::TopOnly => Arrangement::FirstOnly,
@@ -995,6 +1142,7 @@ impl ScreenSettings {
             ratio: self.ratio,
             rotation: self.rotation,
             aspect: self.aspect,
+            fill: false,
         }
     }
 }
@@ -1038,6 +1186,8 @@ impl Default for ScreenStatus {
 pub struct ScreenSession {
     settings: ScreenSettings,
     dual_screen: bool,
+    /// Composed on a phone: a two-screen game's screens take all their room.
+    phone: bool,
     lid_supported: bool,
     current: LayoutId,
     swapped: bool,
@@ -1051,10 +1201,19 @@ impl ScreenSession {
             current: settings.first(),
             settings,
             dual_screen,
+            phone: false,
             lid_supported: dual_screen && lid_supported,
             swapped: false,
             lid_closed: false,
         }
+    }
+
+    /// The game runs on a phone (`emudome_platform::PHONE`): a two-screen game's screens fill the
+    /// room they have, at any scale ([`Layout::fill`]); one screen keeps its whole scales.
+    #[must_use]
+    pub fn on_phone(mut self, phone: bool) -> Self {
+        self.phone = phone;
+        self
     }
 
     /// The settings changed (or their session «in prova»): the layout shown stays while it can.
@@ -1128,7 +1287,10 @@ impl ScreenSession {
 
     /// The layout to compose now.
     pub fn layout(&self) -> Layout {
-        self.settings.layout(self.current, self.swapped)
+        Layout {
+            fill: self.phone && self.dual_screen,
+            ..self.settings.layout(self.current, self.swapped)
+        }
     }
 
     pub fn status(&self) -> ScreenStatus {
@@ -1207,6 +1369,7 @@ mod tests {
                 ratio: 80,
                 rotation: Rotation::Left,
                 aspect: Aspect::Original,
+                fill: false,
             }
         );
         assert_eq!(
@@ -1300,7 +1463,7 @@ mod tests {
     fn a_preset_is_where_the_layout_draws_the_screens() {
         let s = ScreenSettings::default();
         // Vertical at 1080p: the DS stack at 2x (512 x 768), centred, as `fit` places it.
-        let v = CustomLayout::preset(&s, LayoutId::Vertical, DS, 1920.0, 1080.0);
+        let v = CustomLayout::preset(&s, LayoutId::Vertical, DS, 1920.0, 1080.0, false);
         let near = |a: f32, b: f32| (a - b).abs() < 1e-4;
         let top = v.screens[0];
         assert_eq!(top.id, ScreenId::Top);
@@ -1316,31 +1479,33 @@ mod tests {
                 LayoutId::BigSmall,
                 LayoutId::TopOnly,
             ] {
-                let p = CustomLayout::preset(&s, layout, split, 1280.0, 720.0);
+                let p = CustomLayout::preset(&s, layout, split, 1280.0, 720.0, false);
                 assert!(p.is_valid() && !p.is_empty(), "{layout:?} {split:?}");
                 assert!(CustomLayout::valid_items(&p.to_items()));
             }
         }
         // Only the top screen: one rectangle.
-        let only = CustomLayout::preset(&s, LayoutId::TopOnly, DS, 1280.0, 720.0);
+        let only = CustomLayout::preset(&s, LayoutId::TopOnly, DS, 1280.0, 720.0, false);
         assert_eq!(only.screens.len(), 1);
         // The settings' ratio and gap count; the rotation does not.
         let wide = settings(&[
             ("screens.ratio", Value::Int(50)),
             ("screens.rot", Value::Text("left".into())),
         ]);
-        let half = CustomLayout::preset(&wide, LayoutId::BigSmall, DS, 1280.0, 720.0);
+        let half = CustomLayout::preset(&wide, LayoutId::BigSmall, DS, 1280.0, 720.0, false);
         assert!(near(half.screens[0].w, half.screens[1].w));
         assert!(near(half.screens[0].y, half.screens[1].y));
         // Custom: the one saved; one screen or no room: none.
         let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
         let saved = settings(&[("screens.custom", Value::List(items))]);
         assert_eq!(
-            CustomLayout::preset(&saved, LayoutId::Custom, DS, 1280.0, 720.0),
+            CustomLayout::preset(&saved, LayoutId::Custom, DS, 1280.0, 720.0, false),
             saved.custom
         );
-        assert!(CustomLayout::preset(&s, LayoutId::Side, Split::Whole, 1280.0, 720.0).is_empty());
-        assert!(CustomLayout::preset(&s, LayoutId::Side, DS, 0.0, 720.0).is_empty());
+        assert!(
+            CustomLayout::preset(&s, LayoutId::Side, Split::Whole, 1280.0, 720.0, false).is_empty()
+        );
+        assert!(CustomLayout::preset(&s, LayoutId::Side, DS, 0.0, 720.0, false).is_empty());
         assert_eq!(DS.frame_at_1x(), Some((256, 384)));
         assert_eq!(Split::N3dsStacked.frame_at_1x(), Some((400, 480)));
     }
@@ -1760,6 +1925,7 @@ mod tests {
             top: f32::NAN,
             bottom: 2.0,
             align: Align::Centre,
+            between: 0.0,
         }
         .usable(1000.0, 1000.0);
         assert!((free.w - 100.0).abs() < 0.01 && (free.x - 450.0).abs() < 0.01);
@@ -2147,8 +2313,302 @@ mod tests {
             assert!(Arrangement::from_id(id).is_some(), "{id}");
         }
         assert_eq!(Arrangement::from_id("hybrid"), None);
+        assert_eq!(Arrangement::from_id("auto"), Some(Arrangement::Auto));
         for id in ["none", "left", "right", "flip"] {
             assert!(Rotation::from_id(id).is_some(), "{id}");
         }
+    }
+
+    // ---- The phone (owner, 2026-11-22): two screens apart and large ----
+
+    /// A phone's window in CSS pixels, its edges kept clear in pixels as the touch controls
+    /// measure them (`touchLayout.ts`, `reservedInset`), turned into shares as `inset.ts` does.
+    fn phone(
+        width: f32,
+        height: f32,
+        (top, right, bottom, left): (f32, f32, f32, f32),
+        align: Align,
+        between: f32,
+    ) -> Area {
+        Area {
+            width,
+            height,
+            inset: Inset {
+                left: left / width,
+                top: top / height,
+                right: right / width,
+                bottom: bottom / height,
+                align,
+                between: between / height,
+            },
+        }
+    }
+
+    /// Upright: the camera's 32 px at the top, the controls' band at the bottom, the 44 px strip
+    /// (L, menu, R) between the screens.
+    fn upright(width: f32, height: f32, band: f32) -> Area {
+        phone(width, height, (32.0, 0.0, band, 0.0), Align::Apart, 44.0)
+    }
+
+    /// On its side: the camera's 32 px on the left, 16 px on the right, 8 px between the screens.
+    fn on_its_side(width: f32, height: f32) -> Area {
+        phone(width, height, (0.0, 16.0, 0.0, 32.0), Align::Top, 8.0)
+    }
+
+    /// The phone's layout: `auto`, the screens filling their room.
+    fn auto() -> Layout {
+        Layout {
+            arrangement: Arrangement::Auto,
+            fill: true,
+            ..Layout::default()
+        }
+    }
+
+    fn n3ds(layout: &Layout, a: Area) -> Vec<Placement> {
+        compose(layout, &Split::N3dsStacked.screens(400, 480), a)
+    }
+
+    fn near(a: Rect, b: Rect) -> bool {
+        let close = |x: f32, y: f32| (x - y).abs() < 0.01;
+        close(a.x, b.x) && close(a.y, b.y) && close(a.w, b.w) && close(a.h, b.h)
+    }
+
+    #[track_caller]
+    fn assert_near(a: Rect, b: Rect) {
+        assert!(near(a, b), "{a:?} is not {b:?}");
+    }
+
+    #[test]
+    fn a_ds_upright_on_the_s23_shows_both_screens_full_width_apart() {
+        // 412 x 892, the band 198 px: top 32-341, strip 341-385, touch screen 385-694 (1.61x).
+        let p = ds(&auto(), upright(412.0, 892.0, 198.0));
+        assert_near(dst(&p, ScreenId::Top), rect(0.0, 32.0, 412.0, 309.0));
+        assert_near(dst(&p, ScreenId::Bottom), rect(0.0, 385.0, 412.0, 309.0));
+    }
+
+    #[test]
+    fn a_ds_on_its_side_on_the_s23_shows_the_screens_side_by_side_at_the_top() {
+        // 892 x 412: 32 + 418 + 8 + 418 + 16, top-aligned, 1.63x.
+        let p = ds(&auto(), on_its_side(892.0, 412.0));
+        assert_near(dst(&p, ScreenId::Top), rect(32.0, 0.0, 418.0, 313.5));
+        assert_near(dst(&p, ScreenId::Bottom), rect(458.0, 0.0, 418.0, 313.5));
+    }
+
+    #[test]
+    fn a_small_phone_scales_both_screens_down_alike_and_keeps_the_strip() {
+        // 360 x 740 upright, the band 224 px: the height decides, both screens 293.3 x 220,
+        // centred, the strip still 44 px and the touch screen on the band.
+        let p = ds(&auto(), upright(360.0, 740.0, 224.0));
+        let (top, bottom) = (dst(&p, ScreenId::Top), dst(&p, ScreenId::Bottom));
+        let w = 220.0 * 4.0 / 3.0;
+        assert_near(top, rect(((360.0 - w) / 2.0_f32).floor(), 32.0, w, 220.0));
+        assert_near(bottom, rect(top.x, 296.0, w, 220.0));
+        assert!((bottom.y + bottom.h - (740.0 - 224.0)).abs() < 0.01);
+        // On its side, 740 x 360: the width decides, 342 x 256.5 each.
+        let p = ds(&auto(), on_its_side(740.0, 360.0));
+        assert_near(dst(&p, ScreenId::Top), rect(32.0, 0.0, 342.0, 256.5));
+        assert_near(dst(&p, ScreenId::Bottom), rect(382.0, 0.0, 342.0, 256.5));
+    }
+
+    #[test]
+    fn a_taller_phone_puts_the_room_left_over_into_the_strip() {
+        // 412 x 915: full width as on the S23; the 23 px more go between the screens, so the
+        // top screen stays under the camera and the touch screen on the band.
+        let p = ds(&auto(), upright(412.0, 915.0, 198.0));
+        assert_near(dst(&p, ScreenId::Top), rect(0.0, 32.0, 412.0, 309.0));
+        assert_near(dst(&p, ScreenId::Bottom), rect(0.0, 408.0, 412.0, 309.0));
+    }
+
+    #[test]
+    fn a_3ds_on_the_phone_keeps_both_screens_at_one_scale() {
+        // Upright on the S23, the band 318 px: the top screen 412 wide (1.03x), the touch screen
+        // 329.6 wide centred under it, the strip 47.6 px (44 and the room left over).
+        let p = n3ds(&auto(), upright(412.0, 892.0, 318.0));
+        assert_near(dst(&p, ScreenId::Top), rect(0.0, 32.0, 412.0, 247.2));
+        assert_near(dst(&p, ScreenId::Bottom), rect(41.2, 326.8, 329.6, 247.2));
+        // On its side: 464.4 + 8 + 371.6 from the camera's edge, top-aligned.
+        let p = n3ds(&auto(), on_its_side(892.0, 412.0));
+        let s = 836.0 / 720.0;
+        assert_near(
+            dst(&p, ScreenId::Top),
+            rect(32.0, 0.0, 400.0 * s, 240.0 * s),
+        );
+        assert_near(
+            dst(&p, ScreenId::Bottom),
+            rect(32.0 + 400.0 * s + 8.0, 0.0, 320.0 * s, 240.0 * s),
+        );
+    }
+
+    #[test]
+    fn the_touch_screen_maps_through_the_phone_layout() {
+        let a = upright(412.0, 892.0, 198.0);
+        let p = ds(&auto(), a);
+        // Its middle is the touch screen's middle; the strip is no screen.
+        assert_eq!(touch_at(&p, 206.0, 385.0 + 154.5), Some((128, 96)));
+        assert_eq!(touch_at(&p, 0.0, 385.0), Some((0, 0)));
+        assert_eq!(touch_at(&p, 206.0, 363.0), None, "the strip");
+        assert_eq!(touch_at(&p, 206.0, 200.0), None, "the top screen");
+        let pointer = pointer_at(&auto(), DS, FRAME, a, 206.0, 385.0 + 154.5).unwrap();
+        assert_eq!(melonds_reads(pointer, FRAME), (128, 192 + 96));
+        // On its side the touch screen is on the right; the room between them is no screen.
+        let a = on_its_side(892.0, 412.0);
+        let p = ds(&auto(), a);
+        assert_eq!(touch_at(&p, 458.0 + 209.0, 156.75), Some((128, 96)));
+        assert_eq!(touch_at(&p, 454.0, 100.0), None, "between the screens");
+        let pointer = pointer_at(&auto(), DS, FRAME, a, 458.0 + 209.0, 156.75).unwrap();
+        assert_eq!(melonds_reads(pointer, FRAME), (128, 192 + 96));
+        // Swapped upright: the touch screen on top, under the camera.
+        let swapped = Layout {
+            swap: true,
+            ..auto()
+        };
+        let a = upright(412.0, 892.0, 198.0);
+        let p = ds(&swapped, a);
+        assert_near(dst(&p, ScreenId::Bottom), rect(0.0, 32.0, 412.0, 309.0));
+        assert_eq!(touch_at(&p, 206.0, 32.0 + 154.5), Some((128, 96)));
+    }
+
+    #[test]
+    fn the_room_between_follows_the_screens_when_the_picture_turns() {
+        // Every turn of both arrangements: the two screens never overlap and keep the room (50
+        // px) between them along the axis it turned to.
+        let a = phone(1000.0, 1000.0, (0.0, 0.0, 0.0, 0.0), Align::Centre, 50.0);
+        for arrangement in [Arrangement::Stacked, Arrangement::SideBySide] {
+            for rotation in [
+                Rotation::None,
+                Rotation::Left,
+                Rotation::Right,
+                Rotation::Flip,
+            ] {
+                let layout = Layout {
+                    arrangement: arrangement.clone(),
+                    rotation,
+                    fill: true,
+                    ..Layout::default()
+                };
+                let p = ds(&layout, a);
+                let (t, b) = (dst(&p, ScreenId::Top), dst(&p, ScreenId::Bottom));
+                let gap_x = (b.x - (t.x + t.w)).max(t.x - (b.x + b.w));
+                let gap_y = (b.y - (t.y + t.h)).max(t.y - (b.y + b.h));
+                let gap = gap_x.max(gap_y);
+                assert!(
+                    (gap - 50.0).abs() < 0.01,
+                    "{arrangement:?} {rotation:?}: {gap}"
+                );
+                // Touch still lands on the touch screen's middle.
+                let (cx, cy) = (b.x + b.w / 2.0, b.y + b.h / 2.0);
+                assert_eq!(
+                    touch_at(&p, cx, cy),
+                    Some((128, 96)),
+                    "{arrangement:?} {rotation:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn auto_follows_the_window_and_the_desktop_keeps_whole_scales() {
+        // Auto in a landscape window is side by side, in a portrait one stacked.
+        let wide = ds(
+            &Layout {
+                arrangement: Arrangement::Auto,
+                ..Layout::default()
+            },
+            area(1920.0, 1080.0),
+        );
+        assert!(dst(&wide, ScreenId::Bottom).x > dst(&wide, ScreenId::Top).x);
+        let tall = ds(
+            &Layout {
+                arrangement: Arrangement::Auto,
+                ..Layout::default()
+            },
+            area(1080.0, 1920.0),
+        );
+        assert!(dst(&tall, ScreenId::Bottom).y > dst(&tall, ScreenId::Top).y);
+        // The desktop: 1920 x 1080 stacked keeps 2x; filling, 1080 / 384 = 2.8125x.
+        assert_eq!(
+            dst(&ds(&Layout::default(), area(1920.0, 1080.0)), ScreenId::Top).w,
+            512.0
+        );
+        let filled = Layout {
+            fill: true,
+            ..Layout::default()
+        };
+        assert_eq!(
+            dst(&ds(&filled, area(1920.0, 1080.0)), ScreenId::Top).w,
+            720.0
+        );
+        // No room asked for: nothing between the screens, whatever the alignment.
+        let p = ds(
+            &filled,
+            phone(412.0, 892.0, (0.0, 0.0, 300.0, 0.0), Align::Apart, 0.0),
+        );
+        let (t, b) = (dst(&p, ScreenId::Top), dst(&p, ScreenId::Bottom));
+        assert!(b.y >= t.y + t.h);
+        // One screen with Apart sits on the band as with Bottom.
+        let one = |align| {
+            compose(
+                &Layout::default(),
+                &Split::Whole.screens(240, 160),
+                phone(412.0, 892.0, (0.0, 0.0, 300.0, 0.0), align, 44.0),
+            )[0]
+            .dst
+        };
+        assert_eq!(one(Align::Apart), one(Align::Bottom));
+    }
+
+    #[test]
+    fn the_session_fills_two_screens_on_a_phone_only() {
+        let s = ScreenSettings::default();
+        assert!(
+            ScreenSession::new(s.clone(), true, true)
+                .on_phone(true)
+                .layout()
+                .fill
+        );
+        assert!(
+            !ScreenSession::new(s.clone(), true, true)
+                .on_phone(false)
+                .layout()
+                .fill
+        );
+        assert!(
+            !ScreenSession::new(s.clone(), false, false)
+                .on_phone(true)
+                .layout()
+                .fill
+        );
+        assert!(!s.layout(LayoutId::Vertical, false).fill);
+        assert_eq!(
+            s.layout(LayoutId::Auto, false).arrangement,
+            Arrangement::Auto
+        );
+    }
+
+    #[test]
+    fn a_phone_opens_a_two_screen_game_on_auto() {
+        use crate::settings::schema::{entry, Device};
+        let cycle = entry("screens.cycle").unwrap();
+        let on = |device| cycle.default_for(device, Some(crate::settings::ConsoleId::Nds));
+        let phone = settings(&[("screens.cycle", on(Device::Phone).unwrap())]);
+        assert_eq!(
+            phone.cycle,
+            [LayoutId::Auto, LayoutId::BigSmall, LayoutId::TopOnly]
+        );
+        assert_eq!(phone.first(), LayoutId::Auto);
+        let desk = settings(&[("screens.cycle", on(Device::Desktop).unwrap())]);
+        assert_eq!(desk.first(), LayoutId::Vertical);
+        assert_eq!(desk.cycle, ScreenSettings::default().cycle);
+    }
+
+    #[test]
+    fn a_preset_on_the_phone_is_where_the_phone_draws_the_screens() {
+        // «Parti da» upright on a phone: the screens fill the width as the game shows them.
+        let s = ScreenSettings::default();
+        let p = CustomLayout::preset(&s, LayoutId::Auto, DS, 412.0, 892.0, true);
+        assert!(p.is_valid());
+        assert!((p.screens[0].w - 1.0).abs() < 1e-4);
+        let desk = CustomLayout::preset(&s, LayoutId::Auto, DS, 412.0, 892.0, false);
+        assert!((desk.screens[0].w - 256.0 / 412.0).abs() < 1e-4);
     }
 }

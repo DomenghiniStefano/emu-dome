@@ -993,6 +993,7 @@
         "button": "Modifica l’elenco",
         "option": {
           "vertical": "Verticale",
+          "auto": "Automatica",
           "side": "Affiancati",
           "big_small": "Grande e piccolo",
           "top_only": "Solo lo schermo superiore",

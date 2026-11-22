@@ -258,8 +258,12 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          `ScreenSettings` the `screens.*` values, `CustomLayout` the editor's
                          `screens.custom`, `ScreenSession` the layout shown, the swap and the lid,
                          `ScreenStatus` what the interface shows; `Inset` the window's edges kept clear
-                         of the game (quick menu, touch controls) and `fit` the game in the rest,
-                         centred or against the bottom; pure, unit-tested)
+                         of the game (quick menu, touch controls), its `between` the room kept between
+                         two screens (the phone's strip), and `fit` the game in the rest, centred,
+                         against the bottom or the top, or two screens `apart` against both ends;
+                         `Layout::fill` (a two-screen game on a phone, `ScreenSession::on_phone`) drops
+                         the integer scale; `auto` (`Arrangement::Auto`) is stacked in a window taller
+                         than wide, side by side otherwise; pure, unit-tested)
                          touch.rs (the touch controls, #29: `ControlId` and the controls each console
                          has (`ControlId::of`), `Layout` / `Layouts` the user's layout per orientation as
                          `touch.tedit` stores it (per device, per console), what a valid one is (each
@@ -451,7 +455,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          touch (#29: TouchLayer, the touch controls over the game (App.vue, a touch screen):
                          the layout of the console and orientation (touchLayout.ts: the defaults anchored
                          to the window's edges, the geometry, the 8 px grid, the edges kept clear of the
-                         game: the band at the bottom in portrait, the side columns in landscape), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
+                         game: the band at the bottom in portrait, the side columns in landscape; DS /
+                         3DS: the safe top, the band and the L / menu / R strip between the screens
+                         upright, the camera's edge on the side), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
                          (touchPress.ts), `touch.topac` / `thapt` / `thide` / `tpad`
                          (touchVisibility.ts); TouchEditor C06 over the game (from G10 and from the
                          `touch.tedit` row at a console's scope; useTouchEditor the state, editorHistory.ts
@@ -533,6 +539,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     every console: 4:3 / 16:9 stretch the composed picture, a custom layout excepted): the native renderer one
     draw per screen (`Renderer::set_layout`), the webview canvas from `screens_placements` (it decides no
     geometry: `GameCanvas.vue`, `screenDraw.ts`). Touch maps back through the same layout (`pointer`).
+    On a phone (owner, 2026-11-22) a two-screen game opens on `auto` (`screens.cycle`'s phone default:
+    `auto`, `big_small`, `top_only`) and fills its room (`Layout::fill`, set in Rust from
+    `emudome_platform::PHONE`); the touch controls' inset carries the rest (`Inset::between`, `Align::Apart`
+    upright, `Align::Top` on the side), so both renderers and `pointer` get the same placements.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
     lock and swaps it in; readers (texture upload, the webview's copy, PNG thumbnails and screenshots) clone the
@@ -1022,7 +1032,17 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`reservedInset`, the video inset of `screens::Inset`): upright against the band at the bottom (what the
   window has left over is one band at its top, the picture keeping its integer scale), on the side between the two
   columns, Select / Start / menu in the columns; the quick menu's sheet and side panel keep their own edges the
-  same way, measured again when the phone turns.
+  same way, measured again when the phone turns. DS and 3DS (owner, 2026-11-22) keep their screens large and apart
+  instead (`isDualScreen`, `reservedInset`'s two-screen rule): upright the top screen under the camera (the safe top,
+  read from the `safe-*` tokens), L / menu / R in a 44 px strip between the screens (anchored halfway between the
+  safe top and the band, `defaultBand`), the touch screen on the band of the d-pad, A B X Y, Select / Start (in a
+  column between the clusters from 404 px wide, under them below); on its side the screens side by side at the top,
+  16 px from each edge or the camera's notch, 8 px apart, the controls over the strip below and the screens' lower
+  outer corners. On the S23: 412 × 309 each upright (32–341, strip, 385–694), 418 × 313.5 on its side. With the
+  quick menu open the screens follow the menu's inset, which keeps no strip: they join, still filling their room.
+  Native video's «Sfondo ai lati del gioco» still cuts one hole for the whole frame (`lib/surround.ts` mirrors
+  `fit`, not the screens' placements): with a background other than black it covers parts of a two-screen layout
+  that is not the plain stack, on the desktop as on the phone.
 - Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
   (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
   (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`
@@ -1053,6 +1073,12 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   frame, so a curved CRT bends the frame as the core stacks it, not each screen. `screens.gap` is in the frame's
   pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
+  The phone (owner, 2026-11-22): `auto` («Automatica») is the first of the phone's cycle, so a phone's game opens
+  with its screens apart and filling the width; `vertical` and `side` are left out of the phone's default cycle
+  (`auto` is each of them in its orientation) and stay choosable in the cycle's setting. Every two-screen layout on
+  a phone fills its room (no integer scale); one-screen games keep it. A cycle already saved by the user (a
+  Console or Game value of `screens.cycle`) keeps its own first layout. The C09 editor's «Parti da» has no
+  «Automatica» start (it starts from the four fixed layouts, composed at the phone's fill).
 - TV mode (#30): Saves, Controls, Cloud and a game's details keep the desk's layout scaled up in TV. Settings in TV
   has no «In primo piano» (T01), no search field (Y opens the search everywhere) and no «Mostra solo le impostazioni
   modificate»; a text and the game folders keep the desk's row scaled up; on a row that changes in place ◀ ▶ are

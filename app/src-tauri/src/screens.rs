@@ -77,7 +77,8 @@ pub fn started(app: &AppHandle, core: CoreId, console: ConsoleId) {
     let profile = core.profile();
     let dual = profile.split != Split::Whole;
     log::debug!("screens: {console:?} on {core}, two screens: {dual}");
-    let session = ScreenSession::new(read_settings(app), dual, profile.lid.supported());
+    let session = ScreenSession::new(read_settings(app), dual, profile.lid.supported())
+        .on_phone(emudome_platform::PHONE);
     if let Some(state) = app.try_state::<ScreensState>() {
         *state.0.lock() = Some(Open { core, session });
     }
@@ -330,7 +331,14 @@ pub fn screens_preset_custom(
 ) -> CustomLayout {
     let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
     let split = CoreId::for_console(console).profile().split;
-    CustomLayout::preset(&settings, layout, split, width, height)
+    CustomLayout::preset(
+        &settings,
+        layout,
+        split,
+        width,
+        height,
+        emudome_platform::PHONE,
+    )
 }
 
 /// Stores the custom layout at `scope`: `console` or `game` to save it, `session` to preview it
