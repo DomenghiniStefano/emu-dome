@@ -180,8 +180,8 @@
   /* A choice inside a title (the settings scope bar's «Giochi <console> ▾»). */
   --spacing-in-title: 26px;
 
-  /* EmuDome's mark (assets/brand/, Trello #101): its height on the first run's welcome and on
-     the startup splash (index.html mirrors it), and the small one before the top bar's wordmark. */
+  /* EmuDome's mark (assets/brand/, Trello #101): its width on the first run's welcome, and the
+     small one's height before the top bar's wordmark. */
   --spacing-mark: 148px;
   --spacing-mark-small: 18px;
 
