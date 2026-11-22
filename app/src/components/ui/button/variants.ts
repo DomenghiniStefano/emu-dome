@@ -124,6 +124,9 @@ export const ButtonSize = {
   Icon: 'icon',
   IconSmall: 'iconSmall',
   IconTouch: 'iconTouch',
+  // An icon alone on a list row or a tile (Trello #104: a version's «Gioca questa», a folder's
+  // «Togli»): the 24px square, and on the phone the touch minimum. Its 28px sibling is ToolIcon.
+  IconRow: 'iconRow',
   // A section of the rail: 64 x 48, icon over name.
   Rail: 'rail',
   // The actions over a cover (control-md), «Gioca» and the square «…».
@@ -302,6 +305,7 @@ export const buttonVariants = cva(
         [ButtonSize.Icon]: 'size-control p-0',
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
         [ButtonSize.IconTouch]: 'size-touch p-0',
+        [ButtonSize.IconRow]: 'size-control-sm p-0 touch:size-touch',
         [ButtonSize.Rail]: 'h-48 w-rail-item flex-col gap-3 p-0',
         [ButtonSize.CoverAction]: 'h-control-md px-6 py-px',
         [ButtonSize.CoverActionIcon]: 'size-control-md px-6 py-px',
