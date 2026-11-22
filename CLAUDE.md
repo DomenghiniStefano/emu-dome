@@ -59,7 +59,9 @@ the user's image framed in «Adatta la copertina» (#85), screen effects (libras
 melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
 back to the CPU, encrypted games refused with E10), and the Google Drive sync backend (#20: sign-in, Drive client,
 sync index and conflict rule, tested, not wired into the game flow or the interface yet), and the search everywhere
-and the notification centre in the top bar (#32, X01–X03). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+and the notification centre in the top bar (#32, X01–X03), and the release plumbing (#44: per-user installer, Linux
+package targets, the Android App Bundle, EmuDome updating itself with X06, the licences page, the log file and its
+export; no release built yet, see «Known gaps»). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
 before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
@@ -95,12 +97,18 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
 ./scripts/build-mgba.ps1 [-Platform windows-x86_64|android-arm64-v8a] [-Jobs 2]  # mGBA from the source cores.lock
                                               # pins, installed only if its sha256 is the pinned one (scripts/core-build.mjs:
                                               # VS 2022 Build Tools + the NDK's clang-cl, NDK for Android, git; sh build-mgba.sh)
-./scripts/android-build.ps1 [-Install] [-Release] [-DryRun]  # the Android APK (arm64-v8a) from a clean clone: cores,
-                                              # frontend, Rust, Gradle; prints the APK; -Install = adb install -r
+./scripts/android-build.ps1 [-Install] [-Release] [-Bundle] [-DryRun]  # the Android APK (arm64-v8a) from a clean
+                                              # clone: cores, frontend, Rust, Gradle; prints the APK; -Install = adb
+                                              # install -r; -Bundle = the signed AAB for Google Play (a release)
                                               # (sh scripts/android-build.sh [--install] ... on Linux / Git Bash)
 node scripts/cores.mjs generate               # after editing cores.lock: cores/SOURCES.md, app/src-tauri/package/*.json
 pnpm package:windows                          # installer (from app/): only the cores.lock files, verified (THIRD_PARTY.md)
-                                              # releases (tag on main, clean clone, where published): docs/release.md
+pnpm package:windows:release                  # the same, signed for the updater (`.sig`): needs the update keys in the
+                                              # environment (TAURI_SIGNING_PRIVATE_KEY, EMUDOME_UPDATER_PUBKEY; never in
+                                              # the repo); package:linux:release on Linux
+node scripts/updater-manifest.mjs write ...   # latest.json of a release (check-env, --self-test)
+                                              # releases (tag on main, clean clone, where published, the update key):
+                                              # docs/release.md
 node scripts/third-party-tables.mjs --write   # after a dependency change (and pnpm install): THIRD_PARTY.md's tables
 node scripts/versions.mjs                     # the version agrees in Cargo.toml, app/package.json, tauri.conf.json
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
@@ -172,7 +180,10 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
   - `EMUDOME_CORES_DIR` tells where to look for the cores (debug builds only: a release loads only the cores in its
     resource folder, each checked against `cores.lock`'s sha256, `crates/emudome-platform/src/cores.rs`).
   - `EMUDOME_THEME=dark|black|light` forces the theme (otherwise the `general.theme` setting, then the system).
-  - `RUST_LOG=debug` for the logs.
+  - `RUST_LOG=debug` for the logs (stderr / logcat, and the log file `<app local data>/logs/emudome.log`, the
+    previous run's beside it as `emudome-previous.log`; `about.log` exports it).
+  - `EMUDOME_UPDATER_PUBKEY` (build time): the public update key; without it the build cannot update itself.
+    `EMUDOME_UPDATER_ENDPOINT` (build time, optional): another update manifest (docs/release.md).
   - `EMUDOME_DATA_DIR=<folder>` puts every data file there (saves, settings, library, covers, webview profile) and
     skips the one-time copy of the old identifier's folders: test and bench runs never touch the real data.
 - Data folders: Tauri's app data / app local data folders for the identifier `it.domehub.emudome` (`app/src-tauri/src/dirs.rs`).
@@ -235,6 +246,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
                          store.rs library.json, games never deleted; pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
+                         updates.rs (EmuDome updating itself, #44: `UpdateFlow`, `general.updates` auto / ask /
+                         off as a state machine, every time passed in; `UpdateStatus` for the interface;
+                         pure, unit-tested)
                          notifications.rs (X03, #32: `Notice` codes + values, `Notifications` newest
                          first, at most 100, a newer kind kept unlisted; `Store` on
                          `<app local data>/notifications.json`, `$schema` 1, write_atomic, unreadable
@@ -274,6 +288,12 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          content.rs (games as `content://` documents, opened without a copy: the
                          provider's file descriptor kept open for the session, read through a link
                          `<cache>/content/<fd>/<name>` → `/proc/self/fd/<fd>`; pure parts tested),
+                         updater.rs (#44: Tauri's updater plugin on the desktop, registered only when built
+                         with `EMUDOME_UPDATER_PUBKEY`; check / download / install; Android: unavailable),
+                         log_file.rs (every log line also into `<app local data>/logs/emudome.log`, written
+                         by the `emudome-log` thread, never by the thread that logs; bounded),
+                         `save_file` (the save dialog), `shipped_cores` (cores.lock's shipped cores, for
+                         the licences page),
                          cloud.rs (what the Drive sync needs from the system: `open_url` (the system
                          browser), `device_name`, the credential store (`keyring`: Windows Credential
                          Manager, Linux Secret Service over zbus) under the service `it.domehub.emudome`;
@@ -337,6 +357,11 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          caller's thread: gamepad.rs records a controller connected after start)
                          cloud.rs (the Google account: cloud_status / cloud_sign_in / cloud_sign_out, the
                          refresh token through emudome_platform::cloud; no sync wired yet)
+                         updates.rs (#44: `UpdateFlow` carried out on the `emudome-updates` thread,
+                         updates_status / _check / _later / _install, `updates://changed`, the
+                         `updateReady` notification; installing refused while a game is open)
+                         about.rs (#44: the licences page's rows from Cargo.toml + cores.lock +
+                         THIRD_PARTY.md and their packaged texts, about_export_log through the save dialog)
                          dirs.rs (the data folders: Tauri's, EMUDOME_DATA_DIR, or the old identifier's for a
                          run whose copy did not finish), data_move.rs (that copy, first thing in setup)
                          library.rs (library commands, background scans, library://scan and library://changed,
@@ -365,7 +390,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          search (X01 / X02, #32: SearchPalette from the top bar, Ctrl + K or Y; search.ts
                          the matching, pure, tested; useSearchSources the actions, settings and games),
                          notifications (X03: NotificationBell in the top bar, its panel; notifications.ts
-                         the words, pure, tested);
+                         the words, pure, tested), about (`about.lic`'s licences page, a functional
+                         placeholder), updates (X06, the update card in the shell; the shared status in
+                         composables/useUpdates.ts);
                          components/ui/ (the primitives),
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
                          lib/settingsModel.ts, lib/cn.ts, lib/design/…),
@@ -531,7 +558,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
   `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
-  `emu://health` (the whole list of `ErrorCode`s of what is not working, see below).
+  `emu://health` (the whole list of `ErrorCode`s of what is not working, see below), `updates://changed` (an
+  `UpdateStatus`, #44).
 - Health (Trello #79, `app/src-tauri/src/health.rs`): backend failures that change what the user gets are one
   `ErrorCode` per part (`video.api`'s backend missing `graphicsApiUnavailable`, native video fallen back
   `nativeVideoFallback`, surface `videoSurfaceFailed`, audio output
@@ -885,9 +913,15 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (Trello #92). Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
   `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
   source-built Android mGBA.
-- Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet; `bundle.targets` is `["nsis"]`
-  only, so Linux gets no AppImage / deb; the Android script builds APKs, not the App Bundle Google Play wants; no
-  Windows code signing; the update channel is not decided.
+- Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet, no release built. Windows: a
+  per-user NSIS installer, data kept on uninstall unless the uninstaller's box is ticked, unsigned (SmartScreen).
+  Linux: AppImage and deb targets, never built (no Linux here; mGBA for Linux unpinned, #92). Android: `-Bundle`
+  builds the AAB, run only as `-DryRun`. Updates: Tauri's updater from GitHub Releases' `latest.json`, signed with
+  the owner's key (made outside the repo); a build without `EMUDOME_UPDATER_PUBKEY` cannot update itself. Its TLS
+  is the system's (`native-tls`), not rustls, until the owner decides on `webpki-root-certs`
+  (CDLA-Permissive-2.0). The licences page and X06 are functional placeholders for the owner's design; the
+  licence texts are read from the package (a development build reads the repo's files; Android has none yet).
+  `about.log` is desktop only (no save dialog on Android).
 - The game key migration (Trello #70) leaves in place, and reports, what facts cannot give to one game (a file name
   shared by several library games, no library game, the new place already taken); the app no longer reads those.
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
