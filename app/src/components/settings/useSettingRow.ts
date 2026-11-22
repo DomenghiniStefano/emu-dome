@@ -13,13 +13,16 @@ import {
 } from '@/emu'
 import { LOCALE } from '@/i18n'
 import { biosStatus, refreshBiosStatus } from '@/lib/biosStatus'
+import { report } from '@/lib/errors'
 import { FILE_PICKERS, msg, optionNotYet } from '@/lib/settingsModel'
 import {
   chosenFileName,
   descNotes,
+  hasRuntimeOptions,
   offeredOptions,
   rowState,
   rowValue,
+  runtimeOptions,
   type RowState,
 } from './settingRowModel'
 
@@ -67,6 +70,18 @@ export function useSettingRow(props: SettingRowInput) {
   const version = ref('')
   onMounted(async () => {
     if (key.value === 'about.ver') version.value = await emu.appVersion()
+  })
+
+  /** The options this device adds at run time (`audio.out`: the outputs it lists now). */
+  const found = ref<string[]>([])
+  onMounted(() => {
+    if (!hasRuntimeOptions(props.entry)) return
+    const asked = key.value
+    report(
+      emu.settings.runtimeOptions(asked).then(list => {
+        if (key.value === asked) found.value = list
+      }),
+    )
   })
 
   const name = computed(() => {
@@ -121,18 +136,23 @@ export function useSettingRow(props: SettingRowInput) {
     return te(msg.button(k)) ? t(msg.button(k)) : ''
   })
 
-  /** The options this device offers (a choice may have some for another device only). */
-  const options = computed<RowOption[]>(() =>
-    offeredOptions(props.entry).map(id => ({
-      id,
-      // `{language}`: «Come il sistema (Italiano)» of `general.lang`; other options ignore it.
-      text: t(msg.option(key.value, id), {
-        language: t(`settings.general.lang.option.${LOCALE}`),
-      }),
-      desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
-      notYet: optionNotYet(props.entry, id),
-    })),
-  )
+  /** The options this device offers (a choice may have some for another device only), then the
+   * ones it found at run time, each shown by its own name (a device's). */
+  const options = computed<RowOption[]>(() => {
+    const fixed = offeredOptions(props.entry)
+    return [
+      ...fixed.map(id => ({
+        id,
+        // `{language}`: «Come il sistema (Italiano)» of `general.lang`; other options ignore it.
+        text: t(msg.option(key.value, id), {
+          language: t(`settings.general.lang.option.${LOCALE}`),
+        }),
+        desc: te(msg.optionDesc(key.value, id)) ? t(msg.optionDesc(key.value, id)) : '',
+        notYet: optionNotYet(props.entry, id),
+      })),
+      ...runtimeOptions(fixed, found.value).map(id => ({ id, text: id, desc: '', notYet: false })),
+    ]
+  })
 
   return { key, value, state, name, desc, noFile, fileName, buttonText, options }
 }

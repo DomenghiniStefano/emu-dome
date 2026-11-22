@@ -26,7 +26,7 @@ use raw_window_handle::{DisplayHandle, HandleError};
 use crate::content::{fd_path, link_dir, link_name, LINKS_DIR};
 use crate::{
     BackListener, ContentError, ContentFile, DataDirs, ExternalSurface, SurfaceEvent,
-    SurfaceListener, WindowOptions,
+    SurfaceListener, WindowMode, WindowOptions, WindowRoom,
 };
 
 pub const OS_NAME: &str = "Android";
@@ -489,5 +489,18 @@ pub fn pick_file(_app: &tauri::AppHandle, _filter: &str, _extensions: &[&str]) -
 
 /// Tauri's mobile window has no fullscreen call; the app already fills the screen.
 pub fn set_fullscreen(_window: &tauri::Window, _on: bool) -> tauri::Result<()> {
+    Ok(())
+}
+
+/// The activity's window fills the screen: it has no size of its own to choose.
+pub fn window_room(_window: &tauri::Window) -> Option<WindowRoom> {
+    None
+}
+
+pub fn set_window_mode(_window: &tauri::Window, _mode: WindowMode) -> tauri::Result<()> {
+    Ok(())
+}
+
+pub fn set_window_inner_size(_window: &tauri::Window, _size: (u32, u32)) -> tauri::Result<()> {
     Ok(())
 }

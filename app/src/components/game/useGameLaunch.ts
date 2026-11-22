@@ -110,10 +110,13 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     }
   }
 
-  /** The game given on the command line, if any. */
+  /** The game given on the command line, if any; else, with `general.start` = «last game», the
+   * library game played last (Rust decides, and answers none when a game was given). */
   async function openStartupGame() {
     const path = await emu.startupGame()
-    if (path) await openFile(path)
+    if (path) return openFile(path)
+    const last = await emu.startupLastGame()
+    if (last) await openLibraryGame(last)
   }
 
   async function answerResume(resume: boolean) {

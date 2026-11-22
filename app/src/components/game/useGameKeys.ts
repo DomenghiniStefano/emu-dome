@@ -15,10 +15,13 @@ export function useGameKeys(session: GameSession) {
   const { game, menuOpen } = session
 
   /** The keys held now are let go elsewhere (Alt-Tab, another window): Rust lets go of them,
-   * ending the keyboard's fast forward and held rewind. The quick menu opening does the same in
-   * Rust (`set_menu_open`). */
+   * ending the keyboard's fast forward and held rewind (the quick menu opening does the same in
+   * Rust, `set_menu_open`), and pauses the game with `general.bgpause` until the focus is back. */
   function onBlur() {
-    if (game.value) report(emu.releaseKeys())
+    if (game.value) report(emu.windowFocus(false))
+  }
+  function onFocus() {
+    if (game.value) report(emu.windowFocus(true))
   }
   function onVisibility() {
     if (document.visibilityState === 'hidden') onBlur()
@@ -68,6 +71,7 @@ export function useGameKeys(session: GameSession) {
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', onBlur)
+    window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisibility)
     watchInput()
     void loadKeymap(false)
@@ -76,6 +80,7 @@ export function useGameKeys(session: GameSession) {
     window.removeEventListener('keydown', down)
     window.removeEventListener('keyup', up)
     window.removeEventListener('blur', onBlur)
+    window.removeEventListener('focus', onFocus)
     document.removeEventListener('visibilitychange', onVisibility)
   })
 

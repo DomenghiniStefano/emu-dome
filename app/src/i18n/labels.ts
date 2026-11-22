@@ -32,6 +32,11 @@ export function errorText(e: unknown): string {
       params.name = known(option) ? t(option) : e.params.name
     }
     if (e.code === 'stateLoadUnsupported') params.reason = stateLoadBlockText(e.params.reason)
+    if (e.code === 'graphicsApiUnavailable') {
+      // `video.api`'s option: its name as the settings show it.
+      const option = `settings.video.api.option.${e.params.api}`
+      params.api = known(option) ? t(option) : e.params.api
+    }
     if (e.code === 'settingLevelRefused') {
       const words = e.params.levels.map(l => t(`settingsUi.levelWord.${l}`))
       params.levels = new Intl.ListFormat(i18n.global.locale.value, {
