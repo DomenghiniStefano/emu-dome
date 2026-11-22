@@ -3,13 +3,15 @@
 //! the window's settings (desktop rows; on Android the platform calls do nothing):
 //!
 //! - `video.window`: windowed, fullscreen or borderless, at startup and when it changes;
-//! - `video.winsize`: in a window, its inside is the console's picture at 1× ([`console_frame`];
-//!   GBA's with no game) times 1–4, the largest multiple that fits the monitor's work area
+//! - `video.winsize`: in a window with a game open, its inside is the game console's picture at
+//!   1× ([`console_frame`]) times 1–4, the largest multiple that fits the monitor's work area
 //!   ([`inner_size`], physical pixels: one console pixel is N screen pixels), never under the
-//!   window's smallest size; applied at startup, when the setting changes and when a game opens
-//!   (its console may have another picture). «Free» keeps the size the user gave the window
-//!   (nothing is stored: a new start opens at the default size). A maximized window is left as
-//!   it is, except when the setting itself changes. F11 keeps toggling the system's fullscreen.
+//!   window's smallest size; applied when a game opens and when the setting changes while one
+//!   is open ([`size_target`]). With no game the window keeps its size (the library's: the
+//!   default at startup, or what the user gave it). «Free» keeps the size the user gave the
+//!   window (nothing is stored: a new start opens at the default size). A maximized window is
+//!   left as it is, except when the setting itself changes. F11 keeps toggling the system's
+//!   fullscreen.
 
 use emudome_core::screens::Split;
 use emudome_core::settings::{keys, ConsoleId, Scope};
@@ -90,6 +92,39 @@ pub enum Why {
     Game(ConsoleId),
 }
 
+/// What happens to a window's size (in windowed mode).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SizeTarget {
+    /// It keeps its size.
+    Leave,
+    /// This console's picture times N.
+    Game(ConsoleId, u32),
+    /// The default size (back from borderless, which covered the monitor).
+    Default,
+}
+
+/// The size decision. `video.winsize` sizes the window for a GAME only (owner's PM, 2026-11-22:
+/// the library keeps its window): when a game opens, and when the setting changes while one is
+/// open. With no game open (`console` `None`: startup, a change in the library) the window keeps
+/// its size; coming back from borderless it gets the default size. A maximized window is left as
+/// it is unless the setting itself changed.
+pub fn size_target(
+    size: SizeChoice,
+    console: Option<ConsoleId>,
+    why: Why,
+    maximized: bool,
+    from_borderless: bool,
+) -> SizeTarget {
+    match (size, console) {
+        (SizeChoice::Times(_), Some(_)) if maximized && why != Why::Setting => SizeTarget::Leave,
+        (SizeChoice::Times(n), Some(console)) if why != Why::Startup => {
+            SizeTarget::Game(console, n)
+        }
+        (SizeChoice::Times(_) | SizeChoice::Free, _) if from_borderless => SizeTarget::Default,
+        (SizeChoice::Times(_) | SizeChoice::Free, _) => SizeTarget::Leave,
+    }
+}
+
 /// The window mode last applied (`None` before startup).
 #[derive(Default)]
 pub struct WindowState(Mutex<Option<WindowMode>>);
@@ -157,21 +192,20 @@ pub fn apply(app: &AppHandle, why: Why) {
     if room.fullscreen && !change_mode {
         return;
     }
-    let target = match size {
-        SizeChoice::Times(_) if room.maximized && why != Why::Setting => None,
-        SizeChoice::Times(n) => Some(inner_size(
-            console_frame(console),
+    let from_borderless = change_mode && previous == Some(WindowMode::Borderless);
+    let target = match size_target(size, console, why, room.maximized, from_borderless) {
+        SizeTarget::Leave => None,
+        SizeTarget::Game(console, n) => Some(inner_size(
+            console_frame(Some(console)),
             n,
             room.max_inner,
             room.min_inner,
         )),
-        // Back from borderless (which covered the monitor): the default size.
-        SizeChoice::Free if change_mode && previous == Some(WindowMode::Borderless) => {
+        SizeTarget::Default => {
             let (w, h) = emudome_platform::WINDOW_SIZE;
             let physical = |v: f64, max: u32| ((v * room.scale).round() as u32).min(max);
             Some((physical(w, room.max_inner.0), physical(h, room.max_inner.1)))
         }
-        SizeChoice::Free => None,
     };
     if let Some(size) = target {
         log::info!("window: {size:?} ({why:?}, {mode:?}, {:?})", console);
@@ -183,9 +217,58 @@ pub fn apply(app: &AppHandle, why: Why) {
 
 #[cfg(test)]
 mod tests {
-    use super::{console_frame, inner_size, mode_from_id, size_from_id, SizeChoice};
+    use super::{
+        console_frame, inner_size, mode_from_id, size_from_id, size_target, SizeChoice, SizeTarget,
+        Why,
+    };
     use emudome_core::settings::ConsoleId;
     use emudome_platform::WindowMode;
+
+    #[test]
+    fn the_size_follows_a_game_only() {
+        let three = SizeChoice::Times(3);
+        let nds = Some(ConsoleId::Nds);
+        // No game: startup and a change in the library leave the window as it is.
+        assert_eq!(
+            size_target(three, None, Why::Startup, false, false),
+            SizeTarget::Leave
+        );
+        assert_eq!(
+            size_target(three, None, Why::Setting, false, false),
+            SizeTarget::Leave
+        );
+        // A game opens, or the setting changes while it is open.
+        assert_eq!(
+            size_target(three, nds, Why::Game(ConsoleId::Nds), false, false),
+            SizeTarget::Game(ConsoleId::Nds, 3)
+        );
+        assert_eq!(
+            size_target(three, nds, Why::Setting, false, false),
+            SizeTarget::Game(ConsoleId::Nds, 3)
+        );
+        // Maximized: kept, unless the setting itself changed.
+        assert_eq!(
+            size_target(three, nds, Why::Game(ConsoleId::Nds), true, false),
+            SizeTarget::Leave
+        );
+        assert_eq!(
+            size_target(three, nds, Why::Setting, true, false),
+            SizeTarget::Game(ConsoleId::Nds, 3)
+        );
+        // Free never sizes; back from borderless the window gets the default size.
+        assert_eq!(
+            size_target(SizeChoice::Free, nds, Why::Setting, false, false),
+            SizeTarget::Leave
+        );
+        assert_eq!(
+            size_target(SizeChoice::Free, None, Why::Setting, false, true),
+            SizeTarget::Default
+        );
+        assert_eq!(
+            size_target(three, None, Why::Setting, false, true),
+            SizeTarget::Default
+        );
+    }
 
     #[test]
     fn the_options_map_to_modes_and_sizes() {
