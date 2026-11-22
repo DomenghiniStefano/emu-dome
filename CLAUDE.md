@@ -1024,7 +1024,10 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until it is built on Linux
   (Trello #92). Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
   `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
-  source-built Android mGBA.
+  source-built Android mGBA. 16 KB pages (Google Play, `docs/release.md` «Android: 16 KB pages»): the APK stores
+  its libraries 16 KB-aligned, `libemudome_app.so` links with 16 KB pages (`.cargo/config.toml`), mGBA and the
+  NDK's `libc++_shared.so` are aligned; the pinned melonDS DS v1.4.0 Android asset is not (4 KB `LOAD`
+  segments): a new pin, the owner's choice there, is a Play release blocker.
 - Releases (`docs/release.md`, Trello #44 / #50): no `main` branch and no tag yet, no release built. Windows: a
   per-user NSIS installer, data kept on uninstall unless the uninstaller's box is ticked, unsigned (SmartScreen).
   Linux: AppImage and deb targets, never built (no Linux here; mGBA for Linux unpinned, #92). Android: `-Bundle`
