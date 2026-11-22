@@ -548,6 +548,8 @@ pub fn run() {
             startup::startup_game,
             startup::startup_last_game,
             game::open_extensions,
+            game::pick_game_file,
+            game::game_file_title,
             commands::set_menu_open,
             commands::window_focus,
             bench::bench_active,

@@ -13,6 +13,16 @@ use crate::core::{GameContent, GameFiles, LoadedCore, StartError};
 use crate::core_options::CoreOptions;
 use crate::speed_audio::{FastAudio, SpeedAudio};
 
+/// The whole game from an open file, from its start (a duplicate descriptor shares its position
+/// with the others).
+fn read_all(mut file: std::fs::File) -> std::io::Result<Vec<u8>> {
+    use std::io::{Read, Seek, SeekFrom};
+    file.seek(SeekFrom::Start(0))?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)?;
+    Ok(bytes)
+}
+
 /// A loaded libretro core with its game, and its callbacks' slot.
 pub(super) struct Libretro {
     core: LoadedCore,
@@ -59,7 +69,16 @@ pub(super) fn boot(
     let loaded = (|| -> Result<LoadedCore, StartError> {
         let mut core = unsafe { LoadedCore::load(&opts.core_path, slot.callbacks())? };
         // A `need_fullpath` core (Azahar) reads the file itself: never read into memory here.
-        let content = GameContent::read(&opts.game_path, core.need_fullpath, |p| std::fs::read(p))?;
+        let content = match opts.game_file.take() {
+            None => GameContent::read(&opts.game_path, core.need_fullpath, |p| std::fs::read(p))?,
+            // A core that opens the file by itself gets the path, which must open then.
+            Some(reader) if core.need_fullpath && !reader.path_opens => {
+                return Err(StartError::GameNeedsPath)
+            }
+            Some(reader) => GameContent::read(&opts.game_path, core.need_fullpath, |_| {
+                read_all(reader.file)
+            })?,
+        };
         slot.begin_game(content.info_ext(true));
         let game = unsafe { core.load_game(&content) };
         slot.end_game_load(content.into_strings());

@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use raw_window_handle::{DisplayHandle, HandleError, HasWindowHandle, WindowHandle};
 
 use crate::{
-    BackListener, ContentError, ContentFile, DataDirs, SurfaceListener, WindowMode, WindowOptions,
-    WindowRoom, OLD_IDENTIFIER, WINDOW_MIN_SIZE, WINDOW_SIZE,
+    BackListener, ContentError, ContentFile, DataDirs, PickedDocument, SurfaceListener, TreeEntry,
+    WindowMode, WindowOptions, WindowRoom, OLD_IDENTIFIER, WINDOW_MIN_SIZE, WINDOW_SIZE,
 };
 
 /// The system's data folders are `<base>/<identifier>` (`%APPDATA%` and `%LOCALAPPDATA%` on
@@ -137,6 +137,31 @@ pub fn save_file(
 /// The desktop opens games by path only.
 pub fn open_content(_uri: &str, _cache_dir: &Path) -> Result<ContentFile, ContentError> {
     Err(ContentError::Unsupported)
+}
+
+/// Folders and game files come from the file dialog as paths.
+pub const DOCUMENT_PICKERS: bool = false;
+
+pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
+    Err(ContentError::Unsupported)
+}
+
+pub fn pick_document() -> Result<Option<PickedDocument>, ContentError> {
+    Err(ContentError::Unsupported)
+}
+
+pub fn list_document_tree(_tree: &str, _dir: Option<&str>) -> Result<Vec<TreeEntry>, ContentError> {
+    Err(ContentError::Unsupported)
+}
+
+pub fn document_tree_name(_tree: &str) -> Option<String> {
+    None
+}
+
+pub fn release_document_tree(_tree: &str) {}
+
+pub fn document_name(_uri: &str) -> Option<String> {
+    None
 }
 
 /// No back button on the desktop, and the startup game is the command line's: nothing to attach.

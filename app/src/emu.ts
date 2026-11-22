@@ -225,6 +225,13 @@ export const emu = {
   startupLastGame: () => invoke<LibraryGame | null>('startup_last_game'),
   /** The file extensions «Apri un file» offers (every console whose games open today). */
   openExtensions: () => invoke<string[]>('open_extensions'),
+  /** «Apri un file»: the game file picked (a path, or a `content://` document on Android, its
+   * extension checked by Rust); `filter` names the extensions in the desktop's dialog. null =
+   * cancelled. */
+  pickGameFile: (filter: string) => invoke<string | null>('pick_game_file', { filter }),
+  /** The title of a game file outside the library: its file name without the extension (a
+   * document's display name, never its URI); null when a document's name cannot be read. */
+  gameFileTitle: (path: string) => invoke<string | null>('game_file_title', { path }),
   videoMode: () => invoke<[VideoMode, boolean]>('video_mode'),
   setVideoMode: (mode: VideoMode) => invoke<void>('set_video_mode', { mode }),
   openGame: (path: string) => invoke<GameInfo>('open_game', { path }),

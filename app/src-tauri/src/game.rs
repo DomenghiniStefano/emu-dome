@@ -7,7 +7,7 @@ use emudome_core::core_profile::{state_load_block, CoreId, Renderer, StateLoadBl
 use emudome_core::n3ds::fallback::FallbackWatch;
 use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::settings::ConsoleId;
-use emudome_core::{ErrorCode, Event, GameKey, Session, SessionOptions, VideoSetup};
+use emudome_core::{ErrorCode, Event, GameKey, GameReader, Session, SessionOptions, VideoSetup};
 use emudome_platform::CoreLookupError;
 use serde::Serialize;
 use tauri::{Emitter, Manager};
@@ -61,13 +61,22 @@ fn core_for(path: &Path) -> Result<(CoreId, ConsoleId), ErrorCode> {
 }
 
 /// E10: an encrypted 3DS game is refused before the core sees it (also a library game whose file
-/// was replaced since it was added). Identification only: one header flag is read.
-fn refuse_encrypted(console: ConsoleId, game_path: &Path) -> Result<(), ErrorCode> {
-    use emudome_core::n3ds::rom::{check_file, Encryption};
+/// was replaced since it was added). Identification only: one header flag is read (a document
+/// through its descriptor).
+fn refuse_encrypted(
+    console: ConsoleId,
+    game_path: &Path,
+    document: Option<&emudome_platform::ContentFile>,
+) -> Result<(), ErrorCode> {
+    use emudome_core::n3ds::rom::{check_file, check_open_file, Encryption};
+    let encryption = || match document {
+        None => check_file(game_path),
+        Some(doc) => doc.reader().map_or(Encryption::Unknown, |mut f| {
+            check_open_file(game_path, &mut f)
+        }),
+    };
     match console {
-        ConsoleId::N3ds if check_file(game_path) == Encryption::Encrypted => {
-            Err(ErrorCode::GameEncrypted)
-        }
+        ConsoleId::N3ds if encryption() == Encryption::Encrypted => Err(ErrorCode::GameEncrypted),
         ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::Nds | ConsoleId::N3ds => {
             Ok(())
         }
@@ -142,6 +151,72 @@ pub(crate) fn open_extensions() -> Vec<&'static str> {
     emudome_core::library::open_extensions()
 }
 
+/// «Apri un file»: the game file the user picks; `filter` names the extensions EmuDome opens in
+/// the desktop's dialog. Android: the system's document picker (`ACTION_OPEN_DOCUMENT`, its read
+/// permission persisted), which offers every file (ROMs have no registered MIME types): the
+/// extension of the document's name is checked here as opening checks it (`unsupportedFormat`,
+/// `consoleNotYet`). `None` = cancelled. Off the event loop: it waits for the user.
+#[tauri::command]
+pub(crate) async fn pick_game_file(
+    app: tauri::AppHandle,
+    filter: String,
+) -> Result<Option<String>, ErrorCode> {
+    crate::blocking(app, move |app| pick_game_file_now(app, &filter)).await?
+}
+
+fn pick_game_file_now(app: &tauri::AppHandle, filter: &str) -> Result<Option<String>, ErrorCode> {
+    if !emudome_platform::DOCUMENT_PICKERS {
+        let extensions = emudome_core::library::open_extensions();
+        return Ok(emudome_platform::pick_file(app, filter, &extensions)
+            .map(|p| p.to_string_lossy().into_owned()));
+    }
+    let picked = emudome_platform::pick_document().unwrap_or_else(|e| {
+        log::warn!("file picker: {e:?}");
+        None
+    });
+    let Some(picked) = picked else {
+        return Ok(None);
+    };
+    // A document without a name is checked when it opens (its link is named `game`).
+    if let Some(name) = &picked.name {
+        core_for(Path::new(name)).inspect_err(|e| {
+            log::info!("picked file refused: {name}: {e:?}");
+        })?;
+    }
+    Ok(Some(picked.uri))
+}
+
+/// The title of a game file outside the library, before it opens (G01, G02): the file name
+/// without its extension, for a document (Android) its display name as the provider tells it,
+/// never its URI. `None` when a document's name cannot be read.
+#[tauri::command]
+pub(crate) async fn game_file_title(
+    app: tauri::AppHandle,
+    path: String,
+) -> Result<Option<String>, ErrorCode> {
+    crate::blocking(app, move |_| {
+        let name = if emudome_platform::is_content_uri(&path) {
+            let name = emudome_platform::document_name(&path);
+            log::info!("document {path}: display name {name:?}");
+            name?
+        } else {
+            path
+        };
+        file_title(&name)
+    })
+    .await
+}
+
+/// A file name without folder and extension; `None` when nothing is left.
+fn file_title(name: &str) -> Option<String> {
+    let stem = Path::new(name)
+        .file_stem()?
+        .to_string_lossy()
+        .trim()
+        .to_owned();
+    (!stem.is_empty()).then_some(stem)
+}
+
 /// Opens a game file. Every game is its content's key, never its path: a file of the library
 /// opens as that library game; any other file is identified first (from the library's hash
 /// cache when it knows the file unchanged, else by hashing it, holding no lock), and when its
@@ -163,7 +238,7 @@ fn open_game_now(app: &tauri::AppHandle, path: String) -> Result<GameInfo, Error
     core_for(file.path())?;
     // The content decides, whether the file came as a path or as a document (Trello #14): the
     // same game has the same key both ways.
-    let identity = library::identify_path(app, file.path())?;
+    let identity = library::identify_game_file(app, &file)?;
     if let Some(title) = library::title_of(app, &identity.id) {
         return open_library_game(app, &state, &identity.id, file, title);
     }
@@ -186,6 +261,10 @@ pub(crate) fn open_library_game(
 /// stays valid while this value lives (`emudome_platform::open_content`). The session keeps it
 /// until its thread ended ([`keep_until_end`]).
 pub(crate) struct GameFile {
+    /// As the interface or the library has it: a path, or a `content://` URI.
+    given: String,
+    /// The path the core is given; for a document, named after it (it may not open: read the
+    /// document through `document`).
     path: PathBuf,
     document: Option<emudome_platform::ContentFile>,
 }
@@ -195,6 +274,7 @@ impl GameFile {
     pub(crate) fn open(app: &tauri::AppHandle, given: &str) -> Result<Self, ErrorCode> {
         if !emudome_platform::is_content_uri(given) {
             return Ok(Self {
+                given: given.to_owned(),
                 path: PathBuf::from(given),
                 document: None,
             });
@@ -209,13 +289,25 @@ impl GameFile {
             emudome_platform::open_content(given, &cache).map_err(|e| content_error(given, e))?;
         log::info!("{given}: document {:?}", document.name());
         Ok(Self {
+            given: given.to_owned(),
             path: document.path().to_path_buf(),
             document: Some(document),
         })
     }
 
+    /// Named after the game (its extension decides the console); opens it only for a path.
     pub(crate) fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// The path or URI it was opened from (a document's cache key in the library).
+    pub(crate) fn given(&self) -> &str {
+        &self.given
+    }
+
+    /// The document, when the game came as one.
+    pub(crate) fn document(&self) -> Option<&emudome_platform::ContentFile> {
+        self.document.as_ref()
     }
 }
 
@@ -327,11 +419,22 @@ fn open_path(
     let GameFile {
         path: game_path,
         document,
+        ..
     } = file;
     // The one-time move of old save names ends before any game reads its saves.
     migration::wait(app);
     let (core, console) = core_for(&game_path)?;
-    refuse_encrypted(console, &game_path)?;
+    refuse_encrypted(console, &game_path, document.as_ref())?;
+    // A document is read through its descriptor (Android 17 may refuse its path).
+    let game_file = match &document {
+        None => None,
+        Some(doc) => Some(GameReader {
+            file: doc.reader().map_err(|e| ErrorCode::RomUnreadable {
+                detail: format!("{}: {e}", game_path.display()),
+            })?,
+            path_opens: doc.reopenable(),
+        }),
+    };
     let file = emudome_platform::core_file_name(core.name());
     let core_path = emudome_platform::find_core(core.name(), state.resource_dir.as_deref())
         .map_err(|e| match e {
@@ -376,6 +479,7 @@ fn open_path(
         SessionOptions {
             core_path,
             game_path: game_path.clone(),
+            game_file,
             system_dir: bios::system_dir(app, core, state.data_dir.join("system")),
             save_dir,
             game: game.clone(),
@@ -462,4 +566,23 @@ pub(crate) async fn close_game(app: tauri::AppHandle) {
 #[tauri::command]
 pub(crate) fn abandon_game(state: tauri::State<'_, AppState>) {
     state.games.abandon();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::file_title;
+
+    #[test]
+    fn a_file_title_is_its_name_without_folder_and_extension() {
+        assert_eq!(
+            file_title("Pokemon Mystery Dungeon (Europe) (En,Fr).nds").as_deref(),
+            Some("Pokemon Mystery Dungeon (Europe) (En,Fr)")
+        );
+        assert_eq!(
+            file_title("/storage/emulated/0/ROMs/tiny.blocks.gb").as_deref(),
+            Some("tiny.blocks")
+        );
+        assert_eq!(file_title("rom").as_deref(), Some("rom"));
+        assert_eq!(file_title("").as_deref(), None);
+    }
 }

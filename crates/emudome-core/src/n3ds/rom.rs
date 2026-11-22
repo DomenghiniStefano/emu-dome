@@ -94,13 +94,19 @@ pub fn check(container: Container, mut read: impl FnMut(u64) -> Option<Vec<u8>>)
 /// [`check`] on a file, by its extension. A file that cannot be read is `Unknown`: opening it
 /// then reports the real error.
 pub fn check_file(path: &Path) -> Encryption {
+    match File::open(path) {
+        Ok(mut file) => check_open_file(path, &mut file),
+        Err(_) => Encryption::Unknown,
+    }
+}
+
+/// [`check_file`] on a file already open (an Android document, read through its descriptor);
+/// `path` gives only the extension.
+pub fn check_open_file(path: &Path, file: &mut File) -> Encryption {
     let ext = path
         .extension()
         .map(|e| e.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let Ok(mut file) = File::open(path) else {
-        return Encryption::Unknown;
-    };
     check(Container::from_extension(&ext), |at| {
         let mut buf = vec![0u8; HEADER_LEN];
         file.seek(SeekFrom::Start(at)).ok()?;

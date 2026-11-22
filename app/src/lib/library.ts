@@ -47,6 +47,15 @@ export const library = reactive({
 /** The families indexed (lib/families.ts): rebuilt only when `library.families` is replaced. */
 export const libraryFamilies = computed(() => familyIndex(library.families))
 
+/**
+ * What a library folder (`path`, as `library.folders` holds it) shows: the name Rust sends (the
+ * path, or a picked Android folder's display name), else `unnamed` (a picked folder whose name
+ * is not known, or a folder the library has not listed yet). Never the stored `content://` URI.
+ */
+export function folderLabel(folders: LibraryFolder[], path: string, unnamed: string): string {
+  return folders.find(f => f.path === path)?.name ?? unnamed
+}
+
 let before: Set<GameId> | null = null
 
 // Rule 7: only the newest answer counts; a change event is newer than any `get` still on its way.

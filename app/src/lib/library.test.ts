@@ -2,7 +2,7 @@
 // scan comes from the ids that were not there when it started.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GameFamily, GameId, LibraryChanged, LibraryGame, LibraryScanEvent } from '@/emu'
-import { applyLibraryChange, library, reloadLibrary, startLibrary } from './library'
+import { applyLibraryChange, folderLabel, library, reloadLibrary, startLibrary } from './library'
 
 type Listener<T> = (e: T) => void
 const bridge = vi.hoisted(() => ({
@@ -151,5 +151,21 @@ describe('a scan (L11)', () => {
     scan({ phase: 'done', added: 0 } as LibraryScanEvent)
     await flush()
     expect(library.summary).toBeNull()
+  })
+})
+
+describe('folderLabel', () => {
+  const folders = [
+    { path: 'C:/Games', name: 'C:/Games', reachable: true },
+    { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', reachable: true },
+    { path: 'content://x/tree/primary%3AGone', name: null, reachable: false },
+  ]
+  it('shows the name Rust sends, never a stored URI', () => {
+    expect(folderLabel(folders, 'C:/Games', 'Chosen folder')).toBe('C:/Games')
+    expect(folderLabel(folders, 'content://x/tree/primary%3AROMs', 'Chosen folder')).toBe('ROMs')
+    expect(folderLabel(folders, 'content://x/tree/primary%3AGone', 'Chosen folder')).toBe(
+      'Chosen folder',
+    )
+    expect(folderLabel(folders, 'content://x/tree/new', 'Chosen folder')).toBe('Chosen folder')
   })
 })

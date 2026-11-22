@@ -3,4 +3,13 @@
 /**
  * TypeScript: `LibraryFolder` (generated).
  */
-export type LibraryFolder = { path: string, reachable: boolean, };
+export type LibraryFolder = { 
+/**
+ * What `library.folders` holds: a path, or a picked document tree's `content://` URI
+ * (Android), never shown as it is.
+ */
+path: string, 
+/**
+ * What to show: the path, or the tree's display name (null while it is not known).
+ */
+name: string | null, reachable: boolean, };

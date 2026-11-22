@@ -198,6 +198,19 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
   old folders and is tried again. Android data does not carry over (another package's storage).
 - The executable accepts a game path as an argument and opens it at startup. On Android: the `game` extra of the
   launch intent, else the `content://` document of «Open with» (`ACTION_VIEW`, octet-stream).
+- Android game folders and files (Trello #47, Storage Access Framework): «Aggiungi una cartella» is
+  `ACTION_OPEN_DOCUMENT_TREE` and «Apri un file» `ACTION_OPEN_DOCUMENT` (every file offered: ROMs have no MIME type;
+  Rust checks the extension, `unsupportedFormat`), both from `SystemBridge.kt` through an activity result, the read
+  permission persisted. A folder is stored in `library.folders` as its tree URI (never a path; the desktop's paths
+  unchanged), shown by its display name (`LibraryFolder.name`), walked by the scan one `listTree` call per folder
+  (`emudome_core::library::scan_with_documents`, games keyed by document URI + size + mtime), unreachable (E01) when
+  it cannot be listed (permission given back, folder gone), its persisted permission given back when removed; not
+  watched (rescan at start / on demand). Every document is read through its descriptor (`ContentFile::reader`):
+  Android 17 refuses `/proc/self/fd/<fd>` for some providers (Downloads, «Permission denied»), so identification,
+  hashing, icons and the bytes a core gets come from the descriptor; a `need_fullpath` core (Azahar) gets the link's
+  path only when it opens, else the open is refused (`documentNeedsPath`). A file outside the library is titled by
+  the document's display name (`game_file_title`), never its URI. Logcat: `android folder picked:`, `android file
+  picked:`, `library scan: tree …`, `document … opened: … reopenable by path …`.
 - Android's back button (Trello #14, `SystemBridge.kt` → `hotkeys::back_button`): in game with the quick menu
   closed it is the controller's menu button (`emu://menu`), anywhere else its B (`emu://nav` back). At the shell's
   root on the phone (#29) B goes to the section left last (the route's `trail`), then the Library, then leaves to the
@@ -306,7 +319,8 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          `move_to_background` (Android's back at the shell's root: `SystemBridge.moveToBack`;
                          false on the desktop);
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView;
-                         SystemBridge: the back button, the launch intent's game, `content://` documents;
+                         SystemBridge: the back button, the launch intent's game, `content://` documents,
+                         the folder / file pickers and the tree listing (#47);
                          GamepadInput: the controllers' key / motion events and device list;
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked);
                          pads/ (the controllers, #47: `PadSource` (open / poll / read), `PadEvent`,
@@ -315,8 +329,10 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          codes and axes as positions, the right stick / triggers layout from the motion
                          ranges, the pads' state: pure, tested on every system),
                          content.rs (games as `content://` documents, opened without a copy: the
-                         provider's file descriptor kept open for the session, read through a link
-                         `<cache>/content/<fd>/<name>` → `/proc/self/fd/<fd>`; pure parts tested),
+                         provider's file descriptor kept open for the session and read through
+                         duplicates of it; a link `<cache>/content/<fd>/<name>` → `/proc/self/fd/<fd>`
+                         names it, and is the path of a `need_fullpath` core when it opens; the
+                         listing of a picked tree parsed; pure parts tested),
                          updater.rs (#44: Tauri's updater plugin on the desktop, registered only when built
                          with `EMUDOME_UPDATER_PUBKEY`; check / download / install; Android: unavailable),
                          log_file.rs (every log line also into `<app local data>/logs/emudome.log`, written
@@ -412,7 +428,8 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          dirs.rs (the data folders: Tauri's, EMUDOME_DATA_DIR, or the old identifier's for a
                          run whose copy did not finish), data_move.rs (that copy, first thing in setup)
                          library.rs (library commands, background scans, library://scan and library://changed,
-                         play time, covers on emu://cover/<id>, library.watch with notify on desktop; user
+                         play time, covers on emu://cover/<id>, library.watch with notify on desktop, Android's
+                         picked document trees walked through `PlatformDocuments` (#47); user
                          covers made by `emudome_core::cover` and written with write_atomic as
                          `covers/<console>-<hex>.user-<rev>.jpg`: the picked image kept in memory on
                          emu://picked/<token>, a game's screenshots listed and served on
@@ -1139,6 +1156,15 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   met while a game starts waits in the queue and in the status card. G04's versions have no picture (`thumb` is
   null). «Cosa sincronizzare» edits at «Tutti i giochi» only (`cloud.squick` per console stays in Settings ›
   Cloud). A failed `cloud_launch_check` never blocks an open.
+- Android folders and files (Trello #47): not run on a device by the checks (the owner's UAT on the S23). A 3DS game
+  (Azahar, `need_fullpath`) from a document whose descriptor cannot be opened again by path is refused
+  (`documentNeedsPath`): the fix is serving it through libretro's VFS interface (the host has none yet), not a copy
+  of GBs. `save_file` (exports) and the path pickers of screen effect presets, BIOS files, cover images and the
+  saves import folder have no Android picker yet (`ACTION_CREATE_DOCUMENT` would write through a descriptor, not
+  `write_atomic`'s rename). A tree game's details (L10) show its document URI as the path, and the saves import pairs
+  saves with ROMs by file stem, which a URI does not have. Single files picked with «Apri un file» keep their
+  persisted permission for good (Android caps an app's persisted grants). Providers that load their listing
+  asynchronously (cloud folders, `EXTRA_LOADING`) are listed as they first answer.
 
 ## Design and interface work
 

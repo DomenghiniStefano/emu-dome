@@ -44,6 +44,10 @@ pub enum StartError {
     /// loads: a core that cannot reach it writes elsewhere (Azahar falls back to its own user
     /// folder, shared by every game; Trello #97).
     SaveFolderUnavailable { folder: PathBuf, detail: String },
+    /// The core opens the game file by itself (`need_fullpath`, Azahar) and the game is a
+    /// document read through its descriptor whose path the system will not open again (Android
+    /// 17, some providers): refused before the core sees it.
+    GameNeedsPath,
 }
 
 impl std::fmt::Display for StartError {
@@ -59,6 +63,10 @@ impl std::fmt::Display for StartError {
             StartError::ThreadFailed { detail } => {
                 write!(f, "the emulation thread failed: {detail}")
             }
+            StartError::GameNeedsPath => write!(
+                f,
+                "the core opens the game by its path, and this document cannot be opened by path"
+            ),
             StartError::SaveFolderUnavailable { folder, detail } => {
                 write!(
                     f,
