@@ -50,9 +50,11 @@
   "library": {
     "emptyTitle": "Add your games",
     "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, or drag them here.",
+    "emptyLeadTouch": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games.",
     "chooseFolder": "Choose a folder…",
     "openFile": "Open a file…",
     "dialogFilter": "GBA games",
+    "folderUnnamed": "Chosen folder",
     "addGames": "Add games",
     "yourGames": "Your games",
     "filterConsole": "Filter by console",
@@ -433,12 +435,66 @@
     "label": "Touch controls",
     "menu": "Open the quick menu",
     "dpad": "D-pad",
+    "circlePad": "Circle Pad",
     "a": "A",
     "b": "B",
+    "x": "X",
+    "y": "Y",
     "l": "L",
     "r": "R",
     "start": "START",
-    "select": "SELECT"
+    "select": "SELECT",
+    "lost": {
+      "title": "Controller disconnected",
+      "text": "The game is paused. Reconnect the controller, or carry on with the touch controls.",
+      "wait": "Wait for the controller",
+      "touch": "Carry on with touch",
+      "toast": "Controller disconnected: touch controls on"
+    },
+    "editor": {
+      "title": "Touch controls",
+      "where": {
+        "portrait": "{console}, held upright",
+        "landscape": "{console}, held sideways"
+      },
+      "control": {
+        "dpad": "D-pad",
+        "circlePad": "Circle Pad",
+        "a": "A",
+        "b": "B",
+        "x": "X",
+        "y": "Y",
+        "l": "L",
+        "r": "R",
+        "start": "Start",
+        "select": "Select",
+        "menu": "Menu"
+      },
+      "none": "Tap a control",
+      "undo": "Undo",
+      "redo": "Redo",
+      "add": "Add",
+      "size": "Size",
+      "opacity": "Opacity",
+      "behaviour": "Behaviour",
+      "behaviours": {
+        "tap": "Tap",
+        "hold": "Hold",
+        "turbo": "Turbo"
+      },
+      "onlyButtons": "Only buttons can be held or repeated",
+      "percent": "{n}%",
+      "remove": "Remove",
+      "reset": "Back to the default layout",
+      "more": "More",
+      "collapse": "Collapse",
+      "expand": "Show the tools",
+      "discard": "Leave without saving",
+      "save": "Save",
+      "hint": {
+        "pick": "Choose the control"
+      }
+    }
   },
   "toast": {
     "stateSaved": "Saved to slot {slot}",
@@ -470,6 +526,7 @@
     "coreIncompatible": "The emulator for this console could not be started. Reinstall EmuDome. Details: {detail}",
     "romUnreadable": "Couldn't read the game file. Check that it is still there and that its drive is connected. Details: {detail}",
     "coreRefusedGame": "The emulator could not run this game. Check that the file is a complete, working copy of the game.",
+    "documentNeedsPath": "This game can't be opened from where it is: the {core} emulator has to open the file by itself, and the system lets EmuDome read it only directly. Opening these games from documents is coming in a future update.",
     "coreNeedsRestart": "A game on the {core} core stopped answering. Restart EmuDome to open games on this core again.",
     "noGame": "No game is open. Open one first.",
     "appClosing": "EmuDome is closing. Open the game again when it starts.",
@@ -1288,20 +1345,22 @@
         "name": "Portrait layout",
         "desc": "The one used when you hold the phone upright.",
         "option": {
-          "default": "Default"
+          "default": "Default",
+          "custom": "Custom"
         }
       },
       "tland": {
         "name": "Landscape layout",
         "desc": "The one used when you hold the phone sideways.",
         "option": {
-          "default": "Default"
+          "default": "Default",
+          "custom": "Custom"
         }
       },
       "tskin": {
         "name": "Button look",
-        "desc": "Style of the touch buttons, including the ones you import.",
-        "value": {
+        "desc": "Style of the touch buttons.",
+        "option": {
           "glass": "Glass",
           "outlines": "Outlines only",
           "contrast": "High contrast"
@@ -1327,6 +1386,14 @@
       "tpad": {
         "name": "Hide when a controller is connected",
         "desc": "The buttons come back if you disconnect the controller."
+      },
+      "tlost": {
+        "name": "If the controller disconnects",
+        "desc": "What the game does when the controller turns off or runs flat.",
+        "option": {
+          "pause": "Pause and ask",
+          "touch": "Switch to touch"
+        }
       }
     },
     "general": {
@@ -2087,6 +2154,7 @@
     },
     "starting": "Starting",
     "startFailed": "Can’t start {title}",
+    "untitledGame": "this game",
     "gotIt": "Got it",
     "hintEsc": "Esc",
     "hintOr": "or",
@@ -2658,6 +2726,11 @@
       "arrows": "Arrows",
       "shiftArrows": "Shift + Arrows"
     }
+  },
+  "storage": {
+    "low": "Storage almost full: {free} free",
+    "manage": "Manage storage",
+    "manageNotYet": "Managing storage arrives in a future update."
   },
   "updates": {
     "title": "Update available",

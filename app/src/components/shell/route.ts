@@ -10,6 +10,9 @@
 //   «Salvataggi» on a «Continua a giocare» card, back from the details onto their cover). The
 //   section reads it once, when it mounts; the shell then drops it (`arrived`), so coming back to
 //   the section later (after a game, say) does not repeat it.
+// - `trail`: the sections left for another, the latest last (`moved`): Android's back at the
+//   shell's root goes back along it, then to the Library, then leaves to the background
+//   (`backFrom`, Trello #29). Kept while a game is open, like the rest.
 // Pure: every move is a function of the route before it.
 import type { GameId, LibraryGame, SettingKey } from '@/emu'
 import { gameScopeOf, type GameFocus } from '@/lib/gameDetails'
@@ -33,9 +36,34 @@ export interface Route {
   section: Section
   details: GameId | null
   arrival: Arrival | null
+  trail: readonly Section[]
 }
 
-export const START: Route = { section: 'library', details: null, arrival: null }
+export const START: Route = { section: 'library', details: null, arrival: null, trail: [] }
+
+/** How many sections the trail remembers. */
+export const TRAIL_MAX = 8
+
+/**
+ * The route after a move from `from` to `to`: a section left for another goes onto the trail,
+ * once (an older visit of it, and of the section arrived at, leave it), the latest last.
+ */
+export function moved(from: Route, to: Route): Route {
+  if (to.section === from.section) return { ...to, trail: from.trail }
+  const kept = from.trail.filter(s => s !== from.section && s !== to.section)
+  return { ...to, trail: [...kept, from.section].slice(-TRAIL_MAX) }
+}
+
+/**
+ * Back at the shell's root on the phone (Android's back, B): the section left last, else the
+ * Library, else null: nothing left, the app leaves to the background.
+ */
+export function backFrom(r: Route): Route | null {
+  const previous = r.trail.at(-1)
+  if (previous !== undefined) return { ...openSection(r, previous), trail: r.trail.slice(0, -1) }
+  if (r.section !== 'library') return { ...openSection(r, 'library'), trail: [] }
+  return null
+}
 
 /** The arrival meant for `section`, if the route has one. */
 export function arrivalFor<S extends Arrival['section']>(
@@ -61,7 +89,8 @@ export const pickSection = (r: Route, section: Section): Route =>
   section === 'library' && showingDetails(r) ? closeDetails(r) : openSection(r, section)
 
 /** L04: a game's details, in the Library section. */
-export const openDetails = (game: GameId): Route => ({
+export const openDetails = (r: Route, game: GameId): Route => ({
+  ...r,
   section: 'library',
   details: game,
   arrival: null,
@@ -69,6 +98,7 @@ export const openDetails = (game: GameId): Route => ({
 
 /** Back to the grid, on the game's cover. */
 export const closeDetails = (r: Route): Route => ({
+  ...r,
   section: 'library',
   details: null,
   arrival: r.details ? { section: 'library', cover: r.details } : null,

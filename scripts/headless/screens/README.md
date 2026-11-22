@@ -38,4 +38,14 @@ prove that a refactor changes nothing on screen (Trello #62).
   usable; the steps play the controller with `emu://nav` and `emu://menu`.
 - The search in the quick menu (#32, the `qm-search-*` scenarios, in Italian): Ctrl + K or `emu://nav`
   `search` over the menu, a query typed, a setting chosen; dark small / large, light small and TV.
+- The touch controls (#29, the `touch-*` scenarios from `touch.mjs`, in Italian, at 390 × 844, 360 × 740,
+  844 × 390 and 740 × 360, some at 320 × 640): the overlay in game (`game: "gb" | "gba" | "nds" | "3ds"`), the
+  skins and E14 (`touchRows` gives the touch page's values, `touchSaved` a saved landscape layout), and the C06
+  editor opened from the quick menu's «Controlli» (a tool open, «Altro» open, folded).
+- The phone's layouts with a game picture (#29, `touch-frame-*`, `touch-qm-frame-*`, `touch-qm-turned*`,
+  `touch-start-failed-*`, also at the Galaxy S23's 412 × 892 and 892 × 412): `frame: true` gives the webview canvas
+  a GBA frame placed as `screens::fit` places it (mirrored in `mock.js`, at `frameDpr` device pixels per CSS pixel,
+  2.625 by default, as the native video on that phone); a `{ resize: [w, h] }` step turns the phone. `PROBE=<js>`
+  in the environment evaluates an expression on every page after its screenshot and prints it (the mock keeps the
+  last `set_video_inset` in `window.__videoInset` and the last placements' area in `window.__lastArea`).
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.

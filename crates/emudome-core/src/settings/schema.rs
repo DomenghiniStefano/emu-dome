@@ -202,6 +202,11 @@ pub enum Kind {
     /// settings pages (`screens.custom`). Value: list, shape in `crate::screens::CustomLayout`
     /// (empty: none); read and written as a typed `CustomLayout` by the `screens_custom*` commands.
     ScreenLayout,
+    /// The user's own touch controls, per orientation, edited in the touch controls editor (C06),
+    /// shown as a link in the settings pages (`touch.tedit`). Value: list, shape in
+    /// `crate::touch::Layouts` (empty: none); read and written as typed layouts by the `touch_*`
+    /// commands.
+    TouchLayout,
     /// A local date and time to the minute, `YYYY-MM-DDTHH:MM` with the year in
     /// `min_year..=max_year` (`saves.rtcdate`). Value: text, read with [`DateTime::parse`].
     DateTime { min_year: u16, max_year: u16 },
@@ -411,6 +416,7 @@ impl Entry {
             | Kind::Apply { .. }
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
+            | Kind::TouchLayout
             | Kind::DateTime { .. } => true,
         }
     }
@@ -434,6 +440,7 @@ impl Entry {
             | Kind::Apply { .. }
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
+            | Kind::TouchLayout
             | Kind::DateTime { .. } => Vec::new(),
         }
     }
@@ -493,6 +500,7 @@ impl Entry {
             (Kind::ScreenLayout, Value::List(items)) => {
                 crate::screens::CustomLayout::valid_items(items)
             }
+            (Kind::TouchLayout, Value::List(items)) => crate::touch::Layouts::valid_items(items),
             (Kind::DateTime { min_year, max_year }, Value::Text(t)) => {
                 DateTime::parse(t).is_some_and(|d| (min_year..=max_year).contains(&d.year))
             }
@@ -509,6 +517,7 @@ impl Entry {
                 | Kind::Apply { .. }
                 | Kind::Bindings { .. }
                 | Kind::ScreenLayout
+                | Kind::TouchLayout
                 | Kind::DateTime { .. },
                 Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_),
             ) => false,

@@ -12,9 +12,12 @@
 // `useNavSection`).
 // TV mode (#30): the same state and structure with the TV sizes (tv/TvSettings: the pages on the
 // left, large rows on the right, ◀ ▶ change a value in place).
+// The phone held upright (#29, settingsPane.ts): one column, the list of pages first; a page opens
+// over it with «‹ Impostazioni», and B / Android's back return to the list. On its side, the two
+// columns as on the desk.
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Info } from '@lucide/vue'
+import { ChevronLeft, Info } from '@lucide/vue'
 import type {
   ConsoleId,
   SettingEntry,
@@ -25,8 +28,10 @@ import type {
 } from '@/emu'
 import LicencesPage from '@/components/about/LicencesPage.vue'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
+import TouchEditor from '@/components/touch/TouchEditor.vue'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { uiMode } from '@/composables/useUiMode'
+import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import type { GameFocus } from '@/lib/gameDetails'
 import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
@@ -45,6 +50,7 @@ import {
   searchSections,
   shownOn,
 } from './settingsPage'
+import { listShown, pageShown, settingsPane, SettingsPane } from './settingsPane'
 import { useSettingsScope } from './useSettingsScope'
 import { useSettingsValues } from './useSettingsValues'
 import TvSettings from '@/components/settings/tv/TvSettings.vue'
@@ -52,6 +58,7 @@ import { Heading, HeadingVariant } from '@/components/ui/heading'
 import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
 import { Card, CardPad } from '@/components/ui/card'
 import { SectionPage, SectionWidth } from '@/components/ui/section-page'
+import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 
 const props = defineProps<{
   /** L06 «Apri tutte le impostazioni di questo gioco»: the game this section opened for (the
@@ -98,10 +105,23 @@ const lockedNote = computed(() => {
   return any ? t('settingsUi.lockedNote') : ''
 })
 
+// The phone held upright: one pane at a time (the list until a page is picked).
+const layout = useDeviceLayout()
+const listOpen = ref(true)
+const pane = computed(() =>
+  settingsPane(layout.phone.value && !uiMode.tv, listOpen.value, searching.value),
+)
+
 function pick(p: string) {
   page.value = p
   query.value = ''
   onlyChanged.value = false
+  listOpen.value = false
+}
+/** Upright, from a page: back to the list, on that page's entry. */
+function showList() {
+  listOpen.value = true
+  void nextTick(() => root.value?.querySelector<HTMLElement>('nav [aria-current="page"]')?.focus())
 }
 /** A recent change opens its page, at the level it was made when the page has it. */
 function openRecent(r: SettingRecent) {
@@ -112,17 +132,30 @@ function openRecent(r: SettingRecent) {
 }
 
 const root = ref<HTMLElement | null>(null)
-useNavSection(root, { tab: scopeBar.tab })
+useNavSection(root, {
+  tab: scopeBar.tab,
+  // Upright on a page: B / Android's back return to the list; anywhere else the shell's back.
+  back: () => (pane.value === SettingsPane.Page ? showList() : false),
+})
 
-// `screens.custom` (C09): the screens editor over the whole window, at the page's scope; closed,
-// the focus goes back to the row's button.
-const editing = ref<{ scope: SettingsScope; console: ConsoleId } | null>(null)
+// `screens.custom` (C09): the screens editor over the whole window, at the page's scope;
+// `touch.tedit` (C06): the touch controls editor for the page's console. Closed, the focus goes
+// back to the row's button.
+const editing = ref<{
+  scope: SettingsScope
+  console: ConsoleId
+  editor: 'screens' | 'touch'
+} | null>(null)
 let editOpener: HTMLElement | null = null
-function editScreens() {
+function editScreens(key: SettingKey = 'screens.custom') {
   const s = scope.value
   if (!('console' in s)) return
   editOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  editing.value = { scope: s, console: s.console }
+  editing.value = {
+    scope: s,
+    console: s.console,
+    editor: key === 'touch.tedit' ? 'touch' : 'screens',
+  }
 }
 function closeEditor() {
   editing.value = null
@@ -172,7 +205,11 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
 </script>
 
 <template>
-  <div v-if="schema" ref="root" class="flex min-h-0 flex-1">
+  <div
+    v-if="schema"
+    ref="root"
+    :class="['flex min-h-0 flex-1', pane !== SettingsPane.Both && 'flex-col']"
+  >
     <TvSettings
       v-if="uiMode.tv"
       :schema="schema"
@@ -193,15 +230,29 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       @level="l => (scopeBar.level.value = l)"
     />
     <SettingsCategories
-      v-if="!uiMode.tv"
+      v-if="!uiMode.tv && listShown(pane)"
       v-model:query="query"
       :schema="schema"
       :page="page"
+      :pane="pane"
       :changed-on="p => changedCount(schema!, p, values[p], effective)"
       @pick="pick"
     />
 
-    <SectionPage v-if="!uiMode.tv" as="main" :width="SectionWidth.Full">
+    <SectionPage v-if="!uiMode.tv && pageShown(pane)" as="main" :width="SectionWidth.Full">
+      <!-- A block of the page (held to its width), the way back at its start. -->
+      <div v-if="pane === SettingsPane.Page" class="flex">
+        <Button
+          :variant="ButtonVariant.Ghost"
+          :size="ButtonSize.TextLine"
+          class="-ml-6"
+          data-nav-initial
+          @click="showList"
+        >
+          <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
+          {{ t('settingsUi.title') }}
+        </Button>
+      </div>
       <LicencesPage v-if="licences" @close="closeLicences" />
       <SettingsOverview
         v-else-if="page === OVERVIEW && !searching"
@@ -274,7 +325,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
             @open="emit('openControls')"
             @open-cloud="emit('openCloud')"
             @choose="choose(e.key)"
-            @edit="editScreens"
+            @edit="editScreens(e.key)"
             @animationend="lit = null"
           />
         </SettingsSection>
@@ -298,8 +349,14 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       </template>
     </SectionPage>
 
+    <TouchEditor
+      v-if="editing?.editor === 'touch'"
+      :console="editing.console"
+      :live="false"
+      @close="closeEditor"
+    />
     <ScreenEditor
-      v-if="editing"
+      v-else-if="editing"
       :console="editing.console"
       :scope="editing.scope"
       :status="null"

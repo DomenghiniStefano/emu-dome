@@ -15,6 +15,7 @@ import { useListeners } from '@/composables/useListeners'
 import { onSettingsChanged } from '@/composables/useSettingsChanged'
 import type { Toasts } from '@/composables/useToasts'
 import { tvAsksFor } from '@/composables/useUiMode'
+import { touchSpeaksFor } from '@/components/touch/useControllerLoss'
 
 export function useShellEvents(
   session: GameSession,
@@ -99,7 +100,8 @@ export function useShellEvents(
       // A game opened without the system files a setting asked for: it runs without them.
       emu.onBiosFallback(toasts.failWith),
       emu.onHealth(tellHealth),
-      // The toasts stay quiet when the TV question (TvModeDialog) says it instead: never both.
+      // The toasts stay quiet when the TV question (TvModeDialog) or, on a phone, E14
+      // (components/touch) says it instead: never both.
       emu.onGamepadConnected(p => {
         controller.value = gamepadName(p)
         if (!tvAsksFor('connected', p))
@@ -107,7 +109,7 @@ export function useShellEvents(
       }),
       emu.onGamepadDisconnected(p => {
         if (controller.value === gamepadName(p)) controller.value = null
-        if (!tvAsksFor('disconnected', p))
+        if (!tvAsksFor('disconnected', p) && !touchSpeaksFor(p))
           toasts.notify(t('toast.gamepadDisconnected', { name: gamepadName(p) }))
       }),
       listenDragDrop(),

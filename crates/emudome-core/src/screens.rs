@@ -365,13 +365,94 @@ impl Aspect {
     }
 }
 
-/// The part of the window the game may use: `inset` is the bottom share (0..0.9) kept clear for
-/// the quick menu's bar.
+/// The window the game is drawn in, and the part of it kept clear (`inset`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Area {
     pub width: f32,
     pub height: f32,
-    pub inset: f32,
+    pub inset: Inset,
+}
+
+/// Where the game sits inside the part of the window it may use. TypeScript: `VideoAlign`
+/// (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(rename = "VideoAlign")]
+pub enum Align {
+    /// In the middle (the desktop's G09 bar, the phone's quick menu, the touch controls on the
+    /// sides).
+    #[default]
+    Centre,
+    /// Against the bottom edge, centred across: the phone held upright, the touch controls in
+    /// their band under the game with no empty band between the two (#29).
+    Bottom,
+}
+
+/// The edges of the window kept clear of the game, as shares of its width (`left`, `right`) and
+/// of its height (`top`, `bottom`): the quick menu's bar, sheet or side panel, the touch
+/// controls' band or side columns. Each share is taken in 0..0.9 and the two of one axis together
+/// leave at least a tenth of the window. TypeScript: `VideoInset` (generated).
+#[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize, TS)]
+#[ts(rename = "VideoInset")]
+pub struct Inset {
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub align: Align,
+}
+
+/// The most of an axis an inset may take.
+const INSET_MAX: f32 = 0.9;
+
+impl Inset {
+    /// Nothing kept clear: the whole window.
+    pub const NONE: Inset = Inset {
+        left: 0.0,
+        top: 0.0,
+        right: 0.0,
+        bottom: 0.0,
+        align: Align::Centre,
+    };
+
+    /// The bottom `share` kept clear, the game centred above it.
+    pub fn bottom(share: f32) -> Inset {
+        Inset {
+            bottom: share,
+            ..Inset::NONE
+        }
+    }
+
+    /// The two shares of an axis, each in 0..0.9, scaled down together when they leave less than
+    /// a tenth of the window (a NaN counts as 0).
+    fn axis(start: f32, end: f32) -> (f32, f32) {
+        let clean = |v: f32| {
+            if v.is_finite() {
+                v.clamp(0.0, INSET_MAX)
+            } else {
+                0.0
+            }
+        };
+        let (s, e) = (clean(start), clean(end));
+        let sum = s + e;
+        if sum > INSET_MAX {
+            (s * INSET_MAX / sum, e * INSET_MAX / sum)
+        } else {
+            (s, e)
+        }
+    }
+
+    /// The part of a `width` × `height` window the game may use.
+    pub fn usable(&self, width: f32, height: f32) -> Rect {
+        let (l, r) = Inset::axis(self.left, self.right);
+        let (t, b) = Inset::axis(self.top, self.bottom);
+        Rect {
+            x: width * l,
+            y: height * t,
+            w: width * (1.0 - l - r),
+            h: height * (1.0 - t - b),
+        }
+    }
 }
 
 /// Where one screen is drawn. TypeScript: `ScreenPlacement` (generated): the webview canvas
@@ -389,21 +470,25 @@ pub struct Placement {
 }
 
 /// A rectangle of `content` size fitted in `area`: integer scale when it fits, otherwise the
-/// largest that keeps the aspect ratio, centred in the part above the inset. `(x, y, w, h)`.
-/// The one rule of both renderers (native `video.rs`, webview `GameCanvas.vue`).
+/// largest that keeps the aspect ratio, in the part the inset leaves (centred, or against its
+/// bottom with [`Align::Bottom`]). `(x, y, w, h)`. The one rule of both renderers (native
+/// `video.rs`, webview `GameCanvas.vue`).
 pub fn fit(area: Area, content: (f32, f32)) -> Rect {
-    let (sw, full_h) = (area.width, area.height);
+    let free = area.inset.usable(area.width, area.height);
     let (w, h) = content;
-    let sh = full_h * (1.0 - area.inset.clamp(0.0, 0.9));
     if w <= 0.0 || h <= 0.0 {
         return Rect::default();
     }
-    let fit = (sw / w).min(sh / h);
+    let fit = (free.w / w).min(free.h / h);
     let scale = if fit >= 1.0 { fit.floor() } else { fit };
     let (vw, vh) = (w * scale, h * scale);
+    let y = match area.inset.align {
+        Align::Centre => free.y + (free.h - vh) / 2.0,
+        Align::Bottom => free.y + free.h - vh,
+    };
     Rect {
-        x: ((sw - vw) / 2.0).floor(),
-        y: ((sh - vh) / 2.0).floor(),
+        x: (free.x + (free.w - vw) / 2.0).floor(),
+        y: y.floor(),
         w: vw,
         h: vh,
     }
@@ -419,10 +504,7 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
     }
 
     if let Arrangement::Custom(rects) = &layout.arrangement {
-        let usable = Area {
-            height: area.height * (1.0 - area.inset.clamp(0.0, 0.9)),
-            ..area
-        };
+        let usable = area.inset.usable(area.width, area.height);
         // The whole picture turns: each rectangle turns inside the game area, its picture with it.
         return rects
             .iter()
@@ -435,10 +517,10 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
                     id: s.id,
                     src: s.src,
                     dst: Rect {
-                        x: r.x * usable.width,
-                        y: r.y * usable.height,
-                        w: r.w * usable.width,
-                        h: r.h * usable.height,
+                        x: usable.x + r.x * usable.w,
+                        y: usable.y + r.y * usable.h,
+                        w: r.w * usable.w,
+                        h: r.h * usable.h,
                     },
                     rotation: layout.rotation,
                 })
@@ -790,7 +872,7 @@ impl CustomLayout {
         let area = Area {
             width,
             height,
-            inset: 0.0,
+            inset: Inset::NONE,
         };
         // A fraction of the area, kept inside it whatever the rounding.
         let fraction = |start: f32, size: f32, whole: f32| {
@@ -1066,9 +1148,9 @@ impl ScreenSession {
 #[cfg(test)]
 mod tests {
     use super::{
-        compose, fit, pointer_at, pointer_value, touch_at, Area, Arrangement, Aspect, CustomLayout,
-        CustomScreen, Layout, LayoutId, Placement, PxRect, Rect, Rotation, ScreenId, ScreenSession,
-        ScreenSettings, ScreenStatus, Split,
+        compose, fit, pointer_at, pointer_value, touch_at, Align, Area, Arrangement, Aspect,
+        CustomLayout, CustomScreen, Inset, Layout, LayoutId, Placement, PxRect, Rect, Rotation,
+        ScreenId, ScreenSession, ScreenSettings, ScreenStatus, Split,
     };
     use crate::settings::Value;
 
@@ -1407,7 +1489,7 @@ mod tests {
         Area {
             width,
             height,
-            inset: 0.0,
+            inset: Inset::NONE,
         }
     }
 
@@ -1591,12 +1673,106 @@ mod tests {
             Area {
                 width: 1440.0,
                 height: 900.0,
-                inset: 0.3,
+                inset: Inset::bottom(0.3),
             },
             (240.0, 160.0),
         );
         assert!(r.y + r.h <= 630.0);
         assert_eq!(fit(area(10.0, 10.0), (0.0, 5.0)), Rect::default());
+    }
+
+    #[test]
+    fn fit_keeps_every_edge_of_the_inset_clear() {
+        // The phone on its side (#29), 892 x 412 CSS px at 2.625: the touch controls' columns
+        // keep 211 px on the left and 204 on the right; GBA fits 5x between them, centred there.
+        let (w, h) = (2341.5, 1081.5);
+        let r = fit(
+            Area {
+                width: w,
+                height: h,
+                inset: Inset {
+                    left: 211.0 / 892.0,
+                    right: 204.0 / 892.0,
+                    ..Inset::NONE
+                },
+            },
+            (240.0, 160.0),
+        );
+        assert_eq!((r.w, r.h), (1200.0, 800.0));
+        let (left, right) = (w * 211.0 / 892.0, w - w * 204.0 / 892.0);
+        assert!(r.x >= left.floor() && r.x + r.w <= right.ceil(), "{r:?}");
+        // Centred in the band, not in the window.
+        assert!(
+            ((r.x + r.w / 2.0) - (left + right) / 2.0).abs() <= 1.0,
+            "{r:?}"
+        );
+        assert_eq!(r.y, ((h - 800.0) / 2.0).floor());
+
+        // The quick menu's side panel: the right share only.
+        let side = fit(
+            Area {
+                width: 892.0,
+                height: 412.0,
+                inset: Inset {
+                    right: 440.0 / 892.0,
+                    ..Inset::NONE
+                },
+            },
+            (240.0, 160.0),
+        );
+        assert!(side.x + side.w <= 452.0 + 0.01, "{side:?}");
+    }
+
+    #[test]
+    fn fit_against_the_bottom_leaves_no_band_above_the_controls() {
+        // Upright, 412 x 892: the touch controls keep the bottom 368 px; the game sits on them.
+        let r = fit(
+            Area {
+                width: 412.0,
+                height: 892.0,
+                inset: Inset {
+                    bottom: 368.0 / 892.0,
+                    align: Align::Bottom,
+                    ..Inset::NONE
+                },
+            },
+            (240.0, 160.0),
+        );
+        assert_eq!(r.y + r.h, 524.0);
+        assert_eq!(r.x, ((412.0 - r.w) / 2.0).floor());
+        // Centred, the same band splits above and below.
+        let c = fit(
+            Area {
+                width: 412.0,
+                height: 892.0,
+                inset: Inset::bottom(368.0 / 892.0),
+            },
+            (240.0, 160.0),
+        );
+        assert!(c.y > 0.0 && c.y + c.h < 524.0);
+    }
+
+    #[test]
+    fn an_inset_always_leaves_a_tenth_of_the_window() {
+        let free = Inset {
+            left: 0.7,
+            right: 0.7,
+            top: f32::NAN,
+            bottom: 2.0,
+            align: Align::Centre,
+        }
+        .usable(1000.0, 1000.0);
+        assert!((free.w - 100.0).abs() < 0.01 && (free.x - 450.0).abs() < 0.01);
+        assert!((free.h - 100.0).abs() < 0.01 && free.y == 0.0);
+        assert_eq!(
+            Inset::NONE.usable(800.0, 600.0),
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 800.0,
+                h: 600.0
+            }
+        );
     }
 
     #[test]
@@ -1737,11 +1913,28 @@ mod tests {
             Area {
                 width: 1000.0,
                 height: 1000.0,
-                inset: 0.2,
+                inset: Inset::bottom(0.2),
             },
         );
         assert_eq!(dst(&p, ScreenId::Bottom), rect(500.0, 0.0, 500.0, 800.0));
         assert_eq!(dst(&p, ScreenId::Top), rect(0.0, 0.0, 500.0, 400.0));
+        // Side insets: the rectangles are fractions of the band between them.
+        let banded = ds(
+            &Layout {
+                arrangement: Arrangement::Custom(vec![(ScreenId::Top, rect(0.0, 0.0, 0.5, 0.5))]),
+                ..Layout::default()
+            },
+            Area {
+                width: 1000.0,
+                height: 1000.0,
+                inset: Inset {
+                    left: 0.2,
+                    right: 0.2,
+                    ..Inset::NONE
+                },
+            },
+        );
+        assert_eq!(dst(&banded, ScreenId::Top), rect(200.0, 0.0, 300.0, 500.0));
     }
 
     #[test]

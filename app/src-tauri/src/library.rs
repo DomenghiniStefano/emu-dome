@@ -3,11 +3,18 @@
 //! `library://scan` progress, `library://changed` after every change, play time, covers served on
 //! `emu://cover/<id>?v=<rev>`, and folder watching (`library.watch`, desktop only).
 //!
+//! Android (Trello #47): a library folder is a document tree picked through the system
+//! (`emudome_platform::pick_document_tree`), stored in `library.folders` as its `content://` tree
+//! URI (never turned into a path), walked through the platform's listing
+//! (`emudome_platform::list_document_tree`, one call per folder) and its games read through
+//! their descriptors. Not watched: rescanned at start (`library.scanstart`) and on demand.
+//!
 //! Files, all in `<app local data>` because paths are per device: `library/library.json` and
 //! `covers/` (ROM icons as PNG; the user's covers, `<console>-<hex>.user-<rev>.jpg`, each the
 //! normalized 600 × 900 copy `emudome_core::cover` makes from the user's image or a screenshot,
 //! Trello #85).
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc;
@@ -15,8 +22,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use emudome_core::cover::{self, CoverView};
 use emudome_core::library::{
-    self, core_of, cover_colour, region, CoverKind, Family, GameRecord, Identity, Library,
-    NotAGame, Region, ScanInput, ScanReport,
+    self, core_of, cover_colour, region, CoverKind, DocEntry, Documents, Family, GameRecord,
+    Identity, Library, NotAGame, OpenedDocument, Region, ScanInput, ScanReport,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, GameKey};
@@ -53,6 +60,17 @@ pub struct LibraryState {
     /// The library game being played, and since when.
     playing: Mutex<Option<(GameKey, Instant)>>,
     watcher: Mutex<Option<notify::RecommendedWatcher>>,
+    /// The picked document trees of `library.folders` (Android) as last seen: their display
+    /// name and whether the last scan could list them. In memory: filled by the picker and by
+    /// every scan.
+    trees: Mutex<HashMap<String, TreeSeen>>,
+}
+
+/// A picked document tree as last seen ([`LibraryState::trees`]).
+#[derive(Clone, Debug, Default)]
+struct TreeSeen {
+    name: Option<String>,
+    reachable: bool,
 }
 
 /// Opens the library database and the covers folder.
@@ -70,6 +88,7 @@ pub fn open(app: &tauri::App) -> tauri::Result<LibraryState> {
         pending: Mutex::new(Vec::new()),
         playing: Mutex::new(None),
         watcher: Mutex::new(None),
+        trees: Mutex::new(HashMap::new()),
     })
 }
 
@@ -179,7 +198,11 @@ impl GameDto {
 #[derive(Clone, Serialize, TS)]
 #[ts(export_to = "app/", rename = "LibraryFolder")]
 pub(crate) struct FolderDto {
+    /// What `library.folders` holds: a path, or a picked document tree's `content://` URI
+    /// (Android), never shown as it is.
     path: String,
+    /// What to show: the path, or the tree's display name (null while it is not known).
+    name: Option<String>,
     reachable: bool,
 }
 
@@ -416,25 +439,41 @@ pub fn start_scan(app: &AppHandle) {
 
 fn run_scan(app: &AppHandle, state: &LibraryState) {
     emit_scan(app, ScanEvent::Started);
+    let (paths, trees): (Vec<String>, Vec<String>) = folders(app)
+        .into_iter()
+        .partition(|f| !emudome_platform::is_content_uri(f));
+    // The trees' names, read again (renamed, or the first scan of this run).
+    for tree in &trees {
+        let name = emudome_platform::document_tree_name(tree);
+        state.trees.lock().entry(tree.clone()).or_default().name = name;
+    }
     let input = {
         let lib = state.lib.lock();
         let mut files = lib.single_files();
         files.append(&mut state.pending.lock());
         ScanInput {
-            folders: folders(app).into_iter().map(PathBuf::from).collect(),
+            folders: paths.into_iter().map(PathBuf::from).collect(),
+            trees: trees.clone(),
             files,
             cache: lib.cache().clone(),
         }
     };
     let started = Instant::now();
     let mut last: Option<Instant> = None;
-    let outcome = library::scan(input, &mut |checked, found| {
+    let documents = PlatformDocuments::new(app);
+    let outcome = library::scan_with_documents(input, &documents, &mut |checked, found| {
         // About ten progress events a second.
         if last.is_none_or(|t| t.elapsed() >= Duration::from_millis(100)) {
             last = Some(Instant::now());
             emit_scan(app, ScanEvent::Progress { checked, found });
         }
     });
+    {
+        let mut seen = state.trees.lock();
+        for tree in &trees {
+            seen.entry(tree.clone()).or_default().reachable = !outcome.unreachable.contains(tree);
+        }
+    }
     let report = state.lib.lock().apply_scan(outcome, now_ms());
     let report = report.unwrap_or_else(|e| {
         log::error!("library scan not saved: {e:?}");
@@ -451,7 +490,7 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
         report.unreachable.len(),
         started.elapsed()
     );
-    cache_icons(state);
+    cache_icons(app, state);
     emit_scan(
         app,
         ScanEvent::Done {
@@ -463,19 +502,81 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
     emit_all(app, state);
 }
 
+/// The picked document trees as the scan reads them: listed and opened through the platform
+/// (Android's Storage Access Framework). The desktop has none.
+struct PlatformDocuments {
+    /// The app's private cache, where an opened document's named link goes.
+    cache: Option<PathBuf>,
+}
+
+impl PlatformDocuments {
+    fn new(app: &AppHandle) -> Self {
+        let cache = app
+            .path()
+            .app_cache_dir()
+            .inspect_err(|e| log::warn!("no cache folder for documents: {e}"))
+            .ok();
+        Self { cache }
+    }
+}
+
+impl Documents for PlatformDocuments {
+    fn children(&self, tree: &str, dir: Option<&str>) -> Result<Vec<DocEntry>, String> {
+        let entries = emudome_platform::list_document_tree(tree, dir)
+            .map_err(|e| format!("{tree}: {e:?}"))?;
+        Ok(entries
+            .into_iter()
+            .map(|e| DocEntry {
+                uri: e.uri,
+                name: e.name,
+                size: e.size,
+                mtime: e.mtime,
+                dir: e.dir,
+            })
+            .collect())
+    }
+
+    fn open(&self, uri: &str) -> Result<OpenedDocument, String> {
+        let cache = self
+            .cache
+            .as_deref()
+            .ok_or_else(|| format!("{uri}: no cache folder"))?;
+        let doc =
+            emudome_platform::open_content(uri, cache).map_err(|e| format!("{uri}: {e:?}"))?;
+        let file = doc.reader().map_err(|e| format!("{uri}: {e}"))?;
+        Ok(OpenedDocument {
+            file,
+            hold: Box::new(doc),
+        })
+    }
+}
+
 // ---- Covers ----
 
 fn icon_file(covers: &Path, id: &GameKey) -> PathBuf {
     covers.join(format!("{}.icon.png", id.file_stem()))
 }
 
+/// The icon inside a game's file: a path, or a document (read through its descriptor).
+fn read_game_icon(app: &AppHandle, game: &GameRecord) -> Result<Option<library::Icon>, String> {
+    if !emudome_platform::is_content_uri(&game.path) {
+        return library::read_icon(Path::new(&game.path)).map_err(|e| e.to_string());
+    }
+    let file = crate::game::GameFile::open(app, &game.path).map_err(|e| format!("{e:?}"))?;
+    let document = file
+        .document()
+        .ok_or_else(|| format!("{}: not a document", game.path))?;
+    let mut reader = document.reader().map_err(|e| e.to_string())?;
+    library::read_icon_file(file.path(), &mut reader).map_err(|e| e.to_string())
+}
+
 /// Extracts the icon of a game into the covers folder, if it is not there yet.
-fn cache_icon(covers: &Path, game: &GameRecord) -> Option<PathBuf> {
+fn cache_icon(app: &AppHandle, covers: &Path, game: &GameRecord) -> Option<PathBuf> {
     let file = icon_file(covers, &game.id);
     if file.is_file() {
         return Some(file);
     }
-    let icon = match library::read_icon(Path::new(&game.path)) {
+    let icon = match read_game_icon(app, game) {
         Ok(Some(icon)) => icon,
         Ok(None) => return None,
         Err(e) => {
@@ -498,7 +599,7 @@ fn cache_icon(covers: &Path, game: &GameRecord) -> Option<PathBuf> {
 }
 
 /// After a scan: the icons of the reachable games, so they show even when the ROM is offline.
-fn cache_icons(state: &LibraryState) {
+fn cache_icons(app: &AppHandle, state: &LibraryState) {
     let games: Vec<GameRecord> = state
         .lib
         .lock()
@@ -507,7 +608,7 @@ fn cache_icons(state: &LibraryState) {
         .cloned()
         .collect();
     for game in &games {
-        cache_icon(&state.covers, game);
+        cache_icon(app, &state.covers, game);
     }
 }
 
@@ -518,7 +619,7 @@ pub fn cover_response(app: &AppHandle, path: &str) -> tauri::http::Response<Vec<
         let id = GameKey::from_file_stem(path)?;
         let game = state.lib.lock().game(&id).ok().cloned()?;
         let file = match game.cover {
-            CoverKind::Icon => cache_icon(&state.covers, &game)?,
+            CoverKind::Icon => cache_icon(app, &state.covers, &game)?,
             CoverKind::User => user_cover_file(&state.covers, game.user_cover.as_deref())?,
             CoverKind::Generated => return None,
         };
@@ -676,7 +777,7 @@ pub fn screenshot_response(app: &AppHandle, rest: &str) -> tauri::http::Response
     response.unwrap_or_else(crate::response_error)
 }
 
-// ---- Native pickers (desktop; Android has no file-path pickers: TODO with the SAF) ----
+// ---- Native pickers (desktop; Android picks documents, `emudome_platform::pick_document*`) ----
 
 #[cfg(desktop)]
 pub(crate) fn pick_folder(app: &AppHandle) -> Option<PathBuf> {
@@ -743,6 +844,8 @@ pub fn refresh_watch(app: &AppHandle) {
     let mut slot = state.watcher.lock();
     // Dropping the old watcher closes its channel, which ends its debounce thread.
     *slot = None;
+    // Not on the phone: Android's library folders are document trees, which no file watcher
+    // sees; they are rescanned at start (`library.scanstart`) and on demand.
     if emudome_platform::PHONE || !settings(app).bool(keys::LIBRARY_WATCH) {
         return;
     }
@@ -761,6 +864,9 @@ pub fn refresh_watch(app: &AppHandle) {
         }
     };
     for folder in folders(app) {
+        if emudome_platform::is_content_uri(&folder) {
+            continue;
+        }
         if let Err(e) = watcher.watch(Path::new(&folder), notify::RecursiveMode::Recursive) {
             log::warn!("library watch {folder}: {e}");
         }
@@ -859,15 +965,41 @@ pub fn identify_path(app: &AppHandle, path: &Path) -> Result<Identity, ErrorCode
         let lib = state.lib.lock();
         lib.cache().get(path.to_string_lossy().as_ref()).cloned()
     });
-    library::identify_cached(path, cached.as_ref()).map_err(|e| match e {
+    library::identify_cached(path, cached.as_ref())
+        .map_err(|e| not_a_game(&path.display().to_string(), e))
+}
+
+/// What a game file opened outside the library is: [`identify_path`] for a path; a document is
+/// read through its descriptor, its cache entry keyed by its URI (as the scan of a picked folder
+/// keys it).
+pub fn identify_game_file(
+    app: &AppHandle,
+    file: &crate::game::GameFile,
+) -> Result<Identity, ErrorCode> {
+    let Some(document) = file.document() else {
+        return identify_path(app, file.path());
+    };
+    let cached = app
+        .try_state::<LibraryState>()
+        .and_then(|state| state.lib.lock().cache().get(file.given()).cloned());
+    let mut reader = document.reader().map_err(|e| ErrorCode::RomUnreadable {
+        detail: format!("{}: {e}", file.given()),
+    })?;
+    library::identify_open_file(file.path(), &mut reader, cached.as_ref())
+        .map_err(|e| not_a_game(file.given(), e))
+}
+
+/// A file that is not a game, for the interface.
+fn not_a_game(shown: &str, e: NotAGame) -> ErrorCode {
+    match e {
         NotAGame::Io(e) => ErrorCode::RomUnreadable {
-            detail: format!("{}: {e}", path.display()),
+            detail: format!("{shown}: {e}"),
         },
         NotAGame::Extension | NotAGame::Header(_) => ErrorCode::GameUnidentified {
             detail: e.to_string(),
         },
         NotAGame::Encrypted => ErrorCode::GameEncrypted,
-    })
+    }
 }
 
 /// Every file the library knows the key of, for the one-time game key migration;
@@ -898,29 +1030,72 @@ fn library_dto(app: &AppHandle, state: &LibraryState) -> LibraryDto {
         let games: Vec<GameDto> = lib.games().map(GameDto::new).collect();
         (games, families(grouped, &lib))
     };
+    let trees = state.trees.lock().clone();
     LibraryDto {
         games,
         families,
         folders: folders(app)
             .into_iter()
-            .map(|path| FolderDto {
-                reachable: Path::new(&path).is_dir(),
-                path,
-            })
+            .map(|path| folder_dto(path, &trees))
             .collect(),
         scanning: state.scanning.load(Ordering::SeqCst),
     }
 }
 
+/// A folder of `library.folders` for the interface. A picked document tree (Android) shows its
+/// display name and is reachable as the last scan found it (until a scan, as picked; never
+/// looked at here: this runs on the event loop).
+fn folder_dto(path: String, trees: &HashMap<String, TreeSeen>) -> FolderDto {
+    if emudome_platform::is_content_uri(&path) {
+        let seen = trees.get(&path);
+        return FolderDto {
+            name: seen.and_then(|t| t.name.clone()),
+            reachable: seen.is_none_or(|t| t.reachable),
+            path,
+        };
+    }
+    FolderDto {
+        name: Some(path.clone()),
+        reachable: Path::new(&path).is_dir(),
+        path,
+    }
+}
+
 /// Native folder picker: the folder joins `library.folders` and is scanned. `None` = cancelled.
+/// Android: the system's folder picker, the folder kept as its tree URI with its read permission
+/// persisted. Off the event loop: it waits for the user.
 #[tauri::command]
 pub async fn library_choose_folder(app: AppHandle) -> Result<Option<String>, ErrorCode> {
-    let Some(folder) = pick_folder(&app) else {
-        return Ok(None);
+    crate::blocking(app, choose_folder).await?
+}
+
+fn choose_folder(app: &AppHandle) -> Result<Option<String>, ErrorCode> {
+    let folder = if emudome_platform::DOCUMENT_PICKERS {
+        let picked = emudome_platform::pick_document_tree().unwrap_or_else(|e| {
+            log::warn!("folder picker: {e:?}");
+            None
+        });
+        let Some(picked) = picked else {
+            return Ok(None);
+        };
+        if let Some(state) = app.try_state::<LibraryState>() {
+            state.trees.lock().insert(
+                picked.uri.clone(),
+                TreeSeen {
+                    name: picked.name,
+                    reachable: true,
+                },
+            );
+        }
+        picked.uri
+    } else {
+        let Some(folder) = pick_folder(app) else {
+            return Ok(None);
+        };
+        folder.to_string_lossy().into_owned()
     };
-    let folder = folder.to_string_lossy().into_owned();
-    add_folders(&app, std::slice::from_ref(&folder))?;
-    start_scan(&app);
+    add_folders(app, std::slice::from_ref(&folder))?;
+    start_scan(app);
     Ok(Some(folder))
 }
 
@@ -950,6 +1125,11 @@ pub fn library_remove_folder(
     let list: Vec<String> = folders(&app).into_iter().filter(|f| *f != path).collect();
     set_folders(&app, list)?;
     state.lib.lock().unlist_folder(&path)?;
+    // A picked document tree (Android): its persisted read permission is given back.
+    if emudome_platform::is_content_uri(&path) {
+        emudome_platform::release_document_tree(&path);
+        state.trees.lock().remove(&path);
+    }
     refresh_watch(&app);
     emit_all(&app, &state);
     Ok(())

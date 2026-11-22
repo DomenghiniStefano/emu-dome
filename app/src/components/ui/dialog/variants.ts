@@ -29,11 +29,13 @@ export const DialogSize = {
 } as const
 export type DialogSize = (typeof DialogSize)[keyof typeof DialogSize]
 
+// One column as wide as the window less its gutter (`minmax(0,1fr)`): a panel never grows past
+// it, whatever its content (a long path without a break point, #29 on a 412 px phone).
 export const dialogOverlayVariants = cva('fixed inset-0 z-dialog grid bg-scrim p-12', {
   variants: {
     size: {
-      [DialogSize.Default]: 'place-items-center',
-      [DialogSize.Wide]: 'place-items-center backdrop-blur-dim',
+      [DialogSize.Default]: 'grid-cols-[minmax(0,1fr)] place-items-center',
+      [DialogSize.Wide]: 'grid-cols-[minmax(0,1fr)] place-items-center backdrop-blur-dim',
       [DialogSize.Palette]:
         'grid-cols-[minmax(0,1fr)] items-start justify-items-center pt-palette-top touch:pt-12',
       [DialogSize.TvSheet]: 'grid-cols-[minmax(0,1fr)] p-0 backdrop-blur-dim',
@@ -75,7 +77,8 @@ export const DialogDescriptionSize = {
 export type DialogDescriptionSize =
   (typeof DialogDescriptionSize)[keyof typeof DialogDescriptionSize]
 
-export const dialogDescriptionVariants = cva('m-0 text-ink-muted', {
+// A word longer than the line (a path, a file name) breaks anywhere rather than overflowing.
+export const dialogDescriptionVariants = cva('m-0 text-ink-muted wrap-anywhere', {
   variants: {
     size: {
       [DialogDescriptionSize.Default]: 'text-body',
@@ -85,7 +88,7 @@ export const dialogDescriptionVariants = cva('m-0 text-ink-muted', {
   defaultVariants: { size: DialogDescriptionSize.Default },
 })
 
-export const dialogTitleVariants = cva('m-0', {
+export const dialogTitleVariants = cva('m-0 wrap-anywhere', {
   variants: {
     tone: {
       [DialogTone.Default]: 'text-ink',

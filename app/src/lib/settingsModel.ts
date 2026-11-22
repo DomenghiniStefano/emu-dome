@@ -210,7 +210,9 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'dateTime':
     case 'bindings':
     case 'screenLayout':
-      // A screen layout: edited in the C09 screens editor (components/screen-editor, #28).
+    case 'touchLayout':
+      // A screen layout: edited in the C09 screens editor (components/screen-editor, #28); the
+      // touch controls in the C06 editor (components/touch, #29).
       return false
   }
 }

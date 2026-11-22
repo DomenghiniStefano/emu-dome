@@ -32,7 +32,8 @@ export function settingValueText(e: SettingEntry, v: SettingValue, { t, te }: Tr
     case 'dateTime':
       return typeof v === 'string' ? settingDateTimeLabel(v) : String(v)
     case 'bindings':
-    case 'screenLayout': {
+    case 'screenLayout':
+    case 'touchLayout': {
       const k = `settings.${e.key}.value.custom`
       return te(k) ? t(k) : ''
     }

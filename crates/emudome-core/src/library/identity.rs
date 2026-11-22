@@ -194,10 +194,15 @@ pub fn display_title(console: ConsoleId, header_title: &str, path: &Path) -> Str
 
 /// Identifies the game in `path`: reads the header and hashes what the identity needs.
 pub fn identify(path: &Path) -> Result<Identity, NotAGame> {
-    let mut file = File::open(path)?;
-    let header = inspect(path, &mut file)?;
+    identify_file(path, &mut File::open(path)?)
+}
+
+/// [`identify`] on a file already open at its start (an Android document, read through its
+/// descriptor); `path` gives only the name (extension and title), it is never opened.
+pub fn identify_file(path: &Path, file: &mut File) -> Result<Identity, NotAGame> {
+    let header = inspect(path, file)?;
     let hex = match header.key {
-        Key::Hash(n) => sha1_prefix(&mut file, n)?,
+        Key::Hash(n) => sha1_prefix(file, n)?,
         Key::Known(hex) => hex,
     };
     let title = display_title(header.console, &header.title, path);
@@ -217,11 +222,15 @@ pub fn identify(path: &Path) -> Result<Identity, NotAGame> {
 
 /// The icon inside the ROM (NDS banner, 3DS SMDH), without hashing anything.
 pub fn read_icon(path: &Path) -> Result<Option<Icon>, NotAGame> {
-    let mut file = File::open(path)?;
-    let header = inspect(path, &mut file)?;
+    read_icon_file(path, &mut File::open(path)?)
+}
+
+/// [`read_icon`] on a file already open; `path` gives only the name (extension).
+pub fn read_icon_file(path: &Path, file: &mut File) -> Result<Option<Icon>, NotAGame> {
+    let header = inspect(path, file)?;
     Ok(match header.icon {
-        Some(IconAt::Banner(at)) => Some(nds_icon(&read_at(&mut file, at + 0x20, 0x220)?)),
-        Some(IconAt::Smdh(at)) => Some(smdh_icon(&read_at(&mut file, at + 0x24C0, 0x1200)?)),
+        Some(IconAt::Banner(at)) => Some(nds_icon(&read_at(file, at + 0x20, 0x220)?)),
+        Some(IconAt::Smdh(at)) => Some(smdh_icon(&read_at(file, at + 0x24C0, 0x1200)?)),
         None => None,
     })
 }

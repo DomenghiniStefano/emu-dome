@@ -50,9 +50,11 @@
   "library": {
     "emptyTitle": "Aggiungi i tuoi giochi",
     "emptyLead": "Scegli la cartella dove tieni i tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS, oppure trascinali qui.",
+    "emptyLeadTouch": "Scegli la cartella dove tieni i tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS.",
     "chooseFolder": "Scegli una cartella…",
     "openFile": "Apri un file…",
     "dialogFilter": "Giochi GBA",
+    "folderUnnamed": "Cartella scelta",
     "addGames": "Aggiungi giochi",
     "yourGames": "I tuoi giochi",
     "filterConsole": "Filtra per console",
@@ -433,12 +435,66 @@
     "label": "Comandi touch",
     "menu": "Apri il menu rapido",
     "dpad": "Croce direzionale",
+    "circlePad": "Circle Pad",
     "a": "A",
     "b": "B",
+    "x": "X",
+    "y": "Y",
     "l": "L",
     "r": "R",
     "start": "START",
-    "select": "SELECT"
+    "select": "SELECT",
+    "lost": {
+      "title": "Controller scollegato",
+      "text": "Il gioco è in pausa. Ricollega il controller, oppure continua con i comandi touch.",
+      "wait": "Aspetta il controller",
+      "touch": "Continua con il tocco",
+      "toast": "Controller scollegato: comandi touch attivi"
+    },
+    "editor": {
+      "title": "Comandi touch",
+      "where": {
+        "portrait": "{console}, in verticale",
+        "landscape": "{console}, in orizzontale"
+      },
+      "control": {
+        "dpad": "Croce",
+        "circlePad": "Circle Pad",
+        "a": "A",
+        "b": "B",
+        "x": "X",
+        "y": "Y",
+        "l": "L",
+        "r": "R",
+        "start": "Start",
+        "select": "Select",
+        "menu": "Menu"
+      },
+      "none": "Tocca un comando",
+      "undo": "Annulla",
+      "redo": "Ripeti",
+      "add": "Aggiungi",
+      "size": "Dimensione",
+      "opacity": "Trasparenza",
+      "behaviour": "Comportamento",
+      "behaviours": {
+        "tap": "Tocco",
+        "hold": "Tieni premuto",
+        "turbo": "Turbo"
+      },
+      "onlyButtons": "Solo i pulsanti si possono tenere premuti o ripetere",
+      "percent": "{n}%",
+      "remove": "Togli",
+      "reset": "Torna alla disposizione predefinita",
+      "more": "Altro",
+      "collapse": "Riduci",
+      "expand": "Mostra gli strumenti",
+      "discard": "Esci senza salvare",
+      "save": "Salva",
+      "hint": {
+        "pick": "Scegli il comando"
+      }
+    }
   },
   "toast": {
     "stateSaved": "Salvato nello slot {slot}",
@@ -470,6 +526,7 @@
     "coreIncompatible": "Non riesco ad avviare l'emulatore di questa console. Reinstalla EmuDome. Dettagli: {detail}",
     "romUnreadable": "Non riesco a leggere il file del gioco. Controlla che sia ancora lì e che il suo disco sia collegato. Dettagli: {detail}",
     "coreRefusedGame": "L'emulatore non riesce ad avviare questo gioco. Controlla che il file sia una copia completa e funzionante del gioco.",
+    "documentNeedsPath": "Questo gioco non si può aprire da dove si trova: l'emulatore {core} deve aprire il file da solo e il sistema lo fa leggere solo a EmuDome. L'apertura di questi giochi dai documenti arriva in un prossimo aggiornamento.",
     "coreNeedsRestart": "Un gioco sul core {core} ha smesso di rispondere. Riavvia EmuDome per aprire di nuovo i giochi con questo core.",
     "noGame": "Nessun gioco aperto",
     "appClosing": "EmuDome si sta chiudendo. Apri di nuovo il gioco quando riparte.",
@@ -1288,20 +1345,22 @@
         "name": "Disposizione in verticale",
         "desc": "Quella usata quando tieni il telefono in verticale.",
         "option": {
-          "default": "Predefinita"
+          "default": "Predefinita",
+          "custom": "Personalizzata"
         }
       },
       "tland": {
         "name": "Disposizione in orizzontale",
         "desc": "Quella usata quando tieni il telefono in orizzontale.",
         "option": {
-          "default": "Predefinita"
+          "default": "Predefinita",
+          "custom": "Personalizzata"
         }
       },
       "tskin": {
         "name": "Aspetto dei pulsanti",
-        "desc": "Stile dei pulsanti touch, compresi quelli che importi.",
-        "value": {
+        "desc": "Stile dei pulsanti touch.",
+        "option": {
           "glass": "Vetro",
           "outlines": "Solo contorni",
           "contrast": "Contrasto alto"
@@ -1327,6 +1386,14 @@
       "tpad": {
         "name": "Nascondi con un controller collegato",
         "desc": "I pulsanti tornano se scolleghi il controller."
+      },
+      "tlost": {
+        "name": "Se il controller si scollega",
+        "desc": "Cosa fa il gioco quando il controller si spegne o si scarica.",
+        "option": {
+          "pause": "Pausa e domanda",
+          "touch": "Passa al tocco"
+        }
       }
     },
     "general": {
@@ -2087,6 +2154,7 @@
     },
     "starting": "Avvio in corso",
     "startFailed": "Impossibile avviare {title}",
+    "untitledGame": "questo gioco",
     "gotIt": "Ho capito",
     "hintEsc": "Esc",
     "hintOr": "o",
@@ -2658,6 +2726,11 @@
       "arrows": "Frecce",
       "shiftArrows": "Maiusc + Frecce"
     }
+  },
+  "storage": {
+    "low": "Spazio quasi finito: {free} liberi",
+    "manage": "Gestisci lo spazio",
+    "manageNotYet": "La gestione dello spazio arriva in un prossimo aggiornamento."
   },
   "updates": {
     "title": "Aggiornamento disponibile",

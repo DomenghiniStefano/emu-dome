@@ -44,7 +44,10 @@ export function recentlyPlayed(games: LibraryGame[], count = CONTINUE_COUNT): Li
 
 /** E01: a folder that is not reachable, with how many of its games stay listed. */
 export interface UnreachableFolder {
+  /** As `library.folders` holds it (a path, or a picked Android folder's URI). */
   path: string
+  /** What to show; null while a picked folder's name is not known. */
+  name: string | null
   count: number
 }
 
@@ -54,7 +57,11 @@ export function unreachableFolders(
 ): UnreachableFolder[] {
   return folders
     .filter(f => !f.reachable)
-    .map(f => ({ path: f.path, count: games.filter(g => g.folder === f.path).length }))
+    .map(f => ({
+      path: f.path,
+      name: f.name,
+      count: games.filter(g => g.folder === f.path).length,
+    }))
 }
 
 /** L11: one card of «N giochi aggiunti», an i18n key and a count. */

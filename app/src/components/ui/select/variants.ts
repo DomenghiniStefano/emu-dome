@@ -6,8 +6,9 @@ export const SelectTriggerVariant = {
   // long value is cut with an ellipsis on its one line (SelectTrigger.vue).
   Field: 'field',
   // The choice inside a sentence or a title (Settings scope bar «Giochi <console> ▾»): no edge and
-  // no fill until hovered, in the surrounding text's colour and semibold, 26px high and pulled
-  // 3px up and 10px left so its text lines up with the text around it (off the scale: Cowork).
+  // no fill until hovered, in the surrounding text's colour and semibold, 26px high (taller when
+  // a narrow title wraps it, never over the line under it) and pulled 3px up and 10px left so its
+  // text lines up with the text around it (off the scale: Cowork).
   InTitle: 'inTitle',
 } as const
 export type SelectTriggerVariant = (typeof SelectTriggerVariant)[keyof typeof SelectTriggerVariant]
@@ -20,7 +21,7 @@ export const selectTriggerVariants = cva(
         [SelectTriggerVariant.Field]:
           'h-control max-w-full min-w-field border-line bg-surface-raised text-inherit',
         [SelectTriggerVariant.InTitle]:
-          '-mt-3 -ml-10 h-in-title min-w-0 border-transparent bg-transparent font-semibold text-inherit',
+          '-mt-3 -ml-10 min-h-in-title min-w-0 border-transparent bg-transparent font-semibold text-inherit',
       },
     },
     defaultVariants: { variant: SelectTriggerVariant.Field },

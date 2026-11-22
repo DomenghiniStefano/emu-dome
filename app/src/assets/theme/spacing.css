@@ -133,6 +133,18 @@
   /* The shell: the rail's width and one of its sections' width. */
   --spacing-rail: 76px;
   --spacing-rail-item: 64px;
+  /* The phone's shell (Trello #29, the owner's mockup «EmuDome sul telefono»). The system's
+     bars and the camera's notch, as the webview reports them (`viewport-fit=cover` in
+     index.html; 0 where nothing is reported): the status bar above, the navigation bar below
+     the tab bar (at least 4 when there is none), each side's inset with the phone on its side.
+     The rail's side column keeps at least 28 from the camera's edge (the mockup's room for the
+     notch), more if the system says so. */
+  --spacing-safe-top: env(safe-area-inset-top, 0px);
+  --spacing-tabbar-bottom: max(var(--spacing-4), env(safe-area-inset-bottom, 0px));
+  --spacing-safe-left: env(safe-area-inset-left, 0px);
+  --spacing-safe-right: env(safe-area-inset-right, 0px);
+  --spacing-camera-left: max(var(--spacing-28), env(safe-area-inset-left, 0px));
+  --spacing-camera-right: max(var(--spacing-28), env(safe-area-inset-right, 0px));
 
   /* Page widths: the game details' and Controls' content, a step of the first run, an empty
      state (its text, and the library's framed one), a lead paragraph, the scan's bar, the button tester. */
@@ -162,6 +174,12 @@
   --spacing-bar: 1040px;
   --spacing-grip: 40px;
   --spacing-sheet-screens: 112px;
+  /* The phone on its side (#29): the side panel's width (the card's 440), and its room above
+     (the status bar, at least 12) and at its right edge (the camera when turned that way, at
+     least 16). */
+  --spacing-side-panel: 440px;
+  --spacing-side-panel-top: max(var(--spacing-12), env(safe-area-inset-top, 0px));
+  --spacing-side-panel-end: max(var(--spacing-16), env(safe-area-inset-right, 0px));
   --spacing-tool: 56px;
   /* Its main action's width on the desktop. */
   --spacing-menu-main: 260px;
@@ -208,6 +226,11 @@
   --spacing-dpad: 148px;
   --spacing-dpad-arm: 50px;
   --spacing-pad-lift: 64px;
+  /* The 3DS Circle Pad drawn on screen (Trello #29): its round box and its knob (pending Cowork). */
+  --spacing-pad-stick: 128px;
+  --spacing-pad-knob: 56px;
+  /* The C06 touch controls editor (Trello #29): the snapping grid's step (the owner's 8 px). */
+  --spacing-touch-grid: 8px;
 }
 
 /* TV (Trello #30, the owner's mockup of 2026-11-21, drawn at 1920 × 1080): the sizes of the TV
@@ -218,6 +241,9 @@
   --spacing-tv-tabs: calc(96px * var(--tv-scale));
   --spacing-tv-tab: calc(52px * var(--tv-scale));
   --spacing-tv-bar: calc(72px * var(--tv-scale));
+  /* What floats at the bottom of the shell (X06's update card) sits this far up: over the bar,
+     with the bar's gap between hints (32) clear of it. */
+  --spacing-tv-over-bar: calc(var(--spacing-tv-bar) + var(--spacing-tv-hint-gap));
   /* A controller button drawn as a key (the bar's glyphs, the hero's actions). */
   --spacing-tv-glyph: calc(30px * var(--tv-scale));
   /* The hero's actions: «Riprendi» / «Gioca» and «Dettagli del gioco». */
@@ -255,4 +281,7 @@
   --breakpoint-*: initial;
   /* Pending Cowork: below this window width the Controls overview stacks its two columns. */
   --breakpoint-controls-stack: 900px;
+  /* Pending (owner): below this window width (a phone upright, 320-430) the Settings scope bar
+     stacks its level cards, so a level's name stays on its line above its description. */
+  --breakpoint-scope-stack: 600px;
 }

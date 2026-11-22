@@ -36,6 +36,9 @@ pub enum ErrorCode {
     /// The core read the game and refused it: a bad or incomplete dump, an encrypted 3DS game,
     /// a format this core does not run.
     CoreRefusedGame,
+    /// The game came as a document (Android) the system lets EmuDome read only through the
+    /// handle it gave, and its core (`core`: Azahar) opens the game file by itself, by its path.
+    DocumentNeedsPath { core: String },
     /// The file opened has the extension of a console but its content is not a game of it (its
     /// header does not match): it has no identity, so it has no place for its saves.
     GameUnidentified { detail: String },
@@ -269,6 +272,9 @@ impl crate::StartError {
             }
             crate::StartError::RomUnreadable { detail } => ErrorCode::RomUnreadable { detail },
             crate::StartError::CoreRefusedGame => ErrorCode::CoreRefusedGame,
+            crate::StartError::GameNeedsPath => ErrorCode::DocumentNeedsPath {
+                core: core.to_owned(),
+            },
             crate::StartError::ThreadFailed { detail } => ErrorCode::OpenFailed { detail },
             crate::StartError::SaveFolderUnavailable { folder, detail } => {
                 ErrorCode::SaveFolderUnavailable {

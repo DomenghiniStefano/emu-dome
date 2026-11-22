@@ -42,6 +42,7 @@ pub mod settings;
 pub mod speed_audio;
 #[doc(hidden)]
 pub mod testing;
+pub mod touch;
 pub mod updates;
 pub mod video_sink;
 
@@ -53,6 +54,6 @@ pub use frame::{rgba_png, Frame};
 pub use game_key::GameKey;
 pub use session::{
     core_needs_restart, has_auto_save, slot_infos, Closed, Command, Core, CoreInfo, CoreOptionInfo,
-    Event, ExitWrites, Session, SessionOptions, Shared, SinkFactory, SlotInfo, Speed, Stats,
-    VideoSetup, AUTO_SLOT, CLOSE_TIMEOUT,
+    Event, ExitWrites, GameReader, Session, SessionOptions, Shared, SinkFactory, SlotInfo, Speed,
+    Stats, VideoSetup, AUTO_SLOT, CLOSE_TIMEOUT,
 };

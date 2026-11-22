@@ -58,7 +58,6 @@ pub enum HotkeyEvent {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Origin {
     Keyboard,
-    #[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
     Pads,
 }
 
@@ -132,7 +131,6 @@ impl HotkeyRunner {
     }
 
     /// The controller router's actions.
-    #[allow(dead_code, reason = "used by gamepad.rs, desktop only (SDL3)")]
     pub fn run(&self, actions: Vec<Action>, from: Origin) {
         if actions.is_empty() {
             return;
@@ -382,6 +380,14 @@ pub(crate) fn back_button(app: &AppHandle) {
     if let Err(e) = sent {
         log::warn!("back button ({route:?}) not delivered: {e}");
     }
+}
+
+/// Android's back at the shell's root, with no section to go back to (Trello #29): the app goes
+/// to the background as at any app's first screen, still running. `false` where the system has
+/// no background (the desktop) or the activity could not be reached (logged).
+#[tauri::command]
+pub(crate) fn leave_to_background() -> bool {
+    emudome_platform::move_to_background()
 }
 
 #[cfg(test)]

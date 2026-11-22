@@ -1,5 +1,5 @@
 // EmuDome's Android glue: the SurfaceView under the WebView, the back button, games as documents
-// (see ../src/android.rs).
+// (see ../src/android.rs), the controllers (../src/pads/android.rs).
 // Included in the app's Gradle project by tauri-build (DEP_EMUDOME_PLATFORM_ANDROID_LIBRARY_PATH).
 import groovy.json.JsonSlurper
 import java.security.MessageDigest
@@ -16,7 +16,7 @@ plugins {
 // cores/android/ is packaged. A file with the wrong hash fails every build; a missing file fails a
 // release build and only warns in a debug one (development without cores keeps working).
 // scripts/fetch-cores-android.ps1 puts the files in place (it downloads the cores cores.lock pins
-// as upstream builds and builds the ones it marks `built`, mGBA, from source: the hashes are checked
+// as upstream builds and builds the ones it marks `built`, mGBA and melonDS DS, from source: the hashes are checked
 // the same way); scripts/cores.mjs is the desktop side.
 val repoRoot: File = projectDir.resolve("../../..").canonicalFile
 val coresOut: File = layout.buildDirectory.dir("emudome-cores").get().asFile

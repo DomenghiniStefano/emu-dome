@@ -13,17 +13,23 @@ const NAS = '//nas-salotto/condivisa/Emulazione/Nintendo DS/Collezione completa 
   <KitSection title="Unreachable folder banner" :group="KitGroup.Library">
     <KitState label="Short path, one game">
       <div class="w-page-md max-w-full">
-        <UnreachableBanner :folder="{ path: 'E:/Giochi', count: 1 }" @replace="noop" />
+        <UnreachableBanner
+          :folder="{ path: 'E:/Giochi', name: 'E:/Giochi', count: 1 }"
+          @replace="noop"
+        />
       </div>
     </KitState>
     <KitState label="Long network path, 312 games">
       <div class="w-page-md max-w-full">
-        <UnreachableBanner :folder="{ path: NAS, count: 312 }" @replace="noop" />
+        <UnreachableBanner :folder="{ path: NAS, name: NAS, count: 312 }" @replace="noop" />
       </div>
     </KitState>
     <KitState label="Narrow (tile-min)">
       <div class="w-tile-min">
-        <UnreachableBanner :folder="{ path: 'E:/Giochi/GBA', count: 4 }" @replace="noop" />
+        <UnreachableBanner
+          :folder="{ path: 'E:/Giochi/GBA', name: 'E:/Giochi/GBA', count: 4 }"
+          @replace="noop"
+        />
       </div>
     </KitState>
   </KitSection>

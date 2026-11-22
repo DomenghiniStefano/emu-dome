@@ -17,7 +17,7 @@ Conventions:
 
 | Area | Today | Where |
 |---|---|---|
-| Touch controls | Fixed overlay: d-pad (8-way, deadzone 0.25), A/B, L/R, Start/Select, menu button. Positions in CSS, no settings | `app/src/components/game/TouchControls.vue` |
+| Touch controls | Since Trello #29: layouts per console and orientation (defaults, the user's own from the C06 editor kept per device in `touch.tedit`), tap / hold / turbo, the 3DS Circle Pad, three built-in skins, `touch.*` settings, E14. Before it: a fixed overlay in CSS, no settings | `app/src/components/touch/`, `crates/emudome-core/src/touch.rs` |
 | Controller routing | Pure `Router::step`; `Bindings { modifier, combos }` with `DEFAULT_MODIFIER = L3` and `DEFAULT_COMBOS`; Guide toggles the menu; menu navigation with repeat | `crates/emudome-core/src/hotkeys.rs`, `docs/combo-tasti.md` |
 | Controller mapping | SDL3, positional RetroArch-style (right face button = A). Mask merged from keyboard / gamepad / touch | `app/src-tauri/src/gamepad.rs`, `crates/emudome-core/src/input.rs` |
 | Keyboard | The webview forwards raw keys (`key` command); Rust routes them: fixed shortcuts and the game keys of `pad.remap` | `crates/emudome-core/src/keyboard.rs`, `app/src-tauri/src/hotkeys.rs` |

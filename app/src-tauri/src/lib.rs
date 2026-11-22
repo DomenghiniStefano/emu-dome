@@ -32,8 +32,6 @@ mod events;
 mod first_run;
 mod game;
 mod game_session;
-// SDL3 is built for the desktop only: controllers on Android come later (Android input events).
-#[cfg(desktop)]
 mod gamepad;
 mod gpu_interop;
 mod health;
@@ -48,7 +46,9 @@ mod saves;
 mod screens;
 mod settings;
 mod startup;
+mod storage;
 mod theme;
+mod touch;
 mod tuning;
 mod updates;
 mod video;
@@ -446,7 +446,7 @@ pub fn run() {
             app.manage(updates::start(app.handle()));
             let hotkeys =
                 hotkeys::HotkeyRunner::new(app.handle().clone(), current.clone(), pads.clone());
-            #[cfg(desktop)]
+            // After `attach_system`: on Android the pads come through the activity it reached.
             gamepad::spawn(
                 app.handle().clone(),
                 current.clone(),
@@ -511,6 +511,9 @@ pub fn run() {
             closing::close_wait,
             closing::close_anyway,
             game::abandon_game,
+            // The phone (#29): E13's room left, Android's back at the shell's root.
+            storage::storage_status,
+            hotkeys::leave_to_background,
             commands::list_slots,
             commands::set_speed,
             commands::set_paused,
@@ -525,6 +528,10 @@ pub fn run() {
             commands::input,
             commands::key,
             commands::pointer,
+            touch::touch_layouts,
+            touch::touch_set_layout,
+            touch::touch_stick,
+            touch::haptic,
             screens::screens_status,
             screens::screens_next_layout,
             screens::screens_set_layout,
@@ -541,6 +548,8 @@ pub fn run() {
             startup::startup_game,
             startup::startup_last_game,
             game::open_extensions,
+            game::pick_game_file,
+            game::game_file_title,
             commands::set_menu_open,
             commands::window_focus,
             bench::bench_active,

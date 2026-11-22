@@ -3,7 +3,9 @@
 // Chrome must already run headless with --remote-debugging-port=<cdpPort>.
 import fs from "node:fs";
 import path from "node:path";
+import { phoneShellScenarios } from "./phone-shell.mjs";
 import { quickMenuScenarios } from "./quick-menu.mjs";
+import { touchScenarios } from "./touch.mjs";
 
 const [cdpPort, baseUrl, outDir, ...only] = process.argv.slice(2);
 const here = path.dirname(
@@ -270,6 +272,8 @@ const SCENARIOS = {
     height: 1500,
   },
   ...quickMenuScenarios,
+  ...touchScenarios,
+  ...phoneShellScenarios,
 };
 
 // Saves (V01–V06, and the slot tile in Game details): every state in Scuro / Nero / Chiaro, at
@@ -1033,8 +1037,23 @@ for (const screen of ["out", "in", "g04", "library"])
     height: 844,
   };
 
-/** A trusted key press, or the pointer moved over an element. */
+/** A trusted key press, the pointer moved over an element, or the phone turned (`resize`:
+ * [width, height], the way round following it). */
 async function act(p, step) {
+  if (step.resize) {
+    const [width, height] = step.resize;
+    await p.send("Emulation.setDeviceMetricsOverride", {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: true,
+      screenOrientation:
+        width > height
+          ? { type: "landscapePrimary", angle: 90 }
+          : { type: "portraitPrimary", angle: 0 },
+    });
+    return;
+  }
   if (step.key) {
     for (const type of ["keyDown", "keyUp"]) {
       await p.send("Input.dispatchKeyEvent", {
@@ -1069,6 +1088,8 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
     height: s.height ?? 800,
     deviceScaleFactor: 1,
     mobile: !!s.touch,
+    // The phone's way round (`screen.orientation`: the camera's side on its side, #29).
+    ...(s.orientation ? { screenOrientation: s.orientation } : {}),
   });
   // A headless page has no focus of its own, so `:focus` (the focus ring) never matches; the
   // scenarios that show the ring ask for it.
@@ -1124,6 +1145,16 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
     path.join(outDir, `${name}.png`),
     Buffer.from(shot.result.data, "base64"),
   );
+  // `PROBE=<expression>`: evaluated on each page after its screenshot and printed (a geometry
+  // check: where the game is drawn, what the inset says).
+  if (process.env.PROBE) {
+    const r = await p.send("Runtime.evaluate", {
+      expression: process.env.PROBE,
+      returnByValue: true,
+      awaitPromise: true,
+    });
+    console.log(name, "probe", JSON.stringify(r.result?.result?.value ?? r.result));
+  }
   const calls = await p.send("Runtime.evaluate", {
     expression: "JSON.stringify([...new Set(window.__mockCalls || [])])",
     returnByValue: true,

@@ -3,11 +3,11 @@ import type { PadFamily } from "../PadFamily";
 
 /**
  * A connected controller. Payload of `emu://gamepad-connected|disconnected|changed`.
- * TypeScript: `PadInfo` (generated). `name` is `None` when SDL knows none.
+ * TypeScript: `PadInfo` (generated). `name` is `None` when the system knows none.
  */
 export type PadInfo = { id: number, name: string | null, family: PadFamily, vendor: number, product: number, 
 /**
- * Battery charge left, 0..=100 (SDL's estimate); `None` when the controller has no battery
+ * Battery charge left, 0..=100 (the system's estimate); `None` when the controller has no battery
  * (wired) or does not say.
  */
 battery: number | null, };

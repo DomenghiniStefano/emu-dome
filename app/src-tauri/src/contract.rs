@@ -38,6 +38,7 @@ fn generate() -> Result<Generated, String> {
     g.ts::<crate::pads::PadStates>()?;
     g.ts::<crate::pads::ControlsBindings>()?;
     g.ts::<crate::about::Licence>()?;
+    g.ts::<crate::storage::StorageStatus>()?;
     // The Cloud screens (#31): the commands' and the `cloud://` events' types.
     g.ts::<emudome_sync::service::CloudStatus>()?;
     g.ts::<emudome_sync::service::AccountDto>()?;

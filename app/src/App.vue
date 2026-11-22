@@ -34,7 +34,7 @@ import LibraryDropTarget from '@/components/library/LibraryDropTarget.vue'
 import QuickMenu from '@/components/quick-menu/QuickMenu.vue'
 import SearchPalette from '@/components/search/SearchPalette.vue'
 import ToastStack from '@/components/toasts/ToastStack.vue'
-import TouchControls from '@/components/game/TouchControls.vue'
+import TouchLayer from '@/components/touch/TouchLayer.vue'
 import TvModeDialog from '@/components/tv-mode/TvModeDialog.vue'
 import GameHud from '@/components/game/GameHud.vue'
 import LidClosedCard from '@/components/game/LidClosedCard.vue'
@@ -50,7 +50,7 @@ const { videoMode, nativeAvailable, load: loadVideoMode, setVideoMode } = useVid
 // game has closed, so «Adatta la copertina» never covers the game being played.
 const coverRequest = createCoverRequest()
 const session = useGameSession(toast, coverRequest.ask)
-const { game, menuOpen, paused, stats, showFps, speed, settings, menuInset } = session
+const { game, menuOpen, paused, stats, showFps, speed, settings, videoInset } = session
 const launch = useGameLaunch(session, toast)
 const keys = useGameKeys(session)
 const drop = useDropTarget(game, toast)
@@ -64,17 +64,17 @@ const screens = useScreenStatus(toast)
 // Where the shell is (components/shell/route.ts): kept while a game is open, so closing it comes
 // back here (a game opened from its details comes back to them).
 const route = ref<Route>(START)
-// Touch screen (Android): on-screen buttons while playing.
+// Touch screen (Android): on-screen buttons while playing, and E14 (components/touch, #29).
 const touch = coarsePointer()
 // DS games: the mouse or a finger on the bottom screen is the stylus (no menu open).
 useScreenTouch(
   () => game.value?.consoleId === 'nds' && !menuOpen.value,
   videoMode,
-  () => menuInset.value,
+  () => videoInset.value,
 )
-// The phone's layout (a phone held upright) sets the touch density for the whole interface.
+// The phone, upright or on its side (#29), sets the touch density for the whole interface.
 const layout = useDeviceLayout()
-useDensity(layout.phone)
+useDensity(layout.touchDensity)
 // TV mode (#30): `general.ui`, or at Automatica the answer to the TV question (TvModeDialog).
 useUiMode(session.fullscreen, layout.device)
 
@@ -118,12 +118,12 @@ onMounted(async () => {
     <GameSurround
       :mode="videoMode"
       :game-size="session.gameSize.value"
-      :inset-bottom="menuInset"
+      :inset="videoInset"
       :game="session.playingGame.value"
     />
     <GameCanvas
       v-if="videoMode === 'webview'"
-      :inset-bottom="menuInset"
+      :inset="videoInset"
       :colour-blind="settings.colourBlind"
       surround
     />
@@ -134,10 +134,13 @@ onMounted(async () => {
       :paused="paused && !menuOpen"
       :fps="showFps && stats ? stats.emuFps : null"
     />
-    <TouchControls
-      v-if="touch && !menuOpen"
-      :shoulders="game.consoleId !== 'gb' && game.consoleId !== 'gbc'"
+    <TouchLayer
+      v-if="touch"
+      :console="game.consoleId"
+      :menu-open="menuOpen"
       @menu="session.setMenu(true)"
+      @inset="session.setInset"
+      @paused="p => (session.paused.value = p)"
     />
     <LidClosedCard v-if="screens.status.value?.lidClosed && !menuOpen" @open="screens.toggleLid" />
     <QuickMenu

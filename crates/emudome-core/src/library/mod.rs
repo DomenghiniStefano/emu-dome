@@ -2,7 +2,8 @@
 //!
 //! - `identity.rs`: console, identity from the content (the game's [`crate::GameKey`]), title
 //!   and icon of a ROM file (docs/feasibility.md, "Game identity").
-//! - `scan.rs`: walks the library folders, identifying files (cached by path + size + mtime).
+//! - `scan.rs`: walks the library folders, identifying files (cached by path + size + mtime), and
+//!   the picked document trees of Android (cached by document URI + size + mtime).
 //! - `store.rs`: the database (`library.json`), the merge of a scan, flags, covers, play time,
 //!   the user's name for a game.
 //! - `details.rs`: what Game details › File e informazioni (L10) derives: region, core.
@@ -19,9 +20,13 @@ mod store;
 pub use details::{console_phase_pending, core_of, open_extensions, opens, region, Region};
 pub use group::Family;
 pub use identity::{
-    console_of_extension, identify, read_icon, Icon, Identity, NotAGame, EXTENSIONS,
+    console_of_extension, identify, identify_file, read_icon, read_icon_file, Icon, Identity,
+    NotAGame, EXTENSIONS,
 };
-pub use scan::{identify_cached, scan, Found, ScanInput, ScanOutcome};
+pub use scan::{
+    identify_cached, identify_open_file, scan, scan_with_documents, DocEntry, Documents, Found,
+    OpenedDocument, ScanInput, ScanOutcome,
+};
 pub use store::{
     cover_colour, CacheEntry, CoverKind, GameRecord, HashCache, Library, ScanReport, NAME_MAX,
 };

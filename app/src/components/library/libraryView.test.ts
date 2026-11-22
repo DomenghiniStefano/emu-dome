@@ -75,11 +75,16 @@ describe('recentlyPlayed', () => {
 describe('unreachableFolders', () => {
   it('lists the folders that are gone with how many games they hold', () => {
     const folders: LibraryFolder[] = [
-      { path: 'C:/Games', reachable: true },
-      { path: 'D:/Old', reachable: false },
+      { path: 'C:/Games', name: 'C:/Games', reachable: true },
+      { path: 'D:/Old', name: 'D:/Old', reachable: false },
+      { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', reachable: false },
     ]
     const games = [game('a', { folder: 'D:/Old' }), game('b'), game('c', { folder: 'D:/Old' })]
-    expect(unreachableFolders(folders, games)).toEqual([{ path: 'D:/Old', count: 2 }])
+    expect(unreachableFolders(folders, games)).toEqual([
+      { path: 'D:/Old', name: 'D:/Old', count: 2 },
+      // A picked Android folder: shown by its name, its games found by its URI.
+      { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', count: 0 },
+    ])
   })
 })
 

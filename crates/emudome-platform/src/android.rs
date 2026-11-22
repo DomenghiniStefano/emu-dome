@@ -8,7 +8,10 @@
 //! - Logs: logcat, tag `EmuDome`.
 //! - The system's requests (Kotlin class `it.domehub.emudome.platform.SystemBridge`): the back
 //!   button reaches the listener of [`crate::listen_back`]; the game of «Open with» and the
-//!   `content://` games ([`crate::open_content`], `content.rs`).
+//!   `content://` games ([`crate::open_content`], `content.rs`), the system's folder and file
+//!   pickers and the listing of a picked folder (Storage Access Framework, Trello #47).
+//! - Controllers (Kotlin class `it.domehub.emudome.platform.GamepadInput`, attached with the
+//!   system bridge): `pads/android.rs`.
 use std::ffi::c_void;
 use std::fs;
 use std::os::fd::{FromRawFd, OwnedFd};
@@ -16,17 +19,17 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Once};
 use std::time::Duration;
 
-use jni::objects::{GlobalRef, JClass, JObject, JString, JValue};
+use jni::objects::{GlobalRef, JClass, JObject, JObjectArray, JString, JValue};
 use jni::sys::jint;
 use jni::{JNIEnv, JavaVM, NativeMethod};
 use ndk::native_window::NativeWindow;
 use parking_lot::{Condvar, Mutex};
 use raw_window_handle::{DisplayHandle, HandleError};
 
-use crate::content::{fd_path, link_dir, link_name, LINKS_DIR};
+use crate::content::{fd_path, link_dir, link_name, parse_tree_children, LINKS_DIR};
 use crate::{
-    BackListener, ContentError, ContentFile, DataDirs, ExternalSurface, SurfaceEvent,
-    SurfaceListener, WindowMode, WindowOptions, WindowRoom,
+    BackListener, ContentError, ContentFile, DataDirs, ExternalSurface, PickedDocument,
+    SurfaceEvent, SurfaceListener, TreeEntry, WindowMode, WindowOptions, WindowRoom,
 };
 
 pub const OS_NAME: &str = "Android";
@@ -155,11 +158,20 @@ pub fn attach_system<R: tauri::Runtime>(webview: &tauri::Webview<R>, on_back: Ba
     *BACK.lock() = Some(Arc::from(on_back));
     let result = webview.with_webview(|platform| {
         platform.jni_handle().exec(|env, activity, _webview| {
-            let attached = env
+            let loader = env
                 .call_method(activity, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])
-                .and_then(|loader| loader.l())
-                .and_then(|loader| attach_bridge(env, activity, &loader));
-            match attached {
+                .and_then(|loader| loader.l());
+            let loader = match loader {
+                Ok(loader) => loader,
+                Err(e) => {
+                    log::error!("no class loader for the system bridge and the controllers: {e}");
+                    clear_exception(env);
+                    set_startup_game(None);
+                    crate::pads::android::attach_failed(e.to_string());
+                    return;
+                }
+            };
+            match attach_bridge(env, activity, &loader) {
                 Ok(game) => set_startup_game(game),
                 Err(e) => {
                     log::error!("system bridge not attached (back button, documents): {e}");
@@ -167,16 +179,19 @@ pub fn attach_system<R: tauri::Runtime>(webview: &tauri::Webview<R>, on_back: Ba
                     set_startup_game(None);
                 }
             }
+            // The controllers on their own: a failure there leaves the back button working.
+            crate::pads::android::attach(env, activity, &loader);
         })
     });
     if let Err(e) = result {
         log::error!("webview not reachable for the system bridge: {e}");
         set_startup_game(None);
+        crate::pads::android::attach_failed(e.to_string());
     }
 }
 
 /// A pending Java exception is printed to logcat and cleared, so the next JNI call works.
-fn clear_exception(env: &mut JNIEnv) {
+pub(crate) fn clear_exception(env: &mut JNIEnv) {
     if env.exception_check().unwrap_or(false) {
         // Best effort: nothing more can be done about an exception that cannot be printed.
         let _ = env.exception_describe();
@@ -186,7 +201,7 @@ fn clear_exception(env: &mut JNIEnv) {
 
 /// An app class, through the activity's class loader (FindClass would use the system one when
 /// called from native code).
-fn load_class<'local>(
+pub(crate) fn load_class<'local>(
     env: &mut JNIEnv<'local>,
     loader: &JObject,
     name: &str,
@@ -262,11 +277,18 @@ fn attach_bridge(
     let class = load_class(env, loader, SYSTEM_BRIDGE_CLASS)?;
     env.register_native_methods(
         &class,
-        &[NativeMethod {
-            name: "nativeBackPressed".into(),
-            sig: "()V".into(),
-            fn_ptr: native_back_pressed as *mut c_void,
-        }],
+        &[
+            NativeMethod {
+                name: "nativeBackPressed".into(),
+                sig: "()V".into(),
+                fn_ptr: native_back_pressed as *mut c_void,
+            },
+            NativeMethod {
+                name: "nativeDocumentPicked".into(),
+                sig: "(Ljava/lang/String;Ljava/lang/String;)V".into(),
+                fn_ptr: native_document_picked as *mut c_void,
+            },
+        ],
     )?;
     *JAVA.lock() = Some(Arc::new(Java {
         vm: env.get_java_vm()?,
@@ -304,6 +326,27 @@ extern "system" fn native_back_pressed(_env: JNIEnv, _class: JClass) {
     match listener {
         Some(on_back) => on_back(),
         None => log::info!("back pressed with no listener: ignored"),
+    }
+}
+
+/// `SystemBridge.moveToBack`: the task behind the others, the app still running (back at the
+/// shell's root, Trello #29).
+pub fn move_to_background() -> bool {
+    let moved = with_java("move to the background", |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            "moveToBack",
+            "(Landroid/app/Activity;)V",
+            &[JValue::Object(activity)],
+        )
+        .map(|_| ())
+    });
+    match moved {
+        Ok(()) => true,
+        Err(e) => {
+            log::warn!("{e}");
+            false
+        }
     }
 }
 
@@ -369,11 +412,20 @@ pub fn open_content(uri: &str, cache_dir: &Path) -> Result<ContentFile, ContentE
     if !meta.is_file() {
         return Err(ContentError::NotLocal);
     }
-    // What the core does with the path: open it again. A provider whose file cannot be opened
-    // again this way is told now, not by the core.
+    // EmuDome reads the descriptor itself; only a core that opens the game by itself uses the
+    // path, which works only where the system lets the descriptor be opened again (Android 17
+    // refuses it for the Downloads provider: `Permission denied`).
     let source = fd_path(fd);
-    fs::File::open(&source)
-        .map_err(|e| ContentError::Unreadable(format!("{}: {e}", source.display())))?;
+    let reopenable = match fs::File::open(&source) {
+        Ok(_) => true,
+        Err(e) => {
+            log::info!(
+                "document {uri}: {} cannot be opened again ({e}): read through its descriptor",
+                source.display()
+            );
+            false
+        }
+    };
 
     LINKS_CLEANED.call_once(|| {
         // Only links live there (removed, never followed); a missing folder is the usual case.
@@ -389,24 +441,214 @@ pub fn open_content(uri: &str, cache_dir: &Path) -> Result<ContentFile, ContentE
     fs::create_dir_all(&dir)
         .and_then(|()| std::os::unix::fs::symlink(&source, &link))
         .map_err(|e| ContentError::Unreadable(format!("{}: {e}", link.display())))?;
-    log::info!("document {uri} opened as {}", link.display());
+    log::info!(
+        "document {uri} opened: name {name:?}, {} bytes, fd {fd}, reopenable by path {reopenable}",
+        meta.len()
+    );
     Ok(ContentFile {
         path: link.clone(),
         name,
-        _hold: Box::new(OpenDocument {
-            link,
-            dir,
-            _file: file,
-        }),
+        _hold: Box::new(OpenDocument { link, dir }),
+        file,
+        reopenable,
     })
 }
 
-/// A document opened for a game: the link is removed before the descriptor closes, so a new
-/// descriptor with the same number never finds it.
+/// One pick at a time: the sender of the pick waiting for `nativeDocumentPicked`. A new pick
+/// replaces it (the old one's receiver then sees a cancel).
+static PICKED: Mutex<Option<std::sync::mpsc::Sender<Option<PickedDocument>>>> = Mutex::new(None);
+
+/// How long a pick waits for the user before it counts as cancelled (the thread is let go).
+const PICK_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
+/// `SystemBridge.nativeDocumentPicked`: a picker's answer, on a background thread.
+extern "system" fn native_document_picked(
+    mut env: JNIEnv,
+    _class: JClass,
+    uri: JObject,
+    name: JObject,
+) {
+    let read =
+        optional_string(&mut env, uri).and_then(|uri| Ok((uri, optional_string(&mut env, name)?)));
+    let picked = match read {
+        Ok((Some(uri), name)) => Some(PickedDocument { uri, name }),
+        Ok((None, _)) => None,
+        Err(e) => {
+            log::warn!("picked document not read: {e}");
+            clear_exception(&mut env);
+            None
+        }
+    };
+    match PICKED.lock().take() {
+        Some(tx) => {
+            // The receiver may have timed out: nobody to tell then.
+            let _ = tx.send(picked);
+        }
+        None => log::warn!("a picker answered with no pick waiting: {picked:?}"),
+    }
+}
+
+/// Shows a picker (`SystemBridge.<method>(Activity)`) and waits for its answer.
+fn pick(what: &str, method: &str) -> Result<Option<PickedDocument>, ContentError> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    *PICKED.lock() = Some(tx);
+    with_java(what, |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            method,
+            "(Landroid/app/Activity;)V",
+            &[JValue::Object(activity)],
+        )
+        .map(|_| ())
+    })
+    .map_err(ContentError::Unreadable)?;
+    match rx.recv_timeout(PICK_TIMEOUT) {
+        Ok(picked) => Ok(picked),
+        Err(e) => {
+            log::warn!("{what}: no answer ({e}), taken as cancelled");
+            Ok(None)
+        }
+    }
+}
+
+pub const DOCUMENT_PICKERS: bool = true;
+
+pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
+    let picked = pick("folder picker", "pickTree")?;
+    match &picked {
+        Some(p) => log::info!("android folder picked: {:?} {}", p.name, p.uri),
+        None => log::info!("android folder picker cancelled"),
+    }
+    Ok(picked)
+}
+
+pub fn pick_document() -> Result<Option<PickedDocument>, ContentError> {
+    let picked = pick("file picker", "pickDocument")?;
+    match &picked {
+        Some(p) => log::info!("android file picked: {:?} {}", p.name, p.uri),
+        None => log::info!("android file picker cancelled"),
+    }
+    Ok(picked)
+}
+
+pub fn list_document_tree(tree: &str, dir: Option<&str>) -> Result<Vec<TreeEntry>, ContentError> {
+    let fields = with_java("folder listing", |env, activity, bridge| {
+        let jtree = env.new_string(tree)?;
+        let jdir = match dir {
+            Some(dir) => JObject::from(env.new_string(dir)?),
+            None => JObject::null(),
+        };
+        let answer = env
+            .call_static_method(
+                bridge,
+                "listTree",
+                "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;",
+                &[
+                    JValue::Object(activity),
+                    JValue::Object(&jtree),
+                    JValue::Object(&jdir),
+                ],
+            )?
+            .l()?;
+        if answer.is_null() {
+            return Ok(None);
+        }
+        let array = JObjectArray::from(answer);
+        let len = env.get_array_length(&array)?;
+        let mut fields = Vec::with_capacity(usize::try_from(len).unwrap_or_default());
+        for i in 0..len {
+            let element = JString::from(env.get_object_array_element(&array, i)?);
+            let text: String = env.get_string(&element)?.into();
+            // One local reference per element: freed now, a folder may hold thousands.
+            env.delete_local_ref(element)?;
+            fields.push(text);
+        }
+        Ok(Some(fields))
+    })
+    .map_err(ContentError::Unreadable)?;
+    match fields {
+        Some(fields) => Ok(parse_tree_children(&fields)),
+        None => Err(ContentError::Unreadable(format!(
+            "{tree}: the folder could not be listed (permission given back, or the folder is \
+             gone; logcat, tag EmuDome)"
+        ))),
+    }
+}
+
+/// `SystemBridge.<method>(Context, String): String?`, logged on failure.
+fn query_string(what: &str, method: &str, uri: &str) -> Option<String> {
+    let result = with_java(what, |env, activity, bridge| {
+        let juri = env.new_string(uri)?;
+        let name = env
+            .call_static_method(
+                bridge,
+                method,
+                "(Landroid/content/Context;Ljava/lang/String;)Ljava/lang/String;",
+                &[JValue::Object(activity), JValue::Object(&juri)],
+            )?
+            .l()?;
+        optional_string(env, name)
+    });
+    result.unwrap_or_else(|e| {
+        log::warn!("{e}");
+        None
+    })
+}
+
+pub fn document_tree_name(tree: &str) -> Option<String> {
+    query_string("folder name", "treeName", tree)
+}
+
+pub fn document_name(uri: &str) -> Option<String> {
+    query_string("document name", "displayName", uri)
+}
+
+pub fn release_document_tree(tree: &str) {
+    let result = with_java("folder permission", |env, activity, bridge| {
+        let jtree = env.new_string(tree)?;
+        env.call_static_method(
+            bridge,
+            "releaseTree",
+            "(Landroid/content/Context;Ljava/lang/String;)V",
+            &[JValue::Object(activity), JValue::Object(&jtree)],
+        )
+        .map(|_| ())
+    });
+    match result {
+        Ok(()) => log::info!("android folder permission given back: {tree}"),
+        Err(e) => log::warn!("{e}"),
+    }
+}
+
+/// How long a touch control's press vibrates.
+const HAPTIC_MS: i64 = 18;
+
+/// `SystemBridge.vibrate`: a one-shot vibration, its amplitude (1–255) from `strength` (1–100).
+pub fn haptic(strength: u8) {
+    let amplitude = (i32::from(strength.clamp(1, 100)) * 255 + 99) / 100;
+    let result = with_java("vibration", |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            "vibrate",
+            "(Landroid/content/Context;JI)V",
+            &[
+                JValue::Object(activity),
+                JValue::Long(HAPTIC_MS),
+                JValue::Int(amplitude),
+            ],
+        )?;
+        Ok(())
+    });
+    if let Err(e) = result {
+        log::warn!("{e}");
+    }
+}
+
+/// The link of a document opened for a game: removed before the descriptor closes (the
+/// `ContentFile` drops it first), so a new descriptor with the same number never finds it.
 struct OpenDocument {
     link: PathBuf,
     dir: PathBuf,
-    _file: fs::File,
 }
 
 impl Drop for OpenDocument {
@@ -492,7 +734,9 @@ pub fn create_window(
     Ok((ui.window(), ui.clone()))
 }
 
-/// No file-path picker on Android yet (TODO with the SAF).
+/// No file-path picker on Android: games and folders come from the document pickers as
+/// `content://` URIs ([`pick_document`], [`pick_document_tree`]); this path picker (screen effect
+/// presets) has none yet.
 pub fn pick_file(_app: &tauri::AppHandle, _filter: &str, _extensions: &[&str]) -> Option<PathBuf> {
     log::warn!("file picker not available on this platform yet");
     None

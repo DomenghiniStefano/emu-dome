@@ -5,7 +5,7 @@
 use std::sync::atomic::Ordering;
 
 use emudome_core::input::{Button, Source};
-use emudome_core::screens::Area;
+use emudome_core::screens::{Area, Inset};
 use emudome_core::{Command, ErrorCode, Speed};
 use serde::Serialize;
 use tauri::Manager;
@@ -96,12 +96,13 @@ pub(crate) fn set_video_mode(
     Ok(())
 }
 
-/// Quick menu G09: the bottom `fraction` of the window is the menu's bar, so the native game
-/// shrinks above it (0 = the whole window again). The webview canvas does the same by itself.
+/// The edges of the window kept clear of the native game (shares of its width and height): the
+/// quick menu's bar, sheet or side panel, the touch controls' band or columns; all zero = the
+/// whole window again. The webview canvas does the same by itself.
 #[tauri::command]
-pub(crate) fn set_video_inset(state: tauri::State<'_, AppState>, fraction: f32) {
+pub(crate) fn set_video_inset(state: tauri::State<'_, AppState>, inset: Inset) {
     if let Some(r) = &state.renderer {
-        r.set_inset(fraction);
+        r.set_inset(inset);
     }
 }
 
@@ -221,23 +222,25 @@ pub(crate) fn key(state: tauri::State<'_, AppState>, code: String, pressed: bool
     }
 }
 
-/// A game button from the touch controls (Android's overlay).
+/// A game button from the touch controls (Android's overlay): their own source, so letting go
+/// of the keyboard (the quick menu opening, the window losing the focus) never drops a button a
+/// finger still holds, nor the other way round.
 #[tauri::command]
 pub(crate) fn input(state: tauri::State<'_, AppState>, button: Button, pressed: bool) {
     if let Some(shared) = state.games.current().load().as_ref() {
-        shared.input.set(Source::Keyboard, button, pressed);
+        shared.input.set(Source::Touch, button, pressed);
     }
 }
 
 /// Where a pointer position is measured (`pointer`): the window in the renderer's unit (physical
-/// pixels for the native video, CSS pixels for the webview canvas) and the bottom share (0..0.9)
-/// kept clear for the quick menu. TypeScript: `PointerArea` (generated).
+/// pixels for the native video, CSS pixels for the webview canvas) and the edges kept clear of
+/// the game (the quick menu, the touch controls). TypeScript: `PointerArea` (generated).
 #[derive(serde::Deserialize, TS)]
 #[ts(export_to = "app/")]
 pub(crate) struct PointerArea {
     width: f32,
     height: f32,
-    inset: f32,
+    inset: Inset,
 }
 
 impl PointerArea {

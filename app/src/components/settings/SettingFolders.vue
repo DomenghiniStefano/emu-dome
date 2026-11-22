@@ -6,6 +6,7 @@ import { Folder } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { emu } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
+import { folderLabel, library } from '@/lib/library'
 
 defineProps<{ folders: string[]; addText: string; disabled: boolean }>()
 const { t } = useI18n()
@@ -35,7 +36,9 @@ async function add() {
       class="flex h-control items-center gap-8 rounded-control bg-surface-raised px-8"
     >
       <Folder :size="16" :stroke-width="1.75" aria-hidden="true" />
-      <span class="min-w-0 flex-1 truncate">{{ path }}</span>
+      <span class="min-w-0 flex-1 truncate">{{
+        folderLabel(library.folders, path, t('library.folderUnnamed'))
+      }}</span>
       <Button
         :variant="ButtonVariant.GhostRegular"
         :fade="ButtonFade.None"

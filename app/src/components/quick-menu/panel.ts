@@ -1,7 +1,8 @@
 // Where the quick menu's glass panel sits and how it is cut, per layout: the desktop's panel, the
-// G09 bar, the phone's sheet. Its shadows (`shadow-panel`, `shadow-sheet`) and the 640 / 1040
-// widths are pending tokens, awaiting Cowork (spec Decision 5).
+// G09 bar, the phone's sheet, the phone's side panel. Its shadows (`shadow-panel`, `shadow-sheet`)
+// and the 640 / 1040 widths are pending tokens, awaiting Cowork (spec Decision 5).
 import { cva } from 'class-variance-authority'
+import { NO_INSET, type InsetPx } from '@/components/game/inset'
 import { QuickMenuView } from './view'
 
 export const PanelLayout = {
@@ -18,6 +19,12 @@ export const PanelLayout = {
    * is 44 px + the 3:2 game image; G08 starts higher, G09 lower).
    */
   Sheet: 'sheet',
+  /**
+   * Phone on its side (#29, the card: «landscape: 440 px panel from the right»): the sheet's
+   * content in a column as tall as the window at its right edge, the game beside it; clear of
+   * the status bar and, turned the other way, of the camera.
+   */
+  Side: 'side',
 } as const
 export type PanelLayout = (typeof PanelLayout)[keyof typeof PanelLayout]
 
@@ -42,6 +49,8 @@ export const panelVariants = cva('glass-thick-flat flex flex-col border-line', {
         'absolute bottom-16 left-1/2 w-bar max-w-[calc(100vw-var(--spacing-window-margin))] -translate-x-1/2 gap-12 rounded-panel border shadow-panel',
       [PanelLayout.Sheet]:
         'absolute inset-x-0 bottom-0 gap-10 rounded-t-panel border-t px-16 pt-8 pb-16 text-lead shadow-sheet',
+      [PanelLayout.Side]:
+        'absolute inset-y-0 right-0 w-side-panel max-w-full gap-10 border-l pt-side-panel-top pr-side-panel-end pb-12 pl-16 text-lead shadow-sheet',
     },
     top: {
       [SheetTop.Page]: 'top-[calc(100vw*2/3+var(--spacing-touch))]',
@@ -53,6 +62,7 @@ export const panelVariants = cva('glass-thick-flat flex flex-col border-line', {
 
 export const MENU_PANEL = panelVariants({ layout: PanelLayout.Menu })
 export const BAR_PANEL = panelVariants({ layout: PanelLayout.Bar })
+export const SIDE_PANEL = panelVariants({ layout: PanelLayout.Side })
 
 /** The phone's sheet for a view: where it starts depends on the page. */
 export function sheetPanel(view: QuickMenuView): string {
@@ -63,4 +73,39 @@ export function sheetPanel(view: QuickMenuView): string {
         ? SheetTop.Screens
         : SheetTop.Page
   return panelVariants({ layout: PanelLayout.Sheet, top })
+}
+
+/** What the quick menu keeps clear of the game: the phone's sheet (the bottom), its side panel
+ * (the right), nothing (the desktop's panel over the dimmed game, the editors over the game at
+ * its real size), or `bar` (G09 on desktop: ScreensBar measures its own). */
+export const MenuInset = {
+  Sheet: 'sheet',
+  Side: 'side',
+  None: 'none',
+  Bar: 'bar',
+} as const
+export type MenuInset = (typeof MenuInset)[keyof typeof MenuInset]
+
+/**
+ * The edges of the window the phone's panel keeps clear of the game (#29), from where the panel
+ * is (`rect`, CSS px) in a window of `view` size: above the sheet the game sits against it (the
+ * board's game image over the sheet), beside the side panel it is centred in what is left.
+ */
+export function panelInset(
+  kind: Exclude<MenuInset, 'bar'>,
+  rect: { left: number; top: number },
+  view: { width: number; height: number },
+): InsetPx {
+  switch (kind) {
+    case MenuInset.Sheet:
+      return {
+        ...NO_INSET,
+        bottom: Math.max(0, Math.ceil(view.height - rect.top)),
+        align: 'bottom',
+      }
+    case MenuInset.Side:
+      return { ...NO_INSET, right: Math.max(0, Math.ceil(view.width - rect.left)) }
+    case MenuInset.None:
+      return NO_INSET
+  }
 }

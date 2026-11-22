@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // G09 on desktop: the menu becomes a bar at the bottom of the window and the game stays visible
-// above it, shrunk by the height the bar covers (`inset`, px; 0 when the bar goes). For a
+// above it, shrunk by the height the bar covers (`inset`, px; none when the bar goes). For a
 // two-screen game the layout card comes first (five columns) and «Personalizza gli schermi»
 // opens the C09 editor.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Rows2 } from '@lucide/vue'
 import { Button, ButtonVariant } from '@/components/ui/button'
+import { bottomInset, NO_INSET, type InsetPx } from '@/components/game/inset'
 import BackButton from './BackButton.vue'
 import ScreenCardView from './ScreenCard.vue'
 import ScreenPicks from './ScreenPicks.vue'
@@ -28,7 +29,7 @@ const emit = defineEmits<{
   back: []
   discard: []
   commitGame: []
-  inset: [number]
+  inset: [InsetPx]
   pick: [ScreenPickId]
   customise: [Event]
 }>()
@@ -41,7 +42,12 @@ const bar = ref<HTMLElement | null>(null)
 const GAP = 12
 function reportInset() {
   const el = bar.value
-  emit('inset', el ? Math.ceil(window.innerHeight - el.getBoundingClientRect().top + GAP) : 0)
+  emit(
+    'inset',
+    el
+      ? bottomInset(Math.ceil(window.innerHeight - el.getBoundingClientRect().top + GAP))
+      : NO_INSET,
+  )
 }
 let observer: ResizeObserver | null = null
 onMounted(() => {
@@ -52,7 +58,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   observer?.disconnect()
-  emit('inset', 0)
+  emit('inset', NO_INSET)
 })
 </script>
 

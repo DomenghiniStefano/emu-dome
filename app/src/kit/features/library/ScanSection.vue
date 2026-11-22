@@ -37,7 +37,10 @@ const EVERY = { gb: 211, gbc: 187, gba: 612, nds: 251, '3ds': 23 }
       <div class="flex w-tile-min flex-col gap-8">
         <ScanProgress :progress="{ found: 1284 }" />
         <ScanSummary :summary="{ added: 1284, perConsole: EVERY }" @close="noop" />
-        <UnreachableBanner :folder="{ path: 'E:/Giochi', count: 1 }" @replace="noop" />
+        <UnreachableBanner
+          :folder="{ path: 'E:/Giochi', name: 'E:/Giochi', count: 1 }"
+          @replace="noop"
+        />
       </div>
     </KitState>
   </KitSection>

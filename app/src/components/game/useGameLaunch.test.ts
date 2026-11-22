@@ -20,7 +20,7 @@ const bridge = vi.hoisted(() => ({
   abandonGame: vi.fn(),
   restoreLatest: vi.fn(),
   pick: vi.fn(),
-  openExtensions: vi.fn(),
+  title: vi.fn(),
   clearToLaunch: vi.fn(),
 }))
 // G05 (#31): the cloud's question before a library game opens.
@@ -32,14 +32,14 @@ vi.mock('@/emu', () => ({
     library: { open: bridge.libraryOpen },
     startupGame: bridge.startupGame,
     startupLastGame: bridge.startupLastGame,
-    openExtensions: bridge.openExtensions,
+    pickGameFile: bridge.pick,
+    gameFileTitle: bridge.title,
     setPaused: bridge.setPaused,
     loadState: bridge.loadState,
     abandonGame: bridge.abandonGame,
     saves: { restoreLatest: bridge.restoreLatest },
   },
 }))
-vi.mock('@tauri-apps/plugin-dialog', () => ({ open: bridge.pick }))
 
 const info = (title: string) => ({ title }) as GameInfo
 const minish = {
@@ -91,7 +91,10 @@ beforeEach(() => {
   })
   bridge.openGame.mockResolvedValue(info('MINISH'))
   bridge.libraryOpen.mockResolvedValue(info('MINISH'))
-  bridge.openExtensions.mockResolvedValue(['gb', 'gbc', 'gba', 'nds'])
+  // Rust's title of a file outside the library: its name without folder and extension.
+  bridge.title.mockImplementation(async (path: string) =>
+    (path.split('/').pop() ?? path).replace(/\.[^.]+$/, ''),
+  )
   bridge.clearToLaunch.mockResolvedValue(true)
   for (const f of [bridge.setPaused, bridge.loadState, bridge.abandonGame, bridge.restoreLatest])
     f.mockResolvedValue(undefined)
@@ -157,24 +160,35 @@ describe('useGameLaunch', () => {
     expect(bridge.openGame).toHaveBeenCalledWith('C:/roms/kirby.gba')
   })
 
-  it('offers the extensions Rust opens, DS games included (Trello #73)', async () => {
+  it('lets Rust pick (it checks the extensions), naming them in the dialog', async () => {
     const { launch } = setup()
     bridge.pick.mockResolvedValueOnce(null)
     await launch.openFile()
-    expect(bridge.pick).toHaveBeenCalledWith(
-      expect.objectContaining({
-        filters: [expect.objectContaining({ extensions: ['gb', 'gbc', 'gba', 'nds'] })],
-      }),
-    )
+    expect(bridge.pick).toHaveBeenCalledWith(i18n.global.t('library.dialogFilter'))
   })
 
-  it('tells the user when the list of extensions cannot be read, and opens nothing', async () => {
+  it('tells the user when the picker fails or refuses the file, and opens nothing', async () => {
     const { launch, toasts } = setup()
-    bridge.openExtensions.mockRejectedValueOnce(new Error('ipc'))
+    bridge.pick.mockRejectedValueOnce({ code: 'unsupportedFormat', params: { ext: 'zip' } })
     await launch.openFile()
-    expect(bridge.pick).not.toHaveBeenCalled()
     expect(bridge.openGame).not.toHaveBeenCalled()
     expect(toasts.failWith).toHaveBeenCalledOnce()
+  })
+
+  it('titles a document by the name Rust reads, never by its URI (Android)', async () => {
+    const { launch } = setup()
+    const uri = 'content://downloads/document/raw%3A%2Fstorage%2FDownload%2FKirby.gba'
+    bridge.title.mockResolvedValueOnce('Kirby')
+    bridge.openGame.mockRejectedValueOnce({ code: 'io' })
+    await launch.openFile(uri)
+    expect(bridge.title).toHaveBeenCalledWith(uri)
+    expect(flow.startError).toEqual({ title: 'Kirby', reason: errorText({ code: 'io' }) })
+
+    // A name the provider does not tell: a generic title, still not the URI.
+    bridge.title.mockResolvedValueOnce(null)
+    bridge.openGame.mockRejectedValueOnce({ code: 'io' })
+    await launch.openFile(uri)
+    expect(flow.startError?.title).toBe(i18n.global.t('flow.untitledGame'))
   })
 
   it('opens the game given at startup, and nothing without one', async () => {

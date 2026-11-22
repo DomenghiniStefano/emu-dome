@@ -329,7 +329,7 @@ fn check_touch(session: &Session) -> anyhow::Result<()> {
     let area = Area {
         width: 1920.0,
         height: 1080.0,
-        inset: 0.0,
+        inset: screens::Inset::NONE,
     };
     let layout = Layout::default();
     let (frame, split) = {
@@ -550,6 +550,7 @@ pub fn run(gpu: GpuSetup<'_>) -> anyhow::Result<()> {
         SessionOptions {
             core_path: args.core.clone().into(),
             game_path: args.rom.clone().into(),
+            game_file: None,
             system_dir,
             save_dir: saves_root,
             game: game.clone(),

@@ -52,9 +52,11 @@ const fn stored(kind: &Kind) -> Stored {
         | Kind::Colour { .. }
         | Kind::Text
         | Kind::DateTime { .. } => Stored::Text,
-        Kind::Multi { .. } | Kind::Folders | Kind::Bindings { .. } | Kind::ScreenLayout => {
-            Stored::List
-        }
+        Kind::Multi { .. }
+        | Kind::Folders
+        | Kind::Bindings { .. }
+        | Kind::ScreenLayout
+        | Kind::TouchLayout => Stored::List,
         Kind::Action { .. } | Kind::Apply { .. } => Stored::Nothing,
     }
 }
@@ -139,6 +141,9 @@ pub const FX_BRIGHTNESS: IntKey = IntKey::new("fx.fxbright");
 pub const FX_FILE: TextKey = TextKey::new("fx.fxfile");
 pub const SCREENS_CYCLE: ListKey = ListKey::new("screens.cycle");
 pub const SCREENS_CUSTOM: ListKey = ListKey::new("screens.custom");
+pub const TOUCH_LAYOUTS: ListKey = ListKey::new("touch.tedit");
+pub const TOUCH_PORTRAIT: TextKey = TextKey::new("touch.tport");
+pub const TOUCH_LANDSCAPE: TextKey = TextKey::new("touch.tland");
 pub const SCREENS_RATIO: IntKey = IntKey::new("screens.ratio");
 pub const SCREENS_GAP: IntKey = IntKey::new("screens.gap");
 pub const SCREENS_ROTATION: TextKey = TextKey::new("screens.rot");
@@ -262,6 +267,7 @@ impl<F: Fn(&str) -> Option<Value>> Reader<F> {
             | Kind::Apply { .. }
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
+            | Kind::TouchLayout
             | Kind::DateTime { .. } => v,
         }
     }

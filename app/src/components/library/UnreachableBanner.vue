@@ -18,7 +18,11 @@ const { t } = useI18n()
     <span class="flex min-w-0 grow basis-menu-min items-start gap-8">
       <FolderX class="flex-none text-warning" :size="18" :stroke-width="1.75" aria-hidden="true" />
       <span class="min-w-0 wrap-anywhere">{{
-        t('library.unreachable.text', { path: folder.path, count: folder.count }, folder.count)
+        t(
+          'library.unreachable.text',
+          { path: folder.name ?? t('library.folderUnnamed'), count: folder.count },
+          folder.count,
+        )
       }}</span>
     </span>
     <Button class="ml-auto" @click="emit('replace')">{{ t('library.unreachable.choose') }}</Button>

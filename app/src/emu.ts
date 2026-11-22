@@ -40,6 +40,7 @@ import type { ControlsBindings } from '@/generated/app/ControlsBindings'
 import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { CoverSource } from '@/generated/app/CoverSource'
 import type { Licence } from '@/generated/app/Licence'
+import type { StorageStatus } from '@/generated/app/StorageStatus'
 import type { GameScreenshot } from '@/generated/app/GameScreenshot'
 import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -57,7 +58,11 @@ import type { PointerArea } from '@/generated/app/PointerArea'
 import type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
 import type { CustomLayout } from '@/generated/CustomLayout'
 import type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
+import type { VideoInset } from '@/generated/VideoInset'
 import type { ScreenStatus } from '@/generated/ScreenStatus'
+import type { TouchLayout } from '@/generated/TouchLayout'
+import type { TouchOrientation } from '@/generated/TouchOrientation'
+import type { TouchSetup } from '@/generated/TouchSetup'
 import type { SaveExport } from '@/generated/app/SaveExport'
 import type { SaveMatch } from '@/generated/app/SaveMatch'
 import type { SavesMigration } from '@/generated/app/SavesMigration'
@@ -127,9 +132,17 @@ export type { PxRect } from '@/generated/PxRect'
 export type { ScreenId } from '@/generated/ScreenId'
 export type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
 export type { ScreenPlacement } from '@/generated/ScreenPlacement'
+export type { VideoAlign } from '@/generated/VideoAlign'
+export type { VideoInset } from '@/generated/VideoInset'
 export type { ScreenRect } from '@/generated/ScreenRect'
 export type { ScreenRotation } from '@/generated/ScreenRotation'
 export type { ScreenStatus } from '@/generated/ScreenStatus'
+export type { TouchBehaviour } from '@/generated/TouchBehaviour'
+export type { TouchControl } from '@/generated/TouchControl'
+export type { TouchControlId } from '@/generated/TouchControlId'
+export type { TouchLayout } from '@/generated/TouchLayout'
+export type { TouchOrientation } from '@/generated/TouchOrientation'
+export type { TouchSetup } from '@/generated/TouchSetup'
 export type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
 export type { BiosRow } from '@/generated/app/BiosRow'
 export type { CloudAccount } from '@/generated/app/CloudAccount'
@@ -153,6 +166,7 @@ export type { ControlsBindings } from '@/generated/app/ControlsBindings'
 export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { CoverSource } from '@/generated/app/CoverSource'
 export type { Licence } from '@/generated/app/Licence'
+export type { StorageStatus } from '@/generated/app/StorageStatus'
 export type { LicenceKind } from '@/generated/app/LicenceKind'
 export type { GameScreenshot } from '@/generated/app/GameScreenshot'
 export type { PickedImage } from '@/generated/app/PickedImage'
@@ -211,6 +225,13 @@ export const emu = {
   startupLastGame: () => invoke<LibraryGame | null>('startup_last_game'),
   /** The file extensions «Apri un file» offers (every console whose games open today). */
   openExtensions: () => invoke<string[]>('open_extensions'),
+  /** «Apri un file»: the game file picked (a path, or a `content://` document on Android, its
+   * extension checked by Rust); `filter` names the extensions in the desktop's dialog. null =
+   * cancelled. */
+  pickGameFile: (filter: string) => invoke<string | null>('pick_game_file', { filter }),
+  /** The title of a game file outside the library: its file name without the extension (a
+   * document's display name, never its URI); null when a document's name cannot be read. */
+  gameFileTitle: (path: string) => invoke<string | null>('game_file_title', { path }),
   videoMode: () => invoke<[VideoMode, boolean]>('video_mode'),
   setVideoMode: (mode: VideoMode) => invoke<void>('set_video_mode', { mode }),
   openGame: (path: string) => invoke<GameInfo>('open_game', { path }),
@@ -234,8 +255,9 @@ export const emu = {
   /** F11 and «A schermo intero»: fullscreen on / off; resolves whether it is now on. */
   toggleFullscreen: () => invoke<boolean>('toggle_fullscreen'),
   isFullscreen: () => invoke<boolean>('is_fullscreen'),
-  /** G09: the bottom `fraction` of the window is the menu's bar; the native game shrinks above it. */
-  setVideoInset: (fraction: number) => invoke<void>('set_video_inset', { fraction }),
+  /** The edges kept clear of the native game (shares of the window: the quick menu, the touch
+   * controls); it is fitted in the rest. */
+  setVideoInset: (inset: VideoInset) => invoke<void>('set_video_inset', { inset }),
   /** «Muto» in the quick menu: silence for the open game only. */
   setMuted: (muted: boolean) => invoke<void>('set_muted', { muted }),
   saveState: (slot: number) => invoke<void>('save_state', { slot }),
@@ -251,6 +273,20 @@ export const emu = {
   undoSave: () => invoke<void>('undo_save'),
   /** A game button from the touch controls. */
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
+  /** The touch controls (Trello #29): the layouts of one console, C06's «Salva», the Circle Pad
+   * and the vibration of a press. */
+  touch: {
+    /** The layouts saved on this device for `console`, its controls and the size / opacity
+     * limits. */
+    layouts: (console: ConsoleId) => invoke<TouchSetup>('touch_layouts', { console }),
+    /** Saves `layout` for `console` held `orientation`, and makes it the one shown there. */
+    setLayout: (console: ConsoleId, orientation: TouchOrientation, layout: TouchLayout) =>
+      invoke<void>('touch_set_layout', { console, orientation, layout }),
+    /** The Circle Pad at (x, y), each -1..1, y downwards; (0, 0) let go. */
+    stick: (x: number, y: number) => invoke<void>('touch_stick', { x, y }),
+    /** A press's vibration, `strength` 1–100 (`touch.thapt`); nothing on the desktop. */
+    haptic: (strength: number) => invoke<void>('haptic', { strength }),
+  },
   /** A key (`KeyboardEvent.code`) for Rust to route in game: a game button or a shortcut. */
   key: (code: string, pressed: boolean, repeat: boolean) =>
     invoke<void>('key', { code, pressed, repeat }),
@@ -452,6 +488,12 @@ export const emu = {
     onChanged: (cb: (s: UpdateStatus) => void): Promise<UnlistenFn> =>
       listen<UpdateStatus>('updates://changed', e => cb(e.payload)),
   },
+  /** E13 (#29): the room left where the saves are written; null when the system does not say. */
+  storage: {
+    status: () => invoke<StorageStatus | null>('storage_status'),
+  },
+  /** Android's back at the shell's root (#29): the app to the background; false on the desktop. */
+  leaveToBackground: () => invoke<boolean>('leave_to_background'),
   /** The «Informazioni» page's actions (`about.rs`). */
   about: {
     /** `about.lic`: EmuDome, the shipped cores and the other components, with their licences. */
