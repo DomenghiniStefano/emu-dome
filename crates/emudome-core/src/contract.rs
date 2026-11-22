@@ -484,6 +484,7 @@ mod tests {
         g.ts::<crate::saves::ImportFormat>().unwrap();
         g.ts::<crate::saves::FolderImport>().unwrap();
         g.ts::<crate::library::CoverKind>().unwrap();
+        g.ts::<crate::cover::CoverView>().unwrap();
         g.ts::<crate::library::Region>().unwrap();
         g.ts::<crate::Speed>().unwrap();
         g.ts::<crate::Event>().unwrap();
