@@ -13,7 +13,7 @@ import PageRow from './PageRow.vue'
 import QuickSlotTile from './QuickSlotTile.vue'
 import { loadLabel } from './slots'
 import { useSay } from '@/i18n/message'
-import { FocusMark } from './view'
+import { FocusMark, QuickMenuView, openerMark } from './view'
 import { LabelledBlock } from '@/components/ui/labelled-block'
 
 const props = defineProps<{
@@ -42,7 +42,7 @@ const { t } = useI18n()
 const say = useSay()
 /** Every slot (G08) in rows of four, the main screen's five in one row; three on the phone. */
 const columns = computed(() => (props.all ? 'grid-cols-4' : 'grid-cols-5'))
-const moreMark = { [FocusMark.MoreSlots]: '' }
+const moreMark = { [FocusMark.MoreSlots]: '', ...openerMark(QuickMenuView.Slots) }
 </script>
 
 <template>

@@ -88,4 +88,14 @@ export const FocusMark = {
   Customise: 'data-qm-customise',
   /** G10's «Personalizza i controlli touch»: the focus comes back to it from the C06 editor. */
   TouchEdit: 'data-qm-touch-edit',
+  /**
+   * A main-screen control that can open a page, by an identity that survives the main screen
+   * being unmounted while the page shows: the focus comes back to the control with that value.
+   */
+  Opener: 'data-qm-opener',
 } as const
+
+/** The attribute naming a main-screen control the focus can come back to (`id` unique on it). */
+export function openerMark(id: string): Record<string, string> {
+  return { [FocusMark.Opener]: id }
+}
