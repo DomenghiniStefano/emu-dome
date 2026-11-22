@@ -9,8 +9,13 @@ export const CoverSize = {
   Fill: 'fill',
   // One of the cover picker's choices: Fill with a control's corners.
   Choice: 'choice',
+  // As wide as its cell in the phone's compact grid (#29): no title on it (the tile writes it
+  // under the cover), the ROM icon larger and centred.
+  Compact: 'compact',
   // A list row's thumbnail (Saves, a game in the list): 28px, no room around it.
   Thumb: 'thumb',
+  // A row of the library's list (#29): 44px, no title, the ROM icon larger and centred.
+  ListRow: 'listRow',
   // A thumbnail beside a title (Saves, the game's panel; the game details' looks): 48px.
   Row: 'row',
   // A small cover in a row of a few (first run S06 «Pronto»): 96px, 80 on the phone, the title in
@@ -33,7 +38,9 @@ export const coverVariants = cva(
       size: {
         [CoverSize.Fill]: 'rounded-card p-10 text-heading leading-cover',
         [CoverSize.Choice]: 'rounded-control p-10 text-heading leading-cover',
+        [CoverSize.Compact]: 'rounded-card p-0',
         [CoverSize.Thumb]: 'w-cover-thumb rounded-badge p-0',
+        [CoverSize.ListRow]: 'w-cover-list flex-none rounded-badge p-0',
         [CoverSize.Row]: 'w-cover-row rounded-control p-0',
         [CoverSize.Small]:
           'w-cover-small rounded-card p-8 text-fine font-semibold touch:w-cover-small-touch',
@@ -76,7 +83,9 @@ export const coverVersionsVariants = cva('absolute rounded-badge bg-cover-badge 
     size: {
       [CoverSize.Fill]: 'top-8 right-8 px-6 text-console-badge',
       [CoverSize.Choice]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.Compact]: 'top-6 right-6 px-4 text-console-badge',
       [CoverSize.Thumb]: 'top-8 right-8 px-6 text-console-badge',
+      [CoverSize.ListRow]: 'top-8 right-8 px-6 text-console-badge',
       [CoverSize.Row]: 'top-8 right-8 px-6 text-console-badge',
       [CoverSize.Small]: 'top-8 right-8 px-6 text-console-badge',
       [CoverSize.Hero]: 'top-8 right-8 px-6 text-console-badge',
@@ -95,7 +104,9 @@ export const coverBadgeVariants = cva('absolute rounded-badge bg-cover-badge py-
     size: {
       [CoverSize.Fill]: 'top-8 left-8 px-6 text-console-badge',
       [CoverSize.Choice]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.Compact]: 'top-6 left-6 px-4 text-console-badge',
       [CoverSize.Thumb]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.ListRow]: 'top-8 left-8 px-6 text-console-badge',
       [CoverSize.Row]: 'top-8 left-8 px-6 text-console-badge',
       [CoverSize.Small]: 'top-8 left-8 px-6 text-console-badge',
       [CoverSize.Hero]: 'top-8 left-8 px-6 text-console-badge',
@@ -114,12 +125,37 @@ export const coverTitleVariants = cva('relative wrap-anywhere', {
     size: {
       [CoverSize.Fill]: 'line-clamp-4',
       [CoverSize.Choice]: 'line-clamp-4',
+      [CoverSize.Compact]: 'line-clamp-3',
       [CoverSize.Thumb]: 'line-clamp-2',
+      [CoverSize.ListRow]: 'line-clamp-2',
       [CoverSize.Row]: 'line-clamp-2',
       [CoverSize.Small]: 'line-clamp-3',
       [CoverSize.Hero]: 'line-clamp-4',
       [CoverSize.Shelf]: '',
       [CoverSize.TvHero]: '',
+    },
+  },
+  defaultVariants: { size: CoverSize.Fill },
+})
+
+// The ROM icon (small pixel art, 32×32 on NDS), scaled up crisp: in the upper middle, above the
+// title; on the sizes that never write a title (the phone's compact grid and list, #29) larger
+// and centred, so the cover is not a big empty colour around a small icon.
+const ICON_OVER_TITLE = 'top-[38%] w-2/5'
+const ICON_ALONE = 'top-1/2 w-3/5'
+export const coverIconVariants = cva('pixelated absolute left-1/2 -translate-1/2 rounded-control', {
+  variants: {
+    size: {
+      [CoverSize.Fill]: ICON_OVER_TITLE,
+      [CoverSize.Choice]: ICON_OVER_TITLE,
+      [CoverSize.Compact]: ICON_ALONE,
+      [CoverSize.Thumb]: ICON_OVER_TITLE,
+      [CoverSize.ListRow]: ICON_ALONE,
+      [CoverSize.Row]: ICON_OVER_TITLE,
+      [CoverSize.Small]: ICON_OVER_TITLE,
+      [CoverSize.Hero]: ICON_OVER_TITLE,
+      [CoverSize.Shelf]: ICON_OVER_TITLE,
+      [CoverSize.TvHero]: ICON_OVER_TITLE,
     },
   },
   defaultVariants: { size: CoverSize.Fill },

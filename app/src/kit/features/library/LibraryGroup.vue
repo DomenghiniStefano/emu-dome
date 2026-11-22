@@ -10,6 +10,7 @@ import GameCoverSection from './GameCoverSection.vue'
 import GameFileCardSection from './GameFileCardSection.vue'
 import LibraryEmptySection from './LibraryEmptySection.vue'
 import OverrideRowSection from './OverrideRowSection.vue'
+import PhoneLibrarySection from './PhoneLibrarySection.vue'
 import ScanSection from './ScanSection.vue'
 import UnreachableBannerSection from './UnreachableBannerSection.vue'
 </script>
@@ -18,6 +19,7 @@ import UnreachableBannerSection from './UnreachableBannerSection.vue'
   <div class="flex flex-col gap-16">
     <GameCoverSection />
     <CoverTileSection />
+    <PhoneLibrarySection />
     <ContinueCardSection />
     <ConsoleChipsSection />
     <ScanSection />

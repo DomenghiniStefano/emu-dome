@@ -18,6 +18,7 @@ import type { LibraryGame } from '@/emu'
 import {
   CoverSize,
   coverBadgeVariants,
+  coverIconVariants,
   coverTitleVariants,
   coverVariants,
   coverVersionsVariants,
@@ -78,10 +79,10 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
       decoding="async"
       @error="broken = true"
     />
-    <!-- The ROM icon is small pixel art (32×32 on NDS): scaled up crisp, in the upper middle. -->
+    <!-- The ROM icon is small pixel art (32×32 on NDS): scaled up crisp (coverIconVariants). -->
     <img
       v-else-if="image"
-      class="pixelated absolute top-[38%] left-1/2 w-2/5 -translate-1/2 rounded-control"
+      :class="coverIconVariants({ size })"
       :src="image"
       alt=""
       loading="lazy"

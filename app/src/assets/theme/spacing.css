@@ -46,13 +46,13 @@
   --spacing-titlebar: 32px;
   /* The least a cover of the library grid shrinks to (tokens.json `capsule-medium`). */
   --spacing-capsule-medium: 156px;
-  /* Pending (owner): the same on the phone (touch density, #47). Upright, 128 gives two columns
-     in a window 300 to 440 px wide, counted after the a11y text size's zoom (a 412 px S23 at
-     up to 130%, a 360 px phone at up to 120%: with 156 a 412 px phone at 120% got one cover as
-     wide as the screen); on its side, 188 gives three beside the side column in a window 740 to
-     920 px wide. A wider touch screen (a tablet) just gets more columns. */
-  --spacing-capsule-touch: 128px;
-  --spacing-capsule-touch-side: 140px;
+  /* Pending (owner): the same on the phone, the compact grid (touch density, #29, mockup of
+     2026-11-22). Upright, 96 with the grid's 8 px gaps gives three columns in a content 304 to
+     407 px wide (a 360 px phone and a 412 px S23 at 100%); on its side, 112 gives five or six
+     beside the side column (892 × 412: six), a row shorter than the window. A wider touch screen
+     (a tablet) just gets more columns. */
+  --spacing-capsule-touch: 96px;
+  --spacing-capsule-touch-side: 112px;
   /* The phone's touch minimum (README: 44px): its buttons and fields (board «Tel-Dettagli»). */
   --spacing-touch: 44px;
   /* A tab of a section (Controls: 40) and of the game details (44). */
@@ -128,9 +128,11 @@
   --spacing-28: 28px;
 
   /* Covers (GameCover sizes): a list's thumbnail, a row's, the small row of the first run (80 on
-     the phone), the game details' (96 on the phone), the library's «Continua a giocare» picture. */
+     the phone), the game details' (96 on the phone), the library's «Continua a giocare» picture.
+     Pending (owner, mockup of 2026-11-22): a row of the library's list (#29), 44 × 66. */
   --spacing-cover-thumb: 28px;
   --spacing-cover-row: 48px;
+  --spacing-cover-list: 44px;
   --spacing-cover-small: 96px;
   --spacing-cover-small-touch: 80px;
   --spacing-cover-hero: 168px;

@@ -2,7 +2,8 @@
 //! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17), plus the Game Boy,
 //! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89), plus the game clock's
 //! offset and date rows (Trello #102): 164 (`library.versions` replaced `library.region`, #102),
-//! plus «Se il controller si scollega» (`touch.tlost`, E14, Trello #29): 165.
+//! plus «Se il controller si scollega» (`touch.tlost`, E14, Trello #29), plus the library's
+//! Lista / Griglia (`library.view`, #29): 166.
 //!
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
@@ -700,6 +701,15 @@ pub static ENTRIES: &[Entry] = &[
         "last_played",
         G,
     ),
+    // The library as rows or as covers (#29, owner 2026-11-22): the list on a phone, the grid
+    // elsewhere; each device keeps its own choice (the toolbar's Lista / Griglia on the phone).
+    seg("library.view", &["list", "grid"], "grid", G)
+        .device()
+        .defaults(&[DefaultRule {
+            device: Some(Device::Phone),
+            consoles: &[],
+            value: DefaultValue::Text("list"),
+        }]),
     sw("library.group", false, G).not_wired(),
     // One tile per game for its regional versions (Trello #102, `library::group`); in place of
     // `library.region` (owner, 2026-11-22: no region rule, the tile shows the version launched
@@ -1116,6 +1126,7 @@ pub static SECTIONS: &[Section] = &[
         id: "view",
         keys: &[
             "library.sort",
+            "library.view",
             "library.group",
             "library.versions",
             "library.hidden",
@@ -1289,8 +1300,8 @@ mod tests {
     fn has_the_designs_entries_with_unique_keys_on_known_pages() {
         // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102);
         // `library.versions` took the place of `library.region` (#102), plus E14's
-        // `touch.tlost` (#29).
-        assert_eq!(ENTRIES.len(), 165);
+        // `touch.tlost` (#29), plus `library.view` (#29).
+        assert_eq!(ENTRIES.len(), 166);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),

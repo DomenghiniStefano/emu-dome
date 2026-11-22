@@ -236,7 +236,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 164 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 166 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
                          compiled, and `Reader` (a value or the catalogue's default),
@@ -612,6 +612,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `useNavGrid`), and leave it at its edges by the spatial rule; a focused tile scrolled out of the DOM parks the
   focus on the grid (no ring) and gets it back when rendered again. Measured headless with 3005 / 10 005 mock
   games (`scripts/headless/screens/library-scale.mjs`): a d-pad step 64 / 146 ms before, under 1 ms after.
+  The phone's list (`GameList.vue`, one column of `GameRow`s) is the same windowing, its steps `listStep` (by
+  row, a row ↔ its button), and the compact grid's `compactStep` (`CompactTile`, «Riprendi» in a corner);
+  `library-scale.mjs --phone [--grid]` measures and checks them at 412 × 892 (under 1 ms a step, 3005 / 10 005).
 - Navigation in the interface: `app/src/nav.ts`. A screen calls `useNavScope(root, { back, autofocus })`
   and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
   move the focus spatially (nearest element in that direction, looked for in the focused element's scroll
@@ -628,7 +631,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 164 entries on 18 pages: key
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 166 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
   (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
   the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
@@ -1085,7 +1088,13 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
   (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu's 440 px side
-  panel on its side, E13's warning (`storage_status`), Android's back at the shell's root. Not yet: the «Gestisci lo
+  panel on its side, E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone
+  (owner's mockup of 2026-11-22): no «Continua a giocare» and no heading, its own toolbar (`PhoneLibraryToolbar`:
+  short console names on a sideways-scrolling row, the order's name, Lista / Griglia, a square «+»; one row on its
+  side), the games as a list (the default) or a compact grid as `library.view` says (per device: the list on a
+  phone, the grid elsewhere; a desktop that picks the list in Settings gets it under «Continua a giocare», «Gioca»
+  on every row), the game played last carrying «Riprendi» on its row or cover (`resumeTarget`). Not yet: the «…»
+  menu (favourite, hide) on a row or a compact tile (in the game's details only). Not yet: the «Gestisci lo
   spazio» screen (not designed: the button is faded and a press says it arrives later); the safe areas, the camera
   side and `moveTaskToBack` are checked headless and by review only, not on a device yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).

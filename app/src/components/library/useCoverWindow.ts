@@ -11,6 +11,7 @@
 //   as it is rendered again; a controller step from the parked grid starts from that tile.
 // - `anchor`: a game whose row is rendered first (back from its details, useLibraryFocus focuses
 //   its cover once it is in the DOM).
+// - The phone's list (#29, GameList.vue) is the same windowing on a one-column grid of rows.
 import {
   computed,
   nextTick,
@@ -63,10 +64,18 @@ function scrollParent(el: HTMLElement): HTMLElement | null {
   return null
 }
 
+/** A row's height for the first track's width, before any row is measured. */
+export type RowEstimate = (track: number) => number
+
+/** A cover tile's: the 2:3 cover and the text under it. */
+const coverRowEstimate: RowEstimate = track => track * COVER_ASPECT + TEXT_ESTIMATE
+
 export function useCoverWindow(
   grid: Ref<HTMLElement | null>,
   games: () => LibraryGame[],
   anchor: GameId | null,
+  /** The phone's list (#29) is one column of rows: its own estimate. */
+  rowEstimate: RowEstimate = coverRowEstimate,
 ) {
   /** False until the grid's columns are read: nothing is rendered before. */
   const ready = ref(false)
@@ -94,7 +103,7 @@ export function useCoverWindow(
     return {
       rows: rows.value,
       heights,
-      estimate: averageHeight(heights, track.value * COVER_ASPECT + TEXT_ESTIMATE),
+      estimate: averageHeight(heights, rowEstimate(track.value)),
       gap: gap.value,
     }
   })

@@ -3,7 +3,7 @@ import { cva } from 'class-variance-authority'
 
 export const ChipVariant = {
   // A filter of a list (LibraryView `.chip`): a control high, a chosen one on accent-soft with a soft
-  // accent edge.
+  // accent edge. On the phone the touch minimum high (#29).
   Filter: 'filter',
   // An option of a multiple choice (SettingRow `.chip`): control-sm, a chosen one edged in accent-text.
   Option: 'option',
@@ -20,7 +20,7 @@ export const chipVariants = cva(
     variants: {
       variant: {
         [ChipVariant.Filter]:
-          'h-control px-8 enabled:hover:not-data-selected:bg-surface-hover data-selected:border-accent-edge',
+          'h-control px-8 enabled:hover:not-data-selected:bg-surface-hover data-selected:border-accent-edge touch:h-touch touch:px-10',
         [ChipVariant.Option]: 'h-control-sm px-8 data-selected:border-accent-text',
       },
     },

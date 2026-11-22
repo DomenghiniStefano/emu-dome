@@ -14,13 +14,29 @@ const click = (re) =>
   `(() => { const b = [...document.querySelectorAll('button')].find(b => /${re}/.test(b.textContent.trim())); b && b.click(); return !!b })()`;
 
 const SHELL = {
+  // The library (#29): the list by default, the compact grid when `library.view` says so (three
+  // columns upright, more on the side), with more games than fit and quick saves (`gameSaves`:
+  // the game played last carries «Riprendi»); the regional versions' tags.
   library: { mock: {}, steps: [] },
-  // The cover grid scrolled to the top of the screen (#47): two columns upright, three on the side.
+  "library-list": { mock: { manyGames: 12, gameSaves: true }, steps: [] },
   "library-grid": {
+    mock: { manyGames: 12, gameSaves: true, libraryView: "grid" },
+    steps: [],
+  },
+  "library-versions": { mock: { versions: true }, steps: [] },
+  "library-versions-grid": {
+    mock: { versions: true, libraryView: "grid" },
+    steps: [],
+  },
+  // The switch: from the list to the grid with the toolbar's «Griglia».
+  "library-switch": {
     mock: { manyGames: 12 },
-    steps: [
-      `(() => { const t = document.querySelector('[data-game]'); t && t.scrollIntoView({ block: 'start' }); return !!t })()`,
-    ],
+    steps: [click("^Griglia$")],
+  },
+  // The order's panel (L03) from the phone's toolbar.
+  "library-filters": {
+    mock: {},
+    steps: [`document.querySelector('main [aria-haspopup=dialog]').click()`],
   },
   saves: { mock: {}, steps: [section(1)] },
   controls: { mock: {}, steps: [section(2)] },

@@ -10,6 +10,10 @@ export const SegmentedVariant = {
   // («lo stacked è gigantesco»): the two sit on one line, a control high (the touch minimum on
   // the phone), no longer one over the other; the name keeps the variant's name.
   Stacked: 'stacked',
+  // A switch on a toolbar, beside its buttons (the phone library's Lista / Griglia, #29): one
+  // row as tall as a control (the touch minimum on the phone, the segments filling it), never
+  // wrapping.
+  Bar: 'bar',
 } as const
 export type SegmentedVariant = (typeof SegmentedVariant)[keyof typeof SegmentedVariant]
 
@@ -22,6 +26,8 @@ export const segmentedVariants = cva('', {
         'flex flex-wrap gap-2 rounded-control border border-line bg-surface-raised p-px',
       [SegmentedVariant.Stacked]:
         'grid auto-cols-fr grid-flow-col gap-2 rounded-control border border-line bg-surface-raised p-px',
+      [SegmentedVariant.Bar]:
+        'flex h-control flex-none gap-2 rounded-control border border-line bg-surface-raised p-px touch:h-touch',
     },
   },
   defaultVariants: { variant: SegmentedVariant.Default },
@@ -40,6 +46,8 @@ export const segmentedItemVariants = cva('', {
         'h-control-sm max-w-full cursor-pointer truncate rounded-badge border-0 bg-transparent px-8 font-sans font-semibold text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
       [SegmentedVariant.Stacked]:
         'grid h-control min-w-0 cursor-pointer grid-flow-col place-content-center items-baseline gap-x-4 rounded-badge border-0 bg-transparent px-8 disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:text-accent-text touch:h-touch touch:items-center',
+      [SegmentedVariant.Bar]:
+        'h-full cursor-pointer rounded-badge border-0 bg-transparent px-8 font-sans text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text touch:px-10',
     },
   },
   defaultVariants: { variant: SegmentedVariant.Default },

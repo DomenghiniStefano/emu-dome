@@ -4,12 +4,37 @@ import {
   AUTO_SLOT,
   type ConsoleId,
   type CoverKind,
+  type GameId,
   type LibraryFolder,
   type LibraryGame,
 } from '@/emu'
 import type { ResumePoint } from '@/lib/gameDetails'
 import type { Message } from '@/i18n/message'
 import { CONSOLES } from './librarySort'
+
+/**
+ * Option ids of the `library.view` setting (crates/emudome-core/src/settings/catalog.rs, held to
+ * it by libraryView.test.ts): the games as rows, or as covers (#29).
+ */
+export const GAMES_VIEWS = ['list', 'grid'] as const
+export type GamesView = (typeof GAMES_VIEWS)[number]
+
+export const isGamesView = (v: unknown): v is GamesView => GAMES_VIEWS.some(s => s === v)
+
+/**
+ * The phone's «Riprendi» (#29: no «Continua a giocare» there): the game played last carries it
+ * on its row or tile, wherever the order puts it, once its newest save is known and there is one.
+ * Null otherwise: every game shows «Gioca».
+ */
+export function resumeTarget(
+  recent: LibraryGame[],
+  points: Record<string, ResumePoint>,
+): GameId | null {
+  const last = recent[0]
+  if (!last?.available) return null
+  const point = points[last.id]
+  return point && !point.none ? last.id : null
+}
 
 /** A console chip: «Tutti» or one console present, with how many games it holds. */
 export interface ConsoleChip {

@@ -7,6 +7,7 @@ import KitState from '@/kit/KitState.vue'
 import { IssueStatus } from '@/kit/review'
 
 const speed = ref('normal')
+const view = ref('list')
 const weightNow = ref('normal')
 const weightProposed = ref('normal')
 const partNow = ref('normal')
@@ -53,6 +54,21 @@ const partProposed = ref('normal')
               <span class="font-semibold">{{ id }}</span>
               <span class="text-caption">1x</span>
             </SegmentedItem>
+          </Segmented>
+        </div>
+      </div>
+    </KitState>
+    <KitState label="Bar (a switch on a toolbar, beside its buttons): desktop, and on the phone">
+      <div class="flex flex-col gap-6">
+        <div
+          v-for="density in ['desktop', 'touch']"
+          :key="density"
+          :data-density="density"
+          class="flex"
+        >
+          <Segmented v-model="view" :variant="SegmentedVariant.Bar" aria-label="View">
+            <SegmentedItem value="list">List</SegmentedItem>
+            <SegmentedItem value="grid">Grid</SegmentedItem>
           </Segmented>
         </div>
       </div>
