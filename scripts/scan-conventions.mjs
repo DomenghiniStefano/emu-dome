@@ -78,6 +78,13 @@
 //                     are in HAND_ROLES_PENDING with the reason, until they move (Trello #82).
 //                     Cannot see a role set from a script (`setAttribute`), one in a render
 //                     function, or a `:role` built from a variable.
+//   button-name       a <Button> outside src/components/ui named twice, with an `aria-label` and a
+//                     `title` (static or bound): an icon alone takes Button's `label` (Trello #104),
+//                     which is its accessible name and the app's tooltip (shown on the controller's
+//                     and the keyboard's focus too, which `title` never is). A `title` beside
+//                     `label` stays allowed (the tooltip then shows it: a short word for a long
+//                     accessible name). Cannot see a Button rendered by a render function or
+//                     `<component :is>`, nor attributes passed in a `v-bind="{…}"` object.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
@@ -163,7 +170,30 @@ export const RULES = [
   "important",
   "look-only-prop",
   "hand-role",
+  "button-name",
 ];
+
+/** The open tags `<Name …>` of a template, quotes respected (a `>` inside `@click="() => x"`
+ * does not end the tag): [{ index, text }]. */
+function openTags(tpl, name) {
+  const tags = [];
+  const re = new RegExp(`<${name}(?![\\w-])`, "g");
+  for (const m of tpl.matchAll(re)) {
+    let quote = null;
+    let i = m.index + m[0].length;
+    for (; i < tpl.length; i++) {
+      const c = tpl[i];
+      if (quote) {
+        if (c === quote) quote = null;
+      } else if (c === '"' || c === "'") quote = c;
+      else if (c === ">") break;
+    }
+    tags.push({ index: m.index, text: tpl.slice(m.index, i + 1) });
+  }
+  return tags;
+}
+
+const ATTR = (name) => new RegExp(`(?<![\\w-])(?::|v-bind:)?${name}=`);
 
 /** The root <template> block of a .vue source, blanked outside it so offsets keep their lines. */
 function template(source) {
@@ -314,6 +344,12 @@ export function scanSource(
     );
     if (!insideUi) each("raw-control", /<(?:button|input)\b/g, tpl);
     if (!insideUi && !handRolesAllowed) each("hand-role", WIDGET_ROLE, tpl);
+    if (!insideUi) {
+      for (const tag of openTags(tpl, "Button")) {
+        if (ATTR("aria-label").test(tag.text) && ATTR("title").test(tag.text))
+          add("button-name", tag.index, "<Button> with aria-label and title: use `label`");
+      }
+    }
     each("style-block", /^<style\b[^>]*>/gm);
     for (const p of lookOnlyProps(source, tpl)) {
       add("look-only-prop", p.index, `prop \`${p.name}\` used only in :class`);

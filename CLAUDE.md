@@ -824,7 +824,8 @@ the workspace `Cargo.toml` version equal in `app/package.json` and `tauri.conf.j
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
 `components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`, no hand-written widget role (`dialog`,
-`radio`, `menu`…) outside `components/ui` except the shrinking list `HAND_ROLES_PENDING`; the rows and what each cannot see are in
+`radio`, `menu`…) outside `components/ui` except the shrinking list `HAND_ROLES_PENDING`, no `<Button>` named with both
+`aria-label` and `title` (an icon alone takes `label`, #104); the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
 `unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
@@ -862,6 +863,10 @@ key of the wrong kind.
   keys too (`nav.test.ts`, `components/ui/nav.test.ts`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
+- Which form a button takes (#104, docs/frontend-conventions.md «Icons on buttons»): main actions and the actions of
+  dialogs, cards, banners and step feet icon + words; repeated row / tile actions and toolbars the icon alone with
+  `label`; links, option pickers, tabs' words, page lists, click areas and pad keys words; a dialog's quiet way out
+  words. Its icon goes through Button's `icon`, not the slot.
 - What the conventions scanner cannot see: a length in % / vh / vw, an icon size passed as a prop (`:size="14"`), a
   `style` binding, a look-only `phone` / `touch` prop read in `<script>` or passed down to a child.
 - Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
