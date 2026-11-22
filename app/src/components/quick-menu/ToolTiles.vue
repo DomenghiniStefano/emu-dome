@@ -4,6 +4,7 @@
 import { useI18n } from 'vue-i18n'
 import { Card, CardVariant } from '@/components/ui/card'
 import type { Tool } from './tools'
+import { openerMark } from './view'
 import { LabelledBlock } from '@/components/ui/labelled-block'
 
 defineProps<{
@@ -24,6 +25,7 @@ const { t } = useI18n()
       <Card
         v-for="x in tools"
         :key="x.id"
+        v-bind="openerMark(x.id)"
         as="button"
         :variant="CardVariant.Tool"
         :selected="x.pressed"

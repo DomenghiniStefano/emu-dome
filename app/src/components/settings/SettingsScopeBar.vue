@@ -29,7 +29,8 @@ const onlyChanged = defineModel<boolean>('onlyChanged', { required: true })
 const emit = defineEmits<{ level: [EditLevel]; pickConsole: [string] }>()
 const { t } = useI18n()
 
-// One column per level, as Tailwind's own classes (repeat(n, minmax(0, 1fr))).
+// One column per level, as Tailwind's own classes (repeat(n, minmax(0, 1fr))); one column under
+// the `scope-stack` window width (a phone upright), so the names fit on their line.
 const COLUMNS: Record<number, string> = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' }
 const columns = computed(() => COLUMNS[props.levels.length] ?? 'grid-cols-1')
 
@@ -87,7 +88,7 @@ const line = computed(() => {
     </div>
     <RadioGroup
       :model-value="effective"
-      class="grid gap-8"
+      class="grid gap-8 max-scope-stack:grid-cols-1"
       :class="columns"
       :aria-label="t('settingsUi.scopeTitle')"
       @update:model-value="choose"
@@ -101,7 +102,13 @@ const line = computed(() => {
           :selected="effective === l"
           class="min-h-level flex-row items-start gap-10 px-12"
         >
-          <component :is="ICONS[l]" :size="20" :stroke-width="1.75" aria-hidden="true" />
+          <component
+            :is="ICONS[l]"
+            class="shrink-0"
+            :size="20"
+            :stroke-width="1.75"
+            aria-hidden="true"
+          />
           <span class="flex flex-col gap-2">
             <SettingSelect
               v-if="l === 'console' && contextConsole"

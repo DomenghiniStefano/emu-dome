@@ -16,8 +16,30 @@ export interface NavigationHooks {
 
 export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: NavigationHooks) {
   const view = ref<QuickMenuView>(QuickMenuView.Home)
-  /** The control a page was opened from, focused again on the way back. */
-  let opener: HTMLElement | null = null
+  /**
+   * The control a page was opened from, focused again on the way back: by its `FocusMark.Opener`
+   * identity, since the main screen is unmounted while a page shows and the element itself is
+   * gone by then (the element is kept only for a control without the mark that is still there).
+   */
+  let opener: { id: string | null; el: HTMLElement } | null = null
+
+  function openerOf(e: Event | null) {
+    const el = e?.currentTarget instanceof HTMLElement ? e.currentTarget : null
+    if (!el) return null
+    const marked = el.closest<HTMLElement>(`[${FocusMark.Opener}]`)
+    return { id: marked?.getAttribute(FocusMark.Opener) ?? null, el }
+  }
+
+  /** The opener back on the remounted main screen, else the chosen slot. */
+  function focusOpener() {
+    const target = opener?.id
+      ? find(`[${FocusMark.Opener}="${CSS.escape(opener.id)}"]`)
+      : opener?.el.isConnected
+        ? opener.el
+        : null
+    if (target) target.focus()
+    else void focusChosenSlot()
+  }
 
   const find = (selector: string) => root.value?.querySelector<HTMLElement>(selector) ?? null
 
@@ -32,8 +54,7 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
 
   /** Opens a page; `e` is the click that opened it (null: the search). */
   function open(next: QuickMenuView, e: Event | null) {
-    if (view.value === QuickMenuView.Home)
-      opener = e?.currentTarget instanceof HTMLElement ? e.currentTarget : null
+    if (view.value === QuickMenuView.Home) opener = openerOf(e)
     view.value = next
     void nextTick(focusPage)
   }
@@ -59,7 +80,7 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
     }
     view.value = QuickMenuView.Home
     hooks.home()
-    void nextTick(() => (opener ? opener.focus() : void focusChosenSlot()))
+    void nextTick(focusOpener)
   }
 
   /** Back to the main screen without moving the focus (Riavvia confirmed). */
