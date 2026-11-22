@@ -17,6 +17,15 @@ const SHELL = {
   controls: { mock: {}, steps: [section(2)] },
   cloud: { mock: {}, steps: [section(3)] },
   settings: { mock: {}, steps: [section(4)] },
+  // Upright: a page over the list, and a search's results under the field (#29).
+  "settings-page": { mock: {}, steps: [section(4), click("^(General|Generale)")] },
+  "settings-search": {
+    mock: {},
+    steps: [
+      section(4),
+      `(() => { const i = document.querySelector('main input[type=search], input[type=search]'); i.value = 'tema'; i.dispatchEvent(new Event('input', { bubbles: true })); return true })()`,
+    ],
+  },
   storage: { mock: { storage: "low" }, steps: [] },
 };
 const GAME = {

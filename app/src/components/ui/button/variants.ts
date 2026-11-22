@@ -132,7 +132,8 @@ export const ButtonSize = {
   // 28px with a 12px label on the 18px line, wrapping when the room is short: the actions inside
   // a save slot's tile.
   TileAction: 'tileAction',
-  // As tall as its line of text, an icon leading (Controls «‹ Controlli»).
+  // As tall as its line of text, an icon leading (Controls «‹ Controlli», the phone's
+  // «‹ Impostazioni»); on the phone at least the touch minimum tall (#29).
   TextLine: 'textLine',
   // The quick menu's (Trello #62): their 36 / 44 / 48 heights and 12 radius are off the design
   // system's scales, pending tokens.
@@ -162,7 +163,8 @@ export const ButtonSize = {
   // the touch minimum tall, in lead's size.
   Bare: 'bare',
   // 32px, 8px side padding and none above or below (a squeezed column shrinks it to its text),
-  // the label at the start: an entry of a side list (ButtonVariant.NavItem).
+  // the label at the start: an entry of a side list (ButtonVariant.NavItem). On the phone at
+  // least the touch minimum tall (it no longer shrinks: the list scrolls), in lead's size (#29).
   NavItem: 'navItem',
   // At least 56px, 8 / 16 padding, 16 between its parts: a list row (ButtonVariant.LinkRow).
   LinkRow: 'linkRow',
@@ -293,7 +295,7 @@ export const buttonVariants = cva(
         [ButtonSize.Area]: 'p-0',
         [ButtonSize.TileAction]:
           'h-control-sm px-10 text-caption-tall font-medium whitespace-normal',
-        [ButtonSize.TextLine]: 'gap-2 py-2 pr-8 pl-4',
+        [ButtonSize.TextLine]: 'gap-2 py-2 pr-8 pl-4 touch:min-h-touch',
         [ButtonSize.Back]: 'h-control gap-4 pr-10 pl-4',
         [ButtonSize.Step]: 'size-control p-0 touch:size-touch',
         [ButtonSize.Menu]:
@@ -311,7 +313,8 @@ export const buttonVariants = cva(
           'h-control px-control-pad touch:h-touch touch:rounded-card touch:px-14 touch:text-[length:inherit] touch:leading-[inherit] touch:font-medium touch:whitespace-normal',
         [ButtonSize.Bare]:
           'h-auto gap-4 rounded-none p-0 whitespace-normal touch:min-h-touch touch:text-label-lead',
-        [ButtonSize.NavItem]: 'h-control gap-8 px-8 py-0',
+        [ButtonSize.NavItem]:
+          'h-control gap-8 px-8 py-0 touch:h-auto touch:min-h-touch touch:text-label-lead',
         [ButtonSize.LinkRow]: 'min-h-link-row gap-16 px-16 py-8',
         [ButtonSize.Toast]: 'h-control rounded-8 px-10 touch:h-touch touch:px-16',
         [ButtonSize.PadShoulder]: 'h-control-lg w-pad-shoulder rounded-card',
