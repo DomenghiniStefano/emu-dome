@@ -6,36 +6,61 @@
    the primitives (Dialog, Popover, Select, DropdownMenu, Tabs, Button), and this file goes. */
 
 :root[data-look='squared'] {
-  /* Corners: from 4 / 6 / 10 / 16 to 2 / 2 / 4 / 6 (the pending 8 / 12 / 20 with them). Round
-     things that are round on purpose (switches, touch keys: `rounded-full`) stay round. */
+  /* Corners (second pass, owner: «i border radius non mi piacciono»): almost square, 2 px on
+     controls and badges, 3 on cards, 4 on panels. Round on purpose (switches, touch keys:
+     `rounded-full`) stays round. */
   --radius-4: 2px;
   --radius-6: 2px;
-  --radius-8: 3px;
-  --radius-10: 4px;
-  --radius-12: 4px;
-  --radius-16: 6px;
-  --radius-20: 8px;
+  --radius-8: 2px;
+  --radius-10: 3px;
+  --radius-12: 3px;
+  --radius-16: 4px;
+  --radius-20: 4px;
 
-  /* Room: the role paddings and margins about a third tighter. */
-  --spacing-card-pad: 12px;
-  --spacing-card-pad-md: 10px;
-  --spacing-card-pad-sm: 8px;
+  /* Controls (owner: «bottoni con padding colossali»): one step lower each. The phone's touch
+     target (`touch`, 44) stays: it is the size a finger needs, not a look. */
+  --spacing-control-sm: 24px;
+  --spacing-control: 28px;
+  --spacing-control-md: 30px;
+  --spacing-control-lg: 32px;
+  --spacing-tab: 32px;
+  --spacing-tab-lg: 36px;
+  --spacing-titlebar: 32px;
+  --spacing-capture: 26px;
+  --spacing-link-row: 40px;
+  --spacing-52: 44px;
+
+  /* Room: the role paddings and margins about half. */
+  --spacing-card-pad: 8px;
+  --spacing-card-pad-md: 8px;
+  --spacing-card-pad-sm: 6px;
   --spacing-card-pad-touch: 10px;
-  --spacing-control-pad: 10px;
-  --spacing-field-pad: 8px;
-  --spacing-dialog-pad: 16px;
-  --spacing-window-margin: 16px;
-  --spacing-section-x: 20px;
-  --spacing-section-top: 16px;
-  --spacing-section-bottom: 24px;
-  --spacing-section-gap: 12px;
-  --spacing-section-touch: 12px;
-  --spacing-block-gap: 8px;
-  /* And the large steps screens write as classes (p-32, gap-24, pb-48…). */
-  --spacing-20: 16px;
-  --spacing-24: 18px;
-  --spacing-32: 24px;
-  --spacing-48: 32px;
+  --spacing-control-pad: 8px;
+  --spacing-field-pad: 6px;
+  --spacing-dialog-pad: 12px;
+  --spacing-window-margin: 12px;
+  --spacing-section-x: 14px;
+  --spacing-section-top: 10px;
+  --spacing-section-bottom: 16px;
+  --spacing-section-gap: 8px;
+  --spacing-section-touch: 10px;
+  --spacing-block-gap: 6px;
+
+  /* And the scale every screen writes as classes (p-16, gap-24, px-12…), about three quarters,
+     the smallest steps kept so hairline gaps do not vanish. */
+  --spacing-5: 4px;
+  --spacing-6: 4px;
+  --spacing-8: 6px;
+  --spacing-10: 6px;
+  --spacing-12: 8px;
+  --spacing-14: 10px;
+  --spacing-16: 10px;
+  --spacing-18: 12px;
+  --spacing-20: 12px;
+  --spacing-24: 14px;
+  --spacing-28: 16px;
+  --spacing-32: 16px;
+  --spacing-48: 24px;
 }
 
 /* Motion: short, no bounce. Things that appear fade in and move 4 px; a press gives a little. */

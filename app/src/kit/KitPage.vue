@@ -124,7 +124,7 @@ useNavScope(root, { autofocus: true })
         <div class="flex flex-wrap items-center gap-12">
           <Segmented v-model="look" aria-label="Look">
             <SegmentedItem value="current">Attuale</SegmentedItem>
-            <SegmentedItem value="squared">Squadrato</SegmentedItem>
+            <SegmentedItem value="squared">Compatto</SegmentedItem>
           </Segmented>
           <Segmented v-model="accent" aria-label="Accent">
             <SegmentedItem v-for="s in SWATCHES" :key="s" :value="s">{{ s }}</SegmentedItem>
