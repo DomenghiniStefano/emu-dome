@@ -13,7 +13,7 @@ import { useI18n } from 'vue-i18n'
 import { Ellipsis, Play } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { LibraryGame } from '@/emu'
-import { lastPlayedLabel, playTimeLabel } from '@/i18n/labels'
+import { gamePlayedLabel } from '@/i18n/labels'
 import CoverMenu from '@/components/cover/CoverMenu.vue'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverStackLayer, coverStackVariants } from '@/components/cover/variants'
@@ -42,14 +42,7 @@ const more = ref<InstanceType<typeof Button> | null>(null)
 const moreEl = computed(() => (more.value?.$el as HTMLElement | undefined) ?? null)
 
 const off = computed(() => !props.game.available)
-const meta = computed(() =>
-  props.game.lastPlayed === null
-    ? t('library.neverPlayed')
-    : t('library.meta', {
-        time: playTimeLabel(props.game.playTimeSecs),
-        when: lastPlayedLabel(props.game.lastPlayed),
-      }),
-)
+const meta = computed(() => gamePlayedLabel(props.game))
 </script>
 
 <template>

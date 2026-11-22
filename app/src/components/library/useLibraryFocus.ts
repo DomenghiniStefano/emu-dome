@@ -9,11 +9,19 @@ import { focusInitial } from '@/nav'
 /** The attribute a cover's click area carries, with its game's id. */
 export const COVER_OF = 'data-cover-of'
 
-/** `back`: the game whose details the view comes back from (the shell's route), read once. */
-export function useLibraryFocus(root: Ref<HTMLElement | null>, back: GameId | null) {
+/**
+ * `back`: the game whose details the view comes back from (the shell's route), read once.
+ * `shown`: whether the view shows its games yet (`library.view` read, #29), checked with the
+ * library's own load.
+ */
+export function useLibraryFocus(
+  root: Ref<HTMLElement | null>,
+  back: GameId | null,
+  shown: () => boolean = () => true,
+) {
   let focused = false
   async function focusOnce() {
-    if (focused || !library.loaded) return
+    if (focused || !library.loaded || !shown()) return
     focused = true
     await nextTick()
     const cover = back
@@ -26,6 +34,6 @@ export function useLibraryFocus(root: Ref<HTMLElement | null>, back: GameId | nu
     }
     if (root.value) focusInitial(root.value, { unlessMoved: true })
   }
-  watch(() => library.loaded, focusOnce)
+  watch(() => library.loaded && shown(), focusOnce)
   onMounted(() => void focusOnce())
 }

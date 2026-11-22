@@ -9,6 +9,7 @@
 // - a strip lands on «Gioca», or on «…» when the game cannot be played («Gioca» aria-disabled).
 // `null`: the step leaves the grid (top row up, first column left, last column right, last row
 // down), and nav.ts moves spatially from there (toolbar, «Continua a giocare», the rail).
+// The phone's list and compact grid (#29) have their own steps below (`listStep`, `compactStep`).
 import type { Direction } from '@/nav'
 
 /** The focusable parts of a tile, top to bottom, left to right. */
@@ -79,5 +80,70 @@ export function coverStep(from: CoverCell, dir: Direction, g: GridShape): CoverC
       if (at < 0) return null
       return strip[at + (dir === 'left' ? -1 : 1)] ?? null
     }
+  }
+}
+
+/** A step of the grid: where `from` lands, or null when the step leaves it. */
+export type CellStep = (from: CoverCell, dir: Direction, g: GridShape) => CoverCell | null
+
+/**
+ * The phone's list (#29, GameRow.vue): one game per row, its row (`cover`, the click area) and,
+ * at its right, «Gioca» / «Riprendi» (`play`, when `playable`; no «…»). Up / down move by row and
+ * keep the side (a row without its button takes the row); left / right go between a row and its
+ * button. The first row up, the last down, left from a row and right from a button leave the list.
+ */
+export function listStep(from: CoverCell, dir: Direction, g: GridShape): CoverCell | null {
+  const { index } = from
+  if (index < 0 || index >= g.count) return null
+  const sameSide = (i: number): CoverCell =>
+    from.part === 'play' && g.playable(i) ? { index: i, part: 'play' } : { index: i, part: 'cover' }
+  switch (dir) {
+    case 'up':
+      return index > 0 ? sameSide(index - 1) : null
+    case 'down':
+      return index < g.count - 1 ? sameSide(index + 1) : null
+    case 'left':
+      return from.part === 'cover' ? null : { index, part: 'cover' }
+    case 'right':
+      return from.part === 'cover' && g.playable(index) ? { index, part: 'play' } : null
+  }
+}
+
+/**
+ * The phone's compact grid (#29, CompactTile.vue): each tile is its cover (`cover`), and
+ * the one tile with «Riprendi» (`playable`) has it in the cover's corner (`play`). Covers move by
+ * row and column; down from that cover goes to its «Riprendi» first, then to the cover below;
+ * up or left from «Riprendi» back to its cover, right to the next cover in the row. Off the
+ * grid's edges: null.
+ */
+export function compactStep(from: CoverCell, dir: Direction, g: GridShape): CoverCell | null {
+  const cols = Math.max(1, g.cols)
+  const { index } = from
+  if (index < 0 || index >= g.count) return null
+  const col = index % cols
+  const rowFirst = index - col
+  const rowLast = Math.min(rowFirst + cols, g.count) - 1
+  const cover = (i: number): CoverCell => ({ index: i, part: 'cover' })
+  const below = rowFirst + cols < g.count ? cover(Math.min(index + cols, g.count - 1)) : null
+  if (from.part === 'play') {
+    switch (dir) {
+      case 'up':
+      case 'left':
+        return cover(index)
+      case 'down':
+        return below
+      case 'right':
+        return index < rowLast ? cover(index + 1) : null
+    }
+  }
+  switch (dir) {
+    case 'up':
+      return index >= cols ? cover(index - cols) : null
+    case 'down':
+      return g.playable(index) ? { index, part: 'play' } : below
+    case 'left':
+      return index > rowFirst ? cover(index - 1) : null
+    case 'right':
+      return index < rowLast ? cover(index + 1) : null
   }
 }

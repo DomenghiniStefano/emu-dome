@@ -11,20 +11,31 @@
 //
 // TV mode (#30): with games, the same library as shelves (tv/TvLibrary.vue), the same open and
 // details; without, or until loaded, this view as on the desk.
+//
+// The phone (#29, owner 2026-11-22, mockup «Libreria sul telefono»): no «Continua a giocare»
+// and no heading; its own toolbar (PhoneLibraryToolbar: short console names, the order, Lista /
+// Griglia, a square «+»); the games as a list (GameList, the phone's default) or a compact grid
+// (CoverGrid `compact`), as `library.view` says for this device. The game played last carries
+// «Riprendi» on its row or cover (`resumeTarget`), the others «Gioca» (the list) or nothing (the
+// grid). The desktop shows the list too when the user picks it in Settings, with «Continua a
+// giocare» kept above it and «Gioca» on every row.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from '@lucide/vue'
 import CloudDriveShelf from '@/components/cloud/CloudDriveShelf.vue'
 import TvLibrary from '@/components/library/tv/TvLibrary.vue'
 import { Button } from '@/components/ui/button'
+import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import { uiMode } from '@/composables/useUiMode'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
 import type { GameId, LibraryGame } from '@/emu'
 import { chooseFolder, library, replaceFolder } from '@/lib/library'
 import ContinuePlaying from './ContinuePlaying.vue'
 import CoverGrid from './CoverGrid.vue'
+import GameList from './GameList.vue'
 import LibraryToolbar from './LibraryToolbar.vue'
-import { recentlyPlayed, unreachableFolders } from './libraryView'
+import PhoneLibraryToolbar from './PhoneLibraryToolbar.vue'
+import { recentlyPlayed, resumeTarget, unreachableFolders } from './libraryView'
 import ScanProgress from './ScanProgress.vue'
 import ScanSummary from './ScanSummary.vue'
 import UnreachableBanner from './UnreachableBanner.vue'
@@ -33,6 +44,7 @@ import { useForegroundGame } from './useForegroundGame'
 import { useLibraryFilters } from './useLibraryFilters'
 import { useLibraryFocus } from './useLibraryFocus'
 import { useLibrarySort } from './useLibrarySort'
+import { useGamesView } from './useGamesView'
 import { useResumePoints } from './useResumePoints'
 import LibraryEmpty from './LibraryEmpty.vue'
 
@@ -55,7 +67,6 @@ const toasts = useToasts()
 const failWith = useErrorSink()
 
 const root = ref<HTMLElement | null>(null)
-useLibraryFocus(root, props.returnTo)
 
 const { sort, setSort, resetSort } = useLibrarySort(failWith)
 const { show, consoleFilter, chips, games, filtering, toggleShow, clearShow, clearFilters } =
@@ -70,6 +81,16 @@ const recent = computed(() => recentlyPlayed(library.games))
 const resume = useResumePoints(recent, failWith)
 const foreground = useForegroundGame(recent, games)
 const { menuFor, toggleMenu, closeMenu, setFlags } = useCoverMenu(failWith)
+
+/** The phone (upright or on its side): its toolbar, no «Continua a giocare», «Riprendi» in place. */
+const { touchDensity: phone } = useDeviceLayout()
+const { view, setView } = useGamesView(() => (phone.value ? 'list' : 'grid'), failWith)
+/** The game whose row or cover carries «Riprendi» on the phone. */
+const resumeId = computed(() => (phone.value ? resumeTarget(recent.value, resume.value) : null))
+// The way back from a game's details is read once, here: the shell's route lets go of it while
+// `library.view` is still being read, before the games mount.
+const anchor = props.returnTo
+useLibraryFocus(root, anchor, () => view.value !== null)
 
 /** Opens a game, or says why not when its folder is not reachable. */
 function open(g: LibraryGame, slot?: number) {
@@ -130,31 +151,62 @@ const shelves = computed(() => uiMode.tv && library.loaded && library.games.leng
     />
 
     <template v-else-if="library.loaded">
-      <ContinuePlaying
-        v-if="recent.length"
-        :games="recent"
-        :resume="resume"
-        @resume="resumeGame"
-        @open-saves="g => emit('openSaves', g)"
-        @foreground="foreground"
-      />
-      <LibraryToolbar
+      <PhoneLibraryToolbar
+        v-if="phone && view"
         v-model:console="consoleFilter"
+        :view="view"
         :chips="chips"
-        :initial-chip="!recent.length"
         :sort="sort"
         :show="show"
+        @update:view="setView"
         @sort="setSort"
         @toggle="toggleShow"
         @reset="resetFilters"
         @add-folder="addFolder"
       />
-      <CoverGrid
+      <template v-else-if="view">
+        <ContinuePlaying
+          v-if="recent.length"
+          :games="recent"
+          :resume="resume"
+          @resume="resumeGame"
+          @open-saves="g => emit('openSaves', g)"
+          @foreground="foreground"
+        />
+        <LibraryToolbar
+          v-model:console="consoleFilter"
+          :chips="chips"
+          :initial-chip="!recent.length"
+          :sort="sort"
+          :show="show"
+          @sort="setSort"
+          @toggle="toggleShow"
+          @reset="resetFilters"
+          @add-folder="addFolder"
+        />
+      </template>
+      <!-- Until `library.view` is read (after the device, both from the settings schema), no
+           toolbar and no games: never one layout and then the other. -->
+      <GameList
+        v-if="view === 'list'"
         :games="games"
-        :menu-for="menuFor"
-        :anchor="returnTo"
+        :resume-id="resumeId"
+        :anchor="anchor"
         @details="g => emit('details', g)"
         @play="g => open(g)"
+        @resume="resumeGame"
+        @foreground="foreground"
+      />
+      <CoverGrid
+        v-else-if="view === 'grid'"
+        :games="games"
+        :menu-for="menuFor"
+        :anchor="anchor"
+        :compact="phone"
+        :resume-id="resumeId"
+        @details="g => emit('details', g)"
+        @play="g => open(g)"
+        @resume="resumeGame"
         @toggle-menu="toggleMenu"
         @close-menu="closeMenu"
         @flags="setFlags"

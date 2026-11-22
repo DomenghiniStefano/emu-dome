@@ -145,6 +145,16 @@ export function lastPlayedLabel(ms: number, now = Date.now()): string {
   return format(ms, sameYear(ms, now) ? { month: 'long' } : { month: 'long', year: 'numeric' })
 }
 
+/** Under a game in the library (a tile, a row): "14 h · yesterday", or «Never played». */
+export function gamePlayedLabel(game: { lastPlayed: number | null; playTimeSecs: number }): string {
+  return game.lastPlayed === null
+    ? t('library.neverPlayed')
+    : t('library.meta', {
+        time: playTimeLabel(game.playTimeSecs),
+        when: lastPlayedLabel(game.lastPlayed),
+      })
+}
+
 /** A full date and time ("17 November 2026 at 08:12"), for sentences. */
 export function dateTimeLabel(ms: number): string {
   return format(ms, { dateStyle: 'long', timeStyle: 'short' })

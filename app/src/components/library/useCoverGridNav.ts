@@ -4,17 +4,30 @@
 // - From the parked grid (its focused tile scrolled out of the DOM), a step starts from that
 //   tile; one that would leave the grid brings the user back to that tile instead.
 // - Steps arriving while a tile is being rendered start from that tile, so none is lost.
+// - The phone's list and compact grid (#29) pass their own `step` and what has a button
+//   (`playable`); the desk's grid keeps `coverStep` and the games that can start.
 import type { Ref } from 'vue'
 import type { LibraryGame } from '@/emu'
 import { useNavGrid } from '@/nav'
-import { coverStep, type CoverCell } from './coverGridNav'
+import { coverStep, type CellStep, type CoverCell } from './coverGridNav'
 import type { useCoverWindow } from './useCoverWindow'
+
+export interface GridNavOptions {
+  step?: CellStep
+  /** Whether game `i` of the list has its `play` part to land on. */
+  playable?: (list: LibraryGame[], i: number) => boolean
+}
+
+const canStart = (list: LibraryGame[], i: number) => list[i]?.available ?? false
 
 export function useCoverGridNav(
   grid: Ref<HTMLElement | null>,
   games: () => LibraryGame[],
   win: ReturnType<typeof useCoverWindow>,
+  options: GridNavOptions = {},
 ) {
+  const step = options.step ?? coverStep
+  const playable = options.playable ?? canStart
   let pending: CoverCell | null = null
 
   useNavGrid(grid, (from, dir) => {
@@ -22,10 +35,10 @@ export function useCoverGridNav(
     const cell = pending ?? (parked ? win.parkedCell() : win.cellOf(from))
     if (!cell) return false
     const list = games()
-    const to = coverStep(cell, dir, {
+    const to = step(cell, dir, {
       cols: win.cols.value,
       count: list.length,
-      playable: i => list[i]?.available ?? false,
+      playable: i => playable(list, i),
     })
     const target = to ?? (parked || pending ? cell : null)
     if (!target) return false

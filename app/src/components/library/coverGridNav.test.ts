@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { Direction } from '@/nav'
-import { coverStep, type CoverCell, type CoverPart, type GridShape } from './coverGridNav'
+import {
+  compactStep,
+  coverStep,
+  listStep,
+  type CoverCell,
+  type CoverPart,
+  type GridShape,
+} from './coverGridNav'
 
 // 4 columns, 10 games: rows 0–3, 4–7, 8–9. Game 5 cannot be played («Gioca» disabled).
 const shape: GridShape = { cols: 4, count: 10, playable: i => i !== 5 }
@@ -63,5 +70,53 @@ describe('the shape', () => {
   it('a thousand-game grid steps without walking the list', () => {
     const big: GridShape = { cols: 8, count: 100_000, playable: () => true }
     expect(coverStep(at(50_003, 'play'), 'down', big)).toEqual(at(50_011, 'cover'))
+  })
+})
+
+describe('the phone’s list (#29)', () => {
+  // Five rows; game 2 cannot be played (no button to land on).
+  const list: GridShape = { cols: 1, count: 5, playable: i => i !== 2 }
+  const go = (from: CoverCell, dir: Direction) => listStep(from, dir, list)
+  it('up and down by row, keeping the side; a row without its button takes the row', () => {
+    expect(go(at(1, 'cover'), 'down')).toEqual(at(2, 'cover'))
+    expect(go(at(1, 'play'), 'down')).toEqual(at(2, 'cover'))
+    expect(go(at(3, 'play'), 'up')).toEqual(at(2, 'cover'))
+    expect(go(at(3, 'play'), 'down')).toEqual(at(4, 'play'))
+    expect(go(at(0, 'cover'), 'up')).toBeNull()
+    expect(go(at(4, 'play'), 'down')).toBeNull()
+  })
+  it('left and right between a row and its button; past them the list is left', () => {
+    expect(go(at(1, 'cover'), 'right')).toEqual(at(1, 'play'))
+    expect(go(at(1, 'play'), 'left')).toEqual(at(1, 'cover'))
+    expect(go(at(2, 'cover'), 'right')).toBeNull()
+    expect(go(at(1, 'cover'), 'left')).toBeNull()
+    expect(go(at(1, 'play'), 'right')).toBeNull()
+  })
+  it('a hundred thousand rows step without walking the list', () => {
+    const big: GridShape = { cols: 1, count: 100_000, playable: () => true }
+    expect(listStep(at(50_000, 'play'), 'down', big)).toEqual(at(50_001, 'play'))
+  })
+})
+
+describe('the phone’s compact grid (#29)', () => {
+  // 3 columns, 7 games: rows 0–2, 3–5, 6. Game 1 has «Riprendi» in its corner.
+  const grid: GridShape = { cols: 3, count: 7, playable: i => i === 1 }
+  const go = (from: CoverCell, dir: Direction) => compactStep(from, dir, grid)
+  it('covers by row and column, the last game under a shorter row', () => {
+    expect(go(at(0, 'cover'), 'right')).toEqual(at(1, 'cover'))
+    expect(go(at(2, 'cover'), 'right')).toBeNull()
+    expect(go(at(3, 'cover'), 'left')).toBeNull()
+    expect(go(at(4, 'cover'), 'up')).toEqual(at(1, 'cover'))
+    expect(go(at(0, 'cover'), 'down')).toEqual(at(3, 'cover'))
+    expect(go(at(5, 'cover'), 'down')).toEqual(at(6, 'cover'))
+    expect(go(at(6, 'cover'), 'down')).toBeNull()
+    expect(go(at(2, 'cover'), 'up')).toBeNull()
+  })
+  it('down from the cover with «Riprendi» lands on it first, then on the cover below', () => {
+    expect(go(at(1, 'cover'), 'down')).toEqual(at(1, 'play'))
+    expect(go(at(1, 'play'), 'down')).toEqual(at(4, 'cover'))
+    expect(go(at(1, 'play'), 'up')).toEqual(at(1, 'cover'))
+    expect(go(at(1, 'play'), 'left')).toEqual(at(1, 'cover'))
+    expect(go(at(1, 'play'), 'right')).toEqual(at(2, 'cover'))
   })
 })
