@@ -261,7 +261,8 @@ Notes on the table:
 - A reserved combo (feature still to come) does nothing; its button stays away from the game like any
   button pressed with L3.
 - While the quick menu is open only the menu combo (L3 + Start) and Guide work; the d-pad / left stick,
-  A and B navigate the menu (see `app/src/nav.ts`).
+  A and B navigate the menu (see `app/src/nav.ts`). Y alone is the `search` step there: outside a
+  game it opens the search everywhere (X01, #32); in game Y is the game's button, L3 + Y the swap.
 - The left stick past half travel is the d-pad; the triggers past half travel are L2/R2.
 
 ### Implemented table
