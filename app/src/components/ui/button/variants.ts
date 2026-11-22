@@ -352,7 +352,7 @@ export const buttonVariants = cva(
         [ButtonSize.Tool]: 'h-control gap-6 px-8 touch:h-touch touch:px-12',
         [ButtonSize.ToolIcon]: 'size-control p-0 touch:size-touch',
         [ButtonSize.PhoneTab]: 'min-h-touch min-w-touch flex-1 basis-0 flex-col gap-2 px-2 py-4',
-        [ButtonSize.TvTab]: 'h-tv-tab rounded-full px-24 text-tv-label',
+        [ButtonSize.TvTab]: 'h-tv-tab gap-12 rounded-full px-24 text-tv-label',
         [ButtonSize.TvRow]:
           'min-h-tv-row gap-tv-row-x rounded-card px-tv-row-x py-tv-row-y text-tv-label',
         [ButtonSize.TvNavItem]: 'h-tv-tab gap-12 rounded-card px-tv-row-y text-tv-label',

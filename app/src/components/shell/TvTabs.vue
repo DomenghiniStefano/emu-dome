@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The sections as tabs at the top, in TV mode (#30, mockup «TV-Libreria»): in place of the rail,
 // L1 and R1 at their sides (they switch section from anywhere: AppShell), the current one an ink
-// pill, the connected controller's name on the right. As on the rail, moving onto a tab does not
+// pill, each with the rail's icon before its name (#104), the connected controller's name on the
+// right. As on the rail, moving onto a tab does not
 // switch section, confirming it does; the current tab takes the first focus only when the
 // section has no first control of its own.
 import { ref } from 'vue'
@@ -9,7 +10,7 @@ import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { uiMode } from '@/composables/useUiMode'
 import { gamepadName } from '@/i18n/labels'
-import { SECTIONS, type Section } from './sections'
+import { SECTION_ICONS, SECTIONS, type Section } from './sections'
 import TvGlyph from './TvGlyph.vue'
 
 const props = defineProps<{
@@ -48,6 +49,7 @@ defineExpose({ focusCurrent, hasFocus })
         :size="ButtonSize.TvTab"
         :aria-current="isCurrent(s) ? 'page' : undefined"
         :data-nav-initial="isCurrent(s) && !contentHasInitial ? '' : undefined"
+        :icon="SECTION_ICONS[s]"
         @click="emit('pick', s)"
       >
         {{ t(`shell.${s}`) }}

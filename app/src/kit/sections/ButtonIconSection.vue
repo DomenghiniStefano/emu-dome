@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // Kit (Trello #104): Button's own icon, `icon` before the words and `icon` + `label` alone, at the
-// sizes the proposal uses, on the desktop and on the phone (touch density). The review board of
-// the text-only buttons is kit/features/icon-buttons/.
+// sizes the app uses, on the desktop and on the phone (touch density). The review board of the
+// text-only buttons was decided by the owner (2026-11-22) and carried by every screen, so it is
+// gone; the rule is in docs/frontend-conventions.md («Icons on buttons»).
 import { Check, FolderPlus, Pin, Play, Save, Share, Trash2, Undo2, X } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import IconButtonsReview from '@/kit/features/icon-buttons/IconButtonsReview.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
 </script>
@@ -96,6 +96,5 @@ import KitState from '@/kit/KitState.vue'
         <Button :size="ButtonSize.RowAction" :icon="Play" icon-filled label="Gioca" />
       </div>
     </KitState>
-    <template #review><IconButtonsReview /></template>
   </KitSection>
 </template>

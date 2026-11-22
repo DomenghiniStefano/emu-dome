@@ -3,6 +3,7 @@
 // selected screen, its width, «Mostra le opzioni» and «Salva», so the whole window is free to
 // drag and resize.
 import { useI18n } from 'vue-i18n'
+import { Save, SlidersHorizontal } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Kbd, KbdSize } from '@/components/ui/kbd'
 import { posName } from '@/lib/controls'
@@ -27,7 +28,12 @@ const { t } = useI18n()
     <span class="text-caption text-ink-muted tabular-nums">
       {{ t('screenEditor.width', { n: width }) }}
     </span>
-    <Button :variant="ButtonVariant.Soft" :size="ButtonSize.Small" @click="emit('expand')">
+    <Button
+      :variant="ButtonVariant.Soft"
+      :size="ButtonSize.Small"
+      :icon="SlidersHorizontal"
+      @click="emit('expand')"
+    >
       {{ t('screenEditor.expand') }}
       <Kbd v-if="inputMode === 'controller'" :size="KbdSize.Small">
         {{ posName('generic', 'back', false) }}
@@ -36,6 +42,7 @@ const { t } = useI18n()
     <Button
       :variant="ButtonVariant.Primary"
       :size="ButtonSize.Compact"
+      :icon="Save"
       :disabled="busy || !canSave"
       @click="emit('save')"
     >

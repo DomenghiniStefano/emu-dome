@@ -3,10 +3,24 @@
 // add a control, size, opacity, behaviour, remove, back to the default, leave without saving,
 // «Riduci» (folds it into the pill) and the main action «Salva». On a narrow phone it never
 // overflows (owner): the tools that do not fit go into «Altro» (editorToolbar.ts decides from
-// each button's width, measured on a hidden copy of the row).
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+// each button's width, measured on a hidden copy of the row). The tools are their icons alone
+// (#104), their words the name and tooltip; in «Altro» icon and words.
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronUp, Ellipsis, Redo2, Undo2 } from '@lucide/vue'
+import {
+  Blend,
+  ChevronUp,
+  Ellipsis,
+  Plus,
+  Redo2,
+  Repeat2,
+  RotateCcw,
+  Save,
+  Scaling,
+  Trash2,
+  Undo2,
+  X,
+} from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { fitToolbar, TOOLS, type Tool, type ToolbarFit } from './editorToolbar'
@@ -43,7 +57,18 @@ const PANELS: Partial<Record<Tool, ToolPanel>> = {
   opacity: 'opacity',
   behaviour: 'behaviour',
 }
-const ICONS: Partial<Record<Tool, typeof Undo2>> = { undo: Undo2, redo: Redo2 }
+/** Every tool as its icon alone (#104), its words its name and tooltip, and in «Altro» beside them. */
+const ICONS: Record<Tool, Component> = {
+  undo: Undo2,
+  redo: Redo2,
+  add: Plus,
+  size: Scaling,
+  opacity: Blend,
+  behaviour: Repeat2,
+  remove: Trash2,
+  reset: RotateCcw,
+  discard: X,
+}
 
 function disabled(tool: Tool): boolean {
   switch (tool) {
@@ -143,35 +168,37 @@ const label = (tool: Tool) => t(`touch.editor.${tool}`)
     >
       <template v-for="tool in fit.shown" :key="tool">
         <Button
-          :size="ICONS[tool] ? ButtonSize.ToolIcon : ButtonSize.Tool"
+          :size="ButtonSize.ToolIcon"
           :variant="PANELS[tool] ? ButtonVariant.Pick : ButtonVariant.Soft"
-          :aria-label="ICONS[tool] ? label(tool) : undefined"
+          :icon="ICONS[tool]"
+          :label="label(tool)"
           :aria-pressed="PANELS[tool] ? panel === PANELS[tool] : undefined"
           :disabled="disabled(tool)"
           @click="run(tool)"
-        >
-          <component :is="ICONS[tool]" v-if="ICONS[tool]" :size="18" :stroke-width="1.75" />
-          <template v-else>{{ label(tool) }}</template>
-        </Button>
+        />
       </template>
       <Button
         v-if="fit.more.length > 0"
         ref="moreButton"
         :size="ButtonSize.ToolIcon"
         :variant="ButtonVariant.Soft"
-        :aria-label="t('touch.editor.more')"
+        :icon="Ellipsis"
+        :label="t('touch.editor.more')"
         :aria-expanded="moreOpen"
         @click="moreOpen = !moreOpen"
+      />
+      <Button
+        :size="ButtonSize.Tool"
+        :variant="ButtonVariant.Soft"
+        :icon="ChevronUp"
+        @click="emit('collapse')"
       >
-        <Ellipsis :size="18" :stroke-width="1.75" aria-hidden="true" />
-      </Button>
-      <Button :size="ButtonSize.Tool" :variant="ButtonVariant.Soft" @click="emit('collapse')">
-        <ChevronUp :size="16" :stroke-width="1.75" aria-hidden="true" />
         {{ t('touch.editor.collapse') }}
       </Button>
       <Button
         :size="ButtonSize.Tool"
         :variant="ButtonVariant.Primary"
+        :icon="Save"
         :disabled="busy || !canSave"
         @click="emit('save')"
       >
@@ -186,23 +213,26 @@ const label = (tool: Tool) => t(`touch.editor.${tool}`)
             v-for="tool in TOOLS"
             :key="tool"
             :data-measure="tool"
-            :size="ICONS[tool] ? ButtonSize.ToolIcon : ButtonSize.Tool"
+            :size="ButtonSize.ToolIcon"
+            :icon="ICONS[tool]"
+            :label="label(tool)"
             tabindex="-1"
-          >
-            <component :is="ICONS[tool]" v-if="ICONS[tool]" :size="18" :stroke-width="1.75" />
-            <template v-else>{{ label(tool) }}</template>
-          </Button>
-          <Button data-measure="more" :size="ButtonSize.ToolIcon" tabindex="-1">
-            <Ellipsis :size="18" :stroke-width="1.75" />
-          </Button>
-          <Button data-measure="collapse" :size="ButtonSize.Tool" tabindex="-1">
-            <ChevronUp :size="16" :stroke-width="1.75" />
+          />
+          <Button
+            data-measure="more"
+            :size="ButtonSize.ToolIcon"
+            :icon="Ellipsis"
+            :label="t('touch.editor.more')"
+            tabindex="-1"
+          />
+          <Button data-measure="collapse" :size="ButtonSize.Tool" :icon="ChevronUp" tabindex="-1">
             {{ t('touch.editor.collapse') }}
           </Button>
           <Button
             data-measure="save"
             :size="ButtonSize.Tool"
             :variant="ButtonVariant.Primary"
+            :icon="Save"
             tabindex="-1"
           >
             {{ t('touch.editor.save') }}
@@ -222,10 +252,10 @@ const label = (tool: Tool) => t(`touch.editor.${tool}`)
           <Button
             :variant="ButtonVariant.Menu"
             :size="ButtonSize.MenuItem"
+            :icon="ICONS[tool]"
             :disabled="disabled(tool)"
             :data-nav-initial="i === 0 ? '' : undefined"
           >
-            <component :is="ICONS[tool]" v-if="ICONS[tool]" :size="16" :stroke-width="1.75" />
             {{ label(tool) }}
           </Button>
         </DropdownMenuItem>

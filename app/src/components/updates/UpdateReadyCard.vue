@@ -8,6 +8,7 @@
 // button bar (shell/TvButtonBar.vue), lined up with the bar's edge.
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Clock, RefreshCw } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { useUpdates } from '@/composables/useUpdates'
 import { installing, stateVersion } from '@/lib/updates'
@@ -49,6 +50,7 @@ async function restart() {
       <Button
         :variant="ButtonVariant.GhostRegular"
         :size="ButtonSize.Small"
+        :icon="Clock"
         :disabled="busy"
         @click="later"
       >
@@ -57,6 +59,7 @@ async function restart() {
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Small"
+        :icon="RefreshCw"
         :disabled="busy"
         @click="restart"
       >
