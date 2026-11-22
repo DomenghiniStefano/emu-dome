@@ -868,8 +868,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - TV mode (#30): Settings in TV is not built (an open point with the owner: one column of large rows, LT / RT for
   the categories); in TV it keeps the desk's layout scaled up, as Saves, Controls, Cloud and a game's details do.
   There a section's own L1 / R1 (the settings levels, the controls tabs) comes before the section switch. The
-  library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves. The Y
-  «Cerca» hint is shown before the search exists (#32).
+  library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Search and notifications (#32): the search lives in the shell, which never shows while a game is open, so its
   actions (the controller's shortcuts) are listed disabled with «Apri un gioco per usarla»; only fullscreen runs.
