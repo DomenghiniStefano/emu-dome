@@ -1362,9 +1362,8 @@
         "name": "Button look",
         "desc": "Style of the touch buttons.",
         "option": {
-          "glass": "Glass",
-          "outlines": "Outlines only",
-          "contrast": "High contrast"
+          "smoke": "Smoked",
+          "outline": "Outline"
         }
       },
       "topac": {

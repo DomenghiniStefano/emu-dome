@@ -27,11 +27,11 @@
 //! per-device entries. A reset records its time too (the value went back to the weaker level).
 //! Older versions see `$changed` as an unknown key and keep it.
 //!
-//! Every file says its layout's version under [`SCHEMA_KEY`] (`"$schema": 1`, written on each
+//! Every file says its layout's version under [`SCHEMA_KEY`] (`"$schema": 2`, written on each
 //! save; a file without it is version 0). A file read with an older version goes through
-//! [`migrate`] in memory before use (0 → 1 changes nothing: version 1 only adds the number); a
-//! file from a newer version is used as it is, its unknown keys kept and its number never
-//! lowered.
+//! [`migrate`] in memory before use (0 → 1 changes nothing: version 1 only adds the number;
+//! 1 → 2 renames the touch controls' styles); a file from a newer version is used as it is, its
+//! unknown keys kept and its number never lowered.
 //!
 //! What is in memory follows the disk: before each use, a file whose modification time or size
 //! changed since it was read (another process, sync, the user) is read again, so a change made
@@ -58,7 +58,7 @@ pub const CHANGED_KEY: &str = "$changed";
 pub const SCHEMA_KEY: &str = "$schema";
 
 /// The layout this version writes.
-pub const SCHEMA_VERSION: u64 = 1;
+pub const SCHEMA_VERSION: u64 = 2;
 
 /// The version a file's top-level object says (0 when it says none).
 fn schema_of(top: &Layer) -> u64 {
@@ -67,10 +67,27 @@ fn schema_of(top: &Layer) -> u64 {
 
 /// The steps from each layout to the next: `MIGRATIONS[n]` turns layout `n` into `n + 1`. A
 /// layout change adds its step here and raises [`SCHEMA_VERSION`].
-const MIGRATIONS: [fn(&mut Layer); SCHEMA_VERSION as usize] = [layout_0_to_1];
+const MIGRATIONS: [fn(&mut Layer); SCHEMA_VERSION as usize] = [layout_0_to_1, layout_1_to_2];
 
 /// 0 → 1: the same layout; version 1 only adds `$schema`, written on the next save.
 fn layout_0_to_1(_top: &mut Layer) {}
+
+/// 1 → 2: the touch controls' styles (`touch.tskin`, owner 2026-11-22) became «Fumé» (`smoke`)
+/// and «Contorno» (`outline`). «Solo contorni» (`outlines`) is read as `outline`; «Vetro» and
+/// «Contrasto alto» (`glass`, `contrast`) go, so the default (`smoke`) shows. Any other value is
+/// left as it is (the engine ignores it as invalid, a newer one included).
+fn layout_1_to_2(top: &mut Layer) {
+    const SKIN: &str = "touch.tskin";
+    match top.get(SKIN).and_then(Json::as_str) {
+        Some("outlines") => {
+            top.insert(SKIN.to_owned(), Json::from("outline"));
+        }
+        Some("glass" | "contrast") => {
+            top.remove(SKIN);
+        }
+        Some(_) | None => {}
+    }
+}
 
 /// Brings a file's top-level object read from an older layout to [`SCHEMA_VERSION`], in memory
 /// (the file itself changes on its next save). A newer file is left as it is.
@@ -486,7 +503,7 @@ fn write_failed(e: impl std::fmt::Display) -> ErrorCode {
 mod tests {
     use serde_json::json;
 
-    use super::{Change, FileId, Store};
+    use super::{Change, FileId, Store, SCHEMA_VERSION};
     use crate::settings::test_dir::TestDir;
     use crate::settings::{ConsoleId, GameKey};
 
@@ -551,14 +568,14 @@ mod tests {
             serde_json::from_str(&dir.read("synced/global.json")).unwrap();
         assert_eq!(
             synced,
-            json!({ "$schema": 1, "future.thing": [1, 2], "video.scale": "fill" })
+            json!({ "$schema": SCHEMA_VERSION, "future.thing": [1, 2], "video.scale": "fill" })
         );
         let device: serde_json::Value =
             serde_json::from_str(&dir.read("local/device.json")).unwrap();
         assert_eq!(device["global"]["future.local"], json!(true));
         assert_eq!(device["global"]["video.vsync"], json!(false));
         assert_eq!(device["version"], json!(9));
-        assert_eq!(device["$schema"], json!(1));
+        assert_eq!(device["$schema"], json!(SCHEMA_VERSION));
     }
 
     fn json_of(dir: &TestDir, rel: &str) -> serde_json::Value {
@@ -580,7 +597,10 @@ mod tests {
         // ...the next save writes the layout.
         s.apply(&FileId::Global, &[set("audio.vol", false, json!(50))])
             .unwrap();
-        assert_eq!(json_of(&dir, "synced/global.json")["$schema"], json!(1));
+        assert_eq!(
+            json_of(&dir, "synced/global.json")["$schema"],
+            json!(SCHEMA_VERSION)
+        );
         assert_eq!(
             json_of(&dir, "synced/global.json")["video.scale"],
             json!("fit")
@@ -600,6 +620,59 @@ mod tests {
         assert_eq!(
             json_of(&dir, "synced/global.json"),
             json!({ "$schema": 7, "future.thing": { "deep": true }, "video.scale": "fill" })
+        );
+    }
+
+    #[test]
+    fn layout_2_reads_the_old_touch_styles_as_the_new_ones() {
+        // «Solo contorni» becomes «Contorno»; «Vetro» and «Contrasto alto» go (the default,
+        // «Fumé», shows); a value of layout 2 or one nobody knows is left alone.
+        for (old, new) in [
+            (json!("outlines"), Some(json!("outline"))),
+            (json!("glass"), None),
+            (json!("contrast"), None),
+            (json!("outline"), Some(json!("outline"))),
+            (json!("smoke"), Some(json!("smoke"))),
+            (json!("future"), Some(json!("future"))),
+        ] {
+            for schema in [None, Some(1)] {
+                let dir = TestDir::new("store-touch-skin");
+                let mut file = json!({ "touch.tskin": old, "audio.vol": 40 });
+                if let Some(n) = schema {
+                    file["$schema"] = json!(n);
+                }
+                dir.write("synced/global.json", &file.to_string());
+                let mut s = store(&dir);
+                assert_eq!(
+                    s.get(&FileId::Global, false, "touch.tskin"),
+                    new,
+                    "{old} at {schema:?}"
+                );
+                assert_eq!(s.get(&FileId::Global, false, "audio.vol"), Some(json!(40)));
+                // Reading changes nothing on disk; the next save writes the new value.
+                assert_eq!(json_of(&dir, "synced/global.json")["touch.tskin"], old);
+                s.apply(&FileId::Global, &[set("audio.vol", false, json!(50))])
+                    .unwrap();
+                let saved = json_of(&dir, "synced/global.json");
+                assert_eq!(saved.get("touch.tskin").cloned(), new);
+                assert_eq!(saved["$schema"], json!(SCHEMA_VERSION));
+            }
+        }
+    }
+
+    #[test]
+    fn a_layout_2_file_is_not_migrated_again() {
+        // An older version wrote «Solo contorni» into a file already at layout 2 (it keeps the
+        // newer number): the value stays as it is, and the engine ignores it as invalid.
+        let dir = TestDir::new("store-touch-skin-2");
+        dir.write(
+            "synced/global.json",
+            r#"{ "$schema": 2, "touch.tskin": "outlines" }"#,
+        );
+        let mut s = store(&dir);
+        assert_eq!(
+            s.get(&FileId::Global, false, "touch.tskin"),
+            Some(json!("outlines"))
         );
     }
 
@@ -791,7 +864,7 @@ mod tests {
             serde_json::from_str(&dir.read("synced/global.json")).unwrap();
         assert_eq!(
             synced,
-            json!({ "$schema": 1, "audio.vol": 40, "future.thing": true, "video.scale": "fill" })
+            json!({ "$schema": SCHEMA_VERSION, "audio.vol": 40, "future.thing": true, "video.scale": "fill" })
         );
     }
 }

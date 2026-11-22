@@ -374,7 +374,7 @@ fn sync_rule_portable_values_are_in_the_synced_files_at_every_level_and_never_in
             file[PORTABLE]
         );
         // Each synced file says its layout and when its values changed.
-        assert_eq!(file["$schema"], json!(1));
+        assert_eq!(file["$schema"], json!(2));
         assert!(file["$changed"][PORTABLE].is_u64());
     }
     assert!(!dir.read("local/device.json").contains(PORTABLE));
@@ -465,7 +465,7 @@ fn sync_rule_per_device_values_keep_their_change_times_on_this_device() {
         .unwrap();
     let device: serde_json::Value = serde_json::from_str(&dir.read("local/device.json")).unwrap();
     assert!(device["console"]["gba"]["$changed"][PER_DEVICE].is_u64());
-    assert_eq!(device["$schema"], json!(1));
+    assert_eq!(device["$schema"], json!(2));
     assert!(!dir.path("synced/console/gba.json").exists());
 }
 

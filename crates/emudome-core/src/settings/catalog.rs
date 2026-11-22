@@ -634,17 +634,16 @@ pub static ENTRIES: &[Entry] = &[
         .device()
         .phone()
         .phase(4),
-    // The built-in skins (C08), drawn from the design system's tokens; imported skins
-    // (`.deltaskin`, RetroArch overlays) are Phase 5.
-    seg(
-        "touch.tskin",
-        &["glass", "outlines", "contrast"],
-        "glass",
-        G,
-    )
-    .phone()
-    .phase(4),
-    slider("touch.topac", 60, (10, 100, 5), Unit::Percent, ALL)
+    // The built-in styles (C08, owner 2026-11-22): «Fumé», dark see-through glass, and
+    // «Contorno», the outline alone, both drawn from the design system's tokens and faded as a
+    // whole; the old `glass` / `outlines` / `contrast` are read as these (store.rs, layout 2).
+    // Imported skins (`.deltaskin`, RetroArch overlays) are Phase 5.
+    seg("touch.tskin", &["smoke", "outline"], "smoke", G)
+        .phone()
+        .phase(4),
+    // Multiplies the style's own fade (each style draws the controls at about 60 %): at 100 they
+    // show as the style draws them.
+    slider("touch.topac", 100, (10, 100, 5), Unit::Percent, ALL)
         .phone()
         .phase(4),
     slider("touch.thapt", 40, (0, 100, 10), Unit::Percent, G)

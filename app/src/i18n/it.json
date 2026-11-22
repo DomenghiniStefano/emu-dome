@@ -1362,9 +1362,8 @@
         "name": "Aspetto dei pulsanti",
         "desc": "Stile dei pulsanti touch.",
         "option": {
-          "glass": "Vetro",
-          "outlines": "Solo contorni",
-          "contrast": "Contrasto alto"
+          "smoke": "Fumé",
+          "outline": "Contorno"
         }
       },
       "topac": {

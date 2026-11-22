@@ -42,8 +42,8 @@ export interface TouchPrefs {
 export const DEFAULT_PREFS: TouchPrefs = {
   portrait: 'default',
   landscape: 'default',
-  skin: 'glass',
-  opacity: 60,
+  skin: 'smoke',
+  opacity: 100,
   haptics: 40,
   hide: 'never',
   hideWithPad: true,
