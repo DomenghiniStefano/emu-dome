@@ -79,8 +79,37 @@
       "iconDesc": "The one inside the game file",
       "user": "Your image",
       "userDesc": "Choose an image file",
+      "screenshot": "From a screenshot",
+      "screenshotDesc": "{count} screenshot | {count} screenshots",
+      "screenshotNone": "None yet: take one in game",
       "cancel": "Cancel",
-      "use": "Use this cover"
+      "back": "Back",
+      "continue": "Continue",
+      "use": "Use this cover",
+      "shots": {
+        "title": "Choose a screenshot",
+        "taken": "Screenshot from {date}"
+      },
+      "crop": {
+        "title": "Fit the cover",
+        "frame": "Cover preview",
+        "mode": "How the image fits",
+        "whole": "Whole",
+        "fill": "Fill",
+        "zoom": "Zoom",
+        "zoomValue": "{value}%",
+        "drag": "Drag the image to move it.",
+        "hintsLabel": "Keys",
+        "keyZoomOut": "−",
+        "keyZoomIn": "+",
+        "hint": {
+          "move": "Move",
+          "zoom": "Zoom",
+          "mode": "Whole / Fill",
+          "use": "Use",
+          "back": "Back"
+        }
+      }
     },
     "clearFilters": "Clear filters",
     "continue": {
@@ -224,7 +253,8 @@
     "autoLoaded": "Loaded the automatic slot",
     "undo": "Undo",
     "undoFromMenu": "Undo from the quick menu",
-    "screenshotSaved": "Screenshot saved"
+    "screenshotSaved": "Screenshot saved",
+    "useAsCover": "Use as cover"
   },
   "console": {
     "gb": "Game Boy",
@@ -279,6 +309,7 @@
     "dataMoveFailed": "Couldn’t copy your data to EmuDome’s new folder. Nothing was lost: for now EmuDome keeps using the old folder ({old}) and tries again at the next start. Details: {detail}",
     "dataMoveConflict": "EmuDome’s new data folder ({new}) already held data, so your earlier data wasn’t copied over it. It’s still in {old}, untouched: copy what you need by hand. See {report}.",
     "screenshotFailed": "Couldn’t save the screenshot: {detail}. Check that the saves folder is writable and try again.",
+    "screenshotsUnreadable": "Couldn’t read this game’s screenshots: {detail}. Check that the saves folder can be opened, then try again.",
     "lidUnsupported": "This game’s emulator can’t close the lid. Pause the game from the quick menu instead.",
     "screenLayoutUnavailable": "This screen layout isn’t available for this game. Pick another one in the quick menu.",
     "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file.",

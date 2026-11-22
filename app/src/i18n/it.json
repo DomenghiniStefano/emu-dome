@@ -79,8 +79,37 @@
       "iconDesc": "Quella contenuta nel file del gioco",
       "user": "Immagine tua",
       "userDesc": "Scegli un file immagine",
+      "screenshot": "Da uno screenshot",
+      "screenshotDesc": "{count} screenshot | {count} screenshot",
+      "screenshotNone": "Ancora nessuno: catturane uno in gioco",
       "cancel": "Annulla",
-      "use": "Usa questa copertina"
+      "back": "Indietro",
+      "continue": "Continua",
+      "use": "Usa questa copertina",
+      "shots": {
+        "title": "Scegli uno screenshot",
+        "taken": "Screenshot del {date}"
+      },
+      "crop": {
+        "title": "Adatta la copertina",
+        "frame": "Anteprima della copertina",
+        "mode": "Come entra l’immagine",
+        "whole": "Intera",
+        "fill": "Riempi",
+        "zoom": "Zoom",
+        "zoomValue": "{value}%",
+        "drag": "Trascina l’immagine per spostarla.",
+        "hintsLabel": "Tasti",
+        "keyZoomOut": "−",
+        "keyZoomIn": "+",
+        "hint": {
+          "move": "Sposta",
+          "zoom": "Zoom",
+          "mode": "Intera / Riempi",
+          "use": "Usa",
+          "back": "Indietro"
+        }
+      }
     },
     "clearFilters": "Togli i filtri",
     "continue": {
@@ -224,7 +253,8 @@
     "autoLoaded": "Caricato lo slot automatico",
     "undo": "Annulla",
     "undoFromMenu": "Annulla dal menu rapido",
-    "screenshotSaved": "Schermata salvata"
+    "screenshotSaved": "Schermata salvata",
+    "useAsCover": "Usa come copertina"
   },
   "console": {
     "gb": "Game Boy",
@@ -279,6 +309,7 @@
     "dataMoveFailed": "Non riesco a copiare i tuoi dati nella nuova cartella di EmuDome. Non hai perso nulla: per ora EmuDome continua a usare la vecchia cartella ({old}) e riprova al prossimo avvio. Dettagli: {detail}",
     "dataMoveConflict": "La nuova cartella dei dati di EmuDome ({new}) conteneva già dei dati, quindi i tuoi dati precedenti non sono stati copiati sopra. Sono ancora in {old}, intatti: copia a mano quello che ti serve. Vedi {report}.",
     "screenshotFailed": "Non riesco a salvare la schermata: {detail}. Controlla che la cartella dei salvataggi sia scrivibile e riprova.",
+    "screenshotsUnreadable": "Non riesco a leggere gli screenshot di questo gioco: {detail}. Controlla che la cartella dei salvataggi si possa aprire, poi riprova.",
     "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio. Metti in pausa il gioco dal menu rapido.",
     "screenLayoutUnavailable": "Questa disposizione degli schermi non è disponibile per questo gioco. Scegline un’altra dal menu rapido.",
     "effectNotLoaded": "Non riesco a usare l’effetto «{name}», quindi il gioco si vede senza. Scegli un altro effetto o un altro file.",

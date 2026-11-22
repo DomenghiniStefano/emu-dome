@@ -98,9 +98,8 @@ pub(super) struct EmuLoop<C: Core> {
     slot_meta: SlotMeta,
     autosave_every: Option<Duration>,
     autosave_on_exit: bool,
+    /// The game's screenshots folder, keyed by its `GameKey` ([`crate::screenshot::game_dir`]).
     screenshots: PathBuf,
-    /// The ROM's file name: the screenshots are named after it, for the user to browse.
-    rom_name: String,
     base_fps: f64,
     speed: Speed,
     fast_audio: FastAudio,
@@ -169,7 +168,7 @@ impl<C: Core> EmuLoop<C> {
             .unwrap_or_default();
         let _ = events.send(Event::Started {
             core: format!("{} {}", info.name, info.version),
-            game: rom_name.clone(),
+            game: rom_name,
             fps: av.timing.fps,
             width: av.geometry.base_width,
             height: av.geometry.base_height,
@@ -189,8 +188,7 @@ impl<C: Core> EmuLoop<C> {
             slot_meta,
             autosave_every: opts.autosave_every,
             autosave_on_exit: opts.autosave_on_exit,
-            screenshots: crate::screenshot::screenshots_dir(&opts.save_dir),
-            rom_name,
+            screenshots: crate::screenshot::game_dir(&opts.save_dir, &opts.game),
             base_fps,
             speed: Speed::Factor(1.0),
             fast_audio: opts.fast_audio,
@@ -435,7 +433,6 @@ impl<C: Core> EmuLoop<C> {
         self.io.send(io::Job::Screenshot {
             frame,
             dir: self.screenshots.clone(),
-            name: self.rom_name.clone(),
             at,
         });
     }

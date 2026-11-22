@@ -16,6 +16,10 @@ libloading = "0.9"
 log = "0.4"
 parking_lot = "0.12"
 png = "0.18"
+# Covers (`cover.rs`, Trello #85): the user's image or a screenshot decoded (PNG, JPEG, WebP
+# only), cropped, resized and written again as a JPEG. MIT OR Apache-2.0; its codecs zune-jpeg
+# (MIT OR Apache-2.0 OR Zlib), image-webp (MIT OR Apache-2.0) and png (MIT OR Apache-2.0).
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
 # The audio queue between the emulation thread and the audio output (`audio.rs`): a lock-free
 # single-producer single-consumer ring, so the real-time callback never waits on a lock the
 # emulation thread holds. MIT OR Apache-2.0.

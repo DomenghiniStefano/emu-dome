@@ -1,69 +1,129 @@
 <script setup lang="ts">
-// «Scegli la copertina» (board L12, Stati): generated, the ROM icon (only when the ROM has one),
-// or the user's image (the backend opens the image picker; cancelling it keeps this open).
-// On the Dialog primitive (wide, over the blurred screen; focus trap, `aria-modal`) with the
-// covers as a RadioGroup (the arrows along the row choose).
-// Controller / keyboard: the dialog's own nav scope, the chosen cover focused first; B / Esc
-// cancel; a click outside does nothing, as before.
-import { computed, ref } from 'vue'
+// L12 «Scegli la copertina» (board L12, Stati; Trello #85): one dialog, three steps.
+// 1. The choice (CoverChoices): generated, the ROM icon, «Da uno screenshot», «Immagine tua».
+//    Generated and icon apply at once and close.
+// 2. «Scegli uno screenshot» (ScreenshotGrid): this game's screenshots.
+// 3. «Adatta la copertina» (CoverCrop): the screenshot, or the image the native picker gave
+//    (cancelling the picker keeps the choice open), framed in the 2:3 cover; Rust makes the
+//    600 × 900 cover.
+// On the Dialog primitive (wide, over the blurred screen; focus trap, `aria-modal`); each step has
+// its own nav scope inside the dialog's, its first control focused. B goes back a step (and
+// cancels from the choice); Esc does the same; a click outside does nothing, as before.
+import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Card, CardVariant } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogSize,
-  DialogTitle,
-  DialogTitleSize,
-} from '@/components/ui/dialog'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { emu, type CoverKind, type LibraryGame } from '@/emu'
+import { Dialog, DialogContent, DialogSize } from '@/components/ui/dialog'
+import { emu, type GameScreenshot, type LibraryGame } from '@/emu'
 import { errorText } from '@/i18n/labels'
-import GameCover from './GameCover.vue'
-import { CoverSize } from './variants'
-import { coverKinds } from '@/components/library/libraryView'
+import { latest } from '@/lib/latest'
+import CoverChoices from './CoverChoices.vue'
+import CoverCrop from './CoverCrop.vue'
+import ScreenshotGrid from './ScreenshotGrid.vue'
+import { choiceNext, type CoverChoice } from './coverChoice'
+import type { CropSource } from './useCoverCrop'
 
 const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useI18n()
 
-const kinds = computed(() => coverKinds(props.game))
-const choice = ref<CoverKind>(props.game.cover)
+type Step = 'choose' | 'shots' | 'crop'
+const step = ref<Step>('choose')
+const choice = ref<CoverChoice>(props.game.cover)
+const shots = ref<GameScreenshot[] | null>(null)
+const shot = ref<string | null>(null)
+const source = ref<CropSource | null>(null)
 const busy = ref(false)
 const error = ref<string | null>(null)
+const requests = latest()
 
-// Previews: the generated cover always, the others when the game already shows them.
-const generated = computed<LibraryGame>(() => ({
-  ...props.game,
-  cover: 'generated',
-  coverUrl: null,
-}))
-const iconUrl = computed(() => (props.game.cover === 'icon' ? props.game.coverUrl : null))
-const userUrl = computed(() => (props.game.cover === 'user' ? props.game.coverUrl : null))
-/** «Immagine tua» before the user has one: an empty card inviting to add it. */
-const isEmpty = (k: CoverKind) => k === 'user' && !userUrl.value
+onMounted(async () => {
+  const id = props.game.id
+  try {
+    const list = await emu.library.screenshots(id)
+    if (props.game.id === id) shots.value = list
+  } catch (e) {
+    if (props.game.id !== id) return
+    shots.value = []
+    error.value = errorText(e)
+  }
+})
 
-function choose(value: unknown) {
-  const k = kinds.value.find(x => x === value)
-  if (k) choice.value = k
+async function next() {
+  if (busy.value) return
+  error.value = null
+  switch (choiceNext(choice.value)) {
+    case 'screenshots':
+      step.value = 'shots'
+      return
+    case 'pick':
+      return pick()
+    case 'apply':
+      return apply()
+  }
 }
 
+/** Generated or icon: at once. */
 async function apply() {
-  if (busy.value) return
+  const fresh = requests.next()
   busy.value = true
-  error.value = null
   try {
-    if (await emu.library.setCover(props.game.id, choice.value)) emit('close')
+    await emu.library.setCover(props.game.id, choice.value === 'icon' ? 'icon' : 'generated')
+    if (fresh()) emit('close')
   } catch (e) {
-    error.value = errorText(e)
+    if (fresh()) error.value = errorText(e)
   } finally {
-    busy.value = false
+    if (fresh()) busy.value = false
+  }
+}
+
+/** «Immagine tua»: the native picker, then «Adatta la copertina». */
+async function pick() {
+  const fresh = requests.next()
+  busy.value = true
+  try {
+    const picked = await emu.library.pickCoverImage()
+    if (!fresh() || !picked) return
+    source.value = {
+      source: { kind: 'picked', token: picked.token },
+      url: picked.url,
+      width: picked.width,
+      height: picked.height,
+    }
+    step.value = 'crop'
+  } catch (e) {
+    if (fresh()) error.value = errorText(e)
+  } finally {
+    if (fresh()) busy.value = false
+  }
+}
+
+function frameShot(s: GameScreenshot) {
+  shot.value = s.name
+  source.value = {
+    source: { kind: 'screenshot', name: s.name },
+    url: s.url,
+    width: s.width,
+    height: s.height,
+  }
+  step.value = 'crop'
+}
+
+/** B / Esc / «Indietro»: one step back, or closed from the choice. */
+function back() {
+  if (step.value === 'crop') {
+    step.value = source.value?.source.kind === 'screenshot' ? 'shots' : 'choose'
+  } else if (step.value === 'shots') {
+    step.value = 'choose'
+  } else {
+    emit('close')
   }
 }
 
 const keepOpen = (e: Event) => e.preventDefault()
+function onEscape(e: KeyboardEvent) {
+  e.preventDefault()
+  back()
+}
 </script>
 
 <template>
@@ -73,67 +133,32 @@ const keepOpen = (e: Event) => e.preventDefault()
       :aria-label="t('library.cover.title', { title: game.title })"
       :aria-describedby="undefined"
       @interact-outside="keepOpen"
+      @escape-key-down="onEscape"
     >
-      <DialogTitle as="div" :size="DialogTitleSize.Heading">
-        {{ t('library.cover.title', { title: game.title }) }}
-      </DialogTitle>
-      <RadioGroup
-        :model-value="choice"
-        class="grid grid-cols-3 gap-12"
-        :aria-label="t('library.cover.title', { title: game.title })"
-        @update:model-value="choose"
-      >
-        <RadioGroupItem v-for="k in kinds" :key="k" :value="k">
-          <Card
-            as="button"
-            :variant="CardVariant.PictureChoice"
-            :selected="choice === k"
-            :data-empty="isEmpty(k) ? '' : undefined"
-            class="gap-8"
-            :data-nav-initial="choice === k ? '' : undefined"
-          >
-            <GameCover
-              v-if="k === 'generated'"
-              :size="CoverSize.Choice"
-              :game="generated"
-              :badge="false"
-            />
-            <span
-              v-else
-              class="relative grid aspect-2/3 place-items-center overflow-hidden rounded-6 text-ink-muted"
-              :class="{ 'bg-surface-raised': !isEmpty(k) }"
-            >
-              <template v-if="k === 'icon'">
-                <img v-if="iconUrl" class="pixelated size-48" :src="iconUrl" alt="" />
-                <span v-else class="size-48 rounded-6" :style="{ background: game.colour }"></span>
-              </template>
-              <template v-else>
-                <img
-                  v-if="userUrl"
-                  class="absolute inset-0 size-full object-cover"
-                  :src="userUrl"
-                  alt=""
-                />
-                <Plus v-else :size="20" :stroke-width="1.75" aria-hidden="true" />
-              </template>
-            </span>
-            <span class="font-medium">{{ t(`library.cover.${k}`) }}</span>
-            <span class="text-caption text-ink-muted">{{ t(`library.cover.${k}Desc`) }}</span>
-          </Card>
-        </RadioGroupItem>
-      </RadioGroup>
-      <p v-if="error" class="m-0 text-danger" role="alert">{{ error }}</p>
-      <div class="flex justify-end gap-8">
-        <Button @click="emit('close')">{{ t('library.cover.cancel') }}</Button>
-        <Button
-          :variant="ButtonVariant.Primary"
-          :size="ButtonSize.Medium"
-          :disabled="busy"
-          @click="apply"
-        >
-          {{ t('library.cover.use') }}
-        </Button>
-      </div>
+      <CoverChoices
+        v-if="step === 'choose'"
+        v-model="choice"
+        :game="game"
+        :shots="shots"
+        :busy="busy"
+        :error="error"
+        @cancel="emit('close')"
+        @next="next"
+      />
+      <ScreenshotGrid
+        v-else-if="step === 'shots' && shots"
+        :shots="shots"
+        :chosen="shot"
+        @back="back"
+        @next="frameShot"
+      />
+      <CoverCrop
+        v-else-if="step === 'crop' && source"
+        :game="game.id"
+        :source="source"
+        @back="back"
+        @done="emit('close')"
+      />
     </DialogContent>
   </Dialog>
 </template>

@@ -54,7 +54,8 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
 ## Current state: Phase 1 desktop shell, Phase 2 core work started
 
 Phase 0 (feasibility) is done. On `develop` now: shell and themes, settings engine and pages, library, game flow,
-quick menu, saves, controls, first run, rewind and screenshots, screen effects (librashader), appearance, and the
+quick menu, saves, controls, first run, rewind and screenshots (keyed by the game, #85), covers from a screenshot or
+the user's image framed in «Adatta la copertina» (#85), screen effects (librashader), appearance, and the
 melonDS DS core (#45), and 3DS games open on Azahar (#46, first milestone: Vulkan on the app's device, frames read
 back to the CPU, encrypted games refused with E10), and the Google Drive sync backend (#20: sign-in, Drive client,
 sync index and conflict rule, tested, not wired into the game flow or the interface yet). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
@@ -238,7 +239,15 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          saves in `saves/<console>/<hex>/` (`GameFiles`), settings `game/<console>-<hex>.json`)
                          migration.rs (the one-time move of saves named by ROM file stem and settings named
                          by path hash to the key: facts from the library only, copies in `migration-70/backup/`,
-                         `migration-70/report.json`, marker `migration-70/done`; unit-tested)
+                         `migration-70/report.json`, marker `migration-70/done`; and, by the same rules, of
+                         the screenshots named by ROM stem, `run_screenshots`, `migration-85/`; unit-tested)
+                         screenshot.rs (screenshots keyed by the game, #85:
+                         `saves/screenshots/<console>/<hex>/<YYYY-MM-DD_HH-MM-SS>.png`, outside the game's
+                         saves folder (not synced, not in a core's path budget); listing, plain-name check)
+                         cover.rs (#85: a cover from the user's image or a screenshot: PNG / JPEG / WebP at
+                         most 16 MiB and 8192 px a side, EXIF orientation applied, the 2:3 `CoverView` the
+                         interface chose, the spare space the image blurred and dimmed, 600 × 900, JPEG 90,
+                         no metadata; pure, unit-tested)
                          data_move.rs (the one-time copy of the old identifier's data folders to the new
                          ones, #90: copy + fsync + size/MD5 check per file, the old folders only read, a stamp
                          per new folder until `migration-90/done`, a new folder with data of its own never
@@ -323,7 +332,11 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          dirs.rs (the data folders: Tauri's, EMUDOME_DATA_DIR, or the old identifier's for a
                          run whose copy did not finish), data_move.rs (that copy, first thing in setup)
                          library.rs (library commands, background scans, library://scan and library://changed,
-                         play time, covers on emu://cover/<id>, library.watch with notify on desktop)
+                         play time, covers on emu://cover/<id>, library.watch with notify on desktop; user
+                         covers made by `emudome_core::cover` and written with write_atomic as
+                         `covers/<console>-<hex>.user-<rev>.jpg`: the picked image kept in memory on
+                         emu://picked/<token>, a game's screenshots listed and served on
+                         emu://screenshot/<console>-<hex>/<name>, #85)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
                          emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
@@ -337,7 +350,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          G09 and from the `screens.custom` row; useScreenEditor the state, the live preview
                          at the Session level and the steps; screenEditor.ts the geometry, pure, tested),
                          first-run (FirstRun, 4 steps, once per device: marker `<app local data>/first-run/done`,
-                         src-tauri/src/first_run.rs), cover, toasts, closing (the loader while a game closes);
+                         src-tauri/src/first_run.rs), cover (GameCover; L12 CoverPicker: CoverChoices,
+                         ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
+                         pure, tested; CoverCropDialog for the screenshot toast's «Usa come copertina»,
+                         useCoverRequest), toasts, closing (the loader while a game closes);
                          components/ui/ (the primitives),
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
                          lib/settingsModel.ts, lib/cn.ts, lib/design/…),
@@ -847,7 +863,16 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   shared by several library games, no library game, the new place already taken); the app no longer reads those.
   The core's save directory is now the game's own folder, so melonDS DS's DLDI / DSi SD card images are per game
   (`saves/nds/<hex>/melonDS DS/`); an existing shared `saves/melonDS DS/` is left untouched and not read any more.
-- Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown").
+- Rewind is silent and has no on-screen sign; screenshots are the core's frame only (not "as shown": on DS / 3DS
+  both screens as the core stacks them, whatever layout is on screen), and the user frames that in «Adatta la
+  copertina» when one becomes a cover (#85).
+- Covers from a screenshot or an image (#85): the screenshot toast's «Usa come copertina» is a button for the mouse
+  and touch; in game the controller has no way to press it (the cover is still reachable from L12 «Da uno
+  screenshot»). A pressed one opens «Adatta la copertina» with the quick menu or once the game has closed. Zoom on
+  the controller is L1 / R1 (LT / RT reach the interface as no step); no pinch zoom on touch (the slider). The
+  picked image is kept in memory until used (one at a time); Android has no image picker yet. Covers are not synced
+  (#31). The old screenshots the move could not give to one game stay in `saves/screenshots/` (listed in
+  `migration-85/report.json`, not shown in the interface).
 - Core host (#78, #46): hardware rendering is Vulkan only, for Azahar (`Renderer::Vulkan` when the app's device
   is on Vulkan, else software with `hwRenderFallback` in `emu://health`); OpenGL (melonDS DS upscaling) is refused.
   Every Vulkan frame is read back into `Shared::frame` (the native renderer does not sample the GPU frame yet).

@@ -23,6 +23,9 @@ fn generate() -> Result<Generated, String> {
     g.ts::<crate::library::LibraryDto>()?;
     g.ts::<crate::library::LibraryChanged>()?;
     g.ts::<crate::library::ScanEvent>()?;
+    g.ts::<crate::library::PickedDto>()?;
+    g.ts::<crate::library::CoverSource>()?;
+    g.ts::<crate::library::ScreenshotDto>()?;
     g.ts::<crate::migration::Status>()?;
     g.ts::<crate::saves::SummaryDto>()?;
     g.ts::<crate::saves::GameSavesDto>()?;

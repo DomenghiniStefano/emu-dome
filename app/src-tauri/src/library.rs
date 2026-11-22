@@ -4,13 +4,16 @@
 //! `emu://cover/<id>?v=<rev>`, and folder watching (`library.watch`, desktop only).
 //!
 //! Files, all in `<app local data>` because paths are per device: `library/library.json` and
-//! `covers/` (ROM icons as PNG, the user's images).
+//! `covers/` (ROM icons as PNG; the user's covers, `<console>-<hex>.user-<rev>.jpg`, each the
+//! normalized 600 × 900 copy `emudome_core::cover` makes from the user's image or a screenshot,
+//! Trello #85).
 
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use emudome_core::cover::{self, CoverView};
 use emudome_core::library::{
     self, core_of, cover_colour, region, CoverKind, GameRecord, Identity, Library, NotAGame,
     Region, ScanInput, ScanReport,
@@ -18,19 +21,30 @@ use emudome_core::library::{
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, GameKey};
 use parking_lot::Mutex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 use ts_rs::TS;
 
 use crate::settings::{self as app_settings, SettingsState};
 use crate::{AppState, GameInfo};
 
-/// Largest image accepted as a cover.
-pub(crate) const MAX_COVER_BYTES: u64 = 16 * 1024 * 1024;
+/// Largest image accepted as a cover source (and as a background, `settings.rs`).
+pub(crate) const MAX_COVER_BYTES: u64 = cover::MAX_SOURCE_BYTES;
+
+/// The image the user picked for «Adatta la copertina»: its bytes kept in memory (never copied
+/// anywhere) until a cover is made from it or another one is picked.
+struct PickedImage {
+    token: u32,
+    bytes: Vec<u8>,
+    mime: &'static str,
+}
 
 pub struct LibraryState {
     lib: Mutex<Library>,
     covers: PathBuf,
+    /// The last image picked for a cover, served on `emu://picked/<token>`.
+    picked: Mutex<Option<PickedImage>>,
+    next_token: AtomicU32,
     scanning: AtomicBool,
     /// A scan was asked for while one was running: run another when it ends.
     rescan: AtomicBool,
@@ -49,6 +63,8 @@ pub fn open(app: &tauri::App) -> tauri::Result<LibraryState> {
     Ok(LibraryState {
         lib: Mutex::new(Library::open(&dir)),
         covers: local.join("covers"),
+        picked: Mutex::new(None),
+        next_token: AtomicU32::new(0),
         scanning: AtomicBool::new(false),
         rescan: AtomicBool::new(false),
         pending: Mutex::new(Vec::new()),
@@ -204,6 +220,45 @@ pub(crate) enum ScanEvent {
         added: usize,
         unreachable: Vec<String>,
     },
+}
+
+/// The image picked for a cover (`library_pick_cover_image`), for «Adatta la copertina»: its size
+/// as shown and where the interface reads it. TypeScript: `PickedImage` (generated).
+#[derive(Clone, Serialize, TS)]
+#[ts(export_to = "app/", rename = "PickedImage")]
+pub(crate) struct PickedDto {
+    token: u32,
+    url: String,
+    width: u32,
+    height: u32,
+}
+
+/// What a cover is made from (`library_set_cover_image`). TypeScript: `CoverSource` (generated).
+#[derive(Clone, Debug, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "CoverSource")]
+pub(crate) enum CoverSource {
+    /// The image of `library_pick_cover_image` with this token.
+    Picked { token: u32 },
+    /// The game's own screenshot with this file name (`library_screenshots`).
+    Screenshot { name: String },
+}
+
+/// One screenshot of a game (`library_screenshots`), newest first. TypeScript:
+/// `GameScreenshot` (generated).
+#[derive(Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/", rename = "GameScreenshot")]
+pub(crate) struct ScreenshotDto {
+    /// Its file name in the game's screenshots folder: what `CoverSource::Screenshot` names.
+    name: String,
+    /// `emu://screenshot/<console>-<hex>/<name>`.
+    url: String,
+    /// When it was taken, Unix ms.
+    taken_at: u64,
+    /// Its size from the PNG header (`null` if unreadable).
+    width: Option<u32>,
+    height: Option<u32>,
 }
 
 // ---- Settings ----
@@ -467,7 +522,12 @@ pub(crate) fn image_type(file: &Path) -> &'static str {
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
-    match ext.as_str() {
+    ext_type(&ext)
+}
+
+/// The media type of an image file extension (lower case); PNG for anything else.
+fn ext_type(ext: &str) -> &'static str {
+    match ext {
         "jpg" | "jpeg" => "image/jpeg",
         "webp" => "image/webp",
         _ => "image/png",
@@ -487,8 +547,9 @@ pub(crate) fn image_ext(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-/// Copies the user's image into the covers folder; returns its file name there.
-fn import_cover(covers: &Path, id: &GameKey, rev: u32, source: &Path) -> Result<String, ErrorCode> {
+/// The bytes of a cover source on disk, at most [`MAX_COVER_BYTES`], PNG / JPEG / WebP by its
+/// signature.
+fn read_source(source: &Path) -> Result<(Vec<u8>, &'static str), ErrorCode> {
     let invalid = |detail: String| ErrorCode::CoverInvalid { detail };
     let size = std::fs::metadata(source)
         .map_err(|e| invalid(e.to_string()))?
@@ -498,13 +559,88 @@ fn import_cover(covers: &Path, id: &GameKey, rev: u32, source: &Path) -> Result<
     }
     let bytes = std::fs::read(source).map_err(|e| invalid(e.to_string()))?;
     let ext = image_ext(&bytes).ok_or_else(|| invalid("not a PNG, JPEG or WebP image".into()))?;
-    let name = format!("{}.user-{rev}.{ext}", id.file_stem());
-    emudome_core::write_atomic(&covers.join(&name), &bytes).map_err(|e| {
+    Ok((bytes, ext_type(ext)))
+}
+
+/// The user cover file of revision `rev`: always the normalized JPEG.
+fn user_cover_name(id: &GameKey, rev: u32) -> String {
+    format!("{}.user-{rev}.jpg", id.file_stem())
+}
+
+/// Makes the normalized cover of `bytes` showing `view` and writes it into the covers folder
+/// (`write_atomic`); returns its file name there.
+fn write_cover(
+    covers: &Path,
+    id: &GameKey,
+    rev: u32,
+    bytes: &[u8],
+    view: CoverView,
+) -> Result<String, ErrorCode> {
+    let jpeg = cover::make(bytes, view)?;
+    let name = user_cover_name(id, rev);
+    emudome_core::write_atomic(&covers.join(&name), &jpeg).map_err(|e| {
         ErrorCode::LibraryWriteFailed {
             detail: e.to_string(),
         }
     })?;
     Ok(name)
+}
+
+/// `emu://picked/<token>`: the image picked for a cover, while it is the last one picked.
+pub fn picked_response(app: &AppHandle, token: &str) -> tauri::http::Response<Vec<u8>> {
+    use tauri::http::{header, Response, StatusCode};
+    let found = app.try_state::<LibraryState>().and_then(|state| {
+        let token: u32 = token.parse().ok()?;
+        let picked = state.picked.lock();
+        picked
+            .as_ref()
+            .filter(|p| p.token == token)
+            .map(|p| (p.bytes.clone(), p.mime))
+    });
+    let builder = Response::builder();
+    let response = match found {
+        // Tokens start again at every run: never cached.
+        Some((bytes, mime)) => builder
+            .header(header::CONTENT_TYPE, mime)
+            .header(header::CACHE_CONTROL, "no-store")
+            .body(bytes),
+        None => builder.status(StatusCode::NOT_FOUND).body(Vec::new()),
+    };
+    response.unwrap_or_else(crate::response_error)
+}
+
+// ---- Screenshots of a game (Trello #85): emu://screenshot/<console>-<hex>/<name> ----
+
+fn screenshot_url(id: &GameKey, name: &str) -> String {
+    emudome_platform::protocol_url("emu", &format!("screenshot/{}/{name}", id.file_stem()))
+}
+
+/// The screenshot file a `<console>-<hex>/<name>` path names, when it is one: a game key and a
+/// plain `.png` name of that game's folder, nothing else (no separator, no `..`).
+fn screenshot_file(saves_root: &Path, rest: &str) -> Option<PathBuf> {
+    let (stem, name) = rest.split_once('/')?;
+    let id = GameKey::from_file_stem(stem)?;
+    emudome_core::screenshot::file(&emudome_core::screenshot::game_dir(saves_root, &id), name)
+}
+
+/// `emu://screenshot/<console>-<hex>/<name>`: one of a game's screenshots.
+pub fn screenshot_response(app: &AppHandle, rest: &str) -> tauri::http::Response<Vec<u8>> {
+    use tauri::http::{header, Response, StatusCode};
+    let found = app.try_state::<AppState>().and_then(|state| {
+        let file = screenshot_file(&state.save_dir(), rest)?;
+        std::fs::read(&file)
+            .inspect_err(|e| log::warn!("screenshot {}: {e}", file.display()))
+            .ok()
+    });
+    let builder = Response::builder();
+    let response = match found {
+        Some(bytes) => builder
+            .header(header::CONTENT_TYPE, "image/png")
+            .header(header::CACHE_CONTROL, "no-cache")
+            .body(bytes),
+        None => builder.status(StatusCode::NOT_FOUND).body(Vec::new()),
+    };
+    response.unwrap_or_else(crate::response_error)
 }
 
 // ---- Native pickers (desktop; Android has no file-path pickers: TODO with the SAF) ----
@@ -815,42 +951,150 @@ fn open_now(app: &AppHandle, id: GameKey) -> Result<GameInfo, ErrorCode> {
     crate::open_library_game(app, &app_state, &id, file, title)
 }
 
-/// Changes the cover (L12). `user` opens an image picker first: `false` if it was cancelled.
+/// Changes the cover (L12) to the generated one, the ROM's icon, or the user cover the game
+/// already has (a new one comes from `library_set_cover_image`).
 #[tauri::command]
-pub async fn library_set_cover(
+pub fn library_set_cover(
     app: AppHandle,
+    state: State<'_, LibraryState>,
     id: GameKey,
     kind: CoverKind,
-) -> Result<bool, ErrorCode> {
-    let state = app.state::<LibraryState>();
-    let rev = state.lib.lock().game(&id)?.cover_rev.wrapping_add(1);
-    let user_file = match kind {
-        CoverKind::User => {
-            let Some(source) = pick_image(&app) else {
-                return Ok(false);
-            };
-            Some(import_cover(&state.covers, &id, rev, &source)?)
-        }
-        CoverKind::Icon | CoverKind::Generated => None,
+) -> Result<(), ErrorCode> {
+    {
+        let mut lib = state.lib.lock();
+        let user_file = match kind {
+            CoverKind::User => lib.game(&id)?.user_cover.clone().filter(|name| {
+                user_cover_file(&state.covers, Some(name)).is_some_and(|f| f.is_file())
+            }),
+            CoverKind::Icon | CoverKind::Generated => None,
+        };
+        lib.set_cover(&id, kind, user_file)?;
+    }
+    emit_games(&app, &state, &[&id]);
+    Ok(())
+}
+
+/// The game's screenshots, newest first (L12 «Da uno screenshot»). A game with no folder yet
+/// has none.
+#[tauri::command]
+pub fn library_screenshots(
+    state: State<'_, AppState>,
+    id: GameKey,
+) -> Result<Vec<ScreenshotDto>, ErrorCode> {
+    let dir = emudome_core::screenshot::game_dir(&state.save_dir(), &id);
+    let shots =
+        emudome_core::screenshot::list(&dir).map_err(|e| ErrorCode::ScreenshotsUnreadable {
+            detail: format!("{}: {e}", dir.display()),
+        })?;
+    Ok(shots
+        .into_iter()
+        .map(|s| ScreenshotDto {
+            url: screenshot_url(&id, &s.name),
+            name: s.name,
+            taken_at: s.taken_ms,
+            width: s.width,
+            height: s.height,
+        })
+        .collect())
+}
+
+/// Native image picker for a new user cover (L12 «Immagine tua»): the image is checked (at most
+/// [`MAX_COVER_BYTES`], PNG / JPEG / WebP, at most `cover::MAX_SIDE` a side) and kept in memory
+/// for «Adatta la copertina». `None` = cancelled. Off the event loop (it decodes the image).
+#[tauri::command]
+pub async fn library_pick_cover_image(app: AppHandle) -> Result<Option<PickedDto>, ErrorCode> {
+    crate::blocking(app, pick_cover_image).await?
+}
+
+fn pick_cover_image(app: &AppHandle) -> Result<Option<PickedDto>, ErrorCode> {
+    let Some(source) = pick_image(app) else {
+        return Ok(None);
     };
+    let (bytes, mime) = read_source(&source)?;
+    let (width, height) = cover::dimensions(&bytes)?;
+    let state = app.state::<LibraryState>();
+    let token = state
+        .next_token
+        .fetch_add(1, Ordering::SeqCst)
+        .wrapping_add(1);
+    *state.picked.lock() = Some(PickedImage { token, bytes, mime });
+    Ok(Some(PickedDto {
+        token,
+        url: emudome_platform::protocol_url("emu", &format!("picked/{token}")),
+        width,
+        height,
+    }))
+}
+
+/// «Usa questa copertina» (Trello #85): the cover made from `source` showing `view` (decoded,
+/// cropped, resized to 600 × 900, written as a JPEG with `write_atomic`) becomes the game's user
+/// cover. Off the event loop (decoding and resizing take a while).
+#[tauri::command]
+pub async fn library_set_cover_image(
+    app: AppHandle,
+    id: GameKey,
+    source: CoverSource,
+    view: CoverView,
+) -> Result<(), ErrorCode> {
+    crate::blocking(app, move |app| set_cover_image(app, &id, &source, view)).await?
+}
+
+fn set_cover_image(
+    app: &AppHandle,
+    id: &GameKey,
+    source: &CoverSource,
+    view: CoverView,
+) -> Result<(), ErrorCode> {
+    let state = app.state::<LibraryState>();
+    let bytes = match source {
+        CoverSource::Picked { token } => {
+            let picked = state.picked.lock();
+            match picked.as_ref() {
+                Some(p) if p.token == *token => p.bytes.clone(),
+                Some(_) | None => {
+                    return Err(ErrorCode::CoverInvalid {
+                        detail: format!("picked image {token} is no longer there"),
+                    })
+                }
+            }
+        }
+        CoverSource::Screenshot { name } => {
+            let dir = emudome_core::screenshot::game_dir(&app.state::<AppState>().save_dir(), id);
+            let file = emudome_core::screenshot::file(&dir, name).ok_or_else(|| {
+                ErrorCode::CoverInvalid {
+                    detail: format!("{id} has no screenshot {name:?}"),
+                }
+            })?;
+            read_source(&file)?.0
+        }
+    };
+    let rev = state.lib.lock().game(id)?.cover_rev.wrapping_add(1);
+    let name = write_cover(&state.covers, id, rev, &bytes, view)?;
     let old = {
         let mut lib = state.lib.lock();
-        let old = lib.game(&id)?.user_cover.clone();
-        lib.set_cover(&id, kind, user_file.clone())?;
+        let old = lib.game(id)?.user_cover.clone();
+        lib.set_cover(id, CoverKind::User, Some(name.clone()))?;
         old
     };
-    // The previous user image, replaced by the new one.
-    // Only a plain name of the covers folder: a tampered `library.json` must not delete any file.
+    // The previous user cover, replaced by the new one (never the one just written, should two
+    // requests have made the same name). Only a plain name of the covers folder: a tampered
+    // `library.json` must not delete any file.
     let old_file = old
-        .filter(|_| user_file.is_some())
+        .filter(|old| *old != name)
         .and_then(|old| crate::dirs::file_in(&state.covers, &old));
     if let Some(old) = old_file {
         if let Err(e) = std::fs::remove_file(&old) {
             log::warn!("old cover {}: {e}", old.display());
         }
     }
-    emit_games(&app, &state, &[&id]);
-    Ok(true)
+    if let CoverSource::Picked { token } = source {
+        let mut picked = state.picked.lock();
+        if picked.as_ref().is_some_and(|p| p.token == *token) {
+            *picked = None;
+        }
+    }
+    emit_games(app, &state, &[id]);
+    Ok(())
 }
 
 /// Favourite / hidden.
@@ -882,8 +1126,33 @@ pub fn library_set_name(
 
 #[cfg(test)]
 mod tests {
-    use super::user_cover_file;
+    use super::{screenshot_file, user_cover_file};
     use std::path::Path;
+
+    #[test]
+    fn a_screenshot_url_reaches_only_a_screenshot_of_that_game() {
+        let dir = std::env::temp_dir().join(format!("emudome-shot-url-{}", std::process::id()));
+        let game = dir.join("screenshots").join("gba").join("0a1b");
+        std::fs::create_dir_all(&game).unwrap();
+        std::fs::write(game.join("2026-11-22_10-11-12.png"), b"png").unwrap();
+        std::fs::write(dir.join("secret.png"), b"no").unwrap();
+        assert_eq!(
+            screenshot_file(&dir, "gba-0a1b/2026-11-22_10-11-12.png"),
+            Some(game.join("2026-11-22_10-11-12.png"))
+        );
+        for bad in [
+            "gba-0a1b/missing.png",
+            "gba-0a1b/../../../secret.png",
+            "gba-0a1b/..%2F..%2Fsecret.png",
+            "gba-0a1b",
+            "gba-0A1B/2026-11-22_10-11-12.png",
+            "gba:0a1b/2026-11-22_10-11-12.png",
+            "../gba-0a1b/2026-11-22_10-11-12.png",
+        ] {
+            assert_eq!(screenshot_file(&dir, bad), None, "{bad}");
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn a_tampered_user_cover_never_leaves_the_covers_folder() {
