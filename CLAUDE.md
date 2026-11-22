@@ -1112,8 +1112,13 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
-  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu's 440 px side
-  panel on its side, E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone
+  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu as the owner
+  approved it on 2026-11-22 (`quick-menu/PhoneHome.vue`, `PhoneMore.vue`, `PhoneSaves.vue`, `phoneMenu.ts`: a first
+  level of «Salva rapido» / «Carica rapido» on Rust's current slot, «Riprendi» and a strip «Riavvolgi» (when
+  `speed.rew` is on: held, the game unpaused meanwhile; A / Enter rewind for 1 s) / «Accelera» / «Silenzia» /
+  «Altro»; «Altro» and «Altro › Salvataggi» growing the same sheet, no handle, a tap on the game resumes; a 300 px
+  side panel on its side; «Rendi rapido» moves Rust's current slot, so it holds for every game until the app
+  quits, not per game), E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone
   (owner's mockup of 2026-11-22): no «Continua a giocare» and no heading, its own toolbar (`PhoneLibraryToolbar`:
   short console names on a sideways-scrolling row, the order's name, Lista / Griglia, a square «+»; one row on its
   side), the games as a list (the default; two columns of rows on its side, #105) or a compact grid as
