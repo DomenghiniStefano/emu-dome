@@ -27,7 +27,8 @@ BIOS and firmware replacements; you can point EmuDome at your own dumps if you h
 - The two DS and 3DS screens, with the touch screen driven by the mouse or by touch.
 - Audio with resampling and latency control; fast forward, slow motion, rewind (off by default on phones and for
   3DS), pause, screenshots.
-- Keyboard and controllers (SDL3 on desktop), remappable, with L3 shortcuts; every menu works with the controller.
+- Keyboard and controllers (SDL3 on desktop, the system's input events on Android), remappable, with L3
+  shortcuts; every menu works with the controller.
 - Save states in slots, the game's own saves, a quick menu (Esc or the controller's Home button).
 - Settings at several levels (global, console, game) generated from one schema; three themes and five accent
   colours (amber by default).
@@ -126,7 +127,7 @@ The full log, entry by entry, is `docs/fase0-esito.md`. In short:
   default.
 - **Android** (Galaxy A71, 2026-11-16): native video under the WebView, ≈ 59.8 FPS (Vulkan), touch controls, the
   surface survives background and resume. Not tested yet: audio quality and delay (the test ROM is silent),
-  controllers (SDL3 is not built for Android), landscape layout.
+  controllers (read through Android's input events since #47, not run on a device yet), landscape layout.
 - **NDS** (melonDS DS, windowless, Windows, 2026-11-19): two screens, touch, 60 FPS at 1× on the test ROM, states.
 - **3DS** (Azahar, windowless, Windows, 2026-11-21, homebrew): through the shell's host on the app's Vulkan
   device, 58.7-60.3 FPS at 1× (debug build), Max 685-802, two screens and touch; software renderer 43 FPS.
@@ -141,11 +142,11 @@ crates/
   emudome-core/      libretro host and the shell's pure logic: core loading, emulation thread, states, speed,
                      input routing, settings engine, library, saves, error codes
   emudome-platform/  everything that depends on the operating system or the form factor (one module per OS,
-                     macOS stub; the Android Gradle library)
+                     macOS stub; the Android Gradle library), controllers (SDL3 / Android input)
   hw-render-spike/   hardware-rendering spike, its own workspace, never built by the checks
 app/
   src/               Vue interface (Vite); i18n/ holds the message files (en.json, it.json)
-  src-tauri/         Tauri shell: window, wgpu video, cpal audio, SDL3 controllers, commands, packaging
+  src-tauri/         Tauri shell: window, wgpu video, cpal audio, the controller thread, commands, packaging
 scripts/             core downloads, Android build, scripts/check (every check), git hooks
 tools/test-rom/      GBA test ROM (homebrew, made here)
 tools/test-rom-nds/  NDS test ROM (homebrew, made here: both screens, A, touch)

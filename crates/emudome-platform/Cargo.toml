@@ -39,6 +39,18 @@ tauri = { version = "=2.12.5", default-features = false, features = ["wry", "uns
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 env_logger = "0.11"
+# Controllers through SDL3 (`pads/sdl.rs`), joystick/gamepad and HIDAPI only (Steam Controller,
+# PS, Switch). Built from source and linked statically: no SDL3.dll to ship. Needs CMake (CMAKE
+# variable or cmake on PATH) and the system C compiler. Not on Android: SDL's controllers there
+# live in its Java layer, which does not fit Tauri's activity (docs/feasibility.md); Android reads
+# the system's own input events instead (`pads/android.rs`).
+sdl3-sys = { version = "0.7", default-features = false, features = [
+    "build-from-source-static",
+    "no-default-subsystems",
+    "sdl-joystick",
+    "sdl-hidapi",
+    "sdl-unix-console-build",
+] }
 # The native file picker (`pick_file`); Android has no file-path picker yet (TODO with the SAF).
 tauri-plugin-dialog = "2.8"
 # EmuDome updating itself (`updater.rs`, Trello #44): Tauri's updater, desktop only (Android

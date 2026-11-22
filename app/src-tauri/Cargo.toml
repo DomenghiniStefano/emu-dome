@@ -62,17 +62,4 @@ bytemuck = { version = "1", features = ["derive"] }
 cpal = "0.18"
 # Library folder watching (`library.watch`, desktop only at run time: `emudome_platform::PHONE`).
 notify = "8"
-
-# SDL3 is built for the desktop only (Android has no CMake toolchain set up for it and
-# needs SDL's Java side for controllers): Android controllers come later.
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-# Controllers through SDL3, joystick/gamepad and HIDAPI only (Steam Controller, PS, Switch).
-# Built from source and linked statically: no SDL3.dll to ship.
-# Needs CMake (CMAKE variable or cmake on PATH) and the system C compiler.
-sdl3-sys = { version = "0.7", default-features = false, features = [
-    "build-from-source-static",
-    "no-default-subsystems",
-    "sdl-joystick",
-    "sdl-hidapi",
-    "sdl-unix-console-build",
-] }
+# Controllers: emudome-platform's `pads` (SDL3 on the desktop, Android's input events on Android).
