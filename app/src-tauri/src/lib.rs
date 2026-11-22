@@ -161,7 +161,7 @@ impl AppState {
 /// What lives as long as a game is open, in the order it starts (it stops in reverse): the
 /// native renderer's source, the settings session («in prova»), the core options that follow
 /// the settings, the screens' layout and lid (after the session it reads), the window's size
-/// (`video.winsize`), the library's play time.
+/// (`video.winsize`), the library's play time, the Drive marker's heartbeat.
 fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
     let (a, b) = (app.clone(), app.clone());
     let renderer = Hooks::new(
@@ -214,6 +214,8 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         screens,
         window_size,
         play_time,
+        // The Drive «in use» marker and its heartbeat (#31), while sync is on.
+        cloud::heartbeat_hooks(app),
     ]
 }
 
@@ -489,6 +491,8 @@ pub fn run() {
             // After the library is read, before any game opens (opening waits for it).
             migration::start(app);
             library::startup(app.handle());
+            // Drive (#31): the sign-in kept, the pushes left pending, the settings; off the loop.
+            cloud::startup(app.handle());
             if let Some(bench) = bench.clone() {
                 bench::spawn(app.handle().clone(), bench);
             }
@@ -591,6 +595,17 @@ pub fn run() {
             cloud::cloud_status,
             cloud::cloud_sign_in,
             cloud::cloud_sign_out,
+            cloud::cloud_sync_now,
+            cloud::cloud_games,
+            cloud::cloud_game_upload,
+            cloud::cloud_game_download,
+            cloud::cloud_game_remove,
+            cloud::cloud_devices,
+            cloud::cloud_activity,
+            cloud::cloud_conflict,
+            cloud::cloud_resolve,
+            cloud::cloud_launch_check,
+            cloud::cloud_skip_pull,
         ])
         .build(tauri::generate_context!())
         .expect("EmuDome failed to start")

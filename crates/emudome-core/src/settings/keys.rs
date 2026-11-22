@@ -181,6 +181,10 @@ pub const BIOS_DSI: TextKey = TextKey::new("bios.bdsi");
 pub const CONSOLES_DS_MODE: TextKey = TextKey::new("consoles.dsmode");
 pub const CONSOLES_DS_NAME: TextKey = TextKey::new("consoles.dsname");
 pub const CORES_DS_BOOT: TextKey = TextKey::new("cores.mdsboot");
+pub const CLOUD_SAVES: BoolKey = BoolKey::new("cloud.ssaves");
+pub const CLOUD_QUICK: TextKey = TextKey::new("cloud.squick");
+pub const CLOUD_SETTINGS: BoolKey = BoolKey::new("cloud.ssettings");
+pub const CLOUD_AUTO: TextKey = TextKey::new("cloud.sauto");
 
 /// The `pad.*` settings the controller thread reads (`pads::settings_changed` follows them).
 pub const PAD_KEYS: [&str; 9] = [

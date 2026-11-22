@@ -15,7 +15,7 @@ use ts_rs::TS;
 
 use crate::game_session::{AfterEnd, Opened};
 use crate::health::{Part, SharedHealth};
-use crate::{bios, closing, library, migration, saves, settings, AppState};
+use crate::{bios, closing, cloud, library, migration, saves, settings, AppState};
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -251,6 +251,18 @@ fn keep_until_end(
     }))
 }
 
+/// `first`, then `second`, once the session's thread ended.
+fn then(first: Option<AfterEnd>, second: Option<AfterEnd>) -> Option<AfterEnd> {
+    match (first, second) {
+        (Some(a), Some(b)) => Some(Box::new(move || {
+            a();
+            b();
+        })),
+        (a, None) => a,
+        (None, b) => b,
+    }
+}
+
 /// The options the core starts with: the settings' (console options), then the ones the shell
 /// always forces (`CoreProfile::forced_options`, the renderer's among them), then the system
 /// files' (`emudome_core::bios`: what the files in place allow), each winning over the ones
@@ -342,6 +354,8 @@ fn open_path(
 
     // The content decides (a `.gb` file can be a Game Boy Color cartridge).
     let console_id = game.console();
+    // Drive (#31): the game's newer saves come down first (G03), before anything reads them.
+    cloud::before_launch(app, &game);
     let flow = settings::game_flow(app, core, console_id, &game);
     let save_dir = state.save_dir();
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
@@ -351,7 +365,11 @@ fn open_path(
     // Trello #93: on this renderer the core would crash loading a state of this game.
     let state_load_block = state_load_block(core, renderer, &game);
     // After the previous game closed: its writes are in the "before".
-    let after_end = keep_until_end(watch_core_user_folder(app, core), document);
+    // Then, once its exit writes are done, its push to Drive (#31), in the background.
+    let after_end = then(
+        keep_until_end(watch_core_user_folder(app, core), document),
+        cloud::after_exit(app, &game),
+    );
 
     let (tx, rx) = std::sync::mpsc::channel::<Event>();
     let session = Session::start(
