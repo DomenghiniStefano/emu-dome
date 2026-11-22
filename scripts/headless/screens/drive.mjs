@@ -203,6 +203,25 @@ const SCENARIOS = {
     width: 1024,
     height: 640,
   },
+  // Regional versions (#102): the grid with a family's tile (a deck behind it, «3 versioni»), its
+  // details' «Versioni» block (dark and light, the small window), the Library settings' switch.
+  "lib-versions": { mock: { versions: true }, steps: [] },
+  "lib-versions-light": { mock: { versions: true, theme: "light" }, steps: [] },
+  "lib-versions-small": { mock: { versions: true }, steps: [], width: 1024, height: 640 },
+  "details-versions": {
+    mock: { versions: true },
+    steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
+  },
+  "details-versions-light": {
+    mock: { versions: true, theme: "light" },
+    steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
+  },
+  "details-versions-small": {
+    mock: { versions: true },
+    steps: [`document.querySelector('[data-game="nds:02"] button').click()`],
+    width: 1024,
+    height: 640,
+  },
   "first-run": { mock: { firstRun: true }, steps: [] },
   "kit-dark": { mock: {}, steps: [], hash: "#kit", height: 1500 },
   "kit-black": {
@@ -821,6 +840,13 @@ const TV = {
       nav("right"),
       `document.activeElement?.getAttribute('aria-label') ?? 'none'`,
     ],
+    focus: true,
+  },
+  // #102: «Dual Screen Tales» in three versions, one tile on its console's shelf.
+  "lib-versions": {
+    mock: { ...TV_AUTO, versions: true },
+    // Hero, «Continua a giocare», «Preferiti», Game Boy, Game Boy Color, GBA, then DS.
+    steps: [nav("down"), nav("down"), nav("down"), nav("down"), nav("down"), nav("down")],
     focus: true,
   },
   saves: { mock: TV_AUTO, steps: [nav("next")] },

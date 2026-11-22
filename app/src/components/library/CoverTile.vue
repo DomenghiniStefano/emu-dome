@@ -16,9 +16,18 @@ import type { LibraryGame } from '@/emu'
 import { lastPlayedLabel, playTimeLabel } from '@/i18n/labels'
 import CoverMenu from '@/components/cover/CoverMenu.vue'
 import GameCover from '@/components/cover/GameCover.vue'
+import { CoverStackLayer, coverStackVariants } from '@/components/cover/variants'
 import { COVER_OF } from './useLibraryFocus'
 
-const props = defineProps<{ game: LibraryGame; menuOpen: boolean }>()
+const props = withDefaults(
+  defineProps<{
+    game: LibraryGame
+    menuOpen: boolean
+    /** Its family's regional versions (#102): from 2, a deck behind it and the «N versioni» tag. */
+    versions?: number
+  }>(),
+  { versions: 0 },
+)
 const emit = defineEmits<{
   details: []
   play: []
@@ -50,9 +59,15 @@ const meta = computed(() =>
       :data-open="menuOpen ? '' : undefined"
       @contextmenu.prevent="emit('details')"
     >
+      <!-- Regional versions (#102): two covers' edges behind it, drawn first so it covers them. -->
+      <template v-if="versions > 1">
+        <div :class="coverStackVariants({ layer: CoverStackLayer.Far })" aria-hidden="true"></div>
+        <div :class="coverStackVariants({ layer: CoverStackLayer.Near })" aria-hidden="true"></div>
+      </template>
       <!-- Faded to 45% (Cowork: `disabled` is 40%), edged in dashes. -->
       <GameCover
         :game="game"
+        :versions="versions"
         :class="{
           'opacity-missing outline outline-offset-inset outline-line-strong outline-dashed': off,
         }"

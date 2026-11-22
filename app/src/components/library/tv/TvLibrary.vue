@@ -14,6 +14,7 @@ import { useI18n } from 'vue-i18n'
 import type { GameId, LibraryGame } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
 import { ambientGame } from '@/lib/ambient'
+import { libraryFamilies } from '@/lib/library'
 import { useNavGrid } from '@/nav'
 import { useLibraryFocus } from '@/components/library/useLibraryFocus'
 import { useResumePoints } from '@/components/library/useResumePoints'
@@ -44,7 +45,8 @@ const failWith = useErrorSink()
 const root = ref<HTMLElement | null>(null)
 useLibraryFocus(root, props.returnTo)
 
-const shelves = computed(() => tvShelves(props.games))
+// One tile per family of regional versions (#102), its shown version.
+const shelves = computed(() => tvShelves(props.games, libraryFamilies.value.tucked))
 const played = computed(() => shelves.value.find(s => s.id === 'continue')?.games ?? [])
 const resume = useResumePoints(played, failWith)
 

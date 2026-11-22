@@ -14,10 +14,14 @@ import path from "node:path";
 
 const args = process.argv.slice(2);
 const checking = args.includes("--check");
-const [cdpPort, baseUrl, count = "3000"] = args.filter((a) => a !== "--check");
+// `--families` (#102): the generated games grouped two by two (one tile per pair).
+const grouped = args.includes("--families");
+const [cdpPort, baseUrl, count = "3000"] = args.filter(
+  (a) => a !== "--check" && a !== "--families",
+);
 if (!cdpPort || !baseUrl) {
   console.error(
-    "usage: node library-scale.mjs <cdpPort> <baseUrl> [games] [--check]",
+    "usage: node library-scale.mjs <cdpPort> <baseUrl> [games] [--check] [--families]",
   );
   process.exit(2);
 }
@@ -28,7 +32,11 @@ const mock = fs
   .readFileSync(path.join(here, "mock.js"), "utf8")
   .replace(
     "__SCENARIO__",
-    JSON.stringify({ lang: "en", manyGames: Number(count) }),
+    JSON.stringify({
+      lang: "en",
+      manyGames: Number(count),
+      manyFamilies: grouped,
+    }),
   );
 
 const res = await fetch(`http://127.0.0.1:${cdpPort}/json/new?about:blank`, {

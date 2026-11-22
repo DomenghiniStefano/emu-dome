@@ -20,23 +20,25 @@ export const TV_CONTINUE_COUNT = 12
 /**
  * The shelves, top down: «Continua a giocare» (played last, newest first), «Preferiti» (A–Z),
  * then one per console in the library's console order (A–Z). Hidden games are left out, and so
- * is a shelf with no game.
+ * is a shelf with no game. `tucked` (#102): the regional versions behind their family's tile,
+ * left out of every shelf but «Continua a giocare», which shows the versions actually played.
  */
-export function tvShelves(games: LibraryGame[]): Shelf[] {
+export function tvShelves(games: LibraryGame[], tucked: ReadonlySet<GameId> = new Set()): Shelf[] {
   const visible = games.filter(g => !g.hidden)
+  const tiles = tucked.size === 0 ? visible : visible.filter(g => !tucked.has(g.id))
   const shelves: Shelf[] = [
     { id: 'continue', games: recentlyPlayed(visible, TV_CONTINUE_COUNT) },
     {
       id: 'favourites',
       games: sorted(
-        visible.filter(g => g.favourite),
+        tiles.filter(g => g.favourite),
         'name',
       ),
     },
     ...CONSOLES.map(c => ({
       id: c,
       games: sorted(
-        visible.filter(g => g.console === c),
+        tiles.filter(g => g.console === c),
         'name',
       ),
     })),

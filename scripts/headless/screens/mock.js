@@ -110,6 +110,51 @@
     last.path = `D:/Old games/${last.title}.${last.console}`;
     last.available = false;
   }
+  // The regional versions grouped (#102), as Rust sends them. `versions`: «Dual Screen Tales»
+  // (nds:02, American, played 3 days ago: the tile) in three versions, the European one played a
+  // month ago, the Japanese one never. `manyFamilies`: the generated games two by two, the first of
+  // each pair the tile.
+  const families = [];
+  if (scenario.versions) {
+    Object.assign(games[1], { region: "usa", code: "ADAE" });
+    games.push(
+      {
+        ...games[1],
+        id: "nds:21",
+        settingsGame: "nds:21",
+        title: "Dual Screen Tales",
+        region: "europe",
+        code: "ADAP",
+        playTimeSecs: 2 * 3600,
+        lastPlayed: FIXED - 30 * day,
+      },
+      {
+        ...games[1],
+        id: "nds:22",
+        settingsGame: "nds:22",
+        title: "Futari no Monogatari",
+        romTitle: "Futari no Monogatari",
+        region: "japan",
+        code: "ADAJ",
+        playTimeSecs: 0,
+        lastPlayed: null,
+      },
+    );
+    families.push({
+      id: "nds:ADA",
+      shown: "nds:02",
+      versions: ["nds:02", "nds:21", "nds:22"],
+      pinned: false,
+    });
+  }
+  if (scenario.manyFamilies)
+    for (let i = 5; i + 1 < games.length; i += 2)
+      families.push({
+        id: `many:${i}`,
+        shown: games[i].id,
+        versions: [games[i].id, games[i + 1].id],
+        pinned: false,
+      });
   // `withheld`: the last N games arrive with a scan; a step puts them back with
   // `__mockLibrary.games = __mockAllGames` between the scan's `started` and `done` events.
   const listed = games.slice(0, games.length - (scenario.withheld ?? 0));
@@ -124,6 +169,7 @@
             : []),
         ],
     scanning: !!scenario.scanning,
+    families,
   };
   window.__mockLibrary = library;
   window.__mockAllGames = games;
