@@ -747,6 +747,14 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Unit tests of `app/src-tauri` must not reach Tauri's runtime (an `AppHandle` method called from tested code): the
   test exe then imports Windows entry points it cannot load and dies with `STATUS_ENTRYPOINT_NOT_FOUND`
   (2026-11-21, `health.rs`). Keep the `AppHandle` behind a closure made where the app exists.
+- A catalogue entry can be marked wired while nothing reads it: `video.scale` (2026-11-22, now read) and `video.filter`
+  (Trello #109). Before building on a setting, grep for its reader (`settings/keys.rs`, the interface), not only `wired`.
+- Samsung's launcher (One UI) fills an adaptive icon's transparent background with black and crops it tighter than the
+  72 dp preview: the Android icon is a solid background (amber) with the mark, checked on the phone (2026-11-22).
+- The owner's S23 runs at a larger display size: 360 × 780 CSS px, not 412 × 892. Phone layouts and headless checks use
+  360 × 780 and 780 × 360 first. Debug builds go on with `adb install -r` (the owner's games and saves stay).
+- A fix tried on the phone from a test worktree is not on `develop` until it is merged: check
+  `git merge-base --is-ancestor <branch> develop` before calling it done (2026-11-22, the DSi header fix).
 
 ## Project rules
 
@@ -1263,6 +1271,13 @@ Kit page) and the boards already drawn on the canvas are the reference.
   engine, build and checks, prototypes that answer "can it be done", and the interface wiring of what is already
   designed; until a design exists, the UI stays a functional placeholder (correct, i18n, controller-usable,
   design-system tokens), not a design proposal.
+
+**How the owner judges design** (2026-11-22): the user-level skill `emudome-design-taste` records it; load it before
+any mockup or interface change. In short: content first and large (game screens edge to edge on the phone), few things
+on a level with the frequent ones one tap away, density over empty bands, nothing that pretends (a handle that does not
+drag), buttons with icons and verbs as labels, squared and tight, amber only on the main action. Every visual question
+goes to the owner as a picture (an artifact page with phone frames at the real size and the app's tokens), numbered
+options and one recommendation; once the direction is set, the small choices are Claude Code's.
 
 After every Phase 0 test, update **`docs/fase0-esito.md`** (create it if missing) in this format, without deleting the earlier entries:
 
