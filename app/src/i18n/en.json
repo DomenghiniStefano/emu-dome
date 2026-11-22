@@ -993,6 +993,7 @@
         "button": "Edit the list",
         "option": {
           "vertical": "Vertical",
+          "auto": "Automatic",
           "side": "Side by side",
           "big_small": "Large and small",
           "top_only": "Top screen only",
