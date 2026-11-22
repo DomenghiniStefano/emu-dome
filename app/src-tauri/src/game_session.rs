@@ -309,6 +309,7 @@ mod tests {
         SessionOptions {
             core_path: dir.join(core),
             game_path: dir.join("Game.gba"),
+            game_file: None,
             system_dir: dir.join("system"),
             save_dir: dir.join("saves"),
             game: game.clone(),

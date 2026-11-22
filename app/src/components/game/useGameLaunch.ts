@@ -2,13 +2,11 @@
 // G01 while the core loads, G02 if it cannot start, E04 if its in-game save is unreadable, the
 // resume question, and starting again after E11.
 import { useI18n } from 'vue-i18n'
-import { open } from '@tauri-apps/plugin-dialog'
 import { AUTO_SLOT, emu, type GameId, type GameInfo, type LibraryGame } from '@/emu'
 import { clearToLaunch } from '@/components/cloud/cloudState'
 import { flow } from './gameFlow'
 import { errorText } from '@/i18n/labels'
 import { launchFailure, type Launch } from './launch'
-import { fileTitle } from './session'
 import type { GameSession } from './useGameSession'
 import type { Toasts } from '@/composables/useToasts'
 
@@ -79,20 +77,27 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
   async function openFile(given?: string) {
     const path = given ?? (await pickFile())
     if (typeof path !== 'string') return
-    await start({ opened: { kind: 'path', path }, title: fileTitle(path), colour: null })
+    await start({ opened: { kind: 'path', path }, title: await titleOf(path), colour: null })
   }
 
+  /** Rust picks (the desktop's dialog, Android's document picker) and checks the extension. */
   async function pickFile(): Promise<string | null> {
     try {
-      const extensions = await emu.openExtensions()
-      const picked = await open({
-        multiple: false,
-        filters: [{ name: t('library.dialogFilter'), extensions }],
-      })
-      return typeof picked === 'string' ? picked : null
+      return await emu.pickGameFile(t('library.dialogFilter'))
     } catch (e) {
       toasts.failWith(e)
       return null
+    }
+  }
+
+  /** The file's title from Rust (a document's display name, never its URI). */
+  async function titleOf(path: string): Promise<string> {
+    try {
+      return (await emu.gameFileTitle(path)) ?? t('flow.untitledGame')
+    } catch (e) {
+      // Only the title of G01 / G02: the open itself still runs and reports its own error.
+      console.warn('game file title', e)
+      return t('flow.untitledGame')
     }
   }
 

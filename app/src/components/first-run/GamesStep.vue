@@ -52,11 +52,15 @@ const found = computed(() => library.progress?.found ?? 0)
         class="flex items-center gap-10 px-16 py-12 text-ink-muted"
       >
         <Folder :size="16" :stroke-width="1.75" aria-hidden="true" />
-        <span class="min-w-0 flex-1 truncate text-ink">{{ f.path }}</span>
+        <span class="min-w-0 flex-1 truncate text-ink">{{
+          f.name ?? t('library.folderUnnamed')
+        }}</span>
         <Button
           :variant="ButtonVariant.GhostRegular"
           :size="ButtonSize.Small"
-          :aria-label="t('firstRun.games.removeFolder', { path: f.path })"
+          :aria-label="
+            t('firstRun.games.removeFolder', { path: f.name ?? t('library.folderUnnamed') })
+          "
           @click="removeFolder(f.path)"
         >
           {{ t('firstRun.games.remove') }}

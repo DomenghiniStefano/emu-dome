@@ -1,24 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameInfo, Stats } from '@/emu'
 import { FF_DEFAULT } from '@/lib/speeds'
-import {
-  crashReport,
-  fileTitle,
-  gameSettingsFrom,
-  insetShare,
-  pageBackground,
-  speedShown,
-} from './session'
-
-describe('fileTitle', () => {
-  it('drops the folder and the extension', () => {
-    expect(fileTitle('C:\\Games\\Pocket Quest.gba')).toBe('Pocket Quest')
-    expect(fileTitle('/home/me/games/tiny.blocks.gb')).toBe('tiny.blocks')
-  })
-  it('keeps a name without extension', () => {
-    expect(fileTitle('rom')).toBe('rom')
-  })
-})
+import { crashReport, gameSettingsFrom, insetShare, pageBackground, speedShown } from './session'
 
 describe('pageBackground', () => {
   it('is transparent over the native video, the ground in the webview', () => {
