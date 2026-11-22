@@ -3,18 +3,21 @@
 //! injection (offline from the n-th call on). A failed call changes nothing, as on Drive.
 
 use std::collections::BTreeMap;
+use std::path::Path;
+use std::sync::Arc;
 
 use parking_lot::Mutex;
 
 use super::{
-    md5_hex, Account, Change, ChangesPage, Content, DriveApi, Properties, Quota, RemoteFile, ROOT,
+    md5_hex, Account, Change, ChangesPage, Content, Downloaded, DriveApi, Properties, Quota,
+    RemoteFile, ROOT,
 };
 use crate::SyncError;
 
-/// Drive in memory.
-#[derive(Default)]
+/// Drive in memory. A clone is the same Drive (two devices of one account).
+#[derive(Clone, Default)]
 pub struct FakeDrive {
-    state: Mutex<State>,
+    state: Arc<Mutex<State>>,
 }
 
 #[derive(Default)]
@@ -28,6 +31,8 @@ struct State {
     /// Calls still answered before going offline; `None`: always online.
     calls_left: Option<usize>,
     limit: Option<u64>,
+    /// What [`DriveApi::trash`] moved to the trash, oldest first.
+    trashed: Vec<RemoteFile>,
 }
 
 struct Entry {
@@ -96,6 +101,11 @@ impl FakeDrive {
             e.file.modified = now;
         }
         state.log.push((id.to_owned(), false));
+    }
+
+    /// The files moved to the trash, oldest first.
+    pub fn trashed(&self) -> Vec<RemoteFile> {
+        self.state.lock().trashed.clone()
     }
 
     /// Removes a file as another program would.
@@ -360,6 +370,41 @@ impl DriveApi for FakeDrive {
             .get(id)
             .map(|e| e.content.clone())
             .ok_or_else(|| SyncError::NotFound(format!("file {id}")))
+    }
+
+    async fn download_to(
+        &self,
+        id: &str,
+        to: &Path,
+        progress: &(dyn Fn(u64) + Send + Sync),
+    ) -> Result<Downloaded, SyncError> {
+        let bytes = self.download(id).await?;
+        tokio::fs::write(to, &bytes)
+            .await
+            .map_err(|e| SyncError::Local(format!("{}: {e}", to.display())))?;
+        progress(bytes.len() as u64);
+        Ok(Downloaded {
+            md5: md5_hex(&bytes),
+            size: bytes.len() as u64,
+        })
+    }
+
+    async fn list_all(&self) -> Result<Vec<RemoteFile>, SyncError> {
+        let state = self.call()?;
+        let mut out: Vec<&Entry> = state.files.values().collect();
+        out.sort_by_key(|e| (e.created, e.file.id.clone()));
+        Ok(out.into_iter().map(|e| e.file.clone()).collect())
+    }
+
+    async fn trash(&self, id: &str) -> Result<(), SyncError> {
+        let mut state = self.call()?;
+        let entry = state
+            .files
+            .remove(id)
+            .ok_or_else(|| SyncError::NotFound(format!("file {id}")))?;
+        state.trashed.push(entry.file);
+        state.log.push((id.to_owned(), true));
+        Ok(())
     }
 
     async fn quota(&self) -> Result<Quota, SyncError> {

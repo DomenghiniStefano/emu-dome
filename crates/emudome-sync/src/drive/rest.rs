@@ -13,15 +13,16 @@
 //! The session URL of a resumable upload is a credential of its own: it is never logged.
 
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::time::Duration;
 
 use serde::Deserialize;
 use serde_json::{json, Value as Json};
-use tokio::io::{AsyncReadExt, AsyncSeekExt};
+use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
 use super::{
-    Account, Change, ChangesPage, Content, DriveApi, Properties, Quota, RemoteFile, TokenSource,
-    FOLDER_MIME,
+    hex, Account, Change, ChangesPage, Content, Downloaded, DriveApi, Properties, Quota,
+    RemoteFile, TokenSource, FOLDER_MIME,
 };
 use crate::oauth::Secret;
 use crate::SyncError;
@@ -698,6 +699,64 @@ impl<T: TokenSource> DriveApi for RestDrive<T> {
             return Err(read_error(response).await.into_sync(0));
         }
         Ok(response.bytes().await?.to_vec())
+    }
+
+    async fn download_to(
+        &self,
+        id: &str,
+        to: &Path,
+        progress: &(dyn Fn(u64) + Send + Sync),
+    ) -> Result<Downloaded, SyncError> {
+        use md5::{Digest, Md5};
+        let url = format!("{}/{id}", self.files_url());
+        let mut response = self
+            .send(|t| {
+                self.http
+                    .get(&url)
+                    .bearer_auth(t.expose())
+                    .query(&[("alt", "media")])
+            })
+            .await?;
+        if !response.status().is_success() {
+            return Err(read_error(response).await.into_sync(0));
+        }
+        let local = |e: std::io::Error| SyncError::Local(format!("{}: {e}", to.display()));
+        let mut file = tokio::fs::File::create(to).await.map_err(local)?;
+        let mut md5 = Md5::new();
+        let mut size = 0u64;
+        while let Some(chunk) = response.chunk().await? {
+            md5.update(&chunk);
+            file.write_all(&chunk).await.map_err(local)?;
+            size += chunk.len() as u64;
+            progress(size);
+        }
+        file.flush().await.map_err(local)?;
+        file.sync_all().await.map_err(local)?;
+        Ok(Downloaded {
+            md5: hex(&md5.finalize()),
+            size,
+        })
+    }
+
+    async fn list_all(&self) -> Result<Vec<RemoteFile>, SyncError> {
+        self.list_query("trashed = false".to_owned()).await
+    }
+
+    async fn trash(&self, id: &str) -> Result<(), SyncError> {
+        let url = format!("{}/{id}", self.files_url());
+        let body = json!({ "trashed": true });
+        self.file(
+            |t| {
+                self.http
+                    .patch(&url)
+                    .bearer_auth(t.expose())
+                    .query(&[("fields", "id")])
+                    .json(&body)
+            },
+            0,
+        )
+        .await
+        .map(|_| ())
     }
 
     async fn quota(&self) -> Result<Quota, SyncError> {
