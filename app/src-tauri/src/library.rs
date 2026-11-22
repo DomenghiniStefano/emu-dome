@@ -421,7 +421,21 @@ pub fn start_scan(app: &AppHandle) {
             let state = app.state::<LibraryState>();
             loop {
                 state.rescan.store(false, Ordering::SeqCst);
-                run_scan(&app, &state);
+                // A scan that panics (a malformed file the identity code did not expect) must not
+                // leave the interface waiting for its end: it is logged and reported as done.
+                if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_scan(&app, &state)))
+                    .is_err()
+                {
+                    log::error!("library scan stopped: a file could not be read (panic above)");
+                    emit_scan(
+                        &app,
+                        ScanEvent::Done {
+                            found: 0,
+                            added: 0,
+                            unreachable: Vec::new(),
+                        },
+                    );
+                }
                 state.scanning.store(false, Ordering::SeqCst);
                 // A request that came in meanwhile, and nobody else took over.
                 if !state.rescan.load(Ordering::SeqCst)

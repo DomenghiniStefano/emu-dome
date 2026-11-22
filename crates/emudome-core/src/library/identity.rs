@@ -309,13 +309,15 @@ fn nds(file: &mut File, len: u64) -> Result<Header, NotAGame> {
     if len < 0x200 {
         return Err(NotAGame::Header("NDS file shorter than its header"));
     }
-    let h = read_at(file, 0, 0x200)?;
+    // The DSi extended header (DSi-enhanced / DSi-only titles) goes past 0x200: read up to its
+    // total used size field at 0x210 when the file is long enough.
+    let h = read_at(file, 0, if len >= 0x214 { 0x214 } else { 0x200 })?;
     if crc16(&h[..0x15E]) != le16(&h, 0x15E) {
         return Err(NotAGame::Header("NDS header CRC"));
     }
     let mut used = u64::from(le32(&h, 0x80));
     // DSi-enhanced / DSi-only: the used size including the DSi areas.
-    if h[0x12] & 0x02 != 0 && le32(&h, 0x210) != 0 {
+    if h[0x12] & 0x02 != 0 && h.len() >= 0x214 && le32(&h, 0x210) != 0 {
         used = u64::from(le32(&h, 0x210));
     }
     if used == 0 || used > len {
