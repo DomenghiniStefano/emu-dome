@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // The library as a list (#29, `library.view` «Lista», the phone's default): one GameRow per game,
 // in the view's order and filters. Windowed like the cover grid (useCoverWindow.ts on a grid of
-// one column): only the rows near the screen are in the DOM, the list's padding stands for the
-// others. The controller and the arrows move by row, and between a row and its button
-// (coverGridNav.ts `listStep`); past the first or the last row nav.ts moves on spatially.
+// one column, two on the phone on its side, #105: the short window shows six games instead of
+// three): only the rows near the screen are in the DOM, the list's padding stands for the
+// others. The controller and the arrows move by row, and between a row, its button and the next
+// column (coverGridNav.ts `listStep`); past the list's edges nav.ts moves on spatially.
 import { ref } from 'vue'
 import type { GameId, LibraryGame } from '@/emu'
 import { versionCount } from '@/lib/families'
@@ -46,7 +47,11 @@ useCoverGridNav(list, () => props.games, win, {
 </script>
 
 <template>
-  <div ref="list" class="focus-ring-off grid grid-cols-1" :style="style">
+  <div
+    ref="list"
+    class="focus-ring-off grid grid-cols-1 touch:landscape:grid-cols-2 touch:landscape:gap-x-24"
+    :style="style"
+  >
     <GameRow
       v-for="g in visible"
       :key="g.id"
