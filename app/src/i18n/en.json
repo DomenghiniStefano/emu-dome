@@ -38,6 +38,9 @@
     "open": "Open {title}",
     "openDetails": "Open the details of {title}",
     "neverPlayed": "Never played",
+    "versions": {
+      "tag": "{n} version | {n} version | {n} versions"
+    },
     "meta": "{time} · {when}",
     "noneShown": "No games match these filters.",
     "drop": "Drop games or folders to add them",
@@ -154,6 +157,30 @@
     "meta": "{time} played · last played {when}",
     "metaShort": "{time} · {when}",
     "notYet": "This section arrives in a future update.",
+    "versions": {
+      "title": "Versions",
+      "inLibrary": "In the library",
+      "play": "Play this one",
+      "pin": "Show this one in the library",
+      "meta": "{region} · {time} played · {when}",
+      "metaNew": "{region} · Never played",
+      "noRegion": "Region unknown",
+      "regionTag": {
+        "japan": "JP",
+        "usa": "US",
+        "europe": "EU",
+        "germany": "DE",
+        "france": "FR",
+        "italy": "IT",
+        "spain": "ES",
+        "netherlands": "NL",
+        "australia": "AU",
+        "korea": "KR",
+        "china": "CN",
+        "world": "ALL",
+        "none": "?"
+      }
+    },
     "tabs": {
       "saves": "Saves",
       "settings": "Game settings",
@@ -1244,14 +1271,9 @@
         "name": "Group by console",
         "desc": "Splits the library into sections by console."
       },
-      "region": {
-        "name": "Preferred region for names",
-        "desc": "When a game has different names in different regions.",
-        "option": {
-          "eu_us": "Europe, then America",
-          "us_eu": "America, then Europe",
-          "jp": "Japan"
-        }
+      "versions": {
+        "name": "Group versions of the same game",
+        "desc": "One tile per game, with its versions in the details."
       },
       "hidden": {
         "name": "Hidden games",

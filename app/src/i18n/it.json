@@ -38,6 +38,9 @@
     "open": "Apri {title}",
     "openDetails": "Apri i dettagli di {title}",
     "neverPlayed": "Mai giocato",
+    "versions": {
+      "tag": "{n} versioni | {n} versione | {n} versioni"
+    },
     "meta": "{time} · {when}",
     "noneShown": "Nessun gioco corrisponde a questi filtri.",
     "drop": "Rilascia giochi o cartelle per aggiungerli",
@@ -154,6 +157,30 @@
     "meta": "{time} di gioco · ultima partita {when}",
     "metaShort": "{time} · {when}",
     "notYet": "Questa sezione arriva con un prossimo aggiornamento.",
+    "versions": {
+      "title": "Versioni",
+      "inLibrary": "In libreria",
+      "play": "Gioca questa",
+      "pin": "Mostra questa in libreria",
+      "meta": "{region} · {time} di gioco · {when}",
+      "metaNew": "{region} · Mai giocato",
+      "noRegion": "Regione sconosciuta",
+      "regionTag": {
+        "japan": "JP",
+        "usa": "US",
+        "europe": "EU",
+        "germany": "DE",
+        "france": "FR",
+        "italy": "IT",
+        "spain": "ES",
+        "netherlands": "NL",
+        "australia": "AU",
+        "korea": "KR",
+        "china": "CN",
+        "world": "TUTTI",
+        "none": "?"
+      }
+    },
     "tabs": {
       "saves": "Salvataggi",
       "settings": "Impostazioni del gioco",
@@ -1244,14 +1271,9 @@
         "name": "Raggruppa per console",
         "desc": "Divide la libreria in sezioni per console."
       },
-      "region": {
-        "name": "Regione preferita per i nomi",
-        "desc": "Quando un gioco ha nomi diversi nelle varie regioni.",
-        "option": {
-          "eu_us": "Europa, poi America",
-          "us_eu": "America, poi Europa",
-          "jp": "Giappone"
-        }
+      "versions": {
+        "name": "Raggruppa le versioni dello stesso gioco",
+        "desc": "Un riquadro per gioco, con le sue versioni nei dettagli."
       },
       "hidden": {
         "name": "Giochi nascosti",

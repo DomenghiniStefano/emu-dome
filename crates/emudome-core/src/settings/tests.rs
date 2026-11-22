@@ -786,7 +786,8 @@ fn is_option_id(id: &str) -> bool {
 fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
     // 157 of the design, less `speed.splist` and `general.qmorder` (owner, 18/11), plus the
     // GB, GBC, DSi ARM7, DSi ARM9 and DSi firmware rows (owner, 2026-11-21, Trello #89), plus
-    // the game clock's offset and date rows (Trello #102).
+    // the game clock's offset and date rows (Trello #102), and `library.versions` in place of
+    // `library.region` (owner, 2026-11-22, #102).
     assert_eq!(ENTRIES.len(), 164);
 }
 
@@ -2165,7 +2166,6 @@ fn the_entries_not_wired_yet_are_these() {
             "touch.tpad",
             "general.updates",
             "library.group",
-            "library.region",
             "library.covers",
             "cloud.ssaves",
             "cloud.squick",

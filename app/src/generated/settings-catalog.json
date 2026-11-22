@@ -765,13 +765,9 @@
       "page": "library"
     },
     {
-      "key": "library.region",
-      "kind": "choice",
-      "options": [
-        "eu_us",
-        "us_eu",
-        "jp"
-      ],
+      "key": "library.versions",
+      "kind": "toggle",
+      "options": [],
       "page": "library"
     },
     {

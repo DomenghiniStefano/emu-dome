@@ -1,7 +1,7 @@
 //! The static catalogue: every setting of the app, page by page, in the design's order
 //! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17), plus the Game Boy,
 //! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89), plus the game clock's
-//! offset and date rows (Trello #102): 164.
+//! offset and date rows (Trello #102): 164 (`library.versions` replaced `library.region`, #102).
 //!
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
@@ -655,7 +655,10 @@ pub static ENTRIES: &[Entry] = &[
         G,
     ),
     sw("library.group", false, G).not_wired(),
-    sel("library.region", &["eu_us", "us_eu", "jp"], "eu_us", G).not_wired(),
+    // One tile per game for its regional versions (Trello #102, `library::group`); in place of
+    // `library.region` (owner, 2026-11-22: no region rule, the tile shows the version launched
+    // last).
+    sw("library.versions", true, G),
     link("library.hidden", G),
     sel(
         "library.covers",
@@ -1056,7 +1059,7 @@ pub static SECTIONS: &[Section] = &[
         keys: &[
             "library.sort",
             "library.group",
-            "library.region",
+            "library.versions",
             "library.hidden",
             "library.covers",
         ],
@@ -1226,7 +1229,8 @@ mod tests {
 
     #[test]
     fn has_the_designs_entries_with_unique_keys_on_known_pages() {
-        // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102).
+        // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102);
+        // `library.versions` took the place of `library.region` (#102).
         assert_eq!(ENTRIES.len(), 164);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(

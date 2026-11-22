@@ -894,3 +894,114 @@ fn the_ds_core_is_the_one_the_nds_module_names() {
         crate::core_profile::CoreId::MelonDsDs.name()
     );
 }
+
+// ---- Families of regional versions (#102) ----
+
+/// A GBA ROM with this game code (a different filler makes another file, another game).
+fn gba_coded(code: &str, filler: u8) -> Vec<u8> {
+    let mut rom = gba_rom("SYNTH", filler);
+    put(&mut rom, 0xAC, code.as_bytes());
+    rom
+}
+
+/// A library with a European, an American and a Japanese version of one game, and a homebrew.
+fn three_regions(dir: &TestDir) -> (Library, [GameKey; 4]) {
+    write(dir, "roms/eu.gba", &gba_coded("BSYP", 1));
+    write(dir, "roms/us.gba", &gba_coded("BSYE", 2));
+    write(dir, "roms/jp.gba", &gba_coded("BSYJ", 3));
+    write(dir, "roms/homebrew.gba", &gba_rom("HB", 4));
+    let mut lib = Library::open(&dir.path("db"));
+    run(&mut lib, &[&dir.path("roms")], 1);
+    let id = |code: &str| {
+        lib.games()
+            .find(|g| g.code.as_deref() == Some(code))
+            .unwrap()
+            .id
+            .clone()
+    };
+    let ids = [id("BSYP"), id("BSYE"), id("BSYJ"), id("ZTST")];
+    (lib, ids)
+}
+
+#[test]
+fn the_library_groups_regional_versions_and_never_a_homebrew() {
+    let dir = TestDir::new("lib-families");
+    let (mut lib, [eu, us, jp, homebrew]) = three_regions(&dir);
+    lib.mark_played(&jp, 40).unwrap();
+    lib.mark_played(&us, 50).unwrap();
+    let families = lib.families();
+    assert_eq!(families.len(), 1);
+    assert_eq!(families[0].id, "gba:BSY");
+    assert_eq!(families[0].shown, us, "the version launched last");
+    assert_eq!(families[0].versions, [us.clone(), jp.clone(), eu.clone()]);
+    assert!(!families[0].pinned);
+    assert!(families.iter().all(|f| !f.versions.contains(&homebrew)));
+    // Each version keeps its own row: identity, play time, saves stay per dump.
+    assert_eq!(lib.games().count(), 4);
+    // Launching another version moves the tile to it.
+    lib.mark_played(&eu, 60).unwrap();
+    assert_eq!(lib.families()[0].shown, eu);
+}
+
+#[test]
+fn a_pinned_version_survives_reopening_and_one_pin_per_family() {
+    let dir = TestDir::new("lib-pins");
+    let (mut lib, [eu, us, jp, homebrew]) = three_regions(&dir);
+    lib.mark_played(&eu, 90).unwrap();
+    lib.pin_version(&jp, true).unwrap();
+    lib.pin_version(&us, true).unwrap();
+    drop(lib);
+    let mut lib = Library::open(&dir.path("db"));
+    assert!(lib.pins().len() == 1 && lib.pins().contains(&us));
+    let family = &lib.families()[0];
+    assert_eq!(
+        family.shown, us,
+        "a pin wins over the version launched last"
+    );
+    assert!(family.pinned);
+    assert_eq!(family.versions[..2], [us.clone(), eu.clone()]);
+    // Back to the version launched last.
+    lib.pin_version(&eu, false).unwrap();
+    let lib2 = Library::open(&dir.path("db"));
+    assert!(lib2.pins().is_empty());
+    assert_eq!(lib2.families()[0].shown, eu);
+    // A game in no family: nothing to pin, nothing written.
+    let before = dir.read("db/library.json");
+    lib.pin_version(&homebrew, true).unwrap();
+    assert_eq!(dir.read("db/library.json"), before);
+    assert!(matches!(
+        lib.pin_version(&GameKey::new(ConsoleId::Gba, "ab").unwrap(), true),
+        Err(ErrorCode::LibraryGameUnknown { .. })
+    ));
+}
+
+#[test]
+fn a_pin_this_version_cannot_read_is_skipped_and_the_file_kept() {
+    let dir = TestDir::new("lib-pins-unknown");
+    let (lib, [eu, ..]) = three_regions(&dir);
+    drop(lib);
+    // A newer version's id, or a broken one: skipped, the library still reads.
+    let text = dir.read("db/library.json");
+    let mut json: serde_json::Value = serde_json::from_str(&text).unwrap();
+    json["versionPins"] = serde_json::json!(["not a key", eu.as_str()]);
+    dir.write("db/library.json", &json.to_string());
+    let lib = Library::open(&dir.path("db"));
+    assert_eq!(lib.games().count(), 4);
+    assert!(lib.pins().len() == 1 && lib.pins().contains(&eu));
+    assert_eq!(lib.families()[0].shown, eu);
+}
+
+#[test]
+fn a_pin_is_refused_while_the_database_cannot_be_read() {
+    let dir = TestDir::new("lib-pins-read-failed");
+    let (lib, [eu, ..]) = three_regions(&dir);
+    drop(lib);
+    fs::rename(dir.path("db/library.json"), dir.path("db/away.json")).unwrap();
+    dir.write("db/library.json/inside.txt", "kept");
+    let mut lib = Library::open(&dir.path("db"));
+    assert!(matches!(
+        lib.pin_version(&eu, true),
+        Err(ErrorCode::LibraryReadFailed { .. })
+    ));
+    assert_eq!(dir.read("db/library.json/inside.txt"), "kept");
+}

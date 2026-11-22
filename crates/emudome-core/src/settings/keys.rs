@@ -171,6 +171,7 @@ pub const GENERAL_START: TextKey = TextKey::new("general.start");
 pub const LIBRARY_FOLDERS: ListKey = ListKey::new("library.folders");
 pub const LIBRARY_SCAN_AT_START: BoolKey = BoolKey::new("library.scanstart");
 pub const LIBRARY_WATCH: BoolKey = BoolKey::new("library.watch");
+pub const LIBRARY_VERSIONS: BoolKey = BoolKey::new("library.versions");
 pub const A11Y_HOLD_TOGGLE: BoolKey = BoolKey::new("a11y.toggle");
 pub const BIOS_GB: TextKey = TextKey::new("bios.bgb");
 pub const BIOS_GBC: TextKey = TextKey::new("bios.bgbc");

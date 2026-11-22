@@ -488,6 +488,7 @@ mod tests {
         g.ts::<crate::library::CoverKind>().unwrap();
         g.ts::<crate::cover::CoverView>().unwrap();
         g.ts::<crate::library::Region>().unwrap();
+        g.ts::<crate::library::Family>().unwrap();
         g.ts::<crate::Speed>().unwrap();
         g.ts::<crate::Event>().unwrap();
         g.ts::<crate::screens::Placement>().unwrap();

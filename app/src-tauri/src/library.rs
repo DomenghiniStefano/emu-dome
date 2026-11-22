@@ -15,8 +15,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use emudome_core::cover::{self, CoverView};
 use emudome_core::library::{
-    self, core_of, cover_colour, region, CoverKind, GameRecord, Identity, Library, NotAGame,
-    Region, ScanInput, ScanReport,
+    self, core_of, cover_colour, region, CoverKind, Family, GameRecord, Identity, Library,
+    NotAGame, Region, ScanInput, ScanReport,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, GameKey};
@@ -190,6 +190,8 @@ pub struct LibraryDto {
     games: Vec<GameDto>,
     folders: Vec<FolderDto>,
     scanning: bool,
+    /// The regional versions grouped (#102): one tile per family, its `shown` version.
+    families: Vec<Family>,
 }
 
 /// Payload of `library://changed`: what changed, for the interface to update in place instead of
@@ -203,6 +205,9 @@ pub(crate) enum LibraryChanged {
     Games { games: Vec<GameDto> },
     /// Anything may have changed (a scan, a folder removed): the whole library.
     All { library: LibraryDto },
+    /// The families changed (a pin, a game launched, hidden or shown, `library.versions`): the
+    /// whole list.
+    Families { families: Vec<Family> },
 }
 
 /// Payload of `library://scan`. TypeScript: `LibraryScanEvent` (generated).
@@ -304,6 +309,10 @@ pub fn on_setting_changed(app: &AppHandle, key: &str) {
         start_scan(app);
     } else if key == keys::LIBRARY_WATCH.as_str() {
         refresh_watch(app);
+    } else if key == keys::LIBRARY_VERSIONS.as_str() {
+        if let Some(state) = app.try_state::<LibraryState>() {
+            emit_families(app, &state);
+        }
     }
 }
 
@@ -330,6 +339,30 @@ fn emit_games(app: &AppHandle, state: &LibraryState, ids: &[&GameKey]) {
 fn emit_all(app: &AppHandle, state: &LibraryState) {
     let library = library_dto(app, state);
     emit_changed(app, LibraryChanged::All { library });
+}
+
+// ---- Families of regional versions (#102) ----
+
+/// `library.versions`: one tile per family (read before the library's lock is taken).
+fn grouped(app: &AppHandle) -> bool {
+    settings(app).bool(keys::LIBRARY_VERSIONS)
+}
+
+/// The families the library shows: none while `library.versions` is off (every dump its own
+/// tile). Grouped once per change, never per render.
+fn families(grouped: bool, lib: &Library) -> Vec<Family> {
+    if grouped {
+        lib.families()
+    } else {
+        Vec::new()
+    }
+}
+
+/// The families changed: the whole list.
+fn emit_families(app: &AppHandle, state: &LibraryState) {
+    let grouped = grouped(app);
+    let families = families(grouped, &state.lib.lock());
+    emit_changed(app, LibraryChanged::Families { families });
 }
 
 fn emit_scan(app: &AppHandle, event: ScanEvent) {
@@ -760,6 +793,8 @@ pub fn begin_play(app: &AppHandle, id: &GameKey) {
         log::warn!("last played of {id}: {e:?}");
     }
     emit_games(app, &state, &[id]);
+    // The version launched last is its family's tile (#102).
+    emit_families(app, &state);
 }
 
 /// The game closed (or the app exits): add the time since it opened.
@@ -841,9 +876,15 @@ pub fn library_get(app: AppHandle, state: State<'_, LibraryState>) -> LibraryDto
 }
 
 fn library_dto(app: &AppHandle, state: &LibraryState) -> LibraryDto {
-    let games: Vec<GameDto> = state.lib.lock().games().map(GameDto::new).collect();
+    let grouped = grouped(app);
+    let (games, families) = {
+        let lib = state.lib.lock();
+        let games: Vec<GameDto> = lib.games().map(GameDto::new).collect();
+        (games, families(grouped, &lib))
+    };
     LibraryDto {
         games,
+        families,
         folders: folders(app)
             .into_iter()
             .map(|path| FolderDto {
@@ -1108,6 +1149,24 @@ pub fn library_set_flags(
 ) -> Result<(), ErrorCode> {
     state.lib.lock().set_flags(&id, favourite, hidden)?;
     emit_games(&app, &state, &[&id]);
+    // A hidden game leaves its family, a shown one comes back to it (#102).
+    if hidden.is_some() {
+        emit_families(&app, &state);
+    }
+    Ok(())
+}
+
+/// «Mostra questa in libreria» in a game's «Versioni» (#102): `pin` makes the library show `id`
+/// for its family; not `pin` gives the family back to the version launched last.
+#[tauri::command]
+pub fn library_pin_version(
+    app: AppHandle,
+    state: State<'_, LibraryState>,
+    id: GameKey,
+    pin: bool,
+) -> Result<(), ErrorCode> {
+    state.lib.lock().pin_version(&id, pin)?;
+    emit_families(&app, &state);
     Ok(())
 }
 

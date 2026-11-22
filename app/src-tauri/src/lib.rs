@@ -570,6 +570,7 @@ pub fn run() {
             library::library_screenshots,
             library::library_set_flags,
             library::library_set_name,
+            library::library_pin_version,
             saves::saves_summary,
             saves::saves_game,
             saves::saves_restore,
