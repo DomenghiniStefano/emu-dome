@@ -1950,8 +1950,6 @@ fn the_entries_not_wired_yet_are_these() {
         unwired,
         [
             "video.fps",
-            "video.window",
-            "video.winsize",
             "video.portrait",
             "video.orient",
             "video.api",

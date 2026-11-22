@@ -391,12 +391,10 @@ pub static ENTRIES: &[Entry] = &[
         G,
     )
     .device()
-    .pc()
-    .not_wired(),
+    .pc(),
     seg("video.winsize", &["1x", "2x", "3x", "4x", "free"], "3x", GC)
         .device()
-        .pc()
-        .not_wired(),
+        .pc(),
     seg("video.portrait", &["center", "top"], "top", ALL)
         .phone()
         .phase(4)

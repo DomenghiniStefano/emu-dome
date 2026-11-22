@@ -158,8 +158,8 @@ impl AppState {
 
 /// What lives as long as a game is open, in the order it starts (it stops in reverse): the
 /// native renderer's source, the settings session («in prova»), the core options that follow
-/// the settings, the screens' layout and lid (after the session it reads), the library's play
-/// time.
+/// the settings, the screens' layout and lid (after the session it reads), the window's size
+/// (`video.winsize`), the library's play time.
 fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
     let (a, b) = (app.clone(), app.clone());
     let renderer = Hooks::new(
@@ -189,6 +189,13 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         move |g| screens::started(&a, g.core, g.console),
         move || screens::stopped(&b),
     );
+    // The window takes the size of this console's picture (`video.winsize`), after the session
+    // it reads; nothing to undo when the game closes.
+    let a = app.clone();
+    let window_size = Hooks::new(
+        move |g| window::apply(&a, window::Why::Game(g.console)),
+        || {},
+    );
     let (a, b) = (app.clone(), app.clone());
     let play_time = Hooks::new(
         move |g| {
@@ -198,7 +205,14 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         },
         move || library::end_play(&b),
     );
-    vec![renderer, settings_session, core_options, screens, play_time]
+    vec![
+        renderer,
+        settings_session,
+        core_options,
+        screens,
+        window_size,
+        play_time,
+    ]
 }
 
 /// Runs `f` on a blocking thread of the async runtime and waits for it there: a command whose
@@ -455,7 +469,12 @@ pub fn run() {
             });
             app.manage(effects::open(app));
             app.manage(cloud::Cloud::default());
+            app.manage(window::WindowState::default());
             effects::apply(app.handle());
+            // `video.window` / `video.winsize` (a bench keeps the window it measures with).
+            if bench.is_none() {
+                window::apply(app.handle(), window::Why::Startup);
+            }
             // After the library is read, before any game opens (opening waits for it).
             migration::start(app);
             library::startup(app.handle());
