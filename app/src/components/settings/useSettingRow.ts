@@ -12,6 +12,9 @@ import {
   type SettingsSchema,
 } from '@/emu'
 import { LOCALE } from '@/i18n'
+import { errorText, sizeLabel } from '@/i18n/labels'
+import { spaceBar } from '@/components/cloud/cloud'
+import { cloud } from '@/components/cloud/cloudState'
 import { biosStatus, refreshBiosStatus } from '@/lib/biosStatus'
 import { report } from '@/lib/errors'
 import { FILE_PICKERS, msg, optionNotYet } from '@/lib/settingsModel'
@@ -89,6 +92,29 @@ export function useSettingRow(props: SettingRowInput) {
     return t(msg.name(key.value))
   })
 
+  /** `cloud.acct`: signed in as whom, signed out, or why this build / system cannot sign in. */
+  function cloudAccountText(): string {
+    const s = cloud.status
+    if (s && !s.configured) return errorText({ code: 'cloudNotConfigured' })
+    if (s && !s.supported) return errorText({ code: 'cloudSignInUnsupported' })
+    if (!s?.signedIn) return t('settings.cloud.acct.value.signedOut')
+    const name = s.account?.name ?? s.account?.email ?? t('cloud.header.accountUnknown')
+    return t('settings.cloud.acct.desc', { name })
+  }
+  /** `cloud.space`: what EmuDome uses and what is free, as last measured. */
+  function cloudSpaceText(): string {
+    const s = cloud.status
+    if (!s?.signedIn) return t('settings.cloud.acct.value.signedOut')
+    const bar = spaceBar(s)
+    if (!bar) return t('cloud.space.unknown')
+    if (bar.free === null || bar.limit === null) return t('cloud.space.unlimited')
+    return t('settings.cloud.space.desc', {
+      used: sizeLabel(bar.emudomeBytes),
+      free: sizeLabel(bar.free),
+      total: sizeLabel(bar.limit),
+    })
+  }
+
   // Rows whose description shows live data the app does not have yet get their neutral form.
   const baseDesc = computed(() => {
     const k = key.value
@@ -98,9 +124,11 @@ export function useSettingRow(props: SettingRowInput) {
     const count = props.entry.count
     if (count !== undefined) return t(msg.desc(k), { n: count }, count)
     switch (k) {
+      // The Google account and its space (#31): the sync's live status (cloudState.ts).
       case 'cloud.acct':
-        return t('settings.cloud.acct.value.signedOut')
+        return cloudAccountText()
       case 'cloud.space':
+        return cloudSpaceText()
       case 'about.upd':
         return t('settingsUi.notYet')
       case 'about.ver':
@@ -130,7 +158,11 @@ export function useSettingRow(props: SettingRowInput) {
 
   const buttonText = computed(() => {
     const k = key.value
-    if (k === 'cloud.acct') return t('settings.cloud.acct.value.signIn')
+    // Both open the Cloud section, where the sign-in and «Esci» are.
+    if (k === 'cloud.acct')
+      return cloud.status?.signedIn
+        ? t('settings.cloud.acct.value.open')
+        : t('settings.cloud.acct.value.signIn')
     const button = `settings.${k}.buttons.${biosStatus(k) === 'builtin' ? 'use' : 'replace'}`
     if (k.startsWith('bios.') && te(button)) return t(button)
     return te(msg.button(k)) ? t(msg.button(k)) : ''

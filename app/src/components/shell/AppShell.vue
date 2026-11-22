@@ -187,6 +187,7 @@ const go = (to: Route) => (route.value = to)
           :game="arrivalFor(route, 'settings')?.game ?? null"
           :row="arrivalFor(route, 'settings')?.row ?? null"
           @open-controls="go(openSection(route, 'controls'))"
+          @open-cloud="go(openSection(route, 'cloud'))"
         />
         <ControlsView
           v-else-if="section === 'controls'"

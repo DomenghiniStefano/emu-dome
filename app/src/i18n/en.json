@@ -1393,7 +1393,8 @@
         "button": "Sign out",
         "value": {
           "signedOut": "You are not signed in",
-          "signIn": "Sign in with Google"
+          "signIn": "Sign in with Google",
+          "open": "Open Cloud"
         }
       },
       "space": {

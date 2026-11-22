@@ -1393,7 +1393,8 @@
         "button": "Esci",
         "value": {
           "signedOut": "Non hai ancora effettuato l’accesso",
-          "signIn": "Accedi con Google"
+          "signIn": "Accedi con Google",
+          "open": "Apri Cloud"
         }
       },
       "space": {
