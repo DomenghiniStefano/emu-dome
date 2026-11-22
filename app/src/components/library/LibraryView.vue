@@ -8,10 +8,15 @@
 // the cover again (`returnTo`, from the shell's route). No games at all: L02 (LibraryEmpty).
 //
 // Controller / keyboard: the shell's nav scope covers this view; L03 and «…» open their own.
+//
+// TV mode (#30): with games, the same library as shelves (tv/TvLibrary.vue), the same open and
+// details; without, or until loaded, this view as on the desk.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TriangleAlert } from '@lucide/vue'
+import TvLibrary from '@/components/library/tv/TvLibrary.vue'
 import { Button } from '@/components/ui/button'
+import { uiMode } from '@/composables/useUiMode'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
 import type { GameId, LibraryGame } from '@/emu'
 import { chooseFolder, library, replaceFolder } from '@/lib/library'
@@ -87,10 +92,22 @@ async function replace(path: string) {
   if (failed) toasts.fail(failed)
 }
 const unreachable = computed(() => unreachableFolders(library.folders, library.games))
+
+/** TV mode with games: the shelves. */
+const shelves = computed(() => uiMode.tv && library.loaded && library.games.length > 0)
 </script>
 
 <template>
-  <div ref="root" class="flex flex-1 flex-col gap-24">
+  <TvLibrary
+    v-if="shelves"
+    :games="library.games"
+    :return-to="returnTo"
+    @open="open"
+    @details="g => emit('details', g)"
+  />
+  <!-- In TV mode the shell leaves the library flush (its shelves reach the edge): the desk's
+       view keeps its own room. -->
+  <div v-else ref="root" class="flex flex-1 flex-col gap-24 tv:p-32">
     <UnreachableBanner
       v-for="f in unreachable"
       :key="f.path"

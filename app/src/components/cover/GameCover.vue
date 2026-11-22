@@ -12,7 +12,7 @@ import { computed, ref, watch, type HTMLAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/cn'
 import type { LibraryGame } from '@/emu'
-import { CoverSize, coverVariants } from './variants'
+import { CoverSize, coverBadgeVariants, coverVariants } from './variants'
 
 const props = withDefaults(
   defineProps<{
@@ -65,11 +65,9 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
       decoding="async"
       @error="broken = true"
     />
-    <span
-      v-if="badge"
-      class="absolute top-8 left-8 rounded-badge bg-cover-badge px-6 py-px text-console-badge"
-      >{{ t(`consoleShort.${game.console}`) }}</span
-    >
+    <span v-if="badge" :class="coverBadgeVariants({ size })">{{
+      t(`consoleShort.${game.console}`)
+    }}</span>
     <span v-if="title && !userImage" class="relative wrap-anywhere">{{ game.title }}</span>
   </div>
 </template>

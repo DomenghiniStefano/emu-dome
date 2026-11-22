@@ -18,6 +18,10 @@ export const CoverSize = {
   Small: 'small',
   // The game details' big cover: 168px, 96 on the phone.
   Hero: 'hero',
+  // TV mode (#30): a shelf's cover, as wide as its click area (168, 200 focused), the title in
+  // the TV cover's type; the focused game's big cover on top, as tall as its band.
+  Shelf: 'shelf',
+  TvHero: 'tvHero',
 } as const
 export type CoverSize = (typeof CoverSize)[keyof typeof CoverSize]
 
@@ -35,9 +39,30 @@ export const coverVariants = cva(
           'w-cover-small rounded-card p-8 text-fine font-semibold touch:w-cover-small-touch',
         [CoverSize.Hero]:
           'w-cover-hero rounded-card p-12 text-heading leading-cover touch:w-cover-hero-touch',
+        [CoverSize.Shelf]: 'w-full rounded-card p-14 text-tv-cover',
+        [CoverSize.TvHero]: 'h-full rounded-panel p-16 text-tv-heading',
       },
     },
     defaultVariants: { size: CoverSize.Fill },
   },
 )
 export type CoverVariants = VariantProps<typeof coverVariants>
+
+// The console badge in a corner, per cover size: the small type everywhere, the TV type on a
+// shelf's cover and the focused game's big one (TV mode, #30: no text under 18px).
+const TV_BADGE = 'top-10 left-10 px-8 text-tv-badge'
+export const coverBadgeVariants = cva('absolute rounded-badge bg-cover-badge py-px', {
+  variants: {
+    size: {
+      [CoverSize.Fill]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.Choice]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.Thumb]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.Row]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.Small]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.Hero]: 'top-8 left-8 px-6 text-console-badge',
+      [CoverSize.Shelf]: TV_BADGE,
+      [CoverSize.TvHero]: TV_BADGE,
+    },
+  },
+  defaultVariants: { size: CoverSize.Fill },
+})
