@@ -491,6 +491,7 @@ mod tests {
         g.ts::<crate::screens::LayoutId>().unwrap();
         g.ts::<crate::screens::CustomLayout>().unwrap();
         g.ts::<crate::screens::ScreenStatus>().unwrap();
+        g.ts::<crate::notifications::Notification>().unwrap();
         let codes = error_codes(g.get("ErrorCode.ts").unwrap());
         g.file("error-codes.json", pretty(&json!(codes)));
         g.file("settings-catalog.json", pretty(&catalog()));

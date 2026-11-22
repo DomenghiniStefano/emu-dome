@@ -31,6 +31,8 @@
   "libraryGameUnavailable",
   "libraryWriteFailed",
   "libraryReadFailed",
+  "notificationsWriteFailed",
+  "notificationsReadFailed",
   "coverInvalid",
   "nothingToUndo",
   "undoFailed",

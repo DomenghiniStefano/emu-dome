@@ -31,6 +31,7 @@ pub mod library;
 pub mod migration;
 pub mod n3ds;
 pub mod nds;
+pub mod notifications;
 pub mod rewind;
 pub mod save_path;
 pub mod saves;

@@ -262,6 +262,8 @@
     "libraryGameUnavailable": "Il file del gioco non si trova più. Ricollega il disco o aggiungi di nuovo la sua cartella.",
     "libraryWriteFailed": "Impossibile salvare la libreria: controlla lo spazio libero sul disco e riprova.",
     "libraryReadFailed": "Non riesco a leggere il file della libreria, quindi la modifica non è stata salvata e il file è rimasto com’era. Controlla che il disco sia collegato e che il file si possa aprire, poi riprova.",
+    "notificationsWriteFailed": "Impossibile salvare le notifiche: controlla lo spazio libero sul disco e riprova.",
+    "notificationsReadFailed": "Non riesco a leggere il file delle notifiche, quindi la modifica non è stata tenuta e il file è rimasto com’era. Controlla che il file si possa aprire, poi riprova.",
     "coverInvalid": "Questa immagine non si apre. Scegli un file JPG o PNG.",
     "unexpected": "Qualcosa è andato storto: {detail}",
     "nothingToUndo": "Non c’è un caricamento da annullare.",
