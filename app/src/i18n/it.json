@@ -7,6 +7,24 @@
     "cloud": "Cloud",
     "settings": "Impostazioni"
   },
+  "tv": {
+    "hint": {
+      "play": "Gioca",
+      "details": "Dettagli del gioco",
+      "search": "Cerca",
+      "back": "Indietro",
+      "sections": "Cambia sezione",
+      "choose": "Scegli"
+    },
+    "hero": {
+      "meta": "{console} · {time} di gioco · {when}",
+      "metaNew": "{console} · Mai giocato"
+    },
+    "shelf": {
+      "favourites": "Preferiti",
+      "shelves": "I tuoi giochi per scaffale"
+    }
+  },
   "library": {
     "emptyTitle": "Aggiungi i tuoi giochi",
     "emptyLead": "Scegli la cartella dove tieni i tuoi giochi Game Boy, Game Boy Advance, Nintendo DS e Nintendo 3DS, oppure trascinali qui.",

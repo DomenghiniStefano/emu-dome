@@ -68,6 +68,10 @@ export const ButtonVariant = {
   // A control of the on-screen gamepad (TouchControls): glass with a strong edge, darker while
   // pressed, no fade (a press must show at once). With the Pad sizes.
   Pad: 'pad',
+  // A section's tab in TV mode (#30, at the top instead of the rail): muted words, the current
+  // one (`aria-current="page"`) an ink pill, not the accent (accent only on the main action).
+  // With ButtonSize.TvTab.
+  TvTab: 'tvTab',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -154,6 +158,10 @@ export const ButtonSize = {
   PadMenu: 'padMenu',
   PadFace: 'padFace',
   PadSystem: 'padSystem',
+  // TV mode (#30): a section's tab (52, a pill, the TV label's type), and an action seen from the
+  // sofa (64, the TV action's type; Soft at the TV label's), the focused game's «Riprendi».
+  TvTab: 'tvTab',
+  Tv: 'tv',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -223,6 +231,8 @@ export const buttonVariants = cva(
           'rounded-full border-0 aria-checked:outline-ring aria-checked:outline-offset-swatch aria-checked:outline-ink aria-checked:outline-solid',
         [ButtonVariant.Pad]:
           'border-line-strong bg-glass font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-surface-hover',
+        [ButtonVariant.TvTab]:
+          'border-0 bg-transparent text-ink-muted hover:text-ink aria-[current=page]:bg-ink aria-[current=page]:font-semibold aria-[current=page]:text-bg',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-8 touch:text-label-lead',
@@ -269,6 +279,8 @@ export const buttonVariants = cva(
         [ButtonSize.PadMenu]: 'h-control-lg w-48 rounded-card',
         [ButtonSize.PadFace]: 'size-pad-face rounded-full text-dialog',
         [ButtonSize.PadSystem]: 'h-control rounded-panel px-14 text-overline',
+        [ButtonSize.TvTab]: 'h-tv-tab rounded-full px-24 text-tv-label',
+        [ButtonSize.Tv]: 'h-tv-action gap-12 rounded-card px-32 text-tv-action',
       },
       fade: {
         [ButtonFade.Normal]: 'disabled:opacity-disabled aria-disabled:opacity-disabled',
@@ -281,6 +293,7 @@ export const buttonVariants = cva(
     compoundVariants: [
       { variant: ButtonVariant.Primary, size: ButtonSize.Compact, class: 'px-18 text-cta' },
       { variant: ButtonVariant.Primary, size: ButtonSize.Medium, class: 'px-16' },
+      { variant: ButtonVariant.Soft, size: ButtonSize.Tv, class: 'px-28 text-tv-label' },
       {
         variant: ButtonVariant.Strong,
         size: [ButtonSize.MenuCompact, ButtonSize.MenuPair],

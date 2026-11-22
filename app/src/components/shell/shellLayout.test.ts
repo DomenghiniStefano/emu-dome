@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { hasOwnInitialFocus, isFlush } from './shellLayout'
+import { hasOwnInitialFocus, isFlush, sectionStep } from './shellLayout'
+import { tvHints } from './tvHints'
 import { hazeStyle } from './useCoverHaze'
 
 describe('isFlush', () => {
@@ -13,6 +14,38 @@ describe('isFlush', () => {
 
   it('is flush while a game’s details are shown', () => {
     expect(isFlush('library', true)).toBe(true)
+  })
+
+  it('is flush for the TV library, whose shelves reach the edge', () => {
+    expect(isFlush('library', false, true)).toBe(true)
+    expect(isFlush('cloud', false, true)).toBe(false)
+  })
+})
+
+describe('sectionStep', () => {
+  it('steps through the sections in the rail order, round the ends', () => {
+    expect(sectionStep('library', 1)).toBe('saves')
+    expect(sectionStep('saves', -1)).toBe('library')
+    expect(sectionStep('library', -1)).toBe('settings')
+    expect(sectionStep('settings', 1)).toBe('library')
+  })
+})
+
+describe('tvHints', () => {
+  it('names play, details, search, back and the sections in the library', () => {
+    expect(tvHints('library').map(h => h.actions.join(' '))).toEqual([
+      'confirm',
+      'more',
+      'search',
+      'back',
+      'prev next',
+    ])
+  })
+
+  it('names choose, back and the sections elsewhere and in a game’s details', () => {
+    const elsewhere = ['tv.hint.choose', 'tv.hint.back', 'tv.hint.sections']
+    expect(tvHints('settings').map(h => h.label)).toEqual(elsewhere)
+    expect(tvHints('library', true).map(h => h.label)).toEqual(elsewhere)
   })
 })
 

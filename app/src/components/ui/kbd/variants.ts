@@ -16,11 +16,17 @@ export const KbdSize = {
   Default: 'default',
   // A hint beside an action's label (Esc, B): 18 tall, the badge's type (pending Cowork).
   Small: 'small',
+  // TV mode (#30): a face button of the connected controller, seen from the sofa (the button bar,
+  // the hero's actions): a round key, 30 tall, the TV hint's type.
+  TvFace: 'tvFace',
+  // TV mode: a shoulder button (L1 R1, LB RB): the same key with a control's corners.
+  TvShoulder: 'tvShoulder',
 } as const
 export type KbdSize = (typeof KbdSize)[keyof typeof KbdSize]
 
+// The corners are the size's: a round TV key would lose to a shared radius.
 export const kbdVariants = cva(
-  'inline-flex items-center rounded-badge border font-sans font-semibold whitespace-nowrap',
+  'inline-flex items-center border font-sans font-semibold whitespace-nowrap',
   {
     variants: {
       variant: {
@@ -28,8 +34,12 @@ export const kbdVariants = cva(
         [KbdVariant.OnAccent]: 'border-on-accent-edge text-on-accent',
       },
       size: {
-        [KbdSize.Default]: 'h-20 px-6 text-caption-tall',
-        [KbdSize.Small]: 'h-18 px-5 text-badge',
+        [KbdSize.Default]: 'h-20 rounded-badge px-6 text-caption-tall',
+        [KbdSize.Small]: 'h-18 rounded-badge px-5 text-badge',
+        [KbdSize.TvFace]:
+          'h-tv-glyph min-w-tv-glyph justify-center rounded-full px-8 text-tv-hint font-semibold',
+        [KbdSize.TvShoulder]:
+          'h-tv-glyph min-w-tv-glyph justify-center rounded-control px-8 text-tv-hint font-semibold',
       },
     },
     defaultVariants: { variant: KbdVariant.Default, size: KbdSize.Default },
