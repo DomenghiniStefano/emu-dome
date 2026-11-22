@@ -48,8 +48,7 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
   (`errorText`, `speedLabel`, `gamepadName`). A new error = a new `ErrorCode` variant, the generated files made
   again (`EMUDOME_BLESS=1 cargo test -p emudome-core contract`) + `errors.<code>` in **both** message files: the
   contract test and `app/src/i18n/parity.test.ts` fail until all three are there.
-- Kept file names: `docs/fase0-esito.md` and `docs/combo-tasti.md` keep their Italian names (an external Cowork session
-  refers to them); their content is English.
+- Kept file names: `docs/fase0-esito.md` and `docs/combo-tasti.md` keep their Italian names (other documents link to them); their content is English.
 
 ## Current state: Phase 1 desktop shell, Phase 2 core work started
 
@@ -62,14 +61,14 @@ before launch, heartbeat, push after exit, «Sincronizza ora», games on Drive, 
 `cloud://` events; the Cloud section, G03 / G04 / G05 / G14 and Drive-only games in the library), and the search everywhere
 and the notification centre in the top bar (#32, X01–X03), and the release plumbing (#44: per-user installer, Linux
 package targets, the Android App Bundle, EmuDome updating itself with X06, the licences page, the log file and its
-export; no release built yet, see «Known gaps»). The audit of 2026-11-20 put its findings on Trello (#69–#83, P0 first): the P0 cards come
+export; no release built yet, see «Known gaps»). The audit put its findings on Trello (#69–#83, P0 first): the P0 cards come
 before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
-`C:\Projects\emu-dome.wt\<name>` and is merged into `develop` from the main worktree. Pushing `develop` is allowed
-(owner, 2026-11-16). No push to `main`. **Merge rule**: `./scripts/check.ps1` green on the merge commit itself
+`C:\Projects\emu-dome.wt\<name>` and is merged into `develop` from the main worktree. Pushing `develop` is allowed.
+No push to `main`. **Merge rule**: `./scripts/check.ps1` green on the merge commit itself
 (not only on the branch) before `git push` of `develop`; `wip` commits are squashed before merging, never merged as
-they are. **Checks on work branches** (owner, 2026-11-20 and 2026-11-21): only targeted ones while working (the
+they are. **Checks on work branches**: only targeted ones while working (the
 touched crates' tests and clippy, typecheck, lint, the touched Vitest files), `./scripts/check.ps1 --fast` once at the
 end of a branch; the full check runs only on the merge commit into `develop`. No build only to measure or to confirm
 something already verified.
@@ -79,9 +78,9 @@ log, entry by entry, is `docs/fase0-esito.md`; in short:
 
 - **Linux** (virtual X11, mGBA 0.10.2): windowless host 1× ≈ 59.7 FPS, 2× ≈ 120, Max ≈ 900; app in webview mode
   works. Native mode does not (the GTK surface covers the webview).
-- **Windows** (2026-11-16): native video under the quick menu ok (wgpu picks Vulkan), 59.7 FPS at 1×, audio heard ok,
+- **Windows**: native video under the quick menu ok (wgpu picks Vulkan), 59.7 FPS at 1×, audio heard ok,
   controllers ok through SDL3 (Steam Controller, 8BitDo). Last reported open: the window turns transparent in webview mode.
-- **Android** (Galaxy A71, 2026-11-16): `SurfaceView` under the WebView ok, ≈ 59.8 FPS (Vulkan), touch controls,
+- **Android** (Galaxy A71): `SurfaceView` under the WebView ok, ≈ 59.8 FPS (Vulkan), touch controls,
   surface survives background/resume. Not tested yet: audio quality and delay (the test ROM is silent),
   Android controllers (read through Android's input events since #47, not run on a device yet), landscape layout.
 - Since then, on `develop`: L3 controller combos, controller navigation in every menu, the L01 app shell and themes,
@@ -193,7 +192,7 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
   - `EMUDOME_DATA_DIR=<folder>` puts every data file there (saves, settings, library, covers, webview profile) and
     skips the one-time copy of the old identifier's folders: test and bench runs never touch the real data.
 - Data folders: Tauri's app data / app local data folders for the identifier `it.domehub.emudome` (`app/src-tauri/src/dirs.rs`).
-  Until 2026-11-21 it was `com.domenghini.emudome` (#90): a desktop build's first start copies those folders once,
+  The previous identifier was `com.domenghini.emudome` (#90): a desktop build's first start copies those folders once,
   verified, and leaves them in place (`emudome_core::data_move`); a copy that did not finish makes that run use the
   old folders and is tried again. Android data does not carry over (another package's storage).
 - The executable accepts a game path as an argument and opens it at startup. On Android: the `game` extra of the
@@ -544,7 +543,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     a custom layout excepted): the native renderer one
     draw per screen (`Renderer::set_layout`), the webview canvas from `screens_placements` (it decides no
     geometry: `GameCanvas.vue`, `screenDraw.ts`). Touch maps back through the same layout (`pointer`).
-    On a phone (owner, 2026-11-22) a two-screen game opens on `auto` (`screens.cycle`'s phone default:
+    On a phone a two-screen game opens on `auto` (`screens.cycle`'s phone default:
     `auto`, `big_small`, `top_only`) and, like a one-screen game (#105), fills its room: `video.scale`'s
     phone default is «fit» (a `default_rules` entry; «integer» on a computer), so a GBA upright is 360 px wide on
     a 360 px phone; the touch controls' inset carries the rest (`Inset::between`, `Align::Apart`
@@ -656,7 +655,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   sync rules as they are today are tests (`settings/tests.rs`, «Sync rules»). Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
   A game is its `GameKey` everywhere (settings, saves, library, the interface's `GameId`); a file opened by its path
-  is identified first (the library's hash cache, else hashed, with no lock held). Option ids, slider ranges and chips defaults are Cowork's final ones (Trello #41, #26); search synonyms
+  is identified first (the library's hash cache, else hashed, with no lock held). Option ids, slider ranges and chips defaults are the final ones (Trello #41, #26); search synonyms
   live in `SYNONYMS` (catalog.rs).
 - **The Rust ↔ TypeScript contract** (Trello #73): the bridge's types are generated from the Rust types by ts-rs
   (`#[derive(TS)]`, MIT) into `app/src/generated/` (core types; the shell's DTOs in `generated/app/`), with
@@ -735,18 +734,18 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`saveFolderUnavailable`) and the watch on Azahar's own folder after the session (`coreSavedOutsideGame`, #97). Test executables carry no manifest: on Windows they keep the
   260 limit whatever the policy says (the headless example's `--max-path`).
 - A Windows audio device can open with 8 channels: `audio.rs` writes left/right on the first two and zeroes the rest.
-- Branches developed in parallel break each other without a textual conflict (2026-11-20: #70 renamed
+- Branches developed in parallel break each other without a textual conflict (#70 renamed
   `AppState::game_path` to `game` and changed `GameFiles::new` to take a `GameKey`; #86 still used both and its merge
   had no conflict there). After merging `develop` into a branch, build and test the touched crates before committing
   the merge.
-- A cargo feature that is off by default needs clippy both ways, with and without it (2026-11-21: `bench` off left 8
+- A cargo feature that is off by default needs clippy both ways, with and without it (`bench` off left 8
   items unused). Items only that feature reads take `#[cfg_attr(not(feature = "…"), expect(dead_code, reason = …))]`;
   put it on the method, not on the field the method reads, or the field's expectation is unfulfilled.
-- Do not start a build in a worktree while a merge or checkout is writing its files: on 2026-11-20 a build read the
+- Do not start a build in a worktree while a merge or checkout is writing its files: a build once read the
   old `Cargo.toml` with the new code (`unresolved import md5`).
 - Unit tests of `app/src-tauri` must not reach Tauri's runtime (an `AppHandle` method called from tested code): the
   test exe then imports Windows entry points it cannot load and dies with `STATUS_ENTRYPOINT_NOT_FOUND`
-  (2026-11-21, `health.rs`). Keep the `AppHandle` behind a closure made where the app exists.
+  (`health.rs`). Keep the `AppHandle` behind a closure made where the app exists.
 - A catalogue entry can be marked wired while nothing reads it (`video.filter`, Trello #109). Before building on a
   setting, grep for its reader (`settings/keys.rs`, the interface), not only `wired`.
 - Samsung's launcher (One UI) fills an adaptive icon's transparent background with black and crops it tighter than the
@@ -777,7 +776,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Settings will be the strong point (Phase 1): levels Default → Global → Console → Game → Session,
   plus a "per device" axis. UI generated from a single schema in Rust. Do not write scattered settings by hand.
 
-## Engineering rules (from the 2026-11-20 audit)
+## Engineering rules (from the audit)
 
 The audit found the code tidy where it is easy to test and fragile at the edges: exit paths, identity, shipped
 binaries, the Rust ↔ TypeScript bridge, platforms nobody compiles. Each rule below closes one of those root causes.
@@ -884,7 +883,7 @@ key of the wrong kind.
   `style` binding, a look-only `phone` / `touch` prop read in `<script>` or passed down to a child.
 - Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
   tested pure functions, nothing duplicated across screens, names that say what a thing is for.
-- The nine «Engineering rules (from the 2026-11-20 audit)»; the OS gate cannot see a `cfg` split across lines, code
+- The nine «Engineering rules (from the audit)»; the OS gate cannot see a `cfg` split across lines, code
   chosen at runtime, or a target table written as dotted keys. Linux is compiled only by running the check on Linux,
   the whole workspace for Android only where an NDK is installed, and nothing links or runs on a device.
 
@@ -900,7 +899,7 @@ review-only list above. A rule in neither place is the thing this section exists
   - neutral graphite, the colour comes from the covers;
   - amber (`accent`, the app icon's #faa40f, dark text on it; `general.accent` offers four other
     swatches) only on the main action. For these colours the repo's tokens (`colors.css`,
-    `lib/accent.ts`) are the reference, not the design system artifact (owner, 2026-11-21);
+    `lib/accent.ts`) are the reference, not the design system artifact;
   - glass for panels and menus;
   - Lucide icons, no emoji.
 - In game **no interface**: everything goes through the quick menu (Esc / Home button).
@@ -911,7 +910,7 @@ review-only list above. A rule in neither place is the thing this section exists
 
 ## Interface structure (design system)
 
-Owner, 2026-11-18: cleanliness, components and tokens, so that changing anything later happens **in one place**,
+Cleanliness, components and tokens, so that changing anything later happens **in one place**,
 written as clean code. The full rules and their reasons: `docs/specs/2026-11-18-design-system-foundations.md`.
 Migration done: Trello #61 (foundations) → #62 (every screen moved) → #65 (one place for every look and rule:
 role tokens, shared components, feature folders) → #63 (rules blocking everywhere). New screens and graphic work
@@ -952,8 +951,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `tv:` variant. TV sizes are the «TV» tokens (`typography.css`, `spacing.css`, `border.css`), drawn for 1920 × 1080
   and grown by `--tv-scale` on a larger screen. Its own parts: the shell's `TvTabs` (sections, L1 / R1 from
   anywhere), `TvButtonBar` and `TvGlyph` (the connected controller's glyphs by position and `pad.confirm`,
-  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`), Settings (`components/settings/tv/`, the
-  owner's option B: the desk's structure with the TV sizes, the pages on the left, large rows on the right; ◀ ▶
+  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`), Settings (`components/settings/tv/`:
+  the desk's structure with the TV sizes, the pages on the left, large rows on the right; ◀ ▶
   change a short choice / switch / slider / colour in place, A opens long choices in a full-screen sheet, X resets,
   a kind it does not draw keeps the desk's row; `tvSettingRow.ts` decides, pure); the quick menu and the other
   sections keep the desk's layout scaled up (`zoom-tv`).
@@ -965,17 +964,17 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`components/ui/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
 - **Kit page** (`app/src/kit/`, `#kit`, development only, not in the build): every primitive and the main feature
   components (`kit/features/`) in every state, the three themes, the five accents. A new primitive or variant is
-  added there first. It is also the review board (2026-11-22): under each section `KitIssue`s (problem, «Ora» /
+  added there first. It is also the review board: under each section `KitIssue`s (problem, «Ora» /
   «Proposta» rendered with the real components, solution; status open / proposed / decided) and an index with the
   open count; a decided issue is deleted once the component carries it. It opens in a plain browser (`pnpm dev`,
   then `#kit`): `emu.ts` stands in for Tauri there (development and `#kit` only).
-- **The look** (owner, 2026-11-22): compact and near-square, no empty band, sober motion. Radius roles 2 / 2 / 3 / 4
+- **The look**: compact and near-square, no empty band, sober motion. Radius roles 2 / 2 / 3 / 4
   (`badge` / `control` / `card` / `panel`), buttons a little rounder (`radius-button` 4); controls 24 / 28 / 30 / 32;
   role paddings tight (`card-pad` 10, `dialog-pad` 16, `section-x` 16); appearing things fade with 4 px of rise or a
   3% pop, a pressed button gives 2% (`theme/motion.css`, keyed by the primitives' `data-slot`); the shell's sections
   enter the same way. The phone's touch target (44) and the TV sizes stay. A new component folder must be listed as
-  an `@source` in `assets/main.css`, or the classes only it uses are never generated (the closing strip lost its
-  padding that way until 2026-11-22).
+  an `@source` in `assets/main.css`, or the classes only it uses are never generated (the closing strip once lost
+  its padding that way).
 - **Where a file goes** (`app/src/`), by what owns it:
   - `components/ui/<name>/`: the primitives.
   - `components/<feature>/`: everything one feature is: its screen root (`LibraryView.vue`, `QuickMenu.vue`…), its
@@ -1001,7 +1000,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - Analysis and integrations (cores, platforms, settings catalogue, risks, roadmap):
   https://claude.ai/artifact/A8hWdUgrW6qieC7XxQm6ou
 - Interface prototype (draft, paused): https://claude.ai/artifact/HeL9MWZ9Pd41dGLGCZWzaj
-- `docs/decisions.md`: the owner's tooling and product decisions with their reasons (GB/GBC support, Google Drive
+- `docs/decisions.md`: the project's tooling and product decisions with their reasons (GB/GBC support, Google Drive
   sync, game identity from the content, no cover scraping, positional face layout, NDS/3DS screens composed by
   EmuDome, no core of our own). Read it before designing anything they touch.
 - `docs/customization.md` (what can be customized, how, at what cost), `docs/feasibility.md` (desk checks of
@@ -1038,7 +1037,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - Touch controls (Trello #29): layouts per console and orientation (defaults for GB / GBC, GBA, DS and 3DS, the
   user's own from C06 kept per device), tap / hold / turbo (the repeat is the interface's, about 12 a second: the
   core has no turbo of its own), vibration on Android, `touch.thide` / `touch.tpad`, two built-in styles from the
-  tokens (owner, 2026-11-22: «Fumé», dark see-through glass, the default, and «Contorno», the outline alone; all
+  tokens («Fumé», dark see-through glass, the default, and «Contorno», the outline alone; all
   colours opaque, each whole control faded by `opacity-pad` 60 % times `touch.topac` (default 100) times its own
   opacity; the old `glass` / `outlines` / `contrast` values read as `smoke` / `outline` / `smoke`, settings layout
   2), compact shapes (the d-pad one cross with arrows, A B X Y round in a 128 diamond, L / R shoulder-shaped, Select
@@ -1048,7 +1047,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `docs/decisions.md`), more than one control of the same kind (a second, turbo A), a layout per game, the C06
   editor's controls drawn over the real screen layout of a DS game (they are placed over the window, not the
   screens), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4 except the style
-  (`touch.tskin`, phase 1, owner 2026-11-22), so Settings › Controlli touch shows that one row while `CURRENT_PHASE`
+  (`touch.tskin`, phase 1), so Settings › Controlli touch shows that one row while `CURRENT_PHASE`
   is 1 (on the phone; on the desktop disabled with «Solo su questo telefono.»): the editor opens from the quick menu's
   «Controlli» on a touch screen, and the other rows keep their defaults (E14 «Pausa e domanda», 100 %, vibration
   40 %).
@@ -1065,7 +1064,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   by default (`video.scale` «fit» on a phone, #105: a GBA 1.5× on a 360 px phone; what the window has left over
   is one band at its top; «Pixel interi» chosen by the user floors the scale again), on the side between the two
   columns, Select / Start / menu in the columns; the quick menu's sheet and side panel keep their own edges the
-  same way, measured again when the phone turns. DS and 3DS (owner, 2026-11-22) keep their screens large and apart
+  same way, measured again when the phone turns. DS and 3DS keep their screens large and apart
   instead (`isDualScreen`, `reservedInset`'s two-screen rule): upright the top screen under the camera (the safe top,
   read from the `safe-*` tokens), L / menu / R in a 36 px strip between the screens (anchored halfway between the
   safe top and the band, `defaultBand`), the touch screen on the band of the d-pad, A B X Y and Select / Start (in a
@@ -1080,7 +1079,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   so the room between two screens apart is painted too; screens that overlap (a custom layout) share one hole,
   their bounding box. It asks again on a resize, an inset, a new frame size or `emu://screens`; before the
   core's first frame it retries every 200 ms and draws nothing meanwhile.
-- Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
+- Regional versions (Trello #102): with `library.versions` on (default), Rust groups them
   (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
   (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`
   (`library_pin_version`). The interface indexes them once per change (`lib/families.ts`, `libraryFamilies`): the
@@ -1110,7 +1109,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   frame, so a curved CRT bends the frame as the core stacks it, not each screen. `screens.gap` is in the frame's
   pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
-  The phone (owner, 2026-11-22): `auto` («Automatica») is the first of the phone's cycle, so a phone's game opens
+  The phone: `auto` («Automatica») is the first of the phone's cycle, so a phone's game opens
   with its screens apart and filling the width; `vertical` and `side` are left out of the phone's default cycle
   (`auto` is each of them in its orientation) and stay choosable in the cycle's setting. Every game on a phone,
   one screen or two, fills its room by default (`video.scale` «fit», #105); «Pixel interi» chosen by the user
@@ -1125,14 +1124,14 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
-  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu as the owner
-  approved it on 2026-11-22 (`quick-menu/PhoneHome.vue`, `PhoneMore.vue`, `PhoneSaves.vue`, `phoneMenu.ts`: a first
+  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu
+  (`quick-menu/PhoneHome.vue`, `PhoneMore.vue`, `PhoneSaves.vue`, `phoneMenu.ts`: a first
   level of «Salva rapido» / «Carica rapido» on Rust's current slot, «Riprendi» and a strip «Riavvolgi» (when
   `speed.rew` is on: held, the game unpaused meanwhile; A / Enter rewind for 1 s) / «Accelera» / «Silenzia» /
   «Altro»; «Altro» and «Altro › Salvataggi» growing the same sheet, no handle, a tap on the game resumes; a 300 px
   side panel on its side; «Rendi rapido» moves Rust's current slot, so it holds for every game until the app
-  quits, not per game), E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone
-  (owner's mockup of 2026-11-22): no «Continua a giocare» and no heading, its own toolbar (`PhoneLibraryToolbar`:
+  quits, not per game), E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone:
+  no «Continua a giocare» and no heading, its own toolbar (`PhoneLibraryToolbar`:
   short console names on a sideways-scrolling row, the order's name, Lista / Griglia, a square «+»; one row on its
   side), the games as a list (the default; two columns of rows on its side, #105) or a compact grid as
   `library.view` says (per device: the list on a phone, the grid elsewhere; a desktop that picks the list in
@@ -1161,11 +1160,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   release `cores-mgba-7a12d6d` (Trello #95, `built.release`) and every other machine downloads them from there
   (a new pin: `docs/release.md`). mGBA for Linux is still the libretro buildbot's `latest/` (`url_stable: false`):
   packaging refuses it unless `EMUDOME_ALLOW_UNSTABLE_CORES=1` (local test packages only) until it is built on Linux
-  (Trello #92). melonDS DS for Android is built by EmuDome too (owner, 2026-11-22: upstream's asset has 4 KB pages,
+  (Trello #92). melonDS DS for Android is built by EmuDome too (upstream's asset has 4 KB pages,
   refused by Google Play), from v1.4.0's source archive and the pinned archives of the libraries its CMake fetches
   (`build.dependencies`, configured with `FETCHCONTENT_FULLY_DISCONNECTED`), published as `cores-melondsds-f394adb`;
-  its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds (2026-11-21,
-  `scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
+  its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds
+  (`scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
   source-built Android mGBA. 16 KB pages (Google Play, `docs/release.md` «Android: 16 KB pages»): the APK stores
   its libraries 16 KB-aligned, `libemudome_app.so` links with 16 KB pages (`.cargo/config.toml`), mGBA and the
   NDK's `libc++_shared.so` are aligned, and melonDS DS for Android is now EmuDome's own build of the
@@ -1259,7 +1258,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 
 ## Design and interface work
 
-There is no separate Cowork session any more (owner, 2026-11-21). The design system (tokens, primitives on Reka, the
+There is no separate Cowork session any more. The design system (tokens, primitives on Reka, the
 Kit page) and the boards already drawn on the canvas are the reference.
 
 **Who does what:**

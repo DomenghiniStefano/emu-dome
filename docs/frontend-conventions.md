@@ -1,9 +1,9 @@
 # Frontend conventions
 
 How `app/src` is put together, and which rules a script holds and which only review holds. The reasons
-behind the design system's choices are in `docs/specs/2026-11-18-design-system-foundations.md` (a dated
-record of cycle 1; where it and this file disagree, this file is current). The look itself is Cowork's:
-the EmuDome Design System artifact linked from `CLAUDE.md`.
+behind the design system's choices are in `docs/specs/2026-11-18-design-system-foundations.md` (a record of
+cycle 1; where it and this file disagree, this file is current). The look itself is the EmuDome Design
+System artifact linked from `CLAUDE.md`.
 
 ## Layout of `app/src`
 
@@ -108,7 +108,7 @@ initial`): a value that is not a token generates no class. Preflight is off; the
   card's padding is one edit.
 - **«Pending Cowork» tokens**: a value the design system has not decided yet is a token under a
   `Pending Cowork` comment in its family's file, named by what it is for, never a literal in a screen.
-  Cowork's decision is then an edit of that one line.
+  The decision is then an edit of that one line.
 - Compound looks (glass, glows, gradients, focus rings drawn inside a frame) are named utilities in
   `assets/utilities.css`, written through the tokens.
 - Themes (Scuro / Nero / Chiaro) and the runtime accent are CSS variables (`theme.ts`, `appearance.ts`,
