@@ -2,7 +2,7 @@
 // E01: a library folder is not reachable; its games stay listed, faded. «Scegli un'altra
 // cartella» replaces it. In a narrow window the button goes under the text, on the right.
 import { useI18n } from 'vue-i18n'
-import { FolderX } from '@lucide/vue'
+import { FolderOpen, FolderX } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import LibraryBanner from './LibraryBanner.vue'
 import type { UnreachableFolder } from './libraryView'
@@ -25,6 +25,8 @@ const { t } = useI18n()
         )
       }}</span>
     </span>
-    <Button class="ml-auto" @click="emit('replace')">{{ t('library.unreachable.choose') }}</Button>
+    <Button class="ml-auto" :icon="FolderOpen" @click="emit('replace')">
+      {{ t('library.unreachable.choose') }}
+    </Button>
   </LibraryBanner>
 </template>

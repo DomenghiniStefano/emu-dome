@@ -3,6 +3,7 @@
 // the console gets instead, the game's value and «Ripristina». Phone in portrait: the game's
 // value under the name, the console's under it.
 import { useI18n } from 'vue-i18n'
+import { Undo2 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import type { OverrideRow } from './gameOverrides'
 
@@ -27,14 +28,14 @@ const { t } = useI18n()
       </span>
     </div>
     <span v-if="!phone" class="font-semibold text-accent-text">{{ row.value }}</span>
-    <!-- The row's own type, regular weight (larger on the phone), with the touch height there. -->
+    <!-- Repeated on every row: the icon alone (#104), the touch minimum on the phone. -->
     <Button
       :variant="ButtonVariant.GhostRegular"
-      :size="ButtonSize.Small"
-      class="flex-none touch:min-h-touch"
+      :size="ButtonSize.IconRow"
+      :icon="Undo2"
+      :label="t('settingsUi.reset')"
+      class="flex-none"
       @click="emit('reset')"
-    >
-      {{ t('settingsUi.reset') }}
-    </Button>
+    />
   </div>
 </template>

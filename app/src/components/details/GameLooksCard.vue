@@ -3,6 +3,7 @@
 // as the field's placeholder), the cover with «Cambia…» (L12), «Nascondi dalla libreria».
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Image as ImageIcon } from '@lucide/vue'
 import { emu, type LibraryGame } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
 import { Input, InputVariant } from '@/components/ui/input'
@@ -80,7 +81,7 @@ const coverLine = computed(() => coverDescription(props.game, t))
         <div class="font-medium">{{ t('details.files.cover') }}</div>
         <div class="text-caption text-ink-muted">{{ coverLine }}</div>
       </div>
-      <DetailsAction @click="emit('cover')">
+      <DetailsAction :icon="ImageIcon" @click="emit('cover')">
         {{ t('details.files.coverChange') }}
       </DetailsAction>
     </div>

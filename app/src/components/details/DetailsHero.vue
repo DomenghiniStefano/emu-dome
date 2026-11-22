@@ -54,8 +54,7 @@ defineExpose({
       <Button
         :variant="ButtonVariant.Plain"
         :size="ButtonSize.IconTouch"
-        :aria-label="t('details.back')"
-        :title="t('details.back')"
+        :label="t('details.back')"
         @click="emit('back')"
       >
         <ChevronLeft :size="24" :stroke-width="1.75" aria-hidden="true" />

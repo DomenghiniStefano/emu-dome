@@ -4,7 +4,7 @@
 // «Esporta…». Phone in portrait: the last change in one line, no export.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { TriangleAlert } from '@lucide/vue'
+import { History as HistoryIcon, Import, Share, TriangleAlert } from '@lucide/vue'
 import { emu, type GameSaves, type LibraryGame } from '@/emu'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { saveWhenLabel } from '@/i18n/labels'
@@ -74,11 +74,11 @@ async function exportInGame() {
       <span>{{ t('saves.brokenNote', { file: saves.broken[0] }) }}</span>
     </div>
     <div class="mt-4 flex flex-wrap gap-8 touch:mt-0">
-      <DetailsAction @click="emit('backups')">
+      <DetailsAction :icon="HistoryIcon" @click="emit('backups')">
         {{ t('details.saves.showBackups') }}
       </DetailsAction>
-      <DetailsAction @click="emit('import')">{{ t('saves.import') }}</DetailsAction>
-      <DetailsAction v-if="!phone && saves?.inGame" @click="exportInGame">
+      <DetailsAction :icon="Import" @click="emit('import')">{{ t('saves.import') }}</DetailsAction>
+      <DetailsAction v-if="!phone && saves?.inGame" :icon="Share" @click="exportInGame">
         {{ t('saves.export') }}
       </DetailsAction>
     </div>

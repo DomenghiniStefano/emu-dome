@@ -51,6 +51,15 @@ describe('Button icon', () => {
     expect(w.find('svg').attributes('width')).toBe('14')
   })
 
+  it('with a label and no icon, names a button that draws its own picture', () => {
+    const w = mount(Button, {
+      props: { label: 'Altro' },
+      slots: { default: () => h('svg', { 'data-own': '' }) },
+    })
+    expect(w.find('svg[data-own]').exists()).toBe(true)
+    expect(w.attributes('aria-label')).toBe('Altro')
+  })
+
   it('sizes the icon one step larger on the phone', () => {
     expect(buttonIconClass(ButtonSize.IconRow)).toBe('size-14 touch:size-16')
     expect(buttonIconClass(undefined)).toBe('size-16 touch:size-18')

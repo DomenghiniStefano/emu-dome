@@ -3,6 +3,7 @@
 // one), when it was saved, the play time when known, the size, and «Tieni questa». The newer
 // side's «Tieni questa» takes the focus first.
 import { useI18n } from 'vue-i18n'
+import { Check } from '@lucide/vue'
 import { playTimeLabel, saveWhenLabel, sizeLabel } from '@/i18n/labels'
 import { Button } from '@/components/ui/button'
 import { Card, CardPad } from '@/components/ui/card'
@@ -36,7 +37,12 @@ const { t } = useI18n()
       <dd class="m-0 text-ink">{{ sizeLabel(version.size) }}</dd>
     </dl>
     <!-- at the bottom: both sides keep it on one line when one has a line less -->
-    <Button class="mt-auto" :data-nav-initial="newest ? '' : undefined" @click="emit('keep')">
+    <Button
+      class="mt-auto"
+      :icon="Check"
+      :data-nav-initial="newest ? '' : undefined"
+      @click="emit('keep')"
+    >
       {{ t('saves.conflict.keepThis') }}
     </Button>
   </Card>

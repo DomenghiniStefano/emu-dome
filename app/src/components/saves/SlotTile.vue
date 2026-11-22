@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // One quick-save slot (board «Salvataggi» V02; #59 item 3, the one slot component): a 4:3
-// thumbnail, the name, the date, «Gioca da qui» and «…». Saves (V02) uses it, and so will Game
+// thumbnail, the name, the date, «Gioca da qui» and «…», each its icon alone (#104). Saves (V02) uses it, and so will Game
 // details › Salvataggi (L05). An empty slot shows no buttons. `outdated`: the state was made by
 // an older version of the emulator, «Potrebbe non caricarsi» under the date.
 //
 // The parent decides what «…» offers (V03): the Automatico slot has no Rinomina, Blocca, Elimina.
 import { useI18n } from 'vue-i18n'
-import { Ellipsis, TriangleAlert } from '@lucide/vue'
+import { Ellipsis, Play, TriangleAlert } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardPad } from '@/components/ui/card'
 import { cn } from '@/lib/cn'
@@ -47,20 +47,18 @@ const { t } = useI18n()
     <span v-if="!empty" class="mt-auto flex gap-6 pt-2">
       <Button
         :variant="ButtonVariant.SoftAccent"
-        :size="ButtonSize.TileAction"
-        class="min-w-0 flex-1"
+        :size="ButtonSize.IconRow"
+        :icon="Play"
+        icon-filled
+        :label="t('saves.quick.load')"
         @click="emit('play')"
-      >
-        {{ t('saves.quick.load') }}
-      </Button>
+      />
       <Button
-        :size="ButtonSize.TileAction"
-        :aria-label="t('saves.slotMore')"
-        :title="t('saves.slotMore')"
+        :size="ButtonSize.IconRow"
+        :icon="Ellipsis"
+        :label="t('saves.slotMore')"
         @click="emit('more', $event)"
-      >
-        <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
-      </Button>
+      />
     </span>
   </Card>
 </template>

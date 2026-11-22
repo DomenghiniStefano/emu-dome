@@ -8,8 +8,10 @@
 // label is the button's accessible name and its tooltip (ui/tooltip: on a rest of the mouse and
 // on the controller's or the keyboard's focus; a `title` the caller passes is shown there
 // instead, and never as the browser's own tooltip too), and the slot is not shown. An icon alone
-// goes with a square size (Icon, IconSmall, IconRow, RowAction, ToolIcon, IconTouch). Neither is
-// for `as-child`, which renders the caller's element as it is.
+// goes with a square size (Icon, IconSmall, IconRow, RowAction, ToolIcon, IconTouch). `label`
+// without `icon` names a button that draws its own picture in the slot (a glyph of its own size,
+// the bell with its dot): the slot shows, with the same name and tooltip. Neither is for
+// `as-child`, which renders the caller's element as it is.
 import type { PrimitiveProps } from 'reka-ui'
 import type { Component, HTMLAttributes } from 'vue'
 import { Primitive } from 'reka-ui'
@@ -85,7 +87,7 @@ const listeners = computed(() => (hasTip.value ? tip.on : {}))
       :fill="iconFilled ? 'currentColor' : 'none'"
       aria-hidden="true"
     />
-    <slot v-if="label === undefined" />
+    <slot v-if="label === undefined || !icon" />
     <Tooltip
       v-if="hasTip && tipOpen && tipAnchor && tipText"
       :anchor="tipAnchor"

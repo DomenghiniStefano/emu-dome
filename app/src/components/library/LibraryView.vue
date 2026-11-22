@@ -21,7 +21,7 @@
 // giocare» kept above it and «Gioca» on every row.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { TriangleAlert } from '@lucide/vue'
+import { FunnelX, TriangleAlert } from '@lucide/vue'
 import CloudDriveShelf from '@/components/cloud/CloudDriveShelf.vue'
 import TvLibrary from '@/components/library/tv/TvLibrary.vue'
 import { Button } from '@/components/ui/button'
@@ -214,7 +214,9 @@ const shelves = computed(() => uiMode.tv && library.loaded && library.games.leng
       />
       <div v-if="games.length === 0" class="flex flex-wrap items-center gap-8">
         <p class="m-0 text-ink-muted">{{ t('library.noneShown') }}</p>
-        <Button v-if="filtering" @click="clearFilters">{{ t('library.clearFilters') }}</Button>
+        <Button v-if="filtering" :icon="FunnelX" @click="clearFilters">
+          {{ t('library.clearFilters') }}
+        </Button>
       </div>
       <p v-if="unreachable.length" class="m-0 text-ink-muted">
         <TriangleAlert

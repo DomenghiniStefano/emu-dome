@@ -22,14 +22,9 @@ const { t } = useI18n()
     :size="ButtonSize.Large"
     data-nav-initial
     :aria-disabled="!available || undefined"
+    :icon="Play"
+    icon-filled
   >
-    <Play
-      :size="16"
-      class="touch:size-18"
-      fill="currentColor"
-      :stroke-width="0"
-      aria-hidden="true"
-    />
     {{ t(fresh ? 'library.hero.play' : 'library.hero.resume') }}
   </Button>
 </template>

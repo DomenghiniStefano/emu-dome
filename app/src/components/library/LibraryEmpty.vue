@@ -3,7 +3,7 @@
 // it), drag games or folders onto the window (App.vue), or open a single file the Phase 0 way.
 // On a touch screen nothing can be dragged onto the window: the lead does not offer it (#29).
 import { useI18n } from 'vue-i18n'
-import { Library } from '@lucide/vue'
+import { File as FileIcon, FolderOpen, Library } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
@@ -27,12 +27,13 @@ const { coarse } = useDeviceLayout()
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="FolderOpen"
         data-nav-initial
         @click="emit('chooseFolder')"
       >
         {{ t('library.chooseFolder') }}
       </Button>
-      <Button :size="ButtonSize.Medium" @click="emit('openFile')">
+      <Button :size="ButtonSize.Medium" :icon="FileIcon" @click="emit('openFile')">
         {{ t('library.openFile') }}
       </Button>
       <template #footer>
