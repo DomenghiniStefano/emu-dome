@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Button } from '@/components/ui/button'
 import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
 import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
@@ -8,7 +7,6 @@ import KitState from '@/kit/KitState.vue'
 import { IssueStatus } from '@/kit/review'
 
 const speed = ref('normal')
-const height = ref('normal')
 const weightNow = ref('normal')
 const weightProposed = ref('normal')
 const partNow = ref('normal')
@@ -42,8 +40,8 @@ const partProposed = ref('normal')
         <SegmentedItem value="fast">Fast forward</SegmentedItem>
       </Segmented>
     </KitState>
-    <KitState label="Stacked (a name over its value): desktop, and on the phone">
-      <div class="flex w-field flex-col gap-8">
+    <KitState label="Stacked (a name and its value, one line): desktop, and on the phone">
+      <div class="flex w-field flex-col gap-6">
         <div
           v-for="density in ['desktop', 'touch']"
           :key="density"
@@ -60,33 +58,6 @@ const partProposed = ref('normal')
       </div>
     </KitState>
     <template #review>
-      <KitIssue title="Alto 34, i controlli vicini 32" :status="IssueStatus.Proposed">
-        Un segmento è alto 28, più 2 di spazio e 1 di bordo per lato: il gruppo misura 34. Nelle
-        righe delle impostazioni sta accanto a Button, Select e Input, tutti da 32, e la riga cambia
-        altezza a seconda del controllo.
-        <template #current>
-          <div class="flex items-center gap-8">
-            <Segmented v-model="height" aria-label="Height, now">
-              <SegmentedItem value="normal">Normal</SegmentedItem>
-              <SegmentedItem value="fast">Fast</SegmentedItem>
-            </Segmented>
-            <Button>32</Button>
-          </div>
-        </template>
-        <template #proposed>
-          <div class="flex items-center gap-8">
-            <Segmented v-model="height" aria-label="Height, proposed" class="p-px">
-              <SegmentedItem value="normal">Normal</SegmentedItem>
-              <SegmentedItem value="fast">Fast</SegmentedItem>
-            </Segmented>
-            <Button>32</Button>
-          </div>
-        </template>
-        <template #solution>
-          In segmented/variants.ts lo spazio interno di Default e Strong passa da 2 a 1 (p-px), così
-          il gruppo è 32 con i segmenti da 28; il raggio interno (4) resta corretto.
-        </template>
-      </KitIssue>
       <KitIssue
         title="Il segmento scelto ingrassa e sposta gli altri"
         :status="IssueStatus.Proposed"

@@ -29,7 +29,7 @@ const SINGLE = ['K', 'A', 'I', 'W', '↑', '↓', '↵']
       </div>
     </KitState>
     <KitState label="In a line of text, on glass (G06 hint)">
-      <div class="glass-thick flex items-center gap-6 rounded-10 px-14 py-8 text-ink-muted">
+      <div class="glass-thick flex items-center gap-6 rounded-card px-10 py-6 text-ink-muted">
         <Kbd>Esc</Kbd>
         <span>or</span>
         <Kbd>Home</Kbd>
@@ -69,32 +69,6 @@ const SINGLE = ['K', 'A', 'I', 'W', '↑', '↓', '↵']
     </KitState>
 
     <template #review>
-      <KitIssue
-        title="I tasti di un carattere sono stretti e diversi"
-        :status="IssueStatus.Proposed"
-      >
-        Default e Small non hanno larghezza minima né testo centrato (le misure TV sì): un tasto di
-        una lettera è più stretto che alto, e la larghezza cambia con la lettera. Nel piede della
-        ricerca ↑ ↓ ↵ escono uno diverso dall'altro, e «I» accanto a «W» sembra un'altra cosa.
-        <template #current>
-          <div class="flex items-center gap-6">
-            <Kbd v-for="k in SINGLE" :key="k">{{ k }}</Kbd>
-            <Kbd :size="KbdSize.Small">B</Kbd>
-          </div>
-        </template>
-        <template #proposed>
-          <div class="flex items-center gap-6">
-            <Kbd v-for="k in SINGLE" :key="k" class="min-w-20 justify-center">{{ k }}</Kbd>
-            <Kbd :size="KbdSize.Small" class="min-w-18 justify-center">B</Kbd>
-          </div>
-        </template>
-        <template #solution>
-          `justify-center` nella base e `min-w-20` / `min-w-18` in KbdSize.Default / Small
-          (components/ui/kbd/variants.ts): un tasto di un carattere diventa quadrato, le parole non
-          cambiano.
-        </template>
-      </KitIssue>
-
       <KitIssue title="Il suggerimento è più forte dell'azione" :status="IssueStatus.Proposed">
         Nel pulsante «‹ Menu rapido» il testo è grigio (Ghost, `ink-muted`) ma il tasto «B» accanto
         è in inchiostro pieno con il bordo forte: l'occhio va prima al suggerimento che all'azione.

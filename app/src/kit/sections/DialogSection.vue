@@ -47,7 +47,7 @@ const openTv = ref(false)
         </DialogContent>
       </Dialog>
     </KitState>
-    <KitState label="Footer buttons, as in FlowDialog (Medium, 36)">
+    <KitState label="Footer buttons, as in FlowDialog (Medium, control-md)">
       <div class="flex gap-8">
         <Button :size="ButtonSize.Medium">Back to the library</Button>
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Try again</Button>
@@ -142,22 +142,12 @@ const openTv = ref(false)
         Tutti i dialoghi del flusso di gioco (CrashDialog, ResumeDialog, SaveBrokenDialog,
         SlowDialog, StartFailedDialog, ClosingAsk) passano a mano ButtonSize.Medium a ogni pulsante
         del piede: DialogFooter non dice niente. Il Kit stesso mostrava il primo dialogo con
-        pulsanti da 32 invece che da 36. Un dialogo nuovo che lo dimentica ha azioni più basse degli
+        pulsanti da 28 invece che da 30. Un dialogo nuovo che lo dimentica ha azioni più basse degli
         altri.
         <template #solution>
           DialogFooter dà la taglia ai suoi pulsanti (un contesto letto da Button, come Tabs fa con
           le sue tab), o un ButtonSize.Dialog nominato una volta in dialog/; i chiamanti smettono di
           scrivere la taglia.
-        </template>
-      </KitIssue>
-      <KitIssue title="Wide scrive a mano margine e spazi">
-        Default usa i token di ruolo (p-dialog-pad, gap 12); Wide scrive p-24 e gap 14 in
-        dialog/variants.ts. Oggi p-24 e dialog-pad valgono uguale, ma cambiare il margine dei
-        dialoghi in spacing.css non cambierebbe «Scegli la copertina», e i due dialoghi hanno già
-        spazi diversi fra titolo, testo e contenuto (14 contro 12).
-        <template #solution>
-          Wide usa p-dialog-pad e lo stesso gap di Default (o un token di ruolo suo, se il
-          proprietario vuole il 14) in dialog/variants.ts.
         </template>
       </KitIssue>
     </template>

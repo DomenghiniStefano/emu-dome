@@ -20,7 +20,7 @@ const props = withDefaults(defineProps<TabsListProps & { class?: HTMLAttributes[
     :loop="props.loop"
     :as="props.as"
     :as-child="props.asChild"
-    :class="cn('flex shrink-0 gap-4 border-b border-line', props.class)"
+    :class="cn('flex shrink-0 gap-2 border-b border-line', props.class)"
   >
     <slot />
   </TabsList>

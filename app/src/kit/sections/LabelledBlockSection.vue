@@ -16,15 +16,15 @@ import { IssueStatus } from '@/kit/review'
 <template>
   <KitSection title="LabelledBlock">
     <KitState label="Title only (Saves «In-game save», title-as h3)">
-      <LabelledBlock title="In-game save" title-as="h3" class="w-panel">
-        <Card :pad="CardPad.Snug" class="flex-row items-center gap-12">
+      <LabelledBlock title="In-game save" title-as="h3" class="w-menu">
+        <Card :pad="CardPad.Snug" class="flex-row items-center gap-8">
           <span class="min-w-0 flex-1 tabular-nums">Saved 21 Nov, 18:42 · 32 KB</span>
           <Button>Export</Button>
         </Card>
       </LabelledBlock>
     </KitState>
     <KitState label="Aside · a Link · LabelLink (quick menu «More slots»)">
-      <LabelledBlock title="Quick saves" class="w-panel">
+      <LabelledBlock title="Quick saves" class="w-menu">
         <template #aside>
           <Button :variant="ButtonVariant.Link" :size="ButtonSize.LabelLink">
             More slots and saves
@@ -34,7 +34,7 @@ import { IssueStatus } from '@/kit/review'
       </LabelledBlock>
     </KitState>
     <KitState label="Aside · a note, text-caption (SettingsSection)">
-      <LabelledBlock title="Most used" title-as="h3" class="w-panel">
+      <LabelledBlock title="Most used" title-as="h3" class="w-menu">
         <template #aside>
           <span class="text-caption text-ink-muted">Apply to every game</span>
         </template>
@@ -44,12 +44,12 @@ import { IssueStatus } from '@/kit/review'
       </LabelledBlock>
     </KitState>
     <KitState label="Aside · a note, text-caption-tall (Controls «Shortcuts to remember»)">
-      <LabelledBlock title="Shortcuts to remember" class="w-panel">
+      <LabelledBlock title="Shortcuts to remember" class="w-menu">
         <template #aside>
           <span class="text-caption-tall text-ink-muted">Hold L3 and press a button</span>
         </template>
         <Card :variant="CardVariant.List">
-          <div class="flex min-h-control-lg items-center gap-12 px-16 py-4">
+          <div class="flex min-h-control-lg items-center gap-8 px-12 py-4">
             <Kbd>R1</Kbd>
             <span>Quick save</span>
           </div>
@@ -57,7 +57,7 @@ import { IssueStatus } from '@/kit/review'
       </LabelledBlock>
     </KitState>
     <KitState label="No head (quick menu's saves page, «all»)">
-      <LabelledBlock class="w-panel" aria-label="Quick saves">
+      <LabelledBlock class="w-menu" aria-label="Quick saves">
         <Card :pad="CardPad.Snug">Every slot, no label above</Card>
       </LabelledBlock>
     </KitState>
@@ -81,7 +81,7 @@ import { IssueStatus } from '@/kit/review'
         pagina all'altra, e due blocchi messi in griglia non si allineano. La nota la scrive chi usa
         il blocco, scegliendo ogni volta il tipo.
         <template #current>
-          <div class="grid w-page grid-cols-3 gap-12">
+          <div class="grid w-panel grid-cols-3 gap-8">
             <LabelledBlock title="In-game save" title-as="h3">
               <Card :pad="CardPad.Snug">24</Card>
             </LabelledBlock>
@@ -102,7 +102,7 @@ import { IssueStatus } from '@/kit/review'
           </div>
         </template>
         <template #proposed>
-          <div class="grid w-page grid-cols-3 gap-12">
+          <div class="grid w-panel grid-cols-3 gap-8">
             <LabelledBlockProposal title="In-game save">
               <Card :pad="CardPad.Snug">28</Card>
             </LabelledBlockProposal>

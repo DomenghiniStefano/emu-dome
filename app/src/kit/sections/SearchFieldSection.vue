@@ -34,7 +34,7 @@ const settings = ref('')
     </KitState>
     <template #review>
       <KitIssue title="Due caselle di ricerca diverse" :status="IssueStatus.Proposed">
-        Salvataggi usa SearchField (alta 32, raggio 6, lente da 14). La ricerca delle Impostazioni
+        Salvataggi usa SearchField (alta 28, raggio 2, lente da 14). La ricerca delle Impostazioni
         (SettingsCategories.vue) è costruita a mano con Input Bare: alta 40, raggio 8, lente da 16,
         margine 12. Sono la stessa cosa in due sezioni vicine della shell, con due misure.
         <template #current>

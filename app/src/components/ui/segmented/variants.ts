@@ -6,9 +6,9 @@ export const SegmentedVariant = {
   Default: 'default',
   // The same, every segment semibold (ControlsRemap: «Si applica a», «Disposizione A/B»).
   Strong: 'strong',
-  // Equal segments on one row, each two lines high, a name over its value (quick menu speeds,
-  // G07). Its 52 height, 8 / 10 radii and 17 line are pending tokens (Cowork, spec
-  // Decision 5). On the phone the radii are 10 / 12.
+  // Equal segments on one row, a name and its value (quick menu speeds, G07). Owner, 2026-11-22
+  // («lo stacked è gigantesco»): the two sit on one line, a control high (the touch minimum on
+  // the phone), no longer one over the other; the name keeps the variant's name.
   Stacked: 'stacked',
 } as const
 export type SegmentedVariant = (typeof SegmentedVariant)[keyof typeof SegmentedVariant]
@@ -17,11 +17,11 @@ export const segmentedVariants = cva('', {
   variants: {
     variant: {
       [SegmentedVariant.Default]:
-        'flex flex-wrap gap-2 rounded-control border border-line bg-surface-raised p-2',
+        'flex flex-wrap gap-2 rounded-control border border-line bg-surface-raised p-px',
       [SegmentedVariant.Strong]:
-        'flex flex-wrap gap-2 rounded-control border border-line bg-surface-raised p-2',
+        'flex flex-wrap gap-2 rounded-control border border-line bg-surface-raised p-px',
       [SegmentedVariant.Stacked]:
-        'grid auto-cols-fr grid-flow-col gap-2 rounded-card border border-line bg-surface-raised p-2 touch:rounded-12',
+        'grid auto-cols-fr grid-flow-col gap-2 rounded-control border border-line bg-surface-raised p-px',
     },
   },
   defaultVariants: { variant: SegmentedVariant.Default },
@@ -31,11 +31,11 @@ export const segmentedItemVariants = cva('', {
   variants: {
     variant: {
       [SegmentedVariant.Default]:
-        'h-control-sm cursor-pointer rounded-badge border-0 bg-transparent px-10 font-sans text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
+        'h-control-sm cursor-pointer rounded-badge border-0 bg-transparent px-8 font-sans text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
       [SegmentedVariant.Strong]:
-        'h-control-sm cursor-pointer rounded-badge border-0 bg-transparent px-10 font-sans font-semibold text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
+        'h-control-sm cursor-pointer rounded-badge border-0 bg-transparent px-8 font-sans font-semibold text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
       [SegmentedVariant.Stacked]:
-        'flex h-52 min-w-0 cursor-pointer flex-col items-center justify-center rounded-8 border-0 bg-transparent leading-stacked disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:text-accent-text touch:rounded-card',
+        'flex h-control min-w-0 cursor-pointer flex-row items-baseline justify-center gap-4 rounded-badge border-0 bg-transparent px-8 disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:text-accent-text touch:h-touch touch:items-center',
     },
   },
   defaultVariants: { variant: SegmentedVariant.Default },

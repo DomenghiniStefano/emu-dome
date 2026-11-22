@@ -2,7 +2,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 
 export const SearchFieldSize = {
-  // 32px: a list's search (Saves V01 `.search`).
+  // A control high: a list's search (Saves V01 `.search`).
   Default: 'default',
 } as const
 export type SearchFieldSize = (typeof SearchFieldSize)[keyof typeof SearchFieldSize]
@@ -11,7 +11,7 @@ export type SearchFieldSize = (typeof SearchFieldSize)[keyof typeof SearchFieldS
 // so a click anywhere on the field focuses the input. The input keeps the browser's own small
 // padding, as the screens' search fields always had.
 export const searchFieldVariants = cva(
-  'flex items-center gap-8 border border-line-strong bg-surface-raised text-ink-muted',
+  'flex items-center gap-6 border border-line-strong bg-surface-raised text-ink-muted',
   {
     variants: {
       size: {

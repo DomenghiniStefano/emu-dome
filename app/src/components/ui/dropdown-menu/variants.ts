@@ -10,7 +10,7 @@ export type DropdownMenuVariant = (typeof DropdownMenuVariant)[keyof typeof Drop
 export const dropdownMenuVariants = cva('glass-thick z-raised flex flex-col', {
   variants: {
     variant: {
-      [DropdownMenuVariant.Actions]: 'min-w-menu-min gap-2 p-6',
+      [DropdownMenuVariant.Actions]: 'min-w-menu-min gap-px p-2',
     },
   },
   defaultVariants: { variant: DropdownMenuVariant.Actions },

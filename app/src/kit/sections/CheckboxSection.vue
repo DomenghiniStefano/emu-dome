@@ -40,7 +40,7 @@ const remember = ref(false)
         <Checkbox v-for="k in KEYS" :key="k" v-model="show[k]">
           <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
             <span
-              class="size-14 shrink-0 rounded-4"
+              class="size-14 shrink-0 rounded-badge"
               :class="show[k] ? 'bg-accent-text' : 'border border-line-strong'"
               aria-hidden="true"
             ></span>
@@ -53,14 +53,14 @@ const remember = ref(false)
       <div class="flex w-field flex-col gap-2 px-6">
         <Checkbox :model-value="true" disabled>
           <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
-            <span class="size-14 shrink-0 rounded-4 bg-accent-text" aria-hidden="true"></span>
+            <span class="size-14 shrink-0 rounded-badge bg-accent-text" aria-hidden="true"></span>
             On this device only
           </Button>
         </Checkbox>
         <Checkbox :model-value="false" disabled>
           <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
             <span
-              class="size-14 shrink-0 rounded-4 border border-line-strong"
+              class="size-14 shrink-0 rounded-badge border border-line-strong"
               aria-hidden="true"
             ></span>
             Hidden games too
@@ -73,7 +73,7 @@ const remember = ref(false)
         <Checkbox v-model="remember">
           <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6 self-start">
             <span
-              class="size-14 shrink-0 rounded-4"
+              class="size-14 shrink-0 rounded-badge"
               :class="remember ? 'bg-accent-text' : 'border border-line-strong'"
               aria-hidden="true"
             ></span>
@@ -87,7 +87,7 @@ const remember = ref(false)
         <Checkbox :model-value="false">
           <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
             <span
-              class="size-14 shrink-0 rounded-4 border border-line-strong"
+              class="size-14 shrink-0 rounded-badge border border-line-strong"
               aria-hidden="true"
             ></span>
             Solo quelli su questo dispositivo
@@ -100,7 +100,7 @@ const remember = ref(false)
         <Checkbox v-for="k in KEYS" :key="k" v-model="show[k]">
           <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
             <span
-              class="size-14 shrink-0 rounded-4"
+              class="size-14 shrink-0 rounded-badge"
               :class="show[k] ? 'bg-accent-text' : 'border border-line-strong'"
               aria-hidden="true"
             ></span>
@@ -121,7 +121,7 @@ const remember = ref(false)
             <Checkbox v-for="k in TWO" :key="k" v-model="show[k]">
               <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
                 <span
-                  class="size-14 shrink-0 rounded-4"
+                  class="size-14 shrink-0 rounded-badge"
                   :class="show[k] ? 'bg-accent-text' : 'border border-line-strong'"
                   aria-hidden="true"
                 ></span>
@@ -161,7 +161,7 @@ const remember = ref(false)
             <Checkbox v-model="remember">
               <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
                 <span
-                  class="size-14 shrink-0 rounded-4"
+                  class="size-14 shrink-0 rounded-badge"
                   :class="remember ? 'bg-accent-text' : 'border border-line-strong'"
                   aria-hidden="true"
                 ></span>
@@ -184,48 +184,6 @@ const remember = ref(false)
           una parte `CheckboxBox.vue` in components/ui/checkbox (su `CheckboxIndicator` di Reka, lo
           stato da `data-state`), messa dentro il Button della schermata; LibraryFilters e
           TvModeDialog tolgono il loro span. Il Button resta della schermata, come oggi.
-        </template>
-      </KitIssue>
-
-      <KitIssue title="Riga troppo bassa al tocco" :status="IssueStatus.Proposed">
-        Le righe sono Button Menu · MenuRow: 28 px anche sul telefono, sotto il minimo touch di 44
-        (token `touch`). Il pannello L03 si apre anche dalla libreria del telefono, e le caselle
-        «Mostra» stanno a 2 px l'una dall'altra: è facile toccare quella sbagliata.
-        <template #current>
-          <div data-density="touch" class="flex w-field flex-col gap-2 px-6">
-            <Checkbox v-for="k in TWO" :key="k" v-model="show[k]">
-              <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
-                <span
-                  class="size-14 shrink-0 rounded-4"
-                  :class="show[k] ? 'bg-accent-text' : 'border border-line-strong'"
-                  aria-hidden="true"
-                ></span>
-                {{ LABELS[k] }}
-              </Button>
-            </Checkbox>
-          </div>
-        </template>
-        <template #proposed>
-          <div data-density="touch" class="flex w-field flex-col gap-2 px-6">
-            <Checkbox v-for="k in TWO" :key="k" v-model="show[k]">
-              <Button
-                :variant="ButtonVariant.Menu"
-                :size="ButtonSize.MenuRow"
-                class="-mx-6 touch:min-h-touch"
-              >
-                <span
-                  class="size-14 shrink-0 rounded-4"
-                  :class="show[k] ? 'bg-accent-text' : 'border border-line-strong'"
-                  aria-hidden="true"
-                ></span>
-                {{ LABELS[k] }}
-              </Button>
-            </Checkbox>
-          </div>
-        </template>
-        <template #solution>
-          `touch:min-h-touch` in ButtonSize.MenuRow (components/ui/button/variants.ts). Vale anche
-          per l'ordinamento (RadioGroup) dello stesso pannello, che usa la stessa misura.
         </template>
       </KitIssue>
     </template>

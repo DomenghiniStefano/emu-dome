@@ -14,14 +14,14 @@ export const EmptyStateVariant = {
 export type EmptyStateVariant = (typeof EmptyStateVariant)[keyof typeof EmptyStateVariant]
 
 export const emptyStateVariants = cva(
-  'flex flex-col items-center justify-center gap-12 text-center',
+  'flex flex-col items-center justify-center gap-8 text-center',
   {
     variants: {
       variant: {
-        [EmptyStateVariant.Page]: 'flex-1 p-32',
+        [EmptyStateVariant.Page]: 'flex-1 p-16',
         [EmptyStateVariant.Framed]:
-          'max-w-empty rounded-panel border border-dashed border-line-strong p-48',
-        [EmptyStateVariant.Card]: 'rounded-card border border-line bg-surface p-32',
+          'max-w-empty rounded-panel border border-dashed border-line-strong p-24',
+        [EmptyStateVariant.Card]: 'rounded-card border border-line bg-surface p-card-pad',
       },
     },
     defaultVariants: { variant: EmptyStateVariant.Page },

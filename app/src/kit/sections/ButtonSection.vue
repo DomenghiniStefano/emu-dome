@@ -145,7 +145,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         <Button :variant="ButtonVariant.Soft" :fade="ButtonFade.Dim" disabled>Sign in</Button>
       </div>
     </KitState>
-    <KitState label="Tall (40, standard label)">
+    <KitState label="Tall (control-lg, standard label)">
       <Button :size="ButtonSize.Tall">Add a folder</Button>
     </KitState>
     <KitState label="Footer: desktop, and on the phone">
@@ -292,7 +292,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Inverse · CoverAction, Veil · CoverActionIcon">
-      <div class="flex w-field gap-6 rounded-10 bg-cover-2 p-8">
+      <div class="flex w-field gap-6 rounded-card bg-cover-2 p-8">
         <Button :variant="ButtonVariant.Inverse" :size="ButtonSize.CoverAction" class="flex-1">
           <Play :size="14" fill="currentColor" :stroke-width="0" aria-hidden="true" />
           Play
@@ -315,7 +315,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="Bare · Area (a click area over a picture)">
-      <div class="relative size-48 rounded-10 bg-cover-1">
+      <div class="relative size-48 rounded-card bg-cover-1">
         <Button
           :variant="ButtonVariant.Bare"
           :size="ButtonSize.Area"
@@ -477,7 +477,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
       </div>
     </KitState>
     <KitState label="LinkRow · LinkRow: rows of a card list that open a page">
-      <div class="flex w-page flex-col rounded-10 border border-line bg-surface">
+      <div class="flex w-page flex-col rounded-card border border-line bg-surface">
         <Button v-for="n in 2" :key="n" :variant="ButtonVariant.LinkRow" :size="ButtonSize.LinkRow">
           <span class="flex min-w-0 flex-1 flex-col">
             <span class="font-medium text-ink">Screen effect {{ n }}</span>
@@ -558,7 +558,7 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         title="Sul telefono Small, Default e Tall restano sotto i 44"
         :status="IssueStatus.Proposed"
       >
-        Con la densità touch Small resta alto 28, Default 32 e Tall 40: cambia solo la misura del
+        Con la densità touch Small resta alto 24, Default 28 e Tall 32: cambia solo la misura del
         testo. Il minimo al tocco del design system è 44 (il token touch), e Footer, Toast, Step,
         CardAction e Bare lo rispettano già. In più, su desktop Tall e Footer hanno le stesse
         classi: sono due nomi per lo stesso pulsante, che si separano solo sul telefono.

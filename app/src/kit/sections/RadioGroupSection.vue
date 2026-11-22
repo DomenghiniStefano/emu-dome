@@ -20,15 +20,15 @@ const LEVELS = [
 <template>
   <KitSection title="RadioGroup">
     <KitState label="Cards in a row (the settings scope bar): arrows along the row choose">
-      <RadioGroup v-model="level" class="grid w-field grid-cols-3 gap-8" aria-label="Level">
+      <RadioGroup v-model="level" class="flex gap-6" aria-label="Level">
         <RadioGroupItem v-for="l in LEVELS" :key="l.id" :value="l.id">
           <Card
             as="button"
             :variant="CardVariant.RaisedAccent"
             :selected="level === l.id"
-            class="min-h-level flex-row items-start gap-10 px-12"
+            class="flex-row items-center gap-6"
           >
-            <component :is="l.icon" :size="20" :stroke-width="1.75" aria-hidden="true" />
+            <component :is="l.icon" :size="16" :stroke-width="1.75" aria-hidden="true" />
             <span class="font-semibold">{{ l.name }}</span>
           </Card>
         </RadioGroupItem>
@@ -38,7 +38,7 @@ const LEVELS = [
       <RadioGroup
         v-model="order"
         orientation="vertical"
-        class="flex w-menu flex-col gap-2"
+        class="flex w-field flex-col gap-px"
         aria-label="Order"
       >
         <RadioGroupItem v-for="o in ['recent', 'title', 'console']" :key="o" :value="o">
