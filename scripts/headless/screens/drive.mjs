@@ -762,13 +762,18 @@ for (const theme of ["dark", "light"])
       stepMs: 600,
     };
 
-// TV mode (#30): on by itself (full screen + a controller: `fullscreen`, `pads`) or fixed
-// (`ui: "tv"`, no controller: the Nintendo letters). Steps play the controller (`emu://nav`,
-// `emu://menu`). At 1280 × 720, 1920 × 1080 (the mockup's) and 3840 × 2160, for the «no empty
-// space» rule; `focus` shows the TV focus ring.
+// TV mode (#30): fixed with a controller (`ui: "tv"`, `pads`: the Xbox glyphs) or without one
+// (`ui: "tv"` alone: the Nintendo letters). At Automatica a controller asks first (the `ask-*`
+// scenarios: the question at startup, then the last controller gone in TV). Steps play the
+// controller (`emu://nav`, `emu://menu`). At 1280 × 720, 1920 × 1080 (the mockup's) and
+// 3840 × 2160, for the «no empty space» rule; `focus` shows the TV focus ring.
 const nav = (action) => `window.__emit('emu://nav', { action: '${action}' })`;
-const TV_AUTO = { fullscreen: true, pads: true };
+const TV_AUTO = { ui: "tv", pads: true };
+const padGone = `window.__emit('emu://gamepad-disconnected', { id: 1, name: 'Xbox Wireless Controller', family: 'xbox', vendor: 1118, product: 2835, battery: 80 })`;
 const TV = {
+  "ask-connect": { mock: { pads: true }, steps: [], focus: true },
+  "ask-disconnect": { mock: { pads: true }, steps: [nav("confirm"), padGone], focus: true },
+  "ask-game": { mock: { pads: true, game: "gba" }, steps: [], focus: true },
   lib: { mock: TV_AUTO, steps: [] },
   "lib-nopad": { mock: { ui: "tv" }, steps: [] },
   "lib-shelf": { mock: TV_AUTO, steps: [nav("down"), nav("right"), nav("right")], focus: true },

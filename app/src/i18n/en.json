@@ -22,6 +22,22 @@
       "on": "On",
       "off": "Off"
     },
+    "ask": {
+      "connect": {
+        "title": "Switch to TV mode?",
+        "text": "You connected a controller. TV mode shows larger menus, made for playing with a controller.",
+        "main": "Switch to TV mode",
+        "other": "Stay on desktop"
+      },
+      "disconnect": {
+        "title": "Controller disconnected",
+        "text": "Go back to desktop mode?",
+        "main": "Back to desktop",
+        "other": "Stay in TV mode"
+      },
+      "remember": "Don’t ask again",
+      "where": "You can change this in Settings."
+    },
     "hero": {
       "meta": "{console} · {time} played · {when}",
       "metaNew": "{console} · Never played"
@@ -1170,7 +1186,7 @@
       },
       "ui": {
         "name": "Interface",
-        "desc": "TV mode uses large text and is driven with the controller. Automatic turns it on in full screen with a controller connected.",
+        "desc": "TV mode uses large text and is driven with the controller. Automatic asks when you connect a controller.",
         "option": {
           "auto": "Automatic",
           "desktop": "Desktop mode",

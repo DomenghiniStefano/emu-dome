@@ -774,7 +774,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
   components never take a `phone` / `touch` prop just to change their look.
 - **TV mode** (Trello #30): one `data-layout="tv"` on `<html>` (`composables/useUiMode.ts`, the decision pure in
-  `lib/uiMode.ts`: `general.ui`, or Automatica = full screen with a controller connected; never on a phone) and the
+  `lib/uiMode.ts`: `general.ui`, or at Automatica the answer to the TV question, `components/tv-mode/TvModeDialog.vue`:
+  a controller connecting, or connected at startup, outside TV asks «Passare alla modalità TV?», the last one leaving
+  TV asks to go back (in place of the «controller disconnected» toast, closed by a reconnection); the answer holds for
+  the run, «Non chiederlo più» saves it as `general.ui`; in game the game pauses meanwhile; full screen no longer
+  decides; never on a phone) and the
   `tv:` variant. TV sizes are the «TV» tokens (`typography.css`, `spacing.css`, `border.css`), drawn for 1920 × 1080
   and grown by `--tv-scale` on a larger screen. Its own parts: the shell's `TvTabs` (sections, L1 / R1 from
   anywhere), `TvButtonBar` and `TvGlyph` (the connected controller's glyphs by position and `pad.confirm`,

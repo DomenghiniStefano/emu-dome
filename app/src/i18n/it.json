@@ -22,6 +22,22 @@
       "on": "Attivo",
       "off": "Disattivo"
     },
+    "ask": {
+      "connect": {
+        "title": "Passare alla modalità TV?",
+        "text": "Hai collegato un controller. La modalità TV mostra menu più grandi, pensati per giocare con il controller.",
+        "main": "Passa alla modalità TV",
+        "other": "Resta sul desktop"
+      },
+      "disconnect": {
+        "title": "Controller scollegato",
+        "text": "Vuoi tornare alla modalità desktop?",
+        "main": "Torna al desktop",
+        "other": "Resta in modalità TV"
+      },
+      "remember": "Non chiederlo più",
+      "where": "Puoi cambiarlo in Impostazioni."
+    },
     "hero": {
       "meta": "{console} · {time} di gioco · {when}",
       "metaNew": "{console} · Mai giocato"
@@ -1170,7 +1186,7 @@
       },
       "ui": {
         "name": "Interfaccia",
-        "desc": "Modalità TV usa testo grande e si guida con il controller. Automatica la attiva a schermo intero con un controller collegato.",
+        "desc": "Modalità TV usa testo grande e si guida con il controller. Automatica te lo chiede quando colleghi un controller.",
         "option": {
           "auto": "Automatica",
           "desktop": "Modalità desktop",
