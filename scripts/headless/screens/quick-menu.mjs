@@ -108,3 +108,52 @@ for (const theme of THEMES) {
     };
   }
 }
+
+// The search everywhere from the quick menu (#32), in Italian as the mockup: Ctrl + K over the
+// menu (keyboard) or Y (`emu://nav` `search`, controller); before typing (the games played last,
+// the one being played disabled), the game's shortcuts that run here and those that cannot, the
+// settings G09 shows «in prova» beside those it does not, a two-screen game's screen shortcuts,
+// and a setting chosen (G09 opens). Dark at both sizes, light at the small one, and TV.
+const ctrlK = `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyK', key: 'k', ctrlKey: true, bubbles: true }))`;
+const padSearch = `window.__emit('emu://nav', { action: 'search' })`;
+const typeQuery = (q) =>
+  `(() => { const i = document.querySelector('[role=dialog] input'); if (!i) return false; i.value = ${JSON.stringify(q)}; i.dispatchEvent(new Event('input', { bubbles: true })) })()`;
+// Taken by the field (cancelled), so `dispatchEvent` answers false: the step answers true.
+const enterInQuery = `(document.querySelector('[role=dialog] input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })), true)`;
+const SEARCH_STATES = {
+  hint: { mock: {}, steps: [escape] },
+  "hint-controller": { mock: {}, steps: [controllerMenu] },
+  open: { mock: {}, steps: [escape, ctrlK] },
+  slot: { mock: {}, steps: [escape, ctrlK, typeQuery("slot")] },
+  video: { mock: {}, steps: [escape, ctrlK, typeQuery("video")] },
+  "nds-screens": { mock: { game: "nds" }, steps: [controllerMenu, padSearch, typeQuery("schermi")] },
+  chosen: { mock: {}, steps: [escape, ctrlK, typeQuery("dimensione"), enterInQuery] },
+};
+for (const [state, s] of Object.entries(SEARCH_STATES)) {
+  for (const [variant, theme, [width, height]] of [
+    ["dark-small", "dark", SIZES.small],
+    ["dark-large", "dark", SIZES.large],
+    ["light-small", "light", SIZES.small],
+  ])
+    quickMenuScenarios[`qm-search-${state}-${variant}`] = {
+      mock: { game: "gba", slots: "full", search: true, lang: "it", ...s.mock, theme },
+      steps: s.steps,
+      width,
+      height,
+    };
+  quickMenuScenarios[`qm-search-${state}-tv`] = {
+    mock: {
+      game: "gba",
+      slots: "full",
+      search: true,
+      lang: "it",
+      fullscreen: true,
+      pads: true,
+      ...s.mock,
+      theme: "dark",
+    },
+    steps: s.steps,
+    width: 1920,
+    height: 1080,
+  };
+}

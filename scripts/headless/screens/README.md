@@ -31,4 +31,6 @@ prove that a refactor changes nothing on screen (Trello #62).
 - TV mode (#30, the `tv-*` scenarios at 1280 × 720, 1920 × 1080 and 3840 × 2160): `fullscreen` with
   `pads` turns it on by itself, `ui: "tv"` fixes it (no controller: the Nintendo letters); the steps
   play the controller with `emu://nav` and `emu://menu`.
+- The search in the quick menu (#32, the `qm-search-*` scenarios, in Italian): Ctrl + K or `emu://nav`
+  `search` over the menu, a query typed, a setting chosen; dark small / large, light small and TV.
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.
