@@ -30,3 +30,44 @@
 :root {
   --duration-ambient: var(--transition-duration-ambient);
 }
+
+/* Things that appear (owner, 2026-11-22: «effetti animati sobri, cambio sezione, apparizione
+   popup»): short, no bounce; a fade with 4 px of rise or a 3% grow. Keyed by the primitives'
+   `data-slot` and Reka's `data-state`, so every dialog, menu, list and tab of the app gets it from
+   here. «Riduci le animazioni» (styles.css) cuts them to their last frame. */
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes enter-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+  }
+}
+[data-slot='dialog-overlay'][data-state='open'] {
+  animation: enter-fade 160ms var(--ease-out);
+}
+[data-slot='dialog-content'][data-state='open'] {
+  animation: enter-pop 180ms var(--ease-out);
+}
+[data-slot='popover-content'][data-state='open'],
+[data-slot='select-content'][data-state='open'],
+[data-slot='dropdown-menu-content'][data-state='open'] {
+  animation: enter-rise 140ms var(--ease-out);
+}
+[data-slot='tabs-content'][data-state='active'] {
+  animation: enter-rise 180ms var(--ease-out);
+}
+/* A press gives a little. */
+[data-slot='button']:active:not(:disabled, [aria-disabled='true']),
+button[data-slot='card']:active:not(:disabled) {
+  transform: scale(0.98);
+}

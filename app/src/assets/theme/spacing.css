@@ -35,21 +35,22 @@
   --spacing-52: 52px;
 
   /* Controls (tokens.json `size`) */
-  --spacing-control-sm: 28px;
-  --spacing-control: 32px;
-  --spacing-control-lg: 40px;
+  /* Owner, 2026-11-22 («pulsanti giganti, tutto più compatto»): one step lower each. */
+  --spacing-control-sm: 24px;
+  --spacing-control: 28px;
+  --spacing-control-lg: 32px;
   /* Pending Cowork (spec Decision 5: fold into 32 or 40, or a fourth step): 36, a dialog's and a
      page's pair of actions, a cover's actions, the quick menu's compact actions, the phone's tabs. */
-  --spacing-control-md: 36px;
+  --spacing-control-md: 30px;
   /* The top bar's height (tokens.json `titlebar`). */
-  --spacing-titlebar: 40px;
+  --spacing-titlebar: 32px;
   /* The least a cover of the library grid shrinks to (tokens.json `capsule-medium`). */
   --spacing-capsule-medium: 156px;
   /* The phone's touch minimum (README: 44px): its buttons and fields (board «Tel-Dettagli»). */
   --spacing-touch: 44px;
   /* A tab of a section (Controls: 40) and of the game details (44). */
-  --spacing-tab: 40px;
-  --spacing-tab-lg: 44px;
+  --spacing-tab: 32px;
+  --spacing-tab-lg: 36px;
   /* A switch's track: 36 x 20, its knob 16. */
   --spacing-switch: 36px;
   /* A setting's field: select trigger, slider, text field. */
@@ -70,7 +71,7 @@
   --spacing-page: 920px;
   /* A card's preview (the choice cards of a setting), and a list row that opens a page. */
   --spacing-thumb: 56px;
-  --spacing-link-row: 56px;
+  --spacing-link-row: 40px;
   /* The narrowest card of a grid of choice cards. */
   --spacing-card-min: 180px;
   /* The narrowest a setting's name and description get before its control goes under them. */
@@ -85,27 +86,27 @@
   /* Inside a card: the standard one; a snug one (a stat, a message with its action, a save's
      side); a tight one (a raised choice card, a slot tile, a «Continua a giocare» card); the
      phone's details card. */
-  --spacing-card-pad: var(--spacing-16);
-  --spacing-card-pad-md: var(--spacing-12);
-  --spacing-card-pad-sm: var(--spacing-10);
-  --spacing-card-pad-touch: var(--spacing-14);
+  --spacing-card-pad: var(--spacing-10);
+  --spacing-card-pad-md: var(--spacing-8);
+  --spacing-card-pad-sm: var(--spacing-6);
+  --spacing-card-pad-touch: var(--spacing-12);
   /* Inside a control: a button's and a field's side padding. */
-  --spacing-control-pad: var(--spacing-12);
-  --spacing-field-pad: var(--spacing-10);
+  --spacing-control-pad: var(--spacing-8);
+  --spacing-field-pad: var(--spacing-6);
   /* Inside a dialog, and between its parts. */
-  --spacing-dialog-pad: var(--spacing-24);
+  --spacing-dialog-pad: var(--spacing-16);
   /* The room a panel keeps from the window's edges (the quick menu). */
-  --spacing-window-margin: var(--spacing-32);
+  --spacing-window-margin: var(--spacing-16);
   /* A section's page (ui/section-page: Settings, Controls, Saves, a game's details): the room on
      its sides, above and below its content, and between its blocks; on the phone one step all
      round and between. */
-  --spacing-section-x: var(--spacing-32);
-  --spacing-section-top: var(--spacing-24);
-  --spacing-section-bottom: var(--spacing-48);
-  --spacing-section-gap: var(--spacing-20);
-  --spacing-section-touch: var(--spacing-16);
+  --spacing-section-x: var(--spacing-16);
+  --spacing-section-top: var(--spacing-12);
+  --spacing-section-bottom: var(--spacing-24);
+  --spacing-section-gap: var(--spacing-12);
+  --spacing-section-touch: var(--spacing-12);
   /* Between a block's label and the block (ui/labelled-block). */
-  --spacing-block-gap: var(--spacing-10);
+  --spacing-block-gap: var(--spacing-6);
 }
 
 /* Pending Cowork (spec Decision 5, «Handed back to design»): every other size the screens use

@@ -41,34 +41,9 @@ import LibraryGroup from '@/kit/features/library/LibraryGroup.vue'
 import SettingsGroup from '@/kit/features/settings/SettingsGroup.vue'
 import KitIndex from '@/kit/KitIndex.vue'
 import { KIT_GROUP_TITLES, KitGroup, provideKitBoard } from '@/kit/review'
-import '@/kit/proposals/look-squared.css'
 
 const theme = ref(document.documentElement.dataset.theme ?? 'dark')
 
-// The look being reviewed (kit/proposals/look-squared.css): the tokens as they are, or the owner's
-// «squared, tighter, sober motion» proposal over the whole page. Remembered across reloads.
-const LOOK_KEY = 'kit-look'
-const readLook = () => {
-  try {
-    return localStorage.getItem(LOOK_KEY) ?? 'current'
-  } catch {
-    return 'current'
-  }
-}
-const look = ref(readLook())
-watch(
-  look,
-  l => {
-    if (l === 'current') delete document.documentElement.dataset.look
-    else document.documentElement.dataset.look = l
-    try {
-      localStorage.setItem(LOOK_KEY, l)
-    } catch {
-      // A private window: the choice lasts until the reload.
-    }
-  },
-  { immediate: true },
-)
 watch(theme, t => (document.documentElement.dataset.theme = t), { immediate: true })
 
 // The swatches of `general.accent` (settings catalog), written the way appearance.ts writes the
@@ -118,14 +93,10 @@ useNavScope(root, { autofocus: true })
 
 <template>
   <main ref="root" class="h-full overflow-y-auto bg-bg font-sans text-body text-ink">
-    <div class="flex flex-col gap-24 p-32">
+    <div class="flex flex-col gap-16 p-16">
       <header class="flex flex-wrap items-center justify-between gap-16">
         <h1 class="m-0 text-title text-ink">EmuDome · Kit</h1>
         <div class="flex flex-wrap items-center gap-12">
-          <Segmented v-model="look" aria-label="Look">
-            <SegmentedItem value="current">Attuale</SegmentedItem>
-            <SegmentedItem value="squared">Compatto</SegmentedItem>
-          </Segmented>
           <Segmented v-model="accent" aria-label="Accent">
             <SegmentedItem v-for="s in SWATCHES" :key="s" :value="s">{{ s }}</SegmentedItem>
           </Segmented>

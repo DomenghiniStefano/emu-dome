@@ -96,6 +96,8 @@ describe('themeKeys', () => {
       'tv-badge',
     ])
     expect(themeKeys(radius, ThemeNamespace.Radius)).toEqual([
+      '2',
+      '3',
       '4',
       '6',
       '10',

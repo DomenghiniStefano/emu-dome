@@ -30,7 +30,7 @@ const go = (id: string) => document.getElementById(id)?.scrollIntoView({ block: 
 </script>
 
 <template>
-  <nav class="flex flex-col gap-16 rounded-card border border-line bg-surface p-16">
+  <nav class="flex flex-col gap-8 rounded-card border border-line bg-surface p-card-pad">
     <div class="flex flex-wrap items-center gap-12">
       <h2 class="m-0 text-heading text-ink">Review</h2>
       <Badge :variant="totalOpen > 0 ? BadgeVariant.Warning : BadgeVariant.Success">

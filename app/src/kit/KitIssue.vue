@@ -21,20 +21,20 @@ const STATUS_BADGE: Record<IssueStatus, BadgeVariant> = {
 </script>
 
 <template>
-  <article class="flex flex-col gap-12 rounded-card border border-line bg-surface p-16">
+  <article class="flex flex-col gap-8 rounded-card border border-line bg-surface p-card-pad">
     <header class="flex flex-wrap items-center gap-8">
       <Badge :variant="STATUS_BADGE[status]">{{ ISSUE_STATUS_LABELS[status] }}</Badge>
       <h3 class="m-0 text-body font-semibold text-ink">{{ title }}</h3>
     </header>
     <div class="text-body text-ink-muted"><slot /></div>
-    <div v-if="$slots.current || $slots.proposed" class="flex flex-wrap gap-16">
-      <figure v-if="$slots.current" class="m-0 flex flex-1 basis-field flex-col gap-8">
+    <div v-if="$slots.current || $slots.proposed" class="flex flex-wrap gap-12">
+      <figure v-if="$slots.current" class="m-0 flex flex-1 basis-field flex-col gap-4">
         <figcaption class="text-caption text-ink-faint">Ora</figcaption>
-        <div class="flex flex-wrap items-start gap-12"><slot name="current" /></div>
+        <div class="flex flex-wrap items-start gap-8"><slot name="current" /></div>
       </figure>
-      <figure v-if="$slots.proposed" class="m-0 flex flex-1 basis-field flex-col gap-8">
+      <figure v-if="$slots.proposed" class="m-0 flex flex-1 basis-field flex-col gap-4">
         <figcaption class="text-caption text-ink-faint">Proposta</figcaption>
-        <div class="flex flex-wrap items-start gap-12"><slot name="proposed" /></div>
+        <div class="flex flex-wrap items-start gap-8"><slot name="proposed" /></div>
       </figure>
     </div>
     <div v-if="$slots.solution" class="text-body text-ink">

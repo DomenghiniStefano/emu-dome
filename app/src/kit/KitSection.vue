@@ -14,12 +14,12 @@ const { entry, hidden } = useKitSection(
 </script>
 
 <template>
-  <section v-show="!hidden" :id="entry.id" class="flex flex-col gap-12 border-t border-line pt-16">
+  <section v-show="!hidden" :id="entry.id" class="flex flex-col gap-8 border-t border-line pt-12">
     <h2 class="m-0 text-heading text-ink">{{ title }}</h2>
-    <div class="flex flex-wrap items-start gap-16">
+    <div class="flex flex-wrap items-start gap-12">
       <slot />
     </div>
-    <div v-if="$slots.review" class="flex flex-col gap-12">
+    <div v-if="$slots.review" class="flex flex-col gap-8">
       <slot name="review" />
     </div>
   </section>
