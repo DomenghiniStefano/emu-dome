@@ -41,7 +41,7 @@ const { t } = useI18n()
         :size="ButtonSize.Area"
         :class="
           cn(
-            'w-tv-cover flex-none scroll-mt-48 rounded-card whitespace-normal transition-[width] duration-fast ease-out focus:w-tv-cover-focus focus:shadow-tv-lift',
+            'w-tv-cover flex-none scroll-mt-48 scroll-mb-16 rounded-card whitespace-normal transition-[width] duration-fast ease-out focus:w-tv-cover-focus focus:shadow-tv-lift',
             !g.available && 'opacity-missing',
           )
         "
