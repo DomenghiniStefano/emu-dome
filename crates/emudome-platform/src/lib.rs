@@ -16,6 +16,7 @@ mod content;
 mod cores;
 mod cpu;
 pub mod log_file;
+pub mod pads;
 mod paths;
 mod storage;
 pub mod updater;

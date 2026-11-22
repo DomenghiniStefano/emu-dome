@@ -497,6 +497,8 @@ mod tests {
         g.ts::<crate::screens::LayoutId>().unwrap();
         g.ts::<crate::screens::CustomLayout>().unwrap();
         g.ts::<crate::screens::ScreenStatus>().unwrap();
+        g.ts::<crate::screens::Inset>().unwrap();
+        g.ts::<crate::screens::Align>().unwrap();
         g.ts::<crate::touch::Setup>().unwrap();
         g.ts::<crate::touch::Orientation>().unwrap();
         g.ts::<crate::notifications::Notification>().unwrap();

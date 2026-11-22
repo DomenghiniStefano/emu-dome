@@ -329,7 +329,7 @@ fn check_touch(session: &Session) -> anyhow::Result<()> {
     let area = Area {
         width: 1920.0,
         height: 1080.0,
-        inset: 0.0,
+        inset: screens::Inset::NONE,
     };
     let layout = Layout::default();
     let (frame, split) = {

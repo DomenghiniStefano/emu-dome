@@ -1,20 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { GameInfo, Stats } from '@/emu'
 import { FF_DEFAULT } from '@/lib/speeds'
-import { crashReport, gameSettingsFrom, insetShare, pageBackground, speedShown } from './session'
+import { crashReport, gameSettingsFrom, pageBackground, speedShown } from './session'
 
 describe('pageBackground', () => {
   it('is transparent over the native video, the ground in the webview', () => {
     expect(pageBackground('native')).toBe('transparent')
     expect(pageBackground('webview')).toBe('var(--bg)')
-  })
-})
-
-describe('insetShare', () => {
-  it('is the covered share of the height, 0.9 at most', () => {
-    expect(insetShare(0, 800)).toBe(0)
-    expect(insetShare(200, 800)).toBe(0.25)
-    expect(insetShare(900, 800)).toBe(0.9)
   })
 })
 

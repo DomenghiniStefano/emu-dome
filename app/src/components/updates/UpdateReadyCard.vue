@@ -4,7 +4,8 @@
 // è pronto · Riavvia per aggiornare. I giochi e i salvataggi non cambiano.», «Più tardi» and the
 // main action «Riavvia e aggiorna». It lives in the shell only, so it never shows in game (it
 // waits until the library is back). Controller: inside the shell's nav scope, reached by the
-// normal spatial steps (nav.ts), no focus taken when it appears.
+// normal spatial steps (nav.ts), no focus taken when it appears. In TV mode it sits over the TV
+// button bar (shell/TvButtonBar.vue), lined up with the bar's edge.
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -36,7 +37,7 @@ async function restart() {
 <template>
   <section
     v-if="shown"
-    class="pointer-events-auto fixed right-16 bottom-16 z-toast flex max-w-toast flex-col gap-12 rounded-12 px-16 py-12 glass-thick"
+    class="pointer-events-auto fixed right-16 bottom-16 z-toast tv:right-tv-edge tv:bottom-tv-over-bar flex max-w-toast flex-col gap-12 rounded-12 px-16 py-12 glass-thick"
     :aria-label="t('updates.title')"
     aria-live="polite"
   >

@@ -2,17 +2,18 @@
 import { onScopeDispose, watch, type Ref } from 'vue'
 import { emu, type VideoMode } from '@/emu'
 import { report } from '@/lib/errors'
+import { insetShares, NO_INSET, type InsetPx } from './inset'
 import { isInterfaceTarget, pointerArgs } from './screenTouch'
 
 /**
  * While `active` (a DS game, no menu open), the primary pointer on the game is the stylus:
  * pressed from `pointerdown` to `pointerup`, followed while it moves.
  */
-export function useScreenTouch(active: () => boolean, mode: Ref<VideoMode>, insetPx: () => number) {
+export function useScreenTouch(active: () => boolean, mode: Ref<VideoMode>, inset: () => InsetPx) {
   let pressed: number | null = null
 
   function send(e: PointerEvent, down: boolean) {
-    const { x, y, area } = pointerArgs(e.clientX, e.clientY, window, mode.value, insetPx())
+    const { x, y, area } = pointerArgs(e.clientX, e.clientY, window, mode.value, inset())
     report(emu.pointer(x, y, down, area))
   }
   function onDown(e: PointerEvent) {
@@ -42,7 +43,7 @@ export function useScreenTouch(active: () => boolean, mode: Ref<VideoMode>, inse
     window.removeEventListener('pointercancel', onUp)
     if (pressed !== null) {
       pressed = null
-      report(emu.pointer(0, 0, false, { width: 0, height: 0, inset: 0 }))
+      report(emu.pointer(0, 0, false, { width: 0, height: 0, inset: insetShares(NO_INSET, 0, 0) }))
     }
   }
 

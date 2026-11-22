@@ -33,7 +33,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Result};
 use emudome_core::hw_render::vulkan::QueueLock;
-use emudome_core::screens::{Area, Layout, Placement, Rotation, Split};
+use emudome_core::screens::{Area, Inset, Layout, Placement, Rotation, Split};
 use emudome_core::video_sink::Wake;
 use emudome_core::{ErrorCode, Shared};
 use librashader::presets::ShaderFeatures;
@@ -145,7 +145,7 @@ enum Msg {
     Attach(wgpu::SurfaceTarget<'static>, u32, u32),
     Detach(Sender<()>),
     /// Share of the surface's height, at the bottom, the game keeps clear of (G09's bar).
-    Inset(f32),
+    Inset(Inset),
     Effect(Option<EffectSpec>),
     EffectListener(EffectListener),
     /// How the screens are placed (`crate::screens`).
@@ -249,10 +249,10 @@ impl Renderer {
         self.send(Msg::Attach(target, width, height));
     }
 
-    /// Keeps the bottom `fraction` of the surface clear: the game shrinks into the rest
-    /// (quick menu G09, whose bar sits at the bottom). 0 = the whole surface.
-    pub fn set_inset(&self, fraction: f32) {
-        self.send(Msg::Inset(fraction));
+    /// Keeps the edges of `inset` clear: the game shrinks into the rest (the quick menu's bar,
+    /// sheet or side panel, the touch controls). [`Inset::NONE`] = the whole surface.
+    pub fn set_inset(&self, inset: Inset) {
+        self.send(Msg::Inset(inset));
     }
 
     /// The screen effect to draw the game with (`None`: the plain image). Kept across
@@ -315,7 +315,7 @@ struct Video {
     presented: u32,
     since: Instant,
     /// See [`Renderer::set_inset`]; kept across surfaces.
-    inset: f32,
+    inset: Inset,
     /// See [`Renderer::set_effect`]; kept across surfaces.
     effect: Option<EffectSpec>,
     effect_listener: Option<EffectListener>,
@@ -350,7 +350,7 @@ impl Video {
             source: None,
             presented: 0,
             since: Instant::now(),
-            inset: 0.0,
+            inset: Inset::NONE,
             effect: None,
             effect_listener: None,
             layout: Layout::default(),
@@ -468,7 +468,7 @@ impl Video {
                 self.gpu = None;
                 let _ = ack.send(());
             }
-            Msg::Inset(fraction) => self.inset = fraction,
+            Msg::Inset(inset) => self.inset = inset,
             Msg::Effect(effect) => self.effect = effect,
             Msg::EffectListener(listener) => self.effect_listener = Some(listener),
             Msg::Layout(layout) => self.layout = layout,
@@ -1079,7 +1079,7 @@ impl Gpu {
         &mut self,
         service: &GpuService,
         painter: &mut Painter,
-        inset: f32,
+        inset: Inset,
         layout: &Layout,
     ) -> Result<(), &'static str> {
         let Some(d) = service.device() else {
@@ -1422,7 +1422,7 @@ impl Painter {
 
     /// Where each screen of the uploaded frame goes on a target of `size` (`layout`, `inset`),
     /// at most [`SCREEN_SLOTS`], their uniforms written.
-    fn place(&self, size: (u32, u32), inset: f32, layout: &Layout) -> Vec<Placement> {
+    fn place(&self, size: (u32, u32), inset: Inset, layout: &Layout) -> Vec<Placement> {
         let Some(game) = &self.game else {
             return Vec::new();
         };
@@ -1448,7 +1448,7 @@ impl Painter {
     }
 
     /// Draws the game (or the background) on `view`, a target of `size`, and submits.
-    fn paint(&mut self, view: &wgpu::TextureView, size: (u32, u32), inset: f32, layout: &Layout) {
+    fn paint(&mut self, view: &wgpu::TextureView, size: (u32, u32), inset: Inset, layout: &Layout) {
         let mut encoder = self.device.create_command_encoder(&Default::default());
         let placements = self.place(size, inset, layout);
         // The effect first draws into its own texture; `None`: the plain image this frame.
@@ -1694,14 +1694,14 @@ mod tests {
         assert_eq!(GraphicsApi::from_id("metal"), GraphicsApi::Auto);
     }
     use emudome_core::screens::{
-        compose, Area, Arrangement, Layout, Rect, Rotation, ScreenId, Split,
+        compose, Area, Arrangement, Inset, Layout, Rect, Rotation, ScreenId, Split,
     };
 
     fn ds(layout: &Layout) -> Vec<emudome_core::screens::Placement> {
         let area = Area {
             width: 1920.0,
             height: 1080.0,
-            inset: 0.0,
+            inset: Inset::NONE,
         };
         compose(layout, &Split::DsStacked { gap: 0 }.screens(256, 384), area)
     }
@@ -1712,7 +1712,7 @@ mod tests {
         let area = Area {
             width: 1440.0,
             height: 900.0,
-            inset: 0.0,
+            inset: Inset::NONE,
         };
         let p = compose(&Layout::default(), &Split::Whole.screens(240, 160), area);
         assert_eq!(p.len(), 1);
@@ -1775,7 +1775,7 @@ mod tests {
 mod gpu_tests {
     use super::{EffectSpec, Painter};
     use emudome_core::effects::BUILTIN;
-    use emudome_core::screens::{Arrangement, Layout, Rotation, Split};
+    use emudome_core::screens::{Arrangement, Inset, Layout, Rotation, Split};
     use emudome_core::Frame;
 
     const GAME: (u32, u32) = (240, 160);
@@ -1845,7 +1845,7 @@ mod gpu_tests {
             view_formats: &[],
         });
         let view = texture.create_view(&Default::default());
-        painter.paint(&view, TARGET, 0.0, layout);
+        painter.paint(&view, TARGET, Inset::NONE, layout);
         let row = TARGET.0 * 4; // 3840, a multiple of 256
         let buffer = painter.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("readback"),

@@ -15,6 +15,7 @@ import type {
   TouchOrientation,
   TouchSetup,
 } from '@/emu'
+import { NO_INSET, type InsetPx } from '@/components/game/inset'
 
 /** The area the fractions are of, in CSS pixels. */
 export interface Area {
@@ -63,18 +64,18 @@ function diamond(ax: 0 | 1, ay: 0 | 1, cx: number, cy: number, arm = 48): Placem
   }
 }
 
-// Landscape: the game in the middle, the controls in the bands on either side; the DS / 3DS keep
-// the middle free (its lower half is the touch screen), so their Select / Start / menu sit in the
-// side bands too. Portrait: the controls in a band at the bottom, the game above it.
+// Landscape: the game in the middle, the controls in the columns on either side, Select / Start /
+// menu included (#29: nothing over the picture; the game is fitted between the columns,
+// `reservedInset`). Portrait: the controls in a band at the bottom, the game right above it.
 const DEFAULTS: Record<Family, Record<TouchOrientation, Placement>> = {
   gb: {
     landscape: {
       dpad: [0, 1, 104, -110],
       b: [1, 1, -140, -100],
       a: [1, 1, -64, -150],
-      select: [0.5, 1, -50, -30],
-      start: [0.5, 1, 50, -30],
-      menu: [0.5, 0, 0, 30],
+      select: [0, 0, 60, 38],
+      start: [1, 0, -60, 38],
+      menu: [1, 0, -150, 38],
     },
     portrait: {
       dpad: [0, 1, 96, -150],
@@ -92,9 +93,9 @@ const DEFAULTS: Record<Family, Record<TouchOrientation, Placement>> = {
       dpad: [0, 1, 104, -110],
       b: [1, 1, -140, -100],
       a: [1, 1, -64, -150],
-      select: [0.5, 1, -50, -30],
-      start: [0.5, 1, 50, -30],
-      menu: [0.5, 0, 0, 30],
+      select: [0, 0, 60, 96],
+      start: [1, 0, -60, 96],
+      menu: [1, 0, -150, 38],
     },
     portrait: {
       l: [0, 1, 60, -300],
@@ -350,10 +351,15 @@ export function add(
   return { controls: [...layout.controls, c] }
 }
 
+/** Upright, the controls whose centre is below this share of the height are the bottom band's;
+ * those above it (one the user put at the top) are not counted. Under a half so the 3DS's
+ * shoulders, 400 px from the bottom, still count on a 740 px tall phone. */
+const BAND_FROM = 0.4
+
 /**
  * How much of the bottom of a portrait area the layout keeps for itself, CSS pixels: from the
- * top of the highest control in the lower half (and a grid step of air) to the bottom. The game
- * is drawn above it (`setInset`). 0 in landscape or with no control there.
+ * top of the highest control of the band (`BAND_FROM`, and a grid step of air) to the bottom. The
+ * game is drawn right above it (`reservedInset`). 0 in landscape or with no control there.
  */
 export function reservedBottom(
   layout: TouchLayout,
@@ -361,7 +367,49 @@ export function reservedBottom(
   boxOf: (id: TouchControlId) => Box,
 ): number {
   if (orientationOf(area) !== 'portrait') return 0
-  const tops = layout.controls.filter(c => c.y >= 0.5).map(c => rectOf(c, area, boxOf(c.id)).top)
+  const tops = layout.controls
+    .filter(c => c.y >= BAND_FROM)
+    .map(c => rectOf(c, area, boxOf(c.id)).top)
   if (tops.length === 0) return 0
   return Math.max(0, Math.round(area.height - Math.min(...tops) + GRID_PX))
+}
+
+/**
+ * How much of each side of a landscape area the layout keeps for itself, CSS pixels: on the left
+ * up to the right edge of the controls wholly in the left half, on the right from the left edge
+ * of those wholly in the right half (and a grid step of air). A control across the middle is not
+ * counted (a layout of the user's that puts one over the game keeps it there). 0 in portrait.
+ */
+export function reservedSides(
+  layout: TouchLayout,
+  area: Area,
+  boxOf: (id: TouchControlId) => Box,
+): { left: number; right: number } {
+  if (orientationOf(area) !== 'landscape') return { left: 0, right: 0 }
+  const middle = area.width / 2
+  const rects = layout.controls.map(c => rectOf(c, area, boxOf(c.id)))
+  const lefts = rects.filter(r => r.right <= middle).map(r => r.right)
+  const rights = rects.filter(r => r.left >= middle).map(r => r.left)
+  return {
+    left: lefts.length ? Math.round(Math.max(...lefts) + GRID_PX) : 0,
+    right: rights.length ? Math.round(area.width - Math.min(...rights) + GRID_PX) : 0,
+  }
+}
+
+/**
+ * The edges the layout keeps clear of the game (the video inset, `session.setInset`): upright the
+ * band at the bottom, the game against it so no empty band separates the two; on the side the two
+ * columns, the game centred between them.
+ */
+export function reservedInset(
+  layout: TouchLayout,
+  area: Area,
+  boxOf: (id: TouchControlId) => Box,
+): InsetPx {
+  if (orientationOf(area) === 'portrait') {
+    const bottom = reservedBottom(layout, area, boxOf)
+    return bottom > 0 ? { ...NO_INSET, bottom, align: 'bottom' } : NO_INSET
+  }
+  const { left, right } = reservedSides(layout, area, boxOf)
+  return left > 0 || right > 0 ? { ...NO_INSET, left, right } : NO_INSET
 }

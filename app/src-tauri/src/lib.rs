@@ -32,8 +32,6 @@ mod events;
 mod first_run;
 mod game;
 mod game_session;
-// SDL3 is built for the desktop only: controllers on Android come later (Android input events).
-#[cfg(desktop)]
 mod gamepad;
 mod gpu_interop;
 mod health;
@@ -448,7 +446,7 @@ pub fn run() {
             app.manage(updates::start(app.handle()));
             let hotkeys =
                 hotkeys::HotkeyRunner::new(app.handle().clone(), current.clone(), pads.clone());
-            #[cfg(desktop)]
+            // After `attach_system`: on Android the pads come through the activity it reached.
             gamepad::spawn(
                 app.handle().clone(),
                 current.clone(),

@@ -6,19 +6,21 @@
 // lets touches through except on the controls.
 // - Hidden under the quick menu, and while a controller is connected with `touch.tpad`; faded
 //   after `touch.thide` without a touch (still pressable, so the touch that wakes them counts).
-// - Held upright, the layout keeps the band at the bottom for itself and the game is drawn above
-//   it (`inset`, the quick menu's own way of keeping a band: App.vue's `session.setInset`).
+// - The layout keeps its part of the window clear of the game (`inset`, App.vue's
+//   `session.setInset`, as the quick menu does): upright the band at the bottom, the game right
+//   above it; on its side the two columns, the game between them (#29).
 // - E14: the last controller gone while playing (ControllerLostDialog, useControllerLoss).
 // App.vue mounts it on a touch screen while a game is open.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ConsoleId, TouchControl as Control } from '@/emu'
 import { flow } from '@/components/game/gameFlow'
+import { NO_INSET, type InsetPx } from '@/components/game/inset'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import ControllerLostDialog from './ControllerLostDialog.vue'
 import TouchControl from './TouchControl.vue'
 import { gameButton } from './touchControls'
-import { activeLayout, orientationOf, reservedBottom } from './touchLayout'
+import { activeLayout, orientationOf, reservedInset } from './touchLayout'
 import { hideAfterMs, touchShown } from './touchVisibility'
 import { useControllerLoss } from './useControllerLoss'
 import { useTouchPlay } from './useTouchPlay'
@@ -28,8 +30,8 @@ import { useArea, useControlBoxes, useIdleFade } from './useTouchView'
 const props = defineProps<{ console: ConsoleId; menuOpen: boolean }>()
 const emit = defineEmits<{
   menu: []
-  /** Held upright: the px at the bottom the controls keep (0: none). */
-  inset: [number]
+  /** The edges the controls keep clear of the game, CSS px (none while hidden). */
+  inset: [InsetPx]
   /** E14 paused the game, or let it go on. */
   paused: [boolean]
 }>()
@@ -92,18 +94,18 @@ const latched = (c: Control) => {
 // Nothing stays pressed when the controls go away (the menu, a controller, the game closing).
 watch(shown, on => on || play.releaseAll())
 
-// Held upright, the controls keep their band; the quick menu keeps its own while open.
+// The controls keep their part of the window; the quick menu keeps its own while open.
 watch(
   [shown, () => props.menuOpen, layout, area, boxes],
   () => {
     if (props.menuOpen) return
-    emit('inset', shown.value ? reservedBottom(layout.value, area.value, boxOf) : 0)
+    emit('inset', shown.value ? reservedInset(layout.value, area.value, boxOf) : NO_INSET)
   },
   { flush: 'post', immediate: true },
 )
 onBeforeUnmount(() => {
   play.releaseAll()
-  emit('inset', 0)
+  emit('inset', NO_INSET)
 })
 </script>
 

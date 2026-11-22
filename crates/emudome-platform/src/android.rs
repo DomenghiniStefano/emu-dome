@@ -10,6 +10,8 @@
 //!   button reaches the listener of [`crate::listen_back`]; the game of «Open with» and the
 //!   `content://` games ([`crate::open_content`], `content.rs`), the system's folder and file
 //!   pickers and the listing of a picked folder (Storage Access Framework, Trello #47).
+//! - Controllers (Kotlin class `it.domehub.emudome.platform.GamepadInput`, attached with the
+//!   system bridge): `pads/android.rs`.
 use std::ffi::c_void;
 use std::fs;
 use std::os::fd::{FromRawFd, OwnedFd};
@@ -156,11 +158,20 @@ pub fn attach_system<R: tauri::Runtime>(webview: &tauri::Webview<R>, on_back: Ba
     *BACK.lock() = Some(Arc::from(on_back));
     let result = webview.with_webview(|platform| {
         platform.jni_handle().exec(|env, activity, _webview| {
-            let attached = env
+            let loader = env
                 .call_method(activity, "getClassLoader", "()Ljava/lang/ClassLoader;", &[])
-                .and_then(|loader| loader.l())
-                .and_then(|loader| attach_bridge(env, activity, &loader));
-            match attached {
+                .and_then(|loader| loader.l());
+            let loader = match loader {
+                Ok(loader) => loader,
+                Err(e) => {
+                    log::error!("no class loader for the system bridge and the controllers: {e}");
+                    clear_exception(env);
+                    set_startup_game(None);
+                    crate::pads::android::attach_failed(e.to_string());
+                    return;
+                }
+            };
+            match attach_bridge(env, activity, &loader) {
                 Ok(game) => set_startup_game(game),
                 Err(e) => {
                     log::error!("system bridge not attached (back button, documents): {e}");
@@ -168,16 +179,19 @@ pub fn attach_system<R: tauri::Runtime>(webview: &tauri::Webview<R>, on_back: Ba
                     set_startup_game(None);
                 }
             }
+            // The controllers on their own: a failure there leaves the back button working.
+            crate::pads::android::attach(env, activity, &loader);
         })
     });
     if let Err(e) = result {
         log::error!("webview not reachable for the system bridge: {e}");
         set_startup_game(None);
+        crate::pads::android::attach_failed(e.to_string());
     }
 }
 
 /// A pending Java exception is printed to logcat and cleared, so the next JNI call works.
-fn clear_exception(env: &mut JNIEnv) {
+pub(crate) fn clear_exception(env: &mut JNIEnv) {
     if env.exception_check().unwrap_or(false) {
         // Best effort: nothing more can be done about an exception that cannot be printed.
         let _ = env.exception_describe();
@@ -187,7 +201,7 @@ fn clear_exception(env: &mut JNIEnv) {
 
 /// An app class, through the activity's class loader (FindClass would use the system one when
 /// called from native code).
-fn load_class<'local>(
+pub(crate) fn load_class<'local>(
     env: &mut JNIEnv<'local>,
     loader: &JObject,
     name: &str,

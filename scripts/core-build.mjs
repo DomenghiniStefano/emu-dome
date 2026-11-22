@@ -1,8 +1,9 @@
 // Builds a libretro core from its pinned source, for the cores EmuDome builds itself instead of
 // downloading a binary (cores.lock: `source.archive` + `build`, and `built` on a platform's entry;
-// today mGBA, Trello #88). Used by scripts/cores.mjs: its `build` command (behind
-// scripts/build-mgba.ps1 / build-mgba.sh) and `fetch`, when a built core's files are not in place and
-// cannot be downloaded from EmuDome's release of the build (`built.release`), or with --build.
+// today mGBA, Trello #88, and melonDS DS for Android). Used by scripts/cores.mjs: its `build` command
+// (behind scripts/build-mgba.ps1 / .sh and build-melondsds.ps1 / .sh) and `fetch`, when a built
+// core's files are not in place and cannot be downloaded from EmuDome's release of the build
+// (`built.release`), or with --build.
 //
 // Steps, every one checked:
 //   1. the source archive of the pinned commit, downloaded once into the work folder, sha256-checked
@@ -12,12 +13,22 @@
 //      the same version string as the libretro buildbot's build of the same commit (mGBA computes it
 //      from `git describe` / `git rev-list --count` at build time; the buildbot clones 50 deep). The
 //      fetched commit must be the pinned one and the extracted tree must equal it (`git status` clean);
-//   4. CMake with `build.cmake` plus the platform's toolchain (below), `--parallel <jobs>` (default 2);
-//   5. the library copied to <work>/<platform>/out/ (stripped on Linux and Android), its sha256
-//      compared with cores.lock; only a match is installed into cores/ (temp file + rename), with
-//      the licence and the entry's `notices` (licences of code the core compiles in; `member` is a
-//      path in the archive) taken from the same archive and checked against their sha256. Then the
-//      source and build trees are removed (the archive and out/ stay); after a failure they stay.
+//   4. `build.dependencies`: what the core's CMake would git-clone at configure time (FetchContent;
+//      melonDS DS: cmake/FetchDependencies.cmake), each pinned to a commit and its source archive,
+//      downloaded and sha256-checked like the core's, extracted where FetchContent puts its own
+//      checkout (<build>/_deps/<name in lowercase>-src: melonDS DS's CMake reads modules from
+//      there), and handed to CMake with FETCHCONTENT_SOURCE_DIR_<NAME> and
+//      FETCHCONTENT_FULLY_DISCONNECTED=ON: CMake downloads nothing, and a dependency missing from
+//      the lock fails the configure instead of being cloned. Their symbolic links are skipped
+//      (libslirp's fuzzing corpus has some; nothing built reads them);
+//   5. CMake with `build.cmake` plus the platform's toolchain (below), `--parallel <jobs>` (default 2);
+//   6. the library (`build.output` + the platform's extension, found anywhere in the build tree)
+//      copied to <work>/<platform>/out/ (stripped on Linux and Android), its sha256 compared with
+//      cores.lock; only a match is installed into cores/ (temp file + rename), with the licence and
+//      the entry's `notices` (licences of code the core compiles in), each checked against its
+//      sha256: `member` is a path in the source archive, `output` a file the core's own build
+//      writes in its build folder (melonDS DS: melondsds-LICENSE.txt, every bundled licence). Then
+//      the source and build trees are removed (the archives and out/ stay); after a failure they stay.
 //
 // Toolchains (the one used is printed, and cores.lock records the one the pinned sha256 came from in
 // `built.toolchain`: another one builds the same source but almost surely other bytes, so the
@@ -30,7 +41,8 @@
 //   android-<abi>      the NDK (NDK_HOME / ANDROID_NDK_HOME / ANDROID_NDK_ROOT, else
 //                      <sdk>/ndk/<the version cores.lock names>, else the newest there), API 26 (the
 //                      app's minSdk), Ninja; CMake and Ninja: CMAKE, else <sdk>/cmake/<newest>/bin,
-//                      else PATH. -ffile-prefix-map keeps the build folder out of the binary.
+//                      else PATH. -g0 and -ffile-prefix-map (C, C++ and assembly) keep the
+//                      source and build folders out of the binary.
 //   linux-x86_64       the system compiler with cmake and ninja (or make) on PATH, on Linux (WSL).
 //                      Not built yet (Trello #92): cores.lock still pins the buildbot's Linux file.
 //
@@ -97,13 +109,15 @@ const paxPath = body =>
 
 /**
  * Extracts a gzipped tar into `into`, dropping the archive's top folder (GitHub's `<repo>-<commit>/`).
- * Only plain files and folders; a path that would leave `into` or any other entry kind fails.
+ * Only plain files and folders; a path that would leave `into` or any other entry kind fails, except
+ * links with `skipLinks` (a dependency's archive): those are skipped, never created, and counted.
  */
-const extractTarGz = (archive, into) => {
+const extractTarGz = (archive, into, { skipLinks = false } = {}) => {
   const tar = zlib.gunzipSync(archive)
   let offset = 0
   let longPath
   let count = 0
+  let skipped = 0
   while (offset + 512 <= tar.length) {
     const header = tar.subarray(offset, offset + 512)
     if (header.every(b => b === 0)) break
@@ -137,28 +151,31 @@ const extractTarGz = (archive, into) => {
       const mode = parseInt(tarString(header, 100, 8).trim() || '644', 8)
       if (process.platform !== 'win32') fs.chmodSync(target, mode & 0o111 ? 0o755 : 0o644)
       count += 1
+    } else if (skipLinks && (type === '1' || type === '2')) {
+      skipped += 1
     } else {
       fail(`archive entry ${name}: unsupported kind '${type}' (links are refused)`)
     }
   }
   if (count === 0) fail('the source archive holds no file')
-  return count
+  return { count, skipped }
 }
 
-const downloadArchive = async (source, dir) => {
+/** A pinned source archive (`archive`, `archive_sha256`, `commit`), downloaded once into `dir`. */
+const downloadArchive = async (what, source, dir) => {
   fs.mkdirSync(dir, { recursive: true })
   const file = path.join(dir, `${source.commit}.tar.gz`)
   if (isFile(file) && sha256(fs.readFileSync(file)) === source.archive_sha256) {
-    console.log(`source archive: ${file} (cached, sha256 verified)`)
+    console.log(`${what}: ${file} (cached, sha256 verified)`)
     return fs.readFileSync(file)
   }
-  console.log(`source archive: downloading ${source.archive}`)
+  console.log(`${what}: downloading ${source.archive}`)
   const response = await fetch(source.archive, { headers: { 'User-Agent': 'emudome-build-cores' } })
   if (!response.ok) fail(`${source.archive}: HTTP ${response.status}`)
   const bytes = Buffer.from(await response.arrayBuffer())
   const actual = sha256(bytes)
   if (actual !== source.archive_sha256) {
-    fail(`source archive: sha256 ${actual}, cores.lock says ${source.archive_sha256}; nothing was built`)
+    fail(`${what}: sha256 ${actual}, cores.lock says ${source.archive_sha256}; nothing was built`)
   }
   fs.writeFileSync(`${file}.part`, bytes)
   fs.renameSync(`${file}.part`, file)
@@ -339,7 +356,8 @@ const toolchain = (platform, built, dirs) => {
   // -g0 (the NDK's toolchain file adds -g; the debug info is stripped anyway, but it feeds the build
   // id the linker writes, and it names the NDK's and the work folder's paths), and the source and
   // build folders mapped to `.` for anything else (both slash forms: Windows paths reach the
-  // compiler either way). Passed as CMAKE_C_FLAGS: the NDK's toolchain file ignores CFLAGS.
+  // compiler either way). Passed as CMAKE_<LANG>_FLAGS (C, C++ and assembly: melonDS DS is C++ with
+  // some assembly): the NDK's toolchain file ignores CFLAGS.
   const reproducible = [
     '-g0',
     ...[dirs.src, dirs.build]
@@ -372,7 +390,7 @@ const toolchain = (platform, built, dirs) => {
         // app targets SDK 37); NDK r27's switch, still loading on 4 KB-page devices.
         '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON',
         '-DCMAKE_BUILD_TYPE=Release',
-        `-DCMAKE_C_FLAGS=${reproducible}`,
+        ...['C', 'CXX', 'ASM'].map(lang => `-DCMAKE_${lang}_FLAGS=${reproducible}`),
       ],
       env: {},
       extension: '.so',
@@ -390,7 +408,7 @@ const toolchain = (platform, built, dirs) => {
         '-G',
         output('ninja', ['--version']) ? 'Ninja' : 'Unix Makefiles',
         '-DCMAKE_BUILD_TYPE=Release',
-        `-DCMAKE_C_FLAGS=${reproducible}`,
+        ...['C', 'CXX', 'ASM'].map(lang => `-DCMAKE_${lang}_FLAGS=${reproducible}`),
       ],
       env: {},
       extension: '.so',
@@ -398,6 +416,37 @@ const toolchain = (platform, built, dirs) => {
     }
   }
   return fail(`no toolchain for ${platform}`)
+}
+
+// --- Dependencies the core's CMake would fetch (FetchContent), pinned
+
+/** Every file named `name` under `dir`. */
+const findFiles = (dir, name) =>
+  fs
+    .readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter(entry => entry.isFile() && entry.name === name)
+    .map(entry => path.join(entry.parentPath ?? entry.path, entry.name))
+
+/**
+ * Downloads each pinned dependency (sha256-checked), extracts it where FetchContent would have
+ * cloned it, and returns the CMake arguments that make the configure use these trees and fetch
+ * nothing. The archives are cached in <work>/deps/.
+ */
+const placeDependencies = async (dependencies, work, buildDir) => {
+  if (dependencies.length === 0) return []
+  const args = ['-DFETCHCONTENT_FULLY_DISCONNECTED=ON']
+  for (const dep of dependencies) {
+    const archive = await downloadArchive(`dependency ${dep.name}`, dep, path.join(work, 'deps'))
+    const into = path.join(buildDir, '_deps', `${dep.name.toLowerCase()}-src`)
+    fs.mkdirSync(into, { recursive: true })
+    const { count, skipped } = extractTarGz(archive, into, { skipLinks: true })
+    console.log(
+      `dependency ${dep.name} ${dep.commit}: ${count} files into ${into}` +
+        (skipped > 0 ? ` (${skipped} symbolic links skipped)` : ''),
+    )
+    args.push(`-DFETCHCONTENT_SOURCE_DIR_${dep.name.toUpperCase()}=${into.replaceAll('\\', '/')}`)
+  }
+  return args
 }
 
 // --- The build
@@ -427,11 +476,12 @@ export const buildCore = async ({ id, core, platform, workDir, jobs = 2, install
     )
   }
 
-  const archive = await downloadArchive(core.source, work)
+  const archive = await downloadArchive('source archive', core.source, work)
   fs.rmSync(path.join(work, platform), { recursive: true, force: true })
   fs.mkdirSync(dirs.src, { recursive: true })
-  console.log(`extracted ${extractTarGz(archive, dirs.src)} files into ${dirs.src}`)
+  console.log(`extracted ${extractTarGz(archive, dirs.src).count} files into ${dirs.src}`)
   if (core.build.git_depth) addGitHistory(dirs.src, core.source, core.build.git_depth)
+  const dependencies = await placeDependencies(core.build.dependencies ?? [], work, dirs.build)
 
   const env = {
     ...(tools.baseEnv ?? process.env),
@@ -439,7 +489,9 @@ export const buildCore = async ({ id, core, platform, workDir, jobs = 2, install
     // git (run by the core's CMake for its version) never climbs above the source folder.
     GIT_CEILING_DIRECTORIES: path.dirname(dirs.src),
   }
-  run(tools.cmake, ['-S', dirs.src, '-B', dirs.build, ...tools.configure, ...core.build.cmake], { env })
+  run(tools.cmake, ['-S', dirs.src, '-B', dirs.build, ...tools.configure, ...dependencies, ...core.build.cmake], {
+    env,
+  })
   run(
     tools.cmake,
     ['--build', dirs.build, '--config', 'Release', '--target', core.build.target, '--parallel', String(jobs)],
@@ -447,9 +499,24 @@ export const buildCore = async ({ id, core, platform, workDir, jobs = 2, install
   )
 
   const name = `${core.build.output}${tools.extension}`
-  const produced = [path.join(dirs.build, 'Release', name), path.join(dirs.build, name)].find(isFile)
-  if (!produced) fail(`the build did not produce ${name} in ${dirs.build}`)
+  const found = findFiles(dirs.build, name)
+  if (found.length !== 1) {
+    fail(`the build produced ${found.length === 0 ? 'no' : found.length} ${name} in ${dirs.build}`)
+  }
+  const produced = found[0]
   fs.mkdirSync(dirs.out, { recursive: true })
+  // A notice the build writes is kept in out/ beside the library, with its sha256 printed: a re-pin
+  // needs both.
+  const outputs = build.notices
+    .filter(n => n.output !== undefined)
+    .map(n => {
+      const from = path.join(dirs.build, ...n.output.split('/'))
+      if (!isFile(from)) fail(`${id}: the build did not write ${n.output} (cores.lock notices)`)
+      const to = path.join(dirs.out, n.file)
+      fs.copyFileSync(from, to)
+      console.log(`${id} (${platform}): ${to}\n  sha256 ${sha256(fs.readFileSync(to))}`)
+      return to
+    })
   const file = path.join(dirs.out, build.library.file)
   fs.copyFileSync(produced, file)
   if (tools.strip) tools.strip(file)
@@ -463,14 +530,22 @@ export const buildCore = async ({ id, core, platform, workDir, jobs = 2, install
         ' Re-pin only on purpose: update cores.lock (library.sha256, built.toolchain), then generate.',
     )
   }
-  // The licence and the notices (licences of what the core compiles in) come from the same archive.
-  const fromSource = (member, expected, what) => {
-    const content = fs.readFileSync(path.join(dirs.src, ...member.split('/')))
-    if (sha256(content) !== expected) fail(`${id}: ${member} in the source archive does not match cores.lock's ${what}`)
+  // The licence and the notices (licences of what the core compiles in) come from the same archive,
+  // or from the build's own output (`output`, copied into out/ above).
+  const verified = (file, expected, what) => {
+    const content = fs.readFileSync(file)
+    if (sha256(content) !== expected) fail(`${id}: ${file} does not match cores.lock's ${what}`)
     return content
   }
-  const licence = fromSource(core.build.license, core.license.sha256, 'license.sha256')
-  const notices = build.notices.map((n, i) => fromSource(n.member, n.sha256, `notices[${i}].sha256`))
+  const fromSource = member => path.join(dirs.src, ...member.split('/'))
+  const licence = verified(fromSource(core.build.license), core.license.sha256, 'license.sha256')
+  const notices = build.notices.map((n, i) =>
+    verified(
+      n.output !== undefined ? outputs.find(o => path.basename(o) === n.file) : fromSource(n.member),
+      n.sha256,
+      `notices[${i}].sha256`,
+    ),
+  )
   install(bytes, licence, notices)
   // Installed: the source and build trees (about 100 MB) go; the archive and out/ stay. After a
   // failure they stay, to look at.
