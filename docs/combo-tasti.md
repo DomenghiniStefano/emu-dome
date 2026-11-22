@@ -309,7 +309,7 @@ what the controller hotkey with the same id does.
 | F1 | Quick save to the current slot | done |
 | F4 | Quick load from the current slot | done |
 | F2 / F3 | Previous / next slot (the same current slot as L3 + d-pad left / right) | done |
-| Tab (held) | Fast forward (`speed.ffval`) while held | done |
+| Tab (held) | Fast forward (`speed.ffval`) while held; with `speed.ffmode` = toggle, on at one press and off at the next (the quick menu and the window losing the focus also turn it off) | done (toggle: Trello #99) |
 | Backspace (held) | Rewind (toggled with `a11y.toggle`) | done (Trello #42); Select's default key moved to the right Shift |
 | F9 | FPS indicator on/off | done |
 | F11 | Fullscreen on/off | done |
