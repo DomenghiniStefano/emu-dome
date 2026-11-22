@@ -9,9 +9,11 @@
 //! - the lid is pressed on the core as its own chord (`core_profile::Lid`), never faked.
 //!
 //! The settings come from the open game's session («in prova» included), read again whenever a
-//! `screens.*` setting or `video.aspect` changes, so the editor's live preview is a Session-level
-//! `screens.custom`. `video.aspect` goes through the same layout, so a one-screen game is
-//! stretched alike in both renderers.
+//! `screens.*` setting, `video.aspect` or `video.scale` changes, so the editor's live preview is a
+//! Session-level `screens.custom`. `video.aspect` and `video.scale` go through the same layout,
+//! so a one-screen game is stretched and sized alike in both renderers and in the touch mapping
+//! (`video.scale`'s default is the device's: whole scales on a computer, as large as fits on a
+//! phone).
 
 use std::sync::Arc;
 
@@ -53,9 +55,11 @@ pub(crate) struct ScreenPlacements {
     placements: Vec<Placement>,
 }
 
-/// The `screens.*` keys and `video.aspect`: a change to any of them is read again.
+/// The `screens.*` keys, `video.aspect` and `video.scale`: a change to any of them is read again.
 fn is_screen_key(key: &str) -> bool {
-    key.starts_with("screens.") || key == keys::VIDEO_ASPECT.as_str()
+    key.starts_with("screens.")
+        || key == keys::VIDEO_ASPECT.as_str()
+        || key == keys::VIDEO_SCALE.as_str()
 }
 
 /// The `screens.*` settings seen from the open game's session (else «Tutti i giochi»).
@@ -77,8 +81,7 @@ pub fn started(app: &AppHandle, core: CoreId, console: ConsoleId) {
     let profile = core.profile();
     let dual = profile.split != Split::Whole;
     log::debug!("screens: {console:?} on {core}, two screens: {dual}");
-    let session = ScreenSession::new(read_settings(app), dual, profile.lid.supported())
-        .on_phone(emudome_platform::PHONE);
+    let session = ScreenSession::new(read_settings(app), dual, profile.lid.supported());
     if let Some(state) = app.try_state::<ScreensState>() {
         *state.0.lock() = Some(Open { core, session });
     }
@@ -331,14 +334,7 @@ pub fn screens_preset_custom(
 ) -> CustomLayout {
     let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
     let split = CoreId::for_console(console).profile().split;
-    CustomLayout::preset(
-        &settings,
-        layout,
-        split,
-        width,
-        height,
-        emudome_platform::PHONE,
-    )
+    CustomLayout::preset(&settings, layout, split, width, height)
 }
 
 /// Stores the custom layout at `scope`: `console` or `game` to save it, `session` to preview it

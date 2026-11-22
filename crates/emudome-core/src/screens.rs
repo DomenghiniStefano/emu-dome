@@ -11,9 +11,9 @@
 //! - [`touch_at`]: window point → touch-screen pixel, through the composed rectangle;
 //! - [`pointer_value`]: touch-screen pixel → the `RETRO_DEVICE_POINTER` value the core reads.
 //!
-//! The `screens.*` settings and `video.aspect` choose the [`Layout`] ([`ScreenSettings`]: the
-//! layouts to step through, the ratio, the gap, the rotation, the custom layout, the
-//! proportions) together with what the user
+//! The `screens.*` settings, `video.aspect` and `video.scale` choose the [`Layout`]
+//! ([`ScreenSettings`]: the layouts to step through, the ratio, the gap, the rotation, the custom
+//! layout, the proportions, the size) together with what the user
 //! changed while playing (the current [`LayoutId`], the screens swapped); the renderers draw each
 //! [`Placement`] of [`compose`] (native `video.rs`, webview `GameCanvas.vue` from the placements
 //! the shell sends), and the touch screen maps back through the same placements (Trello #28).
@@ -325,10 +325,8 @@ pub struct Layout {
     pub rotation: Rotation,
     /// `video.aspect`: the proportions of the whole picture as shown.
     pub aspect: Aspect,
-    /// The screens take all the room they have, at any scale: a two-screen game on a phone
-    /// ([`ScreenSession::on_phone`]). Otherwise a picture that fits at 1× or more keeps a whole
-    /// scale (the desktop, and every one-screen game).
-    pub fill: bool,
+    /// `video.scale`: how large the picture is drawn in the room it has.
+    pub scale: Scale,
 }
 
 impl Default for Layout {
@@ -342,7 +340,37 @@ impl Default for Layout {
             ratio: 70,
             rotation: Rotation::None,
             aspect: Aspect::Original,
-            fill: false,
+            scale: Scale::Integer,
+        }
+    }
+}
+
+/// `video.scale`: how large the game's picture (one screen, or the composed two) is drawn in the
+/// part of the window it may use. The default is the device's (catalogue `default_rules`):
+/// [`Scale::Integer`] on a computer, [`Scale::Fit`] on a phone (owner, 2026-11-22, Trello #105).
+/// A custom layout (`screens.custom`) is drawn as the user placed it, whatever this says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Scale {
+    /// As large as the room allows at any scale, the proportions kept («Adatta allo schermo»):
+    /// a GBA 1.5× across a 360 px wide phone held upright.
+    Fit,
+    /// A whole scale when the picture fits at 1× or more, every console pixel the same size
+    /// («Pixel interi»); a picture smaller than the room at 1× still shrinks as [`Scale::Fit`].
+    #[default]
+    Integer,
+    /// The whole room, stretched: the proportions (and `video.aspect`) not kept («Riempi lo
+    /// schermo»).
+    Fill,
+}
+
+impl Scale {
+    /// The setting's option id; `None` for an id this build does not know.
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "fit" => Some(Scale::Fit),
+            "integer" => Some(Scale::Integer),
+            "fill" => Some(Scale::Fill),
+            _ => None,
         }
     }
 }
@@ -511,17 +539,18 @@ pub struct Placement {
     pub rotation: Rotation,
 }
 
-/// A rectangle of `content` size fitted in `area`: integer scale when it fits, otherwise the
-/// largest that keeps the aspect ratio, in the part the inset leaves (centred, against its
-/// bottom with [`Align::Bottom`] / [`Align::Apart`], against its top with [`Align::Top`]).
-/// `(x, y, w, h)`. The one rule of both renderers (native `video.rs`, webview `GameCanvas.vue`).
+/// A rectangle of `content` size fitted in `area` as [`Scale::Integer`] does: integer scale when
+/// it fits, otherwise the largest that keeps the aspect ratio, in the part the inset leaves
+/// (centred, against its bottom with [`Align::Bottom`] / [`Align::Apart`], against its top with
+/// [`Align::Top`]). `(x, y, w, h)`. Both renderers (native `video.rs`, webview `GameCanvas.vue`)
+/// go through [`compose`], which fits by [`Layout::scale`].
 pub fn fit(area: Area, content: (f32, f32)) -> Rect {
-    fit_with(area, content, (0.0, 0.0), false)
+    fit_with(area, content, (0.0, 0.0), Scale::Integer)
 }
 
 /// [`fit`] for `content` (scaled) plus `extra` window pixels across and down that do not scale
-/// (the room between two screens), at any scale with `fill`. The rectangle holds both.
-fn fit_with(area: Area, content: (f32, f32), extra: (f32, f32), fill: bool) -> Rect {
+/// (the room between two screens), sized by `scale`. The rectangle holds both.
+fn fit_with(area: Area, content: (f32, f32), extra: (f32, f32), scale: Scale) -> Rect {
     let free = area.inset.usable(area.width, area.height);
     let (w, h) = content;
     if w <= 0.0 || h <= 0.0 {
@@ -530,24 +559,29 @@ fn fit_with(area: Area, content: (f32, f32), extra: (f32, f32), fill: bool) -> R
     let ex = extra.0.clamp(0.0, free.w);
     let ey = extra.1.clamp(0.0, free.h);
     let fit = ((free.w - ex) / w).min((free.h - ey) / h);
-    let scale = if fit >= 1.0 && !fill {
-        fit.floor()
-    } else {
-        fit
+    let (vw, vh) = match scale {
+        Scale::Fill => (free.w, free.h),
+        Scale::Integer if fit >= 1.0 => (w * fit.floor() + ex, h * fit.floor() + ey),
+        Scale::Integer | Scale::Fit => (w * fit + ex, h * fit + ey),
     };
-    let (vw, vh) = (w * scale + ex, h * scale + ey);
     let y = match area.inset.align {
         Align::Centre => free.y + (free.h - vh) / 2.0,
         Align::Bottom | Align::Apart => free.y + free.h - vh,
         Align::Top => free.y,
     };
+    // On whole pixels; a hair under one (the inset's shares times the window are not exact:
+    // 780 × (1 − 220 / 780) = 559.99997) is that pixel, or the game leaves a line over the band.
+    let whole = |v: f32| (v + PIXEL_SLACK).floor();
     Rect {
-        x: (free.x + (free.w - vw) / 2.0).floor(),
-        y: y.floor(),
+        x: whole(free.x + (free.w - vw) / 2.0),
+        y: whole(y),
         w: vw,
         h: vh,
     }
 }
+
+/// How far under a whole pixel a position still counts as that pixel (float error only).
+const PIXEL_SLACK: f32 = 1e-3;
 
 /// Where the room between two screens lies once the whole is turned: across (between a left and
 /// a right screen) or down, and which of the two (in the order they were laid out) comes after.
@@ -753,7 +787,7 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
         }
         None => ((0.0, 0.0), 0.0),
     };
-    let mut target = fit_with(area, shown, extra, layout.fill);
+    let mut target = fit_with(area, shown, extra, layout.scale);
     let (scale_x, scale_y) = (
         (target.w - extra.0) / turned_w,
         (target.h - extra.1) / turned_h,
@@ -991,15 +1025,14 @@ impl CustomLayout {
     /// window, no inset), as a custom layout: the C09 editor's «Parti da», so the editor never
     /// works the geometry out again. The gap and the ratio are `settings`'; the picture is not
     /// turned (`screens.rot` turns a custom layout as a whole on top); `custom` is the one saved.
-    /// With `fill` (a phone) the screens take all their room, as the game shows them there
-    /// ([`Layout::fill`]). Empty for a one-screen split or an empty area.
+    /// Sized by `settings`' `video.scale` ([`Layout::scale`]), as the game shows them on this
+    /// device. Empty for a one-screen split or an empty area.
     pub fn preset(
         settings: &ScreenSettings,
         layout: LayoutId,
         split: Split,
         width: f32,
         height: f32,
-        fill: bool,
     ) -> CustomLayout {
         if layout == LayoutId::Custom {
             return settings.custom.clone();
@@ -1012,7 +1045,6 @@ impl CustomLayout {
         }
         let arranged = Layout {
             rotation: Rotation::None,
-            fill,
             ..settings.layout(layout, false)
         };
         let area = Area {
@@ -1062,6 +1094,8 @@ pub struct ScreenSettings {
     pub swap_hold: bool,
     /// `video.aspect` (every console: one screen or the composed two).
     pub aspect: Aspect,
+    /// `video.scale` (every console), the device's default included.
+    pub scale: Scale,
 }
 
 impl Default for ScreenSettings {
@@ -1092,6 +1126,7 @@ impl ScreenSettings {
             custom,
             swap_hold: settings.text(keys::SCREENS_SWAP) == "hold",
             aspect: Aspect::from_id(&settings.text(keys::VIDEO_ASPECT)).unwrap_or_default(),
+            scale: Scale::from_id(&settings.text(keys::VIDEO_SCALE)).unwrap_or_default(),
         }
     }
 
@@ -1142,7 +1177,7 @@ impl ScreenSettings {
             ratio: self.ratio,
             rotation: self.rotation,
             aspect: self.aspect,
-            fill: false,
+            scale: self.scale,
         }
     }
 }
@@ -1186,8 +1221,6 @@ impl Default for ScreenStatus {
 pub struct ScreenSession {
     settings: ScreenSettings,
     dual_screen: bool,
-    /// Composed on a phone: a two-screen game's screens take all their room.
-    phone: bool,
     lid_supported: bool,
     current: LayoutId,
     swapped: bool,
@@ -1201,19 +1234,10 @@ impl ScreenSession {
             current: settings.first(),
             settings,
             dual_screen,
-            phone: false,
             lid_supported: dual_screen && lid_supported,
             swapped: false,
             lid_closed: false,
         }
-    }
-
-    /// The game runs on a phone (`emudome_platform::PHONE`): a two-screen game's screens fill the
-    /// room they have, at any scale ([`Layout::fill`]); one screen keeps its whole scales.
-    #[must_use]
-    pub fn on_phone(mut self, phone: bool) -> Self {
-        self.phone = phone;
-        self
     }
 
     /// The settings changed (or their session «in prova»): the layout shown stays while it can.
@@ -1285,12 +1309,10 @@ impl ScreenSession {
         self.lid_supported
     }
 
-    /// The layout to compose now.
+    /// The layout to compose now. Its size is `video.scale`'s, whose default is the device's
+    /// (as large as fits on a phone, whole scales on a computer).
     pub fn layout(&self) -> Layout {
-        Layout {
-            fill: self.phone && self.dual_screen,
-            ..self.settings.layout(self.current, self.swapped)
-        }
+        self.settings.layout(self.current, self.swapped)
     }
 
     pub fn status(&self) -> ScreenStatus {
@@ -1312,7 +1334,7 @@ mod tests {
     use super::{
         compose, fit, pointer_at, pointer_value, touch_at, Align, Area, Arrangement, Aspect,
         CustomLayout, CustomScreen, Inset, Layout, LayoutId, Placement, PxRect, Rect, Rotation,
-        ScreenId, ScreenSession, ScreenSettings, ScreenStatus, Split,
+        Scale, ScreenId, ScreenSession, ScreenSettings, ScreenStatus, Split,
     };
     use crate::settings::Value;
 
@@ -1369,7 +1391,7 @@ mod tests {
                 ratio: 80,
                 rotation: Rotation::Left,
                 aspect: Aspect::Original,
-                fill: false,
+                scale: Scale::Integer,
             }
         );
         assert_eq!(
@@ -1463,7 +1485,7 @@ mod tests {
     fn a_preset_is_where_the_layout_draws_the_screens() {
         let s = ScreenSettings::default();
         // Vertical at 1080p: the DS stack at 2x (512 x 768), centred, as `fit` places it.
-        let v = CustomLayout::preset(&s, LayoutId::Vertical, DS, 1920.0, 1080.0, false);
+        let v = CustomLayout::preset(&s, LayoutId::Vertical, DS, 1920.0, 1080.0);
         let near = |a: f32, b: f32| (a - b).abs() < 1e-4;
         let top = v.screens[0];
         assert_eq!(top.id, ScreenId::Top);
@@ -1479,33 +1501,31 @@ mod tests {
                 LayoutId::BigSmall,
                 LayoutId::TopOnly,
             ] {
-                let p = CustomLayout::preset(&s, layout, split, 1280.0, 720.0, false);
+                let p = CustomLayout::preset(&s, layout, split, 1280.0, 720.0);
                 assert!(p.is_valid() && !p.is_empty(), "{layout:?} {split:?}");
                 assert!(CustomLayout::valid_items(&p.to_items()));
             }
         }
         // Only the top screen: one rectangle.
-        let only = CustomLayout::preset(&s, LayoutId::TopOnly, DS, 1280.0, 720.0, false);
+        let only = CustomLayout::preset(&s, LayoutId::TopOnly, DS, 1280.0, 720.0);
         assert_eq!(only.screens.len(), 1);
         // The settings' ratio and gap count; the rotation does not.
         let wide = settings(&[
             ("screens.ratio", Value::Int(50)),
             ("screens.rot", Value::Text("left".into())),
         ]);
-        let half = CustomLayout::preset(&wide, LayoutId::BigSmall, DS, 1280.0, 720.0, false);
+        let half = CustomLayout::preset(&wide, LayoutId::BigSmall, DS, 1280.0, 720.0);
         assert!(near(half.screens[0].w, half.screens[1].w));
         assert!(near(half.screens[0].y, half.screens[1].y));
         // Custom: the one saved; one screen or no room: none.
         let items: Vec<String> = CUSTOM.iter().map(|s| (*s).to_owned()).collect();
         let saved = settings(&[("screens.custom", Value::List(items))]);
         assert_eq!(
-            CustomLayout::preset(&saved, LayoutId::Custom, DS, 1280.0, 720.0, false),
+            CustomLayout::preset(&saved, LayoutId::Custom, DS, 1280.0, 720.0),
             saved.custom
         );
-        assert!(
-            CustomLayout::preset(&s, LayoutId::Side, Split::Whole, 1280.0, 720.0, false).is_empty()
-        );
-        assert!(CustomLayout::preset(&s, LayoutId::Side, DS, 0.0, 720.0, false).is_empty());
+        assert!(CustomLayout::preset(&s, LayoutId::Side, Split::Whole, 1280.0, 720.0).is_empty());
+        assert!(CustomLayout::preset(&s, LayoutId::Side, DS, 0.0, 720.0).is_empty());
         assert_eq!(DS.frame_at_1x(), Some((256, 384)));
         assert_eq!(Split::N3dsStacked.frame_at_1x(), Some((400, 480)));
     }
@@ -2355,11 +2375,11 @@ mod tests {
         phone(width, height, (0.0, 16.0, 0.0, 32.0), Align::Top, 8.0)
     }
 
-    /// The phone's layout: `auto`, the screens filling their room.
+    /// The phone's layout: `auto`, the screens filling their room (`video.scale` = fit).
     fn auto() -> Layout {
         Layout {
             arrangement: Arrangement::Auto,
-            fill: true,
+            scale: Scale::Fit,
             ..Layout::default()
         }
     }
@@ -2483,7 +2503,7 @@ mod tests {
                 let layout = Layout {
                     arrangement: arrangement.clone(),
                     rotation,
-                    fill: true,
+                    scale: Scale::Fit,
                     ..Layout::default()
                 };
                 let p = ds(&layout, a);
@@ -2531,7 +2551,7 @@ mod tests {
             512.0
         );
         let filled = Layout {
-            fill: true,
+            scale: Scale::Fit,
             ..Layout::default()
         };
         assert_eq!(
@@ -2557,32 +2577,150 @@ mod tests {
         assert_eq!(one(Align::Apart), one(Align::Bottom));
     }
 
+    /// The `video.scale` default `device` resolves to, as the settings engine hands it over.
+    fn device_settings(device: crate::settings::schema::Device) -> ScreenSettings {
+        let scale = crate::settings::schema::entry("video.scale")
+            .and_then(|e| e.default_for(device, Some(crate::settings::ConsoleId::Gba)))
+            .unwrap();
+        settings(&[("video.scale", scale)])
+    }
+
     #[test]
-    fn the_session_fills_two_screens_on_a_phone_only() {
+    fn the_session_sizes_the_picture_by_video_scale_and_its_device_default() {
+        use crate::settings::schema::Device;
+        // The defaults: as large as fits on a phone, whole scales on a computer; one screen or two.
+        for dual in [false, true] {
+            let phone = ScreenSession::new(device_settings(Device::Phone), dual, dual);
+            assert_eq!(
+                phone.layout().scale,
+                Scale::Fit,
+                "phone, two screens: {dual}"
+            );
+            let desk = ScreenSession::new(device_settings(Device::Desktop), dual, dual);
+            assert_eq!(desk.layout().scale, Scale::Integer, "desktop, two: {dual}");
+        }
+        // The user's choice wins on any device; an unknown id is whole scales.
+        for (id, scale) in [
+            ("fit", Scale::Fit),
+            ("integer", Scale::Integer),
+            ("fill", Scale::Fill),
+            ("stretch", Scale::Integer),
+        ] {
+            let s = settings(&[("video.scale", Value::Text(id.into()))]);
+            assert_eq!(ScreenSession::new(s, false, false).layout().scale, scale);
+        }
         let s = ScreenSettings::default();
-        assert!(
-            ScreenSession::new(s.clone(), true, true)
-                .on_phone(true)
-                .layout()
-                .fill
-        );
-        assert!(
-            !ScreenSession::new(s.clone(), true, true)
-                .on_phone(false)
-                .layout()
-                .fill
-        );
-        assert!(
-            !ScreenSession::new(s.clone(), false, false)
-                .on_phone(true)
-                .layout()
-                .fill
-        );
-        assert!(!s.layout(LayoutId::Vertical, false).fill);
+        assert_eq!(s.layout(LayoutId::Vertical, false).scale, Scale::Integer);
         assert_eq!(
             s.layout(LayoutId::Auto, false).arrangement,
             Arrangement::Auto
         );
+    }
+
+    // ---- One screen on the phone (owner, 2026-11-22, Trello #105): as large as fits ----
+
+    /// A GBA's frame composed in `a` sized by `scale`.
+    fn gba(scale: Scale, a: Area) -> Rect {
+        let layout = Layout {
+            scale,
+            ..Layout::default()
+        };
+        let p = compose(&layout, &Split::Whole.screens(240, 160), a);
+        assert_eq!(p.len(), 1);
+        p[0].dst
+    }
+
+    /// The S23 upright, 360 × 780 CSS px, the GBA controls' band 220 px at the bottom
+    /// (`touchLayout.ts`), the game against it.
+    fn s23_upright() -> Area {
+        phone(360.0, 780.0, (0.0, 0.0, 220.0, 0.0), Align::Bottom, 0.0)
+    }
+
+    /// The S23 on its side, 780 × 360, the GBA controls' columns 148 px on the left and 144 px on
+    /// the right (`touchLayout.ts`), the game centred between them.
+    fn s23_on_its_side() -> Area {
+        phone(780.0, 360.0, (0.0, 144.0, 0.0, 148.0), Align::Centre, 0.0)
+    }
+
+    #[test]
+    fn a_gba_upright_on_the_s23_takes_the_whole_width_by_default() {
+        // 360 / 240 = 1.5x: 360 x 240, on the band (560 - 240 = 320).
+        assert_near(
+            gba(Scale::Fit, s23_upright()),
+            rect(0.0, 320.0, 360.0, 240.0),
+        );
+        // «Pixel interi» still floors: 1x, 240 x 160, centred across, on the band.
+        assert_near(
+            gba(Scale::Integer, s23_upright()),
+            rect(60.0, 400.0, 240.0, 160.0),
+        );
+        // «Riempi lo schermo»: the whole room above the band, stretched.
+        assert_near(
+            gba(Scale::Fill, s23_upright()),
+            rect(0.0, 0.0, 360.0, 560.0),
+        );
+    }
+
+    #[test]
+    fn a_gba_on_its_side_on_the_s23_fills_the_room_between_the_columns() {
+        // 488 x 360 between the columns: 488 / 240 = 2.0333x, 488 x 325.33, centred down.
+        let r = gba(Scale::Fit, s23_on_its_side());
+        assert_near(r, rect(148.0, 17.0, 488.0, 488.0 * 160.0 / 240.0));
+        // Whole scales: 2x, 480 x 320, centred in the room.
+        assert_near(
+            gba(Scale::Integer, s23_on_its_side()),
+            rect(152.0, 20.0, 480.0, 320.0),
+        );
+        assert_near(
+            gba(Scale::Fill, s23_on_its_side()),
+            rect(148.0, 0.0, 488.0, 360.0),
+        );
+    }
+
+    #[test]
+    fn touch_and_both_renderers_map_through_the_same_scaled_screen() {
+        // A DS at «fit» upright: the touch screen's middle is its middle pixel, as before.
+        let p = ds(&auto(), upright(360.0, 780.0, 198.0));
+        let b = dst(&p, ScreenId::Bottom);
+        assert_eq!(
+            touch_at(&p, b.x + b.w / 2.0, b.y + b.h / 2.0),
+            Some((128, 96))
+        );
+        // Stretched: the corners still land on the corners.
+        let fill = Layout {
+            scale: Scale::Fill,
+            ..auto()
+        };
+        let p = ds(&fill, upright(360.0, 780.0, 198.0));
+        let b = dst(&p, ScreenId::Bottom);
+        assert_eq!(touch_at(&p, b.x + 0.5, b.y + 0.5), Some((0, 0)));
+        assert_eq!(
+            touch_at(&p, b.x + b.w - 0.5, b.y + b.h - 0.5),
+            Some((255, 191))
+        );
+    }
+
+    #[test]
+    fn fill_ignores_the_aspect_and_fit_keeps_it() {
+        let a = area(1000.0, 500.0);
+        let sixteen_nine = |scale| Layout {
+            scale,
+            aspect: Aspect::SixteenNine,
+            ..Layout::default()
+        };
+        let p = compose(
+            &sixteen_nine(Scale::Fill),
+            &Split::Whole.screens(240, 160),
+            a,
+        );
+        assert_near(p[0].dst, rect(0.0, 0.0, 1000.0, 500.0));
+        let p = compose(
+            &sixteen_nine(Scale::Fit),
+            &Split::Whole.screens(240, 160),
+            a,
+        );
+        // 16:9 at 500 tall: 888.9 x 500, centred.
+        assert_near(p[0].dst, rect(55.0, 0.0, 500.0 * 16.0 / 9.0, 500.0));
     }
 
     #[test]
@@ -2604,11 +2742,13 @@ mod tests {
     #[test]
     fn a_preset_on_the_phone_is_where_the_phone_draws_the_screens() {
         // «Parti da» upright on a phone: the screens fill the width as the game shows them.
-        let s = ScreenSettings::default();
-        let p = CustomLayout::preset(&s, LayoutId::Auto, DS, 412.0, 892.0, true);
+        use crate::settings::schema::Device;
+        let phone = device_settings(Device::Phone);
+        let p = CustomLayout::preset(&phone, LayoutId::Auto, DS, 412.0, 892.0);
         assert!(p.is_valid());
         assert!((p.screens[0].w - 1.0).abs() < 1e-4);
-        let desk = CustomLayout::preset(&s, LayoutId::Auto, DS, 412.0, 892.0, false);
-        assert!((desk.screens[0].w - 256.0 / 412.0).abs() < 1e-4);
+        let desk = device_settings(Device::Desktop);
+        let d = CustomLayout::preset(&desk, LayoutId::Auto, DS, 412.0, 892.0);
+        assert!((d.screens[0].w - 256.0 / 412.0).abs() < 1e-4);
     }
 }

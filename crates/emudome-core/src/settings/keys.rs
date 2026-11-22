@@ -130,6 +130,7 @@ typed_key!(
 
 // ---- The settings the Rust code reads ----
 
+pub const VIDEO_SCALE: TextKey = TextKey::new("video.scale");
 pub const VIDEO_SURROUND_IMG: TextKey = TextKey::new("video.surroundImg");
 pub const VIDEO_ASPECT: TextKey = TextKey::new("video.aspect");
 pub const VIDEO_WINDOW: TextKey = TextKey::new("video.window");

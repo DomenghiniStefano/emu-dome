@@ -368,7 +368,15 @@ const ADV: &str = "advanced";
 
 pub static ENTRIES: &[Entry] = &[
     // ---- Video (video) ----
-    seg("video.scale", &["fit", "integer", "fill"], "fit", ALL).most_used(),
+    // Whole pixels on a computer; on a phone as large as the room allows (owner, 2026-11-22,
+    // Trello #105: «per i giochi teniamo default tutta la larghezza»). `screens::Scale`.
+    seg("video.scale", &["fit", "integer", "fill"], "integer", ALL)
+        .most_used()
+        .defaults(&[DefaultRule {
+            device: Some(Device::Phone),
+            consoles: &[],
+            value: DefaultValue::Text("fit"),
+        }]),
     sel(
         "video.aspect",
         &["original", "4_3", "16_9"],

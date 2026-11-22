@@ -261,8 +261,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          of the game (quick menu, touch controls), its `between` the room kept between
                          two screens (the phone's strip), and `fit` the game in the rest, centred,
                          against the bottom or the top, or two screens `apart` against both ends;
-                         `Layout::fill` (a two-screen game on a phone, `ScreenSession::on_phone`) drops
-                         the integer scale; `auto` (`Arrangement::Auto`) is stacked in a window taller
+                         `Layout::scale` (`Scale`, the `video.scale` setting: `Fit` as large as fits,
+                         `Integer` whole scales from 1×, `Fill` stretched; whole scales on a computer
+                         and as large as fits on a phone by default, #105); `auto` (`Arrangement::Auto`) is stacked in a window taller
                          than wide, side by side otherwise; pure, unit-tested)
                          touch.rs (the touch controls, #29: `ControlId` and the controls each console
                          has (`ControlId::of`), `Layout` / `Layouts` the user's layout per orientation as
@@ -538,13 +539,15 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     options (present-driven / audio-driven): `docs/video-pacing.md`.
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - **Screens** (Trello #28): both paths draw each screen of the frame where `emudome_core::screens::compose`
-    puts it for the open game's layout (`screens.*`, the layout shown, swapped or not, and `video.aspect` for
-    every console: 4:3 / 16:9 stretch the composed picture, a custom layout excepted): the native renderer one
+    puts it for the open game's layout (`screens.*`, the layout shown, swapped or not, and `video.aspect` and
+    `video.scale` for every console: 4:3 / 16:9 stretch the composed picture, «fit» / «integer» / «fill» size it,
+    a custom layout excepted): the native renderer one
     draw per screen (`Renderer::set_layout`), the webview canvas from `screens_placements` (it decides no
     geometry: `GameCanvas.vue`, `screenDraw.ts`). Touch maps back through the same layout (`pointer`).
     On a phone (owner, 2026-11-22) a two-screen game opens on `auto` (`screens.cycle`'s phone default:
-    `auto`, `big_small`, `top_only`) and fills its room (`Layout::fill`, set in Rust from
-    `emudome_platform::PHONE`); the touch controls' inset carries the rest (`Inset::between`, `Align::Apart`
+    `auto`, `big_small`, `top_only`) and, like a one-screen game (#105), fills its room: `video.scale`'s
+    phone default is «fit» (a `default_rules` entry; «integer» on a computer), so a GBA upright is 360 px wide on
+    a 360 px phone; the touch controls' inset carries the rest (`Inset::between`, `Align::Apart`
     upright, `Align::Top` on the side), so both renderers and `pointer` get the same placements.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
@@ -1050,8 +1053,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`SOURCE_DPAD`) is not a controller and stays the system's.
   Turning the phone while C06 is open switches to that orientation's layout, dropping the unsaved changes. Not
   run on a device yet (vibration, the Circle Pad on Azahar). The game is fitted in what the controls leave
-  (`reservedInset`, the video inset of `screens::Inset`): upright against the band at the bottom (what the
-  window has left over is one band at its top, the picture keeping its integer scale), on the side between the two
+  (`reservedInset`, the video inset of `screens::Inset`): upright against the band at the bottom, the whole width
+  by default (`video.scale` «fit» on a phone, #105: a GBA 1.5× on a 360 px phone; what the window has left over
+  is one band at its top; «Pixel interi» chosen by the user floors the scale again), on the side between the two
   columns, Select / Start / menu in the columns; the quick menu's sheet and side panel keep their own edges the
   same way, measured again when the phone turns. DS and 3DS (owner, 2026-11-22) keep their screens large and apart
   instead (`isDualScreen`, `reservedInset`'s two-screen rule): upright the top screen under the camera (the safe top,
@@ -1100,10 +1104,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
   The phone (owner, 2026-11-22): `auto` («Automatica») is the first of the phone's cycle, so a phone's game opens
   with its screens apart and filling the width; `vertical` and `side` are left out of the phone's default cycle
-  (`auto` is each of them in its orientation) and stay choosable in the cycle's setting. Every two-screen layout on
-  a phone fills its room (no integer scale); one-screen games keep it. A cycle already saved by the user (a
+  (`auto` is each of them in its orientation) and stay choosable in the cycle's setting. Every game on a phone,
+  one screen or two, fills its room by default (`video.scale` «fit», #105); «Pixel interi» chosen by the user
+  floors the scale there too. A cycle already saved by the user (a
   Console or Game value of `screens.cycle`) keeps its own first layout. The C09 editor's «Parti da» has no
-  «Automatica» start (it starts from the four fixed layouts, composed at the phone's fill).
+  «Automatica» start (it starts from the four fixed layouts, composed at the device's `video.scale`).
 - TV mode (#30): Saves, Controls, Cloud and a game's details keep the desk's layout scaled up in TV. Settings in TV
   has no «In primo piano» (T01), no search field (Y opens the search everywhere) and no «Mostra solo le impostazioni
   modificate»; a text and the game folders keep the desk's row scaled up; on a row that changes in place ◀ ▶ are
