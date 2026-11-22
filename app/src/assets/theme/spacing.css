@@ -203,6 +203,35 @@
   --spacing-pad-lift: 64px;
 }
 
+/* TV (Trello #30, the owner's mockup of 2026-11-21, drawn at 1920 × 1080): the sizes of the TV
+   layout's own parts (components/shell/Tv*, components/library/tv/), and after `tv:` on the
+   shared ones. */
+@theme {
+  /* The band of the section tabs at the top, a tab's pill, the button bar at the bottom. */
+  --spacing-tv-tabs: 96px;
+  --spacing-tv-tab: 52px;
+  --spacing-tv-bar: 72px;
+  /* A controller button drawn as a key (the bar's glyphs, the hero's actions). */
+  --spacing-tv-glyph: 30px;
+  /* The hero's actions: «Riprendi» / «Gioca» and «Dettagli del gioco». */
+  --spacing-tv-action: 64px;
+  /* The focused game on top: the band's height and its cover's width. */
+  --spacing-tv-hero: 400px;
+  --spacing-tv-hero-cover: 240px;
+  /* A shelf's cover, and the focused one, grown (168 -> 200). */
+  --spacing-tv-cover: 168px;
+  --spacing-tv-cover-focus: 200px;
+  /* The room from the screen's edge: the hero and the shelves (128), the tabs and the bar (64);
+     between the hero's text and its cover (64). */
+  --spacing-tv-gutter: 128px;
+  --spacing-tv-edge: 64px;
+  --spacing-tv-hero-gap: 64px;
+  /* Roles: between two shelves, between two covers of a shelf, between the bar's hints. */
+  --spacing-tv-shelf-gap: var(--spacing-32);
+  --spacing-tv-cover-gap: var(--spacing-24);
+  --spacing-tv-hint-gap: var(--spacing-32);
+}
+
 /* Tailwind's container sizes (max-w-md…) and breakpoints (`md:`, `max-lg:`…) are not ours either:
    a window width where a layout changes is a token here, used as `max-<name>:` (below it). */
 @theme {

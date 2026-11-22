@@ -5,6 +5,7 @@ import { nextTick, onMounted, ref } from 'vue'
 import { flow } from '@/components/game/gameFlow'
 import { START, type Route } from '@/components/shell/route'
 import { useDensity } from '@/composables/useDensity'
+import { useUiMode } from '@/composables/useUiMode'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useClosing } from '@/components/closing/useClosing'
 import { useDropTarget } from '@/components/library/useDropTarget'
@@ -63,6 +64,8 @@ useScreenTouch(
 // The phone's layout (a phone held upright) sets the touch density for the whole interface.
 const layout = useDeviceLayout()
 useDensity(layout.phone)
+// TV mode (#30): `general.ui`, or by itself full screen with a controller connected.
+useUiMode(session.fullscreen, layout.device)
 
 // Startup: the keys and the backend's events first, so the controller works whatever fails
 // after; each step on its own, a failed one reported (lib/errors.ts) and the next still run.

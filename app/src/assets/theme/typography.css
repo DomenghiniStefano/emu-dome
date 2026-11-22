@@ -149,6 +149,57 @@
   --text-cta-inline: var(--text-cta);
 }
 
+/* TV (Trello #30, the owner's mockup of 2026-11-21, drawn at 1920 × 1080): the type seen from the
+   sofa, never under 18px. Used by the TV layout's own parts (components/shell/Tv*,
+   components/library/tv/) and after `tv:` on the shared ones.
+   - tv-display: the focused game's title (64);
+   - tv-lead: the line under it, when and how long it was played (24 / 32);
+   - tv-heading: a shelf's title (24, semibold);
+   - tv-action: the main action's label (24, semibold);
+   - tv-label: a section's tab, the second action (22, medium);
+   - tv-cover: a shelf cover's title (20 / 24, semibold);
+   - tv-hint: the button bar, the controller's name, a glyph's letter (18 / 24);
+   - tv-overline: the label over the title, «CONTINUA A GIOCARE» (18, the overline's tracking);
+   - tv-badge: a cover's console badge (18 / 22, the badge's tracking). */
+@theme {
+  --text-tv-display: 64px;
+  --text-tv-display--line-height: 70px;
+  --text-tv-display--font-weight: 600;
+  --text-tv-display--letter-spacing: -0.03em;
+  --text-tv-lead: 24px;
+  --text-tv-lead--line-height: 32px;
+  --text-tv-lead--font-weight: 400;
+  --text-tv-heading: 24px;
+  --text-tv-heading--line-height: 30px;
+  --text-tv-heading--font-weight: 600;
+  --text-tv-action: 24px;
+  --text-tv-action--line-height: 30px;
+  --text-tv-action--font-weight: 600;
+  --text-tv-label: 22px;
+  --text-tv-label--line-height: 28px;
+  --text-tv-label--font-weight: 500;
+  --text-tv-cover: 20px;
+  --text-tv-cover--line-height: 24px;
+  --text-tv-cover--font-weight: 600;
+  --text-tv-hint: 18px;
+  --text-tv-hint--line-height: 24px;
+  --text-tv-overline: 18px;
+  --text-tv-overline--line-height: 24px;
+  --text-tv-overline--font-weight: 600;
+  --text-tv-overline--letter-spacing: 0.08em;
+  --text-tv-badge: 18px;
+  --text-tv-badge--line-height: 22px;
+  --text-tv-badge--font-weight: 600;
+  --text-tv-badge--letter-spacing: 0.04em;
+}
+
+/* TV: how much a screen drawn for the desk grows when it is shown as it is (the quick menu, #58
+   scaled up: its 640px panel becomes 960, its 13px text 19.5). Read by the `zoom-tv` utility
+   (utilities.css). */
+:root {
+  --zoom-tv: 1.5;
+}
+
 /* Pending Cowork: an inline icon on a line of text, nudged down onto the letters' middle (the
    library's «unreachable folders» hint). vertical-align has no theme namespace in Tailwind, so
    the value is a named utility, as the stacking layers are (layers.css). */

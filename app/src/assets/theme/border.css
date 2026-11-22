@@ -24,3 +24,11 @@
   --outline-offset-swatch: 3px;
   --outline-offset-inset: -1px;
 }
+
+/* TV (Trello #30, the owner's mockup of 2026-11-21): the focus ring seen from the sofa, 4px at a
+   4px gap (styles.css draws it while `data-layout="tv"`). `static`: styles.css reads them by
+   name, and no class of Tailwind's does. */
+@theme static {
+  --outline-width-tv-ring: 4px;
+  --outline-offset-tv-ring: 4px;
+}

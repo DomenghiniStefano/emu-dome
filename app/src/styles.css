@@ -64,6 +64,14 @@ body,
   outline-offset: 2px;
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
+/* TV mode (#30, data-layout on <html>): the ring seen from the sofa, 4px at a 4px gap
+   (theme/border.css, «TV»). */
+:root[data-layout='tv'][data-nav] :focus,
+:root[data-layout='tv'][data-nav] [data-nav-focus] {
+  outline-width: var(--outline-width-tv-ring);
+  outline-offset: var(--outline-offset-tv-ring);
+  box-shadow: none;
+}
 /* Without data-nav the user is on the mouse: no browser outline on the element a screen
    focused by itself (autofocus). Any key press sets data-nav first (App.vue), so Tab still
    shows the ring above. */
