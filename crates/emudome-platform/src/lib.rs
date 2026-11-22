@@ -98,6 +98,21 @@ pub fn is_suspend(event: &tauri::WindowEvent) -> bool {
     }
 }
 
+/// Whether a window event says the app is in front again after [`is_suspend`]: Android's
+/// `onResume` (Tauri's `WindowEvent::Resumed`, which skips the first one, at creation). The
+/// desktop has no such event: the page's focus says it there.
+pub fn is_resume(event: &tauri::WindowEvent) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        matches!(event, tauri::WindowEvent::Resumed)
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = event;
+        false
+    }
+}
+
 /// The game to open at startup: the first non-flag argument on the desktop
 /// (`emudome game.gba`); on Android the `game` extra of the launch intent
 /// (`adb shell am start -n <package>/.MainActivity --es game /path/game.gba`), else the

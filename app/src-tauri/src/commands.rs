@@ -145,11 +145,12 @@ pub(crate) fn set_menu_open(state: tauri::State<'_, AppState>, open: bool) {
     }
 }
 
-/// The page lost the focus (Alt-Tab, another window): the keys held now are released
-/// elsewhere, so the game lets go of them.
+/// The page lost the focus (Alt-Tab, another window, minimized) or got it back: losing it lets
+/// go of the keys held now (they are released elsewhere), and both carry out `general.bgpause`
+/// (`background_pause.rs`).
 #[tauri::command]
-pub(crate) fn release_keys(state: tauri::State<'_, AppState>) {
-    state.release_keyboard();
+pub(crate) fn window_focus(app: tauri::AppHandle, focused: bool) {
+    crate::background_pause::focus_changed(&app, focused);
 }
 
 #[tauri::command]
@@ -159,6 +160,8 @@ pub(crate) fn set_speed(state: tauri::State<'_, AppState>, speed: Speed) -> Resu
 
 #[tauri::command]
 pub(crate) fn set_paused(state: tauri::State<'_, AppState>, paused: bool) -> Result<(), ErrorCode> {
+    // The interface decides now: a pause `general.bgpause` made is the user's from here.
+    state.background.lock().forget();
     state.games.send(Command::SetPaused(paused))
 }
 

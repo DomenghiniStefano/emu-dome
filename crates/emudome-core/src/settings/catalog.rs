@@ -363,8 +363,7 @@ pub static ENTRIES: &[Entry] = &[
         &["original", "4_3", "16_9"],
         "original",
         ALL,
-    )
-    .not_wired(),
+    ),
     seg("video.filter", &["none", "light", "soft"], "light", ALL),
     cards(
         "video.surround",
@@ -622,7 +621,7 @@ pub static ENTRIES: &[Entry] = &[
         .pc()
         .not_wired(),
     seg("general.start", &["library", "last_game"], "library", G).not_wired(),
-    sw("general.bgpause", true, G).device().not_wired(),
+    sw("general.bgpause", true, G).device(),
     sw("general.confirmdel", true, G).not_wired(),
     seg("general.updates", &["auto", "ask", "off"], "ask", G)
         .device()

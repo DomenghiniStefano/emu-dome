@@ -208,8 +208,9 @@ export const emu = {
   /** A key (`KeyboardEvent.code`) for Rust to route in game: a game button or a shortcut. */
   key: (code: string, pressed: boolean, repeat: boolean) =>
     invoke<void>('key', { code, pressed, repeat }),
-  /** The page lost the focus: Rust lets go of every key (game buttons, fast forward, rewind). */
-  releaseKeys: () => invoke<void>('release_keys'),
+  /** The page lost the focus (Rust lets go of every key: game buttons, fast forward, rewind) or
+   * got it back; with `general.bgpause` the game pauses meanwhile (`emu://hotkey` `paused`). */
+  windowFocus: (focused: boolean) => invoke<void>('window_focus', { focused }),
   /** The DS touch screen: the pointer at (x, y) in `area`; Rust maps it to the bottom screen. */
   pointer: (x: number, y: number, pressed: boolean, area: PointerArea) =>
     invoke<void>('pointer', { x, y, pressed, area }),

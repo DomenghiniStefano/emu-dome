@@ -9,6 +9,7 @@
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
 mod audio;
+mod background_pause;
 // Bench mode only in builds with the `bench` feature (off by default, never packaged).
 #[cfg(feature = "bench")]
 mod bench;
@@ -114,6 +115,8 @@ struct AppState {
     /// Whether the quick menu is open, set by the interface: while it is, the controllers
     /// navigate the menu instead of playing (see `gamepad.rs`).
     menu_open: Arc<AtomicBool>,
+    /// Whether the game is paused because EmuDome went to the background (`general.bgpause`).
+    background: Mutex<background_pause::BackgroundPause>,
     /// The shortcuts of the controllers and of the keyboard, carried out the same way.
     hotkeys: Arc<hotkeys::HotkeyRunner>,
     data_dir: PathBuf,
@@ -274,6 +277,10 @@ fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
             if state.games.send(Command::Flush).is_ok() {
                 log::info!("in background: the open game's saves are flushed");
             }
+            background_pause::focus_changed(app, false);
+        }
+        if emudome_platform::is_resume(event) {
+            background_pause::focus_changed(app, true);
         }
     }
 }
@@ -437,6 +444,7 @@ pub fn run() {
                 native_error,
                 video_mode: Mutex::new(mode),
                 menu_open,
+                background: Mutex::default(),
                 hotkeys,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
@@ -492,7 +500,7 @@ pub fn run() {
             commands::startup_game,
             game::open_extensions,
             commands::set_menu_open,
-            commands::release_keys,
+            commands::window_focus,
             bench::bench_active,
             #[cfg(feature = "bench")]
             bench::bench_frames,

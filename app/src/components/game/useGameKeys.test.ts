@@ -9,14 +9,14 @@ import type { GameSession } from './useGameSession'
 
 const bridge = vi.hoisted(() => ({
   key: vi.fn(async () => {}),
-  releaseKeys: vi.fn(async () => {}),
+  windowFocus: vi.fn<(focused: boolean) => Promise<void>>(async () => {}),
   bindings: vi.fn(),
   dispatchNav: vi.fn(),
 }))
 vi.mock('@/emu', () => ({
   emu: {
     key: bridge.key,
-    releaseKeys: bridge.releaseKeys,
+    windowFocus: bridge.windowFocus,
     controls: { bindings: bridge.bindings },
   },
 }))
@@ -161,15 +161,17 @@ describe('useGameKeys', () => {
     wrapper.unmount()
   })
 
-  it('the window losing the focus has Rust let go of every key, while a game is open', () => {
+  it('the window losing and getting the focus tells Rust (keys let go, pause), while a game is open', () => {
     const { wrapper } = setup()
     window.dispatchEvent(new Event('blur'))
-    expect(bridge.releaseKeys).toHaveBeenCalledOnce()
+    window.dispatchEvent(new Event('focus'))
+    expect(bridge.windowFocus.mock.calls).toEqual([[false], [true]])
     wrapper.unmount()
 
     const shell = setup({ inGame: false })
     window.dispatchEvent(new Event('blur'))
-    expect(bridge.releaseKeys).toHaveBeenCalledOnce()
+    window.dispatchEvent(new Event('focus'))
+    expect(bridge.windowFocus).toHaveBeenCalledTimes(2)
     shell.wrapper.unmount()
   })
 

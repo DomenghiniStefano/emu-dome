@@ -157,6 +157,7 @@ pub const PAD_TRIGGER: IntKey = IntKey::new("pad.trig");
 pub const PAD_CONFIRM: TextKey = TextKey::new("pad.confirm");
 pub const PAD_REPEAT: TextKey = TextKey::new("pad.repeat");
 pub const GENERAL_THEME: TextKey = TextKey::new("general.theme");
+pub const GENERAL_BACKGROUND_PAUSE: BoolKey = BoolKey::new("general.bgpause");
 pub const LIBRARY_FOLDERS: ListKey = ListKey::new("library.folders");
 pub const LIBRARY_SCAN_AT_START: BoolKey = BoolKey::new("library.scanstart");
 pub const LIBRARY_WATCH: BoolKey = BoolKey::new("library.watch");
