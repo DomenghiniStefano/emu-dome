@@ -22,6 +22,15 @@ const rail = (n) =>
 const SIZES = { small: [1024, 640], large: [1920, 1080] };
 const THEMES = ["dark", "black", "light"];
 const firstCover = "[data-game] button";
+// L12 «Scegli la copertina» from the first game's details (#85), a choice in it, its main button.
+const openCoverPicker = [
+  `document.querySelector('${firstCover}').click()`,
+  `document.querySelector('main [aria-haspopup=menu]').click()`,
+  `document.querySelector('[role=menuitem]').click()`,
+];
+const coverRadio = (n) =>
+  `document.querySelectorAll('[role=dialog] [role=radio]')[${n}].click()`;
+const coverPrimary = `[...document.querySelectorAll('[role=dialog] button')].at(-1).click()`;
 const LIBRARY = {
   lib: { mock: {}, steps: [] },
   "lib-empty": { mock: { emptyLibrary: true }, steps: [] },
@@ -74,6 +83,61 @@ const LIBRARY = {
       `document.querySelector('main [aria-haspopup=menu]').click()`,
       `document.querySelector('[role=menuitem]').click()`,
     ],
+  },
+  // #85: «Da uno screenshot» (disabled with none, with two), «Scegli uno screenshot», «Adatta la
+  // copertina» (whole on its blurred backdrop; filled and zoomed; the DS one; the user's image).
+  "lib-cover-shots-choice": {
+    mock: { screenshots: true },
+    steps: openCoverPicker,
+  },
+  "lib-cover-shots-grid": {
+    mock: { screenshots: true },
+    steps: [...openCoverPicker, coverRadio(1), coverPrimary],
+  },
+  "lib-cover-crop": {
+    mock: { screenshots: true },
+    steps: [...openCoverPicker, coverRadio(1), coverPrimary, coverPrimary],
+  },
+  "lib-cover-crop-fill": {
+    mock: { screenshots: true },
+    steps: [
+      ...openCoverPicker,
+      coverRadio(1),
+      coverPrimary,
+      coverPrimary,
+      `document.querySelectorAll('[role=dialog] [data-slot=segmented-item]')[1].click()`,
+      { key: "Equal" },
+      { key: "Equal" },
+      { key: "Equal" },
+      { key: "ArrowRight" },
+    ],
+  },
+  "lib-cover-crop-ds": {
+    mock: { screenshots: true },
+    steps: [
+      ...openCoverPicker,
+      coverRadio(1),
+      coverPrimary,
+      coverRadio(1),
+      coverPrimary,
+    ],
+  },
+  // With the controller: R1 three times (zoom 130%), X (Riempi), the d-pad left; its hints.
+  "lib-cover-crop-pad": {
+    mock: { screenshots: true },
+    steps: [
+      ...openCoverPicker,
+      coverRadio(1),
+      coverPrimary,
+      coverPrimary,
+      ...["next", "next", "next", "more", "left"].map(
+        (action) => `__emit('emu://nav', { action: '${action}' })`,
+      ),
+    ],
+  },
+  "lib-cover-crop-image": {
+    mock: { screenshots: true },
+    steps: [...openCoverPicker, coverRadio(2), coverPrimary],
   },
   placeholder: { mock: {}, steps: [rail(3)] },
   // A library of thousands (Trello #91: the grid renders only the rows near the screen).
