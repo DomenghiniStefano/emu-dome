@@ -204,6 +204,27 @@ describe('the scope tree', () => {
     expect(screenTab).toHaveBeenCalledWith(1)
   })
 
+  it('Y (search) bubbles from a section to the screen, and a dialog above stops it', () => {
+    const search = vi.fn()
+    const Section = scoped(root => useNavSection(root, {}))
+    const screen = part(
+      root => useNavScope(root, { search }),
+      () => [h(Section)],
+    )
+    dispatchNav('search')
+    expect(search).toHaveBeenCalledOnce()
+    screen.unmount()
+    mounted.splice(mounted.indexOf(screen), 1)
+    const behind = vi.fn()
+    const Dialog = scoped(root => useNavScope(root, {}))
+    part(
+      root => useNavScope(root, { search: behind }),
+      () => [h(Dialog)],
+    )
+    dispatchNav('search')
+    expect(behind).not.toHaveBeenCalled()
+  })
+
   it('a scope that owns its steps sees each one first, and leaves the rest to nav.ts', () => {
     const back = vi.fn()
     // Takes Select and the left arrow, nothing else.
