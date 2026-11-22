@@ -1,6 +1,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- Base application theme. One for day and night: the app draws its own themes.
+         EmuDome (Trello #101): the window is graphite from the first frame, behind the WebView
+         and its startup splash (index.html), so no white shows before the page paints. Android
+         12+ adds the system splash (values-v31); older versions show this graphite window. -->
     <style name="Theme.emudome" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
+        <item name="android:windowBackground">@color/emudome_bg</item>
     </style>
 </resources>
