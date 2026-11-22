@@ -1,12 +1,14 @@
 <script setup lang="ts">
 // The shell's top bar (design L01): thin glass with the small mark and the wordmark (#101), and
 // the search everywhere in the middle (X01, #32): a field with its Ctrl K on the desktop, a
-// magnifier on the phone. Either opens the search (`search`).
+// magnifier on the phone. Either opens the search (`search`). On the right, the notifications'
+// bell (X03).
 import { useI18n } from 'vue-i18n'
 import { Search } from '@lucide/vue'
 import markSmall from '@/assets/brand/emudome-mark-small.svg'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
+import NotificationBell from '@/components/notifications/NotificationBell.vue'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 
 const emit = defineEmits<{ search: [] }>()
@@ -45,5 +47,6 @@ const layout = useDeviceLayout()
       <Kbd>{{ t('search.key.k') }}</Kbd>
     </Button>
     <div class="flex-1"></div>
+    <NotificationBell />
   </header>
 </template>

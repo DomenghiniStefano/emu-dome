@@ -2301,6 +2301,13 @@
       "hintPhone": "In game, press the menu button at the bottom right for the quick menu."
     }
   },
+  "notifications": {
+    "title": "Notifications",
+    "bell": "Notifications | Notifications, 1 unread | Notifications, {n} unread",
+    "markAll": "Mark all as read",
+    "empty": "No notifications",
+    "controllerConnected": "Controller connected"
+  },
   "search": {
     "title": "Search",
     "field": "Search games, actions and settings",

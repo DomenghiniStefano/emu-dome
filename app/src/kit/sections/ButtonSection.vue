@@ -504,5 +504,17 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         </Button>
       </div>
     </KitState>
+    <KitState label="Result · Notice: a notification, unread and read">
+      <div class="flex w-notifications flex-col divide-y divide-line glass-thick p-12">
+        <Button v-for="n in 2" :key="n" :variant="ButtonVariant.Result" :size="ButtonSize.Notice">
+          <span class="mt-5 size-8 flex-none rounded-full bg-ink-faint"></span>
+          <span class="flex min-w-0 flex-1 flex-col gap-2">
+            <span :class="n === 1 ? 'font-semibold' : 'font-medium'">Controller connected</span>
+            <span class="text-caption text-ink-muted">Xbox Wireless Controller</span>
+          </span>
+          <span class="flex-none text-caption text-ink-muted">5 minutes ago</span>
+        </Button>
+      </div>
+    </KitState>
   </KitSection>
 </template>

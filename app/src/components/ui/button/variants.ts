@@ -166,6 +166,9 @@ export const ButtonSize = {
   // A search result (ButtonVariant.Result): at least 40px, 12 between its parts, content from the
   // start.
   Result: 'result',
+  // A notification (ButtonVariant.Result in the bell's panel, X03): its dot on the first line,
+  // 10 between its parts, 10 / 12 padding.
+  Notice: 'notice',
 } as const
 export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
@@ -288,6 +291,7 @@ export const buttonVariants = cva(
         [ButtonSize.PadFace]: 'size-pad-face rounded-full text-dialog',
         [ButtonSize.PadSystem]: 'h-control rounded-panel px-14 text-overline',
         [ButtonSize.Result]: 'min-h-control-lg gap-12 px-8 py-4',
+        [ButtonSize.Notice]: 'items-start gap-10 rounded-10 px-12 py-10',
       },
       fade: {
         [ButtonFade.Normal]: 'disabled:opacity-disabled aria-disabled:opacity-disabled',

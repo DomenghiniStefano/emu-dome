@@ -2301,6 +2301,13 @@
       "hintPhone": "In gioco premi il pulsante menu in basso a destra per il menu rapido."
     }
   },
+  "notifications": {
+    "title": "Notifiche",
+    "bell": "Notifiche | Notifiche, 1 da leggere | Notifiche, {n} da leggere",
+    "markAll": "Segna tutte come lette",
+    "empty": "Nessuna notifica",
+    "controllerConnected": "Controller collegato"
+  },
   "search": {
     "title": "Cerca",
     "field": "Cerca giochi, azioni e impostazioni",
