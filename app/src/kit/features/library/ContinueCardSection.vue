@@ -77,6 +77,20 @@ const LONG_PLAYED = { ...GB_LONG, lastPlayed: Date.now() - 3_600_000, playTimeSe
           alla pressione mostra <code>errors.libraryGameUnavailable</code>.
         </template>
       </KitIssue>
+      <KitIssue title="Allargate a tutta la riga, le schede hanno spazio vuoto dentro">
+        Per non lasciare una fascia vuota a destra le schede di «Continua a giocare» ora si
+        allargano a tutta la riga (<code>auto-fit</code>, revisione del 2026-11-22). A 1920 px
+        ciascuna è larga circa 600 px, ma immagine, titolo e pulsanti restano nei primi 250: il
+        vuoto si è spostato dentro le schede. Con un solo gioco giocato la scheda è larga quanto la
+        pagina. Le schede sono al massimo 4 (<code>CONTINUE_COUNT</code>): a 1024 px ne stanno 3 per
+        riga e la quarta resta da sola sulla seconda, con due terzi di riga vuoti.
+        <template #solution>
+          da decidere col proprietario: l’immagine del salvataggio cresce con la scheda (3:2, fino a
+          un massimo da decidere, un token nuovo), oppure le schede hanno una larghezza massima e il
+          resto della riga mostra altri giochi recenti; e per la quarta scheda, mostrarne solo
+          quante stanno in una riga.
+        </template>
+      </KitIssue>
     </template>
   </KitSection>
 </template>

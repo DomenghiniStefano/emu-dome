@@ -82,7 +82,10 @@ async function onChanged() {
           {{ t('details.saves.quickHint') }}
         </span>
       </div>
-      <div v-if="saves && saves.quick.length" class="grid grid-cols-3 gap-8 touch:grid-cols-2">
+      <div
+        v-if="saves && saves.quick.length"
+        class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-card-min),1fr))] gap-8 touch:grid-cols-2"
+      >
         <SlotTile
           v-for="q in saves.quick"
           :key="q.slot"

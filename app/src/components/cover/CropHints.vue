@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// «Adatta la copertina»'s keys (the mockup's row under the zoom): the controller's with a
+// «Adatta la copertina»'s keys (a legend at the foot of the controls): the controller's with a
 // controller in use, the keyboard's otherwise, none on touch (as the C09 editor's hints).
 // L1 / R1 zoom: LT / RT do not reach the interface as steps.
 import { computed } from 'vue'
@@ -43,12 +43,15 @@ const hints = computed<Hint[]>(() =>
 <template>
   <ul
     v-if="inputMode !== 'touch'"
-    class="m-0 flex list-none flex-wrap items-center gap-12 p-0 text-caption text-ink-muted"
+    class="m-0 grid list-none grid-cols-[auto_minmax(0,1fr)] items-center gap-x-8 gap-y-4 p-0 text-caption text-ink-muted"
     :aria-label="t('library.cover.crop.hintsLabel')"
   >
-    <li v-for="h in hints" :key="h.does" class="flex items-center gap-6">
-      <Kbd v-for="k in h.keys" :key="k">{{ k }}</Kbd>
-      {{ t(`library.cover.crop.hint.${h.does}`) }}
+    <!-- A legend: the keys in one column, what they do beside them. -->
+    <li v-for="h in hints" :key="h.does" class="col-span-2 grid grid-cols-subgrid items-center">
+      <span class="flex items-center gap-4">
+        <Kbd v-for="k in h.keys" :key="k">{{ k }}</Kbd>
+      </span>
+      <span>{{ t(`library.cover.crop.hint.${h.does}`) }}</span>
     </li>
   </ul>
 </template>

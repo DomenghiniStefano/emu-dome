@@ -23,7 +23,7 @@ const { t } = useI18n()
       <Heading as="h1">{{ t('library.continue.title') }}</Heading>
       <span class="text-caption text-ink-muted">{{ t('library.continue.lead') }}</span>
     </div>
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-tile-min),1fr))] gap-8">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(var(--spacing-tile-min),1fr))] gap-8">
       <ContinueCard
         v-for="(g, i) in games"
         :key="g.id"

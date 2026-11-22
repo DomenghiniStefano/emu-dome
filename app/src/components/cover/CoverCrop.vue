@@ -62,7 +62,7 @@ const imageStyle = computed(() =>
     <DialogTitle as="div" :size="DialogTitleSize.Heading">
       {{ t('library.cover.crop.title') }}
     </DialogTitle>
-    <div class="flex flex-wrap items-start gap-16">
+    <div class="flex flex-wrap items-stretch gap-16">
       <!-- The cover as it will be: the backdrop (the image filling the frame, blurred, under the
            game scrim), then the image where the view puts it. -->
       <div
@@ -118,7 +118,8 @@ const imageStyle = computed(() =>
           <span class="text-caption text-ink-muted tabular-nums">{{ zoomText }}</span>
         </div>
         <p class="m-0 text-caption text-ink-muted">{{ t('library.cover.crop.drag') }}</p>
-        <CropHints />
+        <!-- The keys sit at the column's foot, level with the cover's bottom edge. -->
+        <CropHints class="mt-auto" />
       </div>
     </div>
     <p v-if="error" class="m-0 text-danger" role="alert">{{ error }}</p>

@@ -162,7 +162,7 @@ onMounted(async () => {
     </Tabs>
 
     <SectionPage
-      :width="SectionWidth.Medium"
+      :width="SectionWidth.Full"
       :scroll="false"
       role="tabpanel"
       :aria-label="t(tabLabelKey(current, phone))"
