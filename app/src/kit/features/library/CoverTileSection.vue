@@ -30,17 +30,6 @@ import { GB_LONG, GBA, GBC_MISSING, N3DS_USER, NDS_ICON } from './mock'
       <div class="w-capsule-medium"><CoverTile :game="GBC_MISSING" :menu-open="false" /></div>
     </KitState>
     <template #review>
-      <KitIssue title="L’aspetto «non raggiungibile» è riscritto a mano">
-        CoverTile non passa <code>missing</code> a GameCover: ripete nel suo <code>:class</code> la
-        stessa stringa (<code>opacity-missing outline … outline-dashed</code>) che GameCover applica
-        già con <code>missing</code>. Oggi i due aspetti coincidono, ma una modifica a uno solo dei
-        due (per esempio la proposta sul tema Chiaro in «Game cover») li separa senza che nessun
-        controllo se ne accorga.
-        <template #solution>
-          in <code>library/CoverTile.vue</code> sostituire il <code>:class</code> della copertina
-          con <code>:missing="off"</code>. Nessuna differenza visibile.
-        </template>
-      </KitIssue>
       <KitIssue title="Il titolo compare due volte con la copertina generata">
         Con la copertina generata (o l’icona della ROM) il titolo è scritto sulla copertina e subito
         sotto, nella stessa riga di testo: nella griglia ogni gioco senza immagine ripete il proprio
@@ -51,6 +40,18 @@ import { GB_LONG, GBA, GBC_MISSING, N3DS_USER, NDS_ICON } from './mock'
           (<code>:title="false"</code>, resta il colore con il badge), o sotto la copertina generata
           resta solo la riga con tempo e ultima partita. Il comportamento va poi ripreso dagli
           scaffali TV.
+        </template>
+      </KitIssue>
+      <KitIssue title="Con pochi giochi la griglia occupa solo la parte sinistra">
+        La griglia tiene ogni copertina fra 156 px e la larghezza che le resta, e riserva le colonne
+        anche quando sono vuote (<code>auto-fill</code>): a 1920 × 1080 con 5 giochi le copertine
+        prendono metà della riga e a destra resta una fascia vuota fino alla barra «Ordina per» /
+        «Aggiungi giochi». Con <code>auto-fit</code> le cinque copertine si allargherebbero a tutta
+        la riga, ma a circa 350 × 525 px ciascuna (una sola riga visibile).
+        <template #solution>
+          da decidere col proprietario: lasciare la griglia com’è (la fascia sparisce appena i
+          giochi riempiono una riga), oppure dare alla copertina anche una larghezza massima (un
+          token nuovo) e allargarle fino a quella.
         </template>
       </KitIssue>
     </template>

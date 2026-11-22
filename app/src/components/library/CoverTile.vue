@@ -64,14 +64,8 @@ const meta = computed(() =>
         <div :class="coverStackVariants({ layer: CoverStackLayer.Far })" aria-hidden="true"></div>
         <div :class="coverStackVariants({ layer: CoverStackLayer.Near })" aria-hidden="true"></div>
       </template>
-      <!-- Faded to 45% (Cowork: `disabled` is 40%), edged in dashes. -->
-      <GameCover
-        :game="game"
-        :versions="versions"
-        :class="{
-          'opacity-missing outline outline-offset-inset outline-line-strong outline-dashed': off,
-        }"
-      />
+      <!-- Faded to 45% (Cowork: `disabled` is 40%), edged in dashes: GameCover's own look. -->
+      <GameCover :game="game" :versions="versions" :missing="off" />
       <!-- The action strip (its 8px inset and a 30px cover action, plus 10), which the click area stops above. -->
       <Button
         :variant="ButtonVariant.Bare"

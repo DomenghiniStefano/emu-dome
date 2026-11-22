@@ -27,17 +27,20 @@ const { t } = useI18n()
   <div class="flex flex-wrap items-center gap-8">
     <Heading class="mr-8">{{ t('library.yourGames') }}</Heading>
     <ConsoleChips v-model="consoleFilter" :chips="chips" :initial="initialChip" />
-    <div class="flex-1"></div>
-    <SortFilterButton
-      :sort="sort"
-      :show="show"
-      @sort="s => emit('sort', s)"
-      @toggle="k => emit('toggle', k)"
-      @reset="emit('reset')"
-    />
-    <Button @click="emit('addFolder')">
-      <Plus :size="16" :stroke-width="1.75" aria-hidden="true" />
-      {{ t('library.addGames') }}
-    </Button>
+    <!-- The sort and «Aggiungi giochi» stay together at the row's end: in a narrow window they
+         go under the chips as one group (on a phone, one under the other). -->
+    <div class="ml-auto flex min-w-0 flex-wrap items-center gap-8">
+      <SortFilterButton
+        :sort="sort"
+        :show="show"
+        @sort="s => emit('sort', s)"
+        @toggle="k => emit('toggle', k)"
+        @reset="emit('reset')"
+      />
+      <Button @click="emit('addFolder')">
+        <Plus :size="16" :stroke-width="1.75" aria-hidden="true" />
+        {{ t('library.addGames') }}
+      </Button>
+    </div>
   </div>
 </template>

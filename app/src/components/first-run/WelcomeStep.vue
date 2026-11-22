@@ -39,7 +39,7 @@ const points = [
           class="mt-2 flex-none text-accent-text"
           aria-hidden="true"
         />
-        <span>{{ t(point.key) }}</span>
+        <span class="text-pretty">{{ t(point.key) }}</span>
       </li>
     </ul>
     <div class="flex items-center gap-8 text-ink-muted">
