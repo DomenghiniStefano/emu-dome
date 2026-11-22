@@ -72,6 +72,21 @@ const close = () => (shown.value = null)
           testo dice dove trovare la preimpostazione.
         </template>
       </KitIssue>
+      <KitIssue
+        title="E03 (il gioco si è fermato): tre pulsanti su due righe"
+        :status="IssueStatus.Open"
+      >
+        Nel dialogo del crash, con il salvataggio automatico, i pulsanti sono tre («Copia i dettagli
+        per una segnalazione», «Torna alla libreria», «Riprendi dal salvataggio automatico»): nella
+        larghezza del dialogo non stanno su una riga, e l’azione principale finisce da sola sulla
+        seconda riga, a destra, sotto le altre due. Si vede nello scenario shell-flow-crash a 1024 ×
+        640.
+        <template #solution>
+          da decidere nella primitiva Dialog (DialogContent / DialogFooter, non dal dialogo): un
+          dialogo con tre azioni un po’ più largo, oppure le azioni secondarie a sinistra e la
+          principale a destra sulla stessa riga, oppure «Copia i dettagli» come link nel testo.
+        </template>
+      </KitIssue>
     </template>
   </KitSection>
 </template>

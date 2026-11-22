@@ -404,7 +404,9 @@ onBeforeUnmount(() => emit('inset', 0))
           @back="back"
         />
 
-        <div class="flex min-h-0 flex-col gap-12 overflow-y-auto touch:flex-1 touch:gap-10">
+        <div
+          class="-mr-8 flex min-h-0 flex-col gap-12 overflow-y-auto pr-8 touch:flex-1 touch:gap-10"
+        >
           <QuickSaves
             v-if="view === QuickMenuView.Home || view === QuickMenuView.Slots"
             :slots="shownSlots"
