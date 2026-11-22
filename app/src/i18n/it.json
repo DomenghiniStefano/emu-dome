@@ -433,12 +433,66 @@
     "label": "Comandi touch",
     "menu": "Apri il menu rapido",
     "dpad": "Croce direzionale",
+    "circlePad": "Circle Pad",
     "a": "A",
     "b": "B",
+    "x": "X",
+    "y": "Y",
     "l": "L",
     "r": "R",
     "start": "START",
-    "select": "SELECT"
+    "select": "SELECT",
+    "lost": {
+      "title": "Controller scollegato",
+      "text": "Il gioco è in pausa. Ricollega il controller, oppure continua con i comandi touch.",
+      "wait": "Aspetta il controller",
+      "touch": "Continua con il tocco",
+      "toast": "Controller scollegato: comandi touch attivi"
+    },
+    "editor": {
+      "title": "Comandi touch",
+      "where": {
+        "portrait": "{console}, in verticale",
+        "landscape": "{console}, in orizzontale"
+      },
+      "control": {
+        "dpad": "Croce",
+        "circlePad": "Circle Pad",
+        "a": "A",
+        "b": "B",
+        "x": "X",
+        "y": "Y",
+        "l": "L",
+        "r": "R",
+        "start": "Start",
+        "select": "Select",
+        "menu": "Menu"
+      },
+      "none": "Tocca un comando",
+      "undo": "Annulla",
+      "redo": "Ripeti",
+      "add": "Aggiungi",
+      "size": "Dimensione",
+      "opacity": "Trasparenza",
+      "behaviour": "Comportamento",
+      "behaviours": {
+        "tap": "Tocco",
+        "hold": "Tieni premuto",
+        "turbo": "Turbo"
+      },
+      "onlyButtons": "Solo i pulsanti si possono tenere premuti o ripetere",
+      "percent": "{n}%",
+      "remove": "Togli",
+      "reset": "Torna alla disposizione predefinita",
+      "more": "Altro",
+      "collapse": "Riduci",
+      "expand": "Mostra gli strumenti",
+      "discard": "Esci senza salvare",
+      "save": "Salva",
+      "hint": {
+        "pick": "Scegli il comando"
+      }
+    }
   },
   "toast": {
     "stateSaved": "Salvato nello slot {slot}",
@@ -1288,20 +1342,22 @@
         "name": "Disposizione in verticale",
         "desc": "Quella usata quando tieni il telefono in verticale.",
         "option": {
-          "default": "Predefinita"
+          "default": "Predefinita",
+          "custom": "Personalizzata"
         }
       },
       "tland": {
         "name": "Disposizione in orizzontale",
         "desc": "Quella usata quando tieni il telefono in orizzontale.",
         "option": {
-          "default": "Predefinita"
+          "default": "Predefinita",
+          "custom": "Personalizzata"
         }
       },
       "tskin": {
         "name": "Aspetto dei pulsanti",
-        "desc": "Stile dei pulsanti touch, compresi quelli che importi.",
-        "value": {
+        "desc": "Stile dei pulsanti touch.",
+        "option": {
           "glass": "Vetro",
           "outlines": "Solo contorni",
           "contrast": "Contrasto alto"
@@ -1327,6 +1383,14 @@
       "tpad": {
         "name": "Nascondi con un controller collegato",
         "desc": "I pulsanti tornano se scolleghi il controller."
+      },
+      "tlost": {
+        "name": "Se il controller si scollega",
+        "desc": "Cosa fa il gioco quando il controller si spegne o si scarica.",
+        "option": {
+          "pause": "Pausa e domanda",
+          "touch": "Passa al tocco"
+        }
       }
     },
     "general": {

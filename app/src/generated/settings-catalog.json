@@ -607,7 +607,7 @@
     },
     {
       "key": "touch.tedit",
-      "kind": "action",
+      "kind": "touchLayout",
       "options": [],
       "page": "touch"
     },
@@ -615,7 +615,8 @@
       "key": "touch.tport",
       "kind": "choice",
       "options": [
-        "default"
+        "default",
+        "custom"
       ],
       "page": "touch"
     },
@@ -623,14 +624,19 @@
       "key": "touch.tland",
       "kind": "choice",
       "options": [
-        "default"
+        "default",
+        "custom"
       ],
       "page": "touch"
     },
     {
       "key": "touch.tskin",
-      "kind": "action",
-      "options": [],
+      "kind": "choice",
+      "options": [
+        "glass",
+        "outlines",
+        "contrast"
+      ],
       "page": "touch"
     },
     {
@@ -659,6 +665,15 @@
       "key": "touch.tpad",
       "kind": "toggle",
       "options": [],
+      "page": "touch"
+    },
+    {
+      "key": "touch.tlost",
+      "kind": "choice",
+      "options": [
+        "pause",
+        "touch"
+      ],
       "page": "touch"
     },
     {

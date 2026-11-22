@@ -1,7 +1,8 @@
 //! The static catalogue: every setting of the app, page by page, in the design's order
 //! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17), plus the Game Boy,
 //! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89), plus the game clock's
-//! offset and date rows (Trello #102): 164 (`library.versions` replaced `library.region`, #102).
+//! offset and date rows (Trello #102): 164 (`library.versions` replaced `library.region`, #102),
+//! plus «Se il controller si scollega» (`touch.tlost`, E14, Trello #29): 165.
 //!
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
@@ -601,29 +602,49 @@ pub static ENTRIES: &[Entry] = &[
     seg("pad.confirm", &["right", "bottom"], "right", G),
     sel("pad.repeat", &["slow", "normal", "fast"], "normal", G),
     // ---- Controlli touch (touch) ----
-    link("touch.tedit", ALL).phone().phase(4),
-    sel_more("touch.tport", &["default"], "default", ALL)
+    // The user's own layouts (Trello #29): per console, both orientations, edited in C06 and kept
+    // on this device (a layout fits one phone). Shape in `crate::touch::Layouts`.
+    e("touch.tedit", Kind::TouchLayout, DefaultValue::List(&[]), C)
+        .device()
         .phone()
-        .phase(4)
-        .not_wired(),
-    sel_more("touch.tland", &["default"], "default", ALL)
+        .phase(4),
+    // Per orientation: the default layout or the user's own (`touch.tedit`, the default while
+    // none is saved). C06's «Salva» picks `custom` for the console.
+    sel("touch.tport", &["default", "custom"], "default", ALL)
+        .device()
         .phone()
-        .phase(4)
-        .not_wired(),
-    link("touch.tskin", G).phone().phase(4),
+        .phase(4),
+    sel("touch.tland", &["default", "custom"], "default", ALL)
+        .device()
+        .phone()
+        .phase(4),
+    // The built-in skins (C08), drawn from the design system's tokens; imported skins
+    // (`.deltaskin`, RetroArch overlays) are Phase 5.
+    seg(
+        "touch.tskin",
+        &["glass", "outlines", "contrast"],
+        "glass",
+        G,
+    )
+    .phone()
+    .phase(4),
     slider("touch.topac", 60, (10, 100, 5), Unit::Percent, ALL)
         .phone()
         .phase(4),
     slider("touch.thapt", 40, (0, 100, 10), Unit::Percent, G)
         .device()
         .phone()
-        .phase(4)
-        .not_wired(),
+        .phase(4),
     seg("touch.thide", &["never", "5s", "10s"], "never", G)
         .phone()
-        .phase(4)
-        .not_wired(),
-    sw("touch.tpad", true, G).phone().phase(4).not_wired(),
+        .phase(4),
+    sw("touch.tpad", true, G).phone().phase(4),
+    // E14 (owner, 2026-11-22): the last controller gone while playing pauses and asks, or
+    // brings the touch controls back without a pause.
+    seg("touch.tlost", &["pause", "touch"], "pause", G)
+        .device()
+        .phone()
+        .phase(4),
     // ---- Generale (general) ----
     sel("general.lang", &["system", "it", "en"], "system", G),
     seg(
@@ -1042,7 +1063,13 @@ pub static SECTIONS: &[Section] = &[
     Section {
         page: "touch",
         id: "behaviour",
-        keys: &["touch.topac", "touch.thapt", "touch.thide", "touch.tpad"],
+        keys: &[
+            "touch.topac",
+            "touch.thapt",
+            "touch.thide",
+            "touch.tpad",
+            "touch.tlost",
+        ],
     },
     Section {
         page: "general",
@@ -1246,8 +1273,9 @@ mod tests {
     #[test]
     fn has_the_designs_entries_with_unique_keys_on_known_pages() {
         // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102);
-        // `library.versions` took the place of `library.region` (#102).
-        assert_eq!(ENTRIES.len(), 164);
+        // `library.versions` took the place of `library.region` (#102), plus E14's
+        // `touch.tlost` (#29).
+        assert_eq!(ENTRIES.len(), 165);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),

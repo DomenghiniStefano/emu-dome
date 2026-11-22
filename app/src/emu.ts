@@ -59,6 +59,9 @@ import type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
 import type { CustomLayout } from '@/generated/CustomLayout'
 import type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
 import type { ScreenStatus } from '@/generated/ScreenStatus'
+import type { TouchLayout } from '@/generated/TouchLayout'
+import type { TouchOrientation } from '@/generated/TouchOrientation'
+import type { TouchSetup } from '@/generated/TouchSetup'
 import type { SaveExport } from '@/generated/app/SaveExport'
 import type { SaveMatch } from '@/generated/app/SaveMatch'
 import type { SavesMigration } from '@/generated/app/SavesMigration'
@@ -131,6 +134,12 @@ export type { ScreenPlacement } from '@/generated/ScreenPlacement'
 export type { ScreenRect } from '@/generated/ScreenRect'
 export type { ScreenRotation } from '@/generated/ScreenRotation'
 export type { ScreenStatus } from '@/generated/ScreenStatus'
+export type { TouchBehaviour } from '@/generated/TouchBehaviour'
+export type { TouchControl } from '@/generated/TouchControl'
+export type { TouchControlId } from '@/generated/TouchControlId'
+export type { TouchLayout } from '@/generated/TouchLayout'
+export type { TouchOrientation } from '@/generated/TouchOrientation'
+export type { TouchSetup } from '@/generated/TouchSetup'
 export type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
 export type { BiosRow } from '@/generated/app/BiosRow'
 export type { CloudAccount } from '@/generated/app/CloudAccount'
@@ -253,6 +262,20 @@ export const emu = {
   undoSave: () => invoke<void>('undo_save'),
   /** A game button from the touch controls. */
   input: (button: Button, pressed: boolean) => invoke<void>('input', { button, pressed }),
+  /** The touch controls (Trello #29): the layouts of one console, C06's «Salva», the Circle Pad
+   * and the vibration of a press. */
+  touch: {
+    /** The layouts saved on this device for `console`, its controls and the size / opacity
+     * limits. */
+    layouts: (console: ConsoleId) => invoke<TouchSetup>('touch_layouts', { console }),
+    /** Saves `layout` for `console` held `orientation`, and makes it the one shown there. */
+    setLayout: (console: ConsoleId, orientation: TouchOrientation, layout: TouchLayout) =>
+      invoke<void>('touch_set_layout', { console, orientation, layout }),
+    /** The Circle Pad at (x, y), each -1..1, y downwards; (0, 0) let go. */
+    stick: (x: number, y: number) => invoke<void>('touch_stick', { x, y }),
+    /** A press's vibration, `strength` 1–100 (`touch.thapt`); nothing on the desktop. */
+    haptic: (strength: number) => invoke<void>('haptic', { strength }),
+  },
   /** A key (`KeyboardEvent.code`) for Rust to route in game: a game button or a shortcut. */
   key: (code: string, pressed: boolean, repeat: boolean) =>
     invoke<void>('key', { code, pressed, repeat }),

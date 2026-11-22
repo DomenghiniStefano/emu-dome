@@ -51,6 +51,12 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
       void nextTick(() => find(`[${FocusMark.Customise}]`)?.focus())
       return
     }
+    // The touch controls editor closes back onto G10, on the row that opened it.
+    if (view.value === QuickMenuView.TouchEditor) {
+      view.value = QuickMenuView.Controls
+      void nextTick(() => find(`[${FocusMark.TouchEdit}]`)?.focus())
+      return
+    }
     view.value = QuickMenuView.Home
     hooks.home()
     void nextTick(() => (opener ? opener.focus() : void focusChosenSlot()))

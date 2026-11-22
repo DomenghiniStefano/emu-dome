@@ -24,6 +24,7 @@ import { useI18n } from 'vue-i18n'
 
 import type { GameInfo, LibraryGame, ScreenLayoutId, ScreenStatus, Speed, VideoMode } from '@/emu'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
+import TouchEditor from '@/components/touch/TouchEditor.vue'
 
 import { useNavScope } from '@/nav'
 import { inputMode } from '@/lib/inputMode'
@@ -158,11 +159,14 @@ const sheet = layout.phone
 const barShown = computed(() => view.value === QuickMenuView.Screens && !phone.value)
 /** C09: the screens editor over the whole game, in place of the menu. */
 const editorShown = computed(() => view.value === QuickMenuView.ScreenEditor)
-/** The game shows through on G09 and in the editor (and beside the phone's sheet or panel). */
+/** C06 (#29): the touch controls editor over the whole game, in place of the menu. */
+const touchEditorShown = computed(() => view.value === QuickMenuView.TouchEditor)
+/** The game shows through on G09 and in the editors (and beside the phone's sheet or panel). */
 const dimmed = computed(
   () =>
     view.value !== QuickMenuView.Screens &&
     view.value !== QuickMenuView.ScreenEditor &&
+    view.value !== QuickMenuView.TouchEditor &&
     !phone.value,
 )
 const panelClass = computed(() =>
@@ -371,6 +375,11 @@ onBeforeUnmount(() => emit('inset', 0))
       <ScreenEditor :console="game.consoleId" :scope="null" :status="screens" @close="back" />
     </div>
 
+    <!-- C06 over the game, the same way. -->
+    <div v-else-if="touchEditorShown" ref="root" class="contents">
+      <TouchEditor :console="game.consoleId" live @close="back" />
+    </div>
+
     <section
       v-else
       ref="root"
@@ -466,8 +475,10 @@ onBeforeUnmount(() => emit('inset', 0))
             :schema="schema"
             :modifier="modifier"
             :shortcut-count="boundCount"
+            :touch="layout.coarse"
             @set="setSession"
             @shortcuts="e => open(QuickMenuView.Shortcuts, e)"
+            @touch-edit="e => open(QuickMenuView.TouchEditor, e)"
           />
 
           <ShortcutsPage

@@ -170,6 +170,39 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         </Button>
         <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadFace">A</Button>
         <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadSystem">START</Button>
+        <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadFace" aria-pressed="true">
+          B
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="PadOutline and PadContrast (the skins), each with a held button">
+      <div class="flex flex-wrap items-center gap-8">
+        <Button :variant="ButtonVariant.PadOutline" :size="ButtonSize.PadShoulder">L</Button>
+        <Button :variant="ButtonVariant.PadOutline" :size="ButtonSize.PadFace">A</Button>
+        <Button :variant="ButtonVariant.PadOutline" :size="ButtonSize.PadFace" aria-pressed="true">
+          B
+        </Button>
+        <Button :variant="ButtonVariant.PadContrast" :size="ButtonSize.PadSystem">START</Button>
+        <Button :variant="ButtonVariant.PadContrast" :size="ButtonSize.PadFace">A</Button>
+        <Button :variant="ButtonVariant.PadContrast" :size="ButtonSize.PadFace" aria-pressed="true">
+          B
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Tool and ToolIcon (the C06 editor's toolbar): desktop, and on the phone">
+      <div class="flex flex-wrap items-center gap-8">
+        <Button :size="ButtonSize.ToolIcon" aria-label="Undo">
+          <Settings :size="18" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button :size="ButtonSize.Tool">Size</Button>
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Tool">Save</Button>
+        <div data-density="touch" class="flex gap-8 text-lead">
+          <Button :size="ButtonSize.ToolIcon" aria-label="Undo">
+            <Settings :size="18" :stroke-width="1.75" aria-hidden="true" />
+          </Button>
+          <Button :size="ButtonSize.Tool">Size</Button>
+          <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Tool">Save</Button>
+        </div>
       </div>
     </KitState>
     <KitState label="Soft · CardAction: desktop, and on the phone">

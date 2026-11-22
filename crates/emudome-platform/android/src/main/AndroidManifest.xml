@@ -1,3 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The touch controls' vibration on a press (SystemBridge.vibrate, `touch.thapt`): a normal
+         permission, granted at install, never asked. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

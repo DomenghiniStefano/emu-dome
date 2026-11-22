@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { phoneShellScenarios } from "./phone-shell.mjs";
 import { quickMenuScenarios } from "./quick-menu.mjs";
+import { touchScenarios } from "./touch.mjs";
 
 const [cdpPort, baseUrl, outDir, ...only] = process.argv.slice(2);
 const here = path.dirname(
@@ -271,6 +272,7 @@ const SCENARIOS = {
     height: 1500,
   },
   ...quickMenuScenarios,
+  ...touchScenarios,
   ...phoneShellScenarios,
 };
 

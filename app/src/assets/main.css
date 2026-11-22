@@ -39,6 +39,7 @@
 @source '../components/about';
 @source '../components/updates';
 @source '../components/tv-mode';
+@source '../components/touch';
 @source '../components/storage';
 
 /* The touch density: `touch:` styles an element while the interface is laid out for a finger

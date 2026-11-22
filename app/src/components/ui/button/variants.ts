@@ -65,9 +65,14 @@ export const ButtonVariant = {
   // A colour to pick (`general.accent`): a round swatch, its fill from the caller's `style`, the
   // chosen one (`aria-checked`) ringed in ink. With ButtonSize.IconSmall and ButtonFade.None.
   Swatch: 'swatch',
-  // A control of the on-screen gamepad (TouchControls): glass with a strong edge, darker while
-  // pressed, no fade (a press must show at once). With the Pad sizes.
+  // A control of the on-screen gamepad (components/touch): glass with a strong edge, darker while
+  // pressed or held down (`aria-pressed`, a «hold» button), no fade (a press must show at once).
+  // With the Pad sizes. The skin «Vetro» (`touch.tskin`).
   Pad: 'pad',
+  // The skin «Solo contorni»: no fill, a 2px ink edge, glass while pressed.
+  PadOutline: 'padOutline',
+  // The skin «Contrasto alto»: the ground's solid fill and a 2px ink edge, ink while pressed.
+  PadContrast: 'padContrast',
   // A section of the phone's tab bar (#29, at the bottom in portrait): muted icon over its name,
   // no fill; the current one (`aria-current="page"`) in accent text. With ButtonSize.PhoneTab.
   PhoneTab: 'phoneTab',
@@ -170,12 +175,17 @@ export const ButtonSize = {
   LinkRow: 'linkRow',
   // A toast's action (G17): 32px, radius 8; 44 on the phone (the touch minimum).
   Toast: 'toast',
-  // The on-screen gamepad (TouchControls), sized for a thumb: the shoulders L / R, the quick
-  // menu, the round face buttons, Select / Start. The touch board's own sizes (pending tokens).
+  // The on-screen gamepad (components/touch), sized for a thumb: the shoulders L / R, the quick
+  // menu, the round face buttons, Select / Start, none under the touch minimum (44, Trello #29).
+  // The touch board's own sizes (pending tokens).
   PadShoulder: 'padShoulder',
   PadMenu: 'padMenu',
   PadFace: 'padFace',
   PadSystem: 'padSystem',
+  // The C06 touch controls editor's toolbar (Trello #29): a tool with its words (32, the touch
+  // minimum on the phone), and one with its icon alone (a square of the same height).
+  Tool: 'tool',
+  ToolIcon: 'toolIcon',
   // A section of the phone's tab bar (#29): an equal share of the bar, at least the touch
   // minimum tall and wide, icon over name.
   PhoneTab: 'phoneTab',
@@ -261,7 +271,11 @@ export const buttonVariants = cva(
         [ButtonVariant.Swatch]:
           'rounded-full border-0 aria-checked:outline-ring aria-checked:outline-offset-swatch aria-checked:outline-ink aria-checked:outline-solid',
         [ButtonVariant.Pad]:
-          'border-line-strong bg-glass font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-surface-hover',
+          'border-line-strong bg-glass font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-surface-hover aria-pressed:bg-surface-hover',
+        [ButtonVariant.PadOutline]:
+          'border-strong border-ink bg-transparent font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-glass aria-pressed:bg-glass',
+        [ButtonVariant.PadContrast]:
+          'border-strong border-ink bg-bg font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-ink active:text-bg aria-pressed:bg-ink aria-pressed:text-bg',
         [ButtonVariant.PhoneTab]:
           'border-0 bg-transparent text-ink-muted [-webkit-tap-highlight-color:transparent] aria-[current=page]:text-accent-text',
         [ButtonVariant.TvTab]:
@@ -317,10 +331,12 @@ export const buttonVariants = cva(
           'h-control gap-8 px-8 py-0 touch:h-auto touch:min-h-touch touch:text-label-lead',
         [ButtonSize.LinkRow]: 'min-h-link-row gap-16 px-16 py-8',
         [ButtonSize.Toast]: 'h-control rounded-8 px-10 touch:h-touch touch:px-16',
-        [ButtonSize.PadShoulder]: 'h-control-lg w-pad-shoulder rounded-card',
-        [ButtonSize.PadMenu]: 'h-control-lg w-48 rounded-card',
+        [ButtonSize.PadShoulder]: 'h-touch w-pad-shoulder rounded-card',
+        [ButtonSize.PadMenu]: 'h-touch w-48 rounded-card',
         [ButtonSize.PadFace]: 'size-pad-face rounded-full text-dialog',
-        [ButtonSize.PadSystem]: 'h-control rounded-panel px-14 text-overline',
+        [ButtonSize.PadSystem]: 'h-touch rounded-panel px-14 text-overline',
+        [ButtonSize.Tool]: 'h-control gap-6 rounded-8 px-10 touch:h-touch touch:px-12',
+        [ButtonSize.ToolIcon]: 'size-control rounded-8 p-0 touch:size-touch',
         [ButtonSize.PhoneTab]:
           'min-h-touch min-w-touch flex-1 basis-0 flex-col gap-2 rounded-8 px-2 py-4',
         [ButtonSize.TvTab]: 'h-tv-tab rounded-full px-24 text-tv-label',

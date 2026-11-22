@@ -20,13 +20,19 @@ export const QuickMenuView = {
   /** C09 from G09 «Personalizza gli schermi»: the screens editor over the game, in place of the
    * menu (`screen-editor/ScreenEditor.vue`). */
   ScreenEditor: 'screenEditor',
+  /** C06 from G10 «Personalizza i controlli touch» (Trello #29): the touch controls editor over
+   * the game, in place of the menu (`touch/TouchEditor.vue`). */
+  TouchEditor: 'touchEditor',
 } as const
 export type QuickMenuView = (typeof QuickMenuView)[keyof typeof QuickMenuView]
 
 /** A page with a title under the back button. */
 export type SubPage = Exclude<
   QuickMenuView,
-  typeof QuickMenuView.Home | typeof QuickMenuView.Restart | typeof QuickMenuView.ScreenEditor
+  | typeof QuickMenuView.Home
+  | typeof QuickMenuView.Restart
+  | typeof QuickMenuView.ScreenEditor
+  | typeof QuickMenuView.TouchEditor
 >
 
 /** The title (message key) of each page. */
@@ -42,7 +48,8 @@ export function isSubPage(view: QuickMenuView): view is SubPage {
   return (
     view !== QuickMenuView.Home &&
     view !== QuickMenuView.Restart &&
-    view !== QuickMenuView.ScreenEditor
+    view !== QuickMenuView.ScreenEditor &&
+    view !== QuickMenuView.TouchEditor
   )
 }
 
@@ -79,4 +86,6 @@ export const FocusMark = {
   MoreSlots: 'data-qm-more',
   /** G09's «Personalizza gli schermi»: the focus comes back to it from the editor. */
   Customise: 'data-qm-customise',
+  /** G10's «Personalizza i controlli touch»: the focus comes back to it from the C06 editor. */
+  TouchEdit: 'data-qm-touch-edit',
 } as const
