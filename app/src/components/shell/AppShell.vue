@@ -5,7 +5,9 @@
 //
 // The phone (#29): held upright the sections are a tab bar at the bottom (PhoneTabBar); on its
 // side the rail is a column on the camera's edge, the top bar and the section beside it. The
-// whole shell keeps clear of the system's bars and the notch (the `safe` spacing tokens). Under
+// whole shell keeps clear of the system's bars and the notch (the `safe` spacing tokens): the top
+// bar and the side column reach under the status bar, their glass behind it and their content
+// below it (#29: no strip of the page between the status bar and the bar). Under
 // the top bar, E13's warning when the phone is almost full (storage/StorageWarning).
 //
 // Where the shell is, is one typed `Route` (route.ts), held by App.vue: each move is one of its
@@ -96,11 +98,11 @@ const tabBar = ref<InstanceType<typeof PhoneTabBar> | null>(null)
 const shellClass = computed(() => {
   switch (nav.value) {
     case ShellNav.Tabs:
-      return 'flex-col pt-safe-top'
+      return 'flex-col'
     case ShellNav.Column:
       return layout.camera.value === 'left'
-        ? 'flex-row pt-safe-top pr-safe-right'
-        : 'flex-row-reverse pt-safe-top pl-safe-left'
+        ? 'flex-row pr-safe-right'
+        : 'flex-row-reverse pl-safe-left'
     default:
       return 'flex-col'
   }
@@ -179,8 +181,9 @@ const go = (to: Route) => (route.value = moved(route.value, to))
       <AppTopBar v-if="!uiMode.tv" @search="openSearch" />
       <!-- E13 (#29): the phone almost full, under the top bar. -->
       <StorageWarning v-if="layout.touchDensity.value && !uiMode.tv" />
+      <!-- TV mode only: not the `v-else` of the warning above, or the desktop shows them too. -->
       <TvTabs
-        v-else
+        v-if="uiMode.tv"
         ref="tabs"
         :current="section"
         :content-has-initial="hasOwnInitialFocus(section)"
