@@ -68,6 +68,10 @@ pub fn create_window(
         .title("EmuDome")
         .inner_size(1280.0, 800.0)
         .min_inner_size(640.0, 480.0)
+        // The design system's `bg` (#0e0f13): what shows before the page's splash paints and
+        // before the native renderer's first frame (Trello #101). The child webview keeps its
+        // own background (transparent over the native video).
+        .background_color(tauri::window::Color(0x0e, 0x0f, 0x13, 0xff))
         .focused(options.focused)
         .build()?;
     let scale = window.scale_factor()?;
