@@ -12,26 +12,34 @@ BIOS and firmware replacements; you can point EmuDome at your own dumps if you h
 > State: **Phase 1, desktop shell; Phase 2 (NDS) started.** Phase 0, the feasibility prototype, is done: a game
 > drawn natively under a transparent web interface holds up (`docs/fase0-esito.md`). 3DS is Phase 3, first milestone
 > done: 3DS games open in the app on the Azahar core, rendered with Vulkan on the app's own GPU device (software
-> rendering where Vulkan is not available); encrypted games are refused. Azahar is not packaged yet.
-> Full analysis: see the document "EmuDome — Analisi e integrazioni".
+> rendering where Vulkan is not available); encrypted games are refused. Azahar is not packaged yet. No release
+> has been built yet (`docs/release.md`).
 
 ## What it has
 
 - A library of your games, identified by their content (not the file name), with covers and play time; the cover
   grid draws only the rows near the screen, so it stays quick with thousands of games. A cover can be generated,
   the ROM's icon, or made from one of your screenshots or your own image, framed in the 2:3 cover (never
-  downloaded).
+  downloaded). Regional versions of one game are grouped on one tile. On Android, game folders and files are
+  picked through the system's document picker.
 - Two video paths: **native** (wgpu draws on the window, the transparent webview sits on top; the default on
   Windows and Android) and **in the webview** (frames reach a canvas through the `emu://` protocol; the default on
   Linux). Screen effects (librashader presets) on the native path.
-- The two DS and 3DS screens, with the touch screen driven by the mouse or by touch.
+- The two DS and 3DS screens composed by EmuDome: layouts, swap, rotation, a custom layout editor, the DS lid; the
+  touch screen driven by the mouse or by touch.
 - Audio with resampling and latency control; fast forward, slow motion, rewind (off by default on phones and for
   3DS), pause, screenshots.
 - Keyboard and controllers (SDL3 on desktop, the system's input events on Android), remappable, with L3
   shortcuts; every menu works with the controller.
+- Touch controls on phones, per console and orientation, with an editor for their layout and two styles.
 - Save states in slots, the game's own saves, a quick menu (Esc or the controller's Home button).
-- Settings at several levels (global, console, game) generated from one schema; three themes and five accent
-  colours (amber by default).
+- Settings at several levels (global, console, game, and changes tried in the quick menu) generated from one
+  schema; three themes and five accent colours (amber by default).
+- Layouts for the desktop, the phone (upright and on its side) and a TV mode for controllers.
+- Search everywhere (Ctrl + K or the controller's Y) and a notification centre.
+- Optional Google Drive sync of saves, settings and your own game files (desktop; sign-in is not available on
+  Android yet).
+- The desktop app updates itself from signed GitHub releases (`docs/release.md`).
 - Interface in English and Italian (vue-i18n), chosen from the system language.
 
 ## Running on Windows
@@ -40,8 +48,8 @@ Requirements: stable Rust; Node in the range of `engines.node` in `app/package.j
 check stops on another); pnpm as pinned by `packageManager` in `app/package.json` (the frontend refuses npm); the
 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (WebView2 is already on Windows 10/11); and CMake
 for the SDL3 build (on PATH, or in the `CMAKE` variable; VS Build Tools 2022 ships one). The mGBA core is built
-by EmuDome from source (`cores.lock`, Trello #88) and published in this repository's release `cores-mgba-<commit>`
-(#95), which the fetch script downloads. Building it yourself (`-Build`, or when that download fails) also needs
+by EmuDome from source (`cores.lock`) and published in this repository's release `cores-mgba-<commit>`, which the
+fetch script downloads; melonDS DS for Windows and Linux is upstream's release, pinned by sha256. Building it yourself (`-Build`, or when that download fails) also needs
 git, VS Build Tools 2022 with the C++ tools and the Android NDK that `cores.lock` names (its clang-cl compiles mGBA).
 
 ```powershell
@@ -85,8 +93,10 @@ For developers). Then, with the phone connected over USB and USB debugging on:
 ```
 
 `sh scripts/android-build.sh --install` does the same on Linux. The script's header lists every step; a release
-APK (`-Release`) is signed with a keystore kept outside the repository, named by environment variables (the
-script's header, and `CLAUDE.md` «Commands»).
+APK (`-Release`) or the App Bundle for Google Play (`-Bundle`) is signed with a keystore kept outside the
+repository, named by `EMUDOME_KEYSTORE`, `EMUDOME_KEYSTORE_PASSWORD`, `EMUDOME_KEY_ALIAS` and
+`EMUDOME_KEY_PASSWORD`; without them the release build stops. The Android cores are pinned in `cores.lock` like
+the desktop ones (mGBA and melonDS DS built by EmuDome, 16 KB-aligned).
 
 How a release is made: `docs/release.md`.
 
@@ -127,11 +137,11 @@ The full log, entry by entry, is `docs/fase0-esito.md`. In short:
   default.
 - **Android** (Galaxy A71): native video under the WebView, ≈ 59.8 FPS (Vulkan), touch controls, the
   surface survives background and resume. Not tested yet: audio quality and delay (the test ROM is silent),
-  controllers (read through Android's input events since #47, not run on a device yet), landscape layout.
+  controllers (read through Android's input events, not run on a device yet).
 - **NDS** (melonDS DS, windowless, Windows): two screens, touch, 60 FPS at 1× on the test ROM, states.
 - **3DS** (Azahar, windowless, Windows, homebrew): through the shell's host on the app's Vulkan
   device, 58.7-60.3 FPS at 1× (debug build), Max 685-802, two screens and touch; software renderer 43 FPS.
-  Not tested yet in the app window (the owner's UAT), nor audio and controllers. Known Azahar crash: loading a
+  Not tested yet in the app window, nor audio and controllers. Known Azahar crash: loading a
   state of content without a title ID (all `.3dsx` homebrew).
 
 ## Layout
@@ -143,6 +153,7 @@ crates/
                      input routing, settings engine, library, saves, error codes
   emudome-platform/  everything that depends on the operating system or the form factor (one module per OS,
                      macOS stub; the Android Gradle library), controllers (SDL3 / Android input)
+  emudome-sync/      Google Drive sync: sign-in, Drive calls, the sync rules (no OS code)
   hw-render-spike/   hardware-rendering spike, its own workspace, never built by the checks
 app/
   src/               Vue interface (Vite); i18n/ holds the message files (en.json, it.json)

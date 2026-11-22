@@ -1,8 +1,7 @@
 # Releases
 
-How an EmuDome release is made, and what is not in place yet. Trello #83 wrote this down; #44 added the packages
-per OS, the updates and the release keys, #50 decided where builds are published. Nothing here has been run end to
-end yet: no release exists.
+How an EmuDome release is made, and what is not in place yet (Trello #83, #44, #50). Nothing here has been run end
+to end yet: no release exists.
 
 ## Today, as the code is
 
@@ -19,7 +18,7 @@ end yet: no release exists.
   `namespace` in `app/src-tauri/gen/android/app/build.gradle.kts`, the generated activity's package
   `it.domehub.emudome`, the platform library's `it.domehub.emudome.platform`). It names the data folders on every
   OS and is the package name on Google Play, which can never change once an app is published there. It was
-  `com.domenghini.emudome` until 2026-11-21 (Trello #90): a desktop build copies the old folders once at its first
+  `com.domenghini.emudome` before (Trello #90): a desktop build copies the old folders once at its first
   start (`emudome_core::data_move`, the old ones are left in place); Android data does not carry over (another
   package's private storage cannot be read). The Android OAuth client for Drive sync (#49) is registered for
   `it.domehub.emudome` with the debug keystore's SHA-1, and gets the release keystore's SHA-1 before a release.
@@ -33,7 +32,7 @@ end yet: no release exists.
     in the user's own local app data, Tauri's default for that mode). The data folders
     (`%APPDATA%\it.domehub.emudome`, `%LOCALAPPDATA%\it.domehub.emudome`) are outside the install folder, so
     uninstalling keeps saves, settings and the library. Tauri's uninstaller offers a «Delete the application
-    data» box, unticked by default (Tauri's template; to be seen in the owner's UAT): only a user who ticks it
+    data» box, unticked by default (Tauri's template; not seen on a real install yet): only a user who ticks it
     loses them (it deletes both data folders). An update (below) runs the same installer in passive mode, over
     the old version.
   - Linux: `pnpm package:linux` on Linux builds an AppImage and a deb (`targets` of `package/linux-x86_64.json`);
@@ -56,7 +55,7 @@ end yet: no release exists.
   names its download folder (`built.release`). The fetch scripts download them from there, sha256-checked, and
   build from source only when the download fails or with `-Build` / `--build`. That release hosts binaries only:
   the source offer is the pinned upstream source archive with the build scripts (`cores/SOURCES.md`). melonDS DS
-  for Android is built the same way (`scripts/build-melondsds.ps1`, NDK 27.1, 16 KB pages; owner, 2026-11-22), and
+  for Android is built the same way (`scripts/build-melondsds.ps1`, NDK 27.1, 16 KB pages), and
   so are the libraries its CMake would git-clone, each pinned in `cores.lock` (`build.dependencies`: commit, source
   archive, sha256, licence) and handed to CMake offline; its Windows and Linux files are still upstream's release
   assets. mGBA for
@@ -64,9 +63,9 @@ end yet: no release exists.
   `EMUDOME_ALLOW_UNSTABLE_CORES=1`, allowed for local test packages only, never for a release, until it is built on
   Linux (Trello #92, a release blocker for Linux only). Azahar is not packaged (Phase 3).
 - **Signing.** No Windows code signing for now (#50): the installer is unsigned and Windows SmartScreen warns on
-  first run. Android release builds are signed with the owner's keystore. Desktop updates are signed with the
-  owner's update key (below).
-- **Updates** (#44, decided in #50: GitHub Releases, stable only). The desktop app updates itself with Tauri's
+  first run. Android release builds are signed with the project's release keystore, kept outside the repository.
+  Desktop updates are signed with the project's update key (below).
+- **Updates** (#44, #50: GitHub Releases, stable only). The desktop app updates itself with Tauri's
   updater plugin (`emudome-platform/src/updater.rs`, `emudome_core::updates`, `app/src-tauri/src/updates.rs`):
   it reads `latest.json` from the newest GitHub release that is not a pre-release
   (`https://github.com/DomenghiniStefano/emu-dome/releases/latest/download/latest.json`; the cores' releases are
@@ -90,7 +89,7 @@ end yet: no release exists.
   - `latest.json` is written by `node scripts/updater-manifest.mjs write` from the built packages and their
     `.sig` files, and uploaded to the release with them.
 
-## The update key (once, by the owner)
+## The update key (once)
 
 1. Outside the repository: `pnpm tauri signer generate -w <a folder outside the repo>/emudome-updater.key` (from
    `app/`), with a password. It writes the private key (`emudome-updater.key`) and the public key
@@ -119,7 +118,7 @@ end yet: no release exists.
      `./scripts/android-build.ps1 -Bundle` for Google Play (and `-Release` for an APK to attach);
    - `node scripts/updater-manifest.mjs write --version <version> --notes "<what changed>" --out latest.json
      windows-x86_64=<the setup .exe> [linux-x86_64=<the .AppImage>]`.
-4. Publish (decided in #50):
+4. Publish (#50):
    - **GitHub Releases** of the repository, on the tag, **not** a pre-release (the updater only sees the latest
      full release): the installers with their `.sig` files under the names `latest.json` gives, `latest.json`,
      the APK, `cores/SOURCES.md` and the licences next to them (the source offer for the cores,
@@ -163,8 +162,8 @@ A published release is never replaced or edited: a new build is a new pin and a 
 
 Google Play takes an app targeting Android 15+ only if it supports 16 KB memory pages (updates without it are
 refused from 2027-02-01), and a device with 16 KB pages runs an app with a 4 KB-aligned library only in its
-compatibility mode, with a warning on first launch (seen on 2026-11-22 on a Galaxy S23, Android 17: «Questa app
-non è compatibile con dimensioni pagina di 16 kB»). Two halves, both needed for every library in the APK:
+compatibility mode, with a warning on first launch (seen on a Galaxy S23, Android 17: «Questa app non è
+compatibile con dimensioni pagina di 16 kB»). Two halves, both needed for every library in the APK:
 
 - **In the zip**: libraries stored uncompressed and 16 KB-aligned. AGP 8.5.1+ does it with
   `packaging.jniLibs.useLegacyPackaging = false` (written in `app/src-tauri/gen/android/app/build.gradle.kts`;
@@ -180,15 +179,15 @@ non è compatibile con dimensioni pagina di 16 kB»). Two halves, both needed fo
     0x4000, `GNU_RELRO` ending at 0x164000). Nothing to re-pin.
   - `libmelondsds_libretro_android.so`: upstream's v1.4.0 release asset was not aligned (built by its CI with
     NDK r27d, `LOAD` align 0x1000), so EmuDome builds it from the pinned v1.4.0 source and its pinned dependencies
-    with `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` (`scripts/build-melondsds.ps1`, owner, 2026-11-22), published as
+    with `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` (`scripts/build-melondsds.ps1`), published as
     `cores-melondsds-f394adb`: `LOAD` align 0x4000, `GNU_RELRO` filling its `LOAD`.
 
 ## Still open
 
 - No release was built yet: the per-user installer, the uninstaller keeping the data, an update from one version
-  to the next and the AAB are the owner's UAT (#44).
+  to the next and the AAB are still to be tried on real machines (#44).
 - The Linux packages were never built (no Linux here); mGBA for Linux built from source (#92), then published in
   the same kind of release.
 - Windows code signing: not for now (#50).
 - The update's TLS goes through the system (`native-tls`: SChannel, OpenSSL on Linux): Tauri's default rustls
-  would add `webpki-root-certs` (CDLA-Permissive-2.0), not on `deny.toml`'s list until the owner decides.
+  would add `webpki-root-certs` (CDLA-Permissive-2.0), not on `deny.toml`'s list; not decided yet.

@@ -8,8 +8,7 @@ The licence check in `scripts/check` (`cargo deny check licenses` with `deny.tom
 `scripts/npm-licenses.mjs`) fails when a crate or npm package has a licence outside the allow-list.
 The cores, fonts, icons and test ROM below are not packages: they are reviewed by hand here.
 
-Last audit: 2026-11-18. Nothing incompatible with GPL-3.0-or-later was found; the notes column says
-where a point needs care.
+Nothing incompatible with GPL-3.0-or-later was found; the notes column says where a point needs care.
 
 ## Emulation cores (libretro)
 
@@ -34,7 +33,7 @@ API, unmodified.
   `cores/SOURCES.md` (the source offer: core, licence, repository, commit, download URLs or source
   archive and build scripts), EmuDome's `LICENSE` and this file (`THIRD_PARTY.md`: the licences page,
   `about.lic`, shows both). Its `targets` are the package formats: NSIS on Windows, AppImage and deb on
-  Linux (Trello #44). Nothing else from
+  Linux. Nothing else from
   `cores/` goes in. A listed file that is missing stops the build (Tauri), one with the wrong hash
   stops it before bundling (`cores.mjs verify --package`). A plain `pnpm tauri build` makes no
   installer (`bundle.active` is false in `tauri.windows.conf.json` / `tauri.linux.conf.json`).
@@ -45,8 +44,8 @@ API, unmodified.
 
 | Core | Console | Shipped | Upstream source, pinned | Licence | Notes |
 | --- | --- | --- | --- | --- | --- |
-| mGBA | GB, GBC, GBA | yes | https://github.com/libretro/mgba (libretro's tracking fork of https://github.com/mgba-emu/mgba), commit `7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6`, version `0.11-212-7a12d6d` | MPL-2.0 AND BSD-3-Clause | `LICENSE` at that commit is the MPL-2.0 text; source headers: "subject to the terms of the Mozilla Public License, v. 2.0". The libretro core compiles in inih (`src/third-party/inih`, BSD-3-Clause, its `LICENSE.txt` shipped as `mgba-inih-LICENSE.txt`); the other bundled libraries of mGBA's README (LZMA SDK, SQLite3, ...) are not in the libretro build. Compatible with GPL-3.0-or-later. Binaries: Windows x86_64 and Android arm64-v8a **built by EmuDome** from the source archive of that commit (`source.archive` in `cores.lock`, sha256-pinned) with `scripts/build-mgba.ps1` / `scripts/build-mgba.sh` (Trello #88), the buildbot's CMake options, unmodified; the commit is the one the libretro buildbot built on 2026-11-16 and the builds report the same version string. Those builds are published, with the licence and the inih notice, in EmuDome's GitHub release `cores-mgba-7a12d6d` (https://github.com/DomenghiniStefano/emu-dome/releases/tag/cores-mgba-7a12d6d, Trello #95), which the fetch scripts download from. Linux x86_64: still the buildbot nightly of 2026-11-16 (URL not stable, see below) until it is built on Linux (Trello #92). |
-| melonDS DS | NDS | yes | https://github.com/JesseTG/melonds-ds, tag `v1.4.0`, commit `f394adbacb5722ee97c1b37c8064da9a25818310` (on melonDS, https://github.com/melonDS-emu/melonDS) | GPL-3.0-or-later | `LICENSE` at that commit is the GPL-3.0 text; source headers: "either version 3 of the License, or (at your option) any later version". Binaries: Windows x86_64 and Linux x86_64 are the upstream release assets. Android arm64-v8a is **built by EmuDome** from the source archive of that commit with `scripts/build-melondsds.ps1` / `scripts/build-melondsds.sh` (owner, 2026-11-22: upstream's Android asset is linked with 4 KB pages, refused by Google Play and run in compatibility mode on 16 KB-page devices), upstream's Android CMake option plus `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`, unmodified; the libraries its CMake would git-clone at configure time are pinned in `cores.lock` (`build.dependencies`: commit, source archive, sha256) and fed to CMake offline: melonDS (https://github.com/JesseTG/melonDS, branch `jtg/fix-uninitialized-opengl` at `16f127dbb587a73371827ce79689c5d237c4b59b`, GPL-3.0-or-later), libretro-common (MIT), embed-binaries (MIT, a build tool), GLM (MIT), zlib (Zlib), libslirp (BSD-3-Clause AND MIT), pntr (Zlib), {fmt} (MIT), yamc (MIT), span-lite (BSL-1.0), date (MIT); `cores/SOURCES.md` lists each commit and archive. That build is published, with the licences, in EmuDome's GitHub release `cores-melondsds-f394adb`, which the fetch scripts download from. The `melondsds-LICENSE.txt` of each build (the release asset's on Windows and Linux; on Android the one its CMake writes from the same template, `cmake/GenerateAttributions.cmake`), shipped as `melondsds-bundled-LICENSES.txt`, carries the licences of what it builds in (melonDS GPL-3.0, Dolphin code under the GPL-2.0 text (Dolphin is GPL-2.0-or-later), FatFs, {fmt}, FreeBIOS, GLM, libretro-common, date, Open Sans, pcap, pntr, Slirp, span-lite, teakra, Tiny AES, xxhash, yamc, zlib and more): reviewed as compatible. |
+| mGBA | GB, GBC, GBA | yes | https://github.com/libretro/mgba (libretro's tracking fork of https://github.com/mgba-emu/mgba), commit `7a12d6d4b9acb14c0ae62c9166b6a2f3d08007f6`, version `0.11-212-7a12d6d` | MPL-2.0 AND BSD-3-Clause | `LICENSE` at that commit is the MPL-2.0 text; source headers: "subject to the terms of the Mozilla Public License, v. 2.0". The libretro core compiles in inih (`src/third-party/inih`, BSD-3-Clause, its `LICENSE.txt` shipped as `mgba-inih-LICENSE.txt`); the other bundled libraries of mGBA's README (LZMA SDK, SQLite3, ...) are not in the libretro build. Compatible with GPL-3.0-or-later. Binaries: Windows x86_64 and Android arm64-v8a **built by EmuDome** from the source archive of that commit (`source.archive` in `cores.lock`, sha256-pinned) with `scripts/build-mgba.ps1` / `scripts/build-mgba.sh`, the buildbot's CMake options, unmodified; the commit is the one the libretro buildbot built, and the builds report the same version string. Those builds are published, with the licence and the inih notice, in EmuDome's GitHub release `cores-mgba-7a12d6d` (https://github.com/DomenghiniStefano/emu-dome/releases/tag/cores-mgba-7a12d6d), which the fetch scripts download from. Linux x86_64: still the buildbot nightly of that commit (URL not stable, see below) until it is built on Linux (Trello #92). |
+| melonDS DS | NDS | yes | https://github.com/JesseTG/melonds-ds, tag `v1.4.0`, commit `f394adbacb5722ee97c1b37c8064da9a25818310` (on melonDS, https://github.com/melonDS-emu/melonDS) | GPL-3.0-or-later | `LICENSE` at that commit is the GPL-3.0 text; source headers: "either version 3 of the License, or (at your option) any later version". Binaries: Windows x86_64 and Linux x86_64 are the upstream release assets. Android arm64-v8a is **built by EmuDome** from the source archive of that commit with `scripts/build-melondsds.ps1` / `scripts/build-melondsds.sh` (upstream's Android asset is linked with 4 KB pages, refused by Google Play and run in compatibility mode on 16 KB-page devices), upstream's Android CMake option plus `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`, unmodified; the libraries its CMake would git-clone at configure time are pinned in `cores.lock` (`build.dependencies`: commit, source archive, sha256) and fed to CMake offline: melonDS (https://github.com/JesseTG/melonDS, branch `jtg/fix-uninitialized-opengl` at `16f127dbb587a73371827ce79689c5d237c4b59b`, GPL-3.0-or-later), libretro-common (MIT), embed-binaries (MIT, a build tool), GLM (MIT), zlib (Zlib), libslirp (BSD-3-Clause AND MIT), pntr (Zlib), {fmt} (MIT), yamc (MIT), span-lite (BSL-1.0), date (MIT); `cores/SOURCES.md` lists each commit and archive. That build is published, with the licences, in EmuDome's GitHub release `cores-melondsds-f394adb`, which the fetch scripts download from. The `melondsds-LICENSE.txt` of each build (the release asset's on Windows and Linux; on Android the one its CMake writes from the same template, `cmake/GenerateAttributions.cmake`), shipped as `melondsds-bundled-LICENSES.txt`, carries the licences of what it builds in (melonDS GPL-3.0, Dolphin code under the GPL-2.0 text (Dolphin is GPL-2.0-or-later), FatFs, {fmt}, FreeBIOS, GLM, libretro-common, date, Open Sans, pcap, pntr, Slirp, span-lite, teakra, Tiny AES, xxhash, yamc, zlib and more): reviewed as compatible. |
 | Azahar | 3DS | no (Phase 3) | https://github.com/azahar-emu/azahar, tag `2126.2`, commit `219d743a1e698101fe1ab8bef43e6563126c3c27`; full source with submodules: the release's `azahar-unified-source-2126.2.tar.xz` | GPL-2.0-or-later AND GPL-3.0-or-later | `license.txt` at that commit is the **GPL-2.0** text, followed by a table of icon licences (CC BY-ND 3.0 / CC0, Qt frontend icons, not in the libretro core). Source headers are mixed: "Licensed under GPLv2 or any later version" (most Citra-era files, e.g. `src/core/hle/service/service.cpp`, `src/citra_libretro/citra_libretro.cpp`) and "Licensed under GPLv3 or any later version" (e.g. `src/core/core.cpp`). The combined core can be conveyed under GPL-3.0-or-later: compatible. Binaries: the upstream release assets. Fetchable (`-Cores azahar`), not packaged yet. |
 
 When a build ships the cores, it must ship each core's licence and offer its source (GPL section 6;
@@ -54,13 +53,13 @@ MPL-2.0 section 3.2): `cores/SOURCES.md` and `cores/notices/` do that. Changes t
 recognisable patches or marked commits (none today).
 
 **mGBA is built from source.** Neither mgba-emu/mgba nor libretro/mgba publishes libretro builds,
-and the buildbot keeps only `latest/`, so its pinned bytes stopped being downloadable (Android,
-2026-11-21). EmuDome builds mGBA itself from the pinned source archive (`scripts/core-build.mjs`:
+and the buildbot keeps only `latest/`, so its pinned bytes stop being downloadable when it rebuilds.
+EmuDome builds mGBA itself from the pinned source archive (`scripts/core-build.mjs`:
 archive sha256-checked, CMake with the buildbot's options, the result installed only if its sha256 is
 the one `cores.lock` pins for that toolchain; licence and notices taken from the same archive).
 The build needs the toolchain `cores.lock` names to give the pinned bytes, so the built files are
 published once in a GitHub release of this repository, `cores-<core>-<first 7 characters of the
-commit>` (Trello #95; `built.release` in `cores.lock`, which `cores.mjs check` holds to that name),
+commit>` (`built.release` in `cores.lock`, which `cores.mjs check` holds to that name),
 and every other machine downloads them from there, sha256-checked like any other core. That release
 only hosts the binaries: their Corresponding Source is the pinned upstream source archive with
 EmuDome's build scripts, offered in `cores/SOURCES.md`. How a new pin is built and published:
@@ -86,10 +85,13 @@ bundle lists, `cores/SOURCES.md`, the Gradle build and this file (each core's co
 | reqwest 0.12, rustls, ring, rustls-native-certs | Google Drive sync: HTTPS to Google (`emudome-sync`) | MIT OR Apache-2.0; rustls and rustls-native-certs Apache-2.0 OR ISC OR MIT; ring Apache-2.0 AND ISC | ring builds C and assembly with the system's C compiler; code from BoringSSL is Apache-2.0 or ISC (`LICENSE`, `LICENSE-BoringSSL`, `LICENSE-other-bits` in the crate). reqwest 0.12 because 0.13's rustls brings `webpki-root-certs` (CDLA-Permissive-2.0, not in `deny.toml`'s allow-list). |
 | keyring | the Drive sign-in's refresh token in the system's credential store (`emudome-platform`) | MIT OR Apache-2.0 | Windows: Credential Manager; Linux: Secret Service over zbus (MIT), pure Rust. |
 | libloading | loading the cores | ISC | |
+| image, png | covers from the user's image or a screenshot (PNG / JPEG / WebP), screenshots | MIT OR Apache-2.0 | |
+| ts-rs | the Rust ↔ TypeScript contract: TypeScript types generated from the Rust types | MIT | The generated files in `app/src/generated/` are EmuDome's. |
 | Vue 3, vue-i18n | interface | MIT | |
 | Lucide icons (`@lucide/vue`) | interface icons | ISC | Lucide includes icons derived from Feather (MIT); both notices are in the package. |
 | Reka UI (`reka-ui`) | design system primitives | MIT | Ships `tslib` (0BSD) through `aria-hidden`: see the note under the generated tables. |
 | `class-variance-authority`, `clsx`, `tailwind-merge` | primitives' variants and `cn()` | Apache-2.0, MIT, MIT | |
+| `@internationalized/date` | the date and time setting's value (`saves.rtcdate`) with Reka UI's date fields | Apache-2.0 | |
 | Tailwind CSS (`tailwindcss`, `@tailwindcss/vite`) | the design system's utilities, at build time | MIT | Dev tool: only the CSS it generates ships. |
 | Vitest, `@vue/test-utils`, happy-dom | frontend tests | MIT | Dev tools, never shipped. |
 | librashader (`librashader-*` 0.12.1) | screen effects (`.slangp` presets) on the native video | MPL-2.0 OR GPL-3.0-only | Used under MPL-2.0, compatible with GPL-3.0-or-later (the allow-list in `deny.toml` matches it through MPL-2.0). Builds Khronos glslang and SPIRV-Cross (C++) from source through `glslang-sys` / `spirv-cross-sys`, declared MIT OR Apache-2.0; the bundled C++ sources carry BSD-3-Clause, MIT and Apache-2.0 notices (glslang's generated parser is GPL-3.0-or-later with the Bison exception): all compatible. |
@@ -100,7 +102,7 @@ The built-in screen effects (`fx.fxpick`) are files in `app/src-tauri/effects/`,
 binary and written to the app's local data folder at startup. The `.slangp` presets are EmuDome's
 own (GPL-3.0-or-later). The shader files are copied unchanged (line endings converted to LF) from
 libretro's slang-shaders, https://github.com/libretro/slang-shaders, commit
-`9230b1f24a6d0f28febe61711c0b255c4926b231` (2026-11-15). Each keeps its copyright and licence
+`9230b1f24a6d0f28febe61711c0b255c4926b231`. Each keeps its copyright and licence
 notice in its header; only files whose header grants a GPL-3.0-compatible licence were taken
 (`lcd-grid-v2`, which has no licence notice, was left out).
 
@@ -118,7 +120,8 @@ never shipped.
 
 ### Fonts
 
-No font file is shipped. `app/src/styles.css` names `'Geist'` first in `font-family`, but nothing
+No font file is shipped. `app/src/styles.css` and the font token (`app/src/assets/theme/typography.css`)
+name `'Geist'` first in `font-family`, but nothing
 loads it (no `@font-face`, no font file, no remote stylesheet): it is used only when the user has it
 installed, otherwise the system font is used. If Geist is ever bundled, it is under the SIL Open Font
 License 1.1: list it here and ship its `OFL.txt` next to the font files.
@@ -128,21 +131,20 @@ License 1.1: list it here and ship its `OFL.txt` next to the font files.
 - **App icon and mark** (`app/src/assets/brand/emudome-mark.svg` and `emudome-mark-small.svg`, the two
   masters; `app/src-tauri/icons/`, every size, `app-icon.png` and `icon.ico`; the Android launcher icons
   `app/src-tauri/gen/android/app/src/main/res/mipmap-*/` with the adaptive background in
-  `values/ic_launcher_background.xml`): EmuDome's own work, part of EmuDome under GPL-3.0-or-later, drawn
-  on 2026-11-21 in the Cowork session and approved by the owner (Trello #54). The cupola is the Dome
-  family's mark, the owner's own (the same path as DomeHub's and GameDome's); the glyph carved out of it
-  is a handheld console drawn for EmuDome (symmetric rounded corners, a d-pad, two round buttons, a play
-  sign on the screen), not derived from any console's outline or any company's logo. The Android set is
-  delivered as drawn, not regenerated by `pnpm tauri icon` (which would redo its padding); the
-  template's own icons (the Tauri logo, the Android robot) were removed earlier. Since 2026-11-22
-  (the owner's choice) the Android launcher icon is the same mark in graphite, large and cut by the
-  bottom-left edge, on an amber (#FAA40F) background; the Android 12 splash keeps the amber mark
-  (`mipmap-*/ic_splash.png`); the desktop icons are unchanged.
+  `values/ic_launcher_background.xml`): EmuDome's own work, part of EmuDome under GPL-3.0-or-later
+  (Trello #54). The cupola is the Dome family's mark, by EmuDome's author (the same path as DomeHub's
+  and GameDome's); the glyph carved out of it is a handheld console drawn for EmuDome (symmetric
+  rounded corners, a d-pad, two round buttons, a play sign on the screen), not derived from any
+  console's outline or any company's logo. The Android set is delivered as drawn, not regenerated by
+  `pnpm tauri icon` (which would redo its padding); the template's own icons (the Tauri logo, the
+  Android robot) are gone. The Android launcher icon is the same mark in graphite, large and cut by
+  the bottom-left edge, on an amber (#FAA40F) background; the Android 12 splash keeps the amber mark
+  (`mipmap-*/ic_splash.png`). The interface shows the mark on the startup splash (`app/index.html`),
+  in the top bar and on the first run's welcome.
 - **Interface icons**: all from Lucide (`@lucide/vue`, ISC, see above), imported as components. The
-  only icon drawn by hand is the three-line menu glyph in `app/src/components/game/TouchControls.vue`
-  (three straight lines), part of EmuDome.
-- No other image is shipped (the brand SVG masters are in the repository; the interface does not show
-  them yet). Game covers are generated, read from the user's games or chosen by the
+  only shapes drawn by hand are the touch controls' (the cross d-pad, the shaped buttons, the stick
+  and the menu's three lines, `app/src/components/touch/`), part of EmuDome.
+- No other image is shipped. Game covers are generated, read from the user's games or chosen by the
   user on their device, and never included.
 
 ### Test ROMs
@@ -188,8 +190,8 @@ offered as one choice among several), and, for dev tools only, BlueOak-1.0.0 (`m
 `@isaacs/nonrecursive-glob-match`, used by ESLint; permissive, no FSF verdict, never shipped).
 
 `tslib` 2.9.1 (**0BSD**) ships in the app through `reka-ui` → `aria-hidden`. 0BSD grants every
-permission with no condition at all (ISC without the notice requirement); the owner allowed it on
-2026-11-18, and `scripts/npm-licenses.mjs` lists it.
+permission with no condition at all (ISC without the notice requirement); it is allowed explicitly,
+and `scripts/npm-licenses.mjs` lists it.
 
 ### Rust crates (709)
 

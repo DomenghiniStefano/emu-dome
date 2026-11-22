@@ -1,44 +1,39 @@
 # Customization: how far can EmuDome go
 
-Feasibility study, 2026-11-17. It answers, for every area the user could customize: **what**, **where it is
+Feasibility study. It answers, for every area the user could customize: **what**, **where it is
 stored** (format and settings level), **how it is edited**, **how it works in our stack**, **what it costs**
 (S = days, M = one to three weeks, L = a month or more), **what limits the cores and platforms impose**, and
-**prior art**. It is not a visual design proposal: where a design decision is needed it is listed as a question
-for Cowork (section 12).
+**prior art**. It is not a visual design proposal: where a design decision is needed it is listed as a design
+question (section 12).
+
+Sections 1 to 13 were written before most of Phase 1 existed, and their "today" is the code of that time;
+section 0 says what the code does now, and `CLAUDE.md` is the reference.
 
 Conventions:
 
 - Levels follow the Phase 1 settings engine: **Default → Global → Console → Game → Session**, plus the
   **per-device axis** (see section 10 for what "device" means in each area).
-- "Today" means the code on `develop` at 8775c17. Facts not confirmed in a reliable source are marked
-  **to verify**. Links to prior art are in section 13; numbers in square brackets point there.
+- In sections 1 to 13, "today" means the code on `develop` at 8775c17. Facts not confirmed in a reliable source
+  are marked **to verify**. Links to prior art are in section 13; numbers in square brackets point there.
 
-## 0. Where we start from (what exists today)
+## 0. What exists now
 
 | Area | Today | Where |
 |---|---|---|
 | Touch controls | Since Trello #29: layouts per console and orientation (defaults, the user's own from the C06 editor kept per device in `touch.tedit`), tap / hold / turbo, the 3DS Circle Pad, two built-in styles («Fumé», «Contorno»), `touch.*` settings, E14. Before it: a fixed overlay in CSS, no settings | `app/src/components/touch/`, `crates/emudome-core/src/touch.rs` |
-| Controller routing | Pure `Router::step`; `Bindings { modifier, combos }` with `DEFAULT_MODIFIER = L3` and `DEFAULT_COMBOS`; Guide toggles the menu; menu navigation with repeat | `crates/emudome-core/src/hotkeys.rs`, `docs/combo-tasti.md` |
-| Controller mapping | SDL3, positional RetroArch-style (right face button = A). Mask merged from keyboard / gamepad / touch | `app/src-tauri/src/gamepad.rs`, `crates/emudome-core/src/input.rs` |
+| Controller routing | Pure `Router::step`; `Bindings { modifier, combos }` with `DEFAULT_MODIFIER = L3` and `DEFAULT_COMBOS`, remappable (`pad.mod`, `pad.combos`); Guide toggles the menu; menu navigation with repeat | `crates/emudome-core/src/hotkeys.rs`, `docs/combo-tasti.md` |
+| Controller mapping | SDL3 on the desktop, Android's own input events on Android (`emudome_platform::pads`), positional RetroArch-style (right face button = A), remappable (`pad.remap`); both sticks also reach the core as analog. Mask merged from keyboard / gamepad / touch | `app/src-tauri/src/gamepad.rs`, `crates/emudome-core/src/input.rs` |
 | Keyboard | The webview forwards raw keys (`key` command); Rust routes them: fixed shortcuts and the game keys of `pad.remap` | `crates/emudome-core/src/keyboard.rs`, `app/src-tauri/src/hotkeys.rs` |
-| Video | Two paths: native wgpu under a transparent webview, or canvas via `emu://frame`. Software frames only (RGBA copy) | `app/src-tauri/src/video.rs`, `NATIVE_VIDEO_DEFAULT` in `emudome-platform` |
-| Audio | cpal, linear resampling, ±0.5 % queue correction, muted when speed ≠ 1× | `app/src-tauri/src/audio.rs` |
-| Core options | `GET_VARIABLE` → `false`; `SET_VARIABLES` accepted and ignored. No `SET_CORE_OPTIONS_V2`, no `SET_HW_RENDER`, no pointer, no rumble, no sensors | `crates/emudome-core/src/callbacks.rs` |
-| Saves | `.sav` every 30 s, on exit and when Android goes to the background; 3 slots in the menu, 1–9 from the controller; all in `app_data/saves`, `app_data/system` | `crates/emudome-core/src/session.rs`, `app/src-tauri/src/lib.rs` |
-| Interface | vue-i18n (en, it), language from the OS; design tokens in `styles.css`; no theme switch | `app/src/i18n/`, `app/src/styles.css` |
-| Settings | **None persisted.** Only env vars (`EMUDOME_VIDEO`, `EMUDOME_CORES_DIR`, `RUST_LOG`) | — |
+| Video | Two paths: native wgpu under a transparent webview, or canvas via `emu://frame`. NDS / 3DS screens composed by the shell (layouts, swap, rotation, custom layout editor), `video.scale` / `video.aspect`, screen effects (librashader, native path). Vulkan hardware rendering for Azahar, its frames read back to the CPU | `app/src-tauri/src/video.rs`, `crates/emudome-core/src/screens.rs`, `NATIVE_VIDEO_DEFAULT` in `emudome-platform` |
+| Audio | cpal, linear resampling, ±0.5 % queue correction, `audio.lat` latency, `audio.out` device; off 1× `audio.ff` mutes, resamples or time-stretches | `app/src-tauri/src/audio.rs`, `crates/emudome-core/src/speed_audio.rs` |
+| Core options | Core options v2 accepted; `GET_VARIABLE` answered from the settings through one table per core (`Live` or `Restart`); pointer (touch) supported; no rumble, no sensors | `crates/emudome-core/src/settings/core_values/`, `crates/emudome-core/src/callbacks.rs` |
+| Saves | Per game, keyed by its content id (`saves/<console>/<hex>/`); `.sav` flushed periodically, on exit and when Android goes to the background; 3 / 5 / 10 slots (`saves.slots`), auto quick save, resume, undo, backups; the user's own BIOS / firmware per core | `crates/emudome-core/src/game_key.rs`, `crates/emudome-core/src/session/`, `crates/emudome-core/src/bios/` |
+| Interface | vue-i18n (en, it), language from the OS; design tokens in `app/src/assets/theme/`, primitives on Reka UI; three themes and five accents; desktop, phone and TV layouts | `app/src/i18n/`, `app/src/assets/theme/`, `app/src/components/ui/` |
+| Settings | The settings engine: one schema of 166 entries, levels Default → Global → Console → Game → Session plus the per-device axis, files per level, the interface generated from the schema | `crates/emudome-core/src/settings/` |
 
-Two facts from the code shape everything below:
-
-1. **There is no settings store yet.** Every item in this document is a consumer of the Phase 1 engine; the
-   engine is the first thing to build, and its data model (section 10) must already fit touch layouts and
-   bindings, which are not scalar values.
-2. **The host accepts only software-rendered frames.** melonDS DS's OpenGL renderers and Azahar's
-   Vulkan/OpenGL renderers need `RETRO_ENVIRONMENT_SET_HW_RENDER` [C1]. Without it NDS runs on the software
-   renderer (fine, it is melonDS DS's default) but **3DS is limited to Azahar's "Software" graphics API**, which
-   is too slow for most games on phones (**to verify** with a benchmark). Internal resolution, texture filters and
-   upscaling options for NDS/3DS (section 5) exist only with hardware rendering. This is a Phase 2/3 item, but it
-   decides how much "video customization" is real for those consoles.
+What this study planned that is still missing: imported touch skins and skin packs, more than one control of
+the same kind, a layout per game, cheats and patches (no backend), RetroAchievements, netplay, rumble and motion
+sensors, OpenGL hardware rendering (melonDS DS upscaling).
 
 ---
 
@@ -162,7 +157,7 @@ position [P6]. AetherSX2/NetherSX2 and Azahar Android: in-app drag editors (**to
 
 - **Mapping**: physical button → RetroPad button, per console (the RetroPad is the common language, see below),
   per game, per controller.
-- **Positional vs label** mapping (owner decided: customizable). Positional = the right face button is A (what
+- **Positional vs label** mapping (decided: customizable). Positional = the right face button is A (what
   we do now, RetroArch style); label = the button printed "A" is A (Xbox layout puts A at the bottom).
 - **Combo modifier** (L3 by default) and **the hotkey table** (`Bindings`), including disabling combos.
 - **Turbo**: per button, rate in Hz, hold or toggle.
@@ -401,7 +396,7 @@ fast forward (**to verify**).
 lcd_ghosting_fast), `mgba_audio_low_pass_filter`, `mgba_audio_low_pass_range` (5–95 %),
 `mgba_allow_opposing_directions`, `mgba_solar_sensor_level` (sensor, 0–10), `mgba_force_gbp`,
 `mgba_idle_optimization`, `mgba_frameskip` (+ threshold, interval). About 17 options, a third of them
-Game Boy-only (EmuDome does not target GB/GBC: hide them, or decide to support GB/GBC — owner question).
+Game Boy-only (GB/GBC are now supported consoles, `docs/decisions.md`, so they apply).
 
 **melonDS DS** (`melonds_*`, categories `system`, `time`, `video`, `audio`, `screen`, `firmware`, `network`,
 `cpu`, `osd`) [C3]:
@@ -762,7 +757,7 @@ netplay notes revisited, covers scraping (opt-in).
 
 ## 12. Open questions
 
-### For Cowork (design)
+### Design
 
 1. Touch editor interaction: how selection, resize handles, snap feedback and the control palette look and
    behave on a 6" phone; where undo/redo/reset live; how the paused game shows under the editor.
@@ -780,9 +775,9 @@ netplay notes revisited, covers scraping (opt-in).
 9. Quick menu: fixed set vs user-ordered; how the edit mode looks.
 10. Disabled-with-reason pattern for options a core or platform cannot do.
 
-### For the owner (product)
+### Product
 
-Answered on 2026-11-17: see `docs/decisions.md`, section "Product".
+Answered: see `docs/decisions.md`, section "Product".
 
 1. Default face layout: positional (today) or label? Per controller model default (Nintendo-layout pads → label)?
 2. Shell-side vs core-side NDS/3DS screen layout (recommendation: shell-side, section 3)?

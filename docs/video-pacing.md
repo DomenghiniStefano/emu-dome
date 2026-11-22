@@ -1,11 +1,11 @@
 # Video pacing: present-driven or audio-driven (spike note, Trello #79)
 
-Status: a written spike, nothing implemented beyond the first step below. For the owner and Cowork to choose.
+Status: a written spike, nothing implemented beyond the first step below. Which way to go is not decided yet.
 
 ## What the native renderer does now (#79)
 
 The emulation thread runs at the core's own rate (59.7275 Hz for GBA, 59.8261 Hz for NDS) from its own timer
-(`session.rs`, sleep to the next frame). The video thread presents **only when something changed**: a new game frame
+(`session.rs` and `session/emu_loop.rs`, sleep to the next frame). The video thread presents **only when something changed**: a new game frame
 (`Shared::frame_wake`), a resize, a new surface, another game, the inset, the effect. With nothing new it sleeps
 (`Wake`, at most 100 ms); a failed present waits 8 ms before the next try; a minimized window (0 × 0) draws nothing.
 

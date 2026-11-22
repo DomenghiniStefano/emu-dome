@@ -1,8 +1,9 @@
 # Feasibility checks
 
-Desk research done in the Cowork session, without running the app. Each section says what was checked, how, what
-is settled and what is still **to verify** with code on a real machine. Owner decisions these checks serve are in
-`docs/decisions.md`, section "Product". The customization study they come from is `docs/customization.md`.
+Desk research done without running the app. Each section says what was checked, how, what is settled and what
+is still **to verify** with code on a real machine; a «Now» line says what has been built since. The decisions
+these checks serve are in `docs/decisions.md`, section "Product". The customization study they come from is
+`docs/customization.md`.
 
 ## 2026-11-17 · librashader with our wgpu
 
@@ -35,6 +36,10 @@ is settled and what is still **to verify** with code on a real machine. Owner de
 
 **Verdict**: feasible for Phase 1 on desktop; on Android it builds, the runtime cost on the A71 is the open point.
 
+**Now**: built. The screen effects (`fx.*`) run through librashader 0.12.1 on the native video path
+(`app/src-tauri/src/effects.rs`, `video.rs`) and are shown disabled on the webview path; the whole workspace,
+librashader included, builds for Android with the NDK. The runtime cost on the A71 is still not measured.
+
 ## 2026-11-17 · Google Drive sync
 
 **Question**: can EmuDome sign in to Google and sync saves, states, settings, library index and (optionally) games
@@ -49,7 +54,7 @@ through a picker [D1]. Findings from 3DSync, a 3DS save-sync tool that uses the 
   across projects only);
 - **files the user puts in the Drive folder by hand (web, Drive app) are invisible** to the app until picked one by
   one. Consequence for EmuDome: games and saves reach Drive **only through EmuDome's own upload**; the app text must
-  say so (design card for Cowork). A full `drive` scope would lift this but is restricted (security assessment):
+  say so. A full `drive` scope would lift this but is restricted (security assessment):
   not worth it;
 - in "Testing" publishing status refresh tokens expire after 7 days: the consent screen must be "In production"
   (same lesson as Rapportino).
@@ -66,7 +71,7 @@ lasts [D3]. No refresh token on the device (Google advises against storing it th
 Kotlin plugin calls `authorize()` when the Rust side needs a token. A Credential Manager sign-in first is optional
 (it picks the default account) [D3]. Needs Play Services: devices without them get no Drive sync (**to verify**
 fallback; the loopback flow does not apply to Android). The Android OAuth client (#49) is tied to the package name
-and the signing certificate: it is registered for `it.domehub.emudome` (the identifier since 2026-11-21, #90) with
+and the signing certificate: it is registered for `it.domehub.emudome` (the app identifier, #90) with
 the debug keystore's SHA-1, and the release keystore's SHA-1 is added before a release.
 
 **Drive side.** Plain Drive REST v3 from Rust (`reqwest`; generated crates such as `google-drive3` are an option):
@@ -92,8 +97,11 @@ sync index (SQLite or JSON, together with the library database).
 loopback sign-in from Tauri on Windows and Linux; `authorize()` from the Tauri Android activity; resumable upload of
 a 1 GB file with interruption; `changes.list` latency.
 
-**Done in code (2026-11-21, Trello #20, `crates/emudome-sync`)**, tested without Google (an in-memory Drive and a
-local mock HTTP server), not wired into the app's game flow yet:
+**Done in code (Trello #20, `crates/emudome-sync`)**, tested without Google (an in-memory Drive and a local mock
+HTTP server). **Now** also wired into the app (Trello #31, `app/src-tauri/src/cloud.rs`, `CloudService`): pull
+before launch, the marker's heartbeat while playing, push after exit, pending pushes at start, «Sincronizza ora»,
+game files up and down on request, and the Cloud section; not yet a periodic push while playing, and no sign-in
+on Android. What the backend has:
 - the installed-app sign-in pieces: PKCE S256 (RFC 7636's test vector), the authorization URL (`drive.file`,
   offline access, consent), the loopback receiver on `127.0.0.1:<port 0>` with the `state` check, the code exchange
   and the refresh (the client secret sent when the build has one: Google's desktop clients still want it with
@@ -113,7 +121,7 @@ Sizes measured so far (docs/fase0-esito.md): GBA test ROM state 528 KB, `.sav` 1
 18.3 MB; 3DS (Azahar, homebrew) states 544-771 KB, zstd-compressed, so far below the 100 MB feared (a retail game:
 to measure). Everything above 5 MiB goes up resumable.
 
-Still to verify against Google (owner's UAT with `drive_probe`): the sign-in end to end, the folder visible on
+Still to verify against Google (by hand, with `drive_probe` or the app): the sign-in end to end, the folder visible on
 drive.google.com, a resumable upload of a large file with the network cut halfway, the quota.
 
 **Verdict**: feasible without a server. Main constraint: Drive content comes only from EmuDome uploads.
@@ -132,11 +140,15 @@ drive.google.com, a resumable upload of a large file with the network cut halfwa
 - ROM hacks (decided: a different game): the identity is the hash of the patched content, computed after applying
   the patch in memory; metadata keeps the original's identity.
 - Display name: GB/GBC/GBA from the file name (headers are short and a ROM hack keeps its base game's, e.g.
-  «POKEMON FIRE»; owner's UAT 2026-11-17), NDS banner / 3DS SMDH title, user override later; never the identity.
+  «POKEMON FIRE»), NDS banner / 3DS SMDH title, user override later; never the identity.
 - A crate exists for NDS headers (`ds-rom` on crates.io [N3]); the GB/GBA/NDS reads are a few lines each.
 
 **Verdict**: feasible, small (S). Hashing a 512 MB NDS file costs about a second on a phone: done once at import
 and cached by path + size + modification time.
+
+**Now**: built as above (`crates/emudome-core/src/library/identity.rs`): the 3DS identity is the NCCH program ID
+(header 0x118) plus the remaster version, `.3dsx` homebrew the SHA-1 of the file; encrypted 3DS games are refused.
+Every per-game file (saves, settings, covers, play time, sync) is keyed by it.
 
 ## 2026-11-17 · Controllers on Android
 
@@ -160,7 +172,7 @@ WebView on top.
 
 **Verdict**: feasible (M), as a `emudome-platform` Android input backend.
 
-**Built** (Trello #47, 2026-11-22; not run on a device yet): `emudome_platform::pads::PadSource` is the one
+**Built** (Trello #47; not run on a device yet): `emudome_platform::pads::PadSource` is the one
 controller source of the app's controller thread, SDL3 on the desktop and Android's input events on Android. The
 activity is not edited: the platform library's `GamepadInput.kt` wraps the activity window's `Window.Callback`
 (the DecorView asks the window for it at every event), so a gamepad's events are taken before the WebView, and
@@ -173,7 +185,7 @@ points above are still to verify on a device.
 
 ## Brief for Claude Code · hardware rendering spike (`SET_HW_RENDER`)
 
-Owner decision 2026-11-17: a spike right after Phase 0, before the rest of Phase 1, to learn whether 3DS holds up on
+Decision (`docs/decisions.md`): a spike right after Phase 0, before the rest of Phase 1, to learn whether 3DS holds up on
 phones. Trello card #16. No Nintendo files: use 3DS/NDS homebrew only.
 
 Questions, in order; stop when the answer is clear:
@@ -247,8 +259,14 @@ melonDS DS in software has ample headroom on the PC. A71 measurements: not done 
 
 ## Hardware rendering (`SET_HW_RENDER`)
 
-**2026-11-19**: OpenGL (melonDS DS, Azahar), GL readback vs GL-to-Vulkan zero copy, resolution scaling and the
+OpenGL (melonDS DS, Azahar), GL readback vs GL-to-Vulkan zero copy, resolution scaling and the
 recommendation per OS are in `docs/feasibility-hw-render.md`, which now carries the whole answer to #16.
+
+**Now** (Trello #46, #78): built in the shell for Azahar. The app opens one Vulkan device for the whole run with
+wgpu's needs plus what a 3DS core renders with (`open_device_for_cores`, `app/src-tauri/src/gpu_interop.rs`), and
+the core renders on it: its `create_device` is never called, which settles open risk 1 below. Each frame is copied
+on the GPU and read back into `Shared::frame` (the native renderer does not sample the core's image yet); OpenGL
+is still refused. Real-scene, phone and validation-layer runs are still open.
 
 **2026-11-18 · Step 1, done with Vulkan instead of GL (Windows, headless).** Trello #16, for #46.
 

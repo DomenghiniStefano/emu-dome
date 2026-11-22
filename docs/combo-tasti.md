@@ -237,11 +237,12 @@ Notes on the table:
 - M's block time (RetroArch uses 5 frames [8]) and how a held Select behaves in games.
 - Whether to detect Steam or the Game Bar and show a warning ("Steam uses the Guide button: open the menu with Select + Start").
 
-## 5. Decision and implementation (2026-11-16)
+## 5. Decision and implementation
 
 ### The modifier is L3
 
-- The owner chose **L3** (left stick click) as the combo modifier ("M"), remappable later.
+- **L3** (left stick click) is the combo modifier ("M") by default; `pad.mod` changes it and `pad.combos` the
+  combos.
 - Why not Select: Select is a GBA, DS and 3DS button, so it would need RetroArch's block delay
   (section 4) and a held Select would reach games late. **No GBA, NDS or 3DS game uses a stick click**,
   so L3 can be taken whole: no delay, no ambiguity.
@@ -256,10 +257,10 @@ Notes on the table:
 - Each combo fires **once per press** of the second button. A button already held when L3 goes down does not fire.
 - Two hold combos: L3 + R2 (fast forward) and L3 + L2 (rewind) last until R2 / L2 is released
   (with or without L3). With `a11y.toggle` («Attiva e disattiva invece di tenere premuto») rewind
-  goes on at one press and off at the next; the router still sends press and release, `Hotkeys`
-  (`gamepad.rs`) decides.
-- A reserved combo (feature still to come) does nothing; its button stays away from the game like any
-  button pressed with L3.
+  goes on at one press and off at the next; the router still sends press and release, `HotkeyRunner`
+  (`app/src-tauri/src/hotkeys.rs`) decides.
+- A reserved combo (`Hotkey::status` `later`) would do nothing, its button kept away from the game like any
+  button pressed with L3; today no row is reserved (a test holds it).
 - While the quick menu is open only the menu combo (L3 + Start) and Guide work; the d-pad / left stick,
   A and B navigate the menu (see `app/src/nav.ts`). Y alone is the `search` step there: outside a
   game it opens the search everywhere (X01, #32); in game Y is the game's button, L3 + Y the swap.
@@ -268,11 +269,10 @@ Notes on the table:
 ### Implemented table
 
 The table is `DEFAULT_COMBOS` in `crates/emudome-core/src/hotkeys.rs`, with `DEFAULT_MODIFIER = L3`,
-in the order of the shortcut lists (`Hotkey::ALL`). Every row is there, also those whose feature does
-not exist yet: their `Hotkey::status` is `later`, the router never fires them (tested), and the screens
-list them with a badge. The `dualScreen` rows fire and act on DS and 3DS games only
-(`app/src-tauri/src/screens.rs`). `pad.combos` and `pad.mod` build other `Bindings` from it
-(`crates/emudome-core/src/bindings.rs`). The actions run in `app/src-tauri/src/gamepad.rs` (`Hotkeys`).
+in the order of the shortcut lists (`Hotkey::ALL`). Every row is active; the `dualScreen` rows fire and act on
+DS and 3DS games only (`app/src-tauri/src/screens.rs`). `pad.combos` and `pad.mod` build other `Bindings` from it
+(`crates/emudome-core/src/bindings.rs`). The actions run in `app/src-tauri/src/hotkeys.rs` (`HotkeyRunner`),
+shared with the keyboard.
 C01 «Scorciatoie da ricordare», C03 and the quick menu's G10 read it through `controls_bindings`;
 the G12 overlay will read it the same way.
 
@@ -288,12 +288,12 @@ the G12 overlay will read it the same way.
 | L3 + d-pad down | Slow motion on/off (`speed.slow` ↔ 1×) | done |
 | L3 + L2 (held) | Rewind (`speed.rew`, `speed.rewlen`; toggled with `a11y.toggle`) | done (Trello #42) |
 | L3 + A | Pause on/off without the menu ("Paused" chip) | done |
-| L3 + B | Screenshot: PNG at the core's resolution in `<saves>/screenshots/`, toast G13 | done (Trello #42) |
+| L3 + B | Screenshot: PNG at the core's resolution in `saves/screenshots/<console>/<hex>/`, toast G13 | done (Trello #42, #85) |
 | L3 + X | FPS indicator on/off | done |
 | L3 + Y | Swap screens (NDS/3DS): toggled, or swapped while held with `screens.swap` = hold | done (Trello #28; `dualScreen`: DS and 3DS games only) |
 | L3 + R3 | Next screen layout of `screens.cycle` (NDS/3DS); not in C01's list, only in C03 | done (Trello #28; `dualScreen`) |
-| L3 + Select | Close/open the lid (NDS/3DS), also from the quick menu; no combo with `pad.lid` = quick menu only | done on NDS (Trello #28: melonDS DS's L2 + Y chord); the 3DS core has none (decided 2026-11-17) |
-| (none) | Fullscreen on/off: keyboard F11 and the quick menu only, no controller combo | done (decided 2026-11-17) |
+| L3 + Select | Close/open the lid (NDS/3DS), also from the quick menu; no combo with `pad.lid` = quick menu only | done on NDS (Trello #28: melonDS DS's L2 + Y chord); the 3DS core has none (`pad.lid` unsupported on 3DS) |
+| (none) | Fullscreen on/off: keyboard F11 and the quick menu only, no controller combo | done |
 
 ### Keyboard table
 
