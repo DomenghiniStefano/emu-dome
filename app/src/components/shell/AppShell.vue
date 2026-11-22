@@ -168,7 +168,14 @@ const go = (to: Route) => (route.value = moved(route.value, to))
 
 <template>
   <div ref="root" :class="cn('relative isolate flex h-full overflow-hidden bg-bg', shellClass)">
-    <div class="ambient-haze" aria-hidden="true" :style="hazeStyle"></div>
+    <!-- The cover-coloured haze is the desktop's and TV's: the phone keeps the plain graphite
+         (owner, #105: the wash behind the top bar does not belong to the app's look there). -->
+    <div
+      v-if="!layout.touchDensity.value"
+      class="ambient-haze"
+      aria-hidden="true"
+      :style="hazeStyle"
+    ></div>
     <AppRail
       v-if="nav === ShellNav.Column"
       ref="rail"
