@@ -4,7 +4,8 @@
 // short name and «N versioni» on it, a deck behind a family of regional versions, #102), the
 // title and when it was played under it. A tap on the cover (a right click too) opens the game's
 // details (L04). The game played last, when it has a save to pick up from, has «Riprendi» in the
-// cover's corner: an accent square with the play icon. A game that is not reachable (E01) is
+// cover's corner: an accent square with the play icon (ButtonSize.RowAction, #104: 32 drawn,
+// 44 to the touch). A game that is not reachable (E01) is
 // faded.
 //
 // Focusable parts for the windowed grid (`data-cover-part`, coverGridNav.ts `compactStep`): the
@@ -63,15 +64,14 @@ const meta = computed(() => gamePlayedLabel(props.game))
       <Button
         v-if="resume"
         :variant="ButtonVariant.Primary"
-        :size="ButtonSize.ToolIcon"
+        :size="ButtonSize.RowAction"
+        :icon="Play"
+        icon-filled
+        :label="t('library.hero.resume')"
         class="absolute right-6 bottom-6"
         data-cover-part="play"
-        :aria-label="t('library.hero.resume')"
-        :title="t('library.hero.resume')"
         @click="emit('resume')"
-      >
-        <Play :size="16" fill="currentColor" :stroke-width="0" aria-hidden="true" />
-      </Button>
+      />
     </div>
     <div class="flex min-w-0 flex-col" :class="{ 'opacity-missing-label': off }">
       <div class="truncate text-label font-semibold">{{ game.title }}</div>

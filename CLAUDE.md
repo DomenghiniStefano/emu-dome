@@ -912,8 +912,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `index.ts` re-exports, `variants.ts` holds the variants as `as const` constants (`ButtonVariant.Primary`, never
   `variant="primary"`), the parts are `.vue` files. Today: Button, Card, Chip, Tabs, Segmented, Slider, Select,
   Switch, Dialog, Popover, DropdownMenu, RadioGroup, Checkbox, Input, Heading, Badge, Kbd, Progress, EmptyState,
-  LinkRow, StatTile, SectionPage, LabelledBlock. RadioGroup and Checkbox have no look of their own: their items are
-  `as-child` on the screen's Card or Button. A screen never restyles a primitive; a missing look is a new variant.
+  LinkRow, StatTile, SectionPage, LabelledBlock, Tooltip. RadioGroup and Checkbox have no look of their own: their
+  items are `as-child` on the screen's Card or Button. A screen never restyles a primitive; a missing look is a new variant.
+  Buttons (#104): a Lucide icon through Button's `icon` prop (sized by the button, one step larger on the phone),
+  never drawn in the slot; an icon alone takes `label` (the existing text: accessible name and Tooltip, which opens
+  on the mouse's rest and on the controller's / keyboard's focus).
 - **Every visual value is a token**: colours, borders (width and colour, `theme/border.css`), margins, paddings, gaps,
   radius, shadows, opacity. Where a value has a role it has a role name (`radius-control`, `spacing-card-pad`,
   `spacing-section-x`…), so changing it everywhere is one edit. Values not decided yet are tokens under a

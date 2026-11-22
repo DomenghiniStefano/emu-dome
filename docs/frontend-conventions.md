@@ -64,6 +64,16 @@ reads the same in every file, and a move changes only the moved file's importers
   Checkbox are behaviour only: each item is `as-child` on the screen's Card or Button, which keeps its
   look. Popover and DropdownMenu hang from the screen's own button (`anchor`) and the screen holds
   `open`, so A and a click toggle them the same way. Checked by `hand-role` (below).
+- Icons on buttons (Trello #104): Button's `icon` prop draws the Lucide icon, sized by the button's
+  size and one step larger at the touch density (`button/icon.ts`); `iconFilled` for the play triangle.
+  With `label` the icon is drawn alone: the label (an existing text, never a new one) is the accessible
+  name and the Tooltip (`ui/tooltip`: after a rest of the mouse, and at once on the controller's or the
+  keyboard's focus; a caller's `title` shows there instead of the browser's own). The rule: a view's
+  main action and the actions of a dialog, card, banner or step foot are icon + words; actions repeated
+  on every row or tile and toolbars are the icon alone; links, option pickers whose words are the value,
+  tabs, page lists, click areas and the gamepad's keys stay words. A dialog's quiet way out («Annulla»,
+  «Chiudi», «Non ora») stays words, so the main action stands out. The phone list's play button is
+  `ButtonSize.RowAction`: 32 drawn, 44 to the touch.
 
 ## Kit page (`kit/`)
 

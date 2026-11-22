@@ -10,7 +10,9 @@
      dialogs a start can raise (35);
    - dialog: a blocking dialog over everything (FlowDialog: 40);
    - toast: the short messages, above the dialogs too (a dialog's own result, «Dettagli copiati»,
-     shows over it): 50. */
+     shows over it): 50;
+   - tooltip: the name of an icon alone (ui/tooltip, #104), over whatever holds its button,
+     a toast included: 60. */
 @utility z-sticky {
   z-index: 5;
 }
@@ -31,4 +33,7 @@
 }
 @utility z-toast {
   z-index: 50;
+}
+@utility z-tooltip {
+  z-index: 60;
 }
