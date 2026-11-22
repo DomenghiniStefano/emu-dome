@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The open popover: under its button (`anchor`), its right edge on the button's, the `--spacing-8`
-// token away, in the page's CSS px at any interface scale (zoomedReference.ts).
+// token away, in the page's CSS px at any interface scale (zoomedReference.ts); pushed back in
+// from a window edge it would cross, never closer to it than that same gap.
 //
 // With the app's navigation:
 // - its nav scope (PopoverNavScope) keeps the steps inside and focuses its `data-nav-initial`
@@ -41,6 +42,7 @@ function onPointerDownOutside(e: CustomEvent<{ originalEvent: PointerEvent }>) {
       side="bottom"
       align="end"
       :side-offset="tokenPx(POPOVER_GAP)"
+      :collision-padding="tokenPx(POPOVER_GAP)"
       :reference="reference"
       :class="popoverVariants({ variant })"
       @open-auto-focus.prevent

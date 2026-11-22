@@ -28,11 +28,11 @@ const STATUS_BADGE: Record<IssueStatus, BadgeVariant> = {
     </header>
     <div class="text-body text-ink-muted"><slot /></div>
     <div v-if="$slots.current || $slots.proposed" class="flex flex-wrap gap-12">
-      <figure v-if="$slots.current" class="m-0 flex flex-1 basis-field flex-col gap-4">
+      <figure v-if="$slots.current" class="m-0 flex min-w-0 flex-1 basis-field flex-col gap-4">
         <figcaption class="text-caption text-ink-faint">Ora</figcaption>
         <div class="flex flex-wrap items-start gap-8"><slot name="current" /></div>
       </figure>
-      <figure v-if="$slots.proposed" class="m-0 flex flex-1 basis-field flex-col gap-4">
+      <figure v-if="$slots.proposed" class="m-0 flex min-w-0 flex-1 basis-field flex-col gap-4">
         <figcaption class="text-caption text-ink-faint">Proposta</figcaption>
         <div class="flex flex-wrap items-start gap-8"><slot name="proposed" /></div>
       </figure>

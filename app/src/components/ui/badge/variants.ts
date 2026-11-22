@@ -9,6 +9,7 @@ export const BadgeVariant = {
   // A problem («Salvataggio illeggibile»).
   Warning: 'warning',
   // Something not here yet or reserved («In arrivo», «Con Nintendo DS»): a dashed edge, no fill.
+  // The edge is an inset outline: a border made it 2px taller than the other tags beside it.
   Reserved: 'reserved',
   // A good state («In uso» on the controller in use).
   Success: 'success',
@@ -36,7 +37,8 @@ export const badgeVariants = cva('flex-none whitespace-nowrap', {
     variant: {
       [BadgeVariant.Neutral]: 'bg-surface-raised font-medium text-ink-muted',
       [BadgeVariant.Warning]: 'bg-warning-soft text-warning',
-      [BadgeVariant.Reserved]: 'border border-dashed border-line-strong font-medium text-ink-muted',
+      [BadgeVariant.Reserved]:
+        'outline outline-offset-inset outline-line-strong outline-dashed font-medium text-ink-muted',
       [BadgeVariant.Success]: 'bg-success-soft font-semibold text-success',
       [BadgeVariant.Quiet]: 'bg-surface-hover text-ink-muted',
       [BadgeVariant.Count]: 'bg-accent text-on-accent',

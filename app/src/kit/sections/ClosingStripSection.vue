@@ -46,12 +46,12 @@ const PUSH = {
         di un telefono stretto meno i suoi margini: il testo esce dal vetro o dalla finestra. Qui
         sotto la striscia è in un riquadro largo 320.
         <template #current>
-          <div class="flex w-menu border border-dashed border-line-strong">
+          <div class="flex w-menu max-w-full border border-dashed border-line-strong">
             <ClosingStrip :saved="false" :icon="CloudUpload" v-bind="PUSH" />
           </div>
         </template>
         <template #proposed>
-          <div class="flex w-menu border border-dashed border-line-strong">
+          <div class="flex w-menu max-w-full border border-dashed border-line-strong">
             <ClosingStrip
               :saved="false"
               :icon="CloudUpload"

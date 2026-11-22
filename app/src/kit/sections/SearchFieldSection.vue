@@ -41,12 +41,12 @@ const settings = ref('')
           <div class="flex flex-col gap-8">
             <SearchField
               v-model="saves"
-              class="w-sidebar"
+              class="w-sidebar max-w-full"
               label="Search, Saves"
               placeholder="Search for a game"
             />
             <label
-              class="flex h-control-lg w-sidebar items-center gap-8 rounded-8 border border-line-strong bg-surface-raised px-12 text-ink-muted"
+              class="flex h-control-lg w-sidebar max-w-full items-center gap-8 rounded-8 border border-line-strong bg-surface-raised px-12 text-ink-muted"
             >
               <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
               <span class="sr-only">Search, Settings</span>
@@ -63,13 +63,13 @@ const settings = ref('')
           <div class="flex flex-col gap-8">
             <SearchField
               v-model="saves"
-              class="w-sidebar"
+              class="w-sidebar max-w-full"
               label="Search, Saves (proposed)"
               placeholder="Search for a game"
             />
             <SearchField
               v-model="settings"
-              class="w-sidebar"
+              class="w-sidebar max-w-full"
               label="Search, Settings (proposed)"
               placeholder="Search settings"
             />

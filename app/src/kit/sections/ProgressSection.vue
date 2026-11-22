@@ -8,16 +8,18 @@ import KitState from '@/kit/KitState.vue'
 <template>
   <KitSection title="Progress">
     <KitState label="Indeterminate (no total known: the band sweeps)">
-      <Progress class="w-scan" label="Scanning" />
+      <Progress class="w-scan max-w-full" label="Scanning" />
     </KitState>
     <KitState label="Determinate: 40%, done">
-      <div class="flex w-scan flex-col gap-8">
+      <div class="flex w-scan max-w-full flex-col gap-8">
         <Progress :value="40" label="Importing" />
         <Progress :value="100" label="Done" />
       </div>
     </KitState>
     <KitState label="On a card, its text above (a game copying to Google Drive)">
-      <div class="flex w-scan flex-col gap-8 rounded-card border border-line bg-surface p-12">
+      <div
+        class="flex w-scan max-w-full flex-col gap-8 rounded-card border border-line bg-surface p-12"
+      >
         <span class="text-caption text-ink-muted tabular-nums">12 MB of 30 MB</span>
         <Progress :value="40" label="Copying, on a card" />
       </div>

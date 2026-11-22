@@ -49,14 +49,14 @@ const filled = ref('Pocket Quest')
     </KitState>
     <KitState label="Bare, inside a box its container draws (a search)">
       <label
-        class="flex h-control w-sidebar items-center gap-6 rounded-control border border-line-strong bg-surface-raised px-field-pad text-ink-muted"
+        class="flex h-control w-sidebar max-w-full items-center gap-6 rounded-control border border-line-strong bg-surface-raised px-field-pad text-ink-muted"
       >
         <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
         <Input v-model="query" :variant="InputVariant.Bare" type="search" placeholder="Search" />
       </label>
     </KitState>
     <KitState label="Palette: the search everywhere's field, in its row">
-      <div class="flex h-52 w-panel items-center gap-10 border-b border-line px-16">
+      <div class="flex h-52 w-panel max-w-full items-center gap-10 border-b border-line px-16">
         <Search class="text-ink-muted" :size="20" :stroke-width="1.75" aria-hidden="true" />
         <Input
           v-model="query"

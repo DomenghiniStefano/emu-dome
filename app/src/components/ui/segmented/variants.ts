@@ -27,15 +27,19 @@ export const segmentedVariants = cva('', {
   defaultVariants: { variant: SegmentedVariant.Default },
 })
 
+// A segment is one line a control-sm high: a label longer than the group's room is cut with an
+// ellipsis (it used to wrap onto a second line spilling out of the 24px box), and the segments
+// themselves wrap onto the next row first. Stacked's two words share a baseline in a grid row
+// centred in the segment (`place-content-center`): a baseline flex row sat at its top.
 export const segmentedItemVariants = cva('', {
   variants: {
     variant: {
       [SegmentedVariant.Default]:
-        'h-control-sm cursor-pointer rounded-badge border-0 bg-transparent px-8 font-sans text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
+        'h-control-sm max-w-full cursor-pointer truncate rounded-badge border-0 bg-transparent px-8 font-sans text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
       [SegmentedVariant.Strong]:
-        'h-control-sm cursor-pointer rounded-badge border-0 bg-transparent px-8 font-sans font-semibold text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
+        'h-control-sm max-w-full cursor-pointer truncate rounded-badge border-0 bg-transparent px-8 font-sans font-semibold text-label text-ink-muted disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:font-semibold data-[state=on]:text-accent-text',
       [SegmentedVariant.Stacked]:
-        'flex h-control min-w-0 cursor-pointer flex-row items-baseline justify-center gap-4 rounded-badge border-0 bg-transparent px-8 disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:text-accent-text touch:h-touch touch:items-center',
+        'grid h-control min-w-0 cursor-pointer grid-flow-col place-content-center items-baseline gap-x-4 rounded-badge border-0 bg-transparent px-8 disabled:cursor-not-allowed data-[state=on]:bg-accent-soft data-[state=on]:text-accent-text touch:h-touch touch:items-center',
     },
   },
   defaultVariants: { variant: SegmentedVariant.Default },

@@ -14,7 +14,7 @@ const committed = ref(70)
 <template>
   <KitSection title="Slider">
     <KitState label="Mid value, with its text beside (the caller's); commit on release">
-      <div class="flex items-center gap-12">
+      <div class="flex flex-wrap items-center gap-12">
         <Slider
           v-model="volume"
           label="Volume"

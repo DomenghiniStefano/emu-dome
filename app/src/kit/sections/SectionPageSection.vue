@@ -10,7 +10,7 @@ import KitState from '@/kit/KitState.vue'
 <template>
   <KitSection title="SectionPage">
     <KitState label="Page width: the blocks stop at 920 (here the box is narrower), scrolls itself">
-      <div class="flex h-field w-dialog border border-dashed border-line">
+      <div class="flex h-field w-dialog max-w-full border border-dashed border-line">
         <SectionPage :width="SectionWidth.Page">
           <Heading>Video</Heading>
           <Card>One block</Card>
@@ -19,7 +19,10 @@ import KitState from '@/kit/KitState.vue'
       </div>
     </KitState>
     <KitState label="On the phone: one step all round">
-      <div data-density="touch" class="flex h-field w-dialog border border-dashed border-line">
+      <div
+        data-density="touch"
+        class="flex h-field w-dialog max-w-full border border-dashed border-line"
+      >
         <SectionPage>
           <Heading>Saves</Heading>
           <Card>One block</Card>
@@ -27,7 +30,9 @@ import KitState from '@/kit/KitState.vue'
       </div>
     </KitState>
     <KitState label="No scroll of its own: grows inside its parent's scroller (a game's details)">
-      <div class="flex h-field w-dialog flex-col overflow-y-auto border border-dashed border-line">
+      <div
+        class="flex h-field w-dialog max-w-full flex-col overflow-y-auto border border-dashed border-line"
+      >
         <SectionPage :width="SectionWidth.Medium" :scroll="false">
           <Card>A card of the details</Card>
           <Card>Another card</Card>

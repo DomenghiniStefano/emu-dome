@@ -45,7 +45,7 @@ import { IssueStatus } from '@/kit/review'
       </div>
     </KitState>
     <KitState label="LabelledBlock: its label, an aside at the far end, the block">
-      <LabelledBlock title="Quick saves" class="w-menu">
+      <LabelledBlock title="Quick saves" class="w-menu max-w-full">
         <template #aside>
           <Button :variant="ButtonVariant.Link" :size="ButtonSize.LabelLink">More slots</Button>
         </template>
