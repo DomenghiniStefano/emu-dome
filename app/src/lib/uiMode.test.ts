@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { PadInfo } from '@/emu'
-import { activePad, decideUiLayout, padsAfter, uiPreference, type UiInputs } from './uiMode'
+import {
+  activePad,
+  decideUiLayout,
+  padsAfter,
+  tvScale,
+  uiPreference,
+  type UiInputs,
+} from './uiMode'
 
 const pad = (id: number, battery: number | null = null): PadInfo => ({
   id,
@@ -73,5 +80,15 @@ describe('padsAfter / activePad', () => {
     pads = padsAfter(pads, pad(2), 'disconnected')
     expect(activePad(pads)?.id).toBe(1)
     expect(activePad(padsAfter(pads, pad(1), 'disconnected'))).toBeNull()
+  })
+})
+
+describe('tvScale', () => {
+  it('keeps the mockup sizes up to 1920 × 1080, grows them on a larger screen', () => {
+    expect(tvScale(1280, 720)).toBe(1)
+    expect(tvScale(1920, 1080)).toBe(1)
+    expect(tvScale(3840, 2160)).toBe(2)
+    expect(tvScale(3840, 1080)).toBe(1)
+    expect(tvScale(2560, 1600)).toBeCloseTo(1.333, 3)
   })
 })

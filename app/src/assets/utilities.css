@@ -223,5 +223,5 @@
 /* TV: a screen drawn for the desk shown larger as it is (the quick menu), by `--zoom-tv`
    (typography.css). */
 @utility zoom-tv {
-  zoom: var(--zoom-tv);
+  zoom: calc(var(--zoom-tv) * var(--tv-scale));
 }

@@ -14,7 +14,14 @@ import { emu, type PadInfo, type SettingDevice } from '@/emu'
 import { ignore, reportError } from '@/lib/errors'
 import { confirmSide, type ConfirmSide } from '@/lib/padGlyphs'
 import { readSetting } from '@/lib/settingsModel'
-import { activePad, decideUiLayout, padsAfter, uiPreference, type UiPreference } from '@/lib/uiMode'
+import {
+  activePad,
+  decideUiLayout,
+  padsAfter,
+  tvScale,
+  uiPreference,
+  type UiPreference,
+} from '@/lib/uiMode'
 import { useListeners } from './useListeners'
 import { onSettingsChanged } from './useSettingsChanged'
 
@@ -38,6 +45,8 @@ const RESIZE_SETTLE_MS = 150
  * current here on every resize); `device`: what the settings schema says this is.
  */
 export function useUiMode(fullscreen: Ref<boolean>, device: Readonly<Ref<SettingDevice | null>>) {
+  // The window's size in CSS pixels: the TV sizes grow on a screen larger than the mockup's.
+  const size = ref({ width: window.innerWidth, height: window.innerHeight })
   watchEffect(() => {
     tv.value =
       decideUiLayout({
@@ -47,8 +56,13 @@ export function useUiMode(fullscreen: Ref<boolean>, device: Readonly<Ref<Setting
         controllers: pads.value.length,
       }) === 'tv'
     const root = document.documentElement
-    if (tv.value) root.dataset.layout = 'tv'
-    else delete root.dataset.layout
+    if (tv.value) {
+      root.dataset.layout = 'tv'
+      root.style.setProperty('--tv-scale', String(tvScale(size.value.width, size.value.height)))
+    } else {
+      delete root.dataset.layout
+      root.style.removeProperty('--tv-scale')
+    }
   })
 
   async function readPreferences() {
@@ -59,6 +73,7 @@ export function useUiMode(fullscreen: Ref<boolean>, device: Readonly<Ref<Setting
 
   let settle: ReturnType<typeof setTimeout> | undefined
   function onResize() {
+    size.value = { width: window.innerWidth, height: window.innerHeight }
     clearTimeout(settle)
     settle = setTimeout(() => {
       ignore(

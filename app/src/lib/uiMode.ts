@@ -66,3 +66,14 @@ export function padsAfter(
 export function activePad(pads: readonly PadInfo[]): PadInfo | null {
   return pads.at(-1) ?? null
 }
+
+/** The screen the TV sizes are drawn for (the owner's mockup). */
+export const TV_DESIGN = { width: 1920, height: 1080 } as const
+
+/**
+ * How much the TV sizes grow on a window of `width` × `height` CSS pixels: its ratio to the
+ * mockup's screen on the tighter side, never under 1 (the 18px minimum stays).
+ */
+export function tvScale(width: number, height: number): number {
+  return Math.max(1, Math.min(width / TV_DESIGN.width, height / TV_DESIGN.height))
+}
