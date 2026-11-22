@@ -130,3 +130,28 @@ for (const [screen, s] of Object.entries(SHELL)) {
 for (const [screen, s] of Object.entries(GAME))
   for (const [size, wh] of Object.entries(LANDSCAPE))
     add(`phone-${screen}-${size}`, s, wh, SIDES.left);
+
+// «Sfondo ai lati del gioco» under the native video (#105): a built-in background with one hole
+// per screen where Rust places it (the mock's `screens_placements`), the room between two screens
+// apart painted. Headless has no native surface: the holes show the page's black. The core's
+// `started` event gives the frame's size.
+const started = (w, h) =>
+  `window.__emit('emu://session', { type: 'started', width: ${w}, height: ${h} }); true`;
+const SURROUND = {
+  nds: { w: 256, h: 384 },
+  "3ds": { w: 400, h: 480 },
+  gba: { w: 240, h: 160 },
+};
+for (const [game, { w, h }] of Object.entries(SURROUND)) {
+  const s = {
+    mock: { game, frame: true, nativeVideo: true, surround: "builtin" },
+    steps: [started(w, h)],
+  };
+  for (const size of ["p412", "p780"])
+    add(`phone-surround-${game}-${size}`, s, PORTRAIT[size], {
+      type: "portraitPrimary",
+      angle: 0,
+    });
+  for (const size of ["l892", "l780"])
+    add(`phone-surround-${game}-${size}`, s, LANDSCAPE[size], SIDES.left);
+}
