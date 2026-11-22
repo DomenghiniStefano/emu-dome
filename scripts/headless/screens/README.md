@@ -45,7 +45,10 @@ prove that a refactor changes nothing on screen (Trello #62).
 - The phone's layouts with a game picture (#29, `touch-frame-*`, `touch-qm-frame-*`, `touch-qm-turned*`,
   `touch-start-failed-*`, also at the Galaxy S23's 412 × 892 and 892 × 412): `frame: true` gives the webview canvas
   a GBA frame placed as `screens::fit` places it (mirrored in `mock.js`, at `frameDpr` device pixels per CSS pixel,
-  2.625 by default, as the native video on that phone); a `{ resize: [w, h] }` step turns the phone. `PROBE=<js>`
+  2.625 by default, as the native video on that phone); with `game: "nds"` / `"3ds"` the frame has two screens
+  (the top magenta, the touch screen teal) placed as `screens::compose` places them on a phone (`auto`, filling its
+  room, the inset's `between`, `apart` / `top`; the `touch-apart-*` scenarios, the S23 ones with the camera's 32 px
+  set on the `safe-*` tokens); a `{ resize: [w, h] }` step turns the phone. `PROBE=<js>`
   in the environment evaluates an expression on every page after its screenshot and prints it (the mock keeps the
   last `set_video_inset` in `window.__videoInset` and the last placements' area in `window.__lastArea`).
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.
