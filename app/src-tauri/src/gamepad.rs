@@ -31,6 +31,7 @@ use std::time::{Duration, Instant};
 use emudome_core::bindings::{Family, PadConfig, PadMap, Pos};
 use emudome_core::hotkeys::{PadInput, Router};
 use emudome_core::input::{Source, Sticks};
+use emudome_core::notifications::Notice;
 use emudome_core::ErrorCode;
 use sdl3_sys::error::SDL_GetError;
 use sdl3_sys::events::{
@@ -41,17 +42,18 @@ use sdl3_sys::gamepad::{
     SDL_CloseGamepad, SDL_Gamepad, SDL_GamepadAxis, SDL_GamepadButton, SDL_GamepadType,
     SDL_GetGamepadAxis, SDL_GetGamepadButton, SDL_GetGamepadName, SDL_GetGamepadPowerInfo,
     SDL_GetGamepadProduct, SDL_GetGamepadStringForType, SDL_GetGamepadType, SDL_GetGamepadVendor,
-    SDL_OpenGamepad, SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY, SDL_GAMEPAD_AXIS_LEFT_TRIGGER,
-    SDL_GAMEPAD_AXIS_RIGHTX, SDL_GAMEPAD_AXIS_RIGHTY, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER,
-    SDL_GAMEPAD_BUTTON_BACK, SDL_GAMEPAD_BUTTON_DPAD_DOWN, SDL_GAMEPAD_BUTTON_DPAD_LEFT,
-    SDL_GAMEPAD_BUTTON_DPAD_RIGHT, SDL_GAMEPAD_BUTTON_DPAD_UP, SDL_GAMEPAD_BUTTON_EAST,
-    SDL_GAMEPAD_BUTTON_GUIDE, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, SDL_GAMEPAD_BUTTON_LEFT_STICK,
-    SDL_GAMEPAD_BUTTON_NORTH, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, SDL_GAMEPAD_BUTTON_RIGHT_STICK,
-    SDL_GAMEPAD_BUTTON_SOUTH, SDL_GAMEPAD_BUTTON_START, SDL_GAMEPAD_BUTTON_WEST,
-    SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT, SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR,
-    SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT, SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO,
-    SDL_GAMEPAD_TYPE_PS3, SDL_GAMEPAD_TYPE_PS4, SDL_GAMEPAD_TYPE_PS5, SDL_GAMEPAD_TYPE_STEAM,
-    SDL_GAMEPAD_TYPE_XBOX360, SDL_GAMEPAD_TYPE_XBOXONE,
+    SDL_GetGamepads, SDL_OpenGamepad, SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY,
+    SDL_GAMEPAD_AXIS_LEFT_TRIGGER, SDL_GAMEPAD_AXIS_RIGHTX, SDL_GAMEPAD_AXIS_RIGHTY,
+    SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, SDL_GAMEPAD_BUTTON_BACK, SDL_GAMEPAD_BUTTON_DPAD_DOWN,
+    SDL_GAMEPAD_BUTTON_DPAD_LEFT, SDL_GAMEPAD_BUTTON_DPAD_RIGHT, SDL_GAMEPAD_BUTTON_DPAD_UP,
+    SDL_GAMEPAD_BUTTON_EAST, SDL_GAMEPAD_BUTTON_GUIDE, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,
+    SDL_GAMEPAD_BUTTON_LEFT_STICK, SDL_GAMEPAD_BUTTON_NORTH, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER,
+    SDL_GAMEPAD_BUTTON_RIGHT_STICK, SDL_GAMEPAD_BUTTON_SOUTH, SDL_GAMEPAD_BUTTON_START,
+    SDL_GAMEPAD_BUTTON_WEST, SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT,
+    SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR, SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT,
+    SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, SDL_GAMEPAD_TYPE_PS3, SDL_GAMEPAD_TYPE_PS4,
+    SDL_GAMEPAD_TYPE_PS5, SDL_GAMEPAD_TYPE_STEAM, SDL_GAMEPAD_TYPE_XBOX360,
+    SDL_GAMEPAD_TYPE_XBOXONE,
 };
 use sdl3_sys::hints::{
     SDL_SetHint, SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, SDL_HINT_JOYSTICK_HIDAPI_STEAM,
@@ -61,6 +63,7 @@ use sdl3_sys::joystick::SDL_JoystickID;
 use sdl3_sys::power::{
     SDL_PowerState, SDL_POWERSTATE_CHARGED, SDL_POWERSTATE_CHARGING, SDL_POWERSTATE_ON_BATTERY,
 };
+use sdl3_sys::stdinc::SDL_free;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -232,6 +235,9 @@ fn run(
     }
     log::info!("controllers: SDL3 ready");
 
+    // The controllers already there at start arrive as «added» too: only the ones connected
+    // afterwards become a notification (X03, #32).
+    let mut at_start = connected_ids();
     let mut pads: Vec<Pad> = Vec::new();
     let mut config = PadConfig::default();
     // The generation the config was read at; `None` until the settings are open.
@@ -261,6 +267,16 @@ fn run(
                 let id = unsafe { event.gdevice.which };
                 if let Some(pad) = open(id, &config) {
                     emit(&app, events::GAMEPAD_CONNECTED, pad.info.clone());
+                    if let Some(i) = at_start.iter().position(|&s| s == id.0) {
+                        at_start.swap_remove(i);
+                    } else {
+                        crate::notifications::record(
+                            &app,
+                            Notice::ControllerConnected {
+                                name: pad.info.name.clone().unwrap_or_default(),
+                            },
+                        );
+                    }
                     shared_pads.list.lock().push(pad.info.clone());
                     pads.push(pad);
                 }
@@ -405,6 +421,26 @@ fn battery(state: SDL_PowerState, percent: c_int) -> Option<u8> {
 
 /// Opens the controller and logs its name, type and USB ids, so whoever tests
 /// can tell exactly which model is connected.
+/// The instance ids of the controllers connected now.
+fn connected_ids() -> Vec<u32> {
+    let mut count: c_int = 0;
+    // SAFETY: SDL calls on the thread that initialised it; the array holds `count` ids and is
+    // freed once, with SDL_free.
+    unsafe {
+        let ids = SDL_GetGamepads(&mut count);
+        if ids.is_null() {
+            return Vec::new();
+        }
+        let len = usize::try_from(count).unwrap_or(0);
+        let list = std::slice::from_raw_parts(ids, len)
+            .iter()
+            .map(|id| id.0)
+            .collect();
+        SDL_free(ids.cast());
+        list
+    }
+}
+
 fn open(id: SDL_JoystickID, config: &PadConfig) -> Option<Pad> {
     // SAFETY: SDL calls on the thread that initialised it.
     unsafe {
