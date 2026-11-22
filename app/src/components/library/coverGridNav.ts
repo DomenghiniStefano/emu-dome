@@ -88,24 +88,37 @@ export type CellStep = (from: CoverCell, dir: Direction, g: GridShape) => CoverC
 
 /**
  * The phone's list (#29, GameRow.vue): one game per row, its row (`cover`, the click area) and,
- * at its right, «Gioca» / «Riprendi» (`play`, when `playable`; no «…»). Up / down move by row and
- * keep the side (a row without its button takes the row); left / right go between a row and its
- * button. The first row up, the last down, left from a row and right from a button leave the list.
+ * at its right, «Gioca» / «Riprendi» (`play`, when `playable`; no «…»). On its side the list has
+ * two columns of rows (#105): `cols` games side by side. Up / down move by row and keep the side
+ * (a row without its button takes the row; the last game when the row below is shorter); left /
+ * right go between a row and its button, and on to the next column's row (its button going
+ * left, the row going right). The first row up, the last down, left from the first column's row
+ * and right from the last column's button leave the list.
  */
 export function listStep(from: CoverCell, dir: Direction, g: GridShape): CoverCell | null {
+  const cols = Math.max(1, g.cols)
   const { index } = from
   if (index < 0 || index >= g.count) return null
+  const col = index % cols
+  const rowFirst = index - col
+  const rowLast = Math.min(rowFirst + cols, g.count) - 1
+  const cover = (i: number): CoverCell => ({ index: i, part: 'cover' })
+  const play = (i: number): CoverCell => ({ index: i, part: 'play' })
   const sameSide = (i: number): CoverCell =>
-    from.part === 'play' && g.playable(i) ? { index: i, part: 'play' } : { index: i, part: 'cover' }
+    from.part === 'play' && g.playable(i) ? play(i) : cover(i)
   switch (dir) {
     case 'up':
-      return index > 0 ? sameSide(index - 1) : null
+      return index >= cols ? sameSide(index - cols) : null
     case 'down':
-      return index < g.count - 1 ? sameSide(index + 1) : null
+      // The last game when the row below is shorter; none from the last row.
+      return rowFirst + cols < g.count ? sameSide(Math.min(index + cols, g.count - 1)) : null
     case 'left':
-      return from.part === 'cover' ? null : { index, part: 'cover' }
+      if (from.part === 'play') return cover(index)
+      if (index === rowFirst) return null
+      return g.playable(index - 1) ? play(index - 1) : cover(index - 1)
     case 'right':
-      return from.part === 'cover' && g.playable(index) ? { index, part: 'play' } : null
+      if (from.part === 'cover' && g.playable(index)) return play(index)
+      return index < rowLast ? cover(index + 1) : null
   }
 }
 

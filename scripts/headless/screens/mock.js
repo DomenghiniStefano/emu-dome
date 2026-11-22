@@ -494,6 +494,19 @@
   // TV mode (#30): `ui` fixes `general.ui` ("tv" / "desktop"; Automatica otherwise).
   if (scenario.ui) values["general.ui"] = scenario.ui;
   if (scenario.libraryView) values["library.view"] = scenario.libraryView;
+  // «Sfondo ai lati del gioco» (#105): `surround` gives the video page that row with this value
+  // ("builtin", "cover"…; the built-in background is the first, Aurora).
+  if (scenario.surround && !scenario.richSettings) {
+    entries.push(
+      entry(
+        "video.surround",
+        "video",
+        choice("cards", ["black", "cover", "blur", "builtin", "image"]),
+        "black",
+      ),
+    );
+    values["video.surround"] = scenario.surround;
+  }
   // The touch controls (#29): `touchRows` gives the touch page's values (`touch.tskin`,
   // `touch.tlost`, `touch.tland`…), each a row of the page.
   for (const [key, value] of Object.entries(scenario.touchRows ?? {}))

@@ -1,8 +1,9 @@
 // The phone's shell (Trello #29): the tab bar upright, the rail as a column on the camera's edge
 // on its side (both ways round: `orientation` sets `screen.orientation.type`), the quick menu on
 // its side, and E13's warning. Device «phone», a touch screen, in Italian. Named
-// `phone-<screen>-<size>`: `p412` 412 × 892 (Galaxy S23), `p390` 390 × 844 and `p360` 360 × 740
-// upright, `l892` 892 × 412, `l844` 844 × 390 and `l740` 740 × 360 on the side, camera left (`-left`) or right (`-right`).
+// `phone-<screen>-<size>`: `p412` 412 × 892 (Galaxy S23), `p390` 390 × 844, `p360` 360 × 740 and
+// `p780` 360 × 780 (the S23 with its display zoomed, #105) upright, `l892` 892 × 412, `l844`
+// 844 × 390, `l780` 780 × 360 and `l740` 740 × 360 on the side, camera left (`-left`) or right (`-right`).
 
 /** The phone's tab bar or side column: the n-th section. */
 const section = (n) =>
@@ -89,8 +90,18 @@ const GAME = {
   },
 };
 
-const PORTRAIT = { p412: [412, 892], p390: [390, 844], p360: [360, 740] };
-const LANDSCAPE = { l892: [892, 412], l844: [844, 390], l740: [740, 360] };
+const PORTRAIT = {
+  p412: [412, 892],
+  p390: [390, 844],
+  p360: [360, 740],
+  p780: [360, 780],
+};
+const LANDSCAPE = {
+  l892: [892, 412],
+  l844: [844, 390],
+  l780: [780, 360],
+  l740: [740, 360],
+};
 const SIDES = {
   left: { type: "landscapePrimary", angle: 90 },
   right: { type: "landscapeSecondary", angle: 270 },
@@ -119,3 +130,28 @@ for (const [screen, s] of Object.entries(SHELL)) {
 for (const [screen, s] of Object.entries(GAME))
   for (const [size, wh] of Object.entries(LANDSCAPE))
     add(`phone-${screen}-${size}`, s, wh, SIDES.left);
+
+// «Sfondo ai lati del gioco» under the native video (#105): a built-in background with one hole
+// per screen where Rust places it (the mock's `screens_placements`), the room between two screens
+// apart painted. Headless has no native surface: the holes show the page's black. The core's
+// `started` event gives the frame's size.
+const started = (w, h) =>
+  `window.__emit('emu://session', { type: 'started', width: ${w}, height: ${h} }); true`;
+const SURROUND = {
+  nds: { w: 256, h: 384 },
+  "3ds": { w: 400, h: 480 },
+  gba: { w: 240, h: 160 },
+};
+for (const [game, { w, h }] of Object.entries(SURROUND)) {
+  const s = {
+    mock: { game, frame: true, nativeVideo: true, surround: "builtin" },
+    steps: [started(w, h)],
+  };
+  for (const size of ["p412", "p780"])
+    add(`phone-surround-${game}-${size}`, s, PORTRAIT[size], {
+      type: "portraitPrimary",
+      angle: 0,
+    });
+  for (const size of ["l892", "l780"])
+    add(`phone-surround-${game}-${size}`, s, LANDSCAPE[size], SIDES.left);
+}

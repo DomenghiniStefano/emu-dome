@@ -2,7 +2,6 @@
 // around the game. The webview paints it: under the native video it is a full-window layer with a
 // hole where the game is (the native surface shows through), in webview mode it sits under the
 // canvas. Everything here is EmuDome's own: CSS gradients and a generated grid, no images.
-import type { VideoInset } from '@/emu'
 
 /** The first built-in background, and the one used for an unknown `video.surroundSet`. */
 export const AURORA = 'linear-gradient(135deg, #5b3f8c 0%, #245f7a 100%)'
@@ -38,60 +37,65 @@ export interface Rect {
   h: number
 }
 
-/** The two shares of an axis as `Inset::axis` takes them: each in 0..0.9, scaled down together
- * when they leave less than a tenth. */
-function axis(start: number, end: number): [number, number] {
-  const clean = (v: number) => (Number.isFinite(v) ? Math.min(Math.max(v, 0), 0.9) : 0)
-  const [s, e] = [clean(start), clean(end)]
-  return s + e > 0.9 ? [(s * 0.9) / (s + e), (e * 0.9) / (s + e)] : [s, e]
+/** A rectangle as its edges. */
+interface Box {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
 }
 
+const overlap = (a: Box, b: Box) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2
+
 /**
- * Where the native video draws the game, in physical pixels: a mirror of `screens::fit` in
- * crates/emudome-core (integer scale when it fits, else the largest that keeps the aspect, in the
- * part `inset` leaves: centred, against its bottom, or its top). One rectangle, the whole frame:
- * not each screen of a two-screen layout, whose placements only Rust knows. Keep the two equal.
+ * The holes to cut: rectangles that overlap (a custom layout may put one screen over another)
+ * are merged into their bounding box, since `evenodd` would paint their overlap back. At worst
+ * the native black shows in a corner between two overlapping screens.
  */
-export function nativeGameRect(
-  surface: { w: number; h: number },
-  game: { w: number; h: number },
-  inset: VideoInset,
-): Rect {
-  const [l, r] = axis(inset.left, inset.right)
-  const [t, b] = axis(inset.top, inset.bottom)
-  const free = {
-    x: surface.w * l,
-    y: surface.h * t,
-    w: surface.w * (1 - l - r),
-    h: surface.h * (1 - t - b),
+function disjoint(boxes: Box[]): Box[] {
+  const out = [...boxes]
+  for (let merged = true; merged;) {
+    merged = false
+    outer: for (let i = 0; i < out.length; i++)
+      for (let j = i + 1; j < out.length; j++) {
+        const [a, b] = [out[i], out[j]]
+        if (!a || !b || !overlap(a, b)) continue
+        out[i] = {
+          x1: Math.min(a.x1, b.x1),
+          y1: Math.min(a.y1, b.y1),
+          x2: Math.max(a.x2, b.x2),
+          y2: Math.max(a.y2, b.y2),
+        }
+        out.splice(j, 1)
+        merged = true
+        break outer
+      }
   }
-  const fit = Math.min(free.w / game.w, free.h / game.h)
-  const scale = fit >= 1 ? Math.floor(fit) : fit
-  const w = game.w * scale
-  const h = game.h * scale
-  const y =
-    inset.align === 'bottom' || inset.align === 'apart'
-      ? free.y + free.h - h
-      : inset.align === 'top'
-        ? free.y
-        : free.y + (free.h - h) / 2
-  return { x: Math.floor(free.x + (free.w - w) / 2), y: Math.floor(y), w, h }
+  return out
 }
 
 /**
- * The CSS `clip-path` that keeps everything but `hole` (in the layer's CSS px; `scale` device
- * pixels per layer px), rounded outwards to whole device pixels so the background never covers
- * the game's edge: at worst a pixel of the native black shows.
+ * The CSS `clip-path` that keeps everything but `holes` (each screen where the native video draws
+ * it, from Rust's `screens_placements`; in the layer's CSS px, `scale` device pixels per layer
+ * px), each rounded outwards to whole device pixels so the background never covers a screen's
+ * edge: at worst a pixel of the native black shows. One path: the window, then each hole joined
+ * to its corner and back (the joins cancel out under `evenodd`). No holes: undefined.
  */
-export function holeClipPath(hole: Rect, scale: number): string {
-  const px = (v: number) => `${v}px`
+export function holesClipPath(holes: readonly Rect[], scale: number): string | undefined {
   // The small margin absorbs float noise (800 / 1.2 * 1.2 is not exactly 800).
-  const x1 = Math.floor(hole.x * scale + 1e-6) / scale
-  const y1 = Math.floor(hole.y * scale + 1e-6) / scale
-  const x2 = Math.ceil((hole.x + hole.w) * scale - 1e-6) / scale
-  const y2 = Math.ceil((hole.y + hole.h) * scale - 1e-6) / scale
-  return (
-    `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ` +
-    `${px(x1)} ${px(y1)}, ${px(x2)} ${px(y1)}, ${px(x2)} ${px(y2)}, ${px(x1)} ${px(y2)}, ${px(x1)} ${px(y1)})`
+  const boxes = holes
+    .filter(h => h.w > 0 && h.h > 0)
+    .map(h => ({
+      x1: Math.floor(h.x * scale + 1e-6) / scale,
+      y1: Math.floor(h.y * scale + 1e-6) / scale,
+      x2: Math.ceil((h.x + h.w) * scale - 1e-6) / scale,
+      y2: Math.ceil((h.y + h.h) * scale - 1e-6) / scale,
+    }))
+  if (boxes.length === 0) return undefined
+  const p = (x: number, y: number) => `${x}px ${y}px`
+  const rings = disjoint(boxes).map(
+    b =>
+      `${p(b.x1, b.y1)}, ${p(b.x2, b.y1)}, ${p(b.x2, b.y2)}, ${p(b.x1, b.y2)}, ${p(b.x1, b.y1)}, 0 0`,
   )
+  return `polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${rings.join(', ')})`
 }

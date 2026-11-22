@@ -2,7 +2,8 @@
 // The shell's top bar (design L01): thin glass with the small mark and the wordmark (#101), the
 // search everywhere (X01, #32) and the notifications' bell (X03) on the right. The search is a
 // field with its Ctrl K in the middle on the desktop, a magnifier beside the bell on the phone
-// (the owner, #29: not in the middle there). Either opens the search (`search`). On the phone the
+// (the owner, #29: not in the middle there); on its side the field stays, without its Ctrl K
+// (#105). Either opens the search (`search`). On the phone the
 // bar reaches under the status bar: its glass behind it, its content below (`pt-safe-top`).
 import { useI18n } from 'vue-i18n'
 import { Search } from '@lucide/vue'
@@ -44,8 +45,11 @@ const layout = useDeviceLayout()
       >
         <Search class="flex-none" :size="16" :stroke-width="1.75" aria-hidden="true" />
         <span class="min-w-0 flex-1 truncate text-left">{{ t('search.field') }}</span>
-        <Kbd>{{ t('search.key.ctrl') }}</Kbd>
-        <Kbd>{{ t('search.key.k') }}</Kbd>
+        <!-- The phone on its side has the field but no keyboard: no Ctrl K there (#105). -->
+        <template v-if="!layout.touchDensity.value">
+          <Kbd>{{ t('search.key.ctrl') }}</Kbd>
+          <Kbd>{{ t('search.key.k') }}</Kbd>
+        </template>
       </Button>
       <div class="flex-1"></div>
     </template>

@@ -98,6 +98,37 @@ describe('the phone’s list (#29)', () => {
   })
 })
 
+describe('the phone’s list on its side, two columns (#105)', () => {
+  // 2 columns, 5 games: rows 0–1, 2–3, 4. Game 2 cannot be played.
+  const list: GridShape = { cols: 2, count: 5, playable: i => i !== 2 }
+  const go = (from: CoverCell, dir: Direction) => listStep(from, dir, list)
+  it('up and down by row in the same column, keeping the side', () => {
+    expect(go(at(1, 'play'), 'down')).toEqual(at(3, 'play'))
+    expect(go(at(1, 'cover'), 'down')).toEqual(at(3, 'cover'))
+    expect(go(at(0, 'play'), 'down')).toEqual(at(2, 'cover'))
+    expect(go(at(3, 'cover'), 'up')).toEqual(at(1, 'cover'))
+    expect(go(at(1, 'cover'), 'up')).toBeNull()
+  })
+  it('down to the last game when the row below is shorter; none from the last row', () => {
+    expect(go(at(3, 'play'), 'down')).toEqual(at(4, 'play'))
+    expect(go(at(2, 'cover'), 'down')).toEqual(at(4, 'cover'))
+    expect(go(at(4, 'cover'), 'down')).toBeNull()
+  })
+  it('left and right through the row, its button, the next column; the ends leave', () => {
+    expect(go(at(0, 'cover'), 'right')).toEqual(at(0, 'play'))
+    expect(go(at(0, 'play'), 'right')).toEqual(at(1, 'cover'))
+    expect(go(at(1, 'cover'), 'left')).toEqual(at(0, 'play'))
+    expect(go(at(1, 'play'), 'left')).toEqual(at(1, 'cover'))
+    expect(go(at(1, 'play'), 'right')).toBeNull()
+    expect(go(at(0, 'cover'), 'left')).toBeNull()
+    // A row without its button: straight to the next column, and back onto the row itself.
+    expect(go(at(2, 'cover'), 'right')).toEqual(at(3, 'cover'))
+    expect(go(at(3, 'cover'), 'left')).toEqual(at(2, 'cover'))
+    // The last game of a short last row.
+    expect(go(at(4, 'play'), 'right')).toBeNull()
+  })
+})
+
 describe('the phone’s compact grid (#29)', () => {
   // 3 columns, 7 games: rows 0–2, 3–5, 6. Game 1 has «Riprendi» in its corner.
   const grid: GridShape = { cols: 3, count: 7, playable: i => i === 1 }
