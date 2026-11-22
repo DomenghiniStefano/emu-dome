@@ -4,6 +4,7 @@
 import { ref } from 'vue'
 import type { GameInfo, LibraryGame, Speed, Stats } from '@/emu'
 import { NORMAL } from '@/lib/speeds'
+import { NO_INSET, type InsetPx } from './inset'
 
 export function createGameState() {
   return {
@@ -32,8 +33,9 @@ export function createGameState() {
     /** «Muto» and «A schermo intero» (quick menu tools). */
     muted: ref(false),
     fullscreen: ref(false),
-    /** G09: px at the bottom the quick menu's bar covers; the game shrinks above it. */
-    menuInset: ref(0),
+    /** The edges kept clear of the game, CSS px: the quick menu's bar, sheet or side panel, or
+     * the touch controls (#29); the game is fitted in the rest. */
+    videoInset: ref<InsetPx>(NO_INSET),
   }
 }
 export type GameState = ReturnType<typeof createGameState>

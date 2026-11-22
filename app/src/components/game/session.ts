@@ -13,11 +13,6 @@ export function pageBackground(mode: VideoMode): string {
   return mode === 'native' ? 'transparent' : 'var(--bg)'
 }
 
-/** G09: the share of the window's height the quick menu's bar covers (0.9 at most). */
-export function insetShare(px: number, height: number): number {
-  return px > 0 ? Math.min(0.9, px / height) : 0
-}
-
 /** The HUD's speed chip: shown while not at 1× (fast forward held, max, or another factor). */
 export function speedShown(turboHeld: boolean, speed: Speed): boolean {
   return turboHeld || speed.kind === 'max' || (speed.kind === 'factor' && speed.value !== 1)

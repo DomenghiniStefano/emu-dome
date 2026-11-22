@@ -13,7 +13,7 @@ import { coverColours, type CoverColours } from '@/lib/ambient'
 import { settingsUnder, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { reducedMotion, uiZoom } from '@/lib/appearance'
 import { shiftLightness } from '@/lib/colour'
-import { insetShare } from './session'
+import { insetShares, type InsetPx } from './inset'
 import { backgroundUrl, emu, type LibraryGame, type SettingValue, type VideoMode } from '@/emu'
 import {
   AURORA,
@@ -28,8 +28,8 @@ const props = defineProps<{
   mode: VideoMode
   /** The game's frame size (the core's `started` event); null until known. */
   gameSize: { w: number; h: number } | null
-  /** Quick menu G09: screen px at the bottom the menu's bar keeps clear. */
-  insetBottom: number
+  /** The edges the quick menu or the touch controls keep clear (screen px). */
+  inset: InsetPx
   /** The library game being played, for «Colore della copertina»; null for a file. */
   game: LibraryGame | null
 }>()
@@ -99,7 +99,7 @@ const animated = computed(
 const clip = computed(() => {
   if (props.mode !== 'native' || !props.gameSize) return undefined
   const { w, h, dpr } = win.value
-  const inset = insetShare(props.insetBottom, h)
+  const inset = insetShares(props.inset, w, h)
   const r = nativeGameRect(
     { w: Math.round(w * dpr), h: Math.round(h * dpr) },
     props.gameSize,

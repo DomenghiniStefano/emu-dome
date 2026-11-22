@@ -58,6 +58,7 @@ import type { PointerArea } from '@/generated/app/PointerArea'
 import type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
 import type { CustomLayout } from '@/generated/CustomLayout'
 import type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
+import type { VideoInset } from '@/generated/VideoInset'
 import type { ScreenStatus } from '@/generated/ScreenStatus'
 import type { TouchLayout } from '@/generated/TouchLayout'
 import type { TouchOrientation } from '@/generated/TouchOrientation'
@@ -131,6 +132,8 @@ export type { PxRect } from '@/generated/PxRect'
 export type { ScreenId } from '@/generated/ScreenId'
 export type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
 export type { ScreenPlacement } from '@/generated/ScreenPlacement'
+export type { VideoAlign } from '@/generated/VideoAlign'
+export type { VideoInset } from '@/generated/VideoInset'
 export type { ScreenRect } from '@/generated/ScreenRect'
 export type { ScreenRotation } from '@/generated/ScreenRotation'
 export type { ScreenStatus } from '@/generated/ScreenStatus'
@@ -245,8 +248,9 @@ export const emu = {
   /** F11 and «A schermo intero»: fullscreen on / off; resolves whether it is now on. */
   toggleFullscreen: () => invoke<boolean>('toggle_fullscreen'),
   isFullscreen: () => invoke<boolean>('is_fullscreen'),
-  /** G09: the bottom `fraction` of the window is the menu's bar; the native game shrinks above it. */
-  setVideoInset: (fraction: number) => invoke<void>('set_video_inset', { fraction }),
+  /** The edges kept clear of the native game (shares of the window: the quick menu, the touch
+   * controls); it is fitted in the rest. */
+  setVideoInset: (inset: VideoInset) => invoke<void>('set_video_inset', { inset }),
   /** «Muto» in the quick menu: silence for the open game only. */
   setMuted: (muted: boolean) => invoke<void>('set_muted', { muted }),
   saveState: (slot: number) => invoke<void>('save_state', { slot }),

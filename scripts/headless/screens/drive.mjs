@@ -1037,8 +1037,23 @@ for (const screen of ["out", "in", "g04", "library"])
     height: 844,
   };
 
-/** A trusted key press, or the pointer moved over an element. */
+/** A trusted key press, the pointer moved over an element, or the phone turned (`resize`:
+ * [width, height], the way round following it). */
 async function act(p, step) {
+  if (step.resize) {
+    const [width, height] = step.resize;
+    await p.send("Emulation.setDeviceMetricsOverride", {
+      width,
+      height,
+      deviceScaleFactor: 1,
+      mobile: true,
+      screenOrientation:
+        width > height
+          ? { type: "landscapePrimary", angle: 90 }
+          : { type: "portraitPrimary", angle: 0 },
+    });
+    return;
+  }
   if (step.key) {
     for (const type of ["keyDown", "keyUp"]) {
       await p.send("Input.dispatchKeyEvent", {
@@ -1130,6 +1145,16 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
     path.join(outDir, `${name}.png`),
     Buffer.from(shot.result.data, "base64"),
   );
+  // `PROBE=<expression>`: evaluated on each page after its screenshot and printed (a geometry
+  // check: where the game is drawn, what the inset says).
+  if (process.env.PROBE) {
+    const r = await p.send("Runtime.evaluate", {
+      expression: process.env.PROBE,
+      returnByValue: true,
+      awaitPromise: true,
+    });
+    console.log(name, "probe", JSON.stringify(r.result?.result?.value ?? r.result));
+  }
   const calls = await p.send("Runtime.evaluate", {
     expression: "JSON.stringify([...new Set(window.__mockCalls || [])])",
     returnByValue: true,

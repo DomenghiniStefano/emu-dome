@@ -9,13 +9,15 @@ import { useI18n } from 'vue-i18n'
 import { uiZoom } from '@/lib/appearance'
 import { feColorMatrix, isColourBlindMode } from './colourBlind'
 import { screenDraws, type ScreenDraw } from './screenDraw'
+import { NO_INSET, type InsetPx } from './inset'
 import { viewArea } from './screenTouch'
 import { emu, frameUrl, type BenchFrame } from '@/emu'
 import { ignore, reportError } from '@/lib/errors'
 
 const props = defineProps<{
-  /** Quick menu G09: px at the bottom kept clear for the menu's bar; the game shrinks above. */
-  insetBottom?: number
+  /** The edges kept clear for the quick menu or the touch controls (CSS px); the game is fitted
+   * in the rest. */
+  inset?: InsetPx
   /** `a11y.cblind`: the colour correction drawn on the game (`none` or absent: none). */
   colourBlind?: string
   /** A side background (GameSurround) is painted under the stage: no black of its own. */
@@ -59,7 +61,7 @@ function benchFlush() {
 /** Asks Rust where the screens go now (window, menu bar, layout, frame size). */
 async function compose() {
   const mine = ++request
-  const area = viewArea(window, 1, props.insetBottom ?? 0)
+  const area = viewArea(window, 1, props.inset ?? NO_INSET)
   const scale = window.devicePixelRatio || 1
   try {
     const res = await emu.screens.placements(area)
@@ -131,7 +133,14 @@ async function tick() {
   requestAnimationFrame(tick)
 }
 
-watch(() => props.insetBottom, resize)
+watch(() => props.inset, resize)
+
+/** The stage's black stops at the inset's edges (layer px = screen px / zoom). */
+const stageEdges = computed(() => {
+  const i = props.inset ?? NO_INSET
+  const px = (v: number) => `${v / uiZoom.value}px`
+  return { left: px(i.left), top: px(i.top), right: px(i.right), bottom: px(i.bottom) }
+})
 watch(uiZoom, resize)
 
 let stopScreens: (() => void) | null = null
@@ -159,7 +168,7 @@ onUnmounted(() => {
   <div
     class="fixed inset-0"
     :class="surround ? 'bg-transparent' : 'bg-letterbox'"
-    :style="{ bottom: `${(insetBottom ?? 0) / uiZoom}px` }"
+    :style="stageEdges"
   >
     <svg v-if="filter" class="absolute size-0" aria-hidden="true">
       <filter :id="filter.id" color-interpolation-filters="sRGB">

@@ -50,6 +50,7 @@
   "library": {
     "emptyTitle": "Add your games",
     "emptyLead": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, or drag them here.",
+    "emptyLeadTouch": "Choose the folder where you keep your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games.",
     "chooseFolder": "Choose a folder…",
     "openFile": "Open a file…",
     "dialogFilter": "GBA games",

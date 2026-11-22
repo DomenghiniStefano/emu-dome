@@ -25,6 +25,7 @@ import { useI18n } from 'vue-i18n'
 import type { GameInfo, LibraryGame, ScreenLayoutId, ScreenStatus, Speed, VideoMode } from '@/emu'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import TouchEditor from '@/components/touch/TouchEditor.vue'
+import { NO_INSET, type InsetPx } from '@/components/game/inset'
 
 import { useNavScope } from '@/nav'
 import { inputMode } from '@/lib/inputMode'
@@ -45,7 +46,7 @@ import SubPageHeader from './SubPageHeader.vue'
 import TrialPanel from './TrialPanel.vue'
 import UndoLoadBanner from './UndoLoadBanner.vue'
 import { backKeyLabel, searchKeyLabels } from './hints'
-import { BAR_PANEL, MENU_PANEL, SIDE_PANEL, sheetPanel } from './panel'
+import { BAR_PANEL, MENU_PANEL, MenuInset, SIDE_PANEL, sheetPanel } from './panel'
 import {
   cycleStartingAt,
   layoutCard,
@@ -60,6 +61,7 @@ import { loadedLine, mainSlotCount } from './slots'
 import { followedSpeed, modeSpeeds, speedChoices } from './speedChoices'
 import { ToolId, type Tool } from './tools'
 import { useControllerShortcuts } from './useControllerShortcuts'
+import { useMenuInset } from './useMenuInset'
 import { useMenuSearch } from './useMenuSearch'
 
 import { useQuickMenuNavigation } from './useQuickMenuNavigation'
@@ -96,8 +98,9 @@ const emit = defineEmits<{
   mute: [boolean]
   fullscreen: []
   screenshot: []
-  /** G09: px at the bottom of the window the bar covers (0 = none); the game shrinks above. */
-  inset: [number]
+  /** The edges the menu keeps clear of the game, CSS px: G09's bar on desktop, the phone's sheet
+   * or side panel (none: the whole window); the game is fitted in the rest. */
+  inset: [InsetPx]
   /** NDS / 3DS: «Scambia gli schermi», «Chiudi il coperchio», G09's layout card. */
   swapScreens: []
   toggleLid: []
@@ -171,6 +174,21 @@ const dimmed = computed(
 )
 const panelClass = computed(() =>
   sheet.value ? sheetPanel(view.value) : phone.value ? SIDE_PANEL : MENU_PANEL,
+)
+/** What the menu keeps clear of the game: the phone's panel beside or under it (#29). */
+const insetKind = computed<MenuInset>(() =>
+  barShown.value
+    ? MenuInset.Bar
+    : editorShown.value || touchEditorShown.value || !phone.value
+      ? MenuInset.None
+      : sheet.value
+        ? MenuInset.Sheet
+        : MenuInset.Side,
+)
+useMenuInset(
+  root,
+  () => insetKind.value,
+  inset => emit('inset', inset),
 )
 
 const consoleName = computed(() => t(`console.${props.game.consoleId}`))
@@ -336,7 +354,7 @@ onMounted(async () => {
   void focusChosenSlot()
   await loadShortcuts()
 })
-onBeforeUnmount(() => emit('inset', 0))
+onBeforeUnmount(() => emit('inset', NO_INSET))
 </script>
 
 <template>
@@ -416,7 +434,11 @@ onBeforeUnmount(() => emit('inset', 0))
           @back="back"
         />
 
-        <div class="flex min-h-0 flex-col gap-16 overflow-y-auto touch:flex-1 touch:gap-10">
+        <!-- The middle scrolls when it does not fit (the phone on its side): the header and the
+             footer stay; a swipe pans it and never reaches the game behind. -->
+        <div
+          class="flex min-h-0 touch-pan-y flex-col gap-16 overflow-y-auto overscroll-contain touch:flex-1 touch:gap-10"
+        >
           <QuickSaves
             v-if="view === QuickMenuView.Home || view === QuickMenuView.Slots"
             :slots="shownSlots"
