@@ -256,6 +256,22 @@ fn nds_trimmed_and_untrimmed_dumps_are_the_same_game() {
     assert!(a.has_icon);
 }
 
+/// A DSi-enhanced NDS ROM (unit code bit 1) carries its total used size at 0x210, past the
+/// first 0x200 bytes: identifying it must read that far, not index out of the 0x200 read (it
+/// panicked the scan thread on a real DSi-enhanced game, seen on the S23).
+#[test]
+fn a_dsi_enhanced_nds_rom_is_identified() {
+    let dir = TestDir::new("lib-nds-dsi");
+    let mut rom = nds_rom();
+    rom[0x12] = 0x02;
+    put(&mut rom, 0x210, &(NDS_USED as u32).to_le_bytes());
+    let crc = nds_crc(&rom[..0x15E]);
+    put(&mut rom, 0x15E, &crc.to_le_bytes());
+    let a = identify(&write(&dir, "dsi.nds", &rom)).unwrap();
+    assert_eq!(a.title, "Synthetic Game");
+    assert_eq!(a.id, format!("nds:{}", sha1_hex(&rom)));
+}
+
 #[test]
 fn an_nds_title_keeps_its_subtitle_and_drops_its_publisher() {
     let dir = TestDir::new("lib-nds-title");
