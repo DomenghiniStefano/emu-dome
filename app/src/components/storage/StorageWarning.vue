@@ -29,7 +29,6 @@ const free = computed(() => (status.value?.low ? sizeLabel(status.value.free) : 
     <span class="min-w-0 flex-1">{{ t('storage.low', { free }) }}</span>
     <Button
       :fade="ButtonFade.Dim"
-      :icon="HardDrive"
       aria-disabled="true"
       @click="toasts.notify(t('storage.manageNotYet'))"
     >
