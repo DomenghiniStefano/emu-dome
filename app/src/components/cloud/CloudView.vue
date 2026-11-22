@@ -9,11 +9,14 @@ import { computed, onMounted } from 'vue'
 import { SectionPage, SectionWidth } from '@/components/ui/section-page'
 import CloudHeader from './CloudHeader.vue'
 import CloudSignedOut from './CloudSignedOut.vue'
-import { cloud, failCloud, loadStatus } from './cloudState'
+import CloudStatusCard from './CloudStatusCard.vue'
+import { cloud, failCloud, gameTitle, loadStatus } from './cloudState'
 import { useCloudAccount } from './useCloudAccount'
+import { useCloudSync } from './useCloudSync'
 
 const status = computed(() => cloud.status)
 const account = useCloudAccount()
+const sync = useCloudSync()
 
 onMounted(async () => {
   try {
@@ -34,6 +37,12 @@ onMounted(async () => {
     />
     <template v-else>
       <CloudHeader :account="status.account" @sign-out="account.signOut" />
+      <CloudStatusCard
+        :status="status"
+        :title-of="gameTitle"
+        @sync-now="sync.syncNow"
+        @choose="sync.choose"
+      />
     </template>
   </SectionPage>
 </template>

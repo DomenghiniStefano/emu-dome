@@ -3,7 +3,6 @@
 // without G05 first (`cloud://in-use`: at startup, «Open with»). Stopped on unmount.
 import { emu, type CloudInUseEvent } from '@/emu'
 import { reportError } from '@/lib/errors'
-import { library } from '@/lib/library'
 import type { GameSession } from '@/components/game/useGameSession'
 import { useListeners } from '@/composables/useListeners'
 import {
@@ -11,6 +10,7 @@ import {
   applyStatus,
   askConflict,
   askInUse,
+  gameTitle,
   inUseToAsk,
   loadStatus,
 } from './cloudState'
@@ -25,7 +25,7 @@ export function useCloudEvents(session: GameSession) {
   async function inUseOpened(e: CloudInUseEvent) {
     if (e.inUse.kind !== 'elsewhere' || !inUseToAsk(e.id)) return
     const open = () => session.game.value?.id === e.id
-    const title = session.game.value?.title ?? library.games.find(g => g.id === e.id)?.title ?? e.id
+    const title = session.game.value?.title ?? gameTitle(e.id)
     try {
       if (open()) await session.setMenu(true)
     } catch (err) {

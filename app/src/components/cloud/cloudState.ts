@@ -18,6 +18,7 @@ import {
 import { isErrorCode } from '@/i18n/labels'
 import { reportError } from '@/lib/errors'
 import { latest } from '@/lib/latest'
+import { library } from '@/lib/library'
 import { errorKey } from './cloud'
 
 /** G05: a game open on another device. `opened`: the game already runs here (it was opened
@@ -128,6 +129,13 @@ export function applyGame(g: CloudGame) {
   gameLoads.next()
   const known = cloud.games.some(x => x.id === g.id)
   cloud.games = markRaw(known ? cloud.games.map(x => (x.id === g.id ? g : x)) : [...cloud.games, g])
+}
+
+/** A game's title: the library's (the name the user gave it), else Drive's list, else its id. */
+export function gameTitle(id: GameId): string {
+  return (
+    library.games.find(g => g.id === id)?.title ?? cloud.games.find(g => g.id === id)?.title ?? id
+  )
 }
 
 // ---- G04: two versions ----
