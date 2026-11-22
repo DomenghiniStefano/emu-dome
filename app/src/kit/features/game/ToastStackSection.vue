@@ -35,10 +35,12 @@ const LONG = [
 
 <template>
   <KitSection title="Toast stack" :group="KitGroup.Game">
-    <KitState label="Shell, bottom left: a notice, one with an action, an error">
+    <KitState label="Shell, bottom left past the rail: a notice, one with an action, an error">
       <div
         class="relative h-cover-hero w-panel max-w-full overflow-hidden rounded-card border border-line bg-bg transform-gpu"
       >
+        <!-- The shell's rail: the stack starts past it. -->
+        <div class="absolute inset-y-0 left-0 w-rail border-r border-line bg-glass-thin"></div>
         <ToastDemo :toasts="SHELL" />
       </div>
     </KitState>
@@ -51,8 +53,10 @@ const LONG = [
     </KitState>
     <KitState label="A long text with an action">
       <div
-        class="relative h-tool w-panel max-w-full overflow-hidden rounded-card border border-line bg-bg transform-gpu"
+        class="relative h-cover-small w-panel max-w-full overflow-hidden rounded-card border border-line bg-bg transform-gpu"
       >
+        <!-- The shell's rail: the stack starts past it. -->
+        <div class="absolute inset-y-0 left-0 w-rail border-r border-line bg-glass-thin"></div>
         <ToastDemo :toasts="LONG" />
       </div>
     </KitState>
@@ -63,14 +67,14 @@ const LONG = [
         bene i colori non lo riconosce, e un testo lungo tutto rosso su vetro chiaro si legge male.
         <template #current>
           <div
-            class="flex max-w-toast min-h-control-lg items-center gap-8 rounded-card py-4 pr-10 pl-10 font-medium glass-thick text-danger"
+            class="flex max-w-toast min-h-control-lg items-center gap-8 rounded-card py-6 pr-10 pl-10 font-medium glass-thick text-danger"
           >
             Impossibile leggere la cartella dei giochi. Controlla che il disco sia collegato.
           </div>
         </template>
         <template #proposed>
           <div
-            class="flex max-w-toast min-h-control-lg items-center gap-8 rounded-card py-4 pr-10 pl-10 font-medium glass-thick"
+            class="flex max-w-toast min-h-control-lg items-center gap-8 rounded-card py-6 pr-10 pl-10 font-medium glass-thick"
           >
             <CircleAlert
               :size="18"

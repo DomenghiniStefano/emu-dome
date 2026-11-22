@@ -36,7 +36,7 @@ const mark = { [FocusMark.Back]: '' }
     v-bind="mark"
     :variant="ButtonVariant.Ghost"
     :size="ButtonSize.Back"
-    class="self-start"
+    class="-ml-8 self-start"
     @click="$emit('click')"
   >
     <ChevronLeft :size="18" :stroke-width="1.75" aria-hidden="true" />
