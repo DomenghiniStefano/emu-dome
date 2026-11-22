@@ -34,7 +34,7 @@ import LibraryDropTarget from '@/components/library/LibraryDropTarget.vue'
 import QuickMenu from '@/components/quick-menu/QuickMenu.vue'
 import SearchPalette from '@/components/search/SearchPalette.vue'
 import ToastStack from '@/components/toasts/ToastStack.vue'
-import TouchControls from '@/components/game/TouchControls.vue'
+import TouchLayer from '@/components/touch/TouchLayer.vue'
 import TvModeDialog from '@/components/tv-mode/TvModeDialog.vue'
 import GameHud from '@/components/game/GameHud.vue'
 import LidClosedCard from '@/components/game/LidClosedCard.vue'
@@ -64,7 +64,7 @@ const screens = useScreenStatus(toast)
 // Where the shell is (components/shell/route.ts): kept while a game is open, so closing it comes
 // back here (a game opened from its details comes back to them).
 const route = ref<Route>(START)
-// Touch screen (Android): on-screen buttons while playing.
+// Touch screen (Android): on-screen buttons while playing, and E14 (components/touch, #29).
 const touch = coarsePointer()
 // DS games: the mouse or a finger on the bottom screen is the stylus (no menu open).
 useScreenTouch(
@@ -134,10 +134,13 @@ onMounted(async () => {
       :paused="paused && !menuOpen"
       :fps="showFps && stats ? stats.emuFps : null"
     />
-    <TouchControls
-      v-if="touch && !menuOpen"
-      :shoulders="game.consoleId !== 'gb' && game.consoleId !== 'gbc'"
+    <TouchLayer
+      v-if="touch"
+      :console="game.consoleId"
+      :menu-open="menuOpen"
       @menu="session.setMenu(true)"
+      @inset="session.setInset"
+      @paused="p => (session.paused.value = p)"
     />
     <LidClosedCard v-if="screens.status.value?.lidClosed && !menuOpen" @open="screens.toggleLid" />
     <QuickMenu
