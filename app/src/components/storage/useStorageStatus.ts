@@ -1,6 +1,6 @@
 // E13 «Telefono quasi pieno» (Trello #29): the room left where the saves are written, as Rust
-// reads it (`storage_status`: free bytes, the disk's size, and whether that is low: under 1 GiB
-// or 5 %). Asked when the component using it mounts (the shell: at startup, and again when it
+// reads it (`storage_status`: free bytes, the disk's size, and whether that is low: under
+// 500 MB). Asked when the component using it mounts (the shell: at startup, and again when it
 // shows after a game closed) and whenever the library changes (a game added or downloaded).
 // The shell mounts its user on the phone only. An older answer than the latest request is dropped
 // (rule 7); a failed read shows no warning, since nothing the user can do follows from it.

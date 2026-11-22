@@ -8,12 +8,10 @@ use serde::Serialize;
 use tauri::AppHandle;
 use ts_rs::TS;
 
-/// Below this much free room the warning shows, whatever the disk's size: a 3DS game is GBs,
-/// and a save that cannot be written is lost.
-pub const LOW_BYTES: u64 = 1024 * 1024 * 1024;
-
-/// Below this share of the disk free (1 / 20 = 5 %) the warning shows too.
-pub const LOW_SHARE_DIVISOR: u64 = 20;
+/// Below this much free room the warning shows, whatever the disk's size (the owner's mockup:
+/// 500 MB; a share of the disk would nag on a large phone): a save that cannot be written is
+/// lost.
+pub const LOW_BYTES: u64 = 500 * 1024 * 1024;
 
 /// The room on the data folder's disk. TypeScript: `StorageStatus` (generated).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
@@ -28,10 +26,9 @@ pub struct StorageStatus {
     pub low: bool,
 }
 
-/// Whether `free` bytes of `total` are little enough to warn: under 1 GiB, or under 5 % of the
-/// disk.
-pub fn is_low(free: u64, total: u64) -> bool {
-    free < LOW_BYTES || free < total / LOW_SHARE_DIVISOR
+/// Whether `free` bytes are little enough to warn: under 500 MB.
+pub fn is_low(free: u64) -> bool {
+    free < LOW_BYTES
 }
 
 impl From<DiskSpace> for StorageStatus {
@@ -39,7 +36,7 @@ impl From<DiskSpace> for StorageStatus {
         StorageStatus {
             free: space.free,
             total: space.total,
-            low: is_low(space.free, space.total),
+            low: is_low(space.free),
         }
     }
 }
@@ -72,22 +69,17 @@ mod tests {
     const GIB: u64 = 1024 * 1024 * 1024;
 
     #[test]
-    fn under_one_gib_free_is_low_on_any_disk() {
-        assert!(is_low(380 * 1024 * 1024, 128 * GIB));
-        assert!(is_low(LOW_BYTES - 1, 8 * GIB));
-        assert!(!is_low(LOW_BYTES, 8 * GIB));
+    fn under_500_mb_free_is_low() {
+        assert!(is_low(380 * 1024 * 1024));
+        assert!(is_low(LOW_BYTES - 1));
+        assert!(!is_low(LOW_BYTES));
+        assert!(is_low(0));
     }
 
     #[test]
-    fn under_five_percent_free_is_low_on_a_large_disk() {
-        // 128 GiB: 5 % is 6.4 GiB.
-        assert!(is_low(6 * GIB, 128 * GIB));
-        assert!(!is_low(7 * GIB, 128 * GIB));
-    }
-
-    #[test]
-    fn an_empty_disk_report_is_low() {
-        assert!(is_low(0, 0));
+    fn a_large_phone_with_a_few_gb_free_is_not_nagged() {
+        // 6 GiB free of 128 GiB is under 5 %, but not low.
+        assert!(!is_low(6 * GIB));
     }
 
     #[test]
