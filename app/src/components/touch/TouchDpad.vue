@@ -1,11 +1,13 @@
 <script setup lang="ts">
-// The touch d-pad: one area, the direction follows the finger (diagonals included, dpad.ts). Its
-// geometry is the touch board's (`size-dpad`, arms 48 × 52 at `dpad-arm` from the edges). Not
-// `interactive` (the C06 editor), it only draws.
-import { ref } from 'vue'
+// The touch d-pad (owner, 2026-11-22): one cross-shaped piece with an arrow in each arm
+// (padGeometry.ts), in the style's colours (skins.ts); a held direction lights its arm. The whole
+// box takes the touch and the direction follows the finger (dpad.ts): between two arms, both
+// directions. Not `interactive` (the C06 editor), it only draws.
+import { ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Button as GameButton } from '@/emu'
 import { dpadDirections } from '@/components/game/dpad'
+import { DPAD_ARMS, DPAD_BOX, DPAD_CROSS, DPAD_EDGE } from './padGeometry'
 import { SKIN_PART, type TouchSkin } from './skins'
 
 const props = defineProps<{ skin: TouchSkin; interactive: boolean }>()
@@ -14,6 +16,8 @@ const { t } = useI18n()
 
 const root = ref<HTMLElement | null>(null)
 const held = ref<GameButton[]>([])
+/** The cross as a clip for the lit arms (one per d-pad on the page). */
+const clip = `dpad-${useId()}`
 
 function set(next: GameButton[]) {
   held.value = next
@@ -41,14 +45,6 @@ function down(e: PointerEvent) {
 function up() {
   if (held.value.length > 0) set([])
 }
-
-/** The arms, each on its side of the cross. */
-const ARMS: { dir: GameButton; place: string }[] = [
-  { dir: 'up', place: 'top-0 left-dpad-arm h-52 w-48' },
-  { dir: 'down', place: 'bottom-0 left-dpad-arm h-52 w-48' },
-  { dir: 'left', place: 'top-dpad-arm left-0 h-48 w-52' },
-  { dir: 'right', place: 'top-dpad-arm right-0 h-48 w-52' },
-]
 </script>
 
 <template>
@@ -62,11 +58,25 @@ const ARMS: { dir: GameButton; place: string }[] = [
     @pointerup="up"
     @pointercancel="up"
   >
-    <span
-      v-for="arm in ARMS"
-      :key="arm.dir"
-      class="absolute rounded-6"
-      :class="[arm.place, held.includes(arm.dir) ? SKIN_PART[skin].held : SKIN_PART[skin].rest]"
-    />
+    <svg
+      class="pointer-events-none absolute inset-0 size-full overflow-visible"
+      :class="SKIN_PART[skin].base"
+      :viewBox="`0 0 ${DPAD_BOX} ${DPAD_BOX}`"
+      aria-hidden="true"
+    >
+      <defs>
+        <clipPath :id="clip"><path :d="DPAD_CROSS" /></clipPath>
+      </defs>
+      <path :d="DPAD_CROSS" stroke="none" />
+      <g :clip-path="`url(#${clip})`" stroke="none">
+        <template v-for="arm in DPAD_ARMS" :key="arm.dir">
+          <rect v-if="held.includes(arm.dir)" v-bind="arm.rect" :class="SKIN_PART[skin].held" />
+        </template>
+      </g>
+      <path :d="DPAD_CROSS" fill="none" :stroke-width="DPAD_EDGE" stroke-linejoin="round" />
+      <g fill="currentColor" stroke="none">
+        <polygon v-for="arm in DPAD_ARMS" :key="arm.dir" :points="arm.arrow" />
+      </g>
+    </svg>
   </div>
 </template>

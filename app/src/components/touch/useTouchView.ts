@@ -45,7 +45,7 @@ export function useArea(): Ref<Area> {
 }
 
 /** Before a control is measured: the size of a face button. */
-const UNMEASURED: Box = { w: 64, h: 64 }
+const UNMEASURED: Box = { w: 48, h: 48 }
 
 /**
  * Each control's own box (unscaled: `offsetWidth` ignores the transform), read from the controls

@@ -65,14 +65,15 @@ export const ButtonVariant = {
   // A colour to pick (`general.accent`): a round swatch, its fill from the caller's `style`, the
   // chosen one (`aria-checked`) ringed in ink. With ButtonSize.IconSmall and ButtonFade.None.
   Swatch: 'swatch',
-  // A control of the on-screen gamepad (components/touch): glass with a strong edge, darker while
-  // pressed or held down (`aria-pressed`, a «hold» button), no fade (a press must show at once).
-  // With the Pad sizes. The skin «Vetro» (`touch.tskin`).
-  Pad: 'pad',
-  // The skin «Solo contorni»: no fill, a 2px ink edge, glass while pressed.
+  // A control of the on-screen gamepad (components/touch), the style «Fumé» (`touch.tskin`): no
+  // box of its own, it colours the shape drawn inside it (touch/PadShape.vue, which inherits
+  // `fill` and `stroke`): a fill near the darkest ground and an opaque mid-grey edge, the fill
+  // lighter while pressed or held down (`aria-pressed`, a «hold» button), light letters, no fade
+  // (a press must show at once). The see-through is one opacity on the whole control
+  // (`opacity-pad`, TouchControl). With the Pad sizes.
+  PadSmoke: 'padSmoke',
+  // The style «Contorno»: no fill, an opaque light edge, a grey fill while pressed.
   PadOutline: 'padOutline',
-  // The skin «Contrasto alto»: the ground's solid fill and a 2px ink edge, ink while pressed.
-  PadContrast: 'padContrast',
   // A section of the phone's tab bar (#29, at the bottom in portrait): muted icon over its name,
   // no fill; the current one (`aria-current="page"`) in accent text. With ButtonSize.PhoneTab.
   PhoneTab: 'phoneTab',
@@ -176,9 +177,10 @@ export const ButtonSize = {
   LinkRow: 'linkRow',
   // A toast's action (G17): control; 44 on the phone (the touch minimum).
   Toast: 'toast',
-  // The on-screen gamepad (components/touch), sized for a thumb: the shoulders L / R, the quick
-  // menu, the round face buttons, Select / Start, none under the touch minimum (44, Trello #29).
-  // The touch board's own sizes (pending tokens).
+  // The on-screen gamepad (components/touch), compact (owner, 2026-11-22): each size is the box
+  // that takes the touch, the shape drawn inside it (touch/PadShape.vue) may be smaller. The
+  // shoulders L / R and the quick menu are as tall as the strip between a DS's screens
+  // (`pad-strip`, 36), the round face buttons 48, Select / Start 60 × 32 (pending tokens).
   PadShoulder: 'padShoulder',
   PadMenu: 'padMenu',
   PadFace: 'padFace',
@@ -272,12 +274,10 @@ export const buttonVariants = cva(
         [ButtonVariant.Bare]: 'border-0 bg-transparent',
         [ButtonVariant.Swatch]:
           'rounded-full border-0 aria-checked:outline-ring aria-checked:outline-offset-swatch aria-checked:outline-ink aria-checked:outline-solid',
-        [ButtonVariant.Pad]:
-          'border-line-strong bg-glass font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-surface-hover aria-pressed:bg-surface-hover',
+        [ButtonVariant.PadSmoke]:
+          'border-0 bg-transparent fill-pad-smoke stroke-pad-smoke-edge text-pad-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:fill-pad-smoke-held aria-pressed:fill-pad-smoke-held',
         [ButtonVariant.PadOutline]:
-          'border-strong border-ink bg-transparent font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-glass aria-pressed:bg-glass',
-        [ButtonVariant.PadContrast]:
-          'border-strong border-ink bg-bg font-semibold text-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:bg-ink active:text-bg aria-pressed:bg-ink aria-pressed:text-bg',
+          'border-0 bg-transparent fill-none stroke-pad-outline-edge text-pad-ink transition-none [-webkit-tap-highlight-color:transparent] touch-none active:fill-pad-outline-held aria-pressed:fill-pad-outline-held',
         [ButtonVariant.PhoneTab]:
           'border-0 bg-transparent text-ink-muted [-webkit-tap-highlight-color:transparent] aria-[current=page]:text-accent-text',
         [ButtonVariant.TvTab]:
@@ -333,10 +333,10 @@ export const buttonVariants = cva(
           'h-control gap-6 px-8 py-0 touch:h-auto touch:min-h-touch touch:text-label-lead',
         [ButtonSize.LinkRow]: 'min-h-link-row gap-12 px-12 py-6',
         [ButtonSize.Toast]: 'h-control px-8 touch:h-touch touch:px-16',
-        [ButtonSize.PadShoulder]: 'h-touch w-pad-shoulder rounded-card',
-        [ButtonSize.PadMenu]: 'h-touch w-48 rounded-card',
-        [ButtonSize.PadFace]: 'size-pad-face rounded-full text-dialog',
-        [ButtonSize.PadSystem]: 'h-touch rounded-panel px-12 text-overline',
+        [ButtonSize.PadShoulder]: 'relative h-pad-strip w-pad-shoulder p-0 text-pad-shoulder',
+        [ButtonSize.PadMenu]: 'relative size-pad-strip p-0',
+        [ButtonSize.PadFace]: 'relative size-pad-face rounded-full p-0 text-pad-face',
+        [ButtonSize.PadSystem]: 'relative h-pad-system-h w-pad-system p-0 text-pad-system',
         [ButtonSize.Tool]: 'h-control gap-6 px-8 touch:h-touch touch:px-12',
         [ButtonSize.ToolIcon]: 'size-control p-0 touch:size-touch',
         [ButtonSize.PhoneTab]: 'min-h-touch min-w-touch flex-1 basis-0 flex-col gap-2 px-2 py-4',

@@ -14,6 +14,11 @@
 // A B X Y, Select and Start; on its side the screens side by side at the top, the controls over
 // the strip below and the screens' lower outer corners. The layout tells Rust its part with
 // `reservedInset`: the band and the strip upright, the camera's edge on its side.
+//
+// Compact (owner, 2026-11-22): the boxes are small (spacing.css `pad-*`: d-pad 116, face buttons
+// 48 in a 128 diamond, Select / Start 60 × 32, L / R 84 × 36 in a 36 strip), so on a 360 × 780
+// phone the two DS screens are edge to edge, 360 × 270 each, and on every phone one band layout
+// fits: Select and Start in a column between the d-pad and the face buttons.
 import type {
   ConsoleId,
   TouchControl,
@@ -72,17 +77,13 @@ interface Defaults {
 
 /** The anchor in the middle of the strip between the two screens, upright. */
 const STRIP = 'strip'
-/** The strip between the two screens upright (L, menu and R, a touch target tall), and the line
- * between them on its side: `Inset::between`, CSS px. */
-export const STRIP_PX = TOUCH_MIN_PX
+/** The strip between the two screens upright (L, menu and R: as tall as their boxes,
+ * spacing.css `pad-strip`), and the line between them on its side: `Inset::between`, CSS px. */
+export const STRIP_PX = 36
 export const SIDE_GAP_PX = GRID_PX
 /** On its side, the least the screens keep from each edge of the window (the camera's edge
  * keeps its notch when larger). */
 export const SIDE_EDGE_PX = 2 * GRID_PX
-/** Upright, from this width the DS / 3DS Select and Start fit in a column between the d-pad and
- * the face buttons, which leaves the screens their full width on a 412 px phone; narrower, they
- * go under both and the band grows. */
-export const DUAL_WIDE_PX = 404
 
 /** The consoles that share a default layout. */
 type Family = 'gb' | 'gba' | 'nds' | '3ds'
@@ -94,8 +95,9 @@ const FAMILY: Record<ConsoleId, Family> = {
   '3ds': '3ds',
 }
 
-/** Four face buttons around a centre (the DS / 3DS diamond): A right, B below, X above, Y left. */
-function diamond(ax: 0 | 1, ay: 0 | 1, cx: number, cy: number, arm = 48): Placement {
+/** Four face buttons around a centre (the DS / 3DS diamond, 128 across with the 48 buttons): A
+ * right, B below, X above, Y left. */
+function diamond(ax: 0 | 1, ay: 0 | 1, cx: number, cy: number, arm = 40): Placement {
   return {
     a: [ax, ay, cx + arm, cy],
     b: [ax, ay, cx, cy + arm],
@@ -108,139 +110,121 @@ function diamond(ax: 0 | 1, ay: 0 | 1, cx: number, cy: number, arm = 48): Placem
 // menu included (#29: nothing over the picture; the game is fitted between the columns,
 // `reservedInset`). Portrait: the controls in a band at the bottom, the game right above it.
 // The two-screen consoles: `DUAL` (upright) and `DUAL_LANDSCAPE`.
+/** GB / GBC and GBA's A and B: A up and to the right of B, 64 apart. */
+const AB: Placement = {
+  a: [1, 1, -56, -130],
+  b: [1, 1, -112, -98],
+}
+const AB_SIDE: Placement = {
+  a: [1, 1, -56, -140],
+  b: [1, 1, -112, -100],
+}
+
 const DEFAULTS: Record<'gb' | 'gba', Record<TouchOrientation, Placement>> = {
   gb: {
+    // The columns 148 px wide on the left (the d-pad), 144 on the right (B).
     landscape: {
-      dpad: [0, 1, 104, -110],
-      b: [1, 1, -140, -100],
-      a: [1, 1, -64, -150],
-      select: [0, 0, 60, 38],
-      start: [1, 0, -60, 38],
-      menu: [1, 0, -150, 38],
+      dpad: [0, 1, 82, -100],
+      ...AB_SIDE,
+      select: [0, 0, 50, 34],
+      start: [1, 0, -50, 34],
+      menu: [1, 0, -120, 34],
     },
+    // The band 176 px tall: the d-pad's top and a grid step; the menu between the clusters.
     portrait: {
-      dpad: [0, 1, 96, -150],
-      b: [1, 1, -118, -122],
-      a: [1, 1, -60, -190],
-      select: [0.5, 1, -50, -36],
-      start: [0.5, 1, 50, -36],
-      menu: [0.5, 1, 0, -300],
+      dpad: [0, 1, 82, -110],
+      ...AB,
+      select: [0.5, 1, -36, -30],
+      start: [0.5, 1, 36, -30],
+      menu: [0.5, 1, 0, -120],
     },
   },
   gba: {
     landscape: {
-      l: [0, 0, 60, 38],
-      r: [1, 0, -60, 38],
-      dpad: [0, 1, 104, -110],
-      b: [1, 1, -140, -100],
-      a: [1, 1, -64, -150],
-      select: [0, 0, 60, 96],
-      start: [1, 0, -60, 96],
-      menu: [1, 0, -150, 38],
+      l: [0, 0, 50, 34],
+      r: [1, 0, -50, 34],
+      dpad: [0, 1, 82, -100],
+      ...AB_SIDE,
+      select: [0, 0, 50, 84],
+      start: [1, 0, -50, 84],
+      menu: [1, 0, -50, 128],
     },
+    // L over the d-pad and R over the face buttons: the band 220 px tall.
     portrait: {
-      l: [0, 1, 60, -300],
-      r: [1, 1, -60, -300],
-      dpad: [0, 1, 96, -150],
-      b: [1, 1, -118, -122],
-      a: [1, 1, -60, -190],
-      select: [0.5, 1, -50, -36],
-      start: [0.5, 1, 50, -36],
-      menu: [0.5, 1, 0, -300],
+      l: [0, 1, 50, -194],
+      r: [1, 1, -50, -194],
+      dpad: [0, 1, 82, -110],
+      ...AB,
+      select: [0.5, 1, -36, -30],
+      start: [0.5, 1, 36, -30],
+      menu: [0.5, 1, 0, -120],
     },
   },
 }
 
-/** The strip's L, menu and R, upright. */
+/** The strip's L, menu and R, upright: L and R 8 px from the edges. */
 const STRIP_ROW: Placement = {
-  l: [0, STRIP, 60, 0],
+  l: [0, STRIP, 50, 0],
   menu: [0.5, STRIP, 0, 0],
-  r: [1, STRIP, -60, 0],
+  r: [1, STRIP, -50, 0],
 }
-/** Upright from `DUAL_WIDE_PX`: Select over Start in the column between the left cluster (its
- * right edge 154 px in) and the face buttons (their left edge 168 px from the right). */
+/** Upright: Select over Start in the column between the d-pad (its right edge 140 px in) and the
+ * face buttons (their left edge 146 px from the right), at the d-pad's middle, 2 px apart. */
 const SELECT_START_COLUMN: Placement = {
-  select: [0.5, 1, -7, -139],
-  start: [0.5, 1, -7, -87],
-}
-/** Upright and narrower: Select and Start side by side at the bottom, under both clusters. */
-const SELECT_START_ROW: Placement = {
-  select: [0.5, 1, -46, -30],
-  start: [0.5, 1, 46, -30],
+  select: [0.5, 1, 0, -112],
+  start: [0.5, 1, 0, -78],
 }
 
-/** The two-screen consoles upright, wide and narrow (`DUAL_WIDE_PX`). On the S23 (412 × 892)
- * the DS band is 198 px: the screens 412 × 309 each, the strip 44 between them. */
-const DUAL: Record<'nds' | '3ds', { wide: Defaults; narrow: Defaults }> = {
+/** The two-screen consoles upright, the same on every phone. DS: the band 166 px, the d-pad and
+ * the 128 diamond side by side (their tops 158 px from the bottom); on a 360 × 780 phone with its
+ * 38 px camera edge the two screens are 360 × 270, edge to edge, the strip 36 between them. */
+const DUAL: Record<'nds' | '3ds', Defaults> = {
   nds: {
-    wide: {
-      band: 190 + GRID_PX,
-      place: {
-        ...STRIP_ROW,
-        dpad: [0, 1, 80, -116],
-        ...diamond(1, 1, -88, -110),
-        ...SELECT_START_COLUMN,
-      },
-    },
-    narrow: {
-      band: 216 + GRID_PX,
-      place: {
-        ...STRIP_ROW,
-        dpad: [0, 1, 84, -130],
-        ...diamond(1, 1, -92, -136),
-        ...SELECT_START_ROW,
-      },
+    band: 158 + GRID_PX,
+    place: {
+      ...STRIP_ROW,
+      dpad: [0, 1, 82, -94],
+      ...diamond(1, 1, -82, -94),
+      ...SELECT_START_COLUMN,
     },
   },
-  // The Circle Pad over the d-pad, as on the console. On the S23 the band is 318 px: the top
-  // screen 412 wide, the touch screen at the same scale.
+  // The Circle Pad over the d-pad, as on the console, the diamond beside them: the band 272 px,
+  // the top screen full width from 360 × 780 (camera edge 38) or 360 × 740.
   '3ds': {
-    wide: {
-      band: 310 + GRID_PX,
-      place: {
-        ...STRIP_ROW,
-        circlePad: [0, 1, 80, -246],
-        dpad: [0, 1, 80, -102],
-        ...diamond(1, 1, -88, -180),
-        ...SELECT_START_COLUMN,
-      },
-    },
-    narrow: {
-      band: 336 + GRID_PX,
-      place: {
-        ...STRIP_ROW,
-        circlePad: [0, 1, 84, -272],
-        dpad: [0, 1, 84, -130],
-        ...diamond(1, 1, -92, -160),
-        ...SELECT_START_ROW,
-      },
+    band: 264 + GRID_PX,
+    place: {
+      ...STRIP_ROW,
+      circlePad: [0, 1, 82, -212],
+      dpad: [0, 1, 82, -94],
+      ...diamond(1, 1, -82, -150),
+      ...SELECT_START_COLUMN,
     },
   },
 }
 
 /** The two-screen consoles on their side: over the strip under the screens and their lower outer
- * corners, L and R in the lower corners. DS: the d-pad beside L, the face buttons beside R,
+ * corners, L and R small in the lower corners. DS: the d-pad beside L, the face buttons beside R,
  * Select and Start at the bottom middle with the menu above them. 3DS: the Circle Pad takes the
  * d-pad's place, the d-pad goes over L, and Select, Start and the menu stand in one column. */
 const DUAL_LANDSCAPE: Record<'nds' | '3ds', Placement> = {
   nds: {
-    l: [0, 1, 60, -30],
-    r: [1, 1, -60, -30],
-    dpad: [0, 1, 186, -82],
-    ...diamond(1, 1, -200, -88),
-    select: [0.5, 1, -44, -30],
-    start: [0.5, 1, 44, -30],
-    menu: [0.5, 1, 0, -82],
+    l: [0, 1, 50, -26],
+    r: [1, 1, -50, -26],
+    dpad: [0, 1, 160, -70],
+    ...diamond(1, 1, -166, -74),
+    select: [0.5, 1, -36, -26],
+    start: [0.5, 1, 36, -26],
+    menu: [0.5, 1, 0, -70],
   },
   '3ds': {
-    l: [0, 1, 60, -30],
-    r: [1, 1, -60, -30],
-    dpad: [0, 1, 84, -150],
-    circlePad: [0, 1, 226, -72],
-    ...diamond(1, 1, -200, -88),
-    start: [0.5, 1, 0, -30],
-    select: [0.5, 1, 0, -82],
-    menu: [0.5, 1, 0, -134],
+    l: [0, 1, 50, -26],
+    r: [1, 1, -50, -26],
+    dpad: [0, 1, 66, -110],
+    circlePad: [0, 1, 186, -62],
+    ...diamond(1, 1, -166, -74),
+    start: [0.5, 1, 0, -26],
+    select: [0.5, 1, 0, -62],
+    menu: [0.5, 1, 0, -102],
   },
 }
 
@@ -248,20 +232,20 @@ const DUAL_LANDSCAPE: Record<'nds' | '3ds', Placement> = {
 export const isDualScreen = (console: ConsoleId): boolean =>
   FAMILY[console] === 'nds' || FAMILY[console] === '3ds'
 
-/** The default of `console` held `orientation` in `area`. */
-function defaultsOf(console: ConsoleId, orientation: TouchOrientation, area: Area): Defaults {
+/** The default of `console` held `orientation`. */
+function defaultsOf(console: ConsoleId, orientation: TouchOrientation): Defaults {
   const family = FAMILY[console]
   if (family === 'nds' || family === '3ds') {
     if (orientation === 'landscape') return { place: DUAL_LANDSCAPE[family] }
-    return area.width >= DUAL_WIDE_PX ? DUAL[family].wide : DUAL[family].narrow
+    return DUAL[family]
   }
   return { place: DEFAULTS[family][orientation] }
 }
 
 /** The band a two-screen console's default keeps upright, CSS px (0 for the others and on the
  * side): what `reservedBottom` measures on it with the design system's boxes. */
-export const defaultBand = (console: ConsoleId, orientation: TouchOrientation, area: Area) =>
-  defaultsOf(console, orientation, area).band ?? 0
+export const defaultBand = (console: ConsoleId, orientation: TouchOrientation) =>
+  defaultsOf(console, orientation).band ?? 0
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi)
 /** Fractions are stored with 4 decimals (`Layouts::to_items`). */
@@ -286,7 +270,7 @@ function defaultPlace(
   id: TouchControlId,
   area: Area,
 ): TouchControl | null {
-  const { place, band = 0 } = defaultsOf(console, orientation, area)
+  const { place, band = 0 } = defaultsOf(console, orientation)
   const anchor = place[id]
   if (!anchor) return null
   const [ax, ay, dx, dy] = anchor
@@ -354,10 +338,12 @@ export const overlaps = (a: Rect, b: Rect) =>
   a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
 
 /** The smallest size (per cent) that keeps `box` at least 44 px on its shorter side, on the
- * size grid and within the limits. */
+ * size grid and within the limits. A box drawn smaller than that by design (the compact L / R,
+ * Select / Start and the menu, owner 2026-11-22) never shrinks below its own size. */
 export function minSize(box: Box, limits: Pick<TouchSetup, 'sizeMin' | 'sizeMax'>): number {
   const short = Math.min(box.w, box.h)
-  const touch = short > 0 ? Math.ceil(((TOUCH_MIN_PX / short) * 100) / SIZE_STEP) * SIZE_STEP : 0
+  const least = Math.min(TOUCH_MIN_PX, short)
+  const touch = short > 0 ? Math.ceil(((least / short) * 100) / SIZE_STEP) * SIZE_STEP : 0
   return clamp(Math.max(limits.sizeMin, touch), limits.sizeMin, limits.sizeMax)
 }
 
@@ -465,11 +451,11 @@ export function add(
 }
 
 /** Upright, the controls whose centre is below this share of the height are the bottom band's;
- * those above it (one the user put at the top) are not counted. Under a half so the 3DS's
- * shoulders, 400 px from the bottom, still count on a 740 px tall phone. */
+ * those above it (one the user put at the top) are not counted. Under a half so a band's highest
+ * control (GBA's L and R, 194 px from the bottom) still counts on a short phone. */
 const BAND_FROM = 0.4
 /** The same for a two-screen console: L, the menu and R in the strip between the screens stand
- * above the middle (0.41 of the height on the S23) and are not the band's. */
+ * above the middle (0.42 of the height on a 360 × 780 phone) and are not the band's. */
 const DUAL_BAND_FROM = 0.5
 
 /**

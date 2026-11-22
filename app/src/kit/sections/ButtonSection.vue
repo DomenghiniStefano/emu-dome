@@ -23,6 +23,13 @@ import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
 import { IssueStatus } from '@/kit/review'
 import { ACCENT_SWATCHES } from '@/lib/accent'
+import PadShape from '@/components/touch/PadShape.vue'
+
+/** The touch controls' two styles (`touch.tskin`). */
+const PAD_STYLES = [
+  { name: 'PadSmoke («Fumé»)', variant: ButtonVariant.PadSmoke },
+  { name: 'PadOutline («Contorno»)', variant: ButtonVariant.PadOutline },
+] as const
 </script>
 
 <template>
@@ -165,31 +172,32 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Large">Continue</Button>
       </div>
     </KitState>
-    <KitState label="Pad: shoulder, menu, face, system">
-      <div class="flex flex-wrap items-center gap-8">
-        <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadShoulder">L</Button>
-        <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadMenu" aria-label="Menu">
-          <Settings :size="20" :stroke-width="2" aria-hidden="true" />
-        </Button>
-        <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadFace">A</Button>
-        <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadSystem">START</Button>
-        <Button :variant="ButtonVariant.Pad" :size="ButtonSize.PadFace" aria-pressed="true">
-          B
-        </Button>
-      </div>
-    </KitState>
-    <KitState label="PadOutline and PadContrast (the skins), each with a held button">
-      <div class="flex flex-wrap items-center gap-8">
-        <Button :variant="ButtonVariant.PadOutline" :size="ButtonSize.PadShoulder">L</Button>
-        <Button :variant="ButtonVariant.PadOutline" :size="ButtonSize.PadFace">A</Button>
-        <Button :variant="ButtonVariant.PadOutline" :size="ButtonSize.PadFace" aria-pressed="true">
-          B
-        </Button>
-        <Button :variant="ButtonVariant.PadContrast" :size="ButtonSize.PadSystem">START</Button>
-        <Button :variant="ButtonVariant.PadContrast" :size="ButtonSize.PadFace">A</Button>
-        <Button :variant="ButtonVariant.PadContrast" :size="ButtonSize.PadFace" aria-pressed="true">
-          B
-        </Button>
+    <KitState
+      v-for="pad in PAD_STYLES"
+      :key="pad.variant"
+      :label="`${pad.name}: shoulder, menu, face, system, a held face (over a game's colours, at the style's fade)`"
+    >
+      <div class="flex flex-wrap items-center gap-8 bg-cover-2 p-8">
+        <div class="flex flex-wrap items-center gap-8 opacity-pad">
+          <Button :variant="pad.variant" :size="ButtonSize.PadShoulder">
+            <PadShape kind="shoulderL" /><span class="relative">L</span>
+          </Button>
+          <Button :variant="pad.variant" :size="ButtonSize.PadMenu" aria-label="Menu">
+            <PadShape kind="menu" />
+          </Button>
+          <Button :variant="pad.variant" :size="ButtonSize.PadFace">
+            <PadShape kind="face" /><span class="relative">A</span>
+          </Button>
+          <Button :variant="pad.variant" :size="ButtonSize.PadSystem">
+            <PadShape kind="pill" /><span class="relative">START</span>
+          </Button>
+          <Button :variant="pad.variant" :size="ButtonSize.PadFace" aria-pressed="true">
+            <PadShape kind="face" /><span class="relative">B</span>
+          </Button>
+          <Button :variant="pad.variant" :size="ButtonSize.PadShoulder">
+            <PadShape kind="shoulderR" /><span class="relative">R</span>
+          </Button>
+        </div>
       </div>
     </KitState>
     <KitState label="Tool and ToolIcon (the C06 editor's toolbar): desktop, and on the phone">

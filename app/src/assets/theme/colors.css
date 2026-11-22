@@ -91,6 +91,19 @@
   --game-scrim: #00000099;
   --grip: #ffffff33;
   --on-accent-edge: color-mix(in srgb, var(--on-accent) 50%, transparent);
+  /* Pending (owner, 2026-11-22): the touch controls' two styles (`touch.tskin`, components/touch),
+     the same in every theme: they lie over the game, not over the interface. Every value is
+     opaque (strokes never double at a joint); the game shows through one opacity on each whole
+     control (`opacity-pad`).
+     - Fumé: the fill near the darkest ground, lighter while pressed, a mid-grey edge;
+     - Contorno: no fill, a light edge, a grey fill while pressed;
+     - pad-ink: the letters, arrows and the menu's lines of both. */
+  --pad-smoke: #0e0f13;
+  --pad-smoke-held: #3a3e4a;
+  --pad-smoke-edge: #5a5f6c;
+  --pad-outline-edge: #d6d8e0;
+  --pad-outline-held: #5a5f6c;
+  --pad-ink: #f2f3f5;
 }
 
 /* Nero: true black for OLED screens. */
@@ -211,6 +224,13 @@
   --color-game-scrim: var(--game-scrim);
   --color-grip: var(--grip);
   --color-on-accent-edge: var(--on-accent-edge);
+  /* The touch controls' styles (pending owner) */
+  --color-pad-smoke: var(--pad-smoke);
+  --color-pad-smoke-held: var(--pad-smoke-held);
+  --color-pad-smoke-edge: var(--pad-smoke-edge);
+  --color-pad-outline-edge: var(--pad-outline-edge);
+  --color-pad-outline-held: var(--pad-outline-held);
+  --color-pad-ink: var(--pad-ink);
   /* A game's own colour, set by the element that shows the game (`--cover-tint`): its cover, its
      details' header, the scene of its start and close. */
   --color-cover-tint: var(--cover-tint);

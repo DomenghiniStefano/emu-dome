@@ -25,7 +25,7 @@ describe('touch controls', () => {
       prefsFrom([
         row('touch.tport', 'custom'),
         row('touch.tland', 'nonsense'),
-        row('touch.tskin', 'contrast'),
+        row('touch.tskin', 'outline'),
         row('touch.topac', 35),
         row('touch.thapt', 0),
         row('touch.thide', '10s'),
@@ -35,12 +35,17 @@ describe('touch controls', () => {
     ).toEqual({
       portrait: 'custom',
       landscape: 'default',
-      skin: 'contrast',
+      skin: 'outline',
       opacity: 35,
       haptics: 0,
       hide: '10s',
       hideWithPad: false,
       lost: 'touch',
     })
+  })
+
+  it('reads a style it does not know as «Fumé»', () => {
+    for (const old of ['glass', 'outlines', 'contrast', 42])
+      expect(prefsFrom([row('touch.tskin', old)]).skin).toBe('smoke')
   })
 })

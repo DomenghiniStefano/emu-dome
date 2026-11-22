@@ -14,6 +14,7 @@ import ShortcutRowSection from './ShortcutRowSection.vue'
 import SpeedPickerSection from './SpeedPickerSection.vue'
 import TesterCardSection from './TesterCardSection.vue'
 import ToastStackSection from './ToastStackSection.vue'
+import TouchPadSection from './TouchPadSection.vue'
 import ToolTilesSection from './ToolTilesSection.vue'
 import TrialPanelSection from './TrialPanelSection.vue'
 import TvBarsSection from './TvBarsSection.vue'
@@ -34,6 +35,7 @@ import UndoLoadBannerSection from './UndoLoadBannerSection.vue'
     <HudChipSection />
     <ToastStackSection />
     <FlowDialogSection />
+    <TouchPadSection />
     <TvGlyphSection />
     <TvBarsSection />
     <DeviceCardSection />

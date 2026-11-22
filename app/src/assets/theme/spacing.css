@@ -228,16 +228,24 @@
   /* A scene's progress bar (a game starting or closing). */
   --spacing-progress: 200px;
 
-  /* The on-screen gamepad: the shoulders' width, a face button, the d-pad's box, an arm's offset
-     from its edge, how high the pad sits. */
-  --spacing-pad-shoulder: 88px;
-  --spacing-pad-face: 64px;
-  --spacing-dpad: 148px;
-  --spacing-dpad-arm: 50px;
-  --spacing-pad-lift: 64px;
-  /* The 3DS Circle Pad drawn on screen (Trello #29): its round box and its knob (pending Cowork). */
-  --spacing-pad-stick: 128px;
-  --spacing-pad-knob: 56px;
+  /* Pending (owner, 2026-11-22): the on-screen gamepad's boxes, compact so that two DS screens
+     stay edge to edge on a 360 px phone (components/touch/touchLayout.ts holds the same numbers
+     for its defaults; its tests measure them). Each box is what takes the touch; the shape drawn
+     inside may be smaller (PadShape.vue):
+     - dpad: the cross, one area (every point of it a direction, diagonals included);
+     - pad-face: A B X Y, round, the circle drawn at the box;
+     - pad-shoulder × pad-strip: L and R (the shape 26 tall inside), and the strip between a DS's
+       two screens upright that holds them; the menu is a pad-strip square;
+     - pad-system × pad-system-h: Select and Start (the pill 20 tall inside). */
+  --spacing-dpad: 116px;
+  --spacing-pad-face: 48px;
+  --spacing-pad-shoulder: 84px;
+  --spacing-pad-strip: 36px;
+  --spacing-pad-system: 60px;
+  --spacing-pad-system-h: 32px;
+  /* The 3DS Circle Pad drawn on screen (Trello #29): its round box (pending; the knob, 44
+     across, is drawn inside it by TouchStick.vue). */
+  --spacing-pad-stick: 104px;
   /* The C06 touch controls editor (Trello #29): the snapping grid's step (the owner's 8 px). */
   --spacing-touch-grid: 8px;
 }
