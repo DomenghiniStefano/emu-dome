@@ -3,7 +3,10 @@
 // sizes (portrait 390 × 844 and 360 × 740, landscape 844 × 390 and 740 × 360), the built-in skins,
 // the C06 editor (opened from the quick menu's «Controlli»: as it opens, a tool open, «Altro»
 // open, folded into the pill; at 320 px too, the narrowest phone), and E14 (the last controller
-// gone: the question, or the toast with «Passa al tocco»).
+// gone: the question, or the toast with «Passa al tocco»). The phone's layouts with a game
+// picture (`frame`, the `touch-frame-*` / `touch-qm-*` / `touch-start-failed-*` scenarios) add the
+// Galaxy S23's 412 × 892 and 892 × 412: where the game sits beside the controls and the quick
+// menu (opened upright, then the phone turned: the `resize` step), and G02 at phone widths.
 
 const escape = `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }))`;
 const click = (re) =>
@@ -28,11 +31,16 @@ const SIZES = {
   p360: [360, 740],
   l844: [844, 390],
   l740: [740, 360],
+  // Galaxy S23 (#29, the PM's phone).
+  p412: [412, 892],
+  l892: [892, 412],
 };
+/** The card's four sizes, the defaults of `add`. */
+const CARD = ["p390", "p360", "l844", "l740"];
 const phone = (mock) => ({ game: "gba", phone: true, lang: "it", ...mock });
 
 export const touchScenarios = {};
-const add = (name, s, sizes = Object.keys(SIZES)) => {
+const add = (name, s, sizes = CARD) => {
   for (const size of sizes) {
     const [width, height] = SIZES[size] ?? [320, 640];
     touchScenarios[`touch-${name}-${size}`] = {
@@ -73,3 +81,24 @@ add(
   },
   ["p390", "l844"],
 );
+
+// The game beside the controls, at every size (#29: the S23's empty band upright, the clusters
+// over the picture on its side).
+const ALL = Object.keys(SIZES);
+for (const game of ["gb", "gba", "nds"])
+  add(`frame-${game}`, { mock: { game, frame: true } }, ALL);
+// The quick menu over the game, upright and on its side; opened upright then turned, and back.
+add("qm-frame", { mock: { frame: true, slots: "some" }, steps: [escape] }, ALL);
+add(
+  "qm-turned",
+  { mock: { frame: true, slots: "some" }, steps: [escape, { resize: [892, 412] }] },
+  ["p412"],
+);
+add(
+  "qm-turned-back",
+  { mock: { frame: true, slots: "some" }, steps: [escape, { resize: [412, 892] }] },
+  ["l892"],
+);
+// G02 with a long reason that has no break point for a line (the S23's Android path).
+const startFailed = `import('/src/components/game/gameFlow.ts').then(m => { m.flow.startError = { title: 'emudome-test', reason: 'Non riesco a leggere il file del gioco. Controlla che sia ancora lì e che il suo disco sia collegato. Dettagli: /sdcard/Android/data/it.domehub.emudome/files/test/emudome-test.gba: Permission denied (os error 13)' }; return true })`;
+add("start-failed", { mock: { game: false }, steps: [startFailed] }, ["p412", "p390", "p360", "p320"]);
