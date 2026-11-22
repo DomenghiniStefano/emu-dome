@@ -612,9 +612,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `useNavGrid`), and leave it at its edges by the spatial rule; a focused tile scrolled out of the DOM parks the
   focus on the grid (no ring) and gets it back when rendered again. Measured headless with 3005 / 10 005 mock
   games (`scripts/headless/screens/library-scale.mjs`): a d-pad step 64 / 146 ms before, under 1 ms after.
-  The phone's list (`GameList.vue`, one column of `GameRow`s) is the same windowing, its steps `listStep` (by
-  row, a row ↔ its button), and the compact grid's `compactStep` (`CompactTile`, «Riprendi» in a corner);
-  `library-scale.mjs --phone [--grid]` measures and checks them at 412 × 892 (under 1 ms a step, 3005 / 10 005).
+  The phone's list (`GameList.vue`, one column of `GameRow`s, two on its side: #105) is the same windowing, its
+  steps `listStep` (by row in the same column, a row ↔ its button ↔ the next column's row), and the compact
+  grid's `compactStep` (`CompactTile`, «Riprendi» in a corner); `library-scale.mjs --phone [--grid]` measures
+  and checks them at 412 × 892 (under 1 ms a step, 3005 / 10 005), `--phone --side` the two-column list at
+  780 × 360 (at least 6 games in view).
 - Navigation in the interface: `app/src/nav.ts`. A screen calls `useNavScope(root, { back, autofocus })`
   and marks its first element with `data-nav-initial`; steps from `emu://nav` and from the arrows / Enter
   move the focus spatially (nearest element in that direction, looked for in the focused element's scroll
@@ -1093,9 +1095,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   panel on its side, E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone
   (owner's mockup of 2026-11-22): no «Continua a giocare» and no heading, its own toolbar (`PhoneLibraryToolbar`:
   short console names on a sideways-scrolling row, the order's name, Lista / Griglia, a square «+»; one row on its
-  side), the games as a list (the default) or a compact grid as `library.view` says (per device: the list on a
-  phone, the grid elsewhere; a desktop that picks the list in Settings gets it under «Continua a giocare», «Gioca»
-  on every row), the game played last carrying «Riprendi» on its row or cover (`resumeTarget`). Not yet: the «…»
+  side), the games as a list (the default; two columns of rows on its side, #105) or a compact grid as
+  `library.view` says (per device: the list on a phone, the grid elsewhere; a desktop that picks the list in
+  Settings gets it under «Continua a giocare», «Gioca» on every row), the game played last carrying «Riprendi» on
+  its row or cover (`resumeTarget`). On the phone the shell has no cover-coloured haze (plain graphite; the
+  desktop and TV keep it) and the top bar's search field on its side shows no Ctrl K (#105). Not yet: the «…»
   menu (favourite, hide) on a row or a compact tile (in the game's details only). Not yet: the «Gestisci lo
   spazio» screen (not designed: the button is faded and a press says it arrives later); the safe areas, the camera
   side and `moveTaskToBack` are checked headless and by review only, not on a device yet.

@@ -25,7 +25,13 @@ prove that a refactor changes nothing on screen (Trello #62).
   d-pad step (`dispatchNav`); `--check` also checks the windowed grid (row / column moves, leaving at
   its edges, the parked focus, back from a game's details far down, no jump while scrolling).
   `--phone` does the same on a phone upright (412 × 892) with its list, `--phone --grid` with its
-  compact grid (#29).
+  compact grid (#29), `--phone --side` on its side (780 × 360) with the list in two columns (#105:
+  also two columns, at least 6 games in view, right from «Gioca» to the next column).
+- `phone-shell.mjs` also has the Galaxy S23 as the owner set it, 360 × 780 (`p780`) and 780 × 360
+  (`l780`), and `phone-surround-<nds|3ds|gba>-<p412|p780|l892|l780>` (#105): the native video with
+  a built-in side background (`surround: "builtin"` in the mock gives the video page that row and
+  value), one hole per screen where the mock's `screens_placements` puts it (headless has no native
+  surface: the holes show black).
 - `libraryView: "list" | "grid"` fixes `library.view` (#29; otherwise the list on `device: "phone"`,
   the grid elsewhere, and the toolbar's switch writes it). The phone's library: the `phone-library*`
   scenarios of `phone-shell.mjs` (the list, the compact grid, the switch, the regional versions, L03);
