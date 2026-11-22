@@ -147,6 +147,39 @@ pub enum StateLoadBlock {
     VulkanNoTitleId,
 }
 
+impl StateLoadBlock {
+    /// Core options the same fault makes the shell force, whatever the settings ask for.
+    /// [`StateLoadBlock::VulkanNoTitleId`]: Azahar also crashes at boot with its disk shader
+    /// cache off (`perf.shcache`), the same missing pipeline cache, so the cache stays on.
+    pub fn forced_options(self) -> &'static [(&'static str, &'static str)] {
+        match self {
+            StateLoadBlock::VulkanNoTitleId => &[("citra_use_disk_shader_cache", "enabled")],
+        }
+    }
+}
+
+/// The core options a session starts with: `options` (the settings', the profile's forced ones,
+/// the system files'), then what `block` forces ([`StateLoadBlock::forced_options`]), which
+/// wins over them.
+pub fn with_block_options(
+    options: &[(String, String)],
+    block: Option<StateLoadBlock>,
+) -> Vec<(String, String)> {
+    let forced = block
+        .map(StateLoadBlock::forced_options)
+        .unwrap_or_default();
+    options
+        .iter()
+        .filter(|(k, _)| !forced.iter().any(|(f, _)| f == k))
+        .cloned()
+        .chain(
+            forced
+                .iter()
+                .map(|(k, v)| ((*k).to_owned(), (*v).to_owned())),
+        )
+        .collect()
+}
+
 /// Whether states may be loaded (quick loads, the auto quick save, «Annulla il caricamento»,
 /// rewind) for `game` on `core` drawing with `renderer`: `None` when they may, else why not.
 /// Only Azahar on Vulkan refuses, for content Azahar gives title ID 0 ([`crate::n3ds::title_id`]);
@@ -316,8 +349,15 @@ static MGBA: CoreProfile = CoreProfile {
     save_model: SaveModel::SaveRam,
     save_depth: None,
     // 3D rendering settings (Azahar's): a 2D core has no internal resolution, texture filter
-    // or CPU clock option.
-    unsupported_settings: &["video.res3d", "video.texf", "perf.cpuclock"],
+    // or CPU clock option; no JIT either (an interpreter, 0.11-212 `--list-options`) and no
+    // shader cache.
+    unsupported_settings: &[
+        "video.res3d",
+        "video.texf",
+        "perf.cpuclock",
+        "perf.jit",
+        "perf.shcache",
+    ],
     // One screen, no lid (the lid rows show on DS and 3DS games only).
     lid: Lid::Unsupported,
     options_row: "cores.mgbaall",
@@ -347,12 +387,14 @@ static MELONDSDS: CoreProfile = CoreProfile {
     // Its DLDI / DSi SD card images sit one folder down (`melonDS DS/`).
     save_depth: None,
     // melonDS DS has no frameskip option (1.4.0, `config/constants.hpp`), no texture filter or
-    // CPU clock; its internal resolution belongs to the OpenGL renderer the shell refuses.
+    // CPU clock; its internal resolution belongs to the OpenGL renderer the shell refuses; its
+    // software renderer keeps no shader cache.
     unsupported_settings: &[
         "perf.frameskip",
         "video.res3d",
         "video.texf",
         "perf.cpuclock",
+        "perf.shcache",
     ],
     // melonDS DS 1.4.0 `input/joypad.cpp`: Y pressed while L2 is held flips the lid
     // (`NDS::SetLidClosed(!IsLidClosed())`); no core option changes it.
@@ -404,10 +446,34 @@ static AZAHAR: CoreProfile = CoreProfile {
 #[cfg(test)]
 mod tests {
     use super::{
-        row_count, state_load_block, unsupported_consoles, CoreId, Renderer, StateLoadBlock,
+        row_count, state_load_block, unsupported_consoles, with_block_options, CoreId, Renderer,
+        StateLoadBlock,
     };
-    use crate::settings::ConsoleId;
+    use crate::settings::core_values::core_options;
+    use crate::settings::{ConsoleId, Value};
     use crate::GameKey;
+
+    /// Trello #93 / #99: with the shader cache off Azahar on Vulkan crashes at boot on content
+    /// with title ID 0, so for those games the cache stays on whatever `perf.shcache` says.
+    #[test]
+    fn the_shader_cache_stays_on_where_turning_it_off_crashes() {
+        let off = core_options(CoreId::Azahar, ConsoleId::N3ds, |k| {
+            (k == "perf.shcache").then_some(Value::Bool(false))
+        });
+        let cache = |options: &[(String, String)]| -> Vec<String> {
+            options
+                .iter()
+                .filter(|(k, _)| k == "citra_use_disk_shader_cache")
+                .map(|(_, v)| v.clone())
+                .collect()
+        };
+        assert_eq!(cache(&off), ["disabled"]);
+        // Only for the games whose loads are blocked; the other options are kept.
+        let blocked = with_block_options(&off, Some(StateLoadBlock::VulkanNoTitleId));
+        assert_eq!(cache(&blocked), ["enabled"]);
+        assert_eq!(blocked.len(), off.len());
+        assert_eq!(with_block_options(&off, None), off);
+    }
 
     /// Trello #93: Azahar on Vulkan crashes loading a state of content with title ID 0.
     #[test]

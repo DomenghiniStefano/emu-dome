@@ -7,7 +7,9 @@
 //! - `emu://hotkey`: a [`HotkeyEvent`], what a shortcut changed that the interface shows.
 //!
 //! A hold shortcut (fast forward, rewind) held from both the keyboard and a pad lasts until both
-//! let go: fast forward goes back to the speed from before the first one.
+//! let go: fast forward goes back to the speed from before the first one. With `speed.ffmode` =
+//! toggle the keyboard's Tab latches its fast forward hold (`KeyRouter`): its next press, the
+//! quick menu or the window losing the focus let go of it.
 
 use std::sync::Arc;
 
@@ -200,6 +202,8 @@ impl Runner {
             self.slow_motion = config.slow_motion;
             self.rewind_toggle = config.hold_toggle;
             self.keymap = keymap(&config);
+            self.keys
+                .set_fast_forward_toggle(config.fast_forward_toggle);
             self.config_at = Some(generation);
         }
     }

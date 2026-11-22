@@ -2,7 +2,8 @@
 // V03, a quick save's details (board «Salvataggi»), opened from «…» on a slot tile in the Saves
 // section (V02) and in Game details › Salvataggi (L05): the thumbnail, when and how big,
 // «Gioca da qui», «Esporta…» and, except for the Automatico slot, «Elimina» with its X04
-// confirmation (a deleted quick save cannot be recovered).
+// confirmation (a deleted quick save cannot be recovered), asked only while
+// `general.confirmdel` is on (askBeforeDelete.ts).
 //
 // Controller / keyboard: each dialog (FlowDialog) opens its own nav scope.
 import { computed, ref } from 'vue'
@@ -13,6 +14,7 @@ import { saveWhenLabel, sizeLabel } from '@/i18n/labels'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import SaveThumb from './SaveThumb.vue'
+import { askBeforeDelete } from './askBeforeDelete'
 import { useSlotName } from './useSlotName'
 
 const props = defineProps<{ game: LibraryGame; quick: QuickSave }>()
@@ -49,6 +51,12 @@ async function exportIt() {
   }
 }
 
+/** «Elimina»: the X04 question first, unless `general.confirmdel` is off. */
+async function startDelete() {
+  if (await askBeforeDelete()) confirmDelete.value = true
+  else await deleteIt()
+}
+
 async function deleteIt() {
   // Emits `changed` before `close`: the parent unmounts this dialog on it.
   try {
@@ -74,11 +82,7 @@ async function deleteIt() {
     <p class="m-0 text-caption">{{ t('saves.quick.overwriteHint') }}</p>
     <template #actions>
       <!-- The Automatico slot cannot be deleted (#59 item 3): EmuDome fills it by itself. -->
-      <Button
-        v-if="quick.slot !== AUTO_SLOT"
-        :size="ButtonSize.Medium"
-        @click="confirmDelete = true"
-      >
+      <Button v-if="quick.slot !== AUTO_SLOT" :size="ButtonSize.Medium" @click="startDelete">
         {{ t('saves.quick.delete') }}
       </Button>
       <Button :size="ButtonSize.Medium" @click="exportIt">{{ t('saves.export') }}</Button>

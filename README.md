@@ -99,7 +99,7 @@ Default keyboard keys (remappable in Controls):
 | Q / W | L / R |
 | 1 / 2 | L2 / R2 |
 | Enter / Right Shift | Start / Select |
-| Tab (held) | Fast forward |
+| Tab (held) | Fast forward (on / off at each press with Settings › Game speed › Fast forward on the keyboard: Toggle) |
 | Backspace (held) | Rewind |
 | F1 / F4 | Quick save / load in the current slot |
 | F2 / F3 | Previous / next slot |

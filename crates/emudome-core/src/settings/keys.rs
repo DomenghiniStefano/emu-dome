@@ -142,6 +142,7 @@ pub const SCREENS_SWAP: TextKey = TextKey::new("screens.swap");
 pub const AUDIO_FF: TextKey = TextKey::new("audio.ff");
 pub const AUDIO_OUT: TextKey = TextKey::new("audio.out");
 pub const AUDIO_LATENCY: TextKey = TextKey::new("audio.lat");
+pub const SPEED_FF_MODE: TextKey = TextKey::new("speed.ffmode");
 pub const SPEED_FF: TextKey = TextKey::new("speed.ffval");
 pub const SPEED_SLOW: TextKey = TextKey::new("speed.slow");
 pub const SPEED_REWIND: BoolKey = BoolKey::new("speed.rew");

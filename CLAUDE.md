@@ -425,7 +425,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   - in game: buttons go to the core, except the modifier L3, which never does;
   - L3 held: combos from the **one table** `DEFAULT_COMBOS` (`hotkeys.rs`, remappable in Phase 1),
     carried out by `HotkeyRunner` in `hotkeys.rs`, shared with the keyboard (session `Command`s, or events for
-    the UI; a hold from both, Tab and L3 + R2, ends with the last release);
+    the UI; a hold from both, Tab and L3 + R2, ends with the last release; with `speed.ffmode` = toggle Tab
+    latches its hold until its next press, the quick menu or the focus loss, `keyboard::KeyRouter`);
     the full table and its TODOs are in `docs/combo-tasti.md` section 5;
   - the interface has the input (quick menu open, or no game): the game gets nothing, d-pad / A / B
     become `emu://nav` steps with key repeat (400 ms, then every 120 ms); L1 / R1 `prev` / `next`, X `more`,
@@ -788,15 +789,18 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 
 - Core options: every `consoles.*` / `cores.*` entry with a real mGBA option is mapped (`settings/core_values/mgba.rs`);
   melonDS DS has a table (`core_values/melondsds.rs`); Azahar has one (`core_values/azahar.rs`: 3DS model, region,
-  internal resolution, texture filter, CPU clock, audio engine, all applied when the game opens again; not mapped:
-  `perf.shcache`, `screens.stereo`, `pad.gyro`, `bios.b3ds`, reasons in that file). `perf.frameskip` drives mGBA
-  only, `video.res3d` / `video.texf` / `perf.cpuclock` Azahar only; elsewhere their rows are disabled with the reason
-  (`CoreProfile::unsupported_settings`). The 3DS rows are phase 3, so the interface still hides them
+  internal resolution, texture filter, CPU clock, audio engine, JIT, disk shader cache, all applied when the game
+  opens again; not mapped: `screens.stereo`, `pad.gyro`, `bios.b3ds`, reasons in that file). `perf.jit` drives
+  melonDS DS and Azahar (Trello #99); `perf.shcache` Azahar only, forced on where turning it off crashes (Vulkan,
+  title ID 0, #93: `StateLoadBlock::forced_options`, the row still shows the user's value). `perf.frameskip`
+  drives mGBA only, `video.res3d` / `video.texf` / `perf.cpuclock` Azahar only; elsewhere their rows are disabled
+  with the reason (`CoreProfile::unsupported_settings`). `saves.rtc` stays unwired: mGBA has no clock option, and
+  melonDS DS's relative / absolute start time needs an offset or a date the catalogue has no row for. The 3DS rows are phase 3, so the interface still hides them
   (`CURRENT_PHASE`). The interface does not show `emu://core-restart` yet. The «All … options»
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 33 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 29 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Window, video and audio settings (Trello #100): `video.winsize` «free» is not remembered across starts (a start
   opens at 1280×800); `video.api` applies at the next start and nothing says a restart is waiting (no general

@@ -509,7 +509,7 @@ pub static ENTRIES: &[Entry] = &[
     seg("audio.lat", &["low", "balanced", "safe"], "balanced", G).device(),
     // ---- Velocità di gioco (speed) ----
     seg("speed.spstart", &["0.5", "1", "2"], "1", GG),
-    seg("speed.ffmode", &["hold", "toggle"], "hold", G).not_wired(),
+    seg("speed.ffmode", &["hold", "toggle"], "hold", G),
     seg("speed.ffval", &["2", "3", "4", "max"], "4", GG).most_used(),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
     // On by default for GB, GBC, GBA and NDS on a computer; off on a phone (memory, battery) and
@@ -621,7 +621,7 @@ pub static ENTRIES: &[Entry] = &[
         .not_wired(),
     seg("general.start", &["library", "last_game"], "library", G),
     sw("general.bgpause", true, G).device(),
-    sw("general.confirmdel", true, G).not_wired(),
+    sw("general.confirmdel", true, G),
     seg("general.updates", &["auto", "ask", "off"], "ask", G)
         .device()
         .not_wired(),
@@ -740,12 +740,8 @@ pub static ENTRIES: &[Entry] = &[
     )
     .device()
     .on_page(ADV),
-    sw("perf.jit", true, CG).phase(2).on_page(ADV).not_wired(),
-    sw("perf.shcache", true, C)
-        .device()
-        .phase(3)
-        .on_page(ADV)
-        .not_wired(),
+    sw("perf.jit", true, CG).phase(2).on_page(ADV),
+    sw("perf.shcache", true, C).device().phase(3).on_page(ADV),
     // 3DS only (Azahar); the other cores list it as unsupported.
     slider("perf.cpuclock", 100, (50, 400, 25), Unit::Percent, GM)
         .phase(3)
