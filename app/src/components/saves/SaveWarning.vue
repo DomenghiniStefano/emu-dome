@@ -5,7 +5,7 @@ import { TriangleAlert } from '@lucide/vue'
 </script>
 
 <template>
-  <div class="flex gap-8 rounded-card bg-warning-soft px-10 py-8 text-caption">
+  <div class="flex gap-8 rounded-card bg-warning-soft px-12 py-8 text-caption">
     <TriangleAlert
       class="flex-none text-warning"
       :size="16"

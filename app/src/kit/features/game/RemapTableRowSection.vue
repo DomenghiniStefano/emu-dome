@@ -12,7 +12,6 @@ import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
 import { IssueStatus, KitGroup } from '@/kit/review'
-import GameRemapTableRowProposal from '@/kit/proposals/GameRemapTableRowProposal.vue'
 
 const conflict = ref(false)
 const ROWS = [
@@ -21,11 +20,6 @@ const ROWS = [
   { button: 'L', source: 'LB', status: RemapRowStatus.UsedTwice },
   { button: 'R', source: 'RB', status: RemapRowStatus.None },
 ]
-const STATUS_TEXT: Record<RemapRowStatus, string> = {
-  [RemapRowStatus.None]: '',
-  [RemapRowStatus.Changed]: 'Modificato',
-  [RemapRowStatus.UsedTwice]: 'Usato anche da un altro',
-}
 </script>
 
 <template>
@@ -33,7 +27,7 @@ const STATUS_TEXT: Record<RemapRowStatus, string> = {
     <KitState label="Plain · changed · used twice · plain, and a row listening (keyboard, 4 s)">
       <Card :variant="CardVariant.List" class="w-page max-w-full">
         <div
-          class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-12 bg-surface-raised px-16 py-8 text-overline text-ink-muted"
+          class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_var(--spacing-shortcut-key)] items-center gap-8 bg-surface-raised px-12 py-6 text-overline text-ink-muted"
         >
           <span>NEL GIOCO</span>
           <span>SUL CONTROLLER</span>
@@ -81,54 +75,6 @@ const STATUS_TEXT: Record<RemapRowStatus, string> = {
     </KitState>
 
     <template #review>
-      <KitIssue
-        title="Le colonne della tabella non sono allineate fra le righe"
-        :status="IssueStatus.Proposed"
-      >
-        Ogni riga è una griglia a sé con la terza colonna <code>auto</code>: la riga «Usato anche da
-        un altro» ha una terza colonna larga, «Modificato» media, le altre zero. Le prime due
-        colonne si dividono quello che resta, quindi i campi del controller partono in un punto
-        diverso in ogni riga e non sono in colonna con l’intestazione. ShortcutRow risolve lo stesso
-        caso con una colonna fissa (<code>--spacing-shortcut-col</code>).
-        <template #current>
-          <Card :variant="CardVariant.List" class="w-dialog max-w-full">
-            <div
-              class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-12 bg-surface-raised px-16 py-8 text-overline text-ink-muted"
-            >
-              <span>NEL GIOCO</span>
-              <span>SUL CONTROLLER</span>
-              <span></span>
-            </div>
-            <RemapTableRow
-              v-for="r in ROWS"
-              :key="r.button"
-              v-bind="r"
-              :listening="false"
-              :seconds-left="0"
-              :keyboard="false"
-            />
-          </Card>
-        </template>
-        <template #proposed>
-          <Card :variant="CardVariant.List" class="w-dialog max-w-full">
-            <GameRemapTableRowProposal head />
-            <GameRemapTableRowProposal
-              v-for="r in ROWS"
-              :key="r.button"
-              :button="r.button"
-              :source="r.source"
-              :status="STATUS_TEXT[r.status]"
-              :warn="r.status === RemapRowStatus.UsedTwice"
-            />
-          </Card>
-        </template>
-        <template #solution>
-          in RemapTableRow.vue e nella riga d’intestazione di ControlsRemap.vue la terza colonna da
-          <code>auto</code> a una larghezza fissa: un token di ruolo nuovo
-          <code>--spacing-remap-status</code> (150, qui mostrato con
-          <code>--spacing-shortcut-key</code> che vale uguale). La riga in ascolto resta com’è.
-        </template>
-      </KitIssue>
       <KitIssue title="«Scambia» e «Annulla» sono uguali" :status="IssueStatus.Proposed">
         Nel banner del conflitto i due pulsanti hanno lo stesso aspetto: la risposta attesa (il
         focus parte su «Scambia») non si distingue da quella che lascia tutto com’era.

@@ -144,7 +144,7 @@ const hint = computed(() => {
     <div class="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start gap-12">
       <Card as="section" :variant="CardVariant.List">
         <div
-          class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-8 bg-surface-raised px-12 py-6 text-overline text-ink-muted"
+          class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_var(--spacing-shortcut-key)] items-center gap-8 bg-surface-raised px-12 py-6 text-overline text-ink-muted"
         >
           <span>{{ t('controls.inGame') }}</span>
           <span>{{ family === 'keyboard' ? t('controls.onKeyboard') : t('controls.onPad') }}</span>

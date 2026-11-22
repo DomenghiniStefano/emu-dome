@@ -103,15 +103,18 @@ const line = computed(() => {
         >
           <component :is="ICONS[l]" :size="20" :stroke-width="1.75" aria-hidden="true" />
           <span class="flex flex-col gap-2">
-            <SettingSelect
-              v-if="l === 'console' && contextConsole"
-              in-title
-              :label="t('settingsUi.scope.consolePick')"
-              :value="contextConsole"
-              :options="consoleOptions"
-              @pick="id => emit('pickConsole', id)"
-              @click.stop
-            />
+            <!-- the menu's taller trigger holds the title's one line, so both cards' words
+                 sit on the same lines -->
+            <span v-if="l === 'console' && contextConsole" class="flex h-lh">
+              <SettingSelect
+                in-title
+                :label="t('settingsUi.scope.consolePick')"
+                :value="contextConsole"
+                :options="consoleOptions"
+                @pick="id => emit('pickConsole', id)"
+                @click.stop
+              />
+            </span>
             <span v-else class="font-semibold">{{ levelName(l) }}</span>
             <span class="text-caption text-ink-muted">{{ sub(l) }}</span>
           </span>

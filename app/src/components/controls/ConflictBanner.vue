@@ -15,7 +15,7 @@ onMounted(() => swapButton.value?.$el.focus())
 
 <template>
   <div
-    class="flex items-center gap-8 border-t border-warning-edge bg-warning-tint px-12 py-6"
+    class="flex items-center gap-8 border-t border-warning-edge bg-warning-tint px-12 py-6 [break-before:avoid-column]"
     role="alert"
   >
     <span class="flex-1">{{ text }}</span>
