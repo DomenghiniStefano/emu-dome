@@ -301,6 +301,43 @@ fn per_device_values_never_reach_the_synced_files() {
     );
 }
 
+#[test]
+fn touch_layouts_stay_on_this_device_per_console_and_survive_a_restart() {
+    // Trello #29: a phone's touch layout fits that phone, so it never syncs; it is the console's.
+    let dir = TestDir::new("touch-layouts");
+    let mut s = settings(&dir);
+    let key = "touch.tedit";
+    assert!(entry(key).unwrap().per_device);
+    let layout = Value::List(vec![
+        "landscape/a:0.93,0.6,120,80,turbo".to_owned(),
+        "landscape/menu:0.9,0.25,100,100,tap".to_owned(),
+    ]);
+    // Only at the console's level: not for all games, not per game.
+    assert!(s.set(key, &Scope::Global, layout.clone()).is_err());
+    assert!(s.set(key, &game_scope(), layout.clone()).is_err());
+    s.set(key, &console_scope(), layout.clone()).unwrap();
+    // An invalid layout (no menu) is refused, and the saved one kept.
+    let broken = Value::List(vec!["landscape/a:0.5,0.5,100,100,tap".to_owned()]);
+    assert!(s.set(key, &console_scope(), broken).is_err());
+    s.set("video.scale", &Scope::Global, option("video.scale", 1))
+        .unwrap();
+
+    assert!(!synced_text(&dir).contains(key));
+    let device: serde_json::Value = serde_json::from_str(&dir.read("local/device.json")).unwrap();
+    assert_eq!(
+        device["console"]["gba"][key],
+        json!([
+            "landscape/a:0.93,0.6,120,80,turbo",
+            "landscape/menu:0.9,0.25,100,100,tap"
+        ])
+    );
+    let mut fresh = settings(&dir);
+    assert_eq!(
+        value_of(&mut fresh, key, &console_scope()),
+        (Some(layout), Level::Console)
+    );
+}
+
 // ---- Sync rules (before Drive sync, #20 / #31) ----
 //
 // What the synced files carry and who wins, as the engine does it today. Rules not decided yet
@@ -787,8 +824,9 @@ fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
     // 157 of the design, less `speed.splist` and `general.qmorder` (owner, 18/11), plus the
     // GB, GBC, DSi ARM7, DSi ARM9 and DSi firmware rows (owner, 2026-11-21, Trello #89), plus
     // the game clock's offset and date rows (Trello #102), and `library.versions` in place of
-    // `library.region` (owner, 2026-11-22, #102).
-    assert_eq!(ENTRIES.len(), 164);
+    // `library.region` (owner, 2026-11-22, #102), plus «Se il controller si scollega»
+    // (`touch.tlost`, E14, owner 2026-11-22, #29).
+    assert_eq!(ENTRIES.len(), 165);
 }
 
 #[test]
@@ -862,6 +900,7 @@ fn choices_have_unique_well_formed_options() {
             | Kind::Action { .. }
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
+            | Kind::TouchLayout
             | Kind::DateTime { .. } => continue,
             Kind::Apply { options } => options,
         };
@@ -2159,11 +2198,6 @@ fn the_entries_not_wired_yet_are_these() {
             "audio.mic",
             "speed.runahead",
             "pad.gyro",
-            "touch.tport",
-            "touch.tland",
-            "touch.thapt",
-            "touch.thide",
-            "touch.tpad",
             "library.group",
             "library.covers",
             "cloud.swifi",

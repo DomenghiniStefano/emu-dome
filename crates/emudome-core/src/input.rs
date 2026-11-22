@@ -6,7 +6,7 @@
 //! The core never reads these atomics directly: the session takes a [`Snapshot`] before each
 //! frame and at the core's `input_poll`, so every `input_state` of one poll sees the same input.
 
-use std::sync::atomic::{AtomicU16, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU16, AtomicU32, AtomicU64, Ordering};
 
 /// RetroPad buttons, each with the bit of its libretro id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
@@ -107,6 +107,10 @@ pub struct InputState {
     /// Both sticks, `-0x8000..=0x7FFF` each: left x, left y, right x, right y in bits 0-15,
     /// 16-31, 32-47, 48-63. Written by the controllers only.
     sticks: AtomicU64,
+    /// The touch controls' stick (the 3DS Circle Pad drawn on screen): x in bits 0-15, y in
+    /// 16-31, the left stick's values. Centred (0) leaves the controllers' left stick alone;
+    /// moved, it is the left stick the core reads.
+    touch_stick: AtomicU32,
 }
 
 /// The analog sticks as the core reads them (`RETRO_DEVICE_ANALOG`; y grows downwards).
@@ -199,12 +203,30 @@ impl InputState {
         }
     }
 
-    /// What the core reads until the next snapshot.
+    /// The touch controls' stick at (x, y) (`-0x8000..=0x7FFF`, y downwards), centred with
+    /// `(0, 0)` when the finger lets go.
+    pub fn set_touch_stick(&self, x: i16, y: i16) {
+        let packed = u32::from(x as u16) | (u32::from(y as u16) << 16);
+        self.touch_stick.store(packed, Ordering::Relaxed);
+    }
+
+    fn touch_stick(&self) -> (i16, i16) {
+        let p = self.touch_stick.load(Ordering::Relaxed);
+        (p as u16 as i16, (p >> 16) as u16 as i16)
+    }
+
+    /// What the core reads until the next snapshot. The touch stick, while moved, is the left
+    /// stick (a controller's left stick otherwise).
     pub fn snapshot(&self) -> Snapshot {
+        let mut sticks = self.sticks();
+        let touch = self.touch_stick();
+        if touch != (0, 0) {
+            sticks.left = touch;
+        }
         Snapshot {
             mask: self.mask(),
             pointer: self.pointer(),
-            sticks: self.sticks(),
+            sticks,
         }
     }
 }
@@ -236,6 +258,28 @@ mod tests {
         // A snapshot does not move with later input.
         input.set_sticks(Sticks::default());
         assert_eq!(snap.sticks, s);
+    }
+
+    #[test]
+    fn the_touch_stick_is_the_left_stick_while_moved() {
+        let input = InputState::default();
+        let pad = Sticks {
+            left: (1000, -2000),
+            right: (5, 6),
+        };
+        input.set_sticks(pad);
+        input.set_touch_stick(-32768, 32767);
+        assert_eq!(
+            input.snapshot().sticks,
+            Sticks {
+                left: (-32768, 32767),
+                right: (5, 6)
+            }
+        );
+        // The controllers' own state is untouched; centred, the controller's stick is back.
+        assert_eq!(input.sticks(), pad);
+        input.set_touch_stick(0, 0);
+        assert_eq!(input.snapshot().sticks, pad);
     }
 
     #[test]
