@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Button } from '@/components/ui/button'
 import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
+import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
+import { IssueStatus } from '@/kit/review'
 
 const speed = ref('normal')
+const height = ref('normal')
+const weightNow = ref('normal')
+const weightProposed = ref('normal')
+const partNow = ref('normal')
+const partProposed = ref('normal')
 </script>
 
 <template>
@@ -51,5 +59,94 @@ const speed = ref('normal')
         </div>
       </div>
     </KitState>
+    <template #review>
+      <KitIssue title="Alto 34, i controlli vicini 32" :status="IssueStatus.Proposed">
+        Un segmento è alto 28, più 2 di spazio e 1 di bordo per lato: il gruppo misura 34. Nelle
+        righe delle impostazioni sta accanto a Button, Select e Input, tutti da 32, e la riga cambia
+        altezza a seconda del controllo.
+        <template #current>
+          <div class="flex items-center gap-8">
+            <Segmented v-model="height" aria-label="Height, now">
+              <SegmentedItem value="normal">Normal</SegmentedItem>
+              <SegmentedItem value="fast">Fast</SegmentedItem>
+            </Segmented>
+            <Button>32</Button>
+          </div>
+        </template>
+        <template #proposed>
+          <div class="flex items-center gap-8">
+            <Segmented v-model="height" aria-label="Height, proposed" class="p-px">
+              <SegmentedItem value="normal">Normal</SegmentedItem>
+              <SegmentedItem value="fast">Fast</SegmentedItem>
+            </Segmented>
+            <Button>32</Button>
+          </div>
+        </template>
+        <template #solution>
+          In segmented/variants.ts lo spazio interno di Default e Strong passa da 2 a 1 (p-px), così
+          il gruppo è 32 con i segmenti da 28; il raggio interno (4) resta corretto.
+        </template>
+      </KitIssue>
+      <KitIssue
+        title="Il segmento scelto ingrassa e sposta gli altri"
+        :status="IssueStatus.Proposed"
+      >
+        In Default il segmento scelto passa da medium a semibold: la parola si allarga di qualche
+        pixel e i segmenti alla sua destra si spostano a ogni scelta. Strong esiste per questo
+        (tutto semibold), ma è l'unica differenza fra le due varianti. Scegli fra «Normal» e «Fast
+        forward» qui a sinistra e guarda «Slow motion».
+        <template #current>
+          <Segmented v-model="weightNow" aria-label="Weight, now">
+            <SegmentedItem value="normal">Normal</SegmentedItem>
+            <SegmentedItem value="fast">Fast forward</SegmentedItem>
+            <SegmentedItem value="slow">Slow motion</SegmentedItem>
+          </Segmented>
+        </template>
+        <template #proposed>
+          <Segmented v-model="weightProposed" aria-label="Weight, proposed">
+            <SegmentedItem
+              v-for="(name, id) in { normal: 'Normal', fast: 'Fast forward', slow: 'Slow motion' }"
+              :key="id"
+              :value="id"
+              class="data-[state=on]:font-medium"
+            >
+              {{ name }}
+            </SegmentedItem>
+          </Segmented>
+        </template>
+        <template #solution>
+          La scelta si vede dal fondo e dal colore, il peso resta medium (segmented/variants.ts);
+          Strong (2 usi, ControlsRemap) diventa Default o resta solo se il proprietario vuole i
+          segmenti semibold.
+        </template>
+      </KitIssue>
+      <KitIssue
+        title="Un segmento disabilitato sembra solo non scelto"
+        :status="IssueStatus.Proposed"
+      >
+        «Fast forward» disabilitato ha lo stesso grigio di un segmento libero; col mouse non
+        risponde e col controller il passo lo salta, senza un segno del perché.
+        <template #current>
+          <Segmented v-model="partNow" aria-label="One disabled, now">
+            <SegmentedItem value="normal">Normal</SegmentedItem>
+            <SegmentedItem value="fast" disabled>Fast forward</SegmentedItem>
+            <SegmentedItem value="slow">Slow motion</SegmentedItem>
+          </Segmented>
+        </template>
+        <template #proposed>
+          <Segmented v-model="partProposed" aria-label="One disabled, proposed">
+            <SegmentedItem value="normal">Normal</SegmentedItem>
+            <SegmentedItem value="fast" disabled class="disabled:opacity-disabled">
+              Fast forward
+            </SegmentedItem>
+            <SegmentedItem value="slow">Slow motion</SegmentedItem>
+          </Segmented>
+        </template>
+        <template #solution>
+          disabled:opacity-disabled sui segmenti in segmented/variants.ts (il gruppo intero
+          disabilitato: vedi Switch).
+        </template>
+      </KitIssue>
+    </template>
   </KitSection>
 </template>

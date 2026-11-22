@@ -17,8 +17,11 @@ import {
   Undo2,
 } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Card, CardVariant } from '@/components/ui/card'
+import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
+import { IssueStatus } from '@/kit/review'
 import { ACCENT_SWATCHES } from '@/lib/accent'
 </script>
 
@@ -550,5 +553,108 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         </Button>
       </div>
     </KitState>
+    <template #review>
+      <KitIssue
+        title="Sul telefono Small, Default e Tall restano sotto i 44"
+        :status="IssueStatus.Proposed"
+      >
+        Con la densità touch Small resta alto 28, Default 32 e Tall 40: cambia solo la misura del
+        testo. Il minimo al tocco del design system è 44 (il token touch), e Footer, Toast, Step,
+        CardAction e Bare lo rispettano già. In più, su desktop Tall e Footer hanno le stesse
+        classi: sono due nomi per lo stesso pulsante, che si separano solo sul telefono.
+        <template #current>
+          <div data-density="touch" class="flex flex-wrap items-center gap-8">
+            <Button :variant="ButtonVariant.GhostRegular" :size="ButtonSize.Small">Rimuovi</Button>
+            <Button>Scegli</Button>
+            <Button :size="ButtonSize.Tall">Aggiungi una cartella</Button>
+            <Button :size="ButtonSize.Footer">Indietro</Button>
+          </div>
+        </template>
+        <template #proposed>
+          <div data-density="touch" class="flex flex-wrap items-center gap-8">
+            <Button
+              :variant="ButtonVariant.GhostRegular"
+              :size="ButtonSize.Small"
+              class="touch:h-touch"
+            >
+              Rimuovi
+            </Button>
+            <Button class="touch:h-touch">Scegli</Button>
+            <Button :size="ButtonSize.Tall" class="touch:h-48">Aggiungi una cartella</Button>
+            <Button :size="ButtonSize.Footer">Indietro</Button>
+          </div>
+        </template>
+        <template #solution>
+          In button/variants.ts Small e Default prendono touch:h-touch (44), Tall l'altezza di
+          Footer sul telefono (48); a quel punto Footer è Tall e si può togliere (4 usi da
+          spostare).
+        </template>
+      </KitIssue>
+      <KitIssue title="Tre opacità per «disabilitato»" :status="IssueStatus.Proposed">
+        Un controllo che non si può usare sbiadisce a 0,4 (opacity-disabled: Button, DateTimeField,
+        Input Block), a 0,5 (opacity-dim: ButtonFade.Dim, Card Tool e PictureChoice) o a 0,55
+        (opacity-locked: Card NavRow e ListRow, SelectItem, le righe bloccate delle impostazioni).
+        Nel menu rapido un NavRow a 0,55 sta vicino a pulsanti Dim a 0,5: stessa cosa, tre valori.
+        <template #current>
+          <div class="flex w-field flex-col gap-8">
+            <Button disabled>Normal · 0,4</Button>
+            <Button :fade="ButtonFade.Dim" disabled>Dim · 0,5</Button>
+            <Card as="button" :variant="CardVariant.NavRow" disabled>NavRow · 0,55</Card>
+          </div>
+        </template>
+        <template #proposed>
+          <div class="flex w-field flex-col gap-8">
+            <Button disabled>Normal · 0,4</Button>
+            <Button disabled>Dim → Normal · 0,4</Button>
+            <Card
+              as="button"
+              :variant="CardVariant.NavRow"
+              class="disabled:opacity-disabled"
+              disabled
+            >
+              NavRow · 0,4
+            </Card>
+          </div>
+        </template>
+        <template #solution>
+          Un solo token per «non si può usare» in opacity.css (il valore lo sceglie il
+          proprietario); dim e locked diventano lo stesso valore o spariscono, ButtonFade.Dim si
+          fonde in Normal, e Card / SelectItem / le righe delle impostazioni leggono quel token.
+        </template>
+      </KitIssue>
+      <KitIssue title="In Chiaro Soft si stacca appena dallo sfondo" :status="IssueStatus.Proposed">
+        In Chiaro il fondo di Soft (surface-raised) contro lo sfondo della pagina ha un contrasto di
+        1,03:1 e il bordo line (nero al 7%) di 1,14:1: il pulsante si riconosce solo dal testo. Lo
+        stesso line disegna i bordi di Card, Chip, Segmented, Select e il binario dello Slider.
+        Passa il Kit a Chiaro per vederlo.
+        <template #current>
+          <Button>Scegli una cartella</Button>
+          <Button :variant="ButtonVariant.Danger">Elimina</Button>
+        </template>
+        <template #proposed>
+          <Button class="border-line-strong">Scegli una cartella</Button>
+          <Button :variant="ButtonVariant.Danger" class="border-line-strong">Elimina</Button>
+        </template>
+        <template #solution>
+          O alzare line di Chiaro (colors.css, il blocco data-theme light) a circa il 15% di nero,
+          che sistema tutti i bordi insieme; o, come nella proposta, il bordo line-strong su Soft e
+          Danger in button/variants.ts (pesa di più anche in Scuro e Nero).
+        </template>
+      </KitIssue>
+      <KitIssue title="Il focus cancella i segni fatti con ombra o contorno">
+        L'anello di focus (styles.css, :root[data-nav] :focus) imposta outline e box-shadow fuori
+        dai layer di Tailwind, quindi vince su ogni classe. Col focus la sezione corrente del Rail
+        perde la sua barretta (shadow-rail), il campione scelto di Swatch perde l'anello che lo
+        distingue dagli altri (diventa uguale a uno non scelto con il focus) e Primary perde il
+        bagliore. Per vederlo: premi una freccia e porta il focus su «Library» nel Rail o sul primo
+        campione.
+        <template #solution>
+          Lo stato non si disegna con box-shadow né outline: la barretta del Rail e l'anello del
+          campione passano su un bordo o un pseudo-elemento (button/variants.ts, utilities.css);
+          oppure l'anello di focus rinuncia al box-shadow e resta solo outline. Stesso problema
+          sulla tab attiva (vedi Tabs).
+        </template>
+      </KitIssue>
+    </template>
   </KitSection>
 </template>
