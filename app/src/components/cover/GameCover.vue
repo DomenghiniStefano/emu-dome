@@ -15,7 +15,13 @@ import { computed, ref, watch, type HTMLAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/cn'
 import type { LibraryGame } from '@/emu'
-import { CoverSize, coverBadgeVariants, coverVariants, coverVersionsVariants } from './variants'
+import {
+  CoverSize,
+  coverBadgeVariants,
+  coverTitleVariants,
+  coverVariants,
+  coverVersionsVariants,
+} from './variants'
 
 /** What a cover shows of a game: a library game, or one known only by its title (Drive). */
 export type CoverGame = Pick<LibraryGame, 'console' | 'title' | 'colour' | 'cover' | 'coverUrl'>
@@ -75,7 +81,7 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
     <!-- The ROM icon is small pixel art (32×32 on NDS): scaled up crisp, in the upper middle. -->
     <img
       v-else-if="image"
-      class="pixelated absolute top-[38%] left-1/2 w-2/5 -translate-1/2 rounded-6"
+      class="pixelated absolute top-[38%] left-1/2 w-2/5 -translate-1/2 rounded-control"
       :src="image"
       alt=""
       loading="lazy"
@@ -88,6 +94,6 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
     <span v-if="versions > 1" :class="coverVersionsVariants({ size })">{{
       t('library.versions.tag', { n: versions }, versions)
     }}</span>
-    <span v-if="title && !userImage" class="relative wrap-anywhere">{{ game.title }}</span>
+    <span v-if="title && !userImage" :class="coverTitleVariants({ size })">{{ game.title }}</span>
   </div>
 </template>

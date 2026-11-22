@@ -52,7 +52,7 @@ const coverLine = computed(() => coverDescription(props.game, t))
 </script>
 
 <template>
-  <DetailsCard class="gap-14">
+  <DetailsCard class="gap-10">
     <Heading as="h2" :variant="HeadingVariant.Overline">{{
       t('details.files.looksTitle')
     }}</Heading>
@@ -68,7 +68,7 @@ const coverLine = computed(() => coverDescription(props.game, t))
         @keydown.enter="saveName"
       />
     </label>
-    <div class="flex items-center gap-12">
+    <div class="flex items-center gap-10">
       <GameCover
         :size="CoverSize.Row"
         class="flex-none"
@@ -84,7 +84,7 @@ const coverLine = computed(() => coverDescription(props.game, t))
         {{ t('details.files.coverChange') }}
       </DetailsAction>
     </div>
-    <div class="flex items-center gap-12">
+    <div class="flex items-center gap-10">
       <span class="min-w-0 flex-1 font-medium">{{ t('library.menu.hide') }}</span>
       <Switch
         :model-value="game.hidden"

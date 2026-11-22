@@ -26,7 +26,7 @@ const points = [
     <!-- The mark draws its own amber glow; the title beside it says the name. -->
     <img :src="mark" alt="" aria-hidden="true" class="block h-auto w-mark" />
     <Heading as="h1" :variant="HeadingVariant.Display">{{ t('firstRun.welcome.title') }}</Heading>
-    <ul class="m-0 flex max-w-lead list-none flex-col gap-10 p-0 text-left">
+    <ul class="m-0 flex max-w-lead list-none flex-col gap-8 p-0 text-left">
       <li
         v-for="point in points"
         :key="point.key"

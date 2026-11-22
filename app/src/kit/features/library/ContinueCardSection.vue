@@ -6,7 +6,6 @@ import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
-import LibraryContinueCardProposal from '@/kit/proposals/LibraryContinueCardProposal.vue'
 import { IssueStatus, KitGroup } from '@/kit/review'
 import {
   GB_LONG,
@@ -53,33 +52,6 @@ const LONG_PLAYED = { ...GB_LONG, lastPlayed: Date.now() - 3_600_000, playTimeSe
       </div>
     </KitState>
     <template #review>
-      <KitIssue
-        title="La miniatura non è 3:2: si allunga con la scheda"
-        :status="IssueStatus.Proposed"
-      >
-        La miniatura dovrebbe essere 3:2 (96 × 64), ma nella riga della scheda si stira fino
-        all’altezza della scheda: diventa un rettangolo verticale tagliato ai lati, e la sua forma
-        cambia da una scheda all’altra (più alta quando «Riparte da» va su due righe o i pulsanti
-        vanno a capo). Intanto il titolo è troncato dopo poche lettere («Pocket Quest Advan…») anche
-        se la scheda ha spazio in altezza.
-        <template #current>
-          <div class="w-tile-min">
-            <ContinueCard :game="GBA" :point="RESUME_IN_GAME" :main="false" />
-          </div>
-        </template>
-        <template #proposed>
-          <div class="w-tile-min">
-            <LibraryContinueCardProposal :game="GBA" :point="RESUME_IN_GAME" :main="false" />
-          </div>
-        </template>
-        <template #solution>
-          in <code>library/ContinueCard.vue</code> aggiungere <code>self-start</code> alla SaveThumb
-          (resta 3:2 in alto) e sul titolo <code>line-clamp-2 wrap-anywhere</code> al posto di
-          <code>truncate</code>. Sotto la miniatura resta uno spazio libero: se non va bene,
-          l’alternativa è la miniatura alta quanto la scheda ma con la sua immagine intera (senza
-          <code>crop</code>).
-        </template>
-      </KitIssue>
       <KitIssue
         title="«Riprendi» spento senza spiegazione quando il file manca"
         :status="IssueStatus.Proposed"

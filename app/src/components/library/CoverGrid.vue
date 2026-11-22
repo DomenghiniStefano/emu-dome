@@ -46,7 +46,7 @@ watch(visible, shown => {
 <template>
   <div
     ref="grid"
-    class="focus-ring-off grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-capsule-medium),1fr))] gap-16"
+    class="focus-ring-off grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-capsule-medium),1fr))] gap-12"
     :style="style"
   >
     <CoverTile

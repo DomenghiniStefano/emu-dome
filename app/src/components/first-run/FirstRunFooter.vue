@@ -38,7 +38,7 @@ const { t } = useI18n()
       </Button>
     </div>
   </footer>
-  <footer v-else class="flex h-footer flex-none items-center px-48">
+  <footer v-else class="flex h-footer flex-none items-center px-24">
     <div class="flex flex-1 items-center justify-between gap-8">
       <Button v-if="canGoBack" :size="ButtonSize.Footer" @click="emit('back')">
         {{ t('firstRun.back') }}

@@ -139,7 +139,7 @@ onMounted(async () => {
 
     <!-- #102: the game's regional versions, when it has some. -->
     <DetailsVersions
-      class="px-section-x pb-28 touch:px-section-touch"
+      class="px-section-x pb-20 touch:px-section-touch"
       :game="game"
       @play="playVersion"
     />

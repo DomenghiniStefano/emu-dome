@@ -57,7 +57,7 @@ function choose(value: unknown) {
     >
       <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" class="-mx-6">
         <span
-          class="size-14 shrink-0 rounded-4"
+          class="size-14 shrink-0 rounded-badge"
           :class="show[k] ? 'bg-accent-text' : 'border border-line-strong'"
           aria-hidden="true"
         ></span>

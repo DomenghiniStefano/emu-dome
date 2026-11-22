@@ -1,12 +1,16 @@
 <script setup lang="ts">
-// Kit proposal (library group, «Game cover»): GameCover with its title held to a few lines, so a
-// long title never climbs under the console badge, and the «missing» look drawn in grey with the
-// dashed edge instead of faded (the faded cover washes out on the light theme). Only shown on the
-// Kit page; GameCover itself is unchanged until the owner decides.
+// Kit proposal (library group, «Game cover»): GameCover with the «missing» look drawn in grey with
+// the dashed edge instead of faded (the faded cover washes out on the light theme). Only shown on
+// the Kit page; GameCover itself is unchanged until the owner decides.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { CoverGame } from '@/components/cover/GameCover.vue'
-import { CoverSize, coverBadgeVariants, coverVariants } from '@/components/cover/variants'
+import {
+  CoverSize,
+  coverBadgeVariants,
+  coverTitleVariants,
+  coverVariants,
+} from '@/components/cover/variants'
 import { cn } from '@/lib/cn'
 
 const props = withDefaults(
@@ -14,10 +18,8 @@ const props = withDefaults(
     game: CoverGame
     size?: typeof CoverSize.Fill | typeof CoverSize.Small
     missing?: boolean
-    /** Off: the current faded look, to compare only the title. */
-    grey?: boolean
   }>(),
-  { size: CoverSize.Fill, missing: false, grey: true },
+  { size: CoverSize.Fill, missing: false },
 )
 
 const { t } = useI18n()
@@ -32,8 +34,7 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
       cn(
         coverVariants({ size }),
         'bg-cover-tint',
-        missing && 'outline outline-offset-inset outline-line-strong outline-dashed',
-        missing && (grey ? 'grayscale' : 'opacity-missing'),
+        missing && 'outline outline-offset-inset outline-line-strong outline-dashed grayscale',
       )
     "
     :style="{ '--cover-tint': game.colour }"
@@ -46,16 +47,11 @@ const userImage = computed(() => image.value !== null && props.game.cover === 'u
     />
     <img
       v-else-if="image"
-      class="pixelated absolute top-[38%] left-1/2 w-2/5 -translate-1/2 rounded-6"
+      class="pixelated absolute top-[38%] left-1/2 w-2/5 -translate-1/2 rounded-control"
       :src="image"
       alt=""
     />
     <span :class="coverBadgeVariants({ size })">{{ t(`consoleShort.${game.console}`) }}</span>
-    <span
-      v-if="!userImage"
-      class="relative wrap-anywhere"
-      :class="size === CoverSize.Small ? 'line-clamp-3' : 'line-clamp-4'"
-      >{{ game.title }}</span
-    >
+    <span v-if="!userImage" :class="coverTitleVariants({ size })">{{ game.title }}</span>
   </div>
 </template>

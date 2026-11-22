@@ -17,7 +17,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="grid grid-cols-2 items-start gap-16 touch:grid-cols-1">
+  <div class="grid grid-cols-2 items-start gap-12 touch:grid-cols-1">
     <GameLooksCard :game="game" @cover="emit('cover')" />
     <GameFileCard :game="game" :device="device" />
   </div>

@@ -58,7 +58,7 @@ async function pin(g: LibraryGame) {
       <div
         v-for="r in rows"
         :key="r.game.id"
-        class="flex flex-wrap items-center gap-12 border-t border-line px-16 py-8 first:border-t-0"
+        class="flex flex-wrap items-center gap-8 border-t border-line px-12 py-6 first:border-t-0"
         :class="{ 'bg-accent-soft': r.inLibrary }"
       >
         <Badge :variant="BadgeVariant.Neutral" :size="BadgeSize.Tag">

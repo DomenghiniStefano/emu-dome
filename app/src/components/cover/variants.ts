@@ -31,14 +31,14 @@ export const coverVariants = cva(
   {
     variants: {
       size: {
-        [CoverSize.Fill]: 'rounded-card p-12 text-heading leading-cover',
-        [CoverSize.Choice]: 'rounded-control p-12 text-heading leading-cover',
+        [CoverSize.Fill]: 'rounded-card p-10 text-heading leading-cover',
+        [CoverSize.Choice]: 'rounded-control p-10 text-heading leading-cover',
         [CoverSize.Thumb]: 'w-cover-thumb rounded-badge p-0',
         [CoverSize.Row]: 'w-cover-row rounded-control p-0',
         [CoverSize.Small]:
           'w-cover-small rounded-card p-8 text-fine font-semibold touch:w-cover-small-touch',
         [CoverSize.Hero]:
-          'w-cover-hero rounded-card p-12 text-heading leading-cover touch:w-cover-hero-touch',
+          'w-cover-hero rounded-card p-10 text-heading leading-cover touch:w-cover-hero-touch',
         [CoverSize.Shelf]: 'w-full rounded-card p-14 text-tv-cover',
         [CoverSize.TvHero]: 'h-full rounded-panel p-16 text-tv-heading',
       },
@@ -101,6 +101,25 @@ export const coverBadgeVariants = cva('absolute rounded-badge bg-cover-badge py-
       [CoverSize.Hero]: 'top-8 left-8 px-6 text-console-badge',
       [CoverSize.Shelf]: TV_BADGE,
       [CoverSize.TvHero]: TV_BADGE,
+    },
+  },
+  defaultVariants: { size: CoverSize.Fill },
+})
+
+// The title over a cover without a picture, held to a few lines per size so a long one never
+// climbs under the console badge (the whole title stays under the cover and in the details).
+// TV mode keeps its own look (not clamped).
+export const coverTitleVariants = cva('relative wrap-anywhere', {
+  variants: {
+    size: {
+      [CoverSize.Fill]: 'line-clamp-4',
+      [CoverSize.Choice]: 'line-clamp-4',
+      [CoverSize.Thumb]: 'line-clamp-2',
+      [CoverSize.Row]: 'line-clamp-2',
+      [CoverSize.Small]: 'line-clamp-3',
+      [CoverSize.Hero]: 'line-clamp-4',
+      [CoverSize.Shelf]: '',
+      [CoverSize.TvHero]: '',
     },
   },
   defaultVariants: { size: CoverSize.Fill },

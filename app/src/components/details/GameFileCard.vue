@@ -18,7 +18,7 @@ const facts = computed(() => gameFacts(props.game, t))
 </script>
 
 <template>
-  <DetailsCard class="gap-14">
+  <DetailsCard class="gap-10">
     <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('details.files.fileTitle') }}</Heading>
     <div class="flex flex-col gap-2">
       <span class="font-medium">{{ onDevice }}</span>
@@ -27,7 +27,7 @@ const facts = computed(() => gameFacts(props.game, t))
       </span>
     </div>
     <dl
-      class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-16 gap-y-4 text-caption text-ink-muted"
+      class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-12 gap-y-2 text-caption text-ink-muted"
     >
       <template v-for="f in facts" :key="f.label">
         <dt>{{ f.label }}</dt>
