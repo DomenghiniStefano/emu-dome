@@ -774,6 +774,15 @@
       "page": "library"
     },
     {
+      "key": "library.view",
+      "kind": "choice",
+      "options": [
+        "list",
+        "grid"
+      ],
+      "page": "library"
+    },
+    {
       "key": "library.group",
       "kind": "toggle",
       "options": [],

@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import { AUTO_SLOT, type LibraryFolder, type LibraryGame } from '@/emu'
+import catalog from '@/generated/settings-catalog.json'
 import {
+  GAMES_VIEWS,
   consoleChips,
   coverKinds,
+  isGamesView,
   ofConsole,
   recentlyPlayed,
   resumeSource,
+  resumeTarget,
   unreachableFolders,
 } from './libraryView'
 
@@ -105,6 +109,35 @@ describe('resumeSource', () => {
       key: 'library.continue.fromSlot',
       params: { slot: 3 },
     })
+  })
+})
+
+describe('library.view', () => {
+  it('names the catalogue’s options, in its order', () => {
+    const entry = catalog.entries.find(e => e.key === 'library.view')
+    expect(entry && 'options' in entry ? entry.options : null).toEqual([...GAMES_VIEWS])
+    expect(isGamesView('list')).toBe(true)
+    expect(isGamesView('rows')).toBe(false)
+  })
+})
+
+describe('resumeTarget', () => {
+  const point = (none: boolean) => ({ slot: 2, thumbUrl: null, none })
+  const recent = [game('last', { lastPlayed: 9 }), game('before', { lastPlayed: 5 })]
+
+  it('is the game played last when it has somewhere to pick up from', () => {
+    expect(resumeTarget(recent, { last: point(false), before: point(false) })).toBe('last')
+  })
+
+  it('is no game while its save is not known, without one, or with no game played', () => {
+    expect(resumeTarget(recent, {})).toBeNull()
+    expect(resumeTarget(recent, { last: point(true), before: point(false) })).toBeNull()
+    expect(resumeTarget([], {})).toBeNull()
+  })
+
+  it('is no game when the one played last cannot start', () => {
+    const gone = [game('last', { lastPlayed: 9, available: false })]
+    expect(resumeTarget(gone, { last: point(false) })).toBeNull()
   })
 })
 

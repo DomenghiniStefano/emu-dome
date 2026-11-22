@@ -694,6 +694,33 @@ fn rewind_is_on_by_default_on_a_computer_but_for_3ds_and_off_on_a_phone() {
 }
 
 #[test]
+fn the_library_is_a_list_on_a_phone_and_a_grid_on_a_computer() {
+    // #29 (owner, 2026-11-22): `library.view`, per device, its default by the device.
+    let dir = TestDir::new("library-view");
+    let text = |v: &str| (Some(Value::Text(v.into())), Level::Default);
+    let mut desktop = settings(&dir);
+    assert_eq!(
+        value_of(&mut desktop, "library.view", &Scope::Global),
+        text("grid")
+    );
+    let mut phone = phone_settings(&dir);
+    assert_eq!(
+        value_of(&mut phone, "library.view", &Scope::Global),
+        text("list")
+    );
+    assert!(entry("library.view").unwrap().per_device);
+    // The choice stays on the device: never in the synced files.
+    phone
+        .set("library.view", &Scope::Global, Value::Text("grid".into()))
+        .unwrap();
+    assert_eq!(
+        value_of(&mut phone, "library.view", &Scope::Global),
+        (Some(Value::Text("grid".into())), Level::Global)
+    );
+    assert!(!synced_text(&dir).contains("library.view"));
+}
+
+#[test]
 fn a_user_value_wins_over_a_default_rule_at_every_level() {
     let dir = TestDir::new("rewind-user");
     let mut s = phone_settings(&dir);
@@ -825,8 +852,9 @@ fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
     // GB, GBC, DSi ARM7, DSi ARM9 and DSi firmware rows (owner, 2026-11-21, Trello #89), plus
     // the game clock's offset and date rows (Trello #102), and `library.versions` in place of
     // `library.region` (owner, 2026-11-22, #102), plus «Se il controller si scollega»
-    // (`touch.tlost`, E14, owner 2026-11-22, #29).
-    assert_eq!(ENTRIES.len(), 165);
+    // (`touch.tlost`, E14, owner 2026-11-22, #29), plus the library's Lista / Griglia
+    // (`library.view`, owner 2026-11-22, #29).
+    assert_eq!(ENTRIES.len(), 166);
 }
 
 #[test]

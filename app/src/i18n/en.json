@@ -1496,6 +1496,14 @@
           "added": "Date added"
         }
       },
+      "view": {
+        "name": "Library view",
+        "desc": "How you see your games on this device.",
+        "option": {
+          "list": "List",
+          "grid": "Grid"
+        }
+      },
       "group": {
         "name": "Group by console",
         "desc": "Splits the library into sections by console."

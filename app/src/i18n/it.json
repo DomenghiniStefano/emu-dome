@@ -1496,6 +1496,14 @@
           "added": "Data di aggiunta"
         }
       },
+      "view": {
+        "name": "Vista della libreria",
+        "desc": "Come vedi i giochi su questo dispositivo.",
+        "option": {
+          "list": "Lista",
+          "grid": "Griglia"
+        }
+      },
       "group": {
         "name": "Raggruppa per console",
         "desc": "Divide la libreria in sezioni per console."
