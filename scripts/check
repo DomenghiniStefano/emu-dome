@@ -304,12 +304,11 @@ forbid 'conflict markers' 'Finish resolving the merge.' \
 #
 # The exceptions are temporary, each with its reason; the lists only shrink.
 # - app/src-tauri/src/{lib,library,saves}.rs: moved in #72 phase 2, after #70 (that card is
-#   rewriting these files): the gamepad module and send_command (SDL3 is desktop-only), the mobile
-#   entry point, the folder / image / save-file pickers (they go next to emudome_platform::pick_file).
+#   rewriting these files): the mobile entry point, the folder / image / save-file pickers (they go
+#   next to emudome_platform::pick_file).
 OS_CFG_EXCEPTIONS='app/src-tauri/src/lib.rs app/src-tauri/src/library.rs app/src-tauri/src/saves.rs'
-# - app/src-tauri/Cargo.toml, sdl3-sys only off Android / iOS: gamepad.rs (SDL3) moves behind
-#   emudome-platform in #72 phase 2, with its `mod gamepad` cfg in lib.rs (#70).
-OS_TARGET_TABLE_EXCEPTIONS="app/src-tauri/Cargo.toml:[target.'cfg(not(any(target_os = \"android\", target_os = \"ios\")))'.dependencies]"
+# - none left: SDL3 moved behind emudome_platform::pads with the Android controllers (#47).
+OS_TARGET_TABLE_EXCEPTIONS=''
 
 # Exit status like git grep: 0 = found something (printed), 1 = nothing, other = error.
 os_code() {

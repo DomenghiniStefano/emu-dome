@@ -1,9 +1,7 @@
-//! Controllers through SDL3 (only the gamepad subsystem, no SDL windows):
-//! reads the pads, lets [`emudome_core::hotkeys::Router`] decide what the buttons mean,
-//! and carries out the result.
-//!
-//! SDL recognises Xbox, PS4/PS5, Switch Pro, the pads in its database and the
-//! Steam Controller, read directly through HIDAPI without Steam running.
+//! The controller thread: reads the pads through [`emudome_platform::pads::PadSource`] (SDL3 on
+//! the desktop, Android's own input events on Android), lets
+//! [`emudome_core::hotkeys::Router`] decide what the buttons mean, and carries out the result.
+//! Everything here is the same on every system; only the source differs.
 //!
 //! Each pad is read by **position** ([`Pos`]: right face button, bottom one...); triggers past
 //! `pad.trig` are L2/R2, the left stick past `pad.stickdpad` (outside the `pad.dead` dead zone)
@@ -23,7 +21,6 @@
 //! - the router's actions (`emu://menu`, `emu://nav`, `emu://hotkey`) through the shortcuts'
 //!   runner shared with the keyboard (`hotkeys.rs`).
 
-use std::ffi::{c_char, c_int, CStr};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -33,37 +30,7 @@ use emudome_core::hotkeys::{PadInput, Router};
 use emudome_core::input::{Source, Sticks};
 use emudome_core::notifications::Notice;
 use emudome_core::ErrorCode;
-use sdl3_sys::error::SDL_GetError;
-use sdl3_sys::events::{
-    SDL_Event, SDL_PollEvent, SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMOVED,
-    SDL_EVENT_JOYSTICK_BATTERY_UPDATED,
-};
-use sdl3_sys::gamepad::{
-    SDL_CloseGamepad, SDL_Gamepad, SDL_GamepadAxis, SDL_GamepadButton, SDL_GamepadType,
-    SDL_GetGamepadAxis, SDL_GetGamepadButton, SDL_GetGamepadName, SDL_GetGamepadPowerInfo,
-    SDL_GetGamepadProduct, SDL_GetGamepadStringForType, SDL_GetGamepadType, SDL_GetGamepadVendor,
-    SDL_GetGamepads, SDL_OpenGamepad, SDL_GAMEPAD_AXIS_LEFTX, SDL_GAMEPAD_AXIS_LEFTY,
-    SDL_GAMEPAD_AXIS_LEFT_TRIGGER, SDL_GAMEPAD_AXIS_RIGHTX, SDL_GAMEPAD_AXIS_RIGHTY,
-    SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, SDL_GAMEPAD_BUTTON_BACK, SDL_GAMEPAD_BUTTON_DPAD_DOWN,
-    SDL_GAMEPAD_BUTTON_DPAD_LEFT, SDL_GAMEPAD_BUTTON_DPAD_RIGHT, SDL_GAMEPAD_BUTTON_DPAD_UP,
-    SDL_GAMEPAD_BUTTON_EAST, SDL_GAMEPAD_BUTTON_GUIDE, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,
-    SDL_GAMEPAD_BUTTON_LEFT_STICK, SDL_GAMEPAD_BUTTON_NORTH, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER,
-    SDL_GAMEPAD_BUTTON_RIGHT_STICK, SDL_GAMEPAD_BUTTON_SOUTH, SDL_GAMEPAD_BUTTON_START,
-    SDL_GAMEPAD_BUTTON_WEST, SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT,
-    SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR, SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT,
-    SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO, SDL_GAMEPAD_TYPE_PS3, SDL_GAMEPAD_TYPE_PS4,
-    SDL_GAMEPAD_TYPE_PS5, SDL_GAMEPAD_TYPE_STEAM, SDL_GAMEPAD_TYPE_XBOX360,
-    SDL_GAMEPAD_TYPE_XBOXONE,
-};
-use sdl3_sys::hints::{
-    SDL_SetHint, SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, SDL_HINT_JOYSTICK_HIDAPI_STEAM,
-};
-use sdl3_sys::init::{SDL_Init, SDL_INIT_GAMEPAD};
-use sdl3_sys::joystick::SDL_JoystickID;
-use sdl3_sys::power::{
-    SDL_PowerState, SDL_POWERSTATE_CHARGED, SDL_POWERSTATE_CHARGING, SDL_POWERSTATE_ON_BATTERY,
-};
-use sdl3_sys::stdinc::SDL_free;
+use emudome_platform::pads::{PadButton, PadDevice, PadEvent, PadKind, PadReading, PadSource};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -72,32 +39,22 @@ use crate::hotkeys::{HotkeyRunner, Origin};
 use crate::pads::{self, PadInfo, PadState, PadStates, PadsState};
 use crate::{events, CurrentShared};
 
-/// SDL's buttons by position.
-const MAP: &[(SDL_GamepadButton, Pos)] = &[
-    (SDL_GAMEPAD_BUTTON_EAST, Pos::East),
-    (SDL_GAMEPAD_BUTTON_SOUTH, Pos::South),
-    (SDL_GAMEPAD_BUTTON_NORTH, Pos::North),
-    (SDL_GAMEPAD_BUTTON_WEST, Pos::West),
-    (SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, Pos::L1),
-    (SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, Pos::R1),
-    (SDL_GAMEPAD_BUTTON_BACK, Pos::Back),
-    (SDL_GAMEPAD_BUTTON_START, Pos::Start),
-    (SDL_GAMEPAD_BUTTON_DPAD_UP, Pos::Up),
-    (SDL_GAMEPAD_BUTTON_DPAD_DOWN, Pos::Down),
-    (SDL_GAMEPAD_BUTTON_DPAD_LEFT, Pos::Left),
-    (SDL_GAMEPAD_BUTTON_DPAD_RIGHT, Pos::Right),
-    (SDL_GAMEPAD_BUTTON_LEFT_STICK, Pos::L3),
-    (SDL_GAMEPAD_BUTTON_RIGHT_STICK, Pos::R3),
-];
-
-/// The axes in `PadState::axes` order.
-const AXES: [SDL_GamepadAxis; 6] = [
-    SDL_GAMEPAD_AXIS_LEFTX,
-    SDL_GAMEPAD_AXIS_LEFTY,
-    SDL_GAMEPAD_AXIS_RIGHTX,
-    SDL_GAMEPAD_AXIS_RIGHTY,
-    SDL_GAMEPAD_AXIS_LEFT_TRIGGER,
-    SDL_GAMEPAD_AXIS_RIGHT_TRIGGER,
+/// The source's buttons by position (the Guide button is [`PadInput::guide`], not a position).
+const MAP: &[(PadButton, Pos)] = &[
+    (PadButton::East, Pos::East),
+    (PadButton::South, Pos::South),
+    (PadButton::North, Pos::North),
+    (PadButton::West, Pos::West),
+    (PadButton::L1, Pos::L1),
+    (PadButton::R1, Pos::R1),
+    (PadButton::Back, Pos::Back),
+    (PadButton::Start, Pos::Start),
+    (PadButton::Up, Pos::Up),
+    (PadButton::Down, Pos::Down),
+    (PadButton::Left, Pos::Left),
+    (PadButton::Right, Pos::Right),
+    (PadButton::L3, Pos::L3),
+    (PadButton::R3, Pos::R3),
 ];
 
 /// How often the controllers are read.
@@ -106,16 +63,19 @@ const POLL: Duration = Duration::from_millis(4);
 /// `emu://gamepad-state` at most this often (a stick moves at every poll).
 const STATE_EVERY: Duration = Duration::from_millis(16);
 
-/// An open controller. The pointer stays valid until `SDL_CloseGamepad`.
+/// A connected controller.
 struct Pad {
     info: PadInfo,
-    id: SDL_JoystickID,
-    raw: *mut SDL_Gamepad,
     /// How its positions give the game its buttons (from `pad.remap` for its family).
     map: PadMap,
 }
 
-/// One poll of one pad.
+impl Pad {
+    fn log_name(&self) -> &str {
+        self.info.name.as_deref().unwrap_or("(unnamed)")
+    }
+}
+
 /// The sticks the game gets: the first pad with a stick off centre (several pads are one player).
 fn game_sticks(readings: &[Reading]) -> Sticks {
     readings
@@ -128,6 +88,8 @@ fn game_sticks(readings: &[Reading]) -> Sticks {
         .unwrap_or_default()
 }
 
+/// One poll of one pad.
+#[derive(Debug, PartialEq)]
 struct Reading {
     /// Positions held: buttons and triggers past the threshold, plus the left stick as d-pad.
     input: PadInput,
@@ -136,48 +98,55 @@ struct Reading {
     axes: [i16; 6],
 }
 
-impl Pad {
-    fn log_name(&self) -> &str {
-        self.info.name.as_deref().unwrap_or("(unnamed)")
+/// What the router reads of one pad's state.
+fn reading(raw: &PadReading, config: &PadConfig) -> Reading {
+    let mut held = MAP
+        .iter()
+        .filter(|(button, _)| raw.buttons & button.bit() != 0)
+        .fold(0, |held, (_, pos)| held | pos.bit());
+    let axes = raw.axes;
+    let threshold = config.trigger_threshold();
+    if axes[4] > threshold {
+        held |= Pos::L2.bit();
     }
-
-    fn read(&self, config: &PadConfig) -> Reading {
-        let mut held = 0;
-        let mut axes = [0i16; 6];
-        let guide;
-        // SAFETY: `self.raw` is open while the pad is in the list.
-        unsafe {
-            for (p, pos) in MAP {
-                if SDL_GetGamepadButton(self.raw, *p) {
-                    held |= pos.bit();
-                }
-            }
-            for (slot, axis) in axes.iter_mut().zip(AXES) {
-                *slot = SDL_GetGamepadAxis(self.raw, axis);
-            }
-            guide = SDL_GetGamepadButton(self.raw, SDL_GAMEPAD_BUTTON_GUIDE);
-        }
-        let threshold = config.trigger_threshold();
-        if axes[4] > threshold {
-            held |= Pos::L2.bit();
-        }
-        if axes[5] > threshold {
-            held |= Pos::R2.bit();
-        }
-        Reading {
-            input: PadInput {
-                buttons: held | config.stick_dpad_mask(axes[0], axes[1]),
-                guide,
-                // The right stick as directions too: the interface's own steps (`Nav::Stick*`).
-                stick: config.stick_dpad_mask(axes[2], axes[3]),
-            },
-            held,
-            axes,
-        }
+    if axes[5] > threshold {
+        held |= Pos::R2.bit();
+    }
+    Reading {
+        input: PadInput {
+            buttons: held | config.stick_dpad_mask(axes[0], axes[1]),
+            guide: raw.buttons & PadButton::Guide.bit() != 0,
+            // The right stick as directions too: the interface's own steps (`Nav::Stick*`).
+            stick: config.stick_dpad_mask(axes[2], axes[3]),
+        },
+        held,
+        axes,
     }
 }
 
-/// Starts the controller thread. A thread that cannot start, SDL that does not initialise, or a
+/// The remap family of a pad's kind.
+fn family(kind: PadKind) -> Family {
+    match kind {
+        PadKind::Xbox => Family::Xbox,
+        PadKind::PlayStation => Family::PlayStation,
+        PadKind::Nintendo => Family::Switch,
+        PadKind::Other => Family::Generic,
+    }
+}
+
+/// What the interface knows of a pad.
+fn info(device: &PadDevice) -> PadInfo {
+    PadInfo {
+        id: device.id,
+        name: device.name.clone(),
+        family: family(device.kind),
+        vendor: device.vendor,
+        product: device.product,
+        battery: device.battery,
+    }
+}
+
+/// Starts the controller thread. A thread that cannot start, a source that does not open, or a
 /// panic on the thread is reported to the interface (`controllersUnavailable`, `threadStopped`).
 pub fn spawn(
     app: AppHandle,
@@ -215,29 +184,19 @@ fn run(
     hotkeys: &HotkeyRunner,
     health: &SharedHealth,
 ) {
-    // SAFETY: SDL is initialised and used by this thread only;
-    // hints must be set before SDL_Init.
-    unsafe {
-        // The focus is in WebView2, which is another process: without this
-        // SDL would ignore the buttons as if the window were in the background.
-        SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, c"1".as_ptr());
-        // Steam Controller read directly, without Steam.
-        SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_STEAM, c"1".as_ptr());
-        if !SDL_Init(SDL_INIT_GAMEPAD) {
-            let detail = text(SDL_GetError());
-            log::warn!("controllers unavailable: {detail}");
+    let mut source = match PadSource::open() {
+        Ok(source) => source,
+        Err(detail) => {
+            log::warn!("controllers unavailable ({}): {detail}", PadSource::BACKEND);
             health.set(
                 Part::Controllers,
                 Some(ErrorCode::ControllersUnavailable { detail }),
             );
             return;
         }
-    }
-    log::info!("controllers: SDL3 ready");
+    };
+    log::info!("controllers: {} ready", PadSource::BACKEND);
 
-    // The controllers already there at start arrive as «added» too: only the ones connected
-    // afterwards become a notification (X03, #32).
-    let mut at_start = connected_ids();
     let mut pads: Vec<Pad> = Vec::new();
     let mut config = PadConfig::default();
     // The generation the config was read at; `None` until the settings are open.
@@ -245,7 +204,7 @@ fn run(
     let mut router = Router::new(config.bindings());
     let mut last_state: Option<PadStates> = None;
     let mut last_state_at = Instant::now();
-    let mut event = SDL_Event::default();
+    let mut events_in = Vec::new();
     loop {
         let generation = pads::config_generation();
         if config_at != Some(generation) {
@@ -259,17 +218,27 @@ fn run(
             }
         }
 
-        // SAFETY: SDL_PollEvent writes a valid SDL_Event; the union field
-        // read matches the event's type.
-        while unsafe { SDL_PollEvent(&mut event) } {
-            let kind = unsafe { event.r#type };
-            if kind == SDL_EVENT_GAMEPAD_ADDED {
-                let id = unsafe { event.gdevice.which };
-                if let Some(pad) = open(id, &config) {
+        source.poll(&mut events_in);
+        for event in events_in.drain(..) {
+            match event {
+                PadEvent::Added { device, at_start } => {
+                    let pad = Pad {
+                        info: info(&device),
+                        map: config.pad_map(family(device.kind)),
+                    };
+                    log::info!(
+                        "controller connected: {} (type {}, family {}, vid {:04x}, pid {:04x}, battery {:?})",
+                        pad.log_name(),
+                        device.type_name,
+                        pad.info.family.id(),
+                        pad.info.vendor,
+                        pad.info.product,
+                        pad.info.battery,
+                    );
                     emit(&app, events::GAMEPAD_CONNECTED, pad.info.clone());
-                    if let Some(i) = at_start.iter().position(|&s| s == id.0) {
-                        at_start.swap_remove(i);
-                    } else {
+                    // The controllers already there at start arrive as «added» too: only the ones
+                    // connected afterwards become a notification (X03, #32).
+                    if !at_start {
                         crate::notifications::record(
                             &app,
                             Notice::ControllerConnected {
@@ -280,40 +249,34 @@ fn run(
                     shared_pads.list.lock().push(pad.info.clone());
                     pads.push(pad);
                 }
-            } else if kind == SDL_EVENT_JOYSTICK_BATTERY_UPDATED {
-                let (id, state, percent) = unsafe {
-                    (
-                        event.jbattery.which,
-                        event.jbattery.state,
-                        event.jbattery.percent,
-                    )
-                };
-                if let Some(pad) = pads.iter_mut().find(|p| p.id == id) {
-                    let battery = battery(state, percent);
-                    if pad.info.battery != battery {
-                        pad.info.battery = battery;
-                        for listed in shared_pads.list.lock().iter_mut() {
-                            if listed.id == pad.info.id {
-                                listed.battery = battery;
+                PadEvent::Battery { id, battery } => {
+                    if let Some(pad) = pads.iter_mut().find(|p| p.info.id == id) {
+                        if pad.info.battery != battery {
+                            pad.info.battery = battery;
+                            for listed in shared_pads.list.lock().iter_mut() {
+                                if listed.id == pad.info.id {
+                                    listed.battery = battery;
+                                }
                             }
+                            emit(&app, events::GAMEPAD_CHANGED, pad.info.clone());
                         }
-                        emit(&app, events::GAMEPAD_CHANGED, pad.info.clone());
                     }
                 }
-            } else if kind == SDL_EVENT_GAMEPAD_REMOVED {
-                let id = unsafe { event.gdevice.which };
-                if let Some(i) = pads.iter().position(|p| p.id == id) {
-                    let pad = pads.remove(i);
-                    log::info!("controller disconnected: {}", pad.log_name());
-                    shared_pads.list.lock().retain(|p| p.id != pad.info.id);
-                    emit(&app, events::GAMEPAD_DISCONNECTED, pad.info.clone());
-                    // SAFETY: opened by `open`, closed only once.
-                    unsafe { SDL_CloseGamepad(pad.raw) };
+                PadEvent::Removed(id) => {
+                    if let Some(i) = pads.iter().position(|p| p.info.id == id) {
+                        let pad = pads.remove(i);
+                        log::info!("controller disconnected: {}", pad.log_name());
+                        shared_pads.list.lock().retain(|p| p.id != pad.info.id);
+                        emit(&app, events::GAMEPAD_DISCONNECTED, pad.info.clone());
+                    }
                 }
             }
         }
 
-        let readings: Vec<Reading> = pads.iter().map(|p| p.read(&config)).collect();
+        let readings: Vec<Reading> = pads
+            .iter()
+            .map(|p| reading(&source.read(p.info.id).unwrap_or_default(), &config))
+            .collect();
         let input = readings
             .iter()
             .fold(PadInput::default(), |all, r| PadInput {
@@ -383,116 +346,61 @@ fn emit<S: Serialize + Clone>(app: &AppHandle, name: &str, payload: S) {
     }
 }
 
-/// The remap family of an SDL controller type.
-fn family(kind: SDL_GamepadType) -> Family {
-    if kind == SDL_GAMEPAD_TYPE_XBOX360
-        || kind == SDL_GAMEPAD_TYPE_XBOXONE
-        || kind == SDL_GAMEPAD_TYPE_STEAM
-    {
-        Family::Xbox
-    } else if kind == SDL_GAMEPAD_TYPE_PS3
-        || kind == SDL_GAMEPAD_TYPE_PS4
-        || kind == SDL_GAMEPAD_TYPE_PS5
-    {
-        Family::PlayStation
-    } else if kind == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO
-        || kind == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR
-        || kind == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT
-        || kind == SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT
-    {
-        Family::Switch
-    } else {
-        Family::Generic
-    }
-}
+#[cfg(test)]
+mod tests {
+    use emudome_core::bindings::{Family, PadConfig, Pos};
+    use emudome_core::hotkeys::PadInput;
+    use emudome_platform::pads::{PadButton, PadKind, PadReading};
 
-/// The charge to show from SDL's power info: a percentage while on battery (charging or not),
-/// `None` for wired controllers and when SDL cannot tell.
-fn battery(state: SDL_PowerState, percent: c_int) -> Option<u8> {
-    let on_battery = state == SDL_POWERSTATE_ON_BATTERY
-        || state == SDL_POWERSTATE_CHARGING
-        || state == SDL_POWERSTATE_CHARGED;
-    if on_battery {
-        u8::try_from(percent).ok().filter(|p| *p <= 100)
-    } else {
-        None
-    }
-}
+    use super::{family, reading, Reading, MAP};
 
-/// Opens the controller and logs its name, type and USB ids, so whoever tests
-/// can tell exactly which model is connected.
-/// The instance ids of the controllers connected now.
-fn connected_ids() -> Vec<u32> {
-    let mut count: c_int = 0;
-    // SAFETY: SDL calls on the thread that initialised it; the array holds `count` ids and is
-    // freed once, with SDL_free.
-    unsafe {
-        let ids = SDL_GetGamepads(&mut count);
-        if ids.is_null() {
-            return Vec::new();
+    #[test]
+    fn every_position_but_the_triggers_has_a_button_and_guide_has_none() {
+        for pos in Pos::ALL {
+            let mapped = MAP.iter().filter(|(_, p)| *p == pos).count();
+            let expected = usize::from(!matches!(pos, Pos::L2 | Pos::R2));
+            assert_eq!(mapped, expected, "{pos:?}");
         }
-        let len = usize::try_from(count).unwrap_or(0);
-        let list = std::slice::from_raw_parts(ids, len)
-            .iter()
-            .map(|id| id.0)
-            .collect();
-        SDL_free(ids.cast());
-        list
-    }
-}
-
-fn open(id: SDL_JoystickID, config: &PadConfig) -> Option<Pad> {
-    // SAFETY: SDL calls on the thread that initialised it.
-    unsafe {
-        let raw = SDL_OpenGamepad(id);
-        if raw.is_null() {
-            log::warn!(
-                "controller {} cannot be opened: {}",
-                id.0,
-                text(SDL_GetError())
+        for button in PadButton::ALL {
+            let mapped = MAP.iter().filter(|(b, _)| *b == button).count();
+            assert_eq!(
+                mapped,
+                usize::from(button != PadButton::Guide),
+                "{button:?}"
             );
-            return None;
         }
-        let name = Some(text(SDL_GetGamepadName(raw))).filter(|n| !n.is_empty());
-        let sdl_type = SDL_GetGamepadType(raw);
-        let kind = text(SDL_GetGamepadStringForType(sdl_type));
-        let family = family(sdl_type);
-        let mut percent: c_int = -1;
-        let power = SDL_GetGamepadPowerInfo(raw, &mut percent);
-        let info = PadInfo {
-            id: id.0,
-            name,
-            family,
-            vendor: SDL_GetGamepadVendor(raw),
-            product: SDL_GetGamepadProduct(raw),
-            battery: battery(power, percent),
-        };
-        let pad = Pad {
-            map: config.pad_map(family),
-            info,
-            id,
-            raw,
-        };
-        log::info!(
-            "controller connected: {} (type {kind}, family {}, vid {:04x}, pid {:04x}, battery {:?})",
-            pad.log_name(),
-            family.id(),
-            pad.info.vendor,
-            pad.info.product,
-            pad.info.battery,
-        );
-        Some(pad)
     }
-}
 
-/// Copies an SDL C string; empty when the pointer is null.
-///
-/// # Safety
-/// `p` must be null or a valid C string.
-unsafe fn text(p: *const c_char) -> String {
-    if p.is_null() {
-        String::new()
-    } else {
-        CStr::from_ptr(p).to_string_lossy().into_owned()
+    #[test]
+    fn kinds_give_their_remap_family() {
+        assert_eq!(family(PadKind::Xbox), Family::Xbox);
+        assert_eq!(family(PadKind::PlayStation), Family::PlayStation);
+        assert_eq!(family(PadKind::Nintendo), Family::Switch);
+        assert_eq!(family(PadKind::Other), Family::Generic);
+    }
+
+    #[test]
+    fn a_reading_folds_triggers_guide_and_sticks_as_before() {
+        let config = PadConfig::default();
+        let threshold = config.trigger_threshold();
+        let raw = PadReading {
+            buttons: PadButton::South.bit() | PadButton::Guide.bit(),
+            axes: [32767, 0, 0, -32768, threshold.saturating_add(1), threshold],
+        };
+        let r = reading(&raw, &config);
+        let held = Pos::South.bit() | Pos::L2.bit();
+        assert_eq!(
+            r,
+            Reading {
+                input: PadInput {
+                    buttons: held | config.stick_dpad_mask(32767, 0),
+                    guide: true,
+                    stick: config.stick_dpad_mask(0, -32768),
+                },
+                held,
+                axes: raw.axes,
+            }
+        );
+        assert_ne!(r.input.stick, 0, "the right stick up is a step");
     }
 }
