@@ -293,8 +293,15 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          the renderer's layout, `emu://screens`, the lid chord pressed on the core, the
                          `screens_*` commands; the webview canvas gets its placements from
                          `screens_placements`), tuning.rs (developer / bench knobs from the environment),
-                         window.rs (the app's names for emudome_platform::create_window),
-                         video.rs (wgpu; `GpuService`, one per app, owns instance / adapter / device for
+                         window.rs (the app's names for emudome_platform::create_window, and
+                         `video.window` / `video.winsize` carried out: the mode at startup and on change,
+                         the size only for an open game, `size_target` / `inner_size` pure and tested),
+                         background_pause.rs (`general.bgpause`: the page's blur / focus through
+                         `window_focus`, Android's suspend / resume; pauses and resumes only its own pause),
+                         startup.rs (`startup_game`, and `startup_last_game` for `general.start`),
+                         video.rs (wgpu; `GpuService`, one per app, opened on `video.api`'s backend at
+                         startup (`GraphicsApi`; none there: wgpu's choice and `graphicsApiUnavailable`),
+                         owns instance / adapter / device for
                          the whole run: surfaces attach and detach on it, a 3DS game leases the device
                          (`VulkanLease`) and the device is never remade under it; every submit and present
                          holds its queue lock), gpu_interop.rs (the one module under wgpu: wgpu-hal / ash,
@@ -345,13 +352,14 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   host never reads its file (`GameContent`, `core.rs`).
 - The open game is one `GameSession` (`app/src-tauri/src/game_session.rs`): the `Session`, `CurrentShared`, the
   key of the game whose files are in use (until its thread ended), and the per-game parts as `Hooks` started in
-  order and stopped in reverse (renderer source, settings session, core options that follow the settings, play
-  time; a new per-game part is one more hook in `lib.rs`).
+  order and stopped in reverse (renderer source, settings session, core options that follow the settings, the
+  screens, the window's size, play time; a new per-game part is one more hook in `lib.rs`).
 - Ending a game: every way out (closing the game, opening another, closing the window, quitting) takes it out
   through `GameSession::take` (the close flow, `closing.rs`) or, for `RunEvent::Exit` only, `GameSession::close`,
   and waits up to `CLOSE_TIMEOUT` (10 s) for the thread's exit writes: the `.sav` first, then the auto quick save
   with `saves.autoexit`. Android going to the background
-  (`onPause`) sends `Command::Flush` (the same writes, the game keeps running). A thread that does not stop in
+  (`onPause`) sends `Command::Flush` (the same writes; the game keeps running, or pauses with `general.bgpause`
+  until `onResume`, `background_pause.rs`). A thread that does not stop in
   time, or is abandoned after E11, is let go: the session is dead (no file, no event, no `retro_unload_game` /
   `retro_deinit`) and its core is refused with `coreNeedsRestart` until the app restarts.
 - Writes while the game runs (quick saves, the periodic auto quick save and `.sav` flush, «Annulla» of a save,
@@ -370,7 +378,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     options (present-driven / audio-driven): `docs/video-pacing.md`.
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
   - **Screens** (Trello #28): both paths draw each screen of the frame where `emudome_core::screens::compose`
-    puts it for the open game's layout (`screens.*`, the layout shown, swapped or not): the native renderer one
+    puts it for the open game's layout (`screens.*`, the layout shown, swapped or not, and `video.aspect` for
+    every console: 4:3 / 16:9 stretch the composed picture, a custom layout excepted): the native renderer one
     draw per screen (`Renderer::set_layout`), the webview canvas from `screens_placements` (it decides no
     geometry: `GameCanvas.vue`, `screenDraw.ts`). Touch maps back through the same layout (`pointer`).
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
@@ -385,8 +394,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   over the plain image (`fx.fxint`, `fx.fxbright`). Rows with `needs_native_video` are disabled on Compatible (X05).
   GPU check without a window: `cargo test -p emudome --lib gpu_tests -- --ignored` (`EMUDOME_FX_DUMP=<dir>` for PNGs).
 - Audio: a lock-free SPSC ring (`emudome_core::audio::AudioRing`, rtrb) from the emulation thread to the cpal
-  callback, linear resampling to the device's rate, ±0.5% correction on the ring's fill level; the reader drops
-  what is queued beyond ~150 ms, oldest first. A ring that runs dry (a stall: a 3DS quick save takes ~0.25 s, #98;
+  callback, linear resampling to the device's rate, ±0.5% correction on the ring's fill level towards the queue
+  target; the reader drops what is queued beyond the limit, oldest first (`audio.lat`, `audio::Latency`, read by
+  every callback from an atomic: Low 30 / 75 ms, Balanced 60 / 150 ms, Safe 120 / 300 ms). The device is
+  `audio.out` (the system's default, followed every 2 s, or a device by name: missing, the default plays until it
+  is back; the names come from `settings_runtime_options`). A ring that runs dry (a stall: a 3DS quick save takes ~0.25 s, #98;
   a pause; a game's start) fades out and stays silent until it holds the queue target again, then fades back in
   (`Resampler` in `app/src-tauri/src/audio.rs`). Off 1× `audio.ff` decides (`speed_audio.rs`, on the emulation thread,
   before the push): muted, resampled by the speed (pitch moves), or time-stretched (pitch kept); either way about
@@ -401,7 +413,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   keyboard's row of `pad.remap` for the game's buttons) and carries the shortcuts out with the controllers' runner
   (`hotkeys.rs`). What stays in the page (`useGameKeys.ts`, `keyRoute.ts`): Esc (quick menu / back), F11 and the
   menus' focus keys (`nav.ts`). Opening the quick menu (`set_menu_open`) and the window losing the focus
-  (`WindowEvent::Focused(false)`, and the page's `blur` through `release_keys`) let go of every keyboard button and
+  (`WindowEvent::Focused(false)`, and the page's `blur` through `window_focus`) let go of every keyboard button and
   end the keyboard's fast forward and held rewind, in Rust. The touch controls still send buttons (`input`).
   Controllers go through an SDL3 thread
   (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
@@ -485,7 +497,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://closing` (`{ phase, purpose, error }`: a game closing, see «Closing with a game open» below),
   `emu://health` (the whole list of `ErrorCode`s of what is not working, see below).
 - Health (Trello #79, `app/src-tauri/src/health.rs`): backend failures that change what the user gets are one
-  `ErrorCode` per part (native video fallen back `nativeVideoFallback`, surface `videoSurfaceFailed`, audio output
+  `ErrorCode` per part (`video.api`'s backend missing `graphicsApiUnavailable`, native video fallen back
+  `nativeVideoFallback`, surface `videoSurfaceFailed`, audio output
   `audioUnavailable`, controllers `controllersUnavailable`, a thread that panicked `threadStopped`, a 3DS session that
   wrote into Azahar's own folder `coreSavedOutsideGame`, kept until restart), set and cleared
   by that part; each change sends the whole list on `emu://health`, the `diagnostics` command answers it. The shell
@@ -783,8 +796,13 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 41 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 33 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
+- Window, video and audio settings (Trello #100): `video.winsize` «free» is not remembered across starts (a start
+  opens at 1280×800); `video.api` applies at the next start and nothing says a restart is waiting (no general
+  restart notice; `emu://core-restart` is for core options), and its «Automatic ({api})» value is not shown;
+  `general.bgpause` on the desktop follows the page's focus (a pause toggled with L3 + Start while EmuDome is in
+  the background is not seen: coming back resumes); `audio.out` lists the devices when its row is shown, not live.
 - DS / 3DS screens (Trello #28): layouts, swap, custom layout per console or game, rotation, lid, touch through
   the layout, both video paths, and their interface: the quick menu's swap and lid tiles, G09's layout card
   (stepping shows the layout at once and keeps it «in prova» as `screens.cycle` turned to start with it, the
