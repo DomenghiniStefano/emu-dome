@@ -778,8 +778,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `tv:` variant. TV sizes are the «TV» tokens (`typography.css`, `spacing.css`, `border.css`), drawn for 1920 × 1080
   and grown by `--tv-scale` on a larger screen. Its own parts: the shell's `TvTabs` (sections, L1 / R1 from
   anywhere), `TvButtonBar` and `TvGlyph` (the connected controller's glyphs by position and `pad.confirm`,
-  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`); the quick menu and the other sections keep
-  the desk's layout scaled up (`zoom-tv`).
+  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`), Settings (`components/settings/tv/`, the
+  owner's option B: the desk's structure with the TV sizes, the pages on the left, large rows on the right; ◀ ▶
+  change a short choice / switch / slider / colour in place, A opens long choices in a full-screen sheet, X resets,
+  a kind it does not draw keeps the desk's row; `tvSettingRow.ts` decides, pure); the quick menu and the other
+  sections keep the desk's layout scaled up (`zoom-tv`).
 - **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
 - **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
   by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its
@@ -865,9 +868,12 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   frame, so a curved CRT bends the frame as the core stacks it, not each screen. `screens.gap` is in the frame's
   pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
-- TV mode (#30): Settings in TV is not built (an open point with the owner: one column of large rows, LT / RT for
-  the categories); in TV it keeps the desk's layout scaled up, as Saves, Controls, Cloud and a game's details do.
-  There a section's own L1 / R1 (the settings levels, the controls tabs) comes before the section switch. The
+- TV mode (#30): Saves, Controls, Cloud and a game's details keep the desk's layout scaled up in TV. Settings in TV
+  has no «In primo piano» (T01), no search field (Y opens the search everywhere) and no «Mostra solo le impostazioni
+  modificate»; a text and the game folders keep the desk's row scaled up; on a row that changes in place ◀ ▶ are
+  the row's, so the pages are reached with B (or left from a row that does not take them). A section's own L1 / R1
+  (the settings levels, the controls tabs) comes before the section switch; a settings page with one level lets
+  it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Search and notifications (#32): the search lives in the shell, which never shows while a game is open, so its
