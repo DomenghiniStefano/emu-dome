@@ -31,7 +31,7 @@
   --shadow-card: var(--shadow-card);
   /* The current section's marker on the rail (AppShell), drawn inside like the tab's. */
   --shadow-rail: inset 2px 0 0 var(--violet);
-  /* glow-lg: the focus moments' mark (the first run's logo). */
+  /* glow-lg: the focus moments' mark (the design system's; the brand mark draws its own glow). */
   --shadow-glow-lg: 0 0 60px color-mix(in srgb, var(--violet) 35%, transparent);
   /* The active tab's underline, drawn inside so it takes no room. */
   --shadow-tab: inset 0 -2px 0 var(--accent-text);

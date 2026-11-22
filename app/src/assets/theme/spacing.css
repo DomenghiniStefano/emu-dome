@@ -180,9 +180,12 @@
   /* A choice inside a title (the settings scope bar's «Giochi <console> ▾»). */
   --spacing-in-title: 26px;
 
-  /* The first run: the mark, the step dots' band (88 on the phone), the footer, the controller
-     test's box. */
-  --spacing-logo: 72px;
+  /* EmuDome's mark (assets/brand/, Trello #101): its width on the first run's welcome, and the
+     small one's height before the top bar's wordmark. */
+  --spacing-mark: 148px;
+  --spacing-mark-small: 18px;
+
+  /* The first run: the step dots' band (88 on the phone), the footer, the controller test's box. */
   --spacing-dots: 72px;
   --spacing-dots-touch: 88px;
   --spacing-footer: 96px;

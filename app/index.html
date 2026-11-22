@@ -4,9 +4,128 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EmuDome</title>
+    <!--
+      The startup splash (Trello #101, the owner's mockup, option A): the mark alone, centred on
+      the graphite ground with the amber glow, from the first paint, before any script runs;
+      lib/splash.ts fades it out when the app is ready (App.vue). Not ready after 2 s: the mark
+      rises 9 px and an indeterminate bar fades in under it. With reduced motion (the system's
+      before the app runs; «Riduci le animazioni», `data-motion`, after) the mark does not move
+      and the bar just appears.
+
+      Plain CSS: the tokens are CSS variables Vite loads later, so the few values the splash needs
+      are written here, each mirroring its token (src/assets/theme/) or the mockup:
+      - #0e0f13 `--bg` (Scuro), whatever the theme: the window's own background is that graphite;
+      - the glow: 15% (#…26) of the default accent #faa40f, the mockup's;
+      - the mark 120px wide, 14px over the bar (the mockup's);
+      - the bar: the Progress look (ui/progress) at the mockup's 120 x 3 px: track
+        `--surface-raised` #1e2129, band `--accent-text` #faa40f, 30% wide, `progress-sweep`
+        1.4 s with `--ease-out`, full and half faded (`--opacity-dim`) with reduced motion;
+      - cubic-bezier(0.2, 0.8, 0.2, 1) `--ease-out` and 250ms `duration-panel` (motion.css);
+        the late reveal's 700ms and cubic-bezier(0.2, 0.7, 0.2, 1) are the mockup's;
+      - z-index 100: above every layer of layers.css (the toasts are 50).
+    -->
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: radial-gradient(45% 40% at 50% 45%, #faa40f26 0, transparent 70%), #0e0f13;
+        transition: opacity 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      #splash[data-state='out'] {
+        opacity: 0;
+        pointer-events: none;
+      }
+      /* Lowered by half the bar and its gap, so the mark alone sits in the centre; it rises
+         into place when the bar shows. */
+      #splash .splash-mark {
+        display: block;
+        width: 120px;
+        height: auto;
+        transform: translateY(9px);
+        animation: splash-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) 2s forwards;
+      }
+      #splash .splash-bar {
+        width: 120px;
+        height: 3px;
+        overflow: hidden;
+        border-radius: 9999px;
+        background: #1e2129;
+        opacity: 0;
+        transform: translateY(8px);
+        animation: splash-show 700ms cubic-bezier(0.2, 0.7, 0.2, 1) 2s forwards;
+      }
+      #splash .splash-band {
+        display: block;
+        width: 30%;
+        height: 100%;
+        border-radius: 9999px;
+        background: #faa40f;
+        animation: splash-sweep 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+      }
+      @keyframes splash-rise {
+        to {
+          transform: none;
+        }
+      }
+      @keyframes splash-show {
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes splash-sweep {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(340%);
+        }
+      }
+      /* Reduced motion: the mark sits in its place beside the bar from the start and never moves,
+         the bar appears at 2 s in place (styles.css also caps every animation at 1 ms under
+         `data-motion`), its band full and half faded. */
+      @media (prefers-reduced-motion: reduce) {
+        #splash .splash-mark {
+          transform: none;
+          animation: none;
+        }
+        #splash .splash-bar {
+          transform: none;
+          animation-duration: 0s;
+        }
+        #splash .splash-band {
+          width: 100%;
+          opacity: 0.5;
+          animation: none;
+        }
+      }
+      :root[data-motion='reduce'] #splash .splash-mark {
+        transform: none;
+        animation: none;
+      }
+      :root[data-motion='reduce'] #splash .splash-bar {
+        transform: none;
+        animation-duration: 0s;
+      }
+      :root[data-motion='reduce'] #splash .splash-band {
+        width: 100%;
+        opacity: 0.5;
+        animation: none;
+      }
+    </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="splash" aria-hidden="true">
+      <img class="splash-mark" src="/src/assets/brand/emudome-mark.svg" alt="" />
+      <div class="splash-bar"><span class="splash-band"></span></div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

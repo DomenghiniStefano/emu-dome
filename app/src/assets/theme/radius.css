@@ -16,7 +16,7 @@
      - 8: the rail's sections, a cover's actions, a quick menu row's icon, a toast's action, the
        quick menu's speed segments, a settings category's search, a tester's key, a list item;
      - 12: the quick menu's cards and actions on the phone, a toast, the settings scope bar;
-     - 20: the phone's quick menu sheet, the first run's logo. */
+     - 20: the phone's quick menu sheet. */
   --radius-8: 8px;
   --radius-12: 12px;
   --radius-20: 20px;

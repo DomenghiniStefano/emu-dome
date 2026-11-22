@@ -342,7 +342,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
                          lib/settingsModel.ts, lib/cn.ts, lib/design/…),
                          i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text),
-                         assets/theme/ (design tokens, one file per family), kit/ (Kit page, development only)
+                         assets/theme/ (design tokens, one file per family), kit/ (Kit page, development only),
+                         assets/brand/ (EmuDome's mark); the startup splash (#101) is plain HTML/CSS in
+                         app/index.html (the mark on graphite from the first paint, the bar after 2 s;
+                         its few values mirror the tokens), faded out by lib/splash.ts once App.vue has
+                         decided and rendered the first run or the shell; the window's own background is
+                         graphite (emudome-platform desktop.rs), Android 12+ shows the system splash
+                         (gen/android res/values-v31)
 ```
 
 - The interface never touches the core: it calls the Tauri commands, which send `Command` to the `Session`.

@@ -1,0 +1,12 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Android 12+ (Trello #101): the system splash (platform SplashScreen attributes, no
+         compat library), graphite with EmuDome's mark as its icon, not animated. The launcher's
+         adaptive foreground is the mark drawn in the 2/3 safe zone the splash icon also keeps.
+         It lasts until the WebView's first frame, the page's own splash (index.html), which
+         looks the same and shows the bar after 2 s. -->
+    <style name="Theme.emudome" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/emudome_bg</item>
+        <item name="android:windowSplashScreenBackground">@color/emudome_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+    </style>
+</resources>
