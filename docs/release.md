@@ -178,18 +178,10 @@ non è compatibile con dimensioni pagina di 16 kB»). Two halves, both needed fo
   - `libmgba_libretro_android.so`: built by EmuDome with `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON`
     (`scripts/core-build.mjs`), so the pinned `cores-mgba-7a12d6d` file is already 16 KB-aligned (`LOAD` align
     0x4000, `GNU_RELRO` ending at 0x164000). Nothing to re-pin.
-  - `libmelondsds_libretro_android.so`: **not aligned**. The pinned file is upstream's v1.4.0 release asset,
-    built by its CI with NDK r27d and no 16 KB flag (`LOAD` align 0x1000). Upstream has no newer release and no
-    16 KB change; the libretro buildbot's nightly (NDK r29) is aligned, but its `latest/` URL is not stable, so it
-    cannot be pinned. The way out the owner chooses (both a new pin, steps above for a built core):
-    1. EmuDome builds melonDS DS for Android from the pinned v1.4.0 source, like mGBA: upstream's own Android
-       CMake arguments (`-DENABLE_OGLRENDERER=OFF`, its `.github/workflows/main.yaml`) plus
-       `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` with NDK 27.1, a `build` block and `source.archive` in
-       `cores.lock`, published as `cores-melondsds-f394adb`. Its CMake fetches its dependencies by git at
-       configure time (`cmake/FetchDependencies.cmake`), so the source offer and the reproducibility check
-       must cover those pins too: more work than mGBA.
-    2. Ask upstream (JesseTG/melonds-ds) for a release built 16 KB-aligned (NDK r28+, or the flag above), then
-       re-pin its release asset (url, sha256s) like today. No build of ours, but it waits on upstream.
+  - `libmelondsds_libretro_android.so`: upstream's v1.4.0 release asset was not aligned (built by its CI with
+    NDK r27d, `LOAD` align 0x1000), so EmuDome builds it from the pinned v1.4.0 source and its pinned dependencies
+    with `-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON` (`scripts/build-melondsds.ps1`, owner, 2026-11-22), published as
+    `cores-melondsds-f394adb`: `LOAD` align 0x4000, `GNU_RELRO` filling its `LOAD`.
 
 ## Still open
 
