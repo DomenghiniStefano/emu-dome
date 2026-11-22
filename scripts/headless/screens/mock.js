@@ -1120,9 +1120,12 @@
     // NDS screens (#28): `swapped`, `lid` (closed: G15) and `lidless` (a core without one) set
     // the status; the editor starts from a vertical stack and has no layout saved.
     screens_status: {
-      dualScreen: scenario.game === "nds",
-      layout: "vertical",
-      cycle: ["vertical", "side", "big_small", "top_only"],
+      dualScreen: scenario.game === "nds" || scenario.game === "3ds",
+      // On a phone a two-screen game opens on `auto` (`screens.cycle`'s phone default).
+      layout: scenario.phone ? "auto" : "vertical",
+      cycle: scenario.phone
+        ? ["auto", "big_small", "top_only"]
+        : ["vertical", "side", "big_small", "top_only"],
       swapped: !!scenario.swapped,
       swapHold: false,
       hasCustom: false,
@@ -1277,13 +1280,35 @@
   // the inset leaves, centred or against its bottom). The fit is worked out at `frameDpr` device
   // pixels per CSS pixel (default 2.625, the Galaxy S23) as the native video does on a phone, so
   // the picture has the size it has there. `window.__lastArea` keeps the last area.
-  const FRAME = { w: 240, h: 160 };
+  //
+  // A DS or 3DS game (`game: "nds" | "3ds"`) gets its two-screen frame instead (DS 256 × 384, 3DS
+  // 400 × 480 with the touch screen centred under the top one): the top screen magenta, the touch
+  // screen teal, each with a lighter border, placed as `screens::compose` places them on a phone
+  // (the `auto` layout filling its room: stacked upright with the inset's `between` and
+  // `apart`, side by side on its side; crates/emudome-core/src/screens.rs, its phone tests).
+  const dual = scenario.game === "nds" || scenario.game === "3ds";
+  const n3ds = scenario.game === "3ds";
+  const TOP = n3ds ? { w: 400, h: 240 } : { w: 256, h: 192 };
+  const BOTTOM = n3ds ? { w: 320, h: 240 } : { w: 256, h: 192 };
+  const FRAME = dual ? { w: TOP.w, h: TOP.h + BOTTOM.h } : { w: 240, h: 160 };
+  const BOTTOM_SRC = { x: (TOP.w - BOTTOM.w) / 2, y: TOP.h, w: BOTTOM.w, h: BOTTOM.h };
   const frameBytes = () => {
     const px = new Uint8ClampedArray(FRAME.w * FRAME.h * 4);
     for (let y = 0; y < FRAME.h; y++)
       for (let x = 0; x < FRAME.w; x++) {
-        const edge = x < 4 || y < 4 || x >= FRAME.w - 4 || y >= FRAME.h - 4;
-        px.set(edge ? [255, 220, 255, 255] : [220, 110, 230, 255], (y * FRAME.w + x) * 4);
+        const lower = dual && y >= TOP.h;
+        const [x0, y0, w, h] = lower
+          ? [BOTTOM_SRC.x, BOTTOM_SRC.y, BOTTOM.w, BOTTOM.h]
+          : [0, 0, dual ? TOP.w : FRAME.w, dual ? TOP.h : FRAME.h];
+        const edge = x < x0 + 4 || y < y0 + 4 || x >= x0 + w - 4 || y >= y0 + h - 4;
+        const colour = lower
+          ? edge
+            ? [200, 255, 245, 255]
+            : [40, 170, 160, 255]
+          : edge
+            ? [255, 220, 255, 255]
+            : [220, 110, 230, 255];
+        px.set(colour, (y * FRAME.w + x) * 4);
       }
     return px;
   };
@@ -1308,6 +1333,7 @@
       w: area.width * k * (1 - l - r),
       h: area.height * k * (1 - t - b),
     };
+    if (dual) return dualPlacements(area, i, free, k);
     const fit = Math.min(free.w / FRAME.w, free.h / FRAME.h);
     const scale = fit >= 1 ? Math.floor(fit) : fit;
     const [w, h] = [FRAME.w * scale, FRAME.h * scale];
@@ -1326,6 +1352,67 @@
       ],
     };
   };
+  const dualPlacements = (area, i, free, k) => {
+    const between = Math.min(Math.max(i.between ?? 0, 0), 0.5) * area.height * k;
+    const portrait = area.height > area.width;
+    const tops = { x: 0, y: 0, w: TOP.w, h: TOP.h };
+    let top;
+    let bottom;
+    if (portrait) {
+      const wide = Math.max(TOP.w, BOTTOM.w);
+      const s = Math.min(free.w / wide, (free.h - between) / (TOP.h + BOTTOM.h));
+      const total = (TOP.h + BOTTOM.h) * s + between;
+      let y0 =
+        i.align === "top"
+          ? free.y
+          : i.align === "centre"
+            ? free.y + (free.h - total) / 2
+            : free.y + free.h - total;
+      let room = between;
+      if (i.align === "apart") {
+        room += free.h - total;
+        y0 = free.y;
+      }
+      const x0 = Math.floor(free.x + (free.w - wide * s) / 2);
+      y0 = Math.floor(y0);
+      top = { x: x0 + ((wide - TOP.w) / 2) * s, y: y0, w: TOP.w * s, h: TOP.h * s };
+      bottom = {
+        x: x0 + ((wide - BOTTOM.w) / 2) * s,
+        y: y0 + TOP.h * s + room,
+        w: BOTTOM.w * s,
+        h: BOTTOM.h * s,
+      };
+    } else {
+      const tall = Math.max(TOP.h, BOTTOM.h);
+      const s = Math.min((free.w - between) / (TOP.w + BOTTOM.w), free.h / tall);
+      const total = (TOP.w + BOTTOM.w) * s + between;
+      const x0 = Math.floor(free.x + (free.w - total) / 2);
+      const y0 = Math.floor(
+        i.align === "top"
+          ? free.y
+          : i.align === "centre"
+            ? free.y + (free.h - tall * s) / 2
+            : free.y + free.h - tall * s,
+      );
+      top = { x: x0, y: y0 + ((tall - TOP.h) / 2) * s, w: TOP.w * s, h: TOP.h * s };
+      bottom = {
+        x: x0 + TOP.w * s + between,
+        y: y0 + ((tall - BOTTOM.h) / 2) * s,
+        w: BOTTOM.w * s,
+        h: BOTTOM.h * s,
+      };
+    }
+    const css = (r) => ({ x: r.x / k, y: r.y / k, w: r.w / k, h: r.h / k });
+    window.__placements = [css(top), css(bottom)];
+    return {
+      frameWidth: FRAME.w,
+      frameHeight: FRAME.h,
+      placements: [
+        { id: "top", src: tops, dst: css(top), rotation: "none" },
+        { id: "bottom", src: BOTTOM_SRC, dst: css(bottom), rotation: "none" },
+      ],
+    };
+  };
   if (scenario.frame) {
     const realFetch = window.fetch.bind(window);
     window.fetch = async (url, init) => {
@@ -1336,7 +1423,11 @@
       }
       return new Response(frameBytes(), {
         status: 200,
-        headers: { "x-width": "240", "x-height": "160", "x-seq": "1" },
+        headers: {
+          "x-width": String(FRAME.w),
+          "x-height": String(FRAME.h),
+          "x-seq": "1",
+        },
       });
     };
   }

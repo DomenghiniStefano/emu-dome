@@ -1,16 +1,46 @@
 // The touch controls' surroundings, shared by the overlay and the C06 editor: the area they are
-// laid out in (the window, following its size and rotations), each control's own box measured
-// from the element (its design-system size, `data-touch-control`), and `touch.thide`'s fade.
+// laid out in (the window and its safe edges, following its size and rotations), each control's
+// own box measured from the element (its design-system size, `data-touch-control`), and
+// `touch.thide`'s fade.
 import { nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import type { TouchControlId } from '@/emu'
-import type { Area, Box } from './touchLayout'
+import type { Area, Box, SafeEdges } from './touchLayout'
 
-/** The window, in CSS pixels, following resizes and rotations. */
+/** The window's safe edges (the camera's notch), read from the `safe-*` spacing tokens on an
+ * invisible element: what the webview reports as `env(safe-area-inset-*)`. */
+function readSafeEdges(probe: HTMLElement | null): SafeEdges {
+  if (!probe) return { top: 0, right: 0, left: 0 }
+  const style = getComputedStyle(probe)
+  const px = (v: string) => {
+    const n = parseFloat(v)
+    return Number.isFinite(n) ? n : 0
+  }
+  return { top: px(style.paddingTop), right: px(style.paddingRight), left: px(style.paddingLeft) }
+}
+
+/** The window, in CSS pixels, and its safe edges, following resizes and rotations. */
 export function useArea(): Ref<Area> {
-  const area = ref<Area>({ width: window.innerWidth, height: window.innerHeight })
-  const resize = () => (area.value = { width: window.innerWidth, height: window.innerHeight })
-  onMounted(() => window.addEventListener('resize', resize))
-  onBeforeUnmount(() => window.removeEventListener('resize', resize))
+  let probe: HTMLElement | null = null
+  const measure = (): Area => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    safe: readSafeEdges(probe),
+  })
+  const area = ref<Area>(measure())
+  const resize = () => (area.value = measure())
+  onMounted(() => {
+    probe = document.createElement('div')
+    probe.className = 'pointer-events-none invisible fixed pt-safe-top pr-safe-right pl-safe-left'
+    probe.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(probe)
+    window.addEventListener('resize', resize)
+    resize()
+  })
+  onBeforeUnmount(() => {
+    window.removeEventListener('resize', resize)
+    probe?.remove()
+    probe = null
+  })
   return area
 }
 

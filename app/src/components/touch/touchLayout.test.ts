@@ -3,7 +3,9 @@ import type { ConsoleId, TouchControlId, TouchLayout, TouchOrientation, TouchSet
 import {
   activeLayout,
   add,
+  defaultBand,
   defaultLayout,
+  isDualScreen,
   minSize,
   missing,
   moveTo,
@@ -17,11 +19,15 @@ import {
   reservedInset,
   reservedSides,
   resizeTo,
+  SIDE_EDGE_PX,
+  SIDE_GAP_PX,
+  STRIP_PX,
   withOpacity,
   type Area,
   type Box,
   type Rect,
 } from './touchLayout'
+import type { InsetPx } from '@/components/game/inset'
 
 // The controls' own boxes at 100%, as the design system draws them (assets/theme/spacing.css:
 // `size-dpad`, `size-pad-stick`, `size-pad-face`, the shoulders `w-pad-shoulder` × `h-touch`,
@@ -115,16 +121,6 @@ describe('default layouts', () => {
     }
   }
 
-  it('keeps the middle of a DS held sideways free for the touch screen', () => {
-    const area = { width: 844, height: 390 }
-    // The screens stacked at the height of the area: 260 px wide in the middle.
-    const middle = { left: area.width / 2 - 130, right: area.width / 2 + 130, top: 0, bottom: 390 }
-    for (const console of ['nds', '3ds'] as const) {
-      for (const c of defaultLayout(console, 'landscape', area, AVAILABLE[console]).controls)
-        expect(overlaps(rectOf(c, area, boxOf(c.id)), middle), `${console} ${c.id}`).toBe(false)
-    }
-  })
-
   it('draws the saved layout only when it is chosen and has controls', () => {
     const area = { width: 844, height: 390 }
     const saved = {
@@ -216,7 +212,7 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
     return { left: i.left, top: i.top, right: area.width - i.right, bottom: area.height - i.bottom }
   }
 
-  for (const console of CONSOLES) {
+  for (const console of CONSOLES.filter(c => !isDualScreen(c))) {
     for (const area of areasOf(console)) {
       const o = orientationOf(area)
       it(`${console} ${o} ${area.width}×${area.height}: no default control over the game's part`, () => {
@@ -240,6 +236,7 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
       right: 0,
       bottom: 300 + 22 + 8,
       align: 'bottom',
+      between: 0,
     })
   })
 
@@ -255,6 +252,7 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
       right: 182,
       bottom: 0,
       align: 'centre',
+      between: 0,
     })
     expect(reservedSides(layout, { width: 412, height: 892 }, boxOf)).toEqual({ left: 0, right: 0 })
   })
@@ -280,7 +278,154 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
       right: 0,
       bottom: 0,
       align: 'centre',
+      between: 0,
     })
     expect(reservedInset({ controls: [] }, { width: 390, height: 844 }, boxOf).bottom).toBe(0)
+  })
+})
+
+// ---- DS and 3DS on a phone (owner, 2026-11-22): the screens apart and large ----
+
+/** The two screens' size at 1×. */
+const SCREENS: Record<'nds' | '3ds', { top: Box; bottom: Box }> = {
+  nds: { top: { w: 256, h: 192 }, bottom: { w: 256, h: 192 } },
+  '3ds': { top: { w: 400, h: 240 }, bottom: { w: 320, h: 240 } },
+}
+
+/**
+ * Where Rust puts the two screens with `inset` and the `auto` layout filling its room
+ * (emudome_core::screens, its tests `a_ds_upright_on_the_s23_…`, `a_3ds_on_the_phone_…`): the
+ * checks below hold the controls against them. Upright: the top screen against the safe top, the
+ * touch screen against the band; on its side: side by side at the top.
+ */
+function phoneScreens(console: 'nds' | '3ds', area: Area, inset: InsetPx) {
+  const { top: t, bottom: b } = SCREENS[console]
+  if (orientationOf(area) === 'portrait') {
+    const end = area.height - inset.bottom
+    const s = Math.min(
+      (area.width - inset.left - inset.right) / Math.max(t.w, b.w),
+      (end - inset.top - inset.between) / (t.h + b.h),
+    )
+    const rect = (box: Box, y: number): Rect => {
+      const left = inset.left + (area.width - inset.left - inset.right - box.w * s) / 2
+      return { left, top: y, right: left + box.w * s, bottom: y + box.h * s }
+    }
+    return { top: rect(t, inset.top), bottom: rect(b, end - b.h * s) }
+  }
+  const free = area.width - inset.left - inset.right
+  const s = Math.min((free - inset.between) / (t.w + b.w), (area.height - inset.top) / t.h)
+  const rect = (box: Box, x: number): Rect => ({
+    left: x,
+    top: inset.top,
+    right: x + box.w * s,
+    bottom: inset.top + box.h * s,
+  })
+  return { top: rect(t, inset.left), bottom: rect(b, inset.left + t.w * s + inset.between) }
+}
+
+/** The S23 with its camera: 32 px at the top upright, on the left on its side. */
+const S23_UP: Area = { width: 412, height: 892, safe: { top: 32, right: 0, left: 0 } }
+const S23_SIDE: Area = { width: 892, height: 412, safe: { top: 0, right: 0, left: 32 } }
+
+describe('two screens on a phone', () => {
+  const DUAL = ['nds', '3ds'] as const
+  const PHONES = [...AREAS, S23_UP, S23_SIDE]
+
+  it('keeps the band, the strip and the safe top upright, the camera edge on its side', () => {
+    const up = defaultLayout('nds', 'portrait', S23_UP, AVAILABLE.nds)
+    expect(reservedInset(up, S23_UP, boxOf, true)).toEqual({
+      left: 0,
+      top: 32,
+      right: 0,
+      bottom: 198,
+      align: 'apart',
+      between: STRIP_PX,
+    })
+    const side = defaultLayout('nds', 'landscape', S23_SIDE, AVAILABLE.nds)
+    expect(reservedInset(side, S23_SIDE, boxOf, true)).toEqual({
+      left: 32,
+      top: 0,
+      right: SIDE_EDGE_PX,
+      bottom: 0,
+      align: 'top',
+      between: SIDE_GAP_PX,
+    })
+    // The one-screen rule is unchanged without the flag.
+    expect(reservedInset(up, S23_UP, boxOf).align).toBe('bottom')
+  })
+
+  it('gives the S23 the mockup: both DS screens 412 x 309 upright, 418 x 313.5 on its side', () => {
+    const up = defaultLayout('nds', 'portrait', S23_UP, AVAILABLE.nds)
+    const screens = phoneScreens('nds', S23_UP, reservedInset(up, S23_UP, boxOf, true))
+    expect(screens.top).toEqual({ left: 0, top: 32, right: 412, bottom: 341 })
+    expect(screens.bottom).toEqual({ left: 0, top: 385, right: 412, bottom: 694 })
+    const side = defaultLayout('nds', 'landscape', S23_SIDE, AVAILABLE.nds)
+    const apart = phoneScreens('nds', S23_SIDE, reservedInset(side, S23_SIDE, boxOf, true))
+    expect(apart.top).toEqual({ left: 32, top: 0, right: 450, bottom: 313.5 })
+    expect(apart.bottom).toEqual({ left: 458, top: 0, right: 876, bottom: 313.5 })
+    // The 3DS upright: its top screen full width too.
+    const n3ds = defaultLayout('3ds', 'portrait', S23_UP, AVAILABLE['3ds'])
+    const big = phoneScreens('3ds', S23_UP, reservedInset(n3ds, S23_UP, boxOf, true))
+    expect(big.top.right - big.top.left).toBe(412)
+  })
+
+  for (const console of DUAL) {
+    for (const area of PHONES) {
+      const o = orientationOf(area)
+      const name = `${console} ${o} ${area.width}×${area.height}${area.safe ? ' (camera)' : ''}`
+      const layout = defaultLayout(console, o, area, AVAILABLE[console])
+      const inset = reservedInset(layout, area, boxOf, true)
+      const screens = phoneScreens(console, area, inset)
+      const rect = (id: TouchControlId) => {
+        const c = layout.controls.find(x => x.id === id)!
+        return rectOf(c, area, boxOf(c.id))
+      }
+
+      if (o === 'portrait') {
+        it(`${name}: L, menu and R in the strip, the rest under the touch screen`, () => {
+          // The band the default declares is the one it keeps.
+          expect(reservedBottom(layout, area, boxOf, 0.5)).toBe(defaultBand(console, o, area))
+          for (const c of layout.controls) {
+            const r = rect(c.id)
+            // The strip is one control tall: its edges may touch the screens' to the rounding of
+            // the stored fractions (4 decimals).
+            const inner = { left: r.left, right: r.right, top: r.top + 0.5, bottom: r.bottom - 0.5 }
+            expect(overlaps(inner, screens.top), `${c.id} on the top screen`).toBe(false)
+            expect(overlaps(inner, screens.bottom), `${c.id} on the touch screen`).toBe(false)
+            if (['l', 'menu', 'r'].includes(c.id)) {
+              expect(r.top, c.id).toBeGreaterThanOrEqual(screens.top.bottom - 0.5)
+              expect(r.bottom, c.id).toBeLessThanOrEqual(screens.bottom.top + 0.5)
+            } else expect(r.top, c.id).toBeGreaterThanOrEqual(screens.bottom.bottom)
+          }
+          // The screens keep a useful part: each at least a fifth of the height.
+          expect(screens.top.bottom - screens.top.top).toBeGreaterThan(area.height / 5)
+        })
+      } else {
+        it(`${name}: the screens at the top, the controls over their lower part only`, () => {
+          for (const s of [screens.top, screens.bottom]) {
+            const middle = (s.top + s.bottom) / 2
+            for (const c of layout.controls)
+              if (overlaps(rect(c.id), s))
+                expect(rect(c.id).top, `${c.id} over a screen's upper half`).toBeGreaterThan(middle)
+          }
+          // Side by side, as large as the width allows.
+          expect(screens.bottom.right).toBeCloseTo(area.width - inset.right, 3)
+        })
+      }
+    }
+  }
+
+  it('places the strip from the safe top: the menu moves with the camera', () => {
+    const plain = defaultLayout('nds', 'portrait', { width: 412, height: 892 }, AVAILABLE.nds)
+    const camera = defaultLayout('nds', 'portrait', S23_UP, AVAILABLE.nds)
+    const menuY = (l: TouchLayout) => l.controls.find(c => c.id === 'menu')!.y * 892
+    expect(menuY(camera)).toBeCloseTo((32 + 892 - 198) / 2, 0)
+    expect(menuY(camera) - menuY(plain)).toBeCloseTo(16, 0)
+  })
+
+  it('adds a control back at its place in the strip', () => {
+    const layout = defaultLayout('nds', 'portrait', S23_UP, AVAILABLE.nds)
+    const back = add(remove(layout, 'l'), 'l', 'nds', 'portrait', S23_UP)
+    expect(back.controls.find(c => c.id === 'l')).toEqual(layout.controls.find(c => c.id === 'l'))
   })
 })

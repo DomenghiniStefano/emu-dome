@@ -5,4 +5,4 @@
  * `custom` is the user's own layout (`screens.custom`), there only once one is saved.
  * TypeScript: `ScreenLayoutId` (generated).
  */
-export type ScreenLayoutId = "vertical" | "side" | "big_small" | "top_only" | "custom";
+export type ScreenLayoutId = "vertical" | "auto" | "side" | "big_small" | "top_only" | "custom";

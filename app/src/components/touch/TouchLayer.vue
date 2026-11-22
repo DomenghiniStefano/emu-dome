@@ -20,7 +20,7 @@ import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import ControllerLostDialog from './ControllerLostDialog.vue'
 import TouchControl from './TouchControl.vue'
 import { gameButton } from './touchControls'
-import { activeLayout, orientationOf, reservedInset } from './touchLayout'
+import { activeLayout, isDualScreen, orientationOf, reservedInset } from './touchLayout'
 import { hideAfterMs, touchShown } from './touchVisibility'
 import { useControllerLoss } from './useControllerLoss'
 import { useTouchPlay } from './useTouchPlay'
@@ -99,7 +99,12 @@ watch(
   [shown, () => props.menuOpen, layout, area, boxes],
   () => {
     if (props.menuOpen) return
-    emit('inset', shown.value ? reservedInset(layout.value, area.value, boxOf) : NO_INSET)
+    emit(
+      'inset',
+      shown.value
+        ? reservedInset(layout.value, area.value, boxOf, isDualScreen(props.console))
+        : NO_INSET,
+    )
   },
   { flush: 'post', immediate: true },
 )
