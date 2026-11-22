@@ -6,8 +6,11 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogDescriptionSize,
   DialogFooter,
+  DialogSize,
   DialogTitle,
+  DialogTitleSize,
   DialogTone,
   DialogTrigger,
 } from '@/components/ui/dialog'
@@ -16,6 +19,7 @@ import KitState from '@/kit/KitState.vue'
 
 const open = ref(false)
 const openDanger = ref(false)
+const openTv = ref(false)
 </script>
 
 <template>
@@ -63,6 +67,26 @@ const openDanger = ref(false)
               </Button>
             </DialogClose>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </KitState>
+    <KitState label="TvSheet, Tv title and description (TV mode's full-screen choice)">
+      <Dialog v-model:open="openTv">
+        <DialogTrigger as-child>
+          <Button>Theme</Button>
+        </DialogTrigger>
+        <DialogContent :size="DialogSize.TvSheet">
+          <div class="flex flex-col gap-12 p-32">
+            <DialogTitle :size="DialogTitleSize.Tv">Theme</DialogTitle>
+            <DialogDescription :size="DialogDescriptionSize.Tv">
+              How dark the interface is.
+            </DialogDescription>
+            <DialogClose as-child>
+              <Button :variant="ButtonVariant.TvRow" :size="ButtonSize.TvRow" data-nav-initial>
+                Dark
+              </Button>
+            </DialogClose>
+          </div>
         </DialogContent>
       </Dialog>
     </KitState>
