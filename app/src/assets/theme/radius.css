@@ -27,6 +27,9 @@
   /* Roles: what a radius is for, so «every control's corners» is one edit. */
   --radius-badge: var(--radius-2);
   --radius-control: var(--radius-2);
+  /* A button: a little softer than the other controls (owner, 2026-11-22: «leggermente più
+     rotondi i bottoni, solo i bottoni, non di troppo»). */
+  --radius-button: var(--radius-4);
   --radius-card: var(--radius-3);
   --radius-panel: var(--radius-4);
 }

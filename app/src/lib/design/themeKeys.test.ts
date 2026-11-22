@@ -107,6 +107,7 @@ describe('themeKeys', () => {
       '20',
       'badge',
       'control',
+      'button',
       'card',
       'panel',
     ])

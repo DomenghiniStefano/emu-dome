@@ -209,7 +209,7 @@ export type ButtonFade = (typeof ButtonFade)[keyof typeof ButtonFade]
 // also fade the ring's outline colour, which the pixel compare of the game details catches
 // (Trello #62).
 export const buttonVariants = cva(
-  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-6 whitespace-nowrap rounded-control border border-transparent font-sans text-label transition-[background,transform] select-none disabled:cursor-not-allowed aria-disabled:cursor-not-allowed [&_svg]:shrink-0',
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-6 whitespace-nowrap rounded-button border border-transparent font-sans text-label transition-[background,transform] select-none disabled:cursor-not-allowed aria-disabled:cursor-not-allowed [&_svg]:shrink-0',
   {
     variants: {
       variant: {
