@@ -9,11 +9,11 @@
 //! | `EMUDOME_VIDEO` | `native`, `webview` | per OS (`emudome_platform::native_video_default`) | where the game is drawn |
 //! | `EMUDOME_PRESENT_MODE` | `fifo`, `fiforelaxed`, `mailbox`, `immediate`, `autovsync`, `autonovsync` | `autovsync` | wgpu present mode of the native surface |
 //! | `EMUDOME_FRAME_LATENCY` | `1`..`3` | `1` | frames the GPU may queue ahead (`desired_maximum_frame_latency`) |
-//! | `EMUDOME_AUDIO_TARGET_MS` | `10`..`500` | `60` | audio queue fill the resampler steers towards |
+//! | `EMUDOME_AUDIO_TARGET_MS` | `10`..`500` | the `audio.lat` setting (Balanced: `60`) | audio queue fill the resampler steers towards |
 //! | `EMUDOME_AUDIO_BUFFER` | `default` or frames (`256`, `512`...) | `default` | device buffer requested from cpal |
 //! | `EMUDOME_AUDIO_RATE` | Hz (`44100`, `48000`...) | the device's | output sample rate requested |
 //! | `EMUDOME_AUDIO_CHANNELS` | `1`..`8` | the device's | output channels requested |
-//! | `EMUDOME_AUDIO_DEVICE` | part of a device name | the system default | output device |
+//! | `EMUDOME_AUDIO_DEVICE` | part of a device name | the `audio.out` setting (the system default) | output device |
 //! | `EMUDOME_DATA_DIR` | folder | the app data folder | everything: saves, states, system files, settings, library, covers, first-run marker (under `local/`), webview profile |
 //! | `EMUDOME_BENCH` | seconds | off | bench mode: measure for N s, write a report, exit |
 //! | `EMUDOME_BENCH_OUT` | file | `emudome-bench.json` | where the bench report goes |
@@ -78,14 +78,15 @@ pub enum AudioBuffer {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AudioTuning {
-    /// Queue fill, in milliseconds, the resampler's speed control steers towards.
-    pub target_ms: u32,
+    /// Queue fill, in milliseconds, the resampler's speed control steers towards; `None`: the
+    /// `audio.lat` setting's.
+    pub target_ms: Option<u32>,
     pub buffer: AudioBuffer,
     /// `None`: the device's own rate.
     pub rate: Option<u32>,
     /// `None`: the device's own channel count.
     pub channels: Option<u16>,
-    /// Part of the output device's name (case-insensitive); `None`: the system default.
+    /// Part of the output device's name (case-insensitive); `None`: the `audio.out` setting's.
     pub device: Option<String>,
 }
 
@@ -116,8 +117,6 @@ pub struct Tuning {
 /// Frames the GPU may queue: the app's value. The Windows runs suggest 2 presents at a
 /// steadier cadence with the same CPU (docs/bench-windows.md); not adopted yet.
 pub const DEFAULT_FRAME_LATENCY: u32 = 1;
-/// The audio queue target of the app (60 ms).
-pub const DEFAULT_AUDIO_TARGET_MS: u32 = 60;
 /// When the bench opens the quick menu, after the first frame.
 const BENCH_MENU_AFTER_SECONDS: f64 = 5.0;
 
@@ -151,11 +150,9 @@ impl Tuning {
             dx12_presentation: r.raw("WGPU_DX12_PRESENTATION_SYSTEM"),
         };
         let audio = AudioTuning {
-            target_ms: r
-                .parse("EMUDOME_AUDIO_TARGET_MS", |v| {
-                    v.parse().ok().filter(|n| (10..=500).contains(n))
-                })
-                .unwrap_or(DEFAULT_AUDIO_TARGET_MS),
+            target_ms: r.parse("EMUDOME_AUDIO_TARGET_MS", |v| {
+                v.parse().ok().filter(|n| (10..=500).contains(n))
+            }),
             buffer: r
                 .parse("EMUDOME_AUDIO_BUFFER", |v| match v {
                     "default" => Some(AudioBuffer::Default),
@@ -266,7 +263,8 @@ mod tests {
         assert_eq!(t.video.path, None);
         assert_eq!(t.video.present_mode, PresentMode::AutoVsync);
         assert_eq!(t.video.frame_latency, DEFAULT_FRAME_LATENCY);
-        assert_eq!(t.audio.target_ms, 60);
+        assert_eq!(t.audio.target_ms, None, "the audio.lat setting's");
+        assert_eq!(t.audio.device, None, "the audio.out setting's");
         assert_eq!(t.audio.buffer, AudioBuffer::Default);
         assert_eq!(t.audio.rate, None);
         assert_eq!(t.audio.channels, None);
@@ -292,7 +290,7 @@ mod tests {
         assert_eq!(t.video.path, Some(VideoPath::Webview));
         assert_eq!(t.video.present_mode, PresentMode::Mailbox);
         assert_eq!(t.video.frame_latency, 3);
-        assert_eq!(t.audio.target_ms, 100);
+        assert_eq!(t.audio.target_ms, Some(100));
         assert_eq!(t.audio.buffer, AudioBuffer::Frames(512));
         assert_eq!(t.audio.rate, Some(48000));
         assert_eq!(t.audio.channels, Some(2));

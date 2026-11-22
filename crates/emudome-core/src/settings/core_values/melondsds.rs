@@ -81,5 +81,18 @@ pub(super) static TABLE: CoreTable = CoreTable {
             ]),
             apply: Apply::Restart,
         },
+        // ---- Advanced › Performance ----
+        // Declared by the Windows and the Android arm64 builds alike (1.4.0); its label says
+        // «Takes effect at next restart».
+        Rule {
+            setting: "perf.jit",
+            consoles: NDS,
+            map: Map::Toggle {
+                option: "melonds_jit_enable",
+                on: "enabled",
+                off: "disabled",
+            },
+            apply: Apply::Restart,
+        },
     ],
 };

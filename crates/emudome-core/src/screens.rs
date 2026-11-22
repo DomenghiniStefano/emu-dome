@@ -11,8 +11,9 @@
 //! - [`touch_at`]: window point → touch-screen pixel, through the composed rectangle;
 //! - [`pointer_value`]: touch-screen pixel → the `RETRO_DEVICE_POINTER` value the core reads.
 //!
-//! The `screens.*` settings choose the [`Layout`] ([`ScreenSettings`]: the layouts to step
-//! through, the ratio, the gap, the rotation, the custom layout) together with what the user
+//! The `screens.*` settings and `video.aspect` choose the [`Layout`] ([`ScreenSettings`]: the
+//! layouts to step through, the ratio, the gap, the rotation, the custom layout, the
+//! proportions) together with what the user
 //! changed while playing (the current [`LayoutId`], the screens swapped); the renderers draw each
 //! [`Placement`] of [`compose`] (native `video.rs`, webview `GameCanvas.vue` from the placements
 //! the shell sends), and the touch screen maps back through the same placements (Trello #28).
@@ -313,10 +314,12 @@ pub struct Layout {
     /// cent (clamped to 50..=90).
     pub ratio: u8,
     pub rotation: Rotation,
+    /// `video.aspect`: the proportions of the whole picture as shown.
+    pub aspect: Aspect,
 }
 
 impl Default for Layout {
-    /// «Uno sopra l'altro»: top above bottom, no gap, not turned.
+    /// «Uno sopra l'altro»: top above bottom, no gap, not turned, the console's proportions.
     fn default() -> Self {
         Self {
             arrangement: Arrangement::Stacked,
@@ -324,6 +327,40 @@ impl Default for Layout {
             gap: 0,
             ratio: 70,
             rotation: Rotation::None,
+            aspect: Aspect::Original,
+        }
+    }
+}
+
+/// `video.aspect`: the game's picture keeps the console's proportions (each screen's pixels
+/// square, as before the setting), or is stretched to 4:3 or 16:9. With two screens the
+/// composed whole (both screens, the gap, turned) is what is stretched; a custom layout
+/// (`screens.custom`) is drawn as the user placed it, whatever this says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Aspect {
+    #[default]
+    Original,
+    FourThree,
+    SixteenNine,
+}
+
+impl Aspect {
+    /// The setting's option id; `None` for an id this build does not know.
+    pub fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "original" => Some(Aspect::Original),
+            "4_3" => Some(Aspect::FourThree),
+            "16_9" => Some(Aspect::SixteenNine),
+            _ => None,
+        }
+    }
+
+    /// Width over height, `None` for the console's own.
+    pub fn ratio(self) -> Option<f32> {
+        match self {
+            Aspect::Original => None,
+            Aspect::FourThree => Some(4.0 / 3.0),
+            Aspect::SixteenNine => Some(16.0 / 9.0),
         }
     }
 }
@@ -373,8 +410,8 @@ pub fn fit(area: Area, content: (f32, f32)) -> Rect {
 }
 
 /// Places `screens` in `area` as `layout` says. The screens are first laid out at their own size
-/// (gap in the same pixels), the whole is turned, then fitted with [`fit`]; a custom
-/// arrangement is placed as given instead.
+/// (gap in the same pixels), the whole is turned, then fitted with [`fit`] at its own proportions
+/// or at `layout.aspect`'s (stretched across); a custom arrangement is placed as given instead.
 pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Placement> {
     let mut order: Vec<SourceScreen> = screens.to_vec();
     if layout.swap {
@@ -510,8 +547,14 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
         Rotation::None | Rotation::Flip => (canvas_w, canvas_h),
         Rotation::Left | Rotation::Right => (canvas_h, canvas_w),
     };
-    let target = fit(area, (turned_w, turned_h));
-    let scale = target.w / turned_w;
+    // `video.aspect`: the whole keeps its height in console pixels and takes the width of the
+    // proportions asked for, so the integer scale of `fit` still follows the console's rows.
+    let shown = match layout.aspect.ratio() {
+        None => (turned_w, turned_h),
+        Some(ratio) => (turned_h * ratio, turned_h),
+    };
+    let target = fit(area, shown);
+    let (scale_x, scale_y) = (target.w / turned_w, target.h / turned_h);
 
     placed
         .into_iter()
@@ -521,10 +564,10 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
                 id: s.id,
                 src: s.src,
                 dst: Rect {
-                    x: target.x + turned.x * scale,
-                    y: target.y + turned.y * scale,
-                    w: turned.w * scale,
-                    h: turned.h * scale,
+                    x: target.x + turned.x * scale_x,
+                    y: target.y + turned.y * scale_y,
+                    w: turned.w * scale_x,
+                    h: turned.h * scale_y,
                 },
                 rotation: layout.rotation,
             }
@@ -789,6 +832,8 @@ pub struct ScreenSettings {
     pub custom: CustomLayout,
     /// `screens.swap` is `hold`: the screens are swapped only while the shortcut is held.
     pub swap_hold: bool,
+    /// `video.aspect` (every console: one screen or the composed two).
+    pub aspect: Aspect,
 }
 
 impl Default for ScreenSettings {
@@ -818,6 +863,7 @@ impl ScreenSettings {
             rotation: Rotation::from_id(&settings.text(keys::SCREENS_ROTATION)).unwrap_or_default(),
             custom,
             swap_hold: settings.text(keys::SCREENS_SWAP) == "hold",
+            aspect: Aspect::from_id(&settings.text(keys::VIDEO_ASPECT)).unwrap_or_default(),
         }
     }
 
@@ -866,6 +912,7 @@ impl ScreenSettings {
             gap: self.gap,
             ratio: self.ratio,
             rotation: self.rotation,
+            aspect: self.aspect,
         }
     }
 }
@@ -1019,7 +1066,7 @@ impl ScreenSession {
 #[cfg(test)]
 mod tests {
     use super::{
-        compose, fit, pointer_at, pointer_value, touch_at, Area, Arrangement, CustomLayout,
+        compose, fit, pointer_at, pointer_value, touch_at, Area, Arrangement, Aspect, CustomLayout,
         CustomScreen, Layout, LayoutId, Placement, PxRect, Rect, Rotation, ScreenId, ScreenSession,
         ScreenSettings, ScreenStatus, Split,
     };
@@ -1077,6 +1124,7 @@ mod tests {
                 gap: 90,
                 ratio: 80,
                 rotation: Rotation::Left,
+                aspect: Aspect::Original,
             }
         );
         assert_eq!(
@@ -1816,6 +1864,88 @@ mod tests {
             ),
             None
         );
+    }
+
+    #[test]
+    fn the_aspect_stretches_a_one_screen_game_across() {
+        let gba = Split::Whole.screens(240, 160);
+        let original = compose(&Layout::default(), &gba, area(1280.0, 800.0));
+        assert_eq!(
+            dst(&original, ScreenId::Main),
+            rect(40.0, 0.0, 1200.0, 800.0)
+        );
+        // 4:3: the console's 160 rows, 213⅓ columns wide: 5x fits 800 rows.
+        let four_three = compose(
+            &Layout {
+                aspect: Aspect::FourThree,
+                ..Layout::default()
+            },
+            &gba,
+            area(1280.0, 800.0),
+        );
+        let r = dst(&four_three, ScreenId::Main);
+        assert_eq!((r.x, r.y, r.h), (106.0, 0.0, 800.0));
+        assert!((r.w / r.h - 4.0 / 3.0).abs() < 1e-4, "{r:?}");
+        let wide = compose(
+            &Layout {
+                aspect: Aspect::SixteenNine,
+                ..Layout::default()
+            },
+            &gba,
+            area(1920.0, 1080.0),
+        );
+        let r = dst(&wide, ScreenId::Main);
+        assert!((r.w / r.h - 16.0 / 9.0).abs() < 1e-4, "{r:?}");
+        assert!(r.x >= 0.0 && r.x + r.w <= 1920.0 && r.h <= 1080.0);
+    }
+
+    #[test]
+    fn two_screens_stretch_as_one_picture_and_touch_follows() {
+        let layout = Layout {
+            aspect: Aspect::FourThree,
+            ..Layout::default()
+        };
+        // 256 x 384 shown as 512 x 384: 2x fits 1080 rows, 1024 x 768 centred.
+        let p = ds(&layout, area(1920.0, 1080.0));
+        assert_eq!(dst(&p, ScreenId::Top), rect(448.0, 156.0, 1024.0, 384.0));
+        assert_eq!(dst(&p, ScreenId::Bottom), rect(448.0, 540.0, 1024.0, 384.0));
+        // The middle of the stretched touch screen is the middle of the console's.
+        assert_eq!(touch_at(&p, 448.0 + 512.0, 540.0 + 192.0), Some((128, 96)));
+        assert_eq!(touch_at(&p, 1471.9, 923.9), Some((255, 191)));
+        // A custom layout is drawn as placed, whatever the aspect.
+        let custom = settings(&[("screens.custom", list(CUSTOM))])
+            .custom
+            .arrangement();
+        let plain = Layout {
+            arrangement: custom,
+            ..Layout::default()
+        };
+        assert_eq!(
+            ds(&plain, area(1920.0, 1080.0)),
+            ds(
+                &Layout {
+                    aspect: Aspect::SixteenNine,
+                    ..plain.clone()
+                },
+                area(1920.0, 1080.0)
+            )
+        );
+    }
+
+    #[test]
+    fn the_aspect_comes_from_its_setting() {
+        assert_eq!(ScreenSettings::default().aspect, Aspect::Original);
+        let s = settings(&[("video.aspect", Value::Text("16_9".into()))]);
+        assert_eq!(s.layout(s.first(), false).aspect, Aspect::SixteenNine);
+        let s = settings(&[("video.aspect", Value::Text("21_9".into()))]);
+        assert_eq!(s.aspect, Aspect::Original, "an unknown id is the console's");
+        for (id, ratio) in [
+            ("original", None),
+            ("4_3", Some(4.0 / 3.0)),
+            ("16_9", Some(16.0 / 9.0)),
+        ] {
+            assert_eq!(Aspect::from_id(id).map(Aspect::ratio), Some(ratio), "{id}");
+        }
     }
 
     #[test]

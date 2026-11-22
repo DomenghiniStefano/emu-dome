@@ -31,7 +31,11 @@ pub(super) fn boot(
     let mut ctx = CallbackCtx {
         audio_enabled: true,
         speed_audio: SpeedAudio::new(opts.fast_audio),
-        options: CoreOptions::new(opts.core_options.iter().cloned()),
+        // What the load block forces wins (Azahar's shader cache stays on where off crashes).
+        options: CoreOptions::new(crate::core_profile::with_block_options(
+            &opts.core_options,
+            opts.state_load_block,
+        )),
         split: opts.split,
         username: opts
             .username

@@ -46,7 +46,8 @@ pub struct KeyShortcut {
     pub action: KeyAction,
 }
 
-/// Esc menu · F1 save · F4 load · F2 / F3 previous / next slot · Tab fast forward (held) ·
+/// Esc menu · F1 save · F4 load · F2 / F3 previous / next slot · Tab fast forward (held, or
+/// toggled with `speed.ffmode`, [`KeyRouter::set_fast_forward_toggle`]) ·
 /// Backspace rewind (held; toggled with `a11y.toggle`) · F9 FPS · F11 full screen · F12
 /// screenshot. F1 and F4 act on the current slot, the one F2 / F3 and L3 + ← → move.
 pub const KEYBOARD_SHORTCUTS: &[KeyShortcut] = &[
@@ -109,19 +110,41 @@ pub struct KeyRouted {
     pub actions: Vec<Action>,
 }
 
-/// The keyboard's routing state: the hold hotkeys whose key is down.
+/// A hold hotkey in progress and the key that started it.
+#[derive(Debug)]
+struct Hold {
+    code: String,
+    hotkey: Hotkey,
+    /// Started in toggle mode (`speed.ffmode` = `toggle`): it ends at the key's next press,
+    /// not at its release.
+    latched: bool,
+}
+
+/// The keyboard's routing state: the hold hotkeys whose key is down (or latched on), and how
+/// the fast forward key works.
 #[derive(Debug, Default)]
 pub struct KeyRouter {
-    holds: Vec<(String, Hotkey)>,
+    holds: Vec<Hold>,
+    fast_forward_toggle: bool,
 }
 
 impl KeyRouter {
+    /// `speed.ffmode`: `true` (toggle) makes the fast forward key turn it on at one press and
+    /// off at the next; `false` (hold, the default) lasts while the key is held. A fast forward
+    /// already latched on still ends at the key's next press after a change.
+    pub fn set_fast_forward_toggle(&mut self, toggle: bool) {
+        self.fast_forward_toggle = toggle;
+    }
+
     /// One key event. `button` is the game button the key gives (the keyboard's row of
     /// `pad.remap`); `game_has_keys`: a game is open and the quick menu closed.
     ///
     /// - The menu key and fullscreen are the interface's: nothing here.
     /// - In game: a shortcut fires on its first press (not on the key's repeats), a hold hotkey
-    ///   ends on its release; any other key is the game's button (repeats ignored).
+    ///   ends on its release; any other key is the game's button (repeats ignored). In toggle
+    ///   mode the fast forward key's press starts the hold and its next press ends it (the
+    ///   same [`Action::Press`] / [`Action::Release`] pair, so the shell carries both modes out
+    ///   alike).
     /// - Menu open or no game: nothing fires; a key let go still lets go of its game button and
     ///   ends its hold, so nothing stays held after resuming (Trello #74).
     pub fn key(
@@ -134,9 +157,9 @@ impl KeyRouter {
     ) -> KeyRouted {
         let mut routed = KeyRouted::default();
         if !pressed {
-            if let Some(i) = self.holds.iter().position(|(c, _)| c == code) {
-                let (_, hotkey) = self.holds.remove(i);
-                routed.actions.push(Action::Release(hotkey));
+            if let Some(i) = self.holds.iter().position(|h| h.code == code && !h.latched) {
+                let hold = self.holds.remove(i);
+                routed.actions.push(Action::Release(hold.hotkey));
                 return routed;
             }
         }
@@ -145,9 +168,18 @@ impl KeyRouter {
             Some(KeyAction::Fullscreen | KeyAction::Hotkey(Hotkey::ToggleMenu)) => return routed,
             Some(KeyAction::Hotkey(hotkey)) => {
                 if game_has_keys && pressed && !repeat {
+                    if let Some(i) = self.holds.iter().position(|h| h.code == code && h.latched) {
+                        let hold = self.holds.remove(i);
+                        routed.actions.push(Action::Release(hold.hotkey));
+                        return routed;
+                    }
                     routed.actions.push(Action::Press(hotkey));
                     if hotkey.is_hold() {
-                        self.holds.push((code.to_owned(), hotkey));
+                        self.holds.push(Hold {
+                            code: code.to_owned(),
+                            hotkey,
+                            latched: self.fast_forward_toggle && hotkey == Hotkey::FastForwardHold,
+                        });
                     }
                 }
                 return routed;
@@ -163,11 +195,12 @@ impl KeyRouter {
     }
 
     /// Every key is let go where the game cannot see it (the menu opened, the window lost the
-    /// focus): the holds end. The game's buttons are let go by the shell.
+    /// focus): the holds end, a fast forward latched on in toggle mode too. The game's buttons
+    /// are let go by the shell.
     pub fn release_all(&mut self) -> Vec<Action> {
         self.holds
             .drain(..)
-            .map(|(_, hotkey)| Action::Release(hotkey))
+            .map(|hold| Action::Release(hold.hotkey))
             .collect()
     }
 }
@@ -281,5 +314,72 @@ mod tests {
         assert!(r.release_all().is_empty());
         // The key's own release afterwards does nothing more.
         assert!(r.key("Tab", false, false, None, true).actions.is_empty());
+    }
+
+    #[test]
+    fn in_toggle_mode_tab_turns_fast_forward_on_and_its_next_press_off() {
+        let mut r = KeyRouter::default();
+        r.set_fast_forward_toggle(true);
+        let on = [Action::Press(Hotkey::FastForwardHold)];
+        let off = [Action::Release(Hotkey::FastForwardHold)];
+        assert_eq!(r.key("Tab", true, false, None, true).actions, on);
+        // Repeats and the release do nothing: it stays on.
+        assert!(r.key("Tab", true, true, None, true).actions.is_empty());
+        assert!(r.key("Tab", false, false, None, true).actions.is_empty());
+        assert_eq!(r.key("Tab", true, false, None, true).actions, off);
+        assert!(r.key("Tab", false, false, None, true).actions.is_empty());
+        // And on again.
+        assert_eq!(r.key("Tab", true, false, None, true).actions, on);
+    }
+
+    #[test]
+    fn in_toggle_mode_only_fast_forward_latches() {
+        let mut r = KeyRouter::default();
+        r.set_fast_forward_toggle(true);
+        let _ = r.key("Backspace", true, false, None, true);
+        assert_eq!(
+            r.key("Backspace", false, false, None, true).actions,
+            [Action::Release(Hotkey::Rewind)]
+        );
+    }
+
+    #[test]
+    fn a_latched_fast_forward_ends_when_the_menu_opens_or_the_focus_goes() {
+        let mut r = KeyRouter::default();
+        r.set_fast_forward_toggle(true);
+        let _ = r.key("Tab", true, false, None, true);
+        let _ = r.key("Tab", false, false, None, true);
+        assert_eq!(r.release_all(), [Action::Release(Hotkey::FastForwardHold)]);
+        // Back in game, the next press turns it on again (not off).
+        assert_eq!(
+            r.key("Tab", true, false, None, true).actions,
+            [Action::Press(Hotkey::FastForwardHold)]
+        );
+        // In the menu a press does nothing.
+        let _ = r.release_all();
+        assert!(r.key("Tab", true, false, None, false).actions.is_empty());
+    }
+
+    #[test]
+    fn a_latched_fast_forward_still_ends_at_the_next_press_after_switching_to_hold() {
+        let mut r = KeyRouter::default();
+        r.set_fast_forward_toggle(true);
+        let _ = r.key("Tab", true, false, None, true);
+        let _ = r.key("Tab", false, false, None, true);
+        r.set_fast_forward_toggle(false);
+        assert_eq!(
+            r.key("Tab", true, false, None, true).actions,
+            [Action::Release(Hotkey::FastForwardHold)]
+        );
+        // From now on it holds.
+        let _ = r.key("Tab", false, false, None, true);
+        assert_eq!(
+            r.key("Tab", true, false, None, true).actions,
+            [Action::Press(Hotkey::FastForwardHold)]
+        );
+        assert_eq!(
+            r.key("Tab", false, false, None, true).actions,
+            [Action::Release(Hotkey::FastForwardHold)]
+        );
     }
 }

@@ -65,6 +65,16 @@ pub fn is_set_up(app: &AppHandle) -> bool {
             .is_some_and(|state| state.lib.lock().games().next().is_some())
 }
 
+/// `general.start` = «last game» (`startup.rs`): the row of the game played last, when its file
+/// is still there (a `content://` document is not looked at: opening it says).
+pub(crate) fn last_played_game(app: &AppHandle) -> Option<GameDto> {
+    let state = app.try_state::<LibraryState>()?;
+    let lib = state.lib.lock();
+    let game = crate::startup::last_played(lib.games())?;
+    let there = emudome_platform::is_content_uri(&game.path) || Path::new(&game.path).is_file();
+    there.then(|| GameDto::new(game))
+}
+
 /// At startup: a scan if `library.scanstart`, and the folder watcher if `library.watch`.
 pub fn startup(app: &AppHandle) {
     if settings(app).bool(keys::LIBRARY_SCAN_AT_START) {

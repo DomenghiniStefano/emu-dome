@@ -401,6 +401,10 @@ pub struct PadConfig {
     pub remap: Vec<String>,
     /// `speed.ffval`: where fast forward goes (L3 + R2 held, L3 + up, Tab).
     pub fast_forward: Speed,
+    /// `speed.ffmode` is `toggle`: the keyboard's fast forward key (Tab) turns it on at one press
+    /// and off at the next instead of lasting while held (`keyboard::KeyRouter`). The
+    /// controller keeps its two combos, one held and one toggled.
+    pub fast_forward_toggle: bool,
     /// `speed.slow`: where slow motion goes (L3 + down).
     pub slow_motion: Speed,
     /// `a11y.toggle`: rewind (L3 + L2) goes on at one press and off at the next instead of
@@ -461,6 +465,7 @@ impl PadConfig {
                 .filter(|i| parse_remap(i).is_some())
                 .collect(),
             fast_forward: speed(keys::SPEED_FF),
+            fast_forward_toggle: settings.text(keys::SPEED_FF_MODE) == "toggle",
             slow_motion: speed(keys::SPEED_SLOW),
             hold_toggle: settings.bool(keys::A11Y_HOLD_TOGGLE),
             lid_combo: settings.text(keys::PAD_LID) != "menu_only",

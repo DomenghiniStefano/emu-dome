@@ -2,21 +2,27 @@
 //! rate, with a slight speed control so delay neither builds up nor
 //! drains the queue.
 //!
-//! The device, its rate, channels and buffer and the queue target come from
-//! [`AudioTuning`]. The real-time callback takes no lock another thread may hold: the open game
-//! comes from an `ArcSwapOption` ([`CurrentShared`]), its samples from the lock-free ring
-//! (`emudome_core::audio`), and the measurements ([`AudioMetrics`]) are recorded only in bench
-//! mode, with `try_lock` (a callback never waits for the bench reading them).
+//! The device and the queue come from the settings ([`AudioPrefs`]: `audio.out`, the output
+//! device, `audio.lat`, the queue's target and limit), unless a developer knob of
+//! [`AudioTuning`] forces them; its rate, channels and buffer come from [`AudioTuning`]. The
+//! real-time callback takes no lock another thread may hold: the open game comes from an
+//! `ArcSwapOption` ([`CurrentShared`]), its samples from the lock-free ring
+//! (`emudome_core::audio`), the latency from an atomic, and the measurements ([`AudioMetrics`])
+//! are recorded only in bench mode, with `try_lock` (a callback never waits for the bench reading
+//! them).
 
+use std::sync::atomic::{AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use emudome_core::audio::TEST_TONE_HZ;
+use emudome_core::audio::{samples_in, Latency, TEST_TONE_HZ};
+use emudome_core::settings::{keys, Scope};
 use emudome_core::{ErrorCode, Shared};
 use parking_lot::Mutex;
 use serde::Serialize;
+use tauri::Manager;
 
 use crate::health::{Part, SharedHealth};
 use crate::tuning::{AudioBuffer, AudioTuning};
@@ -26,6 +32,101 @@ use crate::CurrentShared;
 pub struct AudioOutput {
     _stop: mpsc::Sender<()>,
     metrics: SharedAudioMetrics,
+    prefs: Arc<AudioPrefs>,
+}
+
+/// The output the user chose (`audio.out`, `audio.lat`), changed while it plays: the latency is
+/// read by every callback (an atomic), a new device makes the audio thread open it.
+pub struct AudioPrefs {
+    /// [`Latency::to_u8`].
+    latency: AtomicU8,
+    /// The chosen device's exact name; `None`: the system's default.
+    device: Mutex<Option<String>>,
+    /// Bumped when `device` changes: the playing stream is replaced.
+    generation: AtomicU64,
+}
+
+impl AudioPrefs {
+    pub fn new(device: Option<String>, latency: Latency) -> Self {
+        Self {
+            latency: AtomicU8::new(latency.to_u8()),
+            device: Mutex::new(device),
+            generation: AtomicU64::new(0),
+        }
+    }
+
+    /// The settings changed: the latency applies at the next callback, another device at once.
+    pub fn set(&self, device: Option<String>, latency: Latency) {
+        self.latency.store(latency.to_u8(), Ordering::Relaxed);
+        let mut current = self.device.lock();
+        if *current != device {
+            log::info!(
+                "audio output: {}",
+                device.as_deref().unwrap_or("the system's")
+            );
+            *current = device;
+            self.generation.fetch_add(1, Ordering::AcqRel);
+        }
+    }
+
+    fn latency(&self) -> Latency {
+        Latency::from_u8(self.latency.load(Ordering::Relaxed))
+    }
+
+    fn device(&self) -> Option<String> {
+        self.device.lock().clone()
+    }
+
+    fn generation(&self) -> u64 {
+        self.generation.load(Ordering::Acquire)
+    }
+}
+
+/// `audio.out` (`system`: `None`) and `audio.lat` as `read` resolves them.
+pub fn prefs_from(read: impl Fn(&str) -> Option<emudome_core::settings::Value>) -> AudioPrefs {
+    let (device, latency) = chosen(read);
+    AudioPrefs::new(device, latency)
+}
+
+fn chosen(
+    read: impl Fn(&str) -> Option<emudome_core::settings::Value>,
+) -> (Option<String>, Latency) {
+    let settings = keys::Reader::new(read);
+    let out = settings.text(keys::AUDIO_OUT);
+    let device = (out != "system" && !out.trim().is_empty()).then_some(out);
+    let latency = Latency::from_option(&settings.text(keys::AUDIO_LATENCY)).unwrap_or_default();
+    (device, latency)
+}
+
+/// The `audio.*` settings the output follows.
+pub fn is_output_key(key: &str) -> bool {
+    key == keys::AUDIO_OUT.as_str() || key == keys::AUDIO_LATENCY.as_str()
+}
+
+/// `audio.out` or `audio.lat` changed (both per device, «Tutti i giochi» only).
+pub fn settings_changed(app: &tauri::AppHandle) {
+    let Some(state) = app.try_state::<crate::AppState>() else {
+        return;
+    };
+    let (device, latency) = chosen(crate::settings::resolver(app, &Scope::Global));
+    state.audio.prefs.set(device, latency);
+}
+
+/// The names of the output devices the system lists now (`audio.out`'s options after
+/// «system»), each once, in the system's order.
+pub fn output_names() -> anyhow::Result<Vec<String>> {
+    let mut names: Vec<String> = Vec::new();
+    for device in cpal::default_host().output_devices()? {
+        // A device that cannot say its name cannot be chosen by it either.
+        let Ok(description) = device.description() else {
+            continue;
+        };
+        let name = description.name().to_owned();
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    }
+    Ok(names)
 }
 
 /// [`CallbackStats::windows`] keeps the last this many windows (an hour of 10 s windows).
@@ -197,20 +298,24 @@ impl AudioOutput {
     pub fn start(
         current: CurrentShared,
         tuning: AudioTuning,
+        prefs: AudioPrefs,
         tone: Option<f32>,
         measure: bool,
         health: SharedHealth,
     ) -> Self {
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
         let metrics = SharedAudioMetrics::default();
+        let prefs = Arc::new(prefs);
         let thread_metrics = metrics.clone();
         let thread_health = health.clone();
+        let thread_prefs = prefs.clone();
         let spawned = std::thread::Builder::new()
             .name("emudome-audio".into())
             .spawn(move || {
                 let output = Output {
                     current,
                     tuning,
+                    prefs: thread_prefs,
                     tone,
                     metrics: thread_metrics,
                     measure,
@@ -231,6 +336,7 @@ impl AudioOutput {
         Self {
             _stop: stop_tx,
             metrics,
+            prefs,
         }
     }
 
@@ -266,10 +372,60 @@ fn needs_rebuild(kind: cpal::ErrorKind) -> bool {
     )
 }
 
+/// Which output to open, among the devices the system lists (`names`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Choice {
+    /// The system's default (`audio.out` = system).
+    System,
+    /// The device at this index.
+    Named(usize),
+    /// The chosen device is not there now: the system's default until it is back.
+    FellBack,
+}
+
+impl Choice {
+    /// The stream follows the system's default device.
+    fn follows_default(&self) -> bool {
+        matches!(self, Choice::System | Choice::FellBack)
+    }
+}
+
+/// The device to open: the developer knob `forced` (part of a name, any case; none matching is
+/// an error, as before the setting), else the `chosen` device by its exact name (gone: the
+/// system's, the choice kept), else the system's.
+fn choose(names: &[String], forced: Option<&str>, chosen: Option<&str>) -> Result<Choice, String> {
+    if let Some(want) = forced {
+        let want = want.to_lowercase();
+        return names
+            .iter()
+            .position(|n| n.to_lowercase().contains(&want))
+            .map(Choice::Named)
+            .ok_or_else(|| format!("no output device named like {want:?}"));
+    }
+    Ok(match chosen {
+        Some(name) => names
+            .iter()
+            .position(|n| n == name)
+            .map_or(Choice::FellBack, Choice::Named),
+        None => Choice::System,
+    })
+}
+
+/// A stream playing, and what it was opened for.
+struct Opened {
+    stream: cpal::Stream,
+    /// The device's name.
+    device: String,
+    choice: Choice,
+    /// [`AudioPrefs::generation`] when it was opened.
+    generation: u64,
+}
+
 /// The audio thread: builds the stream, keeps it playing, builds it again when it fails.
 struct Output {
     current: CurrentShared,
     tuning: AudioTuning,
+    prefs: Arc<AudioPrefs>,
     tone: Option<f32>,
     metrics: SharedAudioMetrics,
     measure: bool,
@@ -285,22 +441,26 @@ impl Output {
             let built = build_stream(
                 self.current.clone(),
                 &self.tuning,
+                &self.prefs,
                 self.tone,
                 &self.metrics,
                 measured,
                 errors_tx,
             )
-            .and_then(|(stream, device)| {
-                stream.play().map_err(|e| anyhow::anyhow!("play: {e}"))?;
-                Ok((stream, device))
+            .and_then(|opened| {
+                opened
+                    .stream
+                    .play()
+                    .map_err(|e| anyhow::anyhow!("play: {e}"))?;
+                Ok(opened)
             });
             match built {
-                Ok((stream, device)) => {
+                Ok(opened) => {
                     retry = RETRY_FIRST;
                     self.metrics.lock().error = None;
                     self.health.set(Part::Audio, None);
-                    let ended = self.watch(stop, &errors, &device);
-                    drop(stream);
+                    let ended = self.watch(stop, &errors, &opened);
+                    drop(opened);
                     match ended {
                         Ended::Stop => return,
                         Ended::Rebuild(why) => log::info!("audio: opening the output again: {why}"),
@@ -322,9 +482,10 @@ impl Output {
         }
     }
 
-    /// While a stream plays: until the app closes, the stream fails, or (no device forced) the
-    /// default device is another one than `device`.
-    fn watch(&self, stop: &Receiver<()>, errors: &Receiver<String>, device: &str) -> Ended {
+    /// While a stream plays: until the app closes, the stream fails, the user chooses another
+    /// device, or (following the system's) the default device is another one than the one
+    /// playing, or the chosen device that was missing is back.
+    fn watch(&self, stop: &Receiver<()>, errors: &Receiver<String>, opened: &Opened) -> Ended {
         let mut looked = Instant::now();
         loop {
             match errors.recv_timeout(Duration::from_millis(250)) {
@@ -335,16 +496,26 @@ impl Output {
                 Ok(()) | Err(TryRecvError::Disconnected) => return Ended::Stop,
                 Err(TryRecvError::Empty) => {}
             }
-            if self.tuning.device.is_none() && looked.elapsed() >= DEVICE_POLL {
+            if self.prefs.generation() != opened.generation {
+                return Ended::Rebuild("another output was chosen".into());
+            }
+            if opened.choice.follows_default() && looked.elapsed() >= DEVICE_POLL {
                 looked = Instant::now();
-                let now = cpal::default_host()
-                    .default_output_device()
-                    .map(|d| device_name(&d));
-                if now.as_deref() != Some(device) {
+                let host = cpal::default_host();
+                let now = host.default_output_device().map(|d| device_name(&d));
+                if now.as_deref() != Some(opened.device.as_str()) {
                     return Ended::Rebuild(format!(
                         "the default output is now {}",
                         now.as_deref().unwrap_or("none")
                     ));
+                }
+                if opened.choice == Choice::FellBack {
+                    let chosen = self.prefs.device();
+                    let back = output_names()
+                        .is_ok_and(|names| chosen.is_some_and(|c| names.contains(&c)));
+                    if back {
+                        return Ended::Rebuild("the chosen output is back".into());
+                    }
                 }
             }
         }
@@ -489,7 +660,10 @@ fn device_name(device: &cpal::Device) -> String {
 /// What a stream's callback keeps between two calls.
 struct Fill {
     current: CurrentShared,
-    target_seconds: f64,
+    /// `audio.lat`, read at every callback (an atomic).
+    prefs: Arc<AudioPrefs>,
+    /// The developer knob `EMUDOME_AUDIO_TARGET_MS`, in seconds: then the ring's own limit.
+    fixed_target: Option<f64>,
     out_rate: f64,
     channels: usize,
     rs: Resampler,
@@ -540,11 +714,22 @@ impl Fill {
             out.fill(0.0);
             return;
         }
-        let queued = reader.begin(ring) as f64;
         let rate = ring.sample_rate();
+        let (queued, target_seconds) = match self.fixed_target {
+            Some(seconds) => (reader.begin(ring), seconds),
+            None => {
+                let latency = self.prefs.latency();
+                let max_len = samples_in(rate, latency.max_ms());
+                (
+                    reader.begin_within(ring, max_len),
+                    f64::from(latency.target_ms()) / 1000.0,
+                )
+            }
+        };
+        let queued = queued as f64;
         let fill_ms = queued / 2.0 / rate * 1000.0;
         // Base ratio plus a correction proportional to the queue's fill level (±0.5%).
-        let target = rate * self.target_seconds * 2.0;
+        let target = rate * target_seconds * 2.0;
         let fill_err = ((queued - target) / target).clamp(-1.0, 1.0);
         let ratio = 1.0 + 0.005 * fill_err;
         let step = rate / self.out_rate * ratio;
@@ -597,25 +782,35 @@ impl Fill {
 fn build_stream(
     current: CurrentShared,
     tuning: &AudioTuning,
+    prefs: &Arc<AudioPrefs>,
     tone: Option<f32>,
     metrics: &SharedAudioMetrics,
     measured: Option<SharedAudioMetrics>,
     errors: Sender<String>,
-) -> anyhow::Result<(cpal::Stream, String)> {
+) -> anyhow::Result<Opened> {
     let host = cpal::default_host();
+    // Read before the device: a choice made while this stream opens replaces it at once.
+    let generation = prefs.generation();
+    let chosen = prefs.device();
     let devices: Vec<cpal::Device> = host.output_devices()?.collect();
-    let device = match &tuning.device {
-        Some(want) => {
-            let want = want.to_lowercase();
-            devices
-                .iter()
-                .find(|d| device_name(d).to_lowercase().contains(&want))
-                .cloned()
-                .ok_or_else(|| anyhow::anyhow!("no output device named like {want:?}"))?
+    let names: Vec<String> = devices.iter().map(device_name).collect();
+    let choice = choose(&names, tuning.device.as_deref(), chosen.as_deref())
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let device = match &choice {
+        Choice::Named(i) => devices
+            .get(*i)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("output device {i} gone"))?,
+        Choice::System | Choice::FellBack => {
+            if choice == Choice::FellBack {
+                log::warn!(
+                    "audio: the chosen output {:?} is not there, the system's plays until it is back",
+                    chosen.as_deref().unwrap_or_default()
+                );
+            }
+            host.default_output_device()
+                .ok_or_else(|| anyhow::anyhow!("no audio device"))?
         }
-        None => host
-            .default_output_device()
-            .ok_or_else(|| anyhow::anyhow!("no audio device"))?,
     };
     let default = device.default_output_config()?;
     let sample_format = default.sample_format();
@@ -650,7 +845,7 @@ fn build_stream(
     let out_rate = f64::from(config.sample_rate);
     let info = AudioDeviceInfo {
         name: device_name(&device),
-        devices: devices.iter().map(device_name).collect(),
+        devices: names,
         default_rate: default.sample_rate(),
         default_channels: default.channels(),
         rate: config.sample_rate,
@@ -662,21 +857,24 @@ fn build_stream(
         },
         supported,
     };
+    let latency = prefs.latency();
     log::info!(
-        "audio: {} — {} Hz, {} channels, {:?}, buffer {}, queue target {} ms",
+        "audio: {} — {} Hz, {} channels, {:?}, buffer {}, queue target {} ms ({:?})",
         info.name,
         out_rate,
         channels,
         sample_format,
         info.buffer,
-        tuning.target_ms
+        tuning.target_ms.unwrap_or(latency.target_ms()),
+        latency
     );
     let name = info.name.clone();
     metrics.lock().device = Some(info);
 
     let state = Fill {
         current,
-        target_seconds: f64::from(tuning.target_ms) / 1000.0,
+        prefs: prefs.clone(),
+        fixed_target: tuning.target_ms.map(|ms| f64::from(ms) / 1000.0),
         out_rate,
         channels,
         rs: Resampler::new(),
@@ -703,7 +901,12 @@ fn build_stream(
         cpal::SampleFormat::U64 => build_typed::<u64>(&device, config, state, errors),
         other => unhandled(other),
     }?;
-    Ok((stream, name))
+    Ok(Opened {
+        stream,
+        device: name,
+        choice,
+        generation,
+    })
 }
 
 /// A format with no arm (24-bit packed, DSD, a future one) is refused, never mis-played.
@@ -747,6 +950,69 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn names(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn the_chosen_output_is_opened_by_its_exact_name_and_a_missing_one_falls_back() {
+        let list = names(&["Speakers (Realtek)", "Headphones (USB)"]);
+        assert_eq!(choose(&list, None, None), Ok(Choice::System));
+        assert_eq!(
+            choose(&list, None, Some("Headphones (USB)")),
+            Ok(Choice::Named(1))
+        );
+        // Unplugged: the system's plays, the choice is kept (the stream follows the default
+        // and looks for the device to come back).
+        let gone = choose(&list, None, Some("Bluetooth (JBL)"));
+        assert_eq!(gone, Ok(Choice::FellBack));
+        assert!(gone.is_ok_and(|c| c.follows_default()));
+        assert!(!Choice::Named(0).follows_default());
+        // Exact, not a part of the name.
+        assert_eq!(
+            choose(&list, None, Some("Headphones")),
+            Ok(Choice::FellBack)
+        );
+    }
+
+    #[test]
+    fn the_developer_knob_wins_and_matches_a_part_of_the_name() {
+        let list = names(&["Speakers (Realtek)", "Headphones (USB)"]);
+        assert_eq!(
+            choose(&list, Some("usb"), Some("Speakers (Realtek)")),
+            Ok(Choice::Named(1))
+        );
+        assert!(choose(&list, Some("hdmi"), None).is_err());
+    }
+
+    #[test]
+    fn system_is_no_device_and_the_latency_defaults_to_balanced() {
+        use emudome_core::settings::Value;
+        let (device, latency) = chosen(|_| None);
+        assert_eq!((device, latency), (None, Latency::Balanced));
+        let (device, latency) = chosen(|key| match key {
+            "audio.out" => Some(Value::Text("Headphones (USB)".into())),
+            "audio.lat" => Some(Value::Text("safe".into())),
+            _ => None,
+        });
+        assert_eq!(device.as_deref(), Some("Headphones (USB)"));
+        assert_eq!(latency, Latency::Safe);
+        assert!(is_output_key("audio.out") && is_output_key("audio.lat"));
+        assert!(!is_output_key("audio.vol"));
+    }
+
+    #[test]
+    fn a_new_device_bumps_the_generation_a_new_latency_does_not() {
+        let prefs = AudioPrefs::new(None, Latency::Balanced);
+        let g = prefs.generation();
+        prefs.set(None, Latency::Low);
+        assert_eq!(prefs.generation(), g, "the latency applies live");
+        assert_eq!(prefs.latency(), Latency::Low);
+        prefs.set(Some("Headphones (USB)".into()), Latency::Low);
+        assert_eq!(prefs.generation(), g + 1);
+        assert_eq!(prefs.device().as_deref(), Some("Headphones (USB)"));
+    }
 
     #[test]
     fn a_lost_device_rebuilds_the_stream_an_underrun_does_not() {

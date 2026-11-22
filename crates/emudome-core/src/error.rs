@@ -204,6 +204,9 @@ pub enum ErrorCode {
     /// Health: a game whose core draws on the GPU (3DS) found no Vulkan device to render on
     /// (another graphics API, no Vulkan driver): it runs with the core's software renderer.
     HwRenderFallback { detail: String },
+    /// Health: the graphics API chosen in `video.api` (`api`: the option id, `vulkan`, `d3d12`,
+    /// `opengl`) has no GPU on this system: EmuDome chose one by itself for this run.
+    GraphicsApiUnavailable { api: String },
     /// Health: the surface the system handed over (Android's) cannot be drawn on; nothing is
     /// shown until the next one.
     VideoSurfaceFailed { detail: String },
