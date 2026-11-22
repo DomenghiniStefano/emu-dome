@@ -30,7 +30,8 @@ export const dialogOverlayVariants = cva('fixed inset-0 z-dialog grid bg-scrim p
     size: {
       [DialogSize.Default]: 'place-items-center',
       [DialogSize.Wide]: 'place-items-center backdrop-blur-dim',
-      [DialogSize.Palette]: 'items-start justify-items-center pt-palette-top touch:pt-16',
+      [DialogSize.Palette]:
+        'grid-cols-[minmax(0,1fr)] items-start justify-items-center pt-palette-top touch:pt-16',
     },
   },
   defaultVariants: { size: DialogSize.Default },

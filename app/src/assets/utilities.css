@@ -195,11 +195,13 @@
 }
 
 /* A setting row opened from the search (X01, #32): lit in accent-soft, then back to nothing by
-   the end of `duration-highlight`. «Riduci le animazioni» keeps the light without the fade. */
+   the end of `duration-highlight`. «Riduci le animazioni» keeps the light without the fade. The
+   colour is the theme's own variable (`--accent-soft`): the `--color-*` names are inlined by
+   Tailwind and do not exist at run time. */
 @keyframes row-highlight {
   0%,
   70% {
-    background-color: var(--color-accent-soft);
+    background-color: var(--accent-soft);
   }
   100% {
     background-color: transparent;

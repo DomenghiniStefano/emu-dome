@@ -14,6 +14,7 @@ import {
   emu,
   type ComboRow,
   type LibraryGame,
+  type PadFamily,
   type Pos,
   type SettingEntry,
   type SettingsSchema,
@@ -59,8 +60,6 @@ export interface GameItem {
 export type SearchItem = ActionItem | SettingItem | GameItem
 export type SearchResults = Results<ActionItem, SettingItem, GameItem>
 
-/** The names of a generic pad: the shortcuts' combos read the same whatever is connected. */
-const FAMILY = 'generic'
 /** The only action that works without a game: the keyboard's fullscreen. */
 const FULLSCREEN: KeyAction = 'fullscreen'
 
@@ -73,12 +72,17 @@ export function useSearchSources() {
   const store = useSettingsValues(schema, byKey, ref(GLOBAL), failWith)
   const combos = ref<ComboRow[]>([])
   const modifier = ref<Pos>('l3')
+  /** The combos are named as on the controller connected first («L3 + Y» on an Xbox pad), else
+   * by position on a generic one. */
+  const family = ref<PadFamily>('generic')
 
   /** Reads what may have changed since the last opening: the values and the shortcuts. */
   async function load() {
     try {
       schema.value = await loadSchema()
-      const [bindings] = await Promise.all([emu.controls.bindings(FAMILY, GLOBAL), store.loadAll()])
+      const [pads] = await Promise.all([emu.controls.pads(), store.loadAll()])
+      family.value = pads[0]?.family ?? 'generic'
+      const bindings = await emu.controls.bindings(family.value, GLOBAL)
       combos.value = bindings.combos
       modifier.value = bindings.modifier
     } catch (e) {
@@ -94,7 +98,7 @@ export function useSearchSources() {
         kind: 'action',
         id: c.hotkey,
         name: hotkeyName(c.hotkey),
-        shortcut: c.pos ? comboText(FAMILY, modifier.value, c.pos) : null,
+        shortcut: c.pos ? comboText(family.value, modifier.value, c.pos) : null,
         reason: needsGame,
       }))
     const f11 = KEYBOARD_SHORTCUTS.find(k => k.action === FULLSCREEN)
