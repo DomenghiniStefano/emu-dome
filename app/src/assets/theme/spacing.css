@@ -165,6 +165,12 @@
   /* Its main action's width on the desktop. */
   --spacing-menu-main: 260px;
 
+  /* Search and notifications (Trello #32, the owner's mockup of 2026-11-21): the top bar's search
+     field, how far below the window's top the search opens, the notifications panel. */
+  --spacing-topbar-search: 360px;
+  --spacing-palette-top: 96px;
+  --spacing-notifications: 380px;
+
   /* DS / 3DS screens (Trello #28, the owner's mockup of 2026-11-21): the C09 editor's side panel,
      the G15 «Coperchio chiuso» card. */
   --spacing-editor-panel: 320px;

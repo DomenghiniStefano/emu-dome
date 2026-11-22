@@ -2299,6 +2299,34 @@
       "hintPhone": "In gioco premi il pulsante menu in basso a destra per il menu rapido."
     }
   },
+  "search": {
+    "title": "Cerca",
+    "field": "Cerca giochi, azioni e impostazioni",
+    "groups": {
+      "actions": "Azioni",
+      "settings": "Impostazioni",
+      "games": "Giochi"
+    },
+    "settingWhere": "Impostazioni · {page}",
+    "gameWhere": "{console} · {time}",
+    "needsGame": "Apri un gioco per usarla",
+    "noResults": "Nessun risultato per «{query}»",
+    "didYouMean": "Forse cercavi:",
+    "hint": {
+      "choose": "Scegli",
+      "open": "Apri",
+      "close": "Chiudi",
+      "controller": "Con il controller: Y apre la ricerca"
+    },
+    "key": {
+      "ctrl": "Ctrl",
+      "k": "K",
+      "enter": "Invio",
+      "esc": "Esc",
+      "up": "↑",
+      "down": "↓"
+    }
+  },
   "screenEditor": {
     "title": "Disposizione degli schermi",
     "lead": "Trascina uno schermo per spostarlo, l’angolo per ridimensionarlo.",

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  Bell,
   ChevronLeft,
   ChevronRight,
   Ellipsis,
@@ -9,6 +10,7 @@ import {
   Play,
   RefreshCw,
   Save,
+  Search,
   Settings,
   Star,
   Trash2,
@@ -462,6 +464,44 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
           :style="{ background: c }"
           :disabled="i === 2"
         />
+      </div>
+    </KitState>
+    <KitState label="Field · Compact: the top bar's search; BarIcon · Icon: closed and open">
+      <div class="flex items-center gap-8 bg-glass-thin p-6">
+        <Button :variant="ButtonVariant.Field" :size="ButtonSize.Compact" class="w-topbar-search">
+          <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
+          <span class="flex-1 text-left">Search games, actions and settings</span>
+        </Button>
+        <Button :variant="ButtonVariant.BarIcon" :size="ButtonSize.Icon" aria-label="Notifications">
+          <Bell :size="20" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+        <Button
+          :variant="ButtonVariant.BarIcon"
+          :size="ButtonSize.Icon"
+          aria-label="Notifications"
+          aria-expanded="true"
+        >
+          <Bell :size="20" :stroke-width="1.75" aria-hidden="true" />
+        </Button>
+      </div>
+    </KitState>
+    <KitState label="Result · Result: a search result, one disabled with its reason">
+      <div class="flex w-panel flex-col glass-thick p-8">
+        <Button :variant="ButtonVariant.Result" :size="ButtonSize.Result">
+          <Settings :size="20" :stroke-width="1.75" class="text-ink-muted" aria-hidden="true" />
+          <span class="flex flex-col">
+            <span class="font-medium">Vertical sync (V-Sync)</span>
+            <span class="text-caption text-ink-muted">Settings · Video</span>
+          </span>
+          <span class="ml-auto text-caption text-ink-muted">On</span>
+        </Button>
+        <Button :variant="ButtonVariant.Result" :size="ButtonSize.Result" disabled>
+          <Save :size="20" :stroke-width="1.75" class="text-ink-muted" aria-hidden="true" />
+          <span class="flex flex-col">
+            <span class="font-medium">Quick save to the current slot</span>
+            <span class="text-caption text-ink-muted">Open a game to use it</span>
+          </span>
+        </Button>
       </div>
     </KitState>
   </KitSection>

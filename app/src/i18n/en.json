@@ -2299,6 +2299,34 @@
       "hintPhone": "In game, press the menu button at the bottom right for the quick menu."
     }
   },
+  "search": {
+    "title": "Search",
+    "field": "Search games, actions and settings",
+    "groups": {
+      "actions": "Actions",
+      "settings": "Settings",
+      "games": "Games"
+    },
+    "settingWhere": "Settings · {page}",
+    "gameWhere": "{console} · {time}",
+    "needsGame": "Open a game to use it",
+    "noResults": "No results for “{query}”",
+    "didYouMean": "Did you mean:",
+    "hint": {
+      "choose": "Choose",
+      "open": "Open",
+      "close": "Close",
+      "controller": "With the controller: Y opens the search"
+    },
+    "key": {
+      "ctrl": "Ctrl",
+      "k": "K",
+      "enter": "Enter",
+      "esc": "Esc",
+      "up": "↑",
+      "down": "↓"
+    }
+  },
   "screenEditor": {
     "title": "Screen layout",
     "lead": "Drag a screen to move it, its corner to resize it.",

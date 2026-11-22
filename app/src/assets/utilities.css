@@ -194,6 +194,24 @@
   }
 }
 
+/* A setting row opened from the search (X01, #32): lit in accent-soft, then back to nothing by
+   the end of `duration-highlight`. «Riduci le animazioni» keeps the light without the fade. */
+@keyframes row-highlight {
+  0%,
+  70% {
+    background-color: var(--color-accent-soft);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@utility animate-row-highlight {
+  animation: row-highlight var(--transition-duration-highlight) var(--ease-out);
+  :root[data-motion='reduce'] & {
+    animation-timing-function: steps(1, end);
+  }
+}
+
 /* A game's own colour behind its details (GameDetails, board «Dettagli»): `--cover-tint` is the
    game's colour, set on the page. The header fades from a third of it to nothing, and the cover
    glows in two thirds of it. The glow's names and the fixed drop shadow under it are spec

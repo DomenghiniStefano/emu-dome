@@ -18,14 +18,19 @@
 // From there a game opens, and closing it comes back to the details; «Mostra i backup» /
 // «Importa…» (L05), «Apri tutte le impostazioni…» (L06) and «Rimappa…» (L07) jump to the
 // Saves, Settings and Controls sections for that one game.
-import { computed, ref, watch } from 'vue'
+//
+// The search everywhere (X01, #32): the top bar's field, Ctrl + K, or Y on the controller (the
+// `search` step, which a dialog or a menu open above the shell stops) open SearchPalette; a
+// setting chosen there opens its page with the row lit (`settingRowFor`), a game its details.
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { cn } from '@/lib/cn'
-import { useNavScope } from '@/nav'
-import type { LibraryGame } from '@/emu'
+import { activeScopeRoot, useNavScope } from '@/nav'
+import type { LibraryGame, SettingKey } from '@/emu'
 import ControlsView from '@/components/controls/ControlsView.vue'
 import GameDetails from '@/components/details/GameDetails.vue'
 import LibraryView from '@/components/library/LibraryView.vue'
 import SavesView from '@/components/saves/SavesView.vue'
+import SearchPalette from '@/components/search/SearchPalette.vue'
 import SettingsView from '@/components/settings/SettingsView.vue'
 import AppRail from './AppRail.vue'
 import AppTopBar from './AppTopBar.vue'
@@ -39,6 +44,7 @@ import {
   pickSection,
   remapFor,
   savesFor,
+  settingRowFor,
   settingsFor,
   showingDetails,
   type Route,
@@ -59,7 +65,30 @@ const hazeStyle = useCoverHaze(section)
 
 const root = ref<HTMLElement | null>(null)
 const rail = ref<InstanceType<typeof AppRail> | null>(null)
-useNavScope(root, { autofocus: true, back: () => rail.value?.focusCurrent() })
+const searching = ref(false)
+const openSearch = () => (searching.value = true)
+useNavScope(root, {
+  autofocus: true,
+  back: () => rail.value?.focusCurrent(),
+  search: openSearch,
+})
+
+/** Ctrl + K (⌘ K): the search, unless a dialog or a menu above the shell has the steps. */
+function onKey(e: KeyboardEvent) {
+  if (e.code !== 'KeyK' || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
+  if (activeScopeRoot() !== root.value) return
+  e.preventDefault()
+  openSearch()
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+
+// A setting chosen in the search: the Settings section mounts again for it, even when shown.
+const settingsVisit = ref(0)
+function openSetting(key: SettingKey) {
+  settingsVisit.value++
+  go(settingRowFor(route.value, key))
+}
 
 // The section on screen has read its arrival in its setup: drop it, after the render.
 watch(
@@ -77,7 +106,13 @@ const go = (to: Route) => (route.value = to)
 <template>
   <div ref="root" class="relative isolate flex h-full flex-col overflow-hidden bg-bg">
     <div class="ambient-haze" aria-hidden="true" :style="hazeStyle"></div>
-    <AppTopBar />
+    <AppTopBar @search="openSearch" />
+    <SearchPalette
+      v-model:open="searching"
+      @open-setting="openSetting"
+      @details="g => go(openDetails(g.id))"
+      @play="g => emit('openGame', g)"
+    />
     <div class="flex min-h-0 flex-1">
       <AppRail
         ref="rail"
@@ -121,7 +156,9 @@ const go = (to: Route) => (route.value = to)
         />
         <SettingsView
           v-else-if="section === 'settings'"
+          :key="settingsVisit"
           :game="arrivalFor(route, 'settings')?.game ?? null"
+          :row="arrivalFor(route, 'settings')?.row ?? null"
           @open-controls="go(openSection(route, 'controls'))"
         />
         <ControlsView
