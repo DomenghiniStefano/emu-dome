@@ -78,7 +78,7 @@ function close() {
       :class="cn(dateTimeFieldVariants({ variant }), props.class)"
       @click="open ? close() : show()"
     >
-      <span class="flex-1">{{ text }}</span>
+      <span class="min-w-0 flex-1 truncate">{{ text }}</span>
       <CalendarClock :size="14" :stroke-width="1.75" aria-hidden="true" />
     </button>
     <PopoverContent :anchor="field" :variant="PopoverVariant.Fit" :aria-label="label">

@@ -12,7 +12,7 @@ import { IssueStatus } from '@/kit/review'
 <template>
   <KitSection title="Heading">
     <KitState label="Overline: desktop, and on the phone (one step larger)">
-      <div class="flex gap-24">
+      <div class="flex gap-12">
         <Heading :variant="HeadingVariant.Overline">Quick saves</Heading>
         <div data-density="touch">
           <Heading :variant="HeadingVariant.Overline">Quick saves</Heading>
@@ -29,7 +29,7 @@ import { IssueStatus } from '@/kit/review'
       <Heading :variant="HeadingVariant.PageTitle">Restart the game?</Heading>
     </KitState>
     <KitState label="Display: desktop, and on the phone">
-      <div class="flex items-end gap-24">
+      <div class="flex items-end gap-12">
         <Heading :variant="HeadingVariant.Display">Welcome</Heading>
         <div data-density="touch">
           <Heading :variant="HeadingVariant.Display">Welcome</Heading>
@@ -37,7 +37,7 @@ import { IssueStatus } from '@/kit/review'
       </div>
     </KitState>
     <KitState label="Hero: a game's name beside its cover, desktop and phone">
-      <div class="flex items-end gap-24">
+      <div class="flex items-end gap-12">
         <Heading :variant="HeadingVariant.Hero">Pocket Quest</Heading>
         <div data-density="touch">
           <Heading :variant="HeadingVariant.Hero">Pocket Quest</Heading>
@@ -45,7 +45,7 @@ import { IssueStatus } from '@/kit/review'
       </div>
     </KitState>
     <KitState label="LabelledBlock: its label, an aside at the far end, the block">
-      <LabelledBlock title="Quick saves" class="w-dialog">
+      <LabelledBlock title="Quick saves" class="w-menu">
         <template #aside>
           <Button :variant="ButtonVariant.Link" :size="ButtonSize.LabelLink">More slots</Button>
         </template>

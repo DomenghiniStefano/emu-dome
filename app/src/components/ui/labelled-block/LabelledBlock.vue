@@ -32,7 +32,10 @@ const props = withDefaults(defineProps<Props>(), {
     :as-child="asChild"
     :class="cn('flex flex-col gap-block-gap', props.class)"
   >
-    <div v-if="title || $slots.aside" class="flex flex-wrap items-baseline justify-between gap-8">
+    <div
+      v-if="title || $slots.aside"
+      class="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-2"
+    >
       <Heading v-if="title" :as="titleAs" :variant="HeadingVariant.Overline">{{ title }}</Heading>
       <slot name="aside" />
     </div>

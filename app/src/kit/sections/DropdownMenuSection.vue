@@ -119,50 +119,6 @@ const menuLook = dropdownMenuVariants()
     </KitState>
 
     <template #review>
-      <KitIssue title="Voci da 32 px sul telefono" :status="IssueStatus.Proposed">
-        Le voci del menu «…» sono Button Menu · MenuItem, alte 32 px (`control`) anche con la
-        densità touch, attaccate tra loro (2 px). Sul telefono il menu si apre dal «…» dei dettagli
-        del gioco (GameMoreButton, già 44 px al tocco): il pulsante è grande, le voci che apre no,
-        sotto il minimo touch di 44.
-        <template #current>
-          <div data-density="touch" :class="menuLook">
-            <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
-              <ImageIcon :size="16" :stroke-width="1.75" aria-hidden="true" />
-              Choose the cover…
-            </Button>
-            <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuItem">
-              <Star :size="16" :stroke-width="1.75" aria-hidden="true" />
-              Add to favourites
-            </Button>
-          </div>
-        </template>
-        <template #proposed>
-          <div data-density="touch" :class="menuLook">
-            <Button
-              :variant="ButtonVariant.Menu"
-              :size="ButtonSize.MenuItem"
-              class="touch:h-touch touch:text-label-lead"
-            >
-              <ImageIcon :size="16" :stroke-width="1.75" aria-hidden="true" />
-              Choose the cover…
-            </Button>
-            <Button
-              :variant="ButtonVariant.Menu"
-              :size="ButtonSize.MenuItem"
-              class="touch:h-touch touch:text-label-lead"
-            >
-              <Star :size="16" :stroke-width="1.75" aria-hidden="true" />
-              Add to favourites
-            </Button>
-          </div>
-        </template>
-        <template #solution>
-          `touch:h-touch touch:text-label-lead` in ButtonSize.MenuItem
-          (components/ui/button/variants.ts), come Toast (44 al tocco) e come Default e Tall, che al
-          tocco passano a `text-label-lead`.
-        </template>
-      </KitIssue>
-
       <KitIssue title="Nessuna larghezza massima" :status="IssueStatus.Open">
         Il menu ha una larghezza minima (`menu-min`, 220) ma non una massima, e le voci non vanno a
         capo (il Button è `whitespace-nowrap`). Oggi le voci italiane sono corte, ma una traduzione

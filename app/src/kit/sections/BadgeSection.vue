@@ -52,25 +52,6 @@ import { IssueStatus } from '@/kit/review'
           l'arancio-rosso in colors.css (decisione di colore del proprietario).
         </template>
       </KitIssue>
-      <KitIssue title="Due forme per uno stato" :status="IssueStatus.Proposed">
-        Lo stato buono (Success, «In uso») è una pillola alta 22 con il testo a 12; lo stato
-        problema (Warning) e i fatti (Neutral) sono etichette alte 16 con il testo a 11. Sono la
-        stessa cosa, uno stato accanto a un nome, ma cambiano forma e altezza a seconda del colore.
-        <template #current>
-          <Badge :variant="BadgeVariant.Success" :size="BadgeSize.Pill">In use</Badge>
-          <Badge :variant="BadgeVariant.Warning">Save unreadable</Badge>
-          <Badge>Newest</Badge>
-        </template>
-        <template #proposed>
-          <Badge :variant="BadgeVariant.Success">In use</Badge>
-          <Badge :variant="BadgeVariant.Warning">Save unreadable</Badge>
-          <Badge>Newest</Badge>
-        </template>
-        <template #solution>
-          Una sola forma per gli stati (Tag, come nella proposta, o tutti Pill): i 6 usi di
-          BadgeSize.Pill passano a Tag, Pill resta solo se serve a Quiet (un valore, non uno stato).
-        </template>
-      </KitIssue>
     </template>
   </KitSection>
 </template>

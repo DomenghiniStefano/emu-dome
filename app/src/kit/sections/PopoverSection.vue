@@ -42,7 +42,7 @@ const favourites = ref(true)
           <Checkbox :model-value="favourites" @update:model-value="favourites = !favourites">
             <Button :variant="ButtonVariant.Menu" :size="ButtonSize.MenuRow" data-nav-initial>
               <span
-                class="size-14 shrink-0 rounded-4"
+                class="size-14 shrink-0 rounded-badge"
                 :class="favourites ? 'bg-accent-text' : 'border border-line-strong'"
                 aria-hidden="true"
               ></span>

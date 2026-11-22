@@ -3,14 +3,14 @@ import { cva } from 'class-variance-authority'
 
 export const DateTimeFieldVariant = {
   // The field of a setting row (SettingRow, `saves.rtcdate`): the Select field's box (200px at
-  // least, 32px high, an edge on surface-raised), the date and time in it, a calendar icon at the
+  // least, a control high, an edge on surface-raised), the date and time in it, a calendar icon at the
   // end; the segments open in a popover under it.
   Field: 'field',
 } as const
 export type DateTimeFieldVariant = (typeof DateTimeFieldVariant)[keyof typeof DateTimeFieldVariant]
 
 export const dateTimeFieldVariants = cva(
-  'flex cursor-pointer items-center gap-8 rounded-control border px-field-pad text-left font-sans text-label enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-disabled',
+  'flex max-w-full cursor-pointer items-center gap-6 rounded-control border px-field-pad text-left font-sans text-label enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-disabled',
   {
     variants: {
       variant: {

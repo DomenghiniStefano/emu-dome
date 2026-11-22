@@ -27,8 +27,6 @@ const devices = [
   { value: 'realtek', label: 'Speakers (Realtek(R) High Definition Audio with a long name)' },
 ]
 const device = ref('realtek')
-const deviceNow = ref('realtek')
-const deviceProposed = ref('realtek')
 </script>
 
 <template>
@@ -112,45 +110,6 @@ const deviceProposed = ref('realtek')
         <template #solution>
           Field di select/variants.ts e di date-time-field/variants.ts passa a border-line-strong,
           come Input e SearchField: un solo bordo per «campo».
-        </template>
-      </KitIssue>
-      <KitIssue title="Un valore lungo va a capo e esce dal campo" :status="IssueStatus.Proposed">
-        Il campo è alto 32 fisso ma il testo può andare a capo: il nome di un dispositivo audio
-        (audio.out) o di un'opzione lunga in una riga stretta va su due righe e la seconda esce dal
-        bordo (stato «A long value» qui sopra). Su telefono succede con quasi ogni dispositivo.
-        <template #current>
-          <div class="flex w-field">
-            <Select v-model="deviceNow">
-              <SelectTrigger aria-label="Long value, now"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="o in devices" :key="o.value" :value="o.value">
-                  {{ o.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </template>
-        <template #proposed>
-          <div class="flex w-field">
-            <Select v-model="deviceProposed">
-              <SelectTrigger
-                aria-label="Long value, proposed"
-                class="min-w-0 flex-1 [&>span]:min-w-0 [&>span]:truncate"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem v-for="o in devices" :key="o.value" :value="o.value">
-                  {{ o.label }}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </template>
-        <template #solution>
-          In SelectTrigger.vue il testo sta su una riga con i puntini (truncate, min-w-0) e il campo
-          può restringersi nel suo contenitore; il nome intero si legge aprendo la lista, che resta
-          larga quanto serve.
         </template>
       </KitIssue>
     </template>

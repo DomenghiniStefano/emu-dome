@@ -1,7 +1,7 @@
 import { cva } from 'class-variance-authority'
 
 export const SliderVariant = {
-  // A 4px track edged in `line`, filled inside its edge with a rounded fill.
+  // A 4px track edged in `line`, filled inside its edge.
   Default: 'default',
   // The settings rows' slider (SettingRow, the native range it replaced): the track itself is
   // painted, edge included, with a hard stop at the value (`--fill`, set by Slider.vue), as the
@@ -12,7 +12,7 @@ export const SliderVariant = {
 export type SliderVariant = (typeof SliderVariant)[keyof typeof SliderVariant]
 
 export const sliderTrackVariants = cva(
-  'relative h-4 flex-1 rounded-full border border-line bg-surface-raised',
+  'relative h-4 flex-1 rounded-badge border border-line bg-surface-raised',
   {
     variants: {
       variant: {
@@ -26,7 +26,7 @@ export const sliderTrackVariants = cva(
 )
 
 /** The fill inside the track (the Default variant; EdgeFill paints the track instead). */
-export const sliderRangeClass = 'absolute h-full rounded-full bg-accent-text'
+export const sliderRangeClass = 'absolute h-full bg-accent-text'
 
 /** How far along the range `value` is, in percent (0 when the range is empty). */
 export function fillPercent(value: number, min: number, max: number): number {

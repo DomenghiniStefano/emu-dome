@@ -34,14 +34,14 @@ const props = withDefaults(defineProps<Props>(), { as: 'section', titleAs: 'h2' 
   >
     <span
       v-if="icon"
-      class="grid size-thumb flex-none place-items-center rounded-16 border border-line bg-surface-raised text-ink-muted"
+      class="grid size-48 flex-none place-items-center rounded-card border border-line bg-surface-raised text-ink-muted"
       aria-hidden="true"
     >
       <component :is="icon" :size="24" :stroke-width="1.75" />
     </span>
     <Heading v-if="title" :as="titleAs">{{ title }}</Heading>
     <p v-if="text" class="m-0 max-w-empty text-ink-muted">{{ text }}</p>
-    <div v-if="$slots.default" class="mt-4 flex flex-wrap justify-center gap-8">
+    <div v-if="$slots.default" class="mt-4 flex flex-wrap justify-center gap-6">
       <slot />
     </div>
     <slot name="footer" />

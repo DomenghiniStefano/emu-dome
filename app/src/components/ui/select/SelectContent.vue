@@ -62,7 +62,7 @@ const ink = computed(() => {
       "
     >
       <SelectNavScope>
-        <SelectViewport class="flex flex-col gap-2 p-4">
+        <SelectViewport class="flex flex-col gap-px p-2">
           <slot />
         </SelectViewport>
       </SelectNavScope>

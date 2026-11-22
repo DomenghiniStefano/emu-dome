@@ -11,7 +11,7 @@ import { IssueStatus } from '@/kit/review'
 <template>
   <KitSection title="EmptyState">
     <KitState label="Page: icon, title, text, actions, footer">
-      <div class="flex h-dialog w-dialog border border-dashed border-line">
+      <div class="flex w-menu border border-dashed border-line">
         <EmptyState
           :icon="Save"
           title="Nothing saved yet"
@@ -39,36 +39,11 @@ import { IssueStatus } from '@/kit/review'
       <EmptyState
         as="div"
         :variant="EmptyStateVariant.Card"
-        class="w-dialog"
+        class="w-menu"
         text="No setting matches “crt”."
       />
     </KitState>
     <template #review>
-      <KitIssue title="Card: 32 di margine attorno a una riga" :status="IssueStatus.Proposed">
-        La variante Card ha p-32 come la pagina intera. Nei suoi 5 usi è quasi sempre una riga sola
-        («Nessuna impostazione corrisponde a …»), e la card diventa alta 84 per 18 di testo: una
-        fascia vuota nel mezzo della lista dei risultati.
-        <template #current>
-          <EmptyState
-            as="div"
-            :variant="EmptyStateVariant.Card"
-            class="w-field"
-            text="No setting matches “crt”."
-          />
-        </template>
-        <template #proposed>
-          <EmptyState
-            as="div"
-            :variant="EmptyStateVariant.Card"
-            class="w-field p-card-pad"
-            text="No setting matches “crt”."
-          />
-        </template>
-        <template #solution>
-          Card usa il margine di una card (p-card-pad, 16) in empty-state/variants.ts; il p-32 resta
-          a Page, che riempie una sezione.
-        </template>
-      </KitIssue>
       <KitIssue
         title="ink-faint è sotto il contrasto minimo per il testo"
         :status="IssueStatus.Proposed"

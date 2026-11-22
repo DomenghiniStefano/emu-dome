@@ -21,13 +21,13 @@ const muted = ref(true)
 <template>
   <KitSection title="Card">
     <KitState label="Surface">
-      <Card class="w-field gap-10">
+      <Card class="w-field gap-6">
         <CardTitle>Files</CardTitle>
         <CardDescription>The game file and where its saves are.</CardDescription>
       </Card>
     </KitState>
-    <KitState label="Surface · pad Snug (12), Tight (10)">
-      <div class="flex gap-10">
+    <KitState label="Surface · pad Snug (8), Tight (6)">
+      <div class="flex gap-6">
         <Card :pad="CardPad.Snug" class="w-field gap-6">
           <CardTitle>Snug</CardTitle>
           <CardDescription>A line with its action.</CardDescription>
@@ -39,16 +39,16 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="StatTile · a count per console">
-      <div class="grid w-dialog grid-cols-4 gap-10">
+      <div class="grid w-dialog grid-cols-4 gap-6">
         <StatTile :value="12" label="Game Boy Advance" />
         <StatTile :value="3" label="Nintendo DS" />
         <StatTile :value="0" label="Nintendo 3DS" />
         <StatTile :value="7" label="Game Boy and Color" />
       </div>
     </KitState>
-    <KitState label="Detail: desktop, and on the phone (rounder, tighter)">
-      <div class="flex gap-10">
-        <Card :variant="CardVariant.Detail" class="w-field gap-10">
+    <KitState label="Detail: desktop, and on the phone (panel corners, the phone room)">
+      <div class="flex gap-6">
+        <Card :variant="CardVariant.Detail" class="w-field gap-6">
           <CardTitle>Files</CardTitle>
           <CardDescription>A card of the game details.</CardDescription>
         </Card>
@@ -61,7 +61,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Raised · a choice (as button), selected and not">
-      <div class="flex gap-10">
+      <div class="flex gap-6">
         <Card
           v-for="id in ['normal', 'wide']"
           :key="id"
@@ -79,7 +79,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Choice · on a page (first run A/B), selected and not">
-      <div class="flex gap-10">
+      <div class="flex gap-6">
         <Card
           v-for="id in ['nintendo', 'printed']"
           :key="id"
@@ -97,7 +97,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="RaisedAccent · the chosen one's text in accent too (scope levels)">
-      <div class="flex gap-10">
+      <div class="flex gap-6">
         <Card
           v-for="id in ['normal', 'wide']"
           :key="id"
@@ -115,7 +115,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="PictureChoice · selected, not, empty (data-empty)">
-      <div class="flex gap-10">
+      <div class="flex gap-6">
         <Card
           v-for="id in ['generated', 'icon', 'user']"
           :key="id"
@@ -151,7 +151,7 @@ const muted = ref(true)
       </div>
     </KitState>
     <KitState label="Choice · selected and not">
-      <div class="flex gap-10">
+      <div class="flex gap-6">
         <Card
           v-for="id in ['pad', 'keyboard']"
           :key="id"
@@ -233,15 +233,15 @@ const muted = ref(true)
     </KitState>
     <KitState label="NavRow (and disabled), ListRow">
       <div class="flex w-field flex-col gap-8">
-        <Card as="button" :variant="CardVariant.NavRow" class="gap-12">
+        <Card as="button" :variant="CardVariant.NavRow" class="gap-8">
           <Rows2 :size="18" :stroke-width="1.75" aria-hidden="true" />
           <span class="flex-1">Screens and picture</span>
           <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
         </Card>
-        <Card as="button" :variant="CardVariant.NavRow" disabled class="gap-12">
+        <Card as="button" :variant="CardVariant.NavRow" disabled class="gap-8">
           <span class="flex-1">Not here</span>
         </Card>
-        <Card as="button" :variant="CardVariant.ListRow" class="gap-12">
+        <Card as="button" :variant="CardVariant.ListRow" class="gap-8">
           <span class="flex-1">Controller shortcuts</span>
           <ChevronRight :size="16" :stroke-width="1.75" aria-hidden="true" />
         </Card>

@@ -9,7 +9,7 @@ defineProps<{ checked: boolean }>()
 
 <template>
   <span
-    class="inline-flex size-14 shrink-0 items-center justify-center rounded-4"
+    class="inline-flex size-14 shrink-0 items-center justify-center rounded-badge"
     :class="checked ? 'bg-accent-text' : 'border border-line-strong'"
     aria-hidden="true"
   >
