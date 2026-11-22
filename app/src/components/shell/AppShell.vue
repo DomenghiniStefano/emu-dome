@@ -5,14 +5,17 @@
 //
 // The phone (#29): held upright the sections are a tab bar at the bottom (PhoneTabBar); on its
 // side the rail is a column on the camera's edge, the top bar and the section beside it. The
-// whole shell keeps clear of the system's bars and the notch (the `safe` spacing tokens).
+// whole shell keeps clear of the system's bars and the notch (the `safe` spacing tokens). Under
+// the top bar, E13's warning when the phone is almost full (storage/StorageWarning).
 //
 // Where the shell is, is one typed `Route` (route.ts), held by App.vue: each move is one of its
 // pure functions, and each section gets what it is opened for as props, read when it mounts;
 // once it has mounted the shell drops that arrival (`arrived`).
 //
 // Controller / keyboard: one nav scope over the whole shell. Moving onto a rail item does not
-// switch section, confirming it does; back from the content returns the focus to the rail. A
+// switch section, confirming it does; back from the content returns the focus to the rail (on
+// the phone, Android's back and B go to the section left last, then the Library, then leave to
+// the background: route.ts `backFrom`). A
 // section with steps of its own (the settings levels, the controls tabs and their way back up, a
 // game's details) registers them itself (nav.ts `useNavSection`); what it leaves comes here.
 //
@@ -31,7 +34,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { uiMode } from '@/composables/useUiMode'
 import { cn } from '@/lib/cn'
-import { report } from '@/lib/errors'
+import { ignore, report } from '@/lib/errors'
 import { useNavScope } from '@/nav'
 import { emu, type LibraryGame, type SettingKey } from '@/emu'
 import CloudView from '@/components/cloud/CloudView.vue'
@@ -42,6 +45,7 @@ import SavesView from '@/components/saves/SavesView.vue'
 import { SHELL } from '@/components/search/searchContext'
 import { useSearchHost } from '@/components/search/useSearch'
 import SettingsView from '@/components/settings/SettingsView.vue'
+import StorageWarning from '@/components/storage/StorageWarning.vue'
 import UpdateReadyCard from '@/components/updates/UpdateReadyCard.vue'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import { ShellNav } from '@/lib/phoneLayout'
@@ -54,6 +58,7 @@ import { tvHints } from './tvHints'
 import {
   arrivalFor,
   arrived,
+  backFrom,
   closeDetails,
   openDetails,
   openSection,
@@ -61,6 +66,7 @@ import {
   remapFor,
   savesFor,
   settingRowFor,
+  moved,
   settingsFor,
   showingDetails,
   type Route,
@@ -116,11 +122,23 @@ const { openSearch } = useSearchHost({
     if (id === 'fullscreen') report(emu.toggleFullscreen())
   },
   setting: key => openSetting(key),
-  game: (g, start) => (start ? emit('openGame', g) : go(openDetails(g.id))),
+  game: (g, start) => (start ? emit('openGame', g) : go(openDetails(route.value, g.id))),
 })
+/**
+ * The phone's back at the shell's root (Android's back button or gesture, B; #29): the section
+ * left last, then the Library, then the app to the background, as at any app's first screen.
+ */
+function phoneBack() {
+  const to = backFrom(route.value)
+  if (to) route.value = to
+  else ignore(emu.leaveToBackground(), 'back at the shell root: the app stays in front')
+}
 useNavScope(root, {
   autofocus: true,
-  back: () => (uiMode.tv ? tabs.value : (rail.value ?? tabBar.value))?.focusCurrent(),
+  back: () => {
+    if (layout.touchDensity.value && !uiMode.tv) return phoneBack()
+    ;(uiMode.tv ? tabs.value : (rail.value ?? tabBar.value))?.focusCurrent()
+  },
   tab: stepSection,
   search: openSearch,
 })
@@ -142,7 +160,8 @@ watch(
   { flush: 'post' },
 )
 
-const go = (to: Route) => (route.value = to)
+/** A move: the section left goes onto the trail (route.ts `moved`). */
+const go = (to: Route) => (route.value = moved(route.value, to))
 </script>
 
 <template>
@@ -158,6 +177,8 @@ const go = (to: Route) => (route.value = to)
     />
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppTopBar v-if="!uiMode.tv" @search="openSearch" />
+      <!-- E13 (#29): the phone almost full, under the top bar. -->
+      <StorageWarning v-if="layout.touchDensity.value && !uiMode.tv" />
       <TvTabs
         v-else
         ref="tabs"
@@ -202,14 +223,14 @@ const go = (to: Route) => (route.value = to)
             :return-to="arrivalFor(route, 'library')?.cover ?? null"
             @open="(g, slot) => emit('openGame', g, slot)"
             @open-saves="g => go(savesFor(route, g.id))"
-            @details="g => go(openDetails(g.id))"
+            @details="g => go(openDetails(route, g.id))"
             @open-file="emit('openFile')"
           />
           <SavesView
             v-else-if="section === 'saves'"
             :arrival="arrivalFor(route, 'saves')"
             @open-game="(g, slot) => emit('openGame', g, slot)"
-            @open-details="g => go(openDetails(g.id))"
+            @open-details="g => go(openDetails(route, g.id))"
             @open-library="go(openSection(route, 'library'))"
           />
           <SettingsView

@@ -307,6 +307,27 @@ extern "system" fn native_back_pressed(_env: JNIEnv, _class: JClass) {
     }
 }
 
+/// `SystemBridge.moveToBack`: the task behind the others, the app still running (back at the
+/// shell's root, Trello #29).
+pub fn move_to_background() -> bool {
+    let moved = with_java("move to the background", |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            "moveToBack",
+            "(Landroid/app/Activity;)V",
+            &[JValue::Object(activity)],
+        )
+        .map(|_| ())
+    });
+    match moved {
+        Ok(()) => true,
+        Err(e) => {
+            log::warn!("{e}");
+            false
+        }
+    }
+}
+
 /// Runs `call` with a JNI environment on this thread (attached for the call when it is not a
 /// Java thread), the activity and the bridge class. A Java exception is cleared and returned as
 /// the error, prefixed with `what`.

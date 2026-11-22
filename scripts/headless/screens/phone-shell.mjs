@@ -8,6 +8,8 @@
 const section = (n) =>
   `(() => { const b = document.querySelectorAll('nav[aria-label] button')[${n}]; b && b.click(); return !!b })()`;
 const escape = `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }))`;
+/** Android's back button: Rust sends it as B (`emu://nav` back) outside a game. */
+const back = `window.__emit('emu://nav', { action: 'back' })`;
 const click = (re) =>
   `(() => { const b = [...document.querySelectorAll('button')].find(b => /${re}/.test(b.textContent.trim())); b && b.click(); return !!b })()`;
 
@@ -18,7 +20,10 @@ const SHELL = {
   cloud: { mock: {}, steps: [section(3)] },
   settings: { mock: {}, steps: [section(4)] },
   // Upright: a page over the list, and a search's results under the field (#29).
-  "settings-page": { mock: {}, steps: [section(4), click("^(General|Generale)")] },
+  "settings-page": {
+    mock: {},
+    steps: [section(4), click("^(General|Generale)")],
+  },
   "settings-search": {
     mock: {},
     steps: [
@@ -27,6 +32,17 @@ const SHELL = {
     ],
   },
   storage: { mock: { storage: "low" }, steps: [] },
+  // Android's back at the shell's root: Cloud, back to Saves, back to the Library, then the app
+  // to the background (the mock's calls list `leave_to_background`). Settings › Generale, back
+  // returns to the list first.
+  "back-trail": {
+    mock: {},
+    steps: [section(1), section(3), back, back, back],
+  },
+  "back-settings": {
+    mock: {},
+    steps: [section(4), click("^(General|Generale)"), back],
+  },
 };
 const GAME = {
   qm: { mock: { game: "gba", slots: "full" }, steps: [escape] },

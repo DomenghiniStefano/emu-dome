@@ -24,6 +24,10 @@ dev-core-paths = []
 [dependencies]
 # `std`: the boxed logger that also writes the log file (`log_file.rs`).
 log = { version = "0.4", features = ["std"] }
+# The room left on the data folder's disk (`storage.rs`, E13, Trello #29): one call per system
+# (GetDiskFreeSpaceExW on Windows, statvfs on Linux and Android). MIT OR Apache-2.0; already
+# shipped through librashader's cache (persy), so the same version and no new licence.
+fs2 = "0.4"
 raw-window-handle = "0.6"
 # The release build checks its cores against cores.lock (`cores.rs`).
 serde_json = "1"
