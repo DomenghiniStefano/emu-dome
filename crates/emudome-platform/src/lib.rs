@@ -402,6 +402,14 @@ pub fn attach_system<R: tauri::Runtime>(
     imp::attach_system(webview, Box::new(on_back));
 }
 
+/// A short vibration for a touch control's press (Trello #29, `touch.thapt`), `strength` 1–100.
+/// Android: the system vibrator, its amplitude from `strength` (the device's own haptics setting
+/// still applies); a device without one, or a failure, only logs. The desktop has no vibrator:
+/// nothing happens. Returns at once (the vibration plays by itself).
+pub fn haptic(strength: u8) {
+    imp::haptic(strength);
+}
+
 /// Listener of the external surface, boxed for the per-OS modules.
 pub(crate) type SurfaceListener = Box<dyn Fn(SurfaceEvent) + Send + Sync>;
 

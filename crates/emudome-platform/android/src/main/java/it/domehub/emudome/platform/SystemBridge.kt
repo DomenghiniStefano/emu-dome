@@ -4,6 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -76,6 +80,26 @@ object SystemBridge {
         } catch (e: Exception) {
             Log.w(TAG, "document name not read: $uri: $e")
             null
+        }
+    }
+
+    /**
+     * A one-shot vibration for a touch control's press (Trello #29, `touch.thapt`): [millis] long
+     * at [amplitude] (1–255). A device without a vibrator, or a failure, only logs. Any thread.
+     */
+    @JvmStatic
+    fun vibrate(context: Context, millis: Long, amplitude: Int) {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Vibrator::class.java)
+            }
+            if (vibrator == null || !vibrator.hasVibrator()) return
+            vibrator.vibrate(VibrationEffect.createOneShot(millis, amplitude.coerceIn(1, 255)))
+        } catch (e: Exception) {
+            Log.w(TAG, "no vibration: $e")
         }
     }
 

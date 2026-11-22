@@ -137,6 +137,9 @@ pub fn open_content(_uri: &str, _cache_dir: &Path) -> Result<ContentFile, Conten
 /// No back button on the desktop, and the startup game is the command line's: nothing to attach.
 pub fn attach_system<R: tauri::Runtime>(_webview: &tauri::Webview<R>, _on_back: BackListener) {}
 
+/// No vibrator on the desktop.
+pub fn haptic(_strength: u8) {}
+
 pub fn set_fullscreen(window: &tauri::Window, on: bool) -> tauri::Result<()> {
     window.set_fullscreen(on)
 }

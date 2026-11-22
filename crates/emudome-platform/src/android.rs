@@ -401,6 +401,30 @@ pub fn open_content(uri: &str, cache_dir: &Path) -> Result<ContentFile, ContentE
     })
 }
 
+/// How long a touch control's press vibrates.
+const HAPTIC_MS: i64 = 18;
+
+/// `SystemBridge.vibrate`: a one-shot vibration, its amplitude (1–255) from `strength` (1–100).
+pub fn haptic(strength: u8) {
+    let amplitude = (i32::from(strength.clamp(1, 100)) * 255 + 99) / 100;
+    let result = with_java("vibration", |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            "vibrate",
+            "(Landroid/content/Context;JI)V",
+            &[
+                JValue::Object(activity),
+                JValue::Long(HAPTIC_MS),
+                JValue::Int(amplitude),
+            ],
+        )?;
+        Ok(())
+    });
+    if let Err(e) = result {
+        log::warn!("{e}");
+    }
+}
+
 /// A document opened for a game: the link is removed before the descriptor closes, so a new
 /// descriptor with the same number never finds it.
 struct OpenDocument {
