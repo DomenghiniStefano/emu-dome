@@ -51,7 +51,10 @@ const add = (name, s, [width, height], orientation) =>
   });
 for (const [screen, s] of Object.entries(SHELL)) {
   for (const [size, wh] of Object.entries(PORTRAIT))
-    add(`phone-${screen}-${size}`, s, wh, { type: "portraitPrimary", angle: 0 });
+    add(`phone-${screen}-${size}`, s, wh, {
+      type: "portraitPrimary",
+      angle: 0,
+    });
   for (const [size, wh] of Object.entries(LANDSCAPE))
     for (const [side, o] of Object.entries(SIDES))
       add(`phone-${screen}-${size}-${side}`, s, wh, o);

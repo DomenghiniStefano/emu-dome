@@ -173,6 +173,12 @@
   --spacing-bar: 1040px;
   --spacing-grip: 40px;
   --spacing-sheet-screens: 112px;
+  /* The phone on its side (#29): the side panel's width (the card's 440), and its room above
+     (the status bar, at least 12) and at its right edge (the camera when turned that way, at
+     least 16). */
+  --spacing-side-panel: 440px;
+  --spacing-side-panel-top: max(var(--spacing-12), env(safe-area-inset-top, 0px));
+  --spacing-side-panel-end: max(var(--spacing-16), env(safe-area-inset-right, 0px));
   --spacing-tool: 68px;
   /* Its main action's width on the desktop. */
   --spacing-menu-main: 260px;
