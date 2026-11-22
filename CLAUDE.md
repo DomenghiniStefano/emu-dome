@@ -1040,9 +1040,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   16 px from each edge or the camera's notch, 8 px apart, the controls over the strip below and the screens' lower
   outer corners. On the S23: 412 × 309 each upright (32–341, strip, 385–694), 418 × 313.5 on its side. With the
   quick menu open the screens follow the menu's inset, which keeps no strip: they join, still filling their room.
-  Native video's «Sfondo ai lati del gioco» still cuts one hole for the whole frame (`lib/surround.ts` mirrors
-  `fit`, not the screens' placements): with a background other than black it covers parts of a two-screen layout
-  that is not the plain stack, on the desktop as on the phone.
+  Native video's «Sfondo ai lati del gioco» cuts one hole per screen where Rust places it (`GameSurround.vue`
+  asks `screens_placements` for the window's surface in physical pixels, `lib/surround.ts` `holesClipPath`; #105),
+  so the room between two screens apart is painted too; screens that overlap (a custom layout) share one hole,
+  their bounding box. It asks again on a resize, an inset, a new frame size or `emu://screens`; before the
+  core's first frame it retries every 200 ms and draws nothing meanwhile.
 - Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
   (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
   (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`

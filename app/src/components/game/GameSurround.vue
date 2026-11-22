@@ -4,23 +4,32 @@
 // moving slowly), or the user's image, under «Oscura lo sfondo». Values are the open game's
 // (session level, so console and game values apply), followed live.
 //
-// Native video: a full-window layer with a hole where video.rs draws the game (surround.ts
-// mirrors its rectangle); webview mode: under the canvas, whose stage is then transparent.
+// Native video: a full-window layer with one hole per screen where video.rs draws it, as Rust's
+// `screens_placements` says (two screens apart on a phone leave the room between them painted;
+// the interface works out no geometry); webview mode: under the canvas, whose stage is then
+// transparent.
 // «Nero» and «Gioco sfocato» (not available yet, X05) draw nothing: the black of the video stays.
 // Decoration only: no input, hidden from assistive technology.
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { coverColours, type CoverColours } from '@/lib/ambient'
 import { settingsUnder, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { reducedMotion, uiZoom } from '@/lib/appearance'
 import { shiftLightness } from '@/lib/colour'
+import { latest } from '@/lib/latest'
 import { insetShares, type InsetPx } from './inset'
-import { backgroundUrl, emu, type LibraryGame, type SettingValue, type VideoMode } from '@/emu'
+import {
+  backgroundUrl,
+  emu,
+  type LibraryGame,
+  type ScreenRect,
+  type SettingValue,
+  type VideoMode,
+} from '@/emu'
 import {
   AURORA,
   BUILTIN_BACKGROUNDS,
   coverBackground,
-  holeClipPath,
-  nativeGameRect,
+  holesClipPath,
   SURROUND_CARDS,
 } from '@/lib/surround'
 
@@ -95,20 +104,72 @@ const animated = computed(
     kind.value === 'builtin' && values.value['video.surroundAnim'] === true && !reducedMotion.value,
 )
 
-/** Native video: everything but the game's rectangle (layer px = screen px / zoom). */
-const clip = computed(() => {
-  if (props.mode !== 'native' || !props.gameSize) return undefined
+// Native video: where video.rs draws each screen, in physical pixels, as Rust composes them
+// (`screens_placements` for the window's surface and the inset: the same `screens::compose` the
+// native renderer runs). Asked again when the window, the inset, the frame or the layout changes
+// (the swap, the layout shown, a `screens.*` setting: `emu.screens.onChanged`).
+const screens = shallowRef<ScreenRect[] | null>(null)
+const placements = latest()
+/** Before the core's first frame Rust has nothing to place: asked again shortly. */
+const RETRY_MS = 200
+let retry: number | undefined
+let alive = true
+
+async function compose() {
+  window.clearTimeout(retry)
+  if (props.mode !== 'native' || !props.gameSize) {
+    placements.next()
+    screens.value = null
+    return
+  }
+  const fresh = placements.next()
   const { w, h, dpr } = win.value
-  const inset = insetShares(props.inset, w, h)
-  const r = nativeGameRect(
-    { w: Math.round(w * dpr), h: Math.round(h * dpr) },
-    props.gameSize,
-    inset,
-  )
-  const k = dpr * uiZoom.value
-  return holeClipPath({ x: r.x / k, y: r.y / k, w: r.w / k, h: r.h / k }, k)
+  // The surface is whole device pixels.
+  const area = {
+    width: Math.round(w * dpr),
+    height: Math.round(h * dpr),
+    inset: insetShares(props.inset, w, h),
+  }
+  try {
+    const res = await emu.screens.placements(area)
+    if (!fresh() || !alive) return
+    screens.value = res.placements.length ? res.placements.map(p => p.dst) : null
+    if (!res.placements.length) retry = window.setTimeout(() => void compose(), RETRY_MS)
+  } catch (e) {
+    // Decoration only: without the screens' places the layer stays off and the video's black
+    // shows, never a background over the game.
+    if (fresh()) {
+      console.warn('side background: screen placements unavailable, keeping black', e)
+      screens.value = null
+    }
+  }
+}
+watch(
+  () => [props.mode, props.gameSize, props.inset, win.value] as const,
+  () => void compose(),
+  { immediate: true },
+)
+let stopScreens: (() => void) | null = null
+onMounted(async () => {
+  stopScreens = await emu.screens.onChanged(() => void compose())
+  if (!alive) stopScreens()
 })
-// Under the native video nothing is drawn until the game's rectangle is known.
+onUnmounted(() => {
+  alive = false
+  window.clearTimeout(retry)
+  stopScreens?.()
+})
+
+/** Native video: everything but the screens (layer px = screen px / zoom). */
+const clip = computed(() => {
+  if (props.mode !== 'native' || !screens.value) return undefined
+  const k = win.value.dpr * uiZoom.value
+  return holesClipPath(
+    screens.value.map(r => ({ x: r.x / k, y: r.y / k, w: r.w / k, h: r.h / k })),
+    k,
+  )
+})
+// Under the native video nothing is drawn until the screens' places are known.
 const shown = computed(
   () => background.value !== null && (props.mode === 'webview' || clip.value !== undefined),
 )

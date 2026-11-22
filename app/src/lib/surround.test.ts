@@ -1,60 +1,64 @@
 import { describe, expect, it } from 'vitest'
-import { nativeGameRect } from './surround'
+import { holesClipPath } from './surround'
 
-const none = { left: 0, top: 0, right: 0, bottom: 0, align: 'centre' as const, between: 0 }
-const gba = { w: 240, h: 160 }
+const OUTER = 'polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, '
 
-// The cases of `screens::fit`'s tests (crates/emudome-core/src/screens.rs): the mirror must agree.
-describe('nativeGameRect', () => {
-  it('fits at an integer scale, centred in the whole surface', () => {
-    expect(nativeGameRect({ w: 1440, h: 900 }, gba, none)).toEqual({
-      x: 120,
-      y: 50,
-      w: 1200,
-      h: 800,
-    })
+/** The holes' corners as the path lists them: [x1, y1, x2, y2] per hole. */
+function holesOf(path: string | undefined): number[][] {
+  expect(path?.startsWith(OUTER)).toBe(true)
+  const points = (path ?? '')
+    .slice(OUTER.length, -1)
+    .split(', ')
+    .map(p => p.split(' ').map(v => parseFloat(v)))
+  const holes: number[][] = []
+  // Each hole: five corners (closed), then back to the window's corner.
+  expect(points.length % 6).toBe(0)
+  for (let i = 0; i < points.length; i += 6) {
+    const [a, , c] = [points[i], points[i + 1], points[i + 2]]
+    expect(points[i + 5]).toEqual([0, 0])
+    holes.push([a?.[0] ?? NaN, a?.[1] ?? NaN, c?.[0] ?? NaN, c?.[1] ?? NaN])
+  }
+  return holes
+}
+
+// The holes come from Rust's `screens_placements` (one per screen): no geometry is worked out here.
+describe('holesClipPath', () => {
+  it('cuts nothing without a screen', () => {
+    expect(holesClipPath([], 1)).toBeUndefined()
+    expect(holesClipPath([{ x: 10, y: 10, w: 0, h: 50 }], 1)).toBeUndefined()
   })
 
-  it('keeps the bottom share clear', () => {
-    const r = nativeGameRect({ w: 1440, h: 900 }, gba, { ...none, bottom: 0.3 })
-    expect(r.y + r.h).toBeLessThanOrEqual(630)
+  it('cuts one hole for one screen', () => {
+    expect(holesOf(holesClipPath([{ x: 120, y: 50, w: 1200, h: 800 }], 1))).toEqual([
+      [120, 50, 1320, 850],
+    ])
   })
 
-  it('sits against the bottom edge when asked, with no band above the controls', () => {
-    const r = nativeGameRect({ w: 412, h: 892 }, gba, {
-      ...none,
-      bottom: 368 / 892,
-      align: 'bottom',
-    })
-    // f64 here, f32 in Rust: within a pixel of the controls' band.
-    expect(Math.abs(r.y + r.h - 524)).toBeLessThanOrEqual(1)
-    expect(r.x).toBe(Math.floor((412 - r.w) / 2))
+  it('cuts one hole per screen, the room between them painted (two screens apart)', () => {
+    const top = { x: 0, y: 32, w: 412, h: 309 }
+    const bottom = { x: 0, y: 385, w: 412, h: 309 }
+    expect(holesOf(holesClipPath([top, bottom], 1))).toEqual([
+      [0, 32, 412, 341],
+      [0, 385, 412, 694],
+    ])
   })
 
-  it('is centred between side columns, not in the surface', () => {
-    const [w, h] = [2341.5, 1081.5]
-    const r = nativeGameRect({ w, h }, gba, { ...none, left: 211 / 892, right: 204 / 892 })
-    expect([r.w, r.h]).toEqual([1200, 800])
-    const [left, right] = [(w * 211) / 892, w - (w * 204) / 892]
-    expect(Math.abs(r.x + r.w / 2 - (left + right) / 2)).toBeLessThanOrEqual(1)
-    expect(r.y).toBe(Math.floor((h - 800) / 2))
+  it('rounds each hole outwards to whole device pixels', () => {
+    // 2.625 device px per CSS px: 100.2 → 263.025 device px, floored to 263 → 100.190…
+    const [hole] = holesOf(holesClipPath([{ x: 100.2, y: 10, w: 50.1, h: 20 }], 2.625))
+    expect(hole?.[0]).toBeCloseTo(263 / 2.625)
+    expect(hole?.[2]).toBeCloseTo(Math.ceil(150.3 * 2.625) / 2.625)
+    expect(hole?.[0] ?? 0).toBeLessThanOrEqual(100.2)
+    expect(hole?.[2] ?? 0).toBeGreaterThanOrEqual(150.3)
   })
 
-  it('always leaves a tenth of each axis', () => {
-    const r = nativeGameRect(
-      { w: 1000, h: 1000 },
-      { w: 100, h: 100 },
-      {
-        left: 0.7,
-        right: 0.7,
-        top: Number.NaN,
-        bottom: 2,
-        align: 'centre',
-        between: 0,
-      },
-    )
-    expect([r.x, r.y]).toEqual([450, 0])
-    expect(r.w).toBeCloseTo(100)
-    expect(r.h).toBeCloseTo(100)
+  it('merges screens that overlap into one hole (evenodd would paint their overlap)', () => {
+    const big = { x: 0, y: 0, w: 400, h: 300 }
+    const pip = { x: 300, y: 200, w: 200, h: 150 }
+    const apart = { x: 600, y: 0, w: 100, h: 100 }
+    expect(holesOf(holesClipPath([big, apart, pip], 1))).toEqual([
+      [0, 0, 500, 350],
+      [600, 0, 700, 100],
+    ])
   })
 })
