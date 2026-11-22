@@ -235,8 +235,140 @@
       "world": "Tutto il mondo"
     }
   },
-  "placeholder": {
-    "line": "Questa sezione arriva con un prossimo aggiornamento."
+  "cloud": {
+    "signedOut": {
+      "title": "Gioca sul computer, continua sul telefono",
+      "lead": "EmuDome copia i tuoi salvataggi e le tue impostazioni in una cartella del tuo Google Drive. Nessun server nostro: i file restano nel tuo account.",
+      "saves": "Salvataggi del gioco e salvataggi rapidi, aggiornati all’avvio e alla chiusura di ogni gioco",
+      "settings": "Le tue impostazioni, tranne quelle legate a un dispositivo",
+      "games": "Se vuoi, anche i file dei giochi, uno per uno, per scaricarli sugli altri dispositivi",
+      "signIn": "Accedi con Google",
+      "privacy": "EmuDome vede solo i file che crea lui. Puoi uscire quando vuoi.",
+      "signingIn": "Completa l’accesso nella finestra del browser che si è aperta."
+    },
+    "browser": {
+      "done": "Accesso fatto. Puoi chiudere questa pagina e tornare a EmuDome.",
+      "failed": "L’accesso non è andato a buon fine. Torna a EmuDome e riprova."
+    },
+    "header": {
+      "account": "Account Google: {name}",
+      "accountUnknown": "il tuo account",
+      "signOut": "Esci"
+    },
+    "pill": {
+      "syncing": "Sincronizzazione",
+      "error": "Da controllare",
+      "conflicts": "{n} da scegliere",
+      "pending": "{n} in attesa",
+      "synced": "Sincronizzato",
+      "never": "Non ancora sincronizzato"
+    },
+    "status": {
+      "syncing": "Sincronizzazione in corso",
+      "conflicts": "{n} gioco ha due versioni da scegliere | {n} giochi hanno due versioni da scegliere",
+      "pending": "{n} gioco aspetta di essere copiato su Google Drive | {n} giochi aspettano di essere copiati su Google Drive",
+      "synced": "Tutto è sincronizzato",
+      "never": "Non hai ancora sincronizzato niente",
+      "rest": "Il resto è sincronizzato · ultima sincronizzazione {when}",
+      "last": "Ultima sincronizzazione {when}",
+      "choose": "Scegli la versione di {title}",
+      "syncNow": "Sincronizza ora"
+    },
+    "space": {
+      "label": "Spazio su Google Drive",
+      "free": "Spazio su Google Drive · {free} liberi di {total}",
+      "unlimited": "Spazio su Google Drive · senza limite",
+      "unknown": "Spazio su Google Drive · non ancora misurato",
+      "parts": "EmuDome {emudome} · Altri file {other}"
+    },
+    "tabs": {
+      "label": "Parti della sezione Cloud",
+      "games": "Giochi su Google Drive",
+      "sync": "Cosa sincronizzare",
+      "devices": "I tuoi dispositivi",
+      "activity": "Attività recenti",
+      "how": "Come funziona"
+    },
+    "games": {
+      "state": {
+        "both": "Su entrambi",
+        "driveOnly": "Solo su Drive",
+        "localOnly": "Solo qui",
+        "conflict": "Due versioni"
+      },
+      "meta": "{console} · {size}",
+      "upload": "Carica",
+      "download": "Scarica",
+      "remove": "Rimuovi da Drive",
+      "empty": "Non ci sono ancora giochi su Google Drive. Carica un gioco della libreria per scaricarlo sugli altri dispositivi.",
+      "uploaded": "{title} è su Google Drive.",
+      "downloaded": "{title} è nella libreria.",
+      "removed": "{title} è stato tolto da Google Drive: è nel cestino del tuo Drive."
+    },
+    "devices": {
+      "this": "Questo dispositivo",
+      "meta": "{games} · {updated}",
+      "games": "{n} gioco | {n} giochi",
+      "updated": "aggiornato {when}",
+      "never": "libreria non ancora pubblicata",
+      "empty": "Nessun dispositivo ha ancora pubblicato la sua libreria."
+    },
+    "activity": {
+      "pulled": "{title}: {n} file scaricato da Google Drive | {title}: {n} file scaricati da Google Drive",
+      "pushed": "{title}: {n} file copiato su Google Drive | {title}: {n} file copiati su Google Drive",
+      "settings": "Impostazioni: {n} file sincronizzato | Impostazioni: {n} file sincronizzati",
+      "conflict": "{title} ha due versioni dello stesso salvataggio",
+      "resolved": "{title}: versione scelta",
+      "uploaded": "{title} caricato su Google Drive",
+      "downloaded": "{title} scaricato da Google Drive",
+      "removed": "{title} tolto da Google Drive",
+      "failed": "{title}: sincronizzazione non riuscita",
+      "someGame": "Un gioco",
+      "allGames": "Sincronizzazione",
+      "empty": "Ancora nessuna attività da quando EmuDome è partito."
+    },
+    "how": {
+      "folder": "EmuDome tiene tutto in una cartella «EmuDome» del tuo Google Drive. Non usa server suoi e non vede gli altri tuoi file.",
+      "when": "Quando apri un gioco, EmuDome scarica i suoi salvataggi più recenti; quando lo chiudi, copia i tuoi su Drive. «Sincronizza ora» fa entrambe le cose per tutti i giochi e sincronizza le impostazioni.",
+      "conflict": "Se un salvataggio cambia su due dispositivi prima che si sincronizzino, EmuDome ti chiede con quale continuare. L’altra versione resta tra i backup: non si perde niente.",
+      "device": "Le impostazioni di un solo dispositivo restano su quel dispositivo e non vengono mai copiate.",
+      "games": "I file dei giochi vanno su Drive solo quando li carichi tu, uno per uno."
+    },
+    "conflict": {
+      "title": "{title} ha due versioni dello stesso salvataggio",
+      "text": "È cambiato sia qui sia su {device} dopo l’ultima sincronizzazione. Scegli con quale continuare: l’altra resta tra i backup.",
+      "otherDevice": "l’altro dispositivo",
+      "otherName": "Altro dispositivo",
+      "versions": "Versioni del salvataggio",
+      "meta": "{when} · {time}",
+      "continueHere": "Continua con questo dispositivo",
+      "continueWith": "Continua con {device}",
+      "keepBoth": "Tieni entrambe"
+    },
+    "inUse": {
+      "title": "{title} è aperto su {device}",
+      "text": "Da {n} minuto. Se giochi anche qui, i due salvataggi potrebbero diventare diversi e dovrai scegliere quale tenere. | Da {n} minuti. Se giochi anche qui, i due salvataggi potrebbero diventare diversi e dovrai scegliere quale tenere.",
+      "cancel": "Annulla",
+      "play": "Gioca comunque"
+    },
+    "pull": {
+      "text": "Scaricamento dei salvataggi più recenti…",
+      "skip": "Gioca senza aspettare",
+      "skipped": "Avvio con i salvataggi di questo dispositivo…"
+    },
+    "push": {
+      "busy": "Copia dei salvataggi su Google Drive",
+      "hint": "· puoi continuare",
+      "done": "Salvataggi copiati su Google Drive"
+    },
+    "drive": {
+      "title": "Solo su Google Drive",
+      "pick": "{title}, solo su Google Drive",
+      "play": "Scarica e gioca",
+      "size": "{size} da Google Drive",
+      "downloading": "Scaricamento di {title}…",
+      "waiting": "{title} è scaricato: compare nella libreria tra poco."
+    }
   },
   "hud": {
     "fps": "{fps} FPS",
@@ -340,10 +472,10 @@
     "biosDsiFilesMissing": "La modalità DSi richiede i tuoi file di sistema DS e DSi, quindi il gioco parte come DS. Aggiungili in Impostazioni › BIOS e firmware.",
     "biosDsMenuFilesMissing": "L’avvio dal menu del DS richiede i tuoi file di sistema DS, quindi il gioco parte direttamente. Aggiungili in Impostazioni › BIOS e firmware.",
     "cloudNotConfigured": "Questa versione di EmuDome non include la sincronizzazione con Google Drive. Installa una versione ufficiale per usarla.",
-    "cloudNotSignedIn": "Non hai effettuato l’accesso a Google Drive. Accedi da Impostazioni › Cloud per sincronizzare.",
+    "cloudNotSignedIn": "Non hai effettuato l’accesso a Google Drive. Accedi dalla sezione Cloud per sincronizzare.",
     "cloudSignInFailed": "L’accesso a Google non è stato completato ({detail}). Riprova e completalo nella finestra del browser che si apre.",
     "cloudSignInUnsupported": "L’accesso a Google Drive non è ancora disponibile su questo dispositivo. Arriverà in un prossimo aggiornamento.",
-    "cloudAccessExpired": "L’accesso a Google Drive è scaduto o è stato revocato. Accedi di nuovo da Impostazioni › Cloud.",
+    "cloudAccessExpired": "L’accesso a Google Drive è scaduto o è stato revocato. Accedi di nuovo dalla sezione Cloud.",
     "cloudOffline": "Non riesco a raggiungere Google Drive ({detail}). Non è cambiato nulla; EmuDome sincronizza di nuovo quando sei online.",
     "cloudQuotaFull": "Il tuo Google Drive è pieno, quindi non ho caricato nulla. Libera spazio su Drive, poi sincronizza di nuovo.",
     "cloudRequestFailed": "Google Drive ha rifiutato la richiesta ({detail}). Non hai perso nulla; riprova più tardi.",

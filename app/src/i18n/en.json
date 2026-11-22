@@ -235,8 +235,140 @@
       "world": "Worldwide"
     }
   },
-  "placeholder": {
-    "line": "This section arrives in a future update."
+  "cloud": {
+    "signedOut": {
+      "title": "Play on the computer, carry on on the phone",
+      "lead": "EmuDome copies your saves and your settings to a folder in your Google Drive. No server of ours: the files stay in your account.",
+      "saves": "In-game saves and quick saves, brought up to date when each game starts and closes",
+      "settings": "Your settings, except the ones tied to one device",
+      "games": "If you want, the game files too, one by one, to download them on your other devices",
+      "signIn": "Sign in with Google",
+      "privacy": "EmuDome only sees the files it creates. You can sign out whenever you want.",
+      "signingIn": "Finish signing in in the browser window that opened."
+    },
+    "browser": {
+      "done": "You’re signed in. You can close this page and go back to EmuDome.",
+      "failed": "Signing in didn’t work. Go back to EmuDome and try again."
+    },
+    "header": {
+      "account": "Google account: {name}",
+      "accountUnknown": "your account",
+      "signOut": "Sign out"
+    },
+    "pill": {
+      "syncing": "Syncing",
+      "error": "Needs attention",
+      "conflicts": "{n} to choose",
+      "pending": "{n} waiting",
+      "synced": "Synced",
+      "never": "Not synced yet"
+    },
+    "status": {
+      "syncing": "Syncing now",
+      "conflicts": "{n} game has two versions to choose from | {n} games have two versions to choose from",
+      "pending": "{n} game is waiting to be copied to Google Drive | {n} games are waiting to be copied to Google Drive",
+      "synced": "Everything is synced",
+      "never": "Nothing synced yet",
+      "rest": "The rest is synced · last sync {when}",
+      "last": "Last sync {when}",
+      "choose": "Choose the version of {title}",
+      "syncNow": "Sync now"
+    },
+    "space": {
+      "label": "Google Drive space",
+      "free": "Google Drive space · {free} free of {total}",
+      "unlimited": "Google Drive space · no limit",
+      "unknown": "Google Drive space · not measured yet",
+      "parts": "EmuDome {emudome} · Other files {other}"
+    },
+    "tabs": {
+      "label": "Parts of the Cloud section",
+      "games": "Games on Google Drive",
+      "sync": "What to sync",
+      "devices": "Your devices",
+      "activity": "Recent activity",
+      "how": "How it works"
+    },
+    "games": {
+      "state": {
+        "both": "On both",
+        "driveOnly": "Only on Drive",
+        "localOnly": "Only here",
+        "conflict": "Two versions"
+      },
+      "meta": "{console} · {size}",
+      "upload": "Upload",
+      "download": "Download",
+      "remove": "Remove from Drive",
+      "empty": "No games on Google Drive yet. Upload a game from your library to download it on your other devices.",
+      "uploaded": "{title} is on Google Drive.",
+      "downloaded": "{title} is in your library.",
+      "removed": "{title} was taken off Google Drive: it’s in your Drive’s trash."
+    },
+    "devices": {
+      "this": "This device",
+      "meta": "{games} · {updated}",
+      "games": "{n} game | {n} games",
+      "updated": "updated {when}",
+      "never": "library not published yet",
+      "empty": "No device has published its library yet."
+    },
+    "activity": {
+      "pulled": "{title}: {n} file downloaded from Google Drive | {title}: {n} files downloaded from Google Drive",
+      "pushed": "{title}: {n} file copied to Google Drive | {title}: {n} files copied to Google Drive",
+      "settings": "Settings: {n} file synced | Settings: {n} files synced",
+      "conflict": "{title} has two versions of the same save",
+      "resolved": "{title}: version chosen",
+      "uploaded": "{title} uploaded to Google Drive",
+      "downloaded": "{title} downloaded from Google Drive",
+      "removed": "{title} taken off Google Drive",
+      "failed": "{title}: sync didn’t go through",
+      "someGame": "A game",
+      "allGames": "Sync",
+      "empty": "No activity yet since EmuDome started."
+    },
+    "how": {
+      "folder": "EmuDome keeps everything in an “EmuDome” folder in your Google Drive. It uses no server of its own and doesn’t see your other files.",
+      "when": "When you open a game, EmuDome downloads its newest saves; when you close it, it copies yours to Drive. “Sync now” does both for every game, and syncs your settings.",
+      "conflict": "If a save changes on two devices before they sync, EmuDome asks which one to continue with. The other version stays among the backups: nothing is lost.",
+      "device": "Settings that belong to one device stay on that device and are never copied.",
+      "games": "Game files go to Drive only when you upload them, one by one."
+    },
+    "conflict": {
+      "title": "{title} has two versions of the same save",
+      "text": "It changed both here and on {device} since the last sync. Choose which one to continue with: the other stays among the backups.",
+      "otherDevice": "the other device",
+      "otherName": "Other device",
+      "versions": "Versions of the save",
+      "meta": "{when} · {time}",
+      "continueHere": "Continue with this device",
+      "continueWith": "Continue with {device}",
+      "keepBoth": "Keep both"
+    },
+    "inUse": {
+      "title": "{title} is open on {device}",
+      "text": "For {n} minute. If you play here too, the two saves could become different and you’ll have to choose which one to keep. | For {n} minutes. If you play here too, the two saves could become different and you’ll have to choose which one to keep.",
+      "cancel": "Cancel",
+      "play": "Play anyway"
+    },
+    "pull": {
+      "text": "Downloading the newest saves…",
+      "skip": "Play without waiting",
+      "skipped": "Starting with this device’s saves…"
+    },
+    "push": {
+      "busy": "Copying your saves to Google Drive",
+      "hint": "· you can carry on",
+      "done": "Saves copied to Google Drive"
+    },
+    "drive": {
+      "title": "Only on Google Drive",
+      "pick": "{title}, only on Google Drive",
+      "play": "Download and play",
+      "size": "{size} from Google Drive",
+      "downloading": "Downloading {title}…",
+      "waiting": "{title} is downloaded: it shows up in your library in a moment."
+    }
   },
   "hud": {
     "fps": "{fps} FPS",
@@ -340,10 +472,10 @@
     "biosDsiFilesMissing": "DSi mode needs your DS and DSi system files, so the game runs as a DS. Add them in Settings › BIOS and firmware.",
     "biosDsMenuFilesMissing": "Starting from the DS menu needs your DS system files, so the game starts directly. Add them in Settings › BIOS and firmware.",
     "cloudNotConfigured": "This version of EmuDome was built without Google Drive sync. Install an official release to use it.",
-    "cloudNotSignedIn": "You’re not signed in to Google Drive. Sign in from Settings › Cloud to sync.",
+    "cloudNotSignedIn": "You’re not signed in to Google Drive. Sign in from the Cloud section to sync.",
     "cloudSignInFailed": "Google sign-in didn’t finish ({detail}). Try again, and complete it in the browser window that opens.",
     "cloudSignInUnsupported": "Google Drive sign-in isn’t available on this device yet. It arrives in a future update.",
-    "cloudAccessExpired": "Your Google Drive access expired or was removed. Sign in again from Settings › Cloud.",
+    "cloudAccessExpired": "Your Google Drive access expired or was removed. Sign in again from the Cloud section.",
     "cloudOffline": "Can’t reach Google Drive ({detail}). Nothing was changed; EmuDome syncs again when you’re online.",
     "cloudQuotaFull": "Your Google Drive is full, so nothing was uploaded. Free some space on Drive, then sync again.",
     "cloudRequestFailed": "Google Drive refused the request ({detail}). Nothing was lost; try again later.",

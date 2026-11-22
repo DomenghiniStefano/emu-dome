@@ -8,6 +8,7 @@ import { useDensity } from '@/composables/useDensity'
 import { useUiMode } from '@/composables/useUiMode'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useClosing } from '@/components/closing/useClosing'
+import { useCloudEvents } from '@/components/cloud/useCloudEvents'
 import { useDropTarget } from '@/components/library/useDropTarget'
 import { useFirstRun } from '@/components/first-run/useFirstRun'
 import { useGameKeys } from '@/components/game/useGameKeys'
@@ -52,6 +53,8 @@ const keys = useGameKeys(session)
 const drop = useDropTarget(game, toast)
 const events = useShellEvents(session, toast, drop.listen)
 const closing = useClosing(toast)
+// Google Drive sync (#31): the status, the transfers, G04 and G05 (CloudFlowOverlays).
+const cloudEvents = useCloudEvents(session)
 // NDS / 3DS: the layout shown, swapped, the lid (quick menu, G15).
 const screens = useScreenStatus(toast)
 
@@ -83,6 +86,7 @@ onMounted(async () => {
   await Promise.all([
     settle(events.listen()),
     settle(closing.listen()),
+    settle(cloudEvents.listen()),
     settle(screens.listen()),
     settle(decideFirstRun()),
     settle(loadVideoMode()),
