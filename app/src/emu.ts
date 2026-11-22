@@ -37,6 +37,7 @@ import type { HotkeyEvent } from '@/generated/app/HotkeyEvent'
 import type { ImportCandidate } from '@/generated/app/ImportCandidate'
 import type { Library } from '@/generated/app/Library'
 import type { LibraryChanged } from '@/generated/app/LibraryChanged'
+import type { LibraryGame } from '@/generated/app/LibraryGame'
 import type { LibraryScanEvent } from '@/generated/app/LibraryScanEvent'
 import type { PadInfo } from '@/generated/app/PadInfo'
 import type { PadState } from '@/generated/app/PadState'
@@ -171,6 +172,8 @@ export const backgroundUrl = (name: string) =>
 
 export const emu = {
   startupGame: () => invoke<string | null>('startup_game'),
+  /** `general.start` = «last game»: the library game to open at startup (none: the library). */
+  startupLastGame: () => invoke<LibraryGame | null>('startup_last_game'),
   /** The file extensions «Apri un file» offers (every console whose games open today). */
   openExtensions: () => invoke<string[]>('open_extensions'),
   videoMode: () => invoke<[VideoMode, boolean]>('video_mode'),
@@ -216,8 +219,9 @@ export const emu = {
   /** A key (`KeyboardEvent.code`) for Rust to route in game: a game button or a shortcut. */
   key: (code: string, pressed: boolean, repeat: boolean) =>
     invoke<void>('key', { code, pressed, repeat }),
-  /** The page lost the focus: Rust lets go of every key (game buttons, fast forward, rewind). */
-  releaseKeys: () => invoke<void>('release_keys'),
+  /** The page lost the focus (Rust lets go of every key: game buttons, fast forward, rewind) or
+   * got it back; with `general.bgpause` the game pauses meanwhile (`emu://hotkey` `paused`). */
+  windowFocus: (focused: boolean) => invoke<void>('window_focus', { focused }),
   /** The DS touch screen: the pointer at (x, y) in `area`; Rust maps it to the bottom screen. */
   pointer: (x: number, y: number, pressed: boolean, area: PointerArea) =>
     invoke<void>('pointer', { x, y, pressed, area }),
@@ -264,6 +268,9 @@ export const emu = {
   theme: (systemDark: boolean) => invoke<Theme>('theme', { systemDark }),
   settings: {
     schema: () => invoke<SettingsSchema>('settings_schema'),
+    /** A choice's options found at run time, after the schema's (`moreAtRuntime`: the audio
+     * outputs of `audio.out`); each id is its own text (a device's name). */
+    runtimeOptions: (key: SettingKey) => invoke<string[]>('settings_runtime_options', { key }),
     page: (page: string, scope: SettingsScope) =>
       invoke<SettingRow[]>('settings_page', { page, scope }),
     /** The `limit` values changed most recently, at any level, newest first. */

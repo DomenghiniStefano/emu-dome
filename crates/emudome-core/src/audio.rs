@@ -24,6 +24,69 @@ pub const TEST_TONE_HZ: f64 = 440.0;
 /// a fast-forwarded core and for an output that starts late.
 pub const RING_SAMPLES: usize = 1 << 16;
 
+/// `audio.lat`: how much sound the output keeps queued. Balanced is the app's measured value
+/// (60 ms steered to, 150 ms at most, as before the setting); Low halves both, Safe doubles them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Latency {
+    Low,
+    #[default]
+    Balanced,
+    Safe,
+}
+
+impl Latency {
+    /// The setting's option id; `None` for an id this build does not know.
+    pub fn from_option(id: &str) -> Option<Self> {
+        match id {
+            "low" => Some(Latency::Low),
+            "balanced" => Some(Latency::Balanced),
+            "safe" => Some(Latency::Safe),
+            _ => None,
+        }
+    }
+
+    /// Queue fill, in ms, the output's speed control steers towards.
+    pub fn target_ms(self) -> u32 {
+        match self {
+            Latency::Low => 30,
+            Latency::Balanced => 60,
+            Latency::Safe => 120,
+        }
+    }
+
+    /// Most audio, in ms, kept queued: beyond it the oldest is dropped before it plays.
+    pub fn max_ms(self) -> u32 {
+        match self {
+            Latency::Low => 75,
+            Latency::Balanced => 150,
+            Latency::Safe => 300,
+        }
+    }
+
+    /// A small number for an atomic (the audio callback reads it without a lock).
+    pub fn to_u8(self) -> u8 {
+        match self {
+            Latency::Low => 0,
+            Latency::Balanced => 1,
+            Latency::Safe => 2,
+        }
+    }
+
+    /// Back from [`Self::to_u8`]; anything else is Balanced.
+    pub fn from_u8(v: u8) -> Self {
+        match v {
+            0 => Latency::Low,
+            2 => Latency::Safe,
+            _ => Latency::Balanced,
+        }
+    }
+}
+
+/// Samples (stereo, interleaved, an even count) in `ms` of audio at `rate`.
+pub fn samples_in(rate: f64, ms: u32) -> usize {
+    ((rate * f64::from(ms) / 1000.0) as usize) * 2
+}
+
 /// The audio of one session (in [`crate::Shared`]).
 pub struct AudioRing {
     /// The core's sample rate (`f64` bits).
@@ -180,13 +243,19 @@ impl AudioReader {
     /// At the start of a callback: carries out a clear request and drops what is queued beyond
     /// the ring's `max_len` (oldest first). Returns the samples queued after it.
     pub fn begin(&mut self, ring: &AudioRing) -> usize {
+        self.begin_within(ring, ring.max_len())
+    }
+
+    /// [`Self::begin`] with another limit: `max_len` samples (stereo, interleaved) kept queued
+    /// (the output's latency, `audio.lat`).
+    pub fn begin_within(&mut self, ring: &AudioRing, max_len: usize) -> usize {
         let clear = ring.clear.load(Ordering::Relaxed);
         if clear != self.seen_clear {
             self.seen_clear = clear;
             self.drain();
         }
         let queued = self.consumer.slots();
-        let excess = queued.saturating_sub(ring.max_len());
+        let excess = queued.saturating_sub(max_len);
         let excess = excess + (excess & 1);
         if excess > 0 {
             let skipped = self.skip(excess);
@@ -268,6 +337,40 @@ mod tests {
         assert_eq!(samples.len(), 300);
         assert_eq!(samples[0], 100, "the oldest went");
         assert_eq!(ring.dropped(), 100);
+    }
+
+    #[test]
+    fn the_latency_setting_moves_the_target_and_the_limit_balanced_is_the_old_value() {
+        assert_eq!(Latency::from_option("balanced"), Some(Latency::default()));
+        assert_eq!(Latency::Balanced.target_ms(), 60);
+        assert_eq!(Latency::Balanced.max_ms(), 150);
+        assert_eq!(
+            samples_in(32768.0, Latency::Balanced.max_ms()),
+            AudioRing::default().max_len(),
+            "Balanced keeps what the ring kept before the setting"
+        );
+        assert!(Latency::Low.target_ms() < 60 && Latency::Low.max_ms() < 150);
+        assert!(Latency::Safe.target_ms() > 60 && Latency::Safe.max_ms() > 150);
+        for l in [Latency::Low, Latency::Balanced, Latency::Safe] {
+            assert_eq!(Latency::from_u8(l.to_u8()), l);
+            assert!(l.max_ms() > l.target_ms());
+        }
+        assert_eq!(Latency::from_option("fast"), None);
+    }
+
+    #[test]
+    fn a_tighter_limit_drops_more_of_the_oldest() {
+        let ring = AudioRing::default();
+        ring.set_rate(1000.0);
+        let mut producer = ring.take_producer().unwrap();
+        let data: Vec<i16> = (0..400).collect();
+        producer.push(&ring, &data);
+        let mut reader = ring.reader().unwrap();
+        // Low: 75 ms at 1 kHz.
+        let left = reader.begin_within(&ring, samples_in(1000.0, Latency::Low.max_ms()));
+        assert_eq!(left, 150);
+        assert_eq!(reader.pop_frame(), Some([250, 251]), "the oldest went");
+        assert_eq!(ring.dropped(), 250);
     }
 
     #[test]

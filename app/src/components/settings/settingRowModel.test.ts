@@ -6,9 +6,11 @@ import {
   chosenFileName,
   chosenList,
   descNotes,
+  hasRuntimeOptions,
   offeredOptions,
   rowState,
   rowValue,
+  runtimeOptions,
   swatchKey,
   toggleChosen,
 } from './settingRowModel'
@@ -186,5 +188,19 @@ describe('offeredOptions', () => {
       'b',
     ])
     expect(offeredOptions(entry())).toEqual([])
+  })
+})
+
+describe('runtimeOptions', () => {
+  it('adds the devices found after the fixed options, each once', () => {
+    const out = entry({
+      key: 'audio.out',
+      kind: { type: 'choice', style: 'list', options: ['system'], moreAtRuntime: true },
+    })
+    expect(hasRuntimeOptions(out)).toBe(true)
+    expect(hasRuntimeOptions(entry())).toBe(false)
+    expect(
+      runtimeOptions(['system'], ['Speakers', '', 'system', 'Headphones', 'Speakers']),
+    ).toEqual(['Speakers', 'Headphones'])
   })
 })

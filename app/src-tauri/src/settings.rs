@@ -63,10 +63,14 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
     crate::core_settings::settings_changed(app, keys);
     crate::bios::settings_changed(app, keys);
     crate::screens::settings_changed(app, keys);
+    crate::window::settings_changed(app, keys);
     if keys.iter().any(|k| REWIND_KEYS.contains(k)) {
         // The open game follows at once (no game: nothing to tell).
         let seconds = rewind_seconds(app, &Scope::Session);
         crate::send_command(app, emudome_core::Command::SetRewindLength(seconds));
+    }
+    if keys.iter().any(|k| crate::audio::is_output_key(k)) {
+        crate::audio::settings_changed(app);
     }
     if keys.contains(&keys::AUDIO_FF.as_str()) {
         let policy = fast_audio(app, &Scope::Session);
@@ -204,6 +208,24 @@ pub fn theme_setting(state: &SettingsState) -> String {
 #[tauri::command]
 pub fn settings_schema(state: State<'_, SettingsState>) -> SchemaDto {
     state.0.lock().schema()
+}
+
+/// The options a choice adds at run time after the catalogue's (`more_at_runtime`): the output
+/// devices of `audio.out`. Any other key has none. A list the system cannot give is logged and
+/// empty: the row still offers «system» and shows the device chosen before.
+#[tauri::command]
+pub async fn settings_runtime_options(
+    app: AppHandle,
+    key: String,
+) -> Result<Vec<String>, ErrorCode> {
+    if key != keys::AUDIO_OUT.as_str() {
+        return Ok(Vec::new());
+    }
+    let names = crate::blocking(app, |_| crate::audio::output_names()).await?;
+    Ok(names.unwrap_or_else(|e| {
+        log::warn!("audio outputs not listed: {e:#}");
+        Vec::new()
+    }))
 }
 
 /// The rows of a page seen from a scope: value, level it comes from, changed from the default.

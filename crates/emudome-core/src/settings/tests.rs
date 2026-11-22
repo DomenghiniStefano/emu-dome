@@ -1707,7 +1707,35 @@ fn a_value_of_the_wrong_kind_or_an_unknown_choice_asks_for_nothing() {
         _ => None,
     });
     assert!(out.is_empty(), "{out:?}");
-    assert!(mapped(CoreId::Azahar, ConsoleId::N3ds, |_| Some(Value::Bool(true))).is_empty());
+    assert!(
+        mapped(CoreId::Azahar, ConsoleId::N3ds, |_| Some(Value::List(
+            Vec::new()
+        )))
+        .is_empty()
+    );
+}
+
+#[test]
+fn jit_and_the_shader_cache_reach_the_cores_that_have_them() {
+    use super::core_values::core_options;
+    let off = |k: &str| matches!(k, "perf.jit" | "perf.shcache").then_some(Value::Bool(false));
+    let has = |options: &[(String, String)], key: &str, value: &str| {
+        options.iter().any(|(k, v)| k == key && v == value)
+    };
+    let nds = core_options(CoreId::MelonDsDs, ConsoleId::Nds, off);
+    assert!(has(&nds, "melonds_jit_enable", "disabled"), "{nds:?}");
+    let n3ds = core_options(CoreId::Azahar, ConsoleId::N3ds, off);
+    assert!(has(&n3ds, "citra_use_cpu_jit", "disabled"), "{n3ds:?}");
+    assert!(
+        has(&n3ds, "citra_use_disk_shader_cache", "disabled"),
+        "{n3ds:?}"
+    );
+    // mGBA has neither: the rows are disabled on its consoles with the reason.
+    assert!(core_options(CoreId::Mgba, ConsoleId::Gba, off).is_empty());
+    for key in ["perf.jit", "perf.shcache"] {
+        assert!(crate::core_profile::unsupported_consoles(key).contains(&ConsoleId::Gba));
+    }
+    assert!(!crate::core_profile::unsupported_consoles("perf.jit").contains(&ConsoleId::Nds));
 }
 
 #[test]
@@ -1949,19 +1977,12 @@ fn the_entries_not_wired_yet_are_these() {
     assert_eq!(
         unwired,
         [
-            "video.aspect",
             "video.fps",
-            "video.window",
-            "video.winsize",
             "video.portrait",
             "video.orient",
-            "video.api",
             "screens.second",
             "screens.stereo",
             "audio.mic",
-            "audio.out",
-            "audio.lat",
-            "speed.ffmode",
             "speed.runahead",
             "saves.rtc",
             "pad.gyro",
@@ -1971,9 +1992,6 @@ fn the_entries_not_wired_yet_are_these() {
             "touch.thide",
             "touch.tpad",
             "general.ui",
-            "general.start",
-            "general.bgpause",
-            "general.confirmdel",
             "general.updates",
             "library.group",
             "library.region",
@@ -1984,8 +2002,6 @@ fn the_entries_not_wired_yet_are_these() {
             "cloud.sauto",
             "cloud.swifi",
             "bios.b3ds",
-            "perf.jit",
-            "perf.shcache",
             "adv.advon",
             "adv.inputs",
             "adv.framecnt",

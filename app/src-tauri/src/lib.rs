@@ -9,6 +9,7 @@
 //! Errors reach the interface as [`ErrorCode`] (`{ code, params }`), never as sentences.
 
 mod audio;
+mod background_pause;
 // Bench mode only in builds with the `bench` feature (off by default, never packaged).
 #[cfg(feature = "bench")]
 mod bench;
@@ -44,6 +45,7 @@ mod protocol;
 mod saves;
 mod screens;
 mod settings;
+mod startup;
 mod theme;
 mod tuning;
 mod video;
@@ -55,6 +57,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
 use emudome_core::input::Source;
+use emudome_core::settings::Scope;
 use emudome_core::{Command, ErrorCode, Event, Shared};
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -113,6 +116,8 @@ struct AppState {
     /// Whether the quick menu is open, set by the interface: while it is, the controllers
     /// navigate the menu instead of playing (see `gamepad.rs`).
     menu_open: Arc<AtomicBool>,
+    /// Whether the game is paused because EmuDome went to the background (`general.bgpause`).
+    background: Mutex<background_pause::BackgroundPause>,
     /// The shortcuts of the controllers and of the keyboard, carried out the same way.
     hotkeys: Arc<hotkeys::HotkeyRunner>,
     data_dir: PathBuf,
@@ -123,10 +128,7 @@ struct AppState {
     /// Held while a game opens: opens run off the event loop (they may wait for a close), one
     /// at a time.
     opening: Mutex<()>,
-    #[cfg_attr(
-        not(feature = "bench"),
-        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
-    )]
+    /// The audio output (its settings follow `audio.out` / `audio.lat`).
     audio: audio::AudioOutput,
     /// Bench mode (`EMUDOME_BENCH`), off otherwise.
     bench: Option<Arc<bench::Bench>>,
@@ -157,8 +159,8 @@ impl AppState {
 
 /// What lives as long as a game is open, in the order it starts (it stops in reverse): the
 /// native renderer's source, the settings session («in prova»), the core options that follow
-/// the settings, the screens' layout and lid (after the session it reads), the library's play
-/// time.
+/// the settings, the screens' layout and lid (after the session it reads), the window's size
+/// (`video.winsize`), the library's play time.
 fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
     let (a, b) = (app.clone(), app.clone());
     let renderer = Hooks::new(
@@ -188,6 +190,13 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         move |g| screens::started(&a, g.core, g.console),
         move || screens::stopped(&b),
     );
+    // The window takes the size of this console's picture (`video.winsize`), after the session
+    // it reads; nothing to undo when the game closes.
+    let a = app.clone();
+    let window_size = Hooks::new(
+        move |g| window::apply(&a, window::Why::Game(g.console)),
+        || {},
+    );
     let (a, b) = (app.clone(), app.clone());
     let play_time = Hooks::new(
         move |g| {
@@ -197,7 +206,14 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         },
         move || library::end_play(&b),
     );
-    vec![renderer, settings_session, core_options, screens, play_time]
+    vec![
+        renderer,
+        settings_session,
+        core_options,
+        screens,
+        window_size,
+        play_time,
+    ]
 }
 
 /// Runs `f` on a blocking thread of the async runtime and waits for it there: a command whose
@@ -276,6 +292,10 @@ fn on_run_event(app: &tauri::AppHandle, event: &tauri::RunEvent) {
             if state.games.send(Command::Flush).is_ok() {
                 log::info!("in background: the open game's saves are flushed");
             }
+            background_pause::focus_changed(app, false);
+        }
+        if emudome_platform::is_resume(event) {
+            background_pause::focus_changed(app, true);
         }
     }
 }
@@ -320,6 +340,8 @@ pub fn run() {
             let data_move_problem = data_move::run(app);
             let data_dir = dirs::data(app)?;
             log::info!("data in {}", data_dir.display());
+            // Before the window, the GPU and the audio: they start from the settings.
+            app.manage(settings::open(app)?);
             let (window, ui) = window::create(
                 app,
                 &window::Options {
@@ -351,7 +373,14 @@ pub fn run() {
             let back_app = app.handle().clone();
             emudome_platform::attach_system(&ui, move || hotkeys::back_button(&back_app));
             let surface = video::SurfaceSettings::from_tuning(&tuning.video);
-            let gpu = video::GpuService::new();
+            // `video.api`: read once, the GPU is the run's (a change applies at the next start).
+            let api = emudome_core::settings::keys::Reader::new(settings::resolver(
+                app.handle(),
+                &Scope::Global,
+            ))
+            .text(emudome_core::settings::keys::VIDEO_API);
+            let (gpu, api_problem) = video::GpuService::with_api(video::GraphicsApi::from_id(&api));
+            health.set(health::Part::GraphicsApi, api_problem);
             let mut native_error = None;
             let renderer = if native {
                 let spawned = if emudome_platform::EXTERNAL_SURFACE {
@@ -395,6 +424,7 @@ pub fn run() {
             let audio = audio::AudioOutput::start(
                 current.clone(),
                 tuning.audio.clone(),
+                audio::prefs_from(settings::resolver(app.handle(), &Scope::Global)),
                 bench.as_ref().and_then(|b| b.tone()),
                 bench.is_some(),
                 health.clone(),
@@ -426,7 +456,6 @@ pub fn run() {
                 });
             }
 
-            app.manage(settings::open(app)?);
             app.manage(library::open(app)?);
             app.manage(core_settings::CoreSettings::default());
             app.manage(screens::ScreensState::default());
@@ -437,6 +466,7 @@ pub fn run() {
                 native_error,
                 video_mode: Mutex::new(mode),
                 menu_open,
+                background: Mutex::default(),
                 hotkeys,
                 data_dir,
                 resource_dir: app.path().resource_dir().ok(),
@@ -447,7 +477,12 @@ pub fn run() {
             });
             app.manage(effects::open(app));
             app.manage(cloud::Cloud::default());
+            app.manage(window::WindowState::default());
             effects::apply(app.handle());
+            // `video.window` / `video.winsize` (a bench keeps the window it measures with).
+            if bench.is_none() {
+                window::apply(app.handle(), window::Why::Startup);
+            }
             // After the library is read, before any game opens (opening waits for it).
             migration::start(app);
             library::startup(app.handle());
@@ -489,10 +524,11 @@ pub fn run() {
             commands::video_mode,
             commands::set_video_mode,
             commands::set_video_inset,
-            commands::startup_game,
+            startup::startup_game,
+            startup::startup_last_game,
             game::open_extensions,
             commands::set_menu_open,
-            commands::release_keys,
+            commands::window_focus,
             bench::bench_active,
             #[cfg(feature = "bench")]
             bench::bench_frames,
@@ -500,6 +536,7 @@ pub fn run() {
             commands::is_fullscreen,
             theme::theme,
             settings::settings_schema,
+            settings::settings_runtime_options,
             settings::settings_page,
             settings::settings_recent,
             settings::settings_game_scope,

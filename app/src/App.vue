@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The root: the first run, the shell, or the game being played, with the game flow's overlays
 // and the toasts over all of them. The logic lives in the composables; this file composes.
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { flow } from '@/components/game/gameFlow'
 import { START, type Route } from '@/components/shell/route'
 import { useDensity } from '@/composables/useDensity'
@@ -19,6 +19,7 @@ import { createToasts, provideToasts } from '@/composables/useToasts'
 import { createCoverRequest } from '@/components/cover/useCoverRequest'
 import CoverCropDialog from '@/components/cover/CoverCropDialog.vue'
 import { setErrorSink, settle } from '@/lib/errors'
+import { hideSplash } from '@/lib/splash'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
 import ClosingOverlay from '@/components/closing/ClosingOverlay.vue'
@@ -70,7 +71,9 @@ useDensity(layout.phone)
 
 // Startup: the keys and the backend's events first, so the controller works whatever fails
 // after; each step on its own, a failed one reported (lib/errors.ts) and the next still run.
-// The game given at startup waits for the video mode and the events it needs.
+// The game given at startup waits for the video mode and the events it needs. The startup splash
+// (index.html, #101) fades out once the first run or the shell is decided and rendered, before
+// the startup game, which shows its own starting scene.
 onMounted(async () => {
   keys.listen()
   session.watchStats()
@@ -82,6 +85,8 @@ onMounted(async () => {
     settle(loadVideoMode()),
     settle(session.loadDeviceState()),
   ])
+  await nextTick()
+  hideSplash()
   await settle(launch.openStartupGame())
 })
 </script>

@@ -65,6 +65,7 @@
   "cloudCredentialsUnavailable",
   "nativeVideoFallback",
   "hwRenderFallback",
+  "graphicsApiUnavailable",
   "videoSurfaceFailed",
   "audioUnavailable",
   "controllersUnavailable",

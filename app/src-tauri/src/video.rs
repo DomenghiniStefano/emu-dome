@@ -678,6 +678,49 @@ struct GameTexture {
     bind_group: wgpu::BindGroup,
 }
 
+/// `video.api`: the graphics API the GPU is opened on (a restart row: read when the app starts).
+/// A 3DS game renders on the GPU only on Vulkan: on another API it runs in software, as on a
+/// system with no Vulkan (`GpuService::vulkan_lease`, `hwRenderFallback`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GraphicsApi {
+    #[default]
+    Auto,
+    Vulkan,
+    D3d12,
+    OpenGl,
+}
+
+impl GraphicsApi {
+    /// The setting's option id; an unknown one is automatic.
+    pub fn from_id(id: &str) -> Self {
+        match id {
+            "vulkan" => GraphicsApi::Vulkan,
+            "d3d12" => GraphicsApi::D3d12,
+            "opengl" => GraphicsApi::OpenGl,
+            _ => GraphicsApi::Auto,
+        }
+    }
+
+    pub fn id(self) -> &'static str {
+        match self {
+            GraphicsApi::Auto => "auto",
+            GraphicsApi::Vulkan => "vulkan",
+            GraphicsApi::D3d12 => "d3d12",
+            GraphicsApi::OpenGl => "opengl",
+        }
+    }
+
+    /// The wgpu backends; `None`: wgpu's own choice.
+    pub fn backends(self) -> Option<wgpu::Backends> {
+        match self {
+            GraphicsApi::Auto => None,
+            GraphicsApi::Vulkan => Some(wgpu::Backends::VULKAN),
+            GraphicsApi::D3d12 => Some(wgpu::Backends::DX12),
+            GraphicsApi::OpenGl => Some(wgpu::Backends::GL),
+        }
+    }
+}
+
 /// The GPU for the whole run: one per app ([`GpuService::new`]), shared by the native renderer
 /// and the games that render on the GPU (3DS, [`crate::hw_render`]). Its device is made with the
 /// first surface (an adapter that can present to it), or by the first game that needs it when
@@ -721,18 +764,48 @@ impl Drop for VulkanLease {
 }
 
 impl GpuService {
+    /// wgpu's own choice of backend (or `WGPU_BACKEND`'s).
     pub fn new() -> Arc<Self> {
+        Self::with_api(GraphicsApi::Auto).0
+    }
+
+    /// The GPU on the backend `api` asks for (`video.api`, read once at startup). A backend
+    /// with no adapter on this system is given up for wgpu's own choice, and the second value
+    /// is the error for `emu://health` (`graphicsApiUnavailable`). The developer knob
+    /// `WGPU_BACKEND` wins over the setting.
+    pub fn with_api(api: GraphicsApi) -> (Arc<Self>, Option<ErrorCode>) {
         // No display handle: Windows and Android do not need it, and on Linux Tauri's
         // one does not match the surface's (MismatchingDisplayHandle).
         // The environment (WGPU_BACKEND, WGPU_DX12_PRESENTATION_SYSTEM...) picks the backend.
-        Arc::new(Self {
-            instance: wgpu::Instance::new(
-                wgpu::InstanceDescriptor::new_without_display_handle_from_env(),
-            ),
+        let from_env = wgpu::InstanceDescriptor::new_without_display_handle_from_env;
+        let forced = std::env::var_os("WGPU_BACKEND").is_some();
+        let mut problem = None;
+        let instance = match api.backends().filter(|_| !forced) {
+            None => wgpu::Instance::new(from_env()),
+            Some(backends) => {
+                let mut desc = from_env();
+                desc.backends = backends;
+                let instance = wgpu::Instance::new(desc);
+                let adapters = pollster::block_on(instance.enumerate_adapters(backends));
+                if adapters.is_empty() {
+                    log::warn!("video.api {}: no GPU on it, wgpu chooses", api.id());
+                    problem = Some(ErrorCode::GraphicsApiUnavailable {
+                        api: api.id().to_owned(),
+                    });
+                    wgpu::Instance::new(from_env())
+                } else {
+                    log::info!("video.api {}: {} GPU(s)", api.id(), adapters.len());
+                    instance
+                }
+            }
+        };
+        let service = Arc::new(Self {
+            instance,
             device: Mutex::new(None),
             queue_lock: Arc::default(),
             games: AtomicUsize::new(0),
-        })
+        });
+        (service, problem)
     }
 
     /// The device on `adapter`: on Vulkan, opened with what a 3DS core renders with
@@ -1604,7 +1677,22 @@ impl Painter {
 
 #[cfg(test)]
 mod tests {
-    use super::{largest_scale, screen_uniform, screen_viewport};
+    use super::{largest_scale, screen_uniform, screen_viewport, GraphicsApi};
+
+    #[test]
+    fn the_graphics_api_options_map_to_wgpu_backends() {
+        for (id, backends) in [
+            ("auto", None),
+            ("vulkan", Some(wgpu::Backends::VULKAN)),
+            ("d3d12", Some(wgpu::Backends::DX12)),
+            ("opengl", Some(wgpu::Backends::GL)),
+        ] {
+            let api = GraphicsApi::from_id(id);
+            assert_eq!(api.id(), id);
+            assert_eq!(api.backends(), backends, "{id}");
+        }
+        assert_eq!(GraphicsApi::from_id("metal"), GraphicsApi::Auto);
+    }
     use emudome_core::screens::{
         compose, Area, Arrangement, Layout, Rect, Rotation, ScreenId, Split,
     };

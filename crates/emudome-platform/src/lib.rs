@@ -98,6 +98,21 @@ pub fn is_suspend(event: &tauri::WindowEvent) -> bool {
     }
 }
 
+/// Whether a window event says the app is in front again after [`is_suspend`]: Android's
+/// `onResume` (Tauri's `WindowEvent::Resumed`, which skips the first one, at creation). The
+/// desktop has no such event: the page's focus says it there.
+pub fn is_resume(event: &tauri::WindowEvent) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        matches!(event, tauri::WindowEvent::Resumed)
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = event;
+        false
+    }
+}
+
 /// The game to open at startup: the first non-flag argument on the desktop
 /// (`emudome game.gba`); on Android the `game` extra of the launch intent
 /// (`adb shell am start -n <package>/.MainActivity --es game /path/game.gba`), else the
@@ -266,6 +281,52 @@ pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> O
 /// there the app already fills the screen, so it does nothing and succeeds.
 pub fn set_fullscreen(window: &tauri::Window, on: bool) -> tauri::Result<()> {
     imp::set_fullscreen(window, on)
+}
+
+/// The main window's size when EmuDome starts, and its smallest, in logical pixels (desktop).
+pub const WINDOW_SIZE: (f64, f64) = (1280.0, 800.0);
+pub const WINDOW_MIN_SIZE: (f64, f64) = (640.0, 480.0);
+
+/// How the window shows (`video.window`, desktop only).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowMode {
+    /// A normal window with its frame.
+    Windowed,
+    /// The system's fullscreen (as F11).
+    Fullscreen,
+    /// No frame, covering the whole monitor, without the system's fullscreen state.
+    Borderless,
+}
+
+/// How large the window's inside may be on its monitor now, in physical pixels.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WindowRoom {
+    /// The monitor's work area less the window's frame.
+    pub max_inner: (u32, u32),
+    /// [`WINDOW_MIN_SIZE`] at the monitor's scale.
+    pub min_inner: (u32, u32),
+    /// The monitor's scale factor (physical pixels per logical one).
+    pub scale: f64,
+    pub maximized: bool,
+    /// In the system's fullscreen (`video.window`, or F11).
+    pub fullscreen: bool,
+}
+
+/// Where the window can grow; `None` where it cannot be resized (Android) or the monitor is not
+/// known.
+pub fn window_room(window: &tauri::Window) -> Option<WindowRoom> {
+    imp::window_room(window)
+}
+
+/// Shows the window as `mode` says. Android: nothing (the app fills the screen).
+pub fn set_window_mode(window: &tauri::Window, mode: WindowMode) -> tauri::Result<()> {
+    imp::set_window_mode(window, mode)
+}
+
+/// Gives the window's inside `size` physical pixels (un-maximizing it), moved back into its
+/// monitor's work area when it would stick out. Android: nothing.
+pub fn set_window_inner_size(window: &tauri::Window, size: (u32, u32)) -> tauri::Result<()> {
+    imp::set_window_inner_size(window, size)
 }
 
 /// A `content://` document opened for a core ([`open_content`]): a path with the document's name

@@ -125,6 +125,10 @@ typed_key!(
 // ---- The settings the Rust code reads ----
 
 pub const VIDEO_SURROUND_IMG: TextKey = TextKey::new("video.surroundImg");
+pub const VIDEO_ASPECT: TextKey = TextKey::new("video.aspect");
+pub const VIDEO_WINDOW: TextKey = TextKey::new("video.window");
+pub const VIDEO_WINDOW_SIZE: TextKey = TextKey::new("video.winsize");
+pub const VIDEO_API: TextKey = TextKey::new("video.api");
 pub const FX_PICK: TextKey = TextKey::new("fx.fxpick");
 pub const FX_INTENSITY: IntKey = IntKey::new("fx.fxint");
 pub const FX_BRIGHTNESS: IntKey = IntKey::new("fx.fxbright");
@@ -136,6 +140,9 @@ pub const SCREENS_GAP: IntKey = IntKey::new("screens.gap");
 pub const SCREENS_ROTATION: TextKey = TextKey::new("screens.rot");
 pub const SCREENS_SWAP: TextKey = TextKey::new("screens.swap");
 pub const AUDIO_FF: TextKey = TextKey::new("audio.ff");
+pub const AUDIO_OUT: TextKey = TextKey::new("audio.out");
+pub const AUDIO_LATENCY: TextKey = TextKey::new("audio.lat");
+pub const SPEED_FF_MODE: TextKey = TextKey::new("speed.ffmode");
 pub const SPEED_FF: TextKey = TextKey::new("speed.ffval");
 pub const SPEED_SLOW: TextKey = TextKey::new("speed.slow");
 pub const SPEED_REWIND: BoolKey = BoolKey::new("speed.rew");
@@ -155,6 +162,8 @@ pub const PAD_TRIGGER: IntKey = IntKey::new("pad.trig");
 pub const PAD_CONFIRM: TextKey = TextKey::new("pad.confirm");
 pub const PAD_REPEAT: TextKey = TextKey::new("pad.repeat");
 pub const GENERAL_THEME: TextKey = TextKey::new("general.theme");
+pub const GENERAL_BACKGROUND_PAUSE: BoolKey = BoolKey::new("general.bgpause");
+pub const GENERAL_START: TextKey = TextKey::new("general.start");
 pub const LIBRARY_FOLDERS: ListKey = ListKey::new("library.folders");
 pub const LIBRARY_SCAN_AT_START: BoolKey = BoolKey::new("library.scanstart");
 pub const LIBRARY_WATCH: BoolKey = BoolKey::new("library.watch");

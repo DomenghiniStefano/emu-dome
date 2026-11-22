@@ -9,7 +9,9 @@
 //! - the lid is pressed on the core as its own chord (`core_profile::Lid`), never faked.
 //!
 //! The settings come from the open game's session («in prova» included), read again whenever a
-//! `screens.*` setting changes, so the editor's live preview is a Session-level `screens.custom`.
+//! `screens.*` setting or `video.aspect` changes, so the editor's live preview is a Session-level
+//! `screens.custom`. `video.aspect` goes through the same layout, so a one-screen game is
+//! stretched alike in both renderers.
 
 use std::sync::Arc;
 
@@ -51,9 +53,9 @@ pub(crate) struct ScreenPlacements {
     placements: Vec<Placement>,
 }
 
-/// The `screens.*` keys: a change to any of them is read again.
+/// The `screens.*` keys and `video.aspect`: a change to any of them is read again.
 fn is_screen_key(key: &str) -> bool {
-    key.starts_with("screens.")
+    key.starts_with("screens.") || key == keys::VIDEO_ASPECT.as_str()
 }
 
 /// The `screens.*` settings seen from the open game's session (else «Tutti i giochi»).

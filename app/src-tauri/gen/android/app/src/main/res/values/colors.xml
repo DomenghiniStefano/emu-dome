@@ -7,4 +7,7 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- EmuDome: the design system's `bg` (#0e0f13, app/src/assets/theme/colors.css), the window
+         behind the WebView and the system splash (Trello #101). -->
+    <color name="emudome_bg">#FF0E0F13</color>
 </resources>

@@ -10,10 +10,18 @@
 //!
 //! Not here: the options that hold the screens where the shell cuts them and keep the saves in
 //! the game's folder (`crate::n3ds::FORCED_OPTIONS`), and the renderer (`citra_graphics_api`,
-//! `CoreProfile::hw_render`). Not mapped, each shown disabled until it is: `perf.shcache` (Azahar
-//! 2126.2 crashes with its disk shader cache off on content without a title ID), `screens.stereo`
+//! `CoreProfile::hw_render`). Not mapped, each shown disabled until it is: `screens.stereo`
 //! (stereo modes change the frame the shell cuts, #28), `pad.gyro` (no sensor interface yet),
 //! `bios.b3ds` (3DS system files are a NAND tree, not a file the BIOS rows check).
+//!
+//! `perf.shcache` is mapped, but Azahar 2126.2 on Vulkan crashes at boot with its disk shader
+//! cache off on content without a title ID (Trello #93): for those games the session forces the
+//! cache on whatever the setting says (`StateLoadBlock::forced_options`, `crate::core_profile`).
+//!
+//! `perf.jit` and `perf.shcache` were read in the pinned source (`core_settings.cpp`: keys
+//! `citra_` + `use_cpu_jit` / `use_disk_shader_cache` from `GenerateSettingKeys.cmake`,
+//! values `enabled` / `disabled`, default `enabled`); `citra_use_disk_shader_cache` = `disabled`
+//! was also seen taken by the core (the #93 crash, `docs/fase0-esito.md`).
 
 use super::{Apply, CoreTable, Map, Rule};
 use crate::settings::ConsoleId;
@@ -79,6 +87,26 @@ pub(super) static TABLE: CoreTable = CoreTable {
             consoles: N3DS,
             map: Map::Number {
                 option: "citra_cpu_clock_percentage",
+            },
+            apply: Apply::Restart,
+        },
+        Rule {
+            setting: "perf.jit",
+            consoles: N3DS,
+            map: Map::Toggle {
+                option: "citra_use_cpu_jit",
+                on: "enabled",
+                off: "disabled",
+            },
+            apply: Apply::Restart,
+        },
+        Rule {
+            setting: "perf.shcache",
+            consoles: N3DS,
+            map: Map::Toggle {
+                option: "citra_use_disk_shader_cache",
+                on: "enabled",
+                off: "disabled",
             },
             apply: Apply::Restart,
         },
