@@ -47,7 +47,7 @@ import {
   showingDetails,
   type Route,
 } from './route'
-import { hasOwnInitialFocus, isFlush, sectionStep } from './shellLayout'
+import { hasOwnInitialFocus, isFlush, isTvLaidOut, sectionStep } from './shellLayout'
 import { useCoverHaze } from './useCoverHaze'
 
 const emit = defineEmits<{
@@ -117,6 +117,9 @@ const go = (to: Route) => (route.value = to)
             isFlush(section, details !== null, uiMode.tv)
               ? 'overflow-hidden p-0'
               : 'overflow-auto p-32',
+            // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, Settings, a
+            // game's details) keep the desk's layout, scaled up as it is.
+            !isTvLaidOut(section, details !== null) && 'tv:zoom-tv',
           )
         "
       >

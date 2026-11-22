@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasOwnInitialFocus, isFlush, sectionStep } from './shellLayout'
+import { hasOwnInitialFocus, isFlush, isTvLaidOut, sectionStep } from './shellLayout'
 import { tvHints } from './tvHints'
 import { hazeStyle } from './useCoverHaze'
 
@@ -19,6 +19,14 @@ describe('isFlush', () => {
   it('is flush for the TV library, whose shelves reach the edge', () => {
     expect(isFlush('library', false, true)).toBe(true)
     expect(isFlush('cloud', false, true)).toBe(false)
+  })
+})
+
+describe('isTvLaidOut', () => {
+  it('has a TV layout for the library only, not for a game’s details or the others', () => {
+    expect(isTvLaidOut('library', false)).toBe(true)
+    expect(isTvLaidOut('library', true)).toBe(false)
+    expect(isTvLaidOut('settings', false)).toBe(false)
   })
 })
 

@@ -14,6 +14,14 @@ export function isFlush(section: Section, showingDetails: boolean, tv = false): 
   return showingDetails || FLUSH.includes(section) || (tv && section === 'library')
 }
 
+/**
+ * TV mode (#30): whether the screen has a TV layout of its own (the library's shelves); the others
+ * keep the desk's, scaled up (`zoom-tv`). Settings in TV is an open point on the card.
+ */
+export function isTvLaidOut(section: Section, showingDetails: boolean): boolean {
+  return section === 'library' && !showingDetails
+}
+
 /** TV mode's L1 / R1 (#30): the section before or after `section`, round the ends. */
 export function sectionStep(section: Section, dir: -1 | 1): Section {
   const at = SECTIONS.indexOf(section)

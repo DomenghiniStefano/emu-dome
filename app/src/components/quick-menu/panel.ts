@@ -5,7 +5,11 @@ import { cva } from 'class-variance-authority'
 import { QuickMenuView } from './view'
 
 export const PanelLayout = {
-  /** Desktop: centred, 640 px wide, as tall as its content. */
+  /**
+   * Desktop: centred, 640 px wide, as tall as its content. In TV mode (#30, option A) the same
+   * menu scaled up as it is (`zoom-tv`: 960 px, its text from 13 to 19.5); a zoomed
+   * element's viewport units grow with it, so its room in the window is divided back.
+   */
   Menu: 'menu',
   /** G09 on desktop: a bar at the bottom, 1040 px, the game visible above it. */
   Bar: 'bar',
@@ -33,7 +37,7 @@ export const panelVariants = cva('glass-thick-flat flex flex-col border-line', {
   variants: {
     layout: {
       [PanelLayout.Menu]:
-        'absolute top-1/2 left-1/2 max-h-[calc(100vh-var(--spacing-window-margin))] w-panel max-w-[calc(100vw-var(--spacing-window-margin))] -translate-1/2 gap-16 rounded-16 border p-20 shadow-panel',
+        'absolute top-1/2 left-1/2 max-h-[calc(100vh-var(--spacing-window-margin))] w-panel max-w-[calc(100vw-var(--spacing-window-margin))] -translate-1/2 gap-16 rounded-16 border p-20 shadow-panel tv:zoom-tv tv:max-h-[calc((100vh-var(--spacing-window-margin))/var(--zoom-tv)/var(--tv-scale))] tv:max-w-[calc((100vw-var(--spacing-window-margin))/var(--zoom-tv)/var(--tv-scale))]',
       [PanelLayout.Bar]:
         'absolute bottom-20 left-1/2 w-bar max-w-[calc(100vw-var(--spacing-window-margin))] -translate-x-1/2 gap-16 rounded-16 border shadow-panel',
       [PanelLayout.Sheet]:
