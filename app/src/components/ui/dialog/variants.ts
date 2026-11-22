@@ -31,13 +31,13 @@ export type DialogSize = (typeof DialogSize)[keyof typeof DialogSize]
 
 // One column as wide as the window less its gutter (`minmax(0,1fr)`): a panel never grows past
 // it, whatever its content (a long path without a break point, #29 on a 412 px phone).
-export const dialogOverlayVariants = cva('fixed inset-0 z-dialog grid bg-scrim p-16', {
+export const dialogOverlayVariants = cva('fixed inset-0 z-dialog grid bg-scrim p-12', {
   variants: {
     size: {
       [DialogSize.Default]: 'grid-cols-[minmax(0,1fr)] place-items-center',
       [DialogSize.Wide]: 'grid-cols-[minmax(0,1fr)] place-items-center backdrop-blur-dim',
       [DialogSize.Palette]:
-        'grid-cols-[minmax(0,1fr)] items-start justify-items-center pt-palette-top touch:pt-16',
+        'grid-cols-[minmax(0,1fr)] items-start justify-items-center pt-palette-top touch:pt-12',
       [DialogSize.TvSheet]: 'grid-cols-[minmax(0,1fr)] p-0 backdrop-blur-dim',
     },
   },
@@ -47,8 +47,8 @@ export const dialogOverlayVariants = cva('fixed inset-0 z-dialog grid bg-scrim p
 export const dialogContentVariants = cva('glass-thick flex flex-col', {
   variants: {
     size: {
-      [DialogSize.Default]: 'w-full max-w-dialog gap-12 p-dialog-pad',
-      [DialogSize.Wide]: 'max-h-full w-panel max-w-full gap-14 overflow-auto p-24',
+      [DialogSize.Default]: 'w-full max-w-dialog gap-8 p-dialog-pad',
+      [DialogSize.Wide]: 'max-h-full w-panel max-w-full gap-8 overflow-auto p-dialog-pad',
       [DialogSize.Palette]: 'max-h-full w-panel max-w-full gap-0 overflow-hidden p-0',
       [DialogSize.TvSheet]:
         'size-full min-h-0 gap-0 overflow-hidden rounded-none border-0 p-0 shadow-none',

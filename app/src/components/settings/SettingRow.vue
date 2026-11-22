@@ -2,7 +2,8 @@
 // One setting on a settings page (Settings board, SettingsParts + InheritedRow): name, description,
 // the control for its kind, and its state at the page's level:
 // - changed here: dot + «Modificato» + «Ripristina» (Tutti i giochi) or «Usa il valore di …»;
-// - inherited: «Come in «…»» under the control, which stays usable (changing it sets this level);
+// - inherited: «Come in «…»», and the control stays usable (changing it sets this level);
+//   both marks sit under the description, so the control keeps its place on the right;
 // - locked (level not accepted, other device, no backend yet): faded, the description says why;
 //   with `lockNote` a row only «Tutti i giochi» changes keeps its own description (the page's
 //   note after the scope sentence says it once).
@@ -78,6 +79,14 @@ const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
 const disabled = computed(() => state.value.disabled)
+/** Choice cards and a folder list take the card's whole width when the rows sit in columns
+ * (RowColumns). */
+const wide = computed(
+  () =>
+    (kind.value.type === 'choice' && kind.value.style === 'cards') ||
+    kind.value.type === 'apply' ||
+    kind.value.type === 'folders',
+)
 /** A screen layout is edited for one two-screen console (or one of its games) at a time. */
 const twoScreens = computed(() => props.console === 'nds' || props.console === '3ds')
 
@@ -112,28 +121,27 @@ async function choose() {
 </script>
 
 <template>
-  <div class="flex flex-col gap-12 border-t border-line px-16 py-12 first:border-t-0">
-    <div class="flex flex-wrap items-center gap-12">
+  <div
+    class="flex flex-col gap-8 border-t border-line px-12 py-6 first:border-t-0"
+    :class="{ '[column-span:all]': wide }"
+  >
+    <div class="flex flex-wrap items-center gap-x-12 gap-y-8">
       <SettingRowText
         :name="name"
         :desc="sub ?? desc"
         :changed-here="state.changedHere"
         :only-on="entry.perDevice ? schema.device : null"
         :locked="disabled"
-      />
-
-      <div class="flex flex-initial flex-wrap items-center justify-end gap-12">
-        <span
-          v-if="state.inheritedFrom && !state.changedHere && !compact"
-          class="text-caption text-ink-muted"
-        >
+      >
+        <!-- the level marks under the description, so the control keeps its place at every level -->
+        <span v-if="state.inheritedFrom && !state.changedHere && !compact" class="text-ink-muted">
           {{ t('settingsUi.sameAs', { level: levelName(state.inheritedFrom) }) }}
         </span>
         <Button
           v-if="state.changedHere && !compact"
-          :variant="ButtonVariant.GhostRegular"
+          :variant="ButtonVariant.Text"
           :fade="ButtonFade.None"
-          :size="ButtonSize.Small"
+          :size="ButtonSize.Bare"
           @click="emit('reset')"
         >
           <Undo2 :size="14" :stroke-width="1.75" aria-hidden="true" />
@@ -143,7 +151,9 @@ async function choose() {
               : t('settingsUi.reset')
           }}
         </Button>
+      </SettingRowText>
 
+      <div class="flex flex-initial flex-wrap items-center justify-end gap-8">
         <SettingToggle
           v-if="kind.type === 'toggle'"
           :label="name"
@@ -233,6 +243,15 @@ async function choose() {
           :disabled="disabled"
           @choose="choose"
         />
+        <SettingSwatches
+          v-else-if="kind.type === 'colour'"
+          :setting-key="key"
+          :label="name"
+          :swatches="kind.swatches"
+          :value="typeof value === 'string' ? value : ''"
+          :disabled="disabled"
+          @set="set"
+        />
       </div>
     </div>
 
@@ -250,15 +269,6 @@ async function choose() {
       :folders="chosenList(value)"
       :add-text="buttonText"
       :disabled="disabled"
-    />
-    <SettingSwatches
-      v-if="kind.type === 'colour'"
-      :setting-key="key"
-      :label="name"
-      :swatches="kind.swatches"
-      :value="typeof value === 'string' ? value : ''"
-      :disabled="disabled"
-      @set="set"
     />
     <SettingCards
       v-if="(kind.type === 'choice' && kind.style === 'cards') || kind.type === 'apply'"

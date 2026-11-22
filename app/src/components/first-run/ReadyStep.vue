@@ -34,7 +34,7 @@ const count = computed(() => library.games.length)
     <p class="m-0 text-lead text-ink-muted tabular-nums">
       {{ t('firstRun.ready.count', { n: count }, count) }}
     </p>
-    <div v-if="covers.length" class="flex gap-14" aria-hidden="true">
+    <div v-if="covers.length" class="flex gap-12" aria-hidden="true">
       <GameCover v-for="g in covers" :key="g.id" :size="CoverSize.Small" :game="g" :badge="false" />
     </div>
     <Heading as="h2" :variant="HeadingVariant.Overline" class="mt-8 self-stretch text-left">

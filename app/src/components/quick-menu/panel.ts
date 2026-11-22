@@ -1,5 +1,5 @@
 // Where the quick menu's glass panel sits and how it is cut, per layout: the desktop's panel, the
-// G09 bar, the phone's sheet, the phone's side panel. Its shadows (`shadow-panel`, `shadow-sheet`), the sheet's 20 radius
+// G09 bar, the phone's sheet, the phone's side panel. Its shadows (`shadow-panel`, `shadow-sheet`)
 // and the 640 / 1040 widths are pending tokens, awaiting Cowork (spec Decision 5).
 import { cva } from 'class-variance-authority'
 import { NO_INSET, type InsetPx } from '@/components/game/inset'
@@ -44,11 +44,11 @@ export const panelVariants = cva('glass-thick-flat flex flex-col border-line', {
   variants: {
     layout: {
       [PanelLayout.Menu]:
-        'absolute top-1/2 left-1/2 max-h-[calc(100vh-var(--spacing-window-margin))] w-panel max-w-[calc(100vw-var(--spacing-window-margin))] -translate-1/2 gap-16 rounded-16 border p-20 shadow-panel tv:zoom-tv tv:max-h-[calc((100vh-var(--spacing-window-margin))/var(--zoom-tv)/var(--tv-scale))] tv:max-w-[calc((100vw-var(--spacing-window-margin))/var(--zoom-tv)/var(--tv-scale))]',
+        'absolute top-1/2 left-1/2 max-h-[calc(100vh-var(--spacing-window-margin))] w-panel max-w-[calc(100vw-var(--spacing-window-margin))] -translate-1/2 gap-12 rounded-panel border p-16 shadow-panel tv:zoom-tv tv:max-h-[calc((100vh-var(--spacing-window-margin))/var(--zoom-tv)/var(--tv-scale))] tv:max-w-[calc((100vw-var(--spacing-window-margin))/var(--zoom-tv)/var(--tv-scale))]',
       [PanelLayout.Bar]:
-        'absolute bottom-20 left-1/2 w-bar max-w-[calc(100vw-var(--spacing-window-margin))] -translate-x-1/2 gap-16 rounded-16 border shadow-panel',
+        'absolute bottom-16 left-1/2 w-bar max-w-[calc(100vw-var(--spacing-window-margin))] -translate-x-1/2 gap-12 rounded-panel border shadow-panel',
       [PanelLayout.Sheet]:
-        'absolute inset-x-0 bottom-0 gap-10 rounded-t-20 border-t px-16 pt-8 pb-18 text-lead shadow-sheet',
+        'absolute inset-x-0 bottom-0 gap-10 rounded-t-panel border-t px-16 pt-8 pb-16 text-lead shadow-sheet',
       [PanelLayout.Side]:
         'absolute inset-y-0 right-0 w-side-panel max-w-full gap-10 border-l pt-side-panel-top pr-side-panel-end pb-12 pl-16 text-lead shadow-sheet',
     },

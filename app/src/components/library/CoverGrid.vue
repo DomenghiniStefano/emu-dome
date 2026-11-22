@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// The cover grid of «I tuoi giochi»: as many columns as fit, each at least `capsule-medium`.
+// The cover grid of «I tuoi giochi»: as many columns as fit, each at least `capsule-medium`; on
+// the phone (touch density) at least `capsule-touch` upright (two columns) and
+// `capsule-touch-side` on its side (three), never one cover as wide as the screen (#47).
 // Always rendered, empty too: the view's gaps around it stay the same.
 //
 // Windowed (Trello #91, useCoverWindow.ts): only the rows near the screen are in the DOM, the
@@ -46,7 +48,7 @@ watch(visible, shown => {
 <template>
   <div
     ref="grid"
-    class="focus-ring-off grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-capsule-medium),1fr))] gap-16"
+    class="focus-ring-off grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-capsule-medium),1fr))] gap-12 touch:grid-cols-[repeat(auto-fill,minmax(var(--spacing-capsule-touch),1fr))] touch:landscape:grid-cols-[repeat(auto-fill,minmax(var(--spacing-capsule-touch-side),1fr))]"
     :style="style"
   >
     <CoverTile

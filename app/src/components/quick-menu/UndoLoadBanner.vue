@@ -16,7 +16,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <Card :pad="CardPad.Tight" class="flex-row items-center gap-12 font-semibold" role="status">
+  <Card :pad="CardPad.Tight" class="flex-row items-center gap-8 font-semibold" role="status">
     <span class="min-w-0 flex-1">{{ text }}</span>
     <Button
       :variant="ButtonVariant.Soft"

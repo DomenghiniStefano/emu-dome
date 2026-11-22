@@ -239,7 +239,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       @pick="pick"
     />
 
-    <SectionPage v-if="!uiMode.tv && pageShown(pane)" as="main" :width="SectionWidth.Page">
+    <SectionPage v-if="!uiMode.tv && pageShown(pane)" as="main" :width="SectionWidth.Full">
       <!-- A block of the page (held to its width), the way back at its start. -->
       <div v-if="pane === SettingsPane.Page" class="flex">
         <Button
@@ -271,7 +271,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           <Heading>{{ t(msg.page(page)) }}</Heading>
           <div class="text-ink-muted">{{ t(msg.summary(page)) }}</div>
         </div>
-        <Card v-if="INTROS.has(page)" :pad="CardPad.Snug" class="flex-row gap-10">
+        <Card v-if="INTROS.has(page)" :pad="CardPad.Snug" class="flex-row gap-8">
           <!-- 1px down to sit on the text's first line -->
           <Info
             class="mt-px flex-none text-accent-text"

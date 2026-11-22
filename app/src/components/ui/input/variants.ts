@@ -2,7 +2,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 
 export const InputVariant = {
-  // A text field of its own (SettingRow `.textfield`): 200 x 32, an edge on surface-raised.
+  // A text field of its own (SettingRow `.textfield`): 200 wide, a control high, an edge on surface-raised.
   Field: 'field',
   // The same box as wide as its container, the placeholder muted, faded when disabled
   // (DetailsFiles «Nome mostrato»).

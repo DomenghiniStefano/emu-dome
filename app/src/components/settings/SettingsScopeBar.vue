@@ -70,10 +70,10 @@ const line = computed(() => {
 </script>
 
 <template>
-  <!-- Thick glass with radius 12 (pending Cowork): the glass's material, edge and shadow, its
+  <!-- Thick glass with a panel's corners: the glass's material, edge and shadow, its
        own corners. Sticks over the rows that scroll under it. -->
   <div
-    class="glass-thick-flat sticky top-0 z-sticky flex flex-col gap-10 rounded-12 border border-line px-16 py-14 shadow-glass"
+    class="glass-thick-flat sticky top-0 z-sticky flex flex-col gap-8 rounded-panel border border-line px-12 py-8 shadow-glass"
     role="region"
     :aria-label="t('settingsUi.scopeRegion')"
   >
@@ -100,7 +100,7 @@ const line = computed(() => {
           :as="l === 'console' ? 'div' : 'button'"
           :variant="CardVariant.RaisedAccent"
           :selected="effective === l"
-          class="min-h-level flex-row items-start gap-10 px-12"
+          class="flex-row items-start gap-8"
         >
           <component
             :is="ICONS[l]"
@@ -110,15 +110,18 @@ const line = computed(() => {
             aria-hidden="true"
           />
           <span class="flex flex-col gap-2">
-            <SettingSelect
-              v-if="l === 'console' && contextConsole"
-              in-title
-              :label="t('settingsUi.scope.consolePick')"
-              :value="contextConsole"
-              :options="consoleOptions"
-              @pick="id => emit('pickConsole', id)"
-              @click.stop
-            />
+            <!-- the menu's taller trigger holds the title's one line, so both cards' words
+                 sit on the same lines -->
+            <span v-if="l === 'console' && contextConsole" class="flex h-lh">
+              <SettingSelect
+                in-title
+                :label="t('settingsUi.scope.consolePick')"
+                :value="contextConsole"
+                :options="consoleOptions"
+                @pick="id => emit('pickConsole', id)"
+                @click.stop
+              />
+            </span>
             <span v-else class="font-semibold">{{ levelName(l) }}</span>
             <span class="text-caption text-ink-muted">{{ sub(l) }}</span>
           </span>

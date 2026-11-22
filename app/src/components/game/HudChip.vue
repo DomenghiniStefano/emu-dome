@@ -4,7 +4,7 @@
 
 <template>
   <div
-    class="flex h-control-sm items-center rounded-6 border border-line bg-glass-thick px-10 font-semibold"
+    class="flex h-control-sm items-center rounded-card border border-line bg-glass-thick px-8 font-semibold"
   >
     <slot />
   </div>

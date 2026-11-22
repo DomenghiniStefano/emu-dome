@@ -29,7 +29,7 @@ function cardDesc(o: RowOption): string {
 
 <template>
   <div
-    class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-card-min),1fr))] gap-10"
+    class="grid grid-cols-[repeat(auto-fit,minmax(var(--spacing-card-min),1fr))] gap-8"
     :class="{ 'opacity-locked': disabled }"
     :role="apply ? 'group' : 'radiogroup'"
     :aria-label="label"
@@ -40,7 +40,7 @@ function cardDesc(o: RowOption): string {
       as="button"
       :variant="CardVariant.Raised"
       :selected="!apply && o.id === value"
-      class="gap-6 disabled:cursor-not-allowed"
+      class="gap-4 disabled:cursor-not-allowed"
       :class="{ 'opacity-locked': o.notYet }"
       :role="apply ? undefined : 'radio'"
       :aria-checked="apply ? undefined : o.id === value"
@@ -49,7 +49,7 @@ function cardDesc(o: RowOption): string {
       @click="!apply && emit('set', o.id)"
     >
       <span
-        class="block h-thumb rounded-6 border border-line"
+        class="block h-thumb rounded-control border border-line"
         aria-hidden="true"
         :style="{ background: cardPreview(settingKey, o.id, i) }"
       ></span>

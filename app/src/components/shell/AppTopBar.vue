@@ -19,7 +19,7 @@ const layout = useDeviceLayout()
 
 <template>
   <header
-    class="box-content flex shrink-0 basis-titlebar items-center gap-8 border-b border-line bg-glass-thin px-16 pt-safe-top backdrop-glass"
+    class="box-content flex shrink-0 basis-titlebar items-center gap-8 border-b border-line bg-glass-thin px-12 pt-safe-top backdrop-glass"
   >
     <!-- Decoration: the wordmark beside it says the name. -->
     <img :src="markSmall" alt="" aria-hidden="true" class="block h-mark-small w-auto" />

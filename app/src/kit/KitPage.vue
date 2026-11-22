@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// The Kit page (development only, `#kit`, main.ts): every primitive of src/components/ui in every
-// state side by side, in each of the three themes. Fully usable with the arrows / Enter (and the
+// The Kit page (development only, `#kit`, main.ts): every primitive of src/components/ui and the
+// main feature components (kit/features/) in every state side by side, each with its review issues
+// (KitIssue: problem, now / proposal, solution), in each of the three themes. Fully usable with the arrows / Enter (and the
 // controller inside the app): it is a nav scope like any screen, which is how each primitive's
 // navigation is checked by hand. Its labels are plain text, not i18n: the page never ships
 // (scripts/check exempts src/kit/ from the visible-text gate, and from that only).
@@ -29,8 +30,20 @@ import SelectSection from '@/kit/sections/SelectSection.vue'
 import SliderSection from '@/kit/sections/SliderSection.vue'
 import SwitchSection from '@/kit/sections/SwitchSection.vue'
 import TabsSection from '@/kit/sections/TabsSection.vue'
+import CheckboxSection from '@/kit/sections/CheckboxSection.vue'
+import DropdownMenuSection from '@/kit/sections/DropdownMenuSection.vue'
+import KbdSection from '@/kit/sections/KbdSection.vue'
+import LabelledBlockSection from '@/kit/sections/LabelledBlockSection.vue'
+import LinkRowSection from '@/kit/sections/LinkRowSection.vue'
+import StatTileSection from '@/kit/sections/StatTileSection.vue'
+import GameGroup from '@/kit/features/game/GameGroup.vue'
+import LibraryGroup from '@/kit/features/library/LibraryGroup.vue'
+import SettingsGroup from '@/kit/features/settings/SettingsGroup.vue'
+import KitIndex from '@/kit/KitIndex.vue'
+import { KIT_GROUP_TITLES, KitGroup, provideKitBoard } from '@/kit/review'
 
 const theme = ref(document.documentElement.dataset.theme ?? 'dark')
+
 watch(theme, t => (document.documentElement.dataset.theme = t), { immediate: true })
 
 // The swatches of `general.accent` (settings catalog), written the way appearance.ts writes the
@@ -66,13 +79,21 @@ window.addEventListener('keydown', e => {
   dispatchNav(nav)
 })
 
+// The review board: sections and issues register into it (review.ts, KitIndex.vue).
+const board = provideKitBoard()
+const FEATURES = [
+  { group: KitGroup.Library, component: LibraryGroup },
+  { group: KitGroup.Settings, component: SettingsGroup },
+  { group: KitGroup.Game, component: GameGroup },
+]
+
 const root = ref<HTMLElement | null>(null)
 useNavScope(root, { autofocus: true })
 </script>
 
 <template>
   <main ref="root" class="h-full overflow-y-auto bg-bg font-sans text-body text-ink">
-    <div class="flex flex-col gap-24 p-32">
+    <div class="flex flex-col gap-16 p-16">
       <header class="flex flex-wrap items-center justify-between gap-16">
         <h1 class="m-0 text-title text-ink">EmuDome · Kit</h1>
         <div class="flex flex-wrap items-center gap-12">
@@ -86,6 +107,8 @@ useNavScope(root, { autofocus: true })
           </Segmented>
         </div>
       </header>
+      <KitIndex v-model:only-open="board.onlyOpen.value" :sections="board.sections" />
+      <h2 class="m-0 text-title text-ink">{{ KIT_GROUP_TITLES[KitGroup.Primitives] }}</h2>
       <HeadingSection />
       <ButtonSection />
       <BadgeSection />
@@ -107,6 +130,16 @@ useNavScope(root, { autofocus: true })
       <SectionPageSection />
       <RadioGroupSection />
       <PopoverSection />
+      <CheckboxSection />
+      <DropdownMenuSection />
+      <KbdSection />
+      <LabelledBlockSection />
+      <LinkRowSection />
+      <StatTileSection />
+      <template v-for="f in FEATURES" :key="f.group">
+        <h2 class="m-0 text-title text-ink">{{ KIT_GROUP_TITLES[f.group] }}</h2>
+        <component :is="f.component" />
+      </template>
     </div>
   </main>
 </template>

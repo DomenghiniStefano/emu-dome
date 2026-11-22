@@ -34,24 +34,24 @@ const current = (p: string) => (p === props.page && !query.value ? 'page' : unde
 
 /** Beside the page on the desk; full width upright; the field alone over a search's results. */
 const placement: Record<SettingsPane, string> = {
-  [SettingsPane.Both]: 'basis-sidebar overflow-y-auto border-r py-24',
-  [SettingsPane.Page]: 'basis-sidebar overflow-y-auto border-r py-24',
-  [SettingsPane.List]: 'min-h-0 flex-1 overflow-y-auto py-16',
-  [SettingsPane.Search]: 'pt-16 pb-0',
+  [SettingsPane.Both]: 'basis-sidebar overflow-y-auto border-r py-12',
+  [SettingsPane.Page]: 'basis-sidebar overflow-y-auto border-r py-12',
+  [SettingsPane.List]: 'min-h-0 flex-1 overflow-y-auto py-12',
+  [SettingsPane.Search]: 'pt-12 pb-0',
 }
 </script>
 
 <template>
   <nav
     :class="
-      cn('flex flex-none flex-col gap-16 border-line px-12', placement[pane ?? SettingsPane.Both])
+      cn('flex flex-none flex-col gap-12 border-line px-8', placement[pane ?? SettingsPane.Both])
     "
     :aria-label="t('settingsUi.categories')"
   >
-    <div class="flex flex-col gap-12">
+    <div class="flex flex-col gap-8">
       <Heading as="h1" class="px-8">{{ t('settingsUi.title') }}</Heading>
       <label
-        class="flex h-control-lg items-center gap-8 rounded-8 border border-line-strong bg-surface-raised px-12 text-ink-muted"
+        class="flex h-control items-center gap-8 rounded-control border border-line-strong bg-surface-raised px-8 text-ink-muted"
       >
         <Search :size="16" :stroke-width="1.75" aria-hidden="true" />
         <span class="sr-only">{{ t('settingsUi.search') }}</span>

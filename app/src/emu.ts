@@ -72,6 +72,33 @@ import type { SlotInfo } from '@/generated/app/SlotInfo'
 import type { Stats } from '@/generated/app/Stats'
 import type { Theme } from '@/generated/app/Theme'
 import type { VideoMode } from '@/generated/app/VideoMode'
+import { DevRoute } from '@/lib/devRoutes'
+
+// The Kit page in a plain browser (`pnpm dev`, then `#kit`): there is no Tauri there, and this
+// module reads Tauri's internals as it loads (`convertFileSrc` below), so the page would stop before
+// mounting. Development and the Kit page only, it stands in for the bridge, answering every command
+// with nothing, as scripts/headless/kit-nav.mjs does. It lives here, the one module that talks to
+// Tauri, and runs before anything below reads the bridge.
+if (
+  import.meta.env.DEV &&
+  window.location.hash === DevRoute.Kit &&
+  !('__TAURI_INTERNALS__' in window)
+) {
+  Object.assign(window, {
+    __TAURI_INTERNALS__: {
+      metadata: {
+        currentWindow: { label: 'main' },
+        currentWebview: { windowLabel: 'main', label: 'main' },
+      },
+      transformCallback: () => 1,
+      unregisterCallback: () => undefined,
+      convertFileSrc: (path: string, protocol = 'asset') =>
+        `http://${protocol}.localhost/${encodeURIComponent(path)}`,
+      invoke: async (cmd: string) => (cmd === 'plugin:event|listen' ? 1 : null),
+    },
+    __TAURI_EVENT_PLUGIN_INTERNALS__: { unregisterListener: () => undefined },
+  })
+}
 
 // The bridge's types are generated from the Rust types (ts-rs) and the settings catalogue into
 // src/generated/ (crates/emudome-core/src/contract.rs, app/src-tauri/src/contract.rs): a `cargo

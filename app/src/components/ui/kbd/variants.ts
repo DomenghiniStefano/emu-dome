@@ -12,9 +12,10 @@ export type KbdVariant = (typeof KbdVariant)[keyof typeof KbdVariant]
 
 export const KbdSize = {
   // In a line of text or a list (G06 «Esc o Home per il menu rapido», C01's shortcuts): 20 tall,
-  // the caption on the body's line.
+  // at least as wide (a one-character key is square), the caption on the body's line.
   Default: 'default',
-  // A hint beside an action's label (Esc, B): 18 tall, the badge's type (pending Cowork).
+  // A hint beside an action's label (Esc, B): 18 tall and at least as wide, the badge's type
+  // (pending Cowork).
   Small: 'small',
   // TV mode (#30): a face button of the connected controller, seen from the sofa (the button bar,
   // the hero's actions): a round key, 30 tall, the TV hint's type.
@@ -26,7 +27,7 @@ export type KbdSize = (typeof KbdSize)[keyof typeof KbdSize]
 
 // The corners are the size's: a round TV key would lose to a shared radius.
 export const kbdVariants = cva(
-  'inline-flex items-center border font-sans font-semibold whitespace-nowrap',
+  'inline-flex items-center justify-center border font-sans font-semibold whitespace-nowrap',
   {
     variants: {
       variant: {
@@ -34,8 +35,8 @@ export const kbdVariants = cva(
         [KbdVariant.OnAccent]: 'border-on-accent-edge text-on-accent',
       },
       size: {
-        [KbdSize.Default]: 'h-20 rounded-badge px-6 text-caption-tall',
-        [KbdSize.Small]: 'h-18 rounded-badge px-5 text-badge',
+        [KbdSize.Default]: 'h-20 min-w-20 rounded-badge px-6 text-caption-tall',
+        [KbdSize.Small]: 'h-18 min-w-18 rounded-badge px-5 text-badge',
         [KbdSize.TvFace]:
           'h-tv-glyph min-w-tv-glyph justify-center rounded-full px-8 text-tv-hint font-semibold',
         [KbdSize.TvShoulder]:

@@ -13,11 +13,11 @@ defineProps<{
 
 <template>
   <div
-    class="grid grid-cols-[minmax(0,1fr)_auto_var(--spacing-shortcut-col)] items-center gap-12 border-line px-16 py-10 not-first:border-t"
+    class="grid grid-cols-[minmax(0,1fr)_auto_var(--spacing-shortcut-col)] items-center gap-8 border-line px-12 py-6 not-first:border-t"
   >
     <span :class="{ 'text-ink-muted': muted }">{{ action }}</span>
     <span
-      class="inline-flex min-w-shortcut-key items-center justify-end gap-8 text-right font-semibold tabular-nums"
+      class="inline-flex min-h-control-sm min-w-shortcut-key items-center justify-end gap-8 text-right font-semibold tabular-nums"
     >
       <Badge v-if="badge" :variant="BadgeVariant.Reserved">{{ badge }}</Badge>
       <slot />

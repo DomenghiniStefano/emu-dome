@@ -14,11 +14,11 @@ defineEmits<{ click: [Event] }>()
     as="button"
     :variant="CardVariant.NavRow"
     :disabled="disabled"
-    class="min-w-0 gap-12"
+    class="min-w-0 gap-8"
     @click="$emit('click', $event)"
   >
     <span
-      class="grid size-32 shrink-0 place-items-center rounded-8 bg-surface-raised text-ink-muted"
+      class="grid size-control-sm shrink-0 place-items-center rounded-control bg-surface-raised text-ink-muted"
       aria-hidden="true"
     >
       <component :is="icon" :size="18" :stroke-width="1.75" />

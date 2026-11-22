@@ -6,6 +6,9 @@
    Tailwind only emits a theme variable a class of its own uses unless told to keep them all. */
 @theme static {
   --radius-*: initial;
+  /* Owner, 2026-11-22 («più squadrato»): corners almost square, 2 and 3. */
+  --radius-2: 2px;
+  --radius-3: 3px;
   --radius-4: 4px;
   --radius-6: 6px;
   --radius-10: 10px;
@@ -22,8 +25,11 @@
   --radius-20: 20px;
 
   /* Roles: what a radius is for, so «every control's corners» is one edit. */
-  --radius-badge: var(--radius-4);
-  --radius-control: var(--radius-6);
-  --radius-card: var(--radius-10);
-  --radius-panel: var(--radius-16);
+  --radius-badge: var(--radius-2);
+  --radius-control: var(--radius-2);
+  /* A button: a little softer than the other controls (owner, 2026-11-22: «leggermente più
+     rotondi i bottoni, solo i bottoni, non di troppo»). */
+  --radius-button: var(--radius-4);
+  --radius-card: var(--radius-3);
+  --radius-panel: var(--radius-4);
 }

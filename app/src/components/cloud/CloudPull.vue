@@ -30,7 +30,7 @@ async function skip() {
 </script>
 
 <template>
-  <div ref="root" class="flex flex-col items-center gap-10">
+  <div ref="root" class="flex flex-col items-center gap-8">
     <p class="m-0 text-center text-ink-muted">
       {{ skipped ? t('cloud.pull.skipped') : t('cloud.pull.text') }}
     </p>

@@ -53,9 +53,9 @@ const meta = computed(() =>
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-8" :data-game="game.id">
+  <div class="flex min-w-0 flex-col gap-6" :data-game="game.id">
     <div
-      class="group/frame relative rounded-10 shadow-card outline-ring outline-offset-ring outline-transparent transition-[outline-color] hover:outline-focus-ring focus-within:outline-focus-ring data-open:outline-focus-ring"
+      class="group/frame relative rounded-card shadow-card outline-ring outline-offset-ring outline-transparent transition-[outline-color] hover:outline-focus-ring focus-within:outline-focus-ring data-open:outline-focus-ring"
       :data-open="menuOpen ? '' : undefined"
       @contextmenu.prevent="emit('details')"
     >
@@ -64,19 +64,13 @@ const meta = computed(() =>
         <div :class="coverStackVariants({ layer: CoverStackLayer.Far })" aria-hidden="true"></div>
         <div :class="coverStackVariants({ layer: CoverStackLayer.Near })" aria-hidden="true"></div>
       </template>
-      <!-- Faded to 45% (Cowork: `disabled` is 40%), edged in dashes. -->
-      <GameCover
-        :game="game"
-        :versions="versions"
-        :class="{
-          'opacity-missing outline outline-offset-inset outline-line-strong outline-dashed': off,
-        }"
-      />
-      <!-- The action strip's height (52), which the click area stops above. -->
+      <!-- Faded to 45% (Cowork: `disabled` is 40%), edged in dashes: GameCover's own look. -->
+      <GameCover :game="game" :versions="versions" :missing="off" />
+      <!-- The action strip (its 8px inset and a 30px cover action, plus 10), which the click area stops above. -->
       <Button
         :variant="ButtonVariant.Bare"
         :size="ButtonSize.Area"
-        class="focus-ring-none absolute inset-x-0 top-0 bottom-52 rounded-t-10 rounded-b-none"
+        class="focus-ring-none absolute inset-x-0 top-0 bottom-48 rounded-t-card rounded-b-none"
         v-bind="{ [COVER_OF]: game.id }"
         data-cover-part="cover"
         :aria-label="t('library.openDetails', { title: game.title })"

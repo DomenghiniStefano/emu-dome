@@ -23,7 +23,7 @@ const speedText = computed(() => speedLabel(props.turboHeld ? props.ffSpeed : pr
 </script>
 
 <template>
-  <div class="pointer-events-none fixed top-16 left-16 flex gap-8">
+  <div class="pointer-events-none fixed top-12 left-12 flex gap-6">
     <HudChip v-if="speedShown(turboHeld, speed)" class="tabular-nums">{{ speedText }}</HudChip>
     <HudChip v-if="paused">{{ t('hud.paused') }}</HudChip>
     <HudChip v-if="fps !== null" class="tabular-nums">

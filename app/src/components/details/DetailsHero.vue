@@ -46,7 +46,7 @@ defineExpose({
 
 <template>
   <section
-    class="relative flex flex-col gap-section-gap bg-cover-fade px-section-x pt-section-top pb-28 touch:gap-section-touch touch:px-section-touch touch:pt-8 touch:pb-0"
+    class="relative flex flex-col gap-section-gap bg-cover-fade px-section-x pt-section-top pb-20 touch:gap-section-touch touch:px-section-touch touch:pt-8 touch:pb-0"
     :style="{ '--cover-tint': game.colour }"
     :aria-label="game.title"
   >
@@ -80,14 +80,14 @@ defineExpose({
       {{ t('shell.library') }}
     </Button>
 
-    <div class="flex flex-wrap items-end gap-28 touch:flex-nowrap touch:gap-14">
+    <div class="flex flex-wrap items-end gap-20 touch:flex-nowrap touch:gap-14">
       <GameCover
         :size="CoverSize.Hero"
         class="flex-none shadow-cover-hero touch:shadow-cover-glow"
         :game="game"
         :badge="false"
       />
-      <div class="flex min-w-0 grow basis-hero-text flex-col gap-10 touch:flex-1 touch:gap-4">
+      <div class="flex min-w-0 grow basis-hero-text flex-col gap-8 touch:flex-1 touch:gap-4">
         <Heading as="div" :variant="HeadingVariant.Overline">
           {{ t(`console.${game.console}`) }}
         </Heading>
@@ -97,7 +97,7 @@ defineExpose({
         <div class="text-lead text-ink-muted tabular-nums touch:text-body">
           {{ meta }}
         </div>
-        <div v-if="!phone" class="mt-6 flex flex-wrap gap-8">
+        <div v-if="!phone" class="mt-4 flex flex-wrap gap-8">
           <ResumeButton :available="game.available" :fresh="!!resume?.none" @click="emit('play')" />
           <Button :size="ButtonSize.Tall" @click="emit('flags', { favourite: !game.favourite })">
             <Heart

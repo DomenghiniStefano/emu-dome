@@ -15,7 +15,7 @@ const emit = defineEmits<{ wait: []; closeAnyway: [] }>()
 <template>
   <div
     v-if="view.status || view.ask"
-    class="fixed inset-0 z-dialog flex items-end justify-center px-16 pb-48"
+    class="fixed inset-0 z-dialog flex items-end justify-center px-16 pb-16"
   >
     <!-- Keyed by the question: a new one opens afresh and its main action takes the focus. -->
     <ClosingAsk

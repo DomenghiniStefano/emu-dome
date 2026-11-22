@@ -9,6 +9,7 @@ export const BadgeVariant = {
   // A problem («Salvataggio illeggibile»).
   Warning: 'warning',
   // Something not here yet or reserved («In arrivo», «Con Nintendo DS»): a dashed edge, no fill.
+  // The edge is an inset outline: a border made it 2px taller than the other tags beside it.
   Reserved: 'reserved',
   // A good state («In uso» on the controller in use).
   Success: 'success',
@@ -23,7 +24,8 @@ export type BadgeVariant = (typeof BadgeVariant)[keyof typeof BadgeVariant]
 export const BadgeSize = {
   // A tag: square corners (`radius-badge`), 11px on a 16px line (`badge`, pending Cowork).
   Tag: 'tag',
-  // A pill: round, the caption on the body's line (`caption-tall`).
+  // Once a round pill; since the compact look (owner, 2026-11-22) the same square tag as Tag, so
+  // a state has one shape whatever its colour. Kept so callers need no change.
   Pill: 'pill',
   // A count over an icon (BadgeVariant.Count): a 16px round, 10px numbers (`count`, pending).
   Count: 'count',
@@ -35,14 +37,15 @@ export const badgeVariants = cva('flex-none whitespace-nowrap', {
     variant: {
       [BadgeVariant.Neutral]: 'bg-surface-raised font-medium text-ink-muted',
       [BadgeVariant.Warning]: 'bg-warning-soft text-warning',
-      [BadgeVariant.Reserved]: 'border border-dashed border-line-strong font-medium text-ink-muted',
+      [BadgeVariant.Reserved]:
+        'outline outline-offset-inset outline-line-strong outline-dashed font-medium text-ink-muted',
       [BadgeVariant.Success]: 'bg-success-soft font-semibold text-success',
       [BadgeVariant.Quiet]: 'bg-surface-hover text-ink-muted',
       [BadgeVariant.Count]: 'bg-accent text-on-accent',
     },
     size: {
       [BadgeSize.Tag]: 'rounded-badge px-6 text-badge',
-      [BadgeSize.Pill]: 'rounded-full px-8 py-2 text-caption-tall',
+      [BadgeSize.Pill]: 'rounded-badge px-6 text-badge',
       [BadgeSize.Count]: 'grid h-16 min-w-16 place-items-center rounded-full px-4 text-count',
     },
   },

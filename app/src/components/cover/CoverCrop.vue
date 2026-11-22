@@ -58,11 +58,11 @@ const imageStyle = computed(() =>
 </script>
 
 <template>
-  <div ref="root" class="flex flex-col gap-14">
+  <div ref="root" class="flex flex-col gap-12">
     <DialogTitle as="div" :size="DialogTitleSize.Heading">
       {{ t('library.cover.crop.title') }}
     </DialogTitle>
-    <div class="flex flex-wrap items-start gap-20">
+    <div class="flex flex-wrap items-stretch gap-16">
       <!-- The cover as it will be: the backdrop (the image filling the frame, blurred, under the
            game scrim), then the image where the view puts it. -->
       <div
@@ -95,7 +95,7 @@ const imageStyle = computed(() =>
           @load="crop.loaded"
         />
       </div>
-      <div class="flex min-w-0 flex-1 flex-col gap-14">
+      <div class="flex min-w-0 flex-1 flex-col gap-12">
         <Segmented
           v-model="modeModel"
           class="self-start"
@@ -104,7 +104,7 @@ const imageStyle = computed(() =>
           <SegmentedItem :value="CropMode.Whole">{{ t('library.cover.crop.whole') }}</SegmentedItem>
           <SegmentedItem :value="CropMode.Fill">{{ t('library.cover.crop.fill') }}</SegmentedItem>
         </Segmented>
-        <div class="flex items-center gap-12">
+        <div class="flex items-center gap-8">
           <span class="text-caption text-ink-muted">{{ t('library.cover.crop.zoom') }}</span>
           <Slider
             v-model="zoomModel"
@@ -118,12 +118,13 @@ const imageStyle = computed(() =>
           <span class="text-caption text-ink-muted tabular-nums">{{ zoomText }}</span>
         </div>
         <p class="m-0 text-caption text-ink-muted">{{ t('library.cover.crop.drag') }}</p>
-        <CropHints />
+        <!-- The keys sit at the column's foot, level with the cover's bottom edge. -->
+        <CropHints class="mt-auto" />
       </div>
     </div>
     <p v-if="error" class="m-0 text-danger" role="alert">{{ error }}</p>
     <div class="flex justify-between gap-8">
-      <Button @click="emit('back')">{{ t('library.cover.back') }}</Button>
+      <Button :size="ButtonSize.Medium" @click="emit('back')">{{ t('library.cover.back') }}</Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The open menu: under its button (`anchor`), its right edge on the button's, the `--spacing-6`
-// token away, in the page's CSS px at any interface scale (zoomedReference.ts).
+// token away, in the page's CSS px at any interface scale (zoomedReference.ts); pushed back in
+// from a window edge it would cross, never closer to it than that same gap.
 //
 // With the app's navigation:
 // - its nav scope (DropdownMenuNavScope) focuses the first item on opening (Reka's own first
@@ -42,6 +43,7 @@ function onPointerDownOutside(e: CustomEvent<{ originalEvent: PointerEvent }>) {
       side="bottom"
       align="end"
       :side-offset="tokenPx(DROPDOWN_MENU_GAP)"
+      :collision-padding="tokenPx(DROPDOWN_MENU_GAP)"
       :reference="reference"
       :class="dropdownMenuVariants({ variant })"
       @open-auto-focus.prevent

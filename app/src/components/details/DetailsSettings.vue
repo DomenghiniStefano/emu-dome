@@ -79,7 +79,7 @@ useSettingsChanged(
 </script>
 
 <template>
-  <div class="flex flex-col gap-12">
+  <div class="flex flex-col gap-8">
     <div
       class="flex items-center justify-between gap-12 touch:flex-col touch:items-start touch:justify-start"
     >

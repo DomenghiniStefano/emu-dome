@@ -42,12 +42,12 @@ const replaced = computed(() => (props.target ? (props.targetSaves?.inGame ?? nu
 </script>
 
 <template>
-  <section class="flex flex-col gap-18">
+  <section class="flex flex-col gap-12">
     <div class="flex flex-col gap-4">
       <Heading>{{ t('saves.importer.title') }}</Heading>
       <p class="m-0 text-ink-muted">{{ t('saves.importer.intro') }}</p>
     </div>
-    <Card class="gap-14">
+    <Card class="gap-10">
       <ImportStep :n="1" :title="t('saves.importer.file')" :detail="fileLine" :done="!!candidate">
         <Button data-nav-initial @click="emit('pickFile')">
           {{ candidate ? t('saves.importer.change') : t('saves.importer.pick') }}

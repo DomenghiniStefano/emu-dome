@@ -17,14 +17,14 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <Card :pad="CardPad.Snug" class="gap-10 text-ink">
-    <SaveThumb :src="version.thumbUrl" class="aspect-3/2 rounded-6" />
+  <Card :pad="CardPad.Snug" class="gap-8 text-ink">
+    <SaveThumb :src="version.thumbUrl" class="aspect-3/2 rounded-control" />
     <div class="flex items-center gap-8 text-heading">
       <span>{{ version.device }}</span>
       <Badge v-if="newest">{{ t('saves.conflict.newest') }}</Badge>
     </div>
     <dl
-      class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-12 gap-y-4 text-caption text-ink-muted tabular-nums"
+      class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-8 gap-y-2 text-caption text-ink-muted tabular-nums"
     >
       <dt>{{ t('saves.conflict.saved') }}</dt>
       <dd class="m-0 text-ink">{{ saveWhenLabel(version.savedAt) }}</dd>
@@ -35,7 +35,8 @@ const { t } = useI18n()
       <dt>{{ t('saves.conflict.size') }}</dt>
       <dd class="m-0 text-ink">{{ sizeLabel(version.size) }}</dd>
     </dl>
-    <Button :data-nav-initial="newest ? '' : undefined" @click="emit('keep')">
+    <!-- at the bottom: both sides keep it on one line when one has a line less -->
+    <Button class="mt-auto" :data-nav-initial="newest ? '' : undefined" @click="emit('keep')">
       {{ t('saves.conflict.keepThis') }}
     </Button>
   </Card>

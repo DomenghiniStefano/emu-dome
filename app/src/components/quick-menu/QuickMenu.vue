@@ -437,7 +437,7 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
         <!-- The middle scrolls when it does not fit (the phone on its side): the header and the
              footer stay; a swipe pans it and never reaches the game behind. -->
         <div
-          class="flex min-h-0 touch-pan-y flex-col gap-16 overflow-y-auto overscroll-contain touch:flex-1 touch:gap-10"
+          class="-mr-8 flex min-h-0 touch-pan-y flex-col gap-12 overflow-y-auto overscroll-contain pr-8 touch:flex-1 touch:gap-10"
         >
           <QuickSaves
             v-if="view === QuickMenuView.Home || view === QuickMenuView.Slots"

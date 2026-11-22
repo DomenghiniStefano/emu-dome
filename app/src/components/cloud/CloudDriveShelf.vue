@@ -46,8 +46,8 @@ watch(() => [signedIn.value, cloud.status?.lastSync], reload)
 
 <template>
   <LabelledBlock v-if="chosen" :title="t('cloud.drive.title')">
-    <div class="flex flex-wrap items-end gap-16">
-      <div class="flex min-w-0 flex-wrap gap-16">
+    <div class="flex flex-wrap items-end gap-12">
+      <div class="flex min-w-0 flex-wrap gap-12">
         <Button
           v-for="g in games"
           :key="g.id"

@@ -58,6 +58,11 @@ const NDS_USED: usize = NDS_BANNER + 0x840;
 
 /// An NDS ROM with a banner (English title, a 3-colour icon), `NDS_USED` bytes used.
 fn nds_rom() -> Vec<u8> {
+    nds_rom_titled("Synthetic Game\nHomebrew")
+}
+
+/// [`nds_rom`] with `english` as its banner's English text (title lines and publisher).
+fn nds_rom_titled(english: &str) -> Vec<u8> {
     let mut rom = vec![0u8; NDS_USED];
     put(&mut rom, 0x00, b"SYNTHETIC");
     put(&mut rom, 0x0C, b"ZSYN");
@@ -75,7 +80,7 @@ fn nds_rom() -> Vec<u8> {
     put(&mut rom, b + 0x220 + 2, &0x001Fu16.to_le_bytes()); // red
     put(&mut rom, b + 0x220 + 4, &0x7C00u16.to_le_bytes()); // blue
     put_utf16(&mut rom, b + 0x240, "Japanese title");
-    put_utf16(&mut rom, b + 0x340, "Synthetic Game\nHomebrew");
+    put_utf16(&mut rom, b + 0x340, english);
     rom
 }
 
@@ -244,7 +249,7 @@ fn nds_trimmed_and_untrimmed_dumps_are_the_same_game() {
     assert_eq!(a.id, b.id);
     assert_eq!(a.id, format!("nds:{}", sha1_hex(&trimmed)));
     assert_eq!(a.console, ConsoleId::Nds);
-    // English banner title, first line.
+    // English banner title, without its publisher line.
     assert_eq!(a.title, "Synthetic Game");
     assert_eq!(a.code.as_deref(), Some("ZSYN"));
     assert_eq!(a.version, Some(2));
@@ -265,6 +270,42 @@ fn a_dsi_enhanced_nds_rom_is_identified() {
     let a = identify(&write(&dir, "dsi.nds", &rom)).unwrap();
     assert_eq!(a.title, "Synthetic Game");
     assert_eq!(a.id, format!("nds:{}", sha1_hex(&rom)));
+}
+
+#[test]
+fn an_nds_title_keeps_its_subtitle_and_drops_its_publisher() {
+    let dir = TestDir::new("lib-nds-title");
+    let title = |name: &str, english: &str| {
+        identify(&write(&dir, name, &nds_rom_titled(english)))
+            .unwrap()
+            .title
+    };
+    // 3 lines: title, subtitle, publisher.
+    assert_eq!(
+        title("w.nds", "Synthetic\nWhite Version\nHomebrew"),
+        "Synthetic White Version"
+    );
+    assert_eq!(
+        title("w-crlf.nds", "Synthetic\r\nWhite Version\r\nHomebrew"),
+        "Synthetic White Version"
+    );
+    // Spaces around the lines and blank lines are dropped.
+    assert_eq!(
+        title("w-spaced.nds", " Synthetic \n\nWhite Version \nHomebrew\n"),
+        "Synthetic White Version"
+    );
+    // 2 lines: title, publisher.
+    assert_eq!(title("t.nds", "Synthetic Game\nHomebrew"), "Synthetic Game");
+    assert_eq!(
+        title("t-crlf.nds", "Synthetic Game\r\nHomebrew"),
+        "Synthetic Game"
+    );
+    // 1 line: the title alone.
+    assert_eq!(title("one.nds", "Synthetic Game"), "Synthetic Game");
+    // The identity is the content's, whatever the title.
+    let a = identify(&write(&dir, "a.nds", &nds_rom_titled("A\nB\nC"))).unwrap();
+    let b = identify(&write(&dir, "b.nds", &nds_rom_titled("A\nB\nC"))).unwrap();
+    assert_eq!(a.id, b.id);
 }
 
 #[test]
@@ -560,6 +601,57 @@ fn single_files_are_rechecked_by_every_scan() {
     fs::remove_file(path).unwrap();
     run(&mut lib, &[], 0);
     assert!(!lib.games().next().unwrap().available);
+}
+
+#[test]
+fn a_rescan_refreshes_the_ds_titles_read_under_the_old_rule() {
+    // A library written before the title rule was recorded: the DS game's title is the banner's
+    // first line (cache and record), the user renamed the GBA game, and no entry says its rule.
+    let dir = TestDir::new("lib-title-rule");
+    write(
+        &dir,
+        "roms/w.nds",
+        &nds_rom_titled("Synthetic\nWhite Version\nHomebrew"),
+    );
+    write(&dir, "roms/a.gba", &gba_rom("ONE", 0));
+    let (nds_id, gba_id) = {
+        let mut lib = Library::open(&dir.path("db"));
+        run(&mut lib, &[&dir.path("roms")], 5);
+        let id = |c| lib.games().find(|g| g.console == c).unwrap().id.clone();
+        let (nds_id, gba_id) = (id(ConsoleId::Nds), id(ConsoleId::Gba));
+        lib.set_name(&nds_id, "My White").unwrap();
+        (nds_id, gba_id)
+    };
+    let mut json: serde_json::Value = serde_json::from_str(&dir.read("db/library.json")).unwrap();
+    json["games"][nds_id.as_str()]["title"] = "Synthetic".into();
+    for entry in json["hashCache"].as_object_mut().unwrap().values_mut() {
+        let entry = entry.as_object_mut().unwrap();
+        assert_eq!(entry.remove("titleRule"), Some(1.into()));
+        if entry["identity"]["console"] == "nds" {
+            entry.get_mut("identity").unwrap()["title"] = "Synthetic".into();
+        } else {
+            // Tampered: a GBA entry still trusted keeps it, so the test sees it was not re-read.
+            entry.get_mut("identity").unwrap()["code"] = "OLD!".into();
+        }
+    }
+    dir.write("db/library.json", &json.to_string());
+
+    let mut lib = Library::open(&dir.path("db"));
+    assert_eq!(lib.game(&nds_id).unwrap().title, "Synthetic");
+    let report = run(&mut lib, &[&dir.path("roms")], 6);
+    assert_eq!((report.found, report.added), (2, 0));
+    let nds = lib.game(&nds_id).unwrap();
+    // The same game (same id), its title read again; the user's name stays over it.
+    assert_eq!(nds.title, "Synthetic White Version");
+    assert_eq!(nds.shown_title(), "My White");
+    // The rule did not change for GBA: its entry still comes from the cache.
+    let gba_key = lib.game(&gba_id).unwrap().path.clone();
+    assert_eq!(lib.cache()[&gba_key].identity.code.as_deref(), Some("OLD!"));
+    // Every entry now records the current rule.
+    assert!(lib
+        .cache()
+        .values()
+        .all(|c| c.title_rule == super::identity::TITLE_RULE));
 }
 
 #[test]

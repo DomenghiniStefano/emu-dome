@@ -27,6 +27,7 @@ import { GLOBAL } from '@/lib/settingsModel'
 import { CaptureField, CaptureFieldVariant } from '@/components/ui/capture-field'
 import { Card, CardVariant } from '@/components/ui/card'
 import { Kbd } from '@/components/ui/kbd'
+import RowColumns from '@/components/settings/RowColumns.vue'
 import SettingRowView from '@/components/settings/SettingRow.vue'
 import ConflictBanner from './ConflictBanner.vue'
 import ShortcutRow from './ShortcutRow.vue'
@@ -113,9 +114,9 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
 </script>
 
 <template>
-  <div class="flex flex-col gap-12">
+  <div class="flex flex-col gap-8">
     <template v-if="family !== 'keyboard'">
-      <Card v-if="modEntry" :variant="CardVariant.List" class="pb-12">
+      <Card v-if="modEntry" :variant="CardVariant.List" class="pb-8">
         <SettingRowView
           :entry="modEntry"
           :row="globalRows['pad.mod']"
@@ -126,61 +127,65 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
           @set="v => settings.set('pad.mod', v)"
           @reset="settings.reset('pad.mod')"
         />
-        <p class="m-0 px-16 text-caption-tall text-ink-muted">
+        <p class="m-0 px-12 text-caption-tall text-ink-muted">
           {{ t('controls.modNote') }}
         </p>
       </Card>
 
       <Card :variant="CardVariant.List">
-        <template v-for="(r, i) in rows" :key="r.hotkey">
-          <ShortcutRow
-            :action="hotkeyName(r.hotkey)"
-            :muted="r.status !== 'active'"
-            :badge="badgeOf(r.status)"
-          >
-            {{ comboOf(r) }}
-            <template #change>
-              <span v-if="r.status !== 'active'"></span>
-              <CaptureField
-                v-else
-                :variant="CaptureFieldVariant.Quiet"
-                :listening="capture.target.value === r.hotkey"
-                :data-nav-initial="i === 0 ? '' : undefined"
-                :aria-label="t('controls.changeShortcut', { action: hotkeyName(r.hotkey) })"
-                @click="change(r.hotkey)"
-              >
-                {{ t('controls.change') }}
-              </CaptureField>
-            </template>
+        <RowColumns>
+          <template v-for="(r, i) in rows" :key="r.hotkey">
+            <ShortcutRow
+              :action="hotkeyName(r.hotkey)"
+              :muted="r.status !== 'active'"
+              :badge="badgeOf(r.status)"
+            >
+              {{ comboOf(r) }}
+              <template #change>
+                <span v-if="r.status !== 'active'"></span>
+                <CaptureField
+                  v-else
+                  :variant="CaptureFieldVariant.Quiet"
+                  :listening="capture.target.value === r.hotkey"
+                  :data-nav-initial="i === 0 ? '' : undefined"
+                  :aria-label="t('controls.changeShortcut', { action: hotkeyName(r.hotkey) })"
+                  @click="change(r.hotkey)"
+                >
+                  {{ t('controls.change') }}
+                </CaptureField>
+              </template>
+            </ShortcutRow>
+            <ConflictBanner
+              v-if="conflict && conflict.id === r.hotkey"
+              :text="
+                t('controls.comboConflict', {
+                  source: posName(padFamily, conflict.source, false),
+                  action: hotkeyName(conflict.other),
+                })
+              "
+              @swap="swap"
+              @cancel="conflict = null"
+            />
+          </template>
+          <ShortcutRow :action="t('controls.keys.fullscreen')" muted>
+            {{ t('controls.keyboardOnly', { key: fullscreenKey }) }}
           </ShortcutRow>
-          <ConflictBanner
-            v-if="conflict && conflict.id === r.hotkey"
-            :text="
-              t('controls.comboConflict', {
-                source: posName(padFamily, conflict.source, false),
-                action: hotkeyName(conflict.other),
-              })
-            "
-            @swap="swap"
-            @cancel="conflict = null"
-          />
-        </template>
-        <ShortcutRow :action="t('controls.keys.fullscreen')" muted>
-          {{ t('controls.keyboardOnly', { key: fullscreenKey }) }}
-        </ShortcutRow>
+        </RowColumns>
       </Card>
     </template>
 
     <Card v-else :variant="CardVariant.List">
-      <ShortcutRow
-        v-for="k in KEYBOARD_SHORTCUTS"
-        :key="k.code"
-        :action="hotkeyName(k.action)"
-        :muted="k.status !== 'active'"
-        :badge="k.status !== 'active' ? t('controls.badge.soon') : undefined"
-      >
-        <Kbd>{{ keyName(k.code) }}</Kbd>
-      </ShortcutRow>
+      <RowColumns>
+        <ShortcutRow
+          v-for="k in KEYBOARD_SHORTCUTS"
+          :key="k.code"
+          :action="hotkeyName(k.action)"
+          :muted="k.status !== 'active'"
+          :badge="k.status !== 'active' ? t('controls.badge.soon') : undefined"
+        >
+          <Kbd>{{ keyName(k.code) }}</Kbd>
+        </ShortcutRow>
+      </RowColumns>
     </Card>
   </div>
 </template>

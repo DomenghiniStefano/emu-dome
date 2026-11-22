@@ -3,6 +3,7 @@
 // where its file is and what to do with it (useCloudGames).
 import { useI18n } from 'vue-i18n'
 import { Card, CardVariant } from '@/components/ui/card'
+import RowColumns from '@/components/settings/RowColumns.vue'
 import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
 import CloudGameRow from './CloudGameRow.vue'
 import { cloud } from './cloudState'
@@ -15,13 +16,15 @@ const { busy, act } = useCloudGames()
 <template>
   <template v-if="cloud.gamesLoaded">
     <Card v-if="cloud.games.length" :variant="CardVariant.List">
-      <CloudGameRow
-        v-for="g in cloud.games"
-        :key="g.id"
-        :game="g"
-        :busy="busy.has(g.id)"
-        @act="a => act(g, a)"
-      />
+      <RowColumns>
+        <CloudGameRow
+          v-for="g in cloud.games"
+          :key="g.id"
+          :game="g"
+          :busy="busy.has(g.id)"
+          @act="a => act(g, a)"
+        />
+      </RowColumns>
     </Card>
     <EmptyState v-else as="div" :variant="EmptyStateVariant.Card" :text="t('cloud.games.empty')" />
   </template>

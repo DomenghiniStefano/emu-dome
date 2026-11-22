@@ -4,6 +4,7 @@ import { Layers, Gamepad2, Disc3 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
 
@@ -19,15 +20,15 @@ const LEVELS = [
 <template>
   <KitSection title="RadioGroup">
     <KitState label="Cards in a row (the settings scope bar): arrows along the row choose">
-      <RadioGroup v-model="level" class="grid w-field grid-cols-3 gap-8" aria-label="Level">
+      <RadioGroup v-model="level" class="flex gap-6" aria-label="Level">
         <RadioGroupItem v-for="l in LEVELS" :key="l.id" :value="l.id">
           <Card
             as="button"
             :variant="CardVariant.RaisedAccent"
             :selected="level === l.id"
-            class="min-h-level flex-row items-start gap-10 px-12"
+            class="flex-row items-center gap-6"
           >
-            <component :is="l.icon" :size="20" :stroke-width="1.75" aria-hidden="true" />
+            <component :is="l.icon" :size="16" :stroke-width="1.75" aria-hidden="true" />
             <span class="font-semibold">{{ l.name }}</span>
           </Card>
         </RadioGroupItem>
@@ -37,7 +38,7 @@ const LEVELS = [
       <RadioGroup
         v-model="order"
         orientation="vertical"
-        class="flex w-menu flex-col gap-2"
+        class="flex w-field flex-col gap-px"
         aria-label="Order"
       >
         <RadioGroupItem v-for="o in ['recent', 'title', 'console']" :key="o" :value="o">
@@ -56,5 +57,19 @@ const LEVELS = [
         </RadioGroupItem>
       </RadioGroup>
     </KitState>
+    <template #review>
+      <KitIssue title="Il pallino del radio lo disegna chi lo usa">
+        Il cerchio delle righe in colonna (bordo line-strong, più spesso e in accento quando è
+        scelto) non è nel primitivo: LibraryFilters.vue lo scrive a mano con le sue classi, e il Kit
+        le copia. Una seconda lista di radio dovrebbe copiarle ancora, e il pallino non ha il punto
+        pieno che di solito dice «scelto». Lo stesso per il quadrato di Checkbox nello stesso
+        pannello (pieno, senza segno di spunta: è della sezione Checkbox).
+        <template #solution>
+          Una parte RadioGroupIndicator in components/ui/radio-group (cerchio con un punto pieno in
+          accento quando è scelto), usata da LibraryFilters.vue e dal Kit; nessuna classe del
+          pallino fuori da ui/.
+        </template>
+      </KitIssue>
+    </template>
   </KitSection>
 </template>
