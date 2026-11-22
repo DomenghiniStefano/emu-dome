@@ -11,6 +11,7 @@ import { Segmented, SegmentedItem } from '@/components/ui/segmented'
 import { dispatchNav, keyToNav, useNavScope } from '@/nav'
 import BadgeSection from '@/kit/sections/BadgeSection.vue'
 import ButtonSection from '@/kit/sections/ButtonSection.vue'
+import ButtonIconSection from '@/kit/sections/ButtonIconSection.vue'
 import CaptureFieldSection from '@/kit/sections/CaptureFieldSection.vue'
 import CardSection from '@/kit/sections/CardSection.vue'
 import ChipSection from '@/kit/sections/ChipSection.vue'
@@ -111,6 +112,7 @@ useNavScope(root, { autofocus: true })
       <h2 class="m-0 text-title text-ink">{{ KIT_GROUP_TITLES[KitGroup.Primitives] }}</h2>
       <HeadingSection />
       <ButtonSection />
+      <ButtonIconSection />
       <BadgeSection />
       <CardSection />
       <ChipSection />
