@@ -233,7 +233,11 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
                          title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
-                         store.rs library.json, games never deleted; pure, unit-tested)
+                         store.rs library.json, games never deleted, the user's version pins;
+                         group.rs the regional versions of one game as a family (GBA / NDS code
+                         and 3DS product code without the region letter; never homebrew, GB / GBC
+                         or hidden games), the version shown: the user's pin, else the one
+                         launched last, else the one added first (#102); pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
                          notifications.rs (X03, #32: `Notice` codes + values, `Notifications` newest
                          first, at most 100, a newer kind kept unlisted; `Store` on
@@ -526,7 +530,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`,
   `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
-  `library://changed` (`LibraryChanged`: the rows that changed, or the whole library), `library://scan`,
+  `library://changed` (`LibraryChanged`: the rows that changed, the families of regional versions, or the
+  whole library), `library://scan`,
   `saves://migration`, `emu://effect-error`, `notifications://changed` (the whole list, newest first),
   `settings://changed` (`{ key, level }`), `emu://core-restart` (`{ settings }`: keys waiting for the game to be
   opened again), `emu://bios-fallback` (an `ErrorCode`: a setting asked for system files that are not in place),
@@ -845,8 +850,17 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 27 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 26 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
+- Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
+  (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
+  (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`
+  (`library_pin_version`). The interface indexes them once per change (`lib/families.ts`, `libraryFamilies`): the
+  desk's grid and the TV shelves show one tile per family (a deck behind it, the square «N versioni» tag),
+  «Continua a giocare» and the search the versions themselves, and the details' «Versioni» block lists them with
+  «Gioca questa» / «Mostra questa in libreria». No region rule (`library.region` is gone). Game Boy / Game Boy
+  Color are never grouped (the header's licensee and Japan / overseas flag are not read). On a TV shelf the
+  focused cover's ring hides most of the deck behind it.
 - Window, video and audio settings (Trello #100): `video.winsize` «free» is not remembered across starts (a start
   opens at 1280×800); `video.api` applies at the next start and nothing says a restart is waiting (no general
   restart notice; `emu://core-restart` is for core options), and its «Automatic ({api})» value is not shown;
