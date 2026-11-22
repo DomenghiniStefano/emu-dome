@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <!-- Owner, 2026-11-22: the launcher icon is amber with the mark large in graphite, cut by the
-       bottom-right edge (ic_launcher_foreground). The splash keeps the amber mark (ic_splash). -->
+       bottom-left edge (ic_launcher_foreground). The splash keeps the amber mark (ic_splash). -->
   <color name="ic_launcher_background">#FAA40F</color>
 </resources>
