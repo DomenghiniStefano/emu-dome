@@ -457,7 +457,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          to the window's edges, the geometry, the 8 px grid, the edges kept clear of the
                          game: the band at the bottom in portrait, the side columns in landscape; DS /
                          3DS: the safe top, the band and the L / menu / R strip between the screens
-                         upright, the camera's edge on the side), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
+                         upright, the camera's edge on the side), the two styles «Fumé» / «Contorno»
+                         (skins.ts, `touch.tskin`: ButtonVariant.PadSmoke / PadOutline colour the shape
+                         PadShape.vue draws in each button's box; the d-pad one cross, padGeometry.ts),
+                         tap / hold / turbo
                          (touchPress.ts), `touch.topac` / `thapt` / `thide` / `tpad`
                          (touchVisibility.ts); TouchEditor C06 over the game (from G10 and from the
                          `touch.tedit` row at a console's scope; useTouchEditor the state, editorHistory.ts
@@ -643,8 +646,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log; a file that is there but cannot be read is never
   written over (writes to it refused with `settingsReadFailed` until it reads again; the library does the same
-  with `libraryReadFailed`). Every file says its layout (`"$schema": 1`, written on save; none = 0; older ones go
-  through `store.rs`'s `MIGRATIONS` in memory) and is read again before use when its mtime or size changed. The
+  with `libraryReadFailed`). Every file says its layout (`"$schema": 2`, written on save; none = 0; older ones go
+  through `store.rs`'s `MIGRATIONS` in memory: 1 → 2 reads the old touch styles as the new ones) and is read again before use when its mtime or size changed. The
   sync rules as they are today are tests (`settings/tests.rs`, «Sync rules»). Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.
   A game is its `GameKey` everywhere (settings, saves, library, the interface's `GameId`); a file opened by its path
@@ -1013,13 +1016,19 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Touch controls (Trello #29): layouts per console and orientation (defaults for GB / GBC, GBA, DS and 3DS, the
   user's own from C06 kept per device), tap / hold / turbo (the repeat is the interface's, about 12 a second: the
-  core has no turbo of its own), vibration on Android, `touch.thide` / `touch.tpad`, three built-in skins from the
-  tokens, E14. Not yet: imported skins (our pack format, `.deltaskin`, RetroArch overlays: Phase 5,
+  core has no turbo of its own), vibration on Android, `touch.thide` / `touch.tpad`, two built-in styles from the
+  tokens (owner, 2026-11-22: «Fumé», dark see-through glass, the default, and «Contorno», the outline alone; all
+  colours opaque, each whole control faded by `opacity-pad` 60 % times `touch.topac` (default 100) times its own
+  opacity; the old `glass` / `outlines` / `contrast` values read as `smoke` / `outline` / `smoke`, settings layout
+  2), compact shapes (the d-pad one cross with arrows, A B X Y round in a 128 diamond, L / R shoulder-shaped, Select
+  / Start small pills, the menu a small square), E14. A button's box is what takes the touch; L / R (84 × 36),
+  Select / Start (60 × 32) and the menu (36) are under the 44 touch minimum by design and never shrink below their
+  own size in C06 (`minSize`); the face buttons (48) and the d-pad (116, the whole box) are not. Not yet: imported skins (our pack format, `.deltaskin`, RetroArch overlays: Phase 5,
   `docs/decisions.md`), more than one control of the same kind (a second, turbo A), a layout per game, the C06
   editor's controls drawn over the real screen layout of a DS game (they are placed over the window, not the
   screens), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4, so Settings ›
   Controlli touch stays hidden while `CURRENT_PHASE` is 1: the editor opens from the quick menu's «Controlli» on
-  a touch screen, and the rows keep their defaults (E14 «Pausa e domanda», the glass skin, 60 %, vibration 40 %).
+  a touch screen, and the rows keep their defaults (E14 «Pausa e domanda», «Fumé», 100 %, vibration 40 %).
 - Android controllers (Trello #47): built from Android's input events (`pads/android.rs`, `GamepadInput.kt`) but
   not run on a device yet. To verify there: which physical button a Nintendo-layout pad (Switch Pro, an 8BitDo in
   Switch mode) reports as `KEYCODE_BUTTON_A` (the table reads it as the bottom one, as SDL does); whether Guide /
@@ -1034,11 +1043,13 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   columns, Select / Start / menu in the columns; the quick menu's sheet and side panel keep their own edges the
   same way, measured again when the phone turns. DS and 3DS (owner, 2026-11-22) keep their screens large and apart
   instead (`isDualScreen`, `reservedInset`'s two-screen rule): upright the top screen under the camera (the safe top,
-  read from the `safe-*` tokens), L / menu / R in a 44 px strip between the screens (anchored halfway between the
-  safe top and the band, `defaultBand`), the touch screen on the band of the d-pad, A B X Y, Select / Start (in a
-  column between the clusters from 404 px wide, under them below); on its side the screens side by side at the top,
-  16 px from each edge or the camera's notch, 8 px apart, the controls over the strip below and the screens' lower
-  outer corners. On the S23: 412 × 309 each upright (32–341, strip, 385–694), 418 × 313.5 on its side. With the
+  read from the `safe-*` tokens), L / menu / R in a 36 px strip between the screens (anchored halfway between the
+  safe top and the band, `defaultBand`), the touch screen on the band of the d-pad, A B X Y and Select / Start (in a
+  column between the clusters, on every width); on its side the screens side by side at the top, 16 px from each
+  edge or the camera's notch, 8 px apart, the controls over the strip below and the screens' lower outer corners,
+  L / R small in the lower corners. On the S23 as it reports itself (360 × 780, camera 38): the DS band 166, the
+  two screens 360 × 270 edge to edge (38–308, strip 308–344, 344–614), 359 × 269.25 on its side; the 3DS band 272,
+  its top screen full width; on a 412 × 892 phone 412 × 309 each upright, 418 × 313.5 on its side. With the
   quick menu open the screens follow the menu's inset, which keeps no strip: they join, still filling their room.
   Native video's «Sfondo ai lati del gioco» still cuts one hole for the whole frame (`lib/surround.ts` mirrors
   `fit`, not the screens' placements): with a background other than black it covers parts of a two-screen layout
