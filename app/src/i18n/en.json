@@ -14,7 +14,29 @@
       "search": "Search",
       "back": "Back",
       "sections": "Switch section",
-      "choose": "Choose"
+      "choose": "Choose",
+      "change": "Change",
+      "levels": "Switch level"
+    },
+    "value": {
+      "on": "On",
+      "off": "Off"
+    },
+    "ask": {
+      "connect": {
+        "title": "Switch to TV mode?",
+        "text": "You connected a controller. TV mode shows larger menus, made for playing with a controller.",
+        "main": "Switch to TV mode",
+        "other": "Stay on desktop"
+      },
+      "disconnect": {
+        "title": "Controller disconnected",
+        "text": "Go back to desktop mode?",
+        "main": "Back to desktop",
+        "other": "Stay in TV mode"
+      },
+      "remember": "Don’t ask again",
+      "where": "You can change this in Settings."
     },
     "hero": {
       "meta": "{console} · {time} played · {when}",
@@ -1164,7 +1186,7 @@
       },
       "ui": {
         "name": "Interface",
-        "desc": "TV mode uses large text and is driven with the controller. Automatic turns it on in full screen with a controller connected.",
+        "desc": "TV mode uses large text and is driven with the controller. Automatic asks when you connect a controller.",
         "option": {
           "auto": "Automatic",
           "desktop": "Desktop mode",
@@ -2368,6 +2390,11 @@
     "settingWhere": "Settings · {page}",
     "gameWhere": "{console} · {time}",
     "needsGame": "Open a game to use it",
+    "heldInGame": "Hold its shortcut while you play",
+    "pausedInMenu": "The game is already paused while the menu is open",
+    "twoScreensOnly": "Only for games with two screens",
+    "settingInLibrary": "Open it from Settings in the library",
+    "playingNow": "You’re playing it now",
     "noResults": "No results for “{query}”",
     "didYouMean": "Did you mean:",
     "hint": {

@@ -59,6 +59,14 @@ export const SESSION_ROWS: Partial<Record<QuickMenuView, SettingKey[]>> = {
   [QuickMenuView.Speed]: ['speed.ffval', 'speed.slow', 'audio.ff'],
 }
 
+/** The pages that show settings «in prova». */
+export const SESSION_VIEWS = Object.keys(SESSION_ROWS) as QuickMenuView[]
+
+/** The page that shows the setting `key` «in prova» (the search opens it), or null. */
+export function sessionViewOf(key: SettingKey): QuickMenuView | null {
+  return SESSION_VIEWS.find(v => SESSION_ROWS[v]?.includes(key)) ?? null
+}
+
 /**
  * The attributes the menu moves the focus by. `data-sub-initial` marks a page's first control
  * (or a block holding it); the others name the controls the focus comes back to.

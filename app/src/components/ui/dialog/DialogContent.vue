@@ -60,7 +60,8 @@ function onClose(e: Event) {
 
 <template>
   <DialogPortal>
-    <DialogOverlay data-slot="dialog-overlay" :class="dialogOverlayVariants({ size })">
+    <!-- cn(): a size's padding (TvSheet's none) wins over the overlay's own. -->
+    <DialogOverlay data-slot="dialog-overlay" :class="cn(dialogOverlayVariants({ size }))">
       <DialogContent
         ref="content"
         data-slot="dialog-content"

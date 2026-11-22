@@ -3,8 +3,12 @@ import type { DialogDescriptionProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 import { DialogDescription } from 'reka-ui'
 import { cn } from '@/lib/cn'
+import type { DialogDescriptionSize } from './variants'
+import { dialogDescriptionVariants } from './variants'
 
-const props = defineProps<DialogDescriptionProps & { class?: HTMLAttributes['class'] }>()
+const props = defineProps<
+  DialogDescriptionProps & { size?: DialogDescriptionSize; class?: HTMLAttributes['class'] }
+>()
 </script>
 
 <template>
@@ -12,7 +16,7 @@ const props = defineProps<DialogDescriptionProps & { class?: HTMLAttributes['cla
     data-slot="dialog-description"
     :as="props.as"
     :as-child="props.asChild"
-    :class="cn('m-0 text-body text-ink-muted', props.class)"
+    :class="cn(dialogDescriptionVariants({ size }), props.class)"
   >
     <slot />
   </DialogDescription>

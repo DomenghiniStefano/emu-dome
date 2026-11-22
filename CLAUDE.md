@@ -376,8 +376,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
                          pure, tested; CoverCropDialog for the screenshot toast's «Usa come copertina»,
                          useCoverRequest), toasts, closing (the loader while a game closes),
-                         search (X01 / X02, #32: SearchPalette from the top bar, Ctrl + K or Y; search.ts
-                         the matching, pure, tested; useSearchSources the actions, settings and games),
+                         search (X01 / X02, #32: SearchPalette, mounted once in App.vue, opens over its
+                         host (useSearch.ts: the shell or the quick menu, Ctrl + K or Y); searchContext.ts
+                         what can be chosen there, search.ts the matching, both pure, tested;
+                         useSearchSources the actions, settings and games; the quick menu's side is
+                         quick-menu/useMenuSearch.ts),
                          notifications (X03: NotificationBell in the top bar, its panel; notifications.ts
                          the words, pure, tested);
                          components/ui/ (the primitives),
@@ -792,12 +795,19 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
   components never take a `phone` / `touch` prop just to change their look.
 - **TV mode** (Trello #30): one `data-layout="tv"` on `<html>` (`composables/useUiMode.ts`, the decision pure in
-  `lib/uiMode.ts`: `general.ui`, or Automatica = full screen with a controller connected; never on a phone) and the
+  `lib/uiMode.ts`: `general.ui`, or at Automatica the answer to the TV question, `components/tv-mode/TvModeDialog.vue`:
+  a controller connecting, or connected at startup, outside TV asks «Passare alla modalità TV?», the last one leaving
+  TV asks to go back (in place of the «controller disconnected» toast, closed by a reconnection); the answer holds for
+  the run, «Non chiederlo più» saves it as `general.ui`; in game the game pauses meanwhile; full screen no longer
+  decides; never on a phone) and the
   `tv:` variant. TV sizes are the «TV» tokens (`typography.css`, `spacing.css`, `border.css`), drawn for 1920 × 1080
   and grown by `--tv-scale` on a larger screen. Its own parts: the shell's `TvTabs` (sections, L1 / R1 from
   anywhere), `TvButtonBar` and `TvGlyph` (the connected controller's glyphs by position and `pad.confirm`,
-  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`); the quick menu and the other sections keep
-  the desk's layout scaled up (`zoom-tv`).
+  `lib/padGlyphs.ts`), the library's shelves (`components/library/tv/`), Settings (`components/settings/tv/`, the
+  owner's option B: the desk's structure with the TV sizes, the pages on the left, large rows on the right; ◀ ▶
+  change a short choice / switch / slider / colour in place, A opens long choices in a full-screen sheet, X resets,
+  a kind it does not draw keeps the desk's row; `tvSettingRow.ts` decides, pure); the quick menu and the other
+  sections keep the desk's layout scaled up (`zoom-tv`).
 - **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
 - **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
   by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its
@@ -883,14 +893,23 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   frame, so a curved CRT bends the frame as the core stacks it, not each screen. `screens.gap` is in the frame's
   pixels, so an upscaled frame (Azahar's internal resolution) gets a thinner gap. `pad.pointer`'s right-stick
   cursor has no backend (the mouse and touch go through `pointer`). No keyboard key for swap, layout or lid.
-- TV mode (#30): Settings in TV is not built (an open point with the owner: one column of large rows, LT / RT for
-  the categories); in TV it keeps the desk's layout scaled up, as Saves, Controls, Cloud and a game's details do.
-  There a section's own L1 / R1 (the settings levels, the controls tabs) comes before the section switch. The
+- TV mode (#30): Saves, Controls, Cloud and a game's details keep the desk's layout scaled up in TV. Settings in TV
+  has no «In primo piano» (T01), no search field (Y opens the search everywhere) and no «Mostra solo le impostazioni
+  modificate»; a text and the game folders keep the desk's row scaled up; on a row that changes in place ◀ ▶ are
+  the row's, so the pages are reached with B (or left from a row that does not take them). A section's own L1 / R1
+  (the settings levels, the controls tabs) comes before the section switch; a settings page with one level lets
+  it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
-- Search and notifications (#32): the search lives in the shell, which never shows while a game is open, so its
-  actions (the controller's shortcuts) are listed disabled with «Apri un gioco per usarla»; only fullscreen runs.
-  Opening it from the quick menu is not designed. A setting opens at «Tutti i giochi». The only notification
+- Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
+  hint in the menu's foot). In the shell the controller's shortcuts are disabled with «Apri un gioco per usarla»
+  (only fullscreen runs) and a setting opens at «Tutti i giochi». In the quick menu the shortcuts run as the
+  menu's own controls do (Salva / Carica and the slot steps on the menu's chosen slot, not Rust's current slot);
+  the held ones (fast forward held, rewind) and the pause stay disabled with a reason; a setting opens only if a
+  menu page shows it «in prova» (G09, G10, G16: seven rows), every other is disabled with «Aprila dalle
+  Impostazioni della libreria»; another game closes this one as «Chiudi il gioco» does (G14, close flow) and
+  then opens, with no question before (none designed). The page opened shows its first control, the row is not
+  lit. The only notification
   recorded today is a controller connected after start; sync done, cover not found and update ready (X06) have
   no producer and no `Notice` kind yet, and X06's install behaviour waits for the owner's answer and #44.
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their

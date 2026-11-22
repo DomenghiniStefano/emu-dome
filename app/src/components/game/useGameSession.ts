@@ -127,6 +127,12 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     report(emu.setVideoInset(insetShare(px, window.innerHeight)))
   }
 
+  /** The FPS counter shown or hidden: F9 and L3 + X do it in Rust (`emu://hotkey` `fps`), the
+   * search from the quick menu here. */
+  function toggleFps() {
+    state.showFps.value = !state.showFps.value
+  }
+
   /** F12, L3 + B (in Rust) and quick menu › Strumenti: G13 «Schermata salvata» on `screenshotSaved`. */
   async function screenshot() {
     try {
@@ -156,6 +162,7 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     setMuted,
     toggleFullscreen,
     setInset,
+    toggleFps,
     onHotkey: events.onHotkey,
     screenshot,
     onEmuEvent: events.onEmuEvent,

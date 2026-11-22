@@ -46,6 +46,8 @@ export function useScreenStatus(toasts: Pick<Toasts, 'failWith'>) {
     swap: () => run(emu.screens.swap),
     /** «Chiudi il coperchio» / «Apri il coperchio». */
     toggleLid: () => run(emu.screens.toggleLid),
+    /** The next layout of `screens.cycle`, as L3 + R3 (the search from the quick menu). */
+    nextLayout: () => run(emu.screens.nextLayout),
     /** G09: show `layout`. */
     setLayout: (layout: ScreenLayoutId) => run(() => emu.screens.setLayout(layout)),
   }

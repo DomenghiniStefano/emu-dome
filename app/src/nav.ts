@@ -40,6 +40,8 @@ interface Scope {
    * Every step, before nav.ts acts on it, for a screen that works by steps of its own (the C09
    * screens editor: the d-pad moves a screen, Select folds its panel, the right stick resizes).
    * Asked only when its scope is the one the focus moves in; `false`: nav.ts goes on as usual.
+   * A section's (Settings in TV: ◀ ▶ change the focused row's value) is asked first, while the
+   * focus is inside its root and no scope above it (a dialog) takes the steps.
    */
   own?: Handler<[action: NavAction]>
   /** Y (`search`, X01): the shell opens its search. Bubbles like `back`, so a dialog stops it. */
@@ -309,6 +311,18 @@ export function activeScopeRoot(): HTMLElement | null {
   return movementScope(activePath())?.root.value ?? null
 }
 
+/**
+ * Whether a section under the scope the focus moves in took `action` (`own`), the deepest first,
+ * each only while the focus is inside its root.
+ */
+function sectionOwns(path: Scope[], scope: Scope, action: NavAction): boolean {
+  const active = document.activeElement
+  const below = path.slice(path.indexOf(scope) + 1).reverse()
+  return below.some(
+    s => !!s.own && !!active && !!s.root.value?.contains(active) && s.own(action) !== false,
+  )
+}
+
 /** One step to the scopes that receive the steps (`activePath`). */
 export function dispatchNav(action: NavAction) {
   showFocusRing()
@@ -316,6 +330,7 @@ export function dispatchNav(action: NavAction) {
   const scope = movementScope(path)
   const root = scope?.root.value
   if (!root) return
+  if (sectionOwns(path, scope, action)) return
   if (scope.own && scope.own(action) !== false) return
   // `select` and the right stick (`stick*`) mean something only to a scope that owns them.
   switch (action) {
@@ -507,13 +522,21 @@ export function useNavScope(
 /**
  * Registers a part of a screen with its own `back` / `tab` (a section of the shell) while it is
  * mounted. The focus keeps moving across the whole screen; a step the section does not take
- * (its handler returns `false`, or it has none) goes on to the screen.
+ * (its handler returns `false`, or it has none) goes on to the screen. `own` sees every step
+ * first while the focus is inside the section (`Scope.own`).
  */
 export function useNavSection(
   root: Ref<HTMLElement | null>,
-  options: { back?: Handler<[]>; tab?: Handler<[dir: -1 | 1]> },
+  options: { back?: Handler<[]>; tab?: Handler<[dir: -1 | 1]>; own?: Handler<[action: NavAction]> },
 ) {
-  register({ root, back: options.back, tab: options.tab, contain: false, children: [] })
+  register({
+    root,
+    back: options.back,
+    tab: options.tab,
+    own: options.own,
+    contain: false,
+    children: [],
+  })
 }
 
 /** Puts `scope` under the scope of the component around it (or at the top) while mounted. */

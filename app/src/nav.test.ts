@@ -243,6 +243,53 @@ describe('the scope tree', () => {
     expect(back).toHaveBeenCalledOnce()
   })
 
+  it('a section that owns its steps sees them while the focus is inside it', async () => {
+    const own = vi.fn((a: NavAction) => (a === 'left' ? undefined : false))
+    const Section = scoped(
+      root => useNavSection(root, { own }),
+      () => [h('button', { id: 'row' })],
+    )
+    part(
+      root => useNavScope(root, {}),
+      () => [h('button', { id: 'tab' }), h(Section)],
+    )
+    await nextTick()
+    const row = document.getElementById('row')
+    const tab = document.getElementById('tab')
+    if (!row || !tab) throw new Error('not rendered')
+    row.focus()
+    dispatchNav('left')
+    expect(own).toHaveBeenCalledWith('left')
+    expect(document.activeElement).toBe(row)
+    // Outside the section: not asked.
+    own.mockClear()
+    tab.focus()
+    dispatchNav('left')
+    expect(own).not.toHaveBeenCalled()
+  })
+
+  it('a dialog above an owning section takes the steps itself', async () => {
+    const own = vi.fn(() => undefined)
+    const dialogBack = vi.fn()
+    const Dialog = scoped(
+      root => useNavScope(root, { back: dialogBack }),
+      () => [h('button', { id: 'option' })],
+    )
+    const Section = scoped(
+      root => useNavSection(root, { own }),
+      () => [h(Dialog)],
+    )
+    part(
+      root => useNavScope(root, {}),
+      () => [h(Section)],
+    )
+    await nextTick()
+    document.getElementById('option')?.focus()
+    dispatchNav('back')
+    expect(own).not.toHaveBeenCalled()
+    expect(dialogBack).toHaveBeenCalledOnce()
+  })
+
   it('a dialog above a section ends the bubbling: the screen behind it gets nothing', () => {
     const screenBack = vi.fn()
     const sectionBack = vi.fn(() => false)

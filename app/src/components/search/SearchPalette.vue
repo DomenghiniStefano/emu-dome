@@ -4,9 +4,13 @@
 // Azioni / Impostazioni / Giochi, the hints at the bottom. Nothing found: «Nessun risultato per
 // «…»» with «Forse cercavi:» from the catalogue's synonyms (search.ts).
 //
-// Choosing: a setting opens its page with the row lit (`openSetting`, the shell's route); an
-// action runs (outside a game only fullscreen can; the game's shortcuts say why not, X05); a game
-// opens its details, Ctrl + Enter starts it. Enter in the field chooses the first result that
+// Mounted once by App.vue, it opens over the screen registered as the search's host
+// (useSearch.ts): the shell, or the quick menu over an open game. Where it is decides what can be
+// chosen (searchContext.ts: a result that cannot carries the reason, X05); the host carries the
+// choice out once the palette has closed. In the shell a setting opens its page with the row lit,
+// a game its details (Ctrl + Enter starts it), and of the actions only fullscreen runs. In the
+// quick menu the game's shortcuts run, a setting opens the menu's page that shows it, and a game
+// is opened in place of the one being played. Enter in the field chooses the first result that
 // can be chosen.
 //
 // Controller and keyboard: the Dialog's nav scope; the field takes the first focus, ↑ ↓ (the
@@ -15,24 +19,22 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search } from '@lucide/vue'
-import { emu, type LibraryGame, type SettingKey } from '@/emu'
-import { report } from '@/lib/errors'
 import { Dialog, DialogContent, DialogSize, DialogTitle } from '@/components/ui/dialog'
 import { Input, InputVariant } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
 import SearchResult from './SearchResult.vue'
+import { SHELL } from './searchContext'
+import { searchHost, searchState } from './useSearch'
 import { useSearchSources, type SearchItem } from './useSearchSources'
 
-const open = defineModel<boolean>('open', { required: true })
-const emit = defineEmits<{
-  openSetting: [key: SettingKey]
-  details: [game: LibraryGame]
-  play: [game: LibraryGame]
-}>()
 const { t } = useI18n()
+const open = computed({
+  get: () => searchState.open,
+  set: now => (searchState.open = now),
+})
 
 const query = ref('')
-const sources = useSearchSources()
+const sources = useSearchSources(() => searchHost.value?.context() ?? SHELL)
 watch(open, now => {
   if (!now) return
   query.value = ''
@@ -58,31 +60,29 @@ const groups = computed(() => {
 const nothing = computed(() => typed.value && groups.value.length === 0)
 const suggestions = computed(() => results.value.suggestions)
 
-function choose(item: SearchItem, start: boolean) {
+/** Closes, then hands the choice to the host after the dialog has put the focus back, so a page
+ * the host opens takes the focus after it. */
+async function choose(item: SearchItem, start: boolean) {
+  if (item.reason !== null) return
+  const host = searchHost.value
+  open.value = false
+  await nextTick()
+  if (!host) return
   switch (item.kind) {
     case 'action':
-      if (item.reason !== null) return
-      open.value = false
-      // Outside a game only the keyboard's fullscreen works (the others carry a reason).
-      if (item.id === 'fullscreen') report(emu.toggleFullscreen())
-      return
+      return host.action(item.id)
     case 'setting':
-      open.value = false
-      emit('openSetting', item.entry.key)
-      return
+      return host.setting(item.entry.key)
     case 'game':
-      open.value = false
-      if (start) emit('play', item.game)
-      else emit('details', item.game)
-      return
+      return host.game(item.game, start)
   }
 }
 
 /** Enter in the field: the first result that can be chosen (a suggestion when nothing matched). */
 function chooseFirst(start: boolean) {
   const shown = nothing.value ? suggestions.value : groups.value.flatMap(g => g.items)
-  const first = shown.find(i => i.kind !== 'action' || i.reason === null)
-  if (first) choose(first, start)
+  const first = shown.find(i => i.reason === null)
+  if (first) void choose(first, start)
 }
 
 const field = ref<{ $el: HTMLInputElement } | null>(null)
@@ -131,7 +131,7 @@ function typeInField(e: KeyboardEvent) {
             v-for="item in g.items"
             :key="`${item.kind}:${item.kind === 'game' ? item.game.id : item.kind === 'setting' ? item.entry.key : item.id}`"
             :item="item"
-            @choose="start => choose(item, start)"
+            @choose="start => void choose(item, start)"
           />
         </template>
 
@@ -145,7 +145,7 @@ function typeInField(e: KeyboardEvent) {
                 v-for="item in suggestions"
                 :key="item.entry.key"
                 :item="item"
-                @choose="start => choose(item, start)"
+                @choose="start => void choose(item, start)"
               />
             </div>
           </template>
