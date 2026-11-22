@@ -4,6 +4,7 @@ import { Layers, Gamepad2, Disc3 } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
 
@@ -56,5 +57,19 @@ const LEVELS = [
         </RadioGroupItem>
       </RadioGroup>
     </KitState>
+    <template #review>
+      <KitIssue title="Il pallino del radio lo disegna chi lo usa">
+        Il cerchio delle righe in colonna (bordo line-strong, più spesso e in accento quando è
+        scelto) non è nel primitivo: LibraryFilters.vue lo scrive a mano con le sue classi, e il Kit
+        le copia. Una seconda lista di radio dovrebbe copiarle ancora, e il pallino non ha il punto
+        pieno che di solito dice «scelto». Lo stesso per il quadrato di Checkbox nello stesso
+        pannello (pieno, senza segno di spunta: è della sezione Checkbox).
+        <template #solution>
+          Una parte RadioGroupIndicator in components/ui/radio-group (cerchio con un punto pieno in
+          accento quando è scelto), usata da LibraryFilters.vue e dal Kit; nessuna classe del
+          pallino fuori da ui/.
+        </template>
+      </KitIssue>
+    </template>
   </KitSection>
 </template>

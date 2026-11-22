@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Card, CardDescription, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogClose,
@@ -14,11 +15,14 @@ import {
   DialogTone,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
 
 const open = ref(false)
 const openDanger = ref(false)
+const openWarning = ref(false)
+const openWide = ref(false)
 const openTv = ref(false)
 </script>
 
@@ -34,19 +38,19 @@ const openTv = ref(false)
           <DialogDescription>What you did since the last save is lost.</DialogDescription>
           <DialogFooter>
             <DialogClose as-child>
-              <Button data-nav-initial>Cancel</Button>
+              <Button :size="ButtonSize.Medium" data-nav-initial>Cancel</Button>
             </DialogClose>
             <DialogClose as-child>
-              <Button :variant="ButtonVariant.Primary">Restart</Button>
+              <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Restart</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </KitState>
-    <KitState label="Footer buttons, as in FlowDialog">
+    <KitState label="Footer buttons, as in FlowDialog (Medium, 36)">
       <div class="flex gap-8">
-        <Button>Back to the library</Button>
-        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Default">Try again</Button>
+        <Button :size="ButtonSize.Medium">Back to the library</Button>
+        <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">Try again</Button>
       </div>
     </KitState>
     <KitState label="Danger tone, Medium actions (FlowDialog)">
@@ -65,6 +69,49 @@ const openTv = ref(false)
               <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium" data-nav-initial>
                 Resume
               </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </KitState>
+    <KitState label="Warning tone (E04 the save cannot be read, E12 slow)">
+      <Dialog v-model:open="openWarning">
+        <DialogTrigger as-child>
+          <Button>The save cannot be read</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogTitle :tone="DialogTone.Warning">The save cannot be read</DialogTitle>
+          <DialogDescription>The game can start without it, from the beginning.</DialogDescription>
+          <DialogFooter>
+            <DialogClose as-child>
+              <Button :size="ButtonSize.Medium" data-nav-initial>Back to the library</Button>
+            </DialogClose>
+            <DialogClose as-child>
+              <Button :variant="ButtonVariant.Primary" :size="ButtonSize.Medium">
+                Play without it
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </KitState>
+    <KitState label="Wide, Heading title (L12 «Choose the cover»: the screen behind blurred)">
+      <Dialog v-model:open="openWide">
+        <DialogTrigger as-child>
+          <Button>Choose the cover</Button>
+        </DialogTrigger>
+        <DialogContent :size="DialogSize.Wide">
+          <DialogTitle :size="DialogTitleSize.Heading">Choose the cover</DialogTitle>
+          <DialogDescription>Pick one, or add your own image.</DialogDescription>
+          <div class="grid grid-cols-3 gap-10">
+            <Card v-for="n in 3" :key="n" class="gap-4">
+              <CardTitle>Choice {{ n }}</CardTitle>
+              <CardDescription>A picture</CardDescription>
+            </Card>
+          </div>
+          <DialogFooter>
+            <DialogClose as-child>
+              <Button :size="ButtonSize.Medium" data-nav-initial>Close</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
@@ -90,5 +137,29 @@ const openTv = ref(false)
         </DialogContent>
       </Dialog>
     </KitState>
+    <template #review>
+      <KitIssue title="La taglia delle azioni la sceglie ogni dialogo">
+        Tutti i dialoghi del flusso di gioco (CrashDialog, ResumeDialog, SaveBrokenDialog,
+        SlowDialog, StartFailedDialog, ClosingAsk) passano a mano ButtonSize.Medium a ogni pulsante
+        del piede: DialogFooter non dice niente. Il Kit stesso mostrava il primo dialogo con
+        pulsanti da 32 invece che da 36. Un dialogo nuovo che lo dimentica ha azioni più basse degli
+        altri.
+        <template #solution>
+          DialogFooter dà la taglia ai suoi pulsanti (un contesto letto da Button, come Tabs fa con
+          le sue tab), o un ButtonSize.Dialog nominato una volta in dialog/; i chiamanti smettono di
+          scrivere la taglia.
+        </template>
+      </KitIssue>
+      <KitIssue title="Wide scrive a mano margine e spazi">
+        Default usa i token di ruolo (p-dialog-pad, gap 12); Wide scrive p-24 e gap 14 in
+        dialog/variants.ts. Oggi p-24 e dialog-pad valgono uguale, ma cambiare il margine dei
+        dialoghi in spacing.css non cambierebbe «Scegli la copertina», e i due dialoghi hanno già
+        spazi diversi fra titolo, testo e contenuto (14 contro 12).
+        <template #solution>
+          Wide usa p-dialog-pad e lo stesso gap di Default (o un token di ruolo suo, se il
+          proprietario vuole il 14) in dialog/variants.ts.
+        </template>
+      </KitIssue>
+    </template>
   </KitSection>
 </template>

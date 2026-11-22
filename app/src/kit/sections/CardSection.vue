@@ -4,8 +4,10 @@ import { Camera, ChevronRight, Rows2, VolumeX } from '@lucide/vue'
 import { Card, CardDescription, CardPad, CardTitle, CardVariant } from '@/components/ui/card'
 import { StatTile } from '@/components/ui/stat-tile'
 import { LinkRow } from '@/components/ui/link-row'
+import KitIssue from '@/kit/KitIssue.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
+import { IssueStatus } from '@/kit/review'
 
 const chosen = ref('normal')
 const picture = ref('generated')
@@ -245,5 +247,49 @@ const muted = ref(true)
         </Card>
       </div>
     </KitState>
+    <template #review>
+      <KitIssue
+        title="Raised e RaisedAccent differiscono per una classe"
+        :status="IssueStatus.Proposed"
+      >
+        Le due varianti hanno le stesse classi tranne una: la card scelta di RaisedAccent ha anche
+        il testo in accento. Ognuna ha un solo uso (Raised: le card di scelta di un'impostazione,
+        SettingCards; RaisedAccent: la barra dei livelli, SettingsScopeBar), due schermate della
+        stessa pagina Impostazioni che così mostrano la scelta in due modi.
+        <template #current>
+          <Card :variant="CardVariant.Raised" selected class="w-field gap-2">
+            <CardTitle>Raised</CardTitle>
+            <CardDescription>Scelta, testo in inchiostro</CardDescription>
+          </Card>
+          <Card :variant="CardVariant.RaisedAccent" selected class="w-field gap-2">
+            <span class="font-semibold">RaisedAccent</span>
+            <CardDescription>Scelta, testo in accento</CardDescription>
+          </Card>
+        </template>
+        <template #proposed>
+          <Card :variant="CardVariant.RaisedAccent" selected class="w-field gap-2">
+            <span class="font-semibold">Raised</span>
+            <CardDescription>Scelta, testo in accento</CardDescription>
+          </Card>
+          <Card :variant="CardVariant.RaisedAccent" selected class="w-field gap-2">
+            <span class="font-semibold">RaisedAccent</span>
+            <CardDescription>Scelta, testo in accento</CardDescription>
+          </Card>
+        </template>
+        <template #solution>
+          Una sola variante Raised in card/variants.ts, con il testo in accento quando è scelta (o
+          sempre in inchiostro: lo decide il proprietario); RaisedAccent sparisce.
+        </template>
+      </KitIssue>
+      <KitIssue title="Hover solo su metà delle card cliccabili">
+        Choice, ListItem, Tool, NavRow e ListRow si schiariscono sotto il mouse; Raised,
+        RaisedAccent, PictureChoice e Tile no, anche quando sono pulsanti (as="button"). Passa il
+        mouse sugli stati qui sopra: «normal / wide» e gli slot non reagiscono, «pad / keyboard» sì.
+        <template #solution>
+          Ogni variante che può essere un pulsante prende lo stesso hover di Choice
+          (enabled:hover:not-data-selected:bg-surface-hover) in card/variants.ts.
+        </template>
+      </KitIssue>
+    </template>
   </KitSection>
 </template>
