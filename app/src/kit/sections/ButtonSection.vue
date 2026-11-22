@@ -583,19 +583,6 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         </template>
       </KitIssue>
       <KitIssue
-        title="Con «Riduci le animazioni» il pulsante si stringe ancora"
-        :status="IssueStatus.Open"
-      >
-        La pressione rimpicciolisce il pulsante al 98% (theme/motion.css). Con «Riduci le
-        animazioni» (styles.css) la transizione di transform non c'è più, ma lo scale resta: il
-        pulsante salta di colpo al 98% e torna, un movimento senza animazione invece di nessun
-        movimento.
-        <template #solution>
-          In theme/motion.css lo scale della pressione vale solo fuori da
-          :root[data-motion='reduce'] (un token o una regola, la sceglie chi tiene il tema).
-        </template>
-      </KitIssue>
-      <KitIssue
         title="Sul telefono Small, Default e Tall restano sotto i 44"
         :status="IssueStatus.Proposed"
       >
