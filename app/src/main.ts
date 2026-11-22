@@ -1,5 +1,3 @@
-// First: the Kit page's stand-in for Tauri in a plain browser, before anything reads the bridge.
-import '@/lib/devBridge'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { i18n, startLanguage } from '@/i18n'

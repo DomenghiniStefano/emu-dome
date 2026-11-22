@@ -931,7 +931,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   added there first. It is also the review board (2026-11-22): under each section `KitIssue`s (problem, «Ora» /
   «Proposta» rendered with the real components, solution; status open / proposed / decided) and an index with the
   open count; a decided issue is deleted once the component carries it. It opens in a plain browser (`pnpm dev`,
-  then `#kit`): `lib/devBridge.ts` stands in for Tauri there.
+  then `#kit`): `emu.ts` stands in for Tauri there (development and `#kit` only).
 - **The look** (owner, 2026-11-22): compact and near-square, no empty band, sober motion. Radius roles 2 / 2 / 3 / 4
   (`badge` / `control` / `card` / `panel`), buttons a little rounder (`radius-button` 4); controls 24 / 28 / 30 / 32;
   role paddings tight (`card-pad` 10, `dialog-pad` 16, `section-x` 16); appearing things fade with 4 px of rise or a
