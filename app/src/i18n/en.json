@@ -2246,7 +2246,12 @@
     "finish": "Go to the library",
     "welcome": {
       "title": "Welcome to EmuDome",
-      "lead": "Your Game Boy, Game Boy Advance, Nintendo DS and Nintendo 3DS games, in one app, on computer and phone.",
+      "points": {
+        "consoles": "Game Boy, Game Boy Color, Game Boy Advance, Nintendo DS and Nintendo 3DS",
+        "devices": "On computer and phone, with a controller or touch",
+        "play": "Quick saves, fast forward and rewind in every game",
+        "games": "Add your own games: EmuDome doesn’t include any"
+      },
       "language": "Language:"
     },
     "games": {
