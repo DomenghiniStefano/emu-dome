@@ -206,8 +206,9 @@ pub struct SessionOptions {
     /// Why loading states would crash this game's core
     /// ([`crate::core_profile::state_load_block`]): then every load (quick loads,
     /// `resume_auto`, [`Command::UndoLoad`]) and rewind are refused with
-    /// `stateLoadUnsupported` and never reach the core, and nothing is recorded for rewind.
-    /// `None`: loads work.
+    /// `stateLoadUnsupported` and never reach the core, and nothing is recorded for rewind; the
+    /// core options it forces win over [`SessionOptions::core_options`]
+    /// ([`crate::core_profile::StateLoadBlock::forced_options`]). `None`: loads work.
     pub state_load_block: Option<crate::core_profile::StateLoadBlock>,
     /// How the core lays its screens out in the frame ([`crate::screens::Split`]): whole for
     /// one-screen consoles, [`crate::nds::SPLIT`] for melonDS DS with its forced options.

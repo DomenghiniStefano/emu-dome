@@ -745,12 +745,8 @@ pub static ENTRIES: &[Entry] = &[
     )
     .device()
     .on_page(ADV),
-    sw("perf.jit", true, CG).phase(2).on_page(ADV).not_wired(),
-    sw("perf.shcache", true, C)
-        .device()
-        .phase(3)
-        .on_page(ADV)
-        .not_wired(),
+    sw("perf.jit", true, CG).phase(2).on_page(ADV),
+    sw("perf.shcache", true, C).device().phase(3).on_page(ADV),
     // 3DS only (Azahar); the other cores list it as unsupported.
     slider("perf.cpuclock", 100, (50, 400, 25), Unit::Percent, GM)
         .phase(3)
