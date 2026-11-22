@@ -70,6 +70,22 @@ export function offeredOptions(entry: SettingEntry): string[] {
   return kind.options.filter(id => !entry.hiddenOptions.includes(id))
 }
 
+/** A choice whose options continue at run time after the schema's (`audio.out`'s devices). */
+export function hasRuntimeOptions(entry: SettingEntry): boolean {
+  return entry.kind.type === 'choice' && entry.kind.moreAtRuntime
+}
+
+/** The options found at run time to show after the fixed ones: each once, none blank, none that
+ * repeats a fixed one. */
+export function runtimeOptions(fixed: string[], found: string[]): string[] {
+  const seen = new Set(fixed)
+  return found.filter(id => {
+    if (id.trim() === '' || seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
+}
+
 /** The value a row shows: the stored one, else the schema's default. */
 export function rowValue(entry: SettingEntry, row: SettingRow | undefined): SettingValue | null {
   return row?.value ?? entry.default

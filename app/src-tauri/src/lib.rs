@@ -55,6 +55,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
 use emudome_core::input::Source;
+use emudome_core::settings::Scope;
 use emudome_core::{Command, ErrorCode, Event, Shared};
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -123,10 +124,7 @@ struct AppState {
     /// Held while a game opens: opens run off the event loop (they may wait for a close), one
     /// at a time.
     opening: Mutex<()>,
-    #[cfg_attr(
-        not(feature = "bench"),
-        expect(dead_code, reason = "read by the bench mode only (feature `bench`)")
-    )]
+    /// The audio output (its settings follow `audio.out` / `audio.lat`).
     audio: audio::AudioOutput,
     /// Bench mode (`EMUDOME_BENCH`), off otherwise.
     bench: Option<Arc<bench::Bench>>,
@@ -320,6 +318,8 @@ pub fn run() {
             let data_move_problem = data_move::run(app);
             let data_dir = dirs::data(app)?;
             log::info!("data in {}", data_dir.display());
+            // Before the window, the GPU and the audio: they start from the settings.
+            app.manage(settings::open(app)?);
             let (window, ui) = window::create(
                 app,
                 &window::Options {
@@ -395,6 +395,7 @@ pub fn run() {
             let audio = audio::AudioOutput::start(
                 current.clone(),
                 tuning.audio.clone(),
+                audio::prefs_from(settings::resolver(app.handle(), &Scope::Global)),
                 bench.as_ref().and_then(|b| b.tone()),
                 bench.is_some(),
                 health.clone(),
@@ -426,7 +427,6 @@ pub fn run() {
                 });
             }
 
-            app.manage(settings::open(app)?);
             app.manage(library::open(app)?);
             app.manage(core_settings::CoreSettings::default());
             app.manage(screens::ScreensState::default());
@@ -500,6 +500,7 @@ pub fn run() {
             commands::is_fullscreen,
             theme::theme,
             settings::settings_schema,
+            settings::settings_runtime_options,
             settings::settings_page,
             settings::settings_recent,
             settings::settings_game_scope,

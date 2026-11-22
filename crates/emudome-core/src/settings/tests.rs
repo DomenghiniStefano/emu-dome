@@ -1959,8 +1959,6 @@ fn the_entries_not_wired_yet_are_these() {
             "screens.second",
             "screens.stereo",
             "audio.mic",
-            "audio.out",
-            "audio.lat",
             "speed.ffmode",
             "speed.runahead",
             "saves.rtc",

@@ -256,6 +256,9 @@ export const emu = {
   theme: (systemDark: boolean) => invoke<Theme>('theme', { systemDark }),
   settings: {
     schema: () => invoke<SettingsSchema>('settings_schema'),
+    /** A choice's options found at run time, after the schema's (`moreAtRuntime`: the audio
+     * outputs of `audio.out`); each id is its own text (a device's name). */
+    runtimeOptions: (key: SettingKey) => invoke<string[]>('settings_runtime_options', { key }),
     page: (page: string, scope: SettingsScope) =>
       invoke<SettingRow[]>('settings_page', { page, scope }),
     /** The `limit` values changed most recently, at any level, newest first. */

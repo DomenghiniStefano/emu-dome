@@ -507,11 +507,8 @@ pub static ENTRIES: &[Entry] = &[
         .not_wired(),
     sel_more("audio.out", &["system"], "system", G)
         .device()
-        .pc()
-        .not_wired(),
-    seg("audio.lat", &["low", "balanced", "safe"], "balanced", G)
-        .device()
-        .not_wired(),
+        .pc(),
+    seg("audio.lat", &["low", "balanced", "safe"], "balanced", G).device(),
     // ---- Velocità di gioco (speed) ----
     seg("speed.spstart", &["0.5", "1", "2"], "1", GG),
     seg("speed.ffmode", &["hold", "toggle"], "hold", G).not_wired(),
