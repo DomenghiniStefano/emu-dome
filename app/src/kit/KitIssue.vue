@@ -2,7 +2,8 @@
 // One issue under a section of the Kit page: the problem in words, what it looks like now and the
 // proposed solution side by side (both rendered with the real components: the proposal composes
 // the primitives with other props or classes, or lives in kit/proposals/ until the owner decides),
-// then the solution in words. Written in the section's own file, in the #review slot of
+// then the solution in words. The two sides wrap under each other when they do not fit (the
+// theme resets Tailwind's breakpoints, so no `md:`). Written in the section's own file, in the #review slot of
 // KitSection; a decided issue is deleted once the change is in the component.
 import { Badge, BadgeVariant } from '@/components/ui/badge'
 import { IssueStatus, ISSUE_STATUS_LABELS, useKitIssue } from '@/kit/review'
@@ -26,12 +27,12 @@ const STATUS_BADGE: Record<IssueStatus, BadgeVariant> = {
       <h3 class="m-0 text-body font-semibold text-ink">{{ title }}</h3>
     </header>
     <div class="text-body text-ink-muted"><slot /></div>
-    <div v-if="$slots.current || $slots.proposed" class="grid gap-16 md:grid-cols-2">
-      <figure v-if="$slots.current" class="m-0 flex flex-col gap-8">
+    <div v-if="$slots.current || $slots.proposed" class="flex flex-wrap gap-16">
+      <figure v-if="$slots.current" class="m-0 flex flex-1 basis-field flex-col gap-8">
         <figcaption class="text-caption text-ink-faint">Ora</figcaption>
         <div class="flex flex-wrap items-start gap-12"><slot name="current" /></div>
       </figure>
-      <figure v-if="$slots.proposed" class="m-0 flex flex-col gap-8">
+      <figure v-if="$slots.proposed" class="m-0 flex flex-1 basis-field flex-col gap-8">
         <figcaption class="text-caption text-ink-faint">Proposta</figcaption>
         <div class="flex flex-wrap items-start gap-12"><slot name="proposed" /></div>
       </figure>

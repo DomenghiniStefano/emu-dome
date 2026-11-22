@@ -41,7 +41,7 @@ const go = (id: string) => document.getElementById(id)?.scrollIntoView({ block: 
         <SegmentedItem value="open">Con problemi</SegmentedItem>
       </Segmented>
     </div>
-    <div class="grid gap-16 md:grid-cols-2 xl:grid-cols-4">
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-field),1fr))] gap-16">
       <div v-for="g in groups" :key="g.group" class="flex flex-col gap-4">
         <h3 class="m-0 text-caption text-ink-faint">{{ g.title }}</h3>
         <Button
