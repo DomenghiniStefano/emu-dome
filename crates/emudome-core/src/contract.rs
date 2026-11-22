@@ -418,6 +418,7 @@ mod tests {
                     Kind::Apply { options } => ("apply", options),
                     Kind::Bindings { .. } => ("bindings", &[]),
                     Kind::ScreenLayout => ("screenLayout", &[]),
+                    Kind::DateTime { .. } => ("dateTime", &[]),
                 };
                 json!({ "key": e.key, "page": e.page(), "kind": kind, "options": options })
             })
@@ -446,7 +447,8 @@ mod tests {
                 | Kind::Action { .. }
                 | Kind::Apply { .. }
                 | Kind::Bindings { .. }
-                | Kind::ScreenLayout => None,
+                | Kind::ScreenLayout
+                | Kind::DateTime { .. } => None,
             })
             .collect();
         json!({

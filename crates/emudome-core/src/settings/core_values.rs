@@ -13,7 +13,10 @@
 //!   sets **every** option it owns, so switching from one choice to another leaves nothing of the
 //!   first behind);
 //! - [`Map::Percent`]: a 0..=100 slider → `round(percent × max / 100)` as text (`0`..=`max`);
-//! - [`Map::Number`]: a slider whose values are the core's own → the value as text.
+//! - [`Map::Number`]: a slider whose values are the core's own → the value as text;
+//! - [`Map::Nearest`]: a slider whose values the core takes only some of → the nearest one it
+//!   takes, as text (a tie goes towards zero);
+//! - [`Map::DateTime`]: a date and time (`Kind::DateTime`) → one option per field, as text.
 //!
 //! A rule also says the consoles it applies to (a GBA setting does not reach a Game Boy game run
 //! by the same core) and whether the core takes a change while the game runs ([`Apply::Live`],
@@ -40,7 +43,7 @@ mod azahar;
 mod melondsds;
 mod mgba;
 
-use super::{ConsoleId, Value};
+use super::{ConsoleId, DateTime, Value};
 use crate::core_profile::CoreId;
 
 /// When a core takes a new value of an option.
@@ -70,6 +73,33 @@ pub enum Map {
     Percent { option: &'static str, max: u32 },
     /// A slider's value, written as text as it is (its range and step are the core's values).
     Number { option: &'static str },
+    /// A slider's value → the nearest of `values` (the core's, ascending), a tie towards zero.
+    Nearest {
+        option: &'static str,
+        values: &'static [i64],
+    },
+    /// A date and time → each field into its own option, without leading zeros; `second`, if
+    /// any, gets `0` (the setting has minutes only).
+    DateTime(DateTimeOptions),
+}
+
+/// The core options of [`Map::DateTime`].
+#[derive(Clone, Copy, Debug)]
+pub struct DateTimeOptions {
+    pub year: &'static str,
+    pub month: &'static str,
+    pub day: &'static str,
+    pub hour: &'static str,
+    pub minute: &'static str,
+    pub second: Option<&'static str>,
+}
+
+/// The value of `values` nearest to `v`, a tie towards zero; `None` for an empty list.
+pub fn nearest(values: &[i64], v: i64) -> Option<i64> {
+    values
+        .iter()
+        .copied()
+        .min_by_key(|c| ((c - v).unsigned_abs(), c.unsigned_abs()))
 }
 
 /// One setting of the catalogue and the core options it drives.
@@ -154,8 +184,31 @@ pub fn mapped(
                 push(option, level.to_string());
             }
             (Map::Number { option }, Some(Value::Int(n))) => push(option, n.to_string()),
+            (Map::Nearest { option, values }, Some(Value::Int(n))) => {
+                if let Some(v) = nearest(values, n) {
+                    push(option, v.to_string());
+                }
+            }
+            (Map::DateTime(o), Some(Value::Text(t))) => match DateTime::parse(&t) {
+                Some(d) => {
+                    push(o.year, d.year.to_string());
+                    push(o.month, d.month.to_string());
+                    push(o.day, d.day.to_string());
+                    push(o.hour, d.hour.to_string());
+                    push(o.minute, d.minute.to_string());
+                    if let Some(second) = o.second {
+                        push(second, "0".to_owned());
+                    }
+                }
+                None => log::warn!("{}={t} is not a date and time", rule.setting),
+            },
             (
-                Map::Toggle { .. } | Map::Choice(_) | Map::Percent { .. } | Map::Number { .. },
+                Map::Toggle { .. }
+                | Map::Choice(_)
+                | Map::Percent { .. }
+                | Map::Number { .. }
+                | Map::Nearest { .. }
+                | Map::DateTime(_),
                 Some(Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_)) | None,
             ) => {}
         }

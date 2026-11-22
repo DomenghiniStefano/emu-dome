@@ -204,7 +204,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 160 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 164 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
                          compiled, and `Reader` (a value or the catalogue's default),
@@ -491,7 +491,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 160 entries on 18 pages: key
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 164 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
   (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
   the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
@@ -836,13 +836,16 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   melonDS DS and Azahar (Trello #99); `perf.shcache` Azahar only, forced on where turning it off crashes (Vulkan,
   title ID 0, #93: `StateLoadBlock::forced_options`, the row still shows the user's value). `perf.frameskip`
   drives mGBA only, `video.res3d` / `video.texf` / `perf.cpuclock` Azahar only; elsewhere their rows are disabled
-  with the reason (`CoreProfile::unsupported_settings`). `saves.rtc` stays unwired: mGBA has no clock option, and
-  melonDS DS's relative / absolute start time needs an offset or a date the catalogue has no row for. The 3DS rows are phase 3, so the interface still hides them
+  with the reason (`CoreProfile::unsupported_settings`). The game's clock (`saves.rtc`, Trello #102) drives melonDS
+  DS only (`melonds_start_time_mode` real / relative / absolute, applied when the game opens again): «Shifted» reads
+  `saves.rtcdays` / `rtchours` / `rtcminutes` (days past 14 round to the core's 30, 60… 364), «Fixed» reads
+  `saves.rtcdate` (`Kind::DateTime`, local `YYYY-MM-DDTHH:MM`, 2000–2099); mGBA and Azahar declare no clock
+  option, so the rows are disabled on GB / GBC / GBA / 3DS with the reason. The 3DS rows are phase 3, so the interface still hides them
   (`CURRENT_PHASE`). The interface does not show `emu://core-restart` yet. The «All … options»
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 28 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 27 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Window, video and audio settings (Trello #100): `video.winsize` «free» is not remembered across starts (a start
   opens at 1280×800); `video.api` applies at the next start and nothing says a restart is waiting (no general

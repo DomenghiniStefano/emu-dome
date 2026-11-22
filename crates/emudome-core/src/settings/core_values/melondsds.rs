@@ -11,10 +11,17 @@
 //! (`consoles.dsname`) is not a core option but the frontend's answer to `GET_USERNAME`
 //! (`crate::nds::username`).
 
-use super::{Apply, CoreTable, Map, Rule};
+use super::{Apply, CoreTable, DateTimeOptions, Map, Rule};
 use crate::settings::ConsoleId;
 
 const NDS: &[ConsoleId] = &[ConsoleId::Nds];
+
+/// The day offsets `melonds_start_time_relative_day_offset` declares (1.4.0): every day up to
+/// two weeks either way, then months, then a year less a day.
+pub(crate) const DAY_OFFSETS: &[i64] = &[
+    -364, -180, -150, -120, -90, -60, -30, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2,
+    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 30, 60, 90, 120, 150, 180, 364,
+];
 
 pub(super) static TABLE: CoreTable = CoreTable {
     core: crate::core_profile::CoreId::MelonDsDs,
@@ -79,6 +86,66 @@ pub(super) static TABLE: CoreTable = CoreTable {
                 ("direct", &[("melonds_boot_mode", "direct")]),
                 ("menu", &[("melonds_boot_mode", "native")]),
             ]),
+            apply: Apply::Restart,
+        },
+        // ---- Saves › the game's clock (Trello #102) ----
+        // The core sets its clock when the console is built: every time option's label says
+        // «Changes take effect at next restart» (1.4.0, `config/definitions/time.hpp`). «real»
+        // starts at the device's time (its «sync» mode, which follows the device's clock while
+        // the game runs, misbehaves with rewind and fast forward, its own label says: not
+        // offered). The offsets and the date are read only by their mode, so they are always
+        // sent.
+        Rule {
+            setting: "saves.rtc",
+            consoles: NDS,
+            map: Map::Choice(&[
+                ("real", &[("melonds_start_time_mode", "real")]),
+                ("offset", &[("melonds_start_time_mode", "relative")]),
+                ("fixed", &[("melonds_start_time_mode", "absolute")]),
+            ]),
+            apply: Apply::Restart,
+        },
+        // Days beyond two weeks round to the nearest the core declares (30, 60… 364): the row's
+        // description says so.
+        Rule {
+            setting: "saves.rtcdays",
+            consoles: NDS,
+            map: Map::Nearest {
+                option: "melonds_start_time_relative_day_offset",
+                values: DAY_OFFSETS,
+            },
+            apply: Apply::Restart,
+        },
+        // -23..=23 and -59..=59: the core's own ranges, every value.
+        Rule {
+            setting: "saves.rtchours",
+            consoles: NDS,
+            map: Map::Number {
+                option: "melonds_start_time_relative_hour_offset",
+            },
+            apply: Apply::Restart,
+        },
+        Rule {
+            setting: "saves.rtcminutes",
+            consoles: NDS,
+            map: Map::Number {
+                option: "melonds_start_time_relative_minute_offset",
+            },
+            apply: Apply::Restart,
+        },
+        // Years 2000..=2099 (the core declares up to 2100), a day past its month rolls over in
+        // the core; the setting's own check already refuses one.
+        Rule {
+            setting: "saves.rtcdate",
+            consoles: NDS,
+            map: Map::DateTime(DateTimeOptions {
+                year: "melonds_start_time_absolute_year",
+                month: "melonds_start_time_absolute_month",
+                day: "melonds_start_time_absolute_day",
+                hour: "melonds_start_time_absolute_hour",
+                minute: "melonds_start_time_absolute_minute",
+                second: Some("melonds_start_time_absolute_second"),
+            }),
             apply: Apply::Restart,
         },
         // ---- Advanced › Performance ----

@@ -946,6 +946,22 @@
           "fixed": "Data fissa"
         }
       },
+      "rtcdays": {
+        "name": "Sposta di giorni",
+        "desc": "Avanti o indietro rispetto alla data del dispositivo. Oltre i 14 giorni si arrotonda a 30, 60, 90, 120, 150, 180 o 364."
+      },
+      "rtchours": {
+        "name": "Sposta di ore",
+        "desc": "Avanti o indietro rispetto all’ora del dispositivo."
+      },
+      "rtcminutes": {
+        "name": "Sposta di minuti",
+        "desc": "Avanti o indietro rispetto all’ora del dispositivo."
+      },
+      "rtcdate": {
+        "name": "Data e ora",
+        "desc": "Il gioco parte da questo momento ogni volta che lo apri."
+      },
       "import": {
         "name": "Importa salvataggi da altri emulatori",
         "desc": "DeSmuME (.dsv), backup Action Replay (.duc) e file .sav.",
@@ -1832,7 +1848,10 @@
       "percent": "{v} %",
       "px": "{v} px",
       "seconds": "{v} s",
-      "copies": "{v} copie"
+      "copies": "{v} copie",
+      "days": "{v} g",
+      "hours": "{v} h",
+      "minutes": "{v} min"
     },
     "choose": "Scegli",
     "none": "Nessuno",

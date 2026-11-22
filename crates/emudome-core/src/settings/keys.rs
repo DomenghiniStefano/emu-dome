@@ -47,7 +47,11 @@ const fn stored(kind: &Kind) -> Stored {
     match kind {
         Kind::Toggle => Stored::Bool,
         Kind::Slider { .. } => Stored::Int,
-        Kind::Choice { .. } | Kind::File | Kind::Colour { .. } | Kind::Text => Stored::Text,
+        Kind::Choice { .. }
+        | Kind::File
+        | Kind::Colour { .. }
+        | Kind::Text
+        | Kind::DateTime { .. } => Stored::Text,
         Kind::Multi { .. } | Kind::Folders | Kind::Bindings { .. } | Kind::ScreenLayout => {
             Stored::List
         }
@@ -251,7 +255,8 @@ impl<F: Fn(&str) -> Option<Value>> Reader<F> {
             | Kind::Action { .. }
             | Kind::Apply { .. }
             | Kind::Bindings { .. }
-            | Kind::ScreenLayout => v,
+            | Kind::ScreenLayout
+            | Kind::DateTime { .. } => v,
         }
     }
 

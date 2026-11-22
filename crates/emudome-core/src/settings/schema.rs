@@ -145,6 +145,10 @@ pub enum Unit {
     Px,
     Seconds,
     Copies,
+    /// Days, hours and minutes of a clock offset (`saves.rtcdays`…), negative included.
+    Days,
+    Hours,
+    Minutes,
 }
 
 /// The kind of an entry and its constraints. TypeScript: `SettingKind` (generated).
@@ -198,6 +202,68 @@ pub enum Kind {
     /// settings pages (`screens.custom`). Value: list, shape in `crate::screens::CustomLayout`
     /// (empty: none); read and written as a typed `CustomLayout` by the `screens_custom*` commands.
     ScreenLayout,
+    /// A local date and time to the minute, `YYYY-MM-DDTHH:MM` with the year in
+    /// `min_year..=max_year` (`saves.rtcdate`). Value: text, read with [`DateTime::parse`].
+    DateTime { min_year: u16, max_year: u16 },
+}
+
+/// A date and time of a [`Kind::DateTime`] entry, as its text holds it: a local time, no zone,
+/// no seconds. The day is checked against its month (29 February only in a leap year).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DateTime {
+    pub year: u16,
+    pub month: u8,
+    pub day: u8,
+    pub hour: u8,
+    pub minute: u8,
+}
+
+impl DateTime {
+    /// `YYYY-MM-DDTHH:MM`, every field with all its digits (the form the interface's date field
+    /// writes); anything else, or a date that does not exist, is `None`.
+    pub fn parse(text: &str) -> Option<Self> {
+        let b = text.as_bytes();
+        if b.len() != 16 || b[4] != b'-' || b[7] != b'-' || b[10] != b'T' || b[13] != b':' {
+            return None;
+        }
+        let num = |from: usize, to: usize| -> Option<u16> {
+            let digits = text.get(from..to)?;
+            if digits.bytes().all(|c| c.is_ascii_digit()) {
+                digits.parse().ok()
+            } else {
+                None
+            }
+        };
+        let year = num(0, 4)?;
+        let month = u8::try_from(num(5, 7)?).ok()?;
+        let day = u8::try_from(num(8, 10)?).ok()?;
+        let hour = u8::try_from(num(11, 13)?).ok()?;
+        let minute = u8::try_from(num(14, 16)?).ok()?;
+        let valid = (1..=12).contains(&month)
+            && day >= 1
+            && day <= days_in_month(year, month)
+            && hour < 24
+            && minute < 60;
+        valid.then_some(Self {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+        })
+    }
+}
+
+/// Days of `month` (1..=12) in `year`, Gregorian.
+fn days_in_month(year: u16, month: u8) -> u8 {
+    match month {
+        2 if (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400) => {
+            29
+        }
+        2 => 28,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    }
 }
 
 /// A stored or resolved value. TypeScript: `SettingValue` (generated).
@@ -344,7 +410,8 @@ impl Entry {
             | Kind::Action { .. }
             | Kind::Apply { .. }
             | Kind::Bindings { .. }
-            | Kind::ScreenLayout => true,
+            | Kind::ScreenLayout
+            | Kind::DateTime { .. } => true,
         }
     }
 
@@ -366,7 +433,8 @@ impl Entry {
             | Kind::Action { .. }
             | Kind::Apply { .. }
             | Kind::Bindings { .. }
-            | Kind::ScreenLayout => Vec::new(),
+            | Kind::ScreenLayout
+            | Kind::DateTime { .. } => Vec::new(),
         }
     }
 
@@ -425,6 +493,9 @@ impl Entry {
             (Kind::ScreenLayout, Value::List(items)) => {
                 crate::screens::CustomLayout::valid_items(items)
             }
+            (Kind::DateTime { min_year, max_year }, Value::Text(t)) => {
+                DateTime::parse(t).is_some_and(|d| (min_year..=max_year).contains(&d.year))
+            }
             (
                 Kind::Toggle
                 | Kind::Choice { .. }
@@ -437,7 +508,8 @@ impl Entry {
                 | Kind::Action { .. }
                 | Kind::Apply { .. }
                 | Kind::Bindings { .. }
-                | Kind::ScreenLayout,
+                | Kind::ScreenLayout
+                | Kind::DateTime { .. },
                 Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_),
             ) => false,
         }
