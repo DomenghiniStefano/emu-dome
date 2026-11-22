@@ -161,6 +161,9 @@ onMounted(async () => {
       @swap-screens="screens.swap"
       @toggle-lid="screens.toggleLid"
       @layout="screens.setLayout"
+      @fps="session.toggleFps"
+      @next-layout="screens.nextLayout"
+      @open-game="launch.switchToLibraryGame"
     />
   </template>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // The main screen's foot: «Chiudi il gioco» far from «Riprendi il gioco», bottom left on desktop,
-// beside it on the phone.
+// beside it on the phone. Between them, the keys that open the search (X01, #32) for the input
+// in use (none on touch, nor in the phone's sheet).
 import { useI18n } from 'vue-i18n'
 import { Play, Power } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -9,6 +10,8 @@ import { Kbd, KbdSize, KbdVariant } from '@/components/ui/kbd'
 defineProps<{
   /** The key that resumes with the input in use, or null. */
   hint: string | null
+  /** The keys that open the search with the input in use (none: no hint). */
+  searchKeys?: string[]
   touch?: boolean
 }>()
 defineEmits<{ close: []; resume: [] }>()
@@ -29,6 +32,13 @@ const { t } = useI18n()
       <Power v-if="!touch" :size="18" :stroke-width="1.75" aria-hidden="true" />
       {{ t('qm.close') }}
     </Button>
+    <span
+      v-if="!touch && searchKeys?.length"
+      class="inline-flex items-center gap-6 text-caption text-ink-muted"
+    >
+      <Kbd v-for="key in searchKeys" :key="key">{{ key }}</Kbd>
+      {{ t('search.title') }}
+    </span>
     <Button
       v-if="touch"
       :variant="ButtonVariant.Primary"

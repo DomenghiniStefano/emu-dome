@@ -49,3 +49,11 @@ export function followedSpeed(
   if (!sameSpeed(now.slow, before.slow) && sameSpeed(current, before.slow)) return now.slow
   return null
 }
+
+/**
+ * «Avanti veloce» / «Rallentatore» as a toggle (the shortcuts', chosen from the search): the mode's
+ * speed, or back to normal when the game already runs at it.
+ */
+export function toggledSpeed(current: Speed, mode: Speed): Speed {
+  return sameSpeed(current, mode) ? NORMAL : mode
+}

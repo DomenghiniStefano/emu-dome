@@ -29,3 +29,17 @@ export function loadedLine(slot: number): Message {
     ? { key: 'toast.autoLoaded' }
     : { key: 'toast.stateLoaded', params: { slot } }
 }
+
+/**
+ * The slot after one step of «Slot successivo» / «Slot precedente» chosen from the search: the
+ * numbered slots in order, wrapping around; from the auto slot (or one not listed) the first or
+ * the last. With no numbered slot, `chosen` stays.
+ */
+export function steppedSlot(slots: readonly number[], chosen: number, forward: boolean): number {
+  const numbered = slots.filter(s => s !== AUTO_SLOT)
+  const i = numbered.indexOf(chosen)
+  const n = numbered.length
+  if (n === 0) return chosen
+  if (i < 0) return (forward ? numbered[0] : numbered[n - 1]) ?? chosen
+  return numbered[(i + (forward ? 1 : n - 1)) % n] ?? chosen
+}
