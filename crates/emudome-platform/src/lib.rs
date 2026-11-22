@@ -17,11 +17,13 @@ mod cores;
 mod cpu;
 pub mod log_file;
 mod paths;
+mod storage;
 pub mod updater;
 
 pub use content::is_content_uri;
 pub use cores::{shipped_cores, CoreLookupError, ShippedCore};
 pub use paths::{long_paths_enabled, long_paths_policy, path_limits, PathLimits};
+pub use storage::{disk_space, DiskSpace};
 
 #[cfg(target_os = "android")]
 mod android;
@@ -121,6 +123,14 @@ pub fn is_resume(event: &tauri::WindowEvent) -> bool {
 /// `content://` document of an «Open with» (`ACTION_VIEW`), which [`open_content`] opens.
 pub fn startup_game() -> Option<String> {
     imp::startup_game()
+}
+
+/// Leaves to the background, as the system's back does at an app's first screen (Android's
+/// back at the shell's root, Trello #29): the app keeps running, its task goes behind the
+/// others. `true` when the system did it; `false` on the desktop, which has no such place, and
+/// on Android when the activity could not be reached (logged).
+pub fn move_to_background() -> bool {
+    imp::move_to_background()
 }
 
 /// The app identifier before 2026-11-21 (Trello #90; now `it.domehub.emudome`, in
