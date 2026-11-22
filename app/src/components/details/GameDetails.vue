@@ -21,6 +21,7 @@ import DetailsFiles from './DetailsFiles.vue'
 import DetailsSaves from './DetailsSaves.vue'
 import DetailsSettings from './DetailsSettings.vue'
 import DetailsHero from './DetailsHero.vue'
+import DetailsVersions from './DetailsVersions.vue'
 import NotBuiltPanel from './NotBuiltPanel.vue'
 import { cycle } from '@/lib/cycle'
 import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './tabs'
@@ -66,6 +67,15 @@ function play() {
     return
   }
   emit('play', g, resume.value?.slot ?? undefined)
+}
+
+/** «Versioni» › «Gioca questa» (#102): that version, or why it cannot start. */
+function playVersion(g: LibraryGame) {
+  if (!g.available) {
+    failWith({ code: 'libraryGameUnavailable', params: { id: g.id } })
+    return
+  }
+  emit('play', g)
 }
 
 async function setFlags(flags: { favourite?: boolean; hidden?: boolean }) {
@@ -125,6 +135,13 @@ onMounted(async () => {
       @play="play"
       @cover="pickingCover = true"
       @flags="setFlags"
+    />
+
+    <!-- #102: the game's regional versions, when it has some. -->
+    <DetailsVersions
+      class="px-section-x pb-28 touch:px-section-touch"
+      :game="game"
+      @play="playVersion"
     />
 
     <!-- `contents`: the tab row stays an item of this column, as the panel does. -->
