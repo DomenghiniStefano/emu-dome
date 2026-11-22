@@ -238,6 +238,12 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          `ScreenSettings` the `screens.*` values, `CustomLayout` the editor's
                          `screens.custom`, `ScreenSession` the layout shown, the swap and the lid,
                          `ScreenStatus` what the interface shows; pure, unit-tested)
+                         touch.rs (the touch controls, #29: `ControlId` and the controls each console
+                         has (`ControlId::of`), `Layout` / `Layouts` the user's layout per orientation as
+                         `touch.tedit` stores it (per device, per console), what a valid one is (each
+                         control once, the menu kept, size / opacity limits, hold / turbo on buttons
+                         only), `Setup` what the interface reads; the defaults and the geometry are the
+                         interface's; pure, unit-tested)
                          save_path.rs (#94: does a core's deepest file fit under the game's folder within
                          the platform's `PathLimits`; checked before the core loads; pure, unit-tested)
                          contract.rs (the Rust ↔ TypeScript contract: ts-rs types and fixtures generated
@@ -302,7 +308,9 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          cloud.rs (what the Drive sync needs from the system: `open_url` (the system
                          browser), `device_name`, the credential store (`keyring`: Windows Credential
                          Manager, Linux Secret Service over zbus) under the service `it.domehub.emudome`;
-                         Android and macOS answer `Unsupported`, the Android sign-in plan in its doc)
+                         Android and macOS answer `Unsupported`, the Android sign-in plan in its doc),
+                         `haptic` (a touch control's press: Android `SystemBridge.vibrate`, the
+                         `VIBRATE` permission of the library's manifest; nothing on the desktop)
 crates/emudome-sync      Google Drive sync (Trello #20), no OS code: oauth.rs (PKCE S256, the authorization
                          URL, code exchange, refresh, revoke; the client id and secret are build-time
                          values, `option_env!("EMUDOME_GOOGLE_CLIENT_ID" / "..._SECRET")`, none = sync not
@@ -388,15 +396,28 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          `covers/<console>-<hex>.user-<rev>.jpg`: the picked image kept in memory on
                          emu://picked/<token>, a game's screenshots listed and served on
                          emu://screenshot/<console>-<hex>/<name>, #85)
+                         touch.rs (#29: touch_layouts / touch_set_layout (C06's «Salva»: the layout of one
+                         orientation into `touch.tedit` at the console's level, that orientation's
+                         `touch.tport` / `touch.tland` to `custom`), touch_stick (the Circle Pad), haptic)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
                          emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
                          contract tests, never by hand), nav.ts (controller/keyboard focus navigation),
                          components/<feature>/ one folder per feature: shell (AppShell: rail + sections,
                          outside the game), library, details, saves, settings, controls, quick-menu,
-                         game (GameCanvas: webview mode, TouchControls: Android overlay, the game flow,
+                         game (GameCanvas: webview mode, the game flow,
                          useScreenStatus: the open game's `ScreenStatus` from `emu://screens`,
                          LidClosedCard: G15 «Coperchio chiuso»),
+                         touch (#29: TouchLayer, the touch controls over the game (App.vue, a touch screen):
+                         the layout of the console and orientation (touchLayout.ts: the defaults anchored
+                         to the window's edges, the geometry, the 8 px grid, the band kept at the bottom
+                         in portrait), the skins (skins.ts, `touch.tskin`), tap / hold / turbo
+                         (touchPress.ts), `touch.topac` / `thapt` / `thide` / `tpad`
+                         (touchVisibility.ts); TouchEditor C06 over the game (from G10 and from the
+                         `touch.tedit` row at a console's scope; useTouchEditor the state, editorHistory.ts
+                         undo / redo, editorToolbar.ts what fits and what goes into «Altro»); E14
+                         ControllerLostDialog / useControllerLoss (controllerLoss.ts the rule); all the
+                         pure modules tested),
                          screen-editor (C09, Trello #28: ScreenEditor over the game at its real size, from
                          G09 and from the `screens.custom` row; useScreenEditor the state, the live preview
                          at the Session level and the steps; screenEditor.ts the geometry, pure, tested),
@@ -504,7 +525,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`hotkeys.rs`). What stays in the page (`useGameKeys.ts`, `keyRoute.ts`): Esc (quick menu / back), F11 and the
   menus' focus keys (`nav.ts`). Opening the quick menu (`set_menu_open`) and the window losing the focus
   (`WindowEvent::Focused(false)`, and the page's `blur` through `window_focus`) let go of every keyboard button and
-  end the keyboard's fast forward and held rewind, in Rust. The touch controls still send buttons (`input`).
+  end the keyboard's fast forward and held rewind, in Rust. The touch controls send buttons (`input`) on their own
+  source (`input::Source::Touch`, so letting go of the keyboard never drops a finger's button), and the 3DS Circle
+  Pad drawn on screen (`touch_stick`) is the left stick while moved (`InputState::set_touch_stick`, merged into the
+  snapshot).
   Controllers go through an SDL3 thread
   (`gamepad.rs`) with RetroArch-style positional mapping; triggers and the left stick past half travel
   count as L2/R2 and d-pad. Both sticks also reach the core as `RETRO_DEVICE_ANALOG` while the game has the
@@ -912,8 +936,19 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 21 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 16 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
+- Touch controls (Trello #29): layouts per console and orientation (defaults for GB / GBC, GBA, DS and 3DS, the
+  user's own from C06 kept per device), tap / hold / turbo (the repeat is the interface's, about 12 a second: the
+  core has no turbo of its own), vibration on Android, `touch.thide` / `touch.tpad`, three built-in skins from the
+  tokens, E14. Not yet: imported skins (our pack format, `.deltaskin`, RetroArch overlays: Phase 5,
+  `docs/decisions.md`), more than one control of the same kind (a second, turbo A), a layout per game, the C06
+  editor's controls drawn over the real screen layout of a DS game (they are placed over the window, not the
+  screens), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4, so Settings ›
+  Controlli touch stays hidden while `CURRENT_PHASE` is 1: the editor opens from the quick menu's «Controlli» on
+  a touch screen, and the rows keep their defaults (E14 «Pausa e domanda», the glass skin, 60 %, vibration 40 %).
+  Turning the phone while C06 is open switches to that orientation's layout, dropping the unsaved changes. Not
+  run on a device yet (vibration, the Circle Pad on Azahar, the band kept in portrait with the native video).
 - Regional versions (Trello #102, owner 2026-11-22): with `library.versions` on (default), Rust groups them
   (`library::group`, `Library::families`) and sends them with the library and as `library://changed` `families`
   (after a pin, a launch, a game hidden or shown, the switch); the pins are `versionPins` in `library.json`

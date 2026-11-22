@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { quickMenuScenarios } from "./quick-menu.mjs";
+import { touchScenarios } from "./touch.mjs";
 
 const [cdpPort, baseUrl, outDir, ...only] = process.argv.slice(2);
 const here = path.dirname(
@@ -270,6 +271,7 @@ const SCENARIOS = {
     height: 1500,
   },
   ...quickMenuScenarios,
+  ...touchScenarios,
 };
 
 // Saves (V01–V06, and the slot tile in Game details): every state in Scuro / Nero / Chiaro, at

@@ -482,6 +482,10 @@
   const values = { "general.bgpause": true, "general.confirmdel": false };
   // TV mode (#30): `ui` fixes `general.ui` ("tv" / "desktop"; Automatica otherwise).
   if (scenario.ui) values["general.ui"] = scenario.ui;
+  // The touch controls (#29): `touchRows` gives the touch page's values (`touch.tskin`,
+  // `touch.tlost`, `touch.tland`…), each a row of the page.
+  for (const [key, value] of Object.entries(scenario.touchRows ?? {}))
+    entries.push(entry(key, "touch", { type: "text" }, value, { phase: 4 }));
   if (scenario.rtc) {
     values["saves.rtc"] = scenario.rtc;
     values["saves.rtcdays"] = -3;
@@ -1001,7 +1005,11 @@
     title:
       scenario.game === "nds" ? "Dual Screen Tales" : "Pocket Quest Advance",
     console: scenario.game === "nds" ? "NDS" : "GBA",
-    consoleId: scenario.game === "nds" ? "nds" : "gba",
+    // `game: "gb"` / `"3ds"` (the touch controls' scenarios, #29): the GBA game as that console.
+    consoleId:
+      scenario.game === "nds" || scenario.game === "gb" || scenario.game === "3ds"
+        ? scenario.game
+        : "gba",
     core: scenario.game === "nds" ? "melondsds" : "mgba",
     resumable: false,
     autosaveOnExit: true,
@@ -1058,6 +1066,8 @@
       : {}),
     library_get: library,
     notifications_list: notifications,
+    // A build that cannot update itself (#44), as a dev build: no update card, no failure.
+    updates_status: { state: { state: "unavailable" }, checkedAt: null, prompt: false },
     // `screenshots: true` (#85): a GBA and a DS screenshot (both screens stacked), drawn as SVG
     // so no image file is needed; «Immagine tua» picks a tall picture.
     library_screenshots: scenario.screenshots
@@ -1313,6 +1323,27 @@
       if (cmd === "settings_page")
         return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);
       if (cmd === "library_scan") return null;
+      // The touch controls (#29): a console's controls as `ControlId::of`, no layout saved
+      // unless the scenario gives one (`touchSaved`: a landscape layout).
+      if (cmd === "touch_layouts") {
+        const of = {
+          gb: ["dpad", "b", "a", "select", "start", "menu"],
+          gbc: ["dpad", "b", "a", "select", "start", "menu"],
+          gba: ["l", "r", "dpad", "b", "a", "select", "start", "menu"],
+          nds: ["l", "r", "dpad", "y", "x", "b", "a", "select", "start", "menu"],
+          "3ds": ["l", "r", "circlePad", "dpad", "y", "x", "b", "a", "select", "start", "menu"],
+        }[args.console];
+        return {
+          available: of,
+          buttons: of.filter((id) => !["dpad", "circlePad", "menu"].includes(id)),
+          portrait: { controls: [] },
+          landscape: { controls: scenario.touchSaved ?? [] },
+          sizeMin: 50,
+          sizeMax: 200,
+          opacityMin: 20,
+          opacityMax: 100,
+        };
+      }
       // The shell asks both at start (useShellEvents.ts): nothing moving, nothing broken.
       if (cmd === "saves_migration_status") return { running: false, problem: null };
       if (cmd === "diagnostics") return [];
