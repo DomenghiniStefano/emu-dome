@@ -268,6 +268,26 @@ import { ACCENT_SWATCHES } from '@/lib/accent'
         <Button :size="ButtonSize.Tv">Game details</Button>
       </div>
     </KitState>
+    <KitState label="NavItem · TvNavItem, current and not (TV mode's settings pages)">
+      <div class="flex w-panel flex-col gap-8">
+        <Button :variant="ButtonVariant.NavItem" :size="ButtonSize.TvNavItem" aria-current="page">
+          Video
+        </Button>
+        <Button :variant="ButtonVariant.NavItem" :size="ButtonSize.TvNavItem">Audio</Button>
+      </div>
+    </KitState>
+    <KitState label="TvRow · TvRow (TV mode's settings rows and sheet options)">
+      <div class="flex w-panel flex-col gap-8">
+        <Button :variant="ButtonVariant.TvRow" :size="ButtonSize.TvRow">
+          <span>Show FPS</span>
+          <span class="text-ink-muted">Off</span>
+        </Button>
+        <Button :variant="ButtonVariant.TvRow" :size="ButtonSize.TvRow" disabled>
+          <span>Theme</span>
+          <span class="font-semibold">Dark</span>
+        </Button>
+      </div>
+    </KitState>
     <KitState label="Inverse · CoverAction, Veil · CoverActionIcon">
       <div class="flex w-field gap-6 rounded-10 bg-cover-2 p-8">
         <Button :variant="ButtonVariant.Inverse" :size="ButtonSize.CoverAction" class="flex-1">

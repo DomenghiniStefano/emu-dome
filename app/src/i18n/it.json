@@ -14,7 +14,13 @@
       "search": "Cerca",
       "back": "Indietro",
       "sections": "Cambia sezione",
-      "choose": "Scegli"
+      "choose": "Scegli",
+      "change": "Cambia",
+      "levels": "Cambia livello"
+    },
+    "value": {
+      "on": "Attivo",
+      "off": "Disattivo"
     },
     "hero": {
       "meta": "{console} · {time} di gioco · {when}",

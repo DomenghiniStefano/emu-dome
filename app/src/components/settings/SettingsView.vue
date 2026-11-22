@@ -10,6 +10,8 @@
 // settingsPage.ts's.
 // Controller: the shell's nav scope; L1 / R1 change level (this section's own `tab`, nav.ts
 // `useNavSection`).
+// TV mode (#30): the same state and structure with the TV sizes (tv/TvSettings: the pages on the
+// left, large rows on the right, ◀ ▶ change a value in place).
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Info } from '@lucide/vue'
@@ -23,6 +25,7 @@ import type {
 } from '@/emu'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
+import { uiMode } from '@/composables/useUiMode'
 import type { GameFocus } from '@/lib/gameDetails'
 import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
@@ -43,6 +46,7 @@ import {
 } from './settingsPage'
 import { useSettingsScope } from './useSettingsScope'
 import { useSettingsValues } from './useSettingsValues'
+import TvSettings from '@/components/settings/tv/TvSettings.vue'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
 import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
 import { Card, CardPad } from '@/components/ui/card'
@@ -154,7 +158,27 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
 
 <template>
   <div v-if="schema" ref="root" class="flex min-h-0 flex-1">
+    <TvSettings
+      v-if="uiMode.tv"
+      :schema="schema"
+      :page="page"
+      :sections="sections"
+      :values="values"
+      :scope-bar="scopeBar"
+      :game-focus="gameFocus"
+      :locked-note="lockedNote"
+      :lit="lit"
+      @pick="pick"
+      @set="store.set"
+      @reset="store.reset"
+      @open-controls="emit('openControls')"
+      @choose="store.chooseBackground"
+      @edit="editScreens"
+      @unlit="lit = null"
+      @level="l => (scopeBar.level.value = l)"
+    />
     <SettingsCategories
+      v-if="!uiMode.tv"
       v-model:query="query"
       :schema="schema"
       :page="page"
@@ -162,7 +186,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       @pick="pick"
     />
 
-    <SectionPage as="main" :width="SectionWidth.Page">
+    <SectionPage v-if="!uiMode.tv" as="main" :width="SectionWidth.Page">
       <SettingsOverview
         v-if="page === OVERVIEW && !searching"
         :schema="schema"

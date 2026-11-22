@@ -149,8 +149,8 @@ const go = (to: Route) => (route.value = to)
             isFlush(section, details !== null, uiMode.tv)
               ? 'overflow-hidden p-0'
               : 'overflow-auto p-32',
-            // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, Settings, a
-            // game's details) keep the desk's layout, scaled up as it is.
+            // TV mode: the sections not laid out for it yet (Saves, Controls, Cloud, a game's
+            // details) keep the desk's layout, scaled up as it is.
             !isTvLaidOut(section, details !== null) && 'tv:zoom-tv',
           )
         "

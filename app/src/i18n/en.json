@@ -14,7 +14,13 @@
       "search": "Search",
       "back": "Back",
       "sections": "Switch section",
-      "choose": "Choose"
+      "choose": "Choose",
+      "change": "Change",
+      "levels": "Switch level"
+    },
+    "value": {
+      "on": "On",
+      "off": "Off"
     },
     "hero": {
       "meta": "{console} · {time} played · {when}",

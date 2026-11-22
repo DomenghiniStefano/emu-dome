@@ -791,6 +791,24 @@ const TV = {
   },
   saves: { mock: TV_AUTO, steps: [nav("next")] },
   settings: { mock: TV_AUTO, steps: [nav("prev")] },
+  // Settings in TV (#30, option B: the pages on the left, large rows on the right): every kind
+  // of row (`richSettings`, `wiredSettings`), a row's value stepped with ◀ ▶, the full-screen
+  // sheet of a long choice (the screen effects' six), and the scope's sheet.
+  "settings-rows": {
+    mock: { ...TV_AUTO, richSettings: true, wiredSettings: true },
+    steps: [nav("prev"), nav("right"), nav("down"), nav("down"), nav("down"), nav("right")],
+    focus: true,
+  },
+  "settings-sheet": {
+    mock: { ...TV_AUTO, richSettings: true, wiredSettings: true },
+    steps: [nav("prev"), nav("down"), nav("confirm"), nav("right"), nav("down"), nav("confirm")],
+    focus: true,
+  },
+  "settings-scope": {
+    mock: { ...TV_AUTO, richSettings: true, wiredSettings: true },
+    steps: [nav("prev"), nav("right"), nav("confirm")],
+    focus: true,
+  },
   qm: { mock: { ...TV_AUTO, game: "nds", slots: "full" }, steps: [`window.__emit('emu://menu')`] },
   desktop: { mock: { pads: true }, steps: [] },
 };
