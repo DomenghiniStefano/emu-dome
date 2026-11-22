@@ -80,6 +80,7 @@ describe('themeKeys', () => {
       'rail',
       'wordmark',
       'console-badge',
+      'count',
       'overline-inline',
       'caption-inline',
       'label-inline',
@@ -104,6 +105,7 @@ describe('themeKeys', () => {
       'scene',
       'ambient',
       'hint',
+      'highlight',
     ])
     expect(themeKeys(spacing, ThemeNamespace.Spacing)).toContain('control')
     expect(themeKeys(colors, ThemeNamespace.Color)).toContain('accent-soft')

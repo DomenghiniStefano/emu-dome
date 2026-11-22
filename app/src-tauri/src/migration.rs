@@ -1,5 +1,7 @@
 //! The one-time move of saves and settings named the old way to the game key
-//! (`emudome_core::migration`, Trello #70), run at start on its own thread.
+//! (`emudome_core::migration`, Trello #70), and of screenshots named by ROM file stem to each
+//! game's screenshots folder (Trello #85, its own marker `migration-85/done`), run at start on
+//! its own thread.
 //!
 //! - It starts after the library and the settings are open, before any game can open: opening a
 //!   game and the Saves commands wait for it ([`wait`], at most [`WAIT_AT_MOST`], so a stuck disk
@@ -118,17 +120,51 @@ fn paths(app: &AppHandle) -> tauri::Result<Paths> {
     })
 }
 
-/// One pass; the problem to show, if any.
+fn failed(detail: String) -> Option<ErrorCode> {
+    log::warn!("savesMigrationFailed: {detail}");
+    Some(ErrorCode::SavesMigrationFailed { detail })
+}
+
+/// One pass of each move; the problem to show, if any (the saves' first).
 fn run(app: &AppHandle) -> Option<ErrorCode> {
-    let failed = |detail: String| {
-        log::warn!("savesMigrationFailed: {detail}");
-        Some(ErrorCode::SavesMigrationFailed { detail })
-    };
     let paths = match paths(app) {
         Ok(p) => p,
         Err(e) => return failed(e.to_string()),
     };
-    if migration::is_done(&paths) {
+    let saves = run_saves(app, &paths);
+    let screenshots = run_screenshots(app, &paths);
+    saves.or(screenshots)
+}
+
+/// The screenshots named by ROM file stem moved to each game's folder (Trello #85), once:
+/// `<data>/migration-85/`. Those it cannot give to one game stay where they are (listed in its
+/// report, not shown: they are still in the screenshots folder for the user to browse); an
+/// error is shown as `savesMigrationFailed`.
+fn run_screenshots(app: &AppHandle, paths: &Paths) -> Option<ErrorCode> {
+    let work_dir = paths.work_dir.with_file_name("migration-85");
+    if work_dir.join("done").is_file() {
+        return None;
+    }
+    let known = match crate::library::known_files(app) {
+        Ok(k) => k,
+        Err(e) => return failed(format!("library not read, no screenshot moved: {e:?}")),
+    };
+    let report = migration::run_screenshots(&paths.saves_root, &work_dir, &known, now_ms());
+    log::info!(
+        "screenshots migration: {} moved, {} left, {} errors, done: {}",
+        report.moved.len(),
+        report.left.len(),
+        report.errors.len(),
+        report.done
+    );
+    (!report.errors.is_empty()).then(|| ErrorCode::SavesMigrationFailed {
+        detail: report.errors.join("; "),
+    })
+}
+
+/// The saves and settings named the old way moved to the game key (Trello #70), once.
+fn run_saves(app: &AppHandle, paths: &Paths) -> Option<ErrorCode> {
+    if migration::is_done(paths) {
         return None;
     }
     let known = match crate::library::known_files(app) {
@@ -138,7 +174,7 @@ fn run(app: &AppHandle) -> Option<ErrorCode> {
     let report = match app.try_state::<SettingsState>() {
         Some(settings) => {
             let mut settings = settings.0.lock();
-            let report = migration::run(&paths, &known, now_ms());
+            let report = migration::run(paths, &known, now_ms());
             settings.forget_files();
             report
         }
@@ -157,7 +193,7 @@ fn run(app: &AppHandle) -> Option<ErrorCode> {
     }
     (!report.left.is_empty()).then(|| ErrorCode::SavesMigrationIncomplete {
         left: report.left.len(),
-        report: report_path(&paths),
+        report: report_path(paths),
     })
 }
 

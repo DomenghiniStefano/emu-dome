@@ -12,6 +12,18 @@
   }
   Date.now = () => FIXED;
   const day = 86400000;
+  // A stand-in screenshot (#85): a `w` × `h` picture, a gradient with a grid and a sun, as an SVG
+  // data URL.
+  const shotSvg = (w, h, from, to) =>
+    "data:image/svg+xml," +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+        `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/></linearGradient></defs>` +
+        `<rect width="${w}" height="${h}" fill="url(#g)"/>` +
+        `<circle cx="${w * 0.75}" cy="${h * 0.25}" r="${Math.min(w, h) * 0.12}" fill="#ffe9a8"/>` +
+        `<rect x="0" y="${h * 0.7}" width="${w}" height="${h * 0.3}" fill="#3a7a44"/>` +
+        `</svg>`,
+    );
   const games = [
     ["gba:01", "gba", "Pocket Quest Advance", "#2f5d8a", 3 * 3600, FIXED - day],
     [
@@ -935,6 +947,33 @@
       : {}),
     library_get: library,
     notifications_list: notifications,
+    // `screenshots: true` (#85): a GBA and a DS screenshot (both screens stacked), drawn as SVG
+    // so no image file is needed; «Immagine tua» picks a tall picture.
+    library_screenshots: scenario.screenshots
+      ? [
+          {
+            name: "2026-11-22_10-11-12.png",
+            url: shotSvg(240, 160, "#1e5d8c", "#86c0a0"),
+            takenAt: FIXED - 3600000,
+            width: 240,
+            height: 160,
+          },
+          {
+            name: "2026-11-21_09-00-00.png",
+            url: shotSvg(256, 384, "#2b1d4a", "#e39a5b"),
+            takenAt: FIXED - day,
+            width: 256,
+            height: 384,
+          },
+        ]
+      : [],
+    library_pick_cover_image: {
+      token: 1,
+      url: shotSvg(900, 1600, "#3b2d5c", "#faa40f"),
+      width: 900,
+      height: 1600,
+    },
+    library_set_cover_image: null,
     settings_schema: rich ? rich.schema : schema,
     settings_recent: rich ? rich.recent : [],
     settings_game_overrides: [],

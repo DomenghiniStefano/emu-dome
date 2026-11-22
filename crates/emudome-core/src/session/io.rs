@@ -41,11 +41,10 @@ pub(super) enum Job {
     UndoSave,
     /// A load replaced the save's «Annulla»: what the slot held is let go.
     ForgetUndo,
-    /// G13: the frame as a PNG in the screenshots folder, named after the ROM and `at`.
+    /// G13: the frame as a PNG in the game's screenshots folder, named after `at`.
     Screenshot {
         frame: Frame,
         dir: PathBuf,
-        name: String,
         at: SystemTime,
     },
     /// Answered once every job sent before it is done.
@@ -127,14 +126,9 @@ impl Worker {
                 self.send(event);
             }
             Job::ForgetUndo => self.undo = None,
-            Job::Screenshot {
-                frame,
-                dir,
-                name,
-                at,
-            } => {
+            Job::Screenshot { frame, dir, at } => {
                 let res = frame.to_png().map_err(|e| e.to_string()).and_then(|png| {
-                    crate::screenshot::write(&dir, &name, &png, at).map_err(|e| e.to_string())
+                    crate::screenshot::write(&dir, &png, at).map_err(|e| e.to_string())
                 });
                 self.send(match res {
                     Ok(path) => Event::ScreenshotSaved {

@@ -24,6 +24,8 @@ prove that a refactor changes nothing on screen (Trello #62).
   <url> [games] [--check]` loads such a library and prints the tiles in the DOM and the time per
   d-pad step (`dispatchNav`); `--check` also checks the windowed grid (row / column moves, leaving at
   its edges, the parked focus, back from a game's details far down, no jump while scrolling).
+- `screenshots: true` gives every game two screenshots (a GBA one and a DS one, drawn as SVG) for L12
+  «Da uno screenshot» and «Adatta la copertina» (the `lib-cover-shots-*` / `lib-cover-crop*` scenarios, #85).
 - In-game scenarios set `game` in the mock: the game opens at startup (`true` for the shell's
   screens, `"gba"` / `"nds"` for the quick menu's).
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.
