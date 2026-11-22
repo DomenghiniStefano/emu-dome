@@ -142,6 +142,9 @@
     needsNativeVideo: false,
     // `SettingEntry.unsupportedConsoles` (#78): always present in the generated type.
     unsupportedConsoles: [],
+    // `wiredSettings` (the TV settings' scenarios, #30): every row has a reader, so the rows show
+    // their controls usable; without it the field is absent and the rows show «Arriva…».
+    ...(scenario.wiredSettings ? { wired: true } : {}),
     ...extra,
   });
   const choice = (style, options) => ({

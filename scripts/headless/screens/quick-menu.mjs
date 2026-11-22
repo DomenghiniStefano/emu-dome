@@ -147,7 +147,7 @@ for (const [state, s] of Object.entries(SEARCH_STATES)) {
       slots: "full",
       search: true,
       lang: "it",
-      fullscreen: true,
+      ui: "tv",
       pads: true,
       ...s.mock,
       theme: "dark",

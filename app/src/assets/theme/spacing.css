@@ -236,6 +236,15 @@
   --spacing-tv-shelf-gap: calc(var(--spacing-32) * var(--tv-scale));
   --spacing-tv-cover-gap: calc(var(--spacing-24) * var(--tv-scale));
   --spacing-tv-hint-gap: calc(var(--spacing-32) * var(--tv-scale));
+  /* Settings in TV (components/settings/tv/): the column of the pages on the left, a row's least
+     height, its side padding (also between its words and its value) and its top and bottom
+     padding, the gap between two rows, the full-screen choice sheet's column. */
+  --spacing-tv-sidebar: calc(420px * var(--tv-scale));
+  --spacing-tv-row: calc(80px * var(--tv-scale));
+  --spacing-tv-row-x: calc(var(--spacing-32) * var(--tv-scale));
+  --spacing-tv-row-y: calc(var(--spacing-16) * var(--tv-scale));
+  --spacing-tv-row-gap: calc(var(--spacing-8) * var(--tv-scale));
+  --spacing-tv-sheet: calc(1040px * var(--tv-scale));
 }
 
 /* Tailwind's container sizes (max-w-md…) and breakpoints (`md:`, `max-lg:`…) are not ours either:
