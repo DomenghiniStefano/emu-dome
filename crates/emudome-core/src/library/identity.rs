@@ -15,8 +15,8 @@
 //! ([`NotAGame`]) and is skipped; so is an encrypted 3DS game ([`NotAGame::Encrypted`], E10:
 //! EmuDome plays decrypted games only, `crate::n3ds::rom`).
 //!
-//! Titles: GB 0x134, GBA 0xA0, NDS banner (English, else the first non-empty language; the
-//! header's 0x00 when there is no banner), 3DS SMDH short title (same language rule).
+//! Titles: GB 0x134, GBA 0xA0, NDS banner (English, else the first non-empty language; title and
+//! subtitle without the publisher, `banner_title`; the header's 0x00 when there is no banner), 3DS SMDH short title (same language rule).
 //! Icons: NDS banner 32×32 (4 bpp, 8×8 tiles, BGR555 palette, colour 0 transparent), 3DS SMDH
 //! large icon 48×48 (RGB565, 8×8 tiles in Morton order).
 
@@ -329,8 +329,7 @@ fn nds(file: &mut File, len: u64) -> Result<Header, NotAGame> {
         if le16(&b, 0) != 0 {
             icon = Some(IconAt::Banner(banner));
             title = pick_title(6, |lang| {
-                let text = utf16(&b[0x240 + lang * 0x100..0x340 + lang * 0x100]);
-                text.lines().next().unwrap_or_default().trim().to_owned()
+                banner_title(&utf16(&b[0x240 + lang * 0x100..0x340 + lang * 0x100]))
             });
         }
     }
@@ -345,6 +344,36 @@ fn nds(file: &mut File, len: u64) -> Result<Header, NotAGame> {
         icon,
         key: Key::Hash(used),
     })
+}
+
+/// The game's name in one language's NDS banner text. The text holds 2 or 3 lines: with 3 the
+/// first two are the title and its subtitle («Pokémon» / «Versione Bianca» / «Nintendo»: «Pokémon
+/// Versione Bianca»), with 2 the second is the publisher, with 1 it is the title alone. Lines end
+/// in LF or CRLF; blank lines and the spaces around each line are dropped.
+fn banner_title(text: &str) -> String {
+    let lines: Vec<&str> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .collect();
+    match lines.as_slice() {
+        [title, subtitle, _publisher, ..] => format!("{title} {subtitle}"),
+        [title, ..] => (*title).to_owned(),
+        [] => String::new(),
+    }
+}
+
+/// The rule the titles are read with, recorded with each entry of the hash cache: an entry read
+/// under an older rule is read again when the rule changed for its console
+/// ([`title_outdated`]). 1: NDS banners keep their subtitle (before, their first line only).
+pub const TITLE_RULE: u32 = 1;
+
+/// Whether a title read under `rule` would be read otherwise now.
+pub fn title_outdated(console: ConsoleId, rule: u32) -> bool {
+    match console {
+        ConsoleId::Nds => rule < 1,
+        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::N3ds => false,
+    }
 }
 
 /// CRC-16 as the NDS header uses it (MODBUS: reflected 0x8005, init 0xFFFF).

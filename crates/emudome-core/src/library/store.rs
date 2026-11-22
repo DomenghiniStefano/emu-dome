@@ -90,6 +90,11 @@ pub struct CacheEntry {
     pub size: u64,
     pub mtime: u64,
     pub identity: Identity,
+    /// The title rule `identity.title` was read with (`identity::TITLE_RULE`); 0 in a file
+    /// written before the rule was recorded. An outdated one makes the next scan read the file
+    /// again, so an unchanged file gets the new title (its id stays the same).
+    #[serde(default)]
+    pub title_rule: u32,
 }
 
 /// Path → identity of the files seen.
