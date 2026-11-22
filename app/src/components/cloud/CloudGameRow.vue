@@ -52,23 +52,36 @@ const transfer = computed(() => {
       :title="false"
       :missing="!game.here"
     />
-    <div class="flex min-w-0 flex-1 flex-col gap-2">
-      <span class="font-medium wrap-anywhere">{{ game.title }}</span>
-      <span class="text-caption text-ink-muted tabular-nums">{{
-        t('cloud.games.meta', { console: t(`console.${game.console}`), size: sizeLabel(game.size) })
-      }}</span>
-      <Progress
-        v-if="busy && transfer"
-        class="w-progress max-w-full"
-        :value="transferShare(transfer)"
-        :label="game.title"
-      />
+    <!-- On a narrow window the state and the action go under the title. -->
+    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-12 gap-y-8">
+      <div class="flex min-w-0 flex-1 basis-card-min flex-col gap-2">
+        <span class="font-medium wrap-anywhere">{{ game.title }}</span>
+        <span class="text-caption text-ink-muted tabular-nums">{{
+          t('cloud.games.meta', {
+            console: t(`console.${game.console}`),
+            size: sizeLabel(game.size),
+          })
+        }}</span>
+        <Progress
+          v-if="busy && transfer"
+          class="w-progress max-w-full"
+          :value="transferShare(transfer)"
+          :label="game.title"
+        />
+      </div>
+      <div class="flex min-w-0 flex-wrap items-center gap-x-12 gap-y-8">
+        <Badge :variant="TONE[gameTone(game.state)]" :size="BadgeSize.Pill">
+          {{ t(`cloud.games.state.${game.state}`) }}
+        </Badge>
+        <Button
+          v-if="action"
+          :size="ButtonSize.Default"
+          :disabled="busy"
+          @click="emit('act', action)"
+        >
+          {{ t(`cloud.games.${action}`) }}
+        </Button>
+      </div>
     </div>
-    <Badge :variant="TONE[gameTone(game.state)]" :size="BadgeSize.Pill">
-      {{ t(`cloud.games.state.${game.state}`) }}
-    </Badge>
-    <Button v-if="action" :size="ButtonSize.Default" :disabled="busy" @click="emit('act', action)">
-      {{ t(`cloud.games.${action}`) }}
-    </Button>
   </div>
 </template>

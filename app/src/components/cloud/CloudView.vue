@@ -57,7 +57,13 @@ onMounted(async () => {
 
 <template>
   <div ref="root" class="flex min-h-0 flex-1">
-    <SectionPage v-if="status" as="main" class="flex-1" :width="SectionWidth.Page">
+    <!-- Signed in, the card and the lists grow with the window (no empty band on a large one). -->
+    <SectionPage
+      v-if="status"
+      as="main"
+      class="flex-1"
+      :width="status.signedIn ? SectionWidth.Full : SectionWidth.Page"
+    >
       <CloudSignedOut
         v-if="!status.signedIn"
         :status="status"

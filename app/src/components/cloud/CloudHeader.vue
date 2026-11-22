@@ -19,7 +19,7 @@ const name = computed(
 <template>
   <header class="flex flex-wrap items-center justify-between gap-x-16 gap-y-8">
     <Heading as="h1">{{ t('shell.cloud') }}</Heading>
-    <div class="flex min-w-0 items-center gap-12 text-caption text-ink-muted">
+    <div class="flex max-w-full items-center gap-12 text-caption text-ink-muted">
       <span class="min-w-0 wrap-anywhere">{{ t('cloud.header.account', { name }) }}</span>
       <Button :variant="ButtonVariant.Link" :size="ButtonSize.Text" @click="emit('signOut')">
         {{ t('cloud.header.signOut') }}
