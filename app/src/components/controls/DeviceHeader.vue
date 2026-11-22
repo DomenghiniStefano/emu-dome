@@ -16,10 +16,10 @@ const { t } = useI18n()
       :variant="ButtonVariant.Ghost"
       :size="ButtonSize.TextLine"
       class="mb-4 -ml-6 self-start"
+      :icon="ChevronLeft"
       data-nav-initial
       @click="emit('back')"
     >
-      <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
       {{ t('shell.controls') }}
     </Button>
     <Heading as="h2" :variant="HeadingVariant.Title">{{ name }}</Heading>

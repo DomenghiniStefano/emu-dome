@@ -3,6 +3,7 @@
 // right the Google account with «Esci».
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { LogOut } from '@lucide/vue'
 import type { CloudAccount } from '@/emu'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Heading } from '@/components/ui/heading'
@@ -21,7 +22,12 @@ const name = computed(
     <Heading as="h1">{{ t('shell.cloud') }}</Heading>
     <div class="flex max-w-full items-center gap-8 text-caption text-ink-muted">
       <span class="min-w-0 wrap-anywhere">{{ t('cloud.header.account', { name }) }}</span>
-      <Button :variant="ButtonVariant.Link" :size="ButtonSize.Text" @click="emit('signOut')">
+      <Button
+        :variant="ButtonVariant.Link"
+        :size="ButtonSize.Text"
+        :icon="LogOut"
+        @click="emit('signOut')"
+      >
         {{ t('cloud.header.signOut') }}
       </Button>
     </div>

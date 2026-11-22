@@ -5,6 +5,7 @@
 // before) focused first; A chooses, B goes back.
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ArrowRight, ChevronLeft } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import { DialogTitle, DialogTitleSize } from '@/components/ui/dialog'
@@ -62,10 +63,13 @@ const takenAt = (s: GameScreenshot) =>
       </RadioGroupItem>
     </RadioGroup>
     <div class="flex justify-between gap-8">
-      <Button :size="ButtonSize.Medium" @click="emit('back')">{{ t('library.cover.back') }}</Button>
+      <Button :size="ButtonSize.Medium" :icon="ChevronLeft" @click="emit('back')">
+        {{ t('library.cover.back') }}
+      </Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="ArrowRight"
         :disabled="!choice"
         @click="next"
       >

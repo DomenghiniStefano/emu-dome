@@ -5,7 +5,7 @@
 // says why with the existing `cloudNotConfigured` / `cloudSignInUnsupported` texts.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check } from '@lucide/vue'
+import { Check, LogIn } from '@lucide/vue'
 import type { CloudStatus, ErrorCode } from '@/emu'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
@@ -48,6 +48,7 @@ const POINTS = ['saves', 'settings', 'games'] as const
           :variant="ButtonVariant.Primary"
           :size="ButtonSize.Large"
           :disabled="blocked !== null || signingIn"
+          :icon="LogIn"
           data-nav-initial
           @click="emit('signIn')"
         >

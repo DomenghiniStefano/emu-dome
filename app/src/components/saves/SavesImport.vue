@@ -4,6 +4,7 @@
 // The state lives in useSaveImport; this panel shows it and asks for the steps.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { File as FileIcon, Gamepad2, Import } from '@lucide/vue'
 import type { GameSaves, ImportCandidate, LibraryGame } from '@/emu'
 import { saveWhenLabel } from '@/i18n/labels'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
@@ -49,12 +50,12 @@ const replaced = computed(() => (props.target ? (props.targetSaves?.inGame ?? nu
     </div>
     <Card class="gap-10">
       <ImportStep :n="1" :title="t('saves.importer.file')" :detail="fileLine" :done="!!candidate">
-        <Button data-nav-initial @click="emit('pickFile')">
+        <Button :icon="FileIcon" data-nav-initial @click="emit('pickFile')">
           {{ candidate ? t('saves.importer.change') : t('saves.importer.pick') }}
         </Button>
       </ImportStep>
       <ImportStep :n="2" :title="t('saves.importer.game')" :detail="gameLine" :done="!!target">
-        <Button :disabled="!candidate" @click="emit('chooseGame')">
+        <Button :icon="Gamepad2" :disabled="!candidate" @click="emit('chooseGame')">
           {{ target ? t('saves.importer.otherGame') : t('saves.importer.chooseGame') }}
         </Button>
       </ImportStep>
@@ -68,6 +69,7 @@ const replaced = computed(() => (props.target ? (props.targetSaves?.inGame ?? nu
         <Button
           :variant="ButtonVariant.Primary"
           :size="ButtonSize.Large"
+          :icon="Import"
           :disabled="!candidate || !target || importing"
           @click="emit('import')"
         >

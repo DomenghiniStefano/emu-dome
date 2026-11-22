@@ -1,9 +1,11 @@
 <script setup lang="ts">
-// The in-game save's backups (V02), newest first: when, why it was made, «Ripristina».
+// The in-game save's backups (V02), newest first: when, why it was made, «Ripristina» (its icon
+// alone, #104: repeated on every row).
 import { useI18n } from 'vue-i18n'
+import { ArchiveRestore } from '@lucide/vue'
 import type { SaveBackup } from '@/emu'
 import { saveWhenLabel } from '@/i18n/labels'
-import { Button } from '@/components/ui/button'
+import { Button, ButtonSize } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import RowColumns from '@/components/settings/RowColumns.vue'
 
@@ -23,7 +25,12 @@ const { t } = useI18n()
       >
         <span class="min-w-0 flex-1 tabular-nums">{{ saveWhenLabel(b.at) }}</span>
         <span class="text-caption text-ink-muted">{{ t(`saves.reason.${b.reason}`) }}</span>
-        <Button @click="emit('restore', b.name)">{{ t('saves.restore') }}</Button>
+        <Button
+          :size="ButtonSize.ToolIcon"
+          :icon="ArchiveRestore"
+          :label="t('saves.restore')"
+          @click="emit('restore', b.name)"
+        />
       </div>
     </RowColumns>
   </Card>

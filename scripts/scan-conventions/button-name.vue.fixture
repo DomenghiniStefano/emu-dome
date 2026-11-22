@@ -1,0 +1,12 @@
+<!-- Fixture of scripts/scan-conventions.mjs: a Button named twice instead of with `label`. -->
+<template>
+  <Button
+    :size="ButtonSize.IconRow"
+    :aria-label="t('saves.restore')"
+    :title="t('saves.restore')"
+    @click="(e: Event) => emit('restore', e)"
+  >
+    <ArchiveRestore :size="14" />
+  </Button>
+  <Button aria-label="Altro" title="Altro"><Ellipsis /></Button>
+</template>

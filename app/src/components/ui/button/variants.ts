@@ -128,6 +128,12 @@ export const ButtonSize = {
   // An icon alone on a list row or a tile (Trello #104: a version's «Gioca questa», a folder's
   // «Togli»): the 24px square, and on the phone the touch minimum. Its 28px sibling is ToolIcon.
   IconRow: 'iconRow',
+  // The play button of a game in the phone's list and on a compact grid's cover (#104, the owner
+  // 2026-11-22: «Riprendi» too tall for the row): a 32 square (control-lg) drawn, no taller than
+  // the row's two lines of text, while the touch still takes the 44 minimum: on the phone an
+  // invisible 44 square centred on it (`before:`, whatever the edge's width). Positioned
+  // (`relative`) for that area; a caller's `absolute` replaces it.
+  RowAction: 'rowAction',
   // A section of the rail: 64 x 48, icon over name.
   Rail: 'rail',
   // The actions over a cover (control-md), «Gioca» and the square «…».
@@ -306,6 +312,8 @@ export const buttonVariants = cva(
         [ButtonSize.IconSmall]: 'size-control-sm p-0',
         [ButtonSize.IconTouch]: 'size-touch p-0',
         [ButtonSize.IconRow]: 'size-control-sm p-0 touch:size-touch',
+        [ButtonSize.RowAction]:
+          'relative size-control-lg p-0 touch:before:absolute touch:before:top-1/2 touch:before:left-1/2 touch:before:size-touch touch:before:-translate-1/2',
         [ButtonSize.Rail]: 'h-48 w-rail-item flex-col gap-3 p-0',
         [ButtonSize.CoverAction]: 'h-control-md px-6 py-px',
         [ButtonSize.CoverActionIcon]: 'size-control-md px-6 py-px',
@@ -344,7 +352,7 @@ export const buttonVariants = cva(
         [ButtonSize.Tool]: 'h-control gap-6 px-8 touch:h-touch touch:px-12',
         [ButtonSize.ToolIcon]: 'size-control p-0 touch:size-touch',
         [ButtonSize.PhoneTab]: 'min-h-touch min-w-touch flex-1 basis-0 flex-col gap-2 px-2 py-4',
-        [ButtonSize.TvTab]: 'h-tv-tab rounded-full px-24 text-tv-label',
+        [ButtonSize.TvTab]: 'h-tv-tab gap-12 rounded-full px-24 text-tv-label',
         [ButtonSize.TvRow]:
           'min-h-tv-row gap-tv-row-x rounded-card px-tv-row-x py-tv-row-y text-tv-label',
         [ButtonSize.TvNavItem]: 'h-tv-tab gap-12 rounded-card px-tv-row-y text-tv-label',

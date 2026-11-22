@@ -37,6 +37,7 @@ import KbdSection from '@/kit/sections/KbdSection.vue'
 import LabelledBlockSection from '@/kit/sections/LabelledBlockSection.vue'
 import LinkRowSection from '@/kit/sections/LinkRowSection.vue'
 import StatTileSection from '@/kit/sections/StatTileSection.vue'
+import TooltipSection from '@/kit/sections/TooltipSection.vue'
 import GameGroup from '@/kit/features/game/GameGroup.vue'
 import LibraryGroup from '@/kit/features/library/LibraryGroup.vue'
 import SettingsGroup from '@/kit/features/settings/SettingsGroup.vue'
@@ -113,6 +114,7 @@ useNavScope(root, { autofocus: true })
       <HeadingSection />
       <ButtonSection />
       <ButtonIconSection />
+      <TooltipSection />
       <BadgeSection />
       <CardSection />
       <ChipSection />

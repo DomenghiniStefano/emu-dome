@@ -3,6 +3,7 @@
 // picked control, «Mostra gli strumenti» and «Salva», so the whole screen is free to drag and
 // pinch (as the C09 editor's pill).
 import { useI18n } from 'vue-i18n'
+import { Save, SlidersHorizontal } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 
 defineProps<{
@@ -20,12 +21,18 @@ const { t } = useI18n()
     class="flex max-w-full items-center gap-8 rounded-full border border-line py-6 pr-6 pl-16 shadow-glass glass-thick-flat"
   >
     <span class="min-w-0 truncate font-semibold">{{ name }}</span>
-    <Button :variant="ButtonVariant.Soft" :size="ButtonSize.Tool" @click="emit('expand')">
+    <Button
+      :variant="ButtonVariant.Soft"
+      :size="ButtonSize.Tool"
+      :icon="SlidersHorizontal"
+      @click="emit('expand')"
+    >
       {{ t('touch.editor.expand') }}
     </Button>
     <Button
       :variant="ButtonVariant.Primary"
       :size="ButtonSize.Tool"
+      :icon="Save"
       :disabled="busy || !canSave"
       @click="emit('save')"
     >

@@ -64,6 +64,16 @@ reads the same in every file, and a move changes only the moved file's importers
   Checkbox are behaviour only: each item is `as-child` on the screen's Card or Button, which keeps its
   look. Popover and DropdownMenu hang from the screen's own button (`anchor`) and the screen holds
   `open`, so A and a click toggle them the same way. Checked by `hand-role` (below).
+- Icons on buttons (Trello #104): Button's `icon` prop draws the Lucide icon, sized by the button's
+  size and one step larger at the touch density (`button/icon.ts`); `iconFilled` for the play triangle.
+  With `label` the icon is drawn alone: the label (an existing text, never a new one) is the accessible
+  name and the Tooltip (`ui/tooltip`: after a rest of the mouse, and at once on the controller's or the
+  keyboard's focus; a caller's `title` shows there instead of the browser's own). The rule: a view's
+  main action and the actions of a dialog, card, banner or step foot are icon + words; actions repeated
+  on every row or tile and toolbars are the icon alone; links, option pickers whose words are the value,
+  tabs, page lists, click areas and the gamepad's keys stay words. A dialog's quiet way out («Annulla»,
+  «Chiudi», «Non ora») stays words, so the main action stands out. The phone list's play button is
+  `ButtonSize.RowAction`: 32 drawn, 44 to the touch.
 
 ## Kit page (`kit/`)
 
@@ -198,6 +208,7 @@ class fires too.
 | `numeric-scale` | bare-number utilities the theme cannot reset: `opacity-40`, `z-5`, `duration-300`, `border-2`, `outline-offset-2`, `ring-2`, `scale-95` | layout counts are allowed on purpose (`grid-cols-3`, `aspect-3/2`, `rotate-90`) |
 | `important` | `w-48!`, `!w-48` | in scripts and `.ts`, a `!` class with no `-` or `:` (`flex!`) |
 | `look-only-prop` | a `phone` / `touch` prop used only in `:class` | a prop read in `<script>`, passed down, or of another name |
+| `button-name` | a `<Button>` with both `aria-label` and `title` (static or bound) outside `components/ui`: an icon alone takes `label` (accessible name and Tooltip) | a Button in a render function or `<component :is>`, attributes in a `v-bind="{…}"` object |
 | `hand-role` | `role="dialog"`, `alertdialog`, `radio`, `radiogroup`, `checkbox`, `menu`, `menuitem`, `listbox`, `option`, `switch`, `tab`, `tablist` (static or `:role`) outside `components/ui`; the files not moved yet are in `HAND_ROLES_PENDING` with the reason | a role set from a script, a render function, a `:role` built from a variable |
 
 Allowed by construction: values built only from tokens (`calc(100%+var(--spacing-6))`, grid templates
@@ -218,5 +229,8 @@ Other gates on the frontend: `scripts/visible-text.mjs` (hardcoded text in templ
 - The look (graphite, accent only on the main action, glass, Lucide icons) and every value the scanner
   cannot see: % / viewport lengths, icon sizes as props, `style` bindings.
 - A `phone` / `touch` prop that only changes the look but escapes `look-only-prop`.
+- Which form a button takes (#104: icon + words, the icon alone with `label`, or words), and that its
+  icon comes through `icon` rather than the slot (a slot glyph stays only where its size is its own:
+  the phone's 24 px chevron, the bell with its badge).
 - Clean code: small components with one job, logic in composables and tested pure functions,
   nothing duplicated across screens, names that say what a thing is for.

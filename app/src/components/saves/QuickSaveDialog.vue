@@ -8,6 +8,7 @@
 // Controller / keyboard: each dialog (FlowDialog) opens its own nav scope.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Play, Share, Trash2 } from '@lucide/vue'
 import { AUTO_SLOT, emu, type LibraryGame, type QuickSave } from '@/emu'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { saveWhenLabel, sizeLabel } from '@/i18n/labels'
@@ -82,16 +83,26 @@ async function deleteIt() {
     <p class="m-0 text-caption">{{ t('saves.quick.overwriteHint') }}</p>
     <template #actions>
       <!-- The Automatico slot cannot be deleted (#59 item 3): EmuDome fills it by itself. -->
-      <Button v-if="quick.slot !== AUTO_SLOT" :size="ButtonSize.Medium" @click="startDelete">
+      <Button
+        v-if="quick.slot !== AUTO_SLOT"
+        :size="ButtonSize.Medium"
+        :icon="Trash2"
+        @click="startDelete"
+      >
         {{ t('saves.quick.delete') }}
       </Button>
-      <Button :size="ButtonSize.Medium" @click="exportIt">{{ t('saves.export') }}</Button>
+      <Button :size="ButtonSize.Medium" :icon="Share" @click="exportIt">
+        {{ t('saves.export') }}
+      </Button>
+      <!-- The quiet way out stays words (#104), so the main action stands out. -->
       <Button :size="ButtonSize.Medium" @click="emit('close')">
         {{ t('saves.quick.close') }}
       </Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Play"
+        icon-filled
         data-nav-initial
         @click="emit('play', quick.slot)"
       >
@@ -112,7 +123,12 @@ async function deleteIt() {
       <Button :size="ButtonSize.Medium" data-nav-initial @click="confirmDelete = false">
         {{ t('saves.quick.cancel') }}
       </Button>
-      <Button :variant="ButtonVariant.Danger" :size="ButtonSize.Medium" @click="deleteIt">
+      <Button
+        :variant="ButtonVariant.Danger"
+        :size="ButtonSize.Medium"
+        :icon="Trash2"
+        @click="deleteIt"
+      >
         {{ t('saves.quick.deleteConfirm', { slot: quick.slot }) }}
       </Button>
     </template>

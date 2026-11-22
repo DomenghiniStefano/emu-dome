@@ -37,11 +37,10 @@ const firstMark = computed(() => (props.first ? { [FocusMark.SubInitial]: '' } :
         :variant="ButtonVariant.Ghost"
         :size="ButtonSize.Step"
         :disabled="!card.prev"
-        :aria-label="t('qm.prev', { name })"
+        :icon="ChevronLeft"
+        :label="t('qm.prev', { name })"
         @click="card.prev?.()"
-      >
-        <ChevronLeft :size="16" class="touch:size-18" :stroke-width="1.75" aria-hidden="true" />
-      </Button>
+      />
       <span class="min-w-0 flex-1 truncate text-center font-semibold">
         {{ card.value ? say(card.value) : '' }}
       </span>
@@ -49,11 +48,10 @@ const firstMark = computed(() => (props.first ? { [FocusMark.SubInitial]: '' } :
         :variant="ButtonVariant.Ghost"
         :size="ButtonSize.Step"
         :disabled="!card.next"
-        :aria-label="t('qm.next', { name })"
+        :icon="ChevronRight"
+        :label="t('qm.next', { name })"
         @click="card.next?.()"
-      >
-        <ChevronRight :size="16" class="touch:size-18" :stroke-width="1.75" aria-hidden="true" />
-      </Button>
+      />
     </div>
     <span class="line-clamp-2 text-overline-inline text-ink-muted">{{ sub }}</span>
   </div>

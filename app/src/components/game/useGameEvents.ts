@@ -2,6 +2,7 @@
 // being played, and the toasts they show: saves and loads (G17 with its «Annulla»), the slot,
 // screenshots, errors, the frame size, a stop.
 import { useI18n } from 'vue-i18n'
+import { Image as ImageIcon, Undo2 } from '@lucide/vue'
 import { AUTO_SLOT, emu, type EmuEvent, type HotkeyEvent } from '@/emu'
 import { inputMode } from '@/lib/inputMode'
 import type { GameState } from './gameState'
@@ -34,7 +35,7 @@ export function useGameEvents(
     const request = { game: library.id, name: screenshotName(path) }
     toasts.notify(text, {
       ms: 5000,
-      action: { label: t('toast.useAsCover'), run: () => useAsCover(request) },
+      action: { label: t('toast.useAsCover'), icon: ImageIcon, run: () => useAsCover(request) },
     })
   }
 
@@ -73,7 +74,7 @@ export function useGameEvents(
       return toasts.notify(text, { note: t('toast.undoFromMenu'), ms: 5000 })
     toasts.notify(text, {
       ms: 5000,
-      action: { label: t('toast.undo'), run: () => void undoLoad() },
+      action: { label: t('toast.undo'), icon: Undo2, run: () => void undoLoad() },
     })
   }
 

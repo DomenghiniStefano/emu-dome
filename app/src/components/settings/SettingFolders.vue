@@ -2,7 +2,7 @@
 // The game folders (`folders`, `library.folders`): changed through the library, which rescans
 // and updates the setting.
 import { useI18n } from 'vue-i18n'
-import { Folder } from '@lucide/vue'
+import { Folder, FolderPlus, X } from '@lucide/vue'
 import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { emu } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
@@ -33,26 +33,28 @@ async function add() {
     <div
       v-for="path in folders"
       :key="path"
-      class="flex h-control items-center gap-8 rounded-control bg-surface-raised px-8"
+      class="flex min-h-control items-center gap-8 rounded-control bg-surface-raised pr-2 pl-8"
     >
       <Folder :size="16" :stroke-width="1.75" aria-hidden="true" />
       <span class="min-w-0 flex-1 truncate">{{
         folderLabel(library.folders, path, t('library.folderUnnamed'))
       }}</span>
+      <!-- Repeated on every folder: the icon alone (#104), the touch minimum on the phone. -->
       <Button
         :variant="ButtonVariant.GhostRegular"
         :fade="ButtonFade.None"
-        :size="ButtonSize.Small"
+        :size="ButtonSize.IconRow"
+        :icon="X"
+        :label="t('settings.library.folders.value.remove')"
         :disabled="disabled"
         @click="remove(path)"
-      >
-        {{ t('settings.library.folders.value.remove') }}
-      </Button>
+      />
     </div>
     <Button
       :variant="ButtonVariant.Soft"
       :fade="ButtonFade.None"
       class="self-start"
+      :icon="FolderPlus"
       :disabled="disabled"
       @click="add"
     >

@@ -15,5 +15,8 @@ const label = props.touch ? 'a' : 'b'
     <span class="grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] -translate-1/2">{{ label }}</span>
     <section role="region" aria-label="x"><p role="alert" data-role="dialog">x</p></section>
     <div role="tabpanel"><div role="group" aria-roledescription="menu">y</div></div>
+    <Button :label="t('firstRun.games.removeFolder')" :title="t('firstRun.games.remove')" />
+    <Button :aria-label="t('touch.menu')" @click="() => (open = title)" />
+    <Button :data-title="x" :aria-label="y">z</Button>
   </div>
 </template>

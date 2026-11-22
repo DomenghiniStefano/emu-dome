@@ -57,12 +57,10 @@ function pick(v: string) {
       </Segmented>
       <Button
         :size="ButtonSize.ToolIcon"
-        :aria-label="t('library.addGames')"
-        :title="t('library.addGames')"
+        :icon="Plus"
+        :label="t('library.addGames')"
         @click="emit('addFolder')"
-      >
-        <Plus :size="18" :stroke-width="1.75" aria-hidden="true" />
-      </Button>
+      />
     </div>
   </div>
 </template>

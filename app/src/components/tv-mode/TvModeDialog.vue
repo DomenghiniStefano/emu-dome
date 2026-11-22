@@ -9,8 +9,9 @@
 // they are. «Non chiederlo più» saves the answer as `general.ui` (useUiMode `answerTvAsk`).
 // In game the game pauses while it shows, and the controller drives the dialog (the interface
 // has the input, as with the quick menu); both are given back when it closes.
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Monitor, Tv } from '@lucide/vue'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -33,6 +34,8 @@ const remember = ref(false)
 const main: UiLayout = props.ask === 'connect' ? 'tv' : 'desktop'
 const other: UiLayout = props.ask === 'connect' ? 'desktop' : 'tv'
 const answer = (layout: UiLayout) => answerTvAsk(layout, remember.value)
+/** Each answer's icon (#104): the layout it leads to. */
+const LAYOUT_ICON: Record<UiLayout, Component> = { tv: Tv, desktop: Monitor }
 
 // In game: hold the game and give the controller to the interface while the question shows.
 let held = false
@@ -67,12 +70,13 @@ onBeforeUnmount(() => {
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="LAYOUT_ICON[main]"
         data-nav-initial
         @click="answer(main)"
       >
         {{ t(`tv.ask.${ask}.main`) }}
       </Button>
-      <Button :size="ButtonSize.Medium" @click="answer(other)">
+      <Button :size="ButtonSize.Medium" :icon="LAYOUT_ICON[other]" @click="answer(other)">
         {{ t(`tv.ask.${ask}.other`) }}
       </Button>
     </template>

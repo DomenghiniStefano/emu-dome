@@ -10,6 +10,7 @@
 // Controller / keyboard: its own nav scope through FlowDialog, B = «Decidi dopo».
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Copy } from '@lucide/vue'
 import { Button, ButtonSize } from '@/components/ui/button'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import ConflictSide from './ConflictSide.vue'
@@ -40,10 +41,11 @@ const sides = computed(() => props.versions.map((version, i) => ({ version, i: i
       />
     </div>
     <template #actions>
+      <!-- The way out stays words (#104, like «Non ora»), the choice beside it has its icon. -->
       <Button :size="ButtonSize.Medium" @click="emit('later')">
         {{ t('saves.conflict.later') }}
       </Button>
-      <Button :size="ButtonSize.Medium" @click="emit('keepBoth')">
+      <Button :size="ButtonSize.Medium" :icon="Copy" @click="emit('keepBoth')">
         {{ t('saves.conflict.keepBoth') }}
       </Button>
     </template>

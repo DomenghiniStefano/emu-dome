@@ -5,6 +5,7 @@
 // Controller / keyboard: the popover's own nav scope while open, the order chosen focused first;
 // B / Esc / a click outside close it.
 import { useI18n } from 'vue-i18n'
+import { RotateCcw } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -65,5 +66,5 @@ function choose(value: unknown) {
       </Button>
     </Checkbox>
   </div>
-  <Button @click="emit('reset')">{{ t('library.filters.reset') }}</Button>
+  <Button :icon="RotateCcw" @click="emit('reset')">{{ t('library.filters.reset') }}</Button>
 </template>

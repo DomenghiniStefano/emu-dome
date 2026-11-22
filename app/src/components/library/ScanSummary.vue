@@ -32,8 +32,7 @@ const counts = computed(() => consoleCounts(props.summary.perConsole, { hideEmpt
       class="ml-auto"
       :variant="ButtonVariant.Ghost"
       :size="ButtonSize.IconSmall"
-      :aria-label="t('library.added.close')"
-      :title="t('library.added.close')"
+      :label="t('library.added.close')"
       @click="emit('close')"
     >
       <X :size="16" :stroke-width="1.75" aria-hidden="true" />

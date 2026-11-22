@@ -2,6 +2,7 @@
 // `saves.resume` = ask: resume from the auto quick save, or start over. A game whose core cannot
 // load states (Trello #93) keeps «Riprendi» disabled with the reason, and the focus on the way on.
 import { useI18n } from 'vue-i18n'
+import { Play, RotateCcw } from '@lucide/vue'
 import type { StateLoadBlock } from '@/emu'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { stateLoadBlockText } from '@/i18n/labels'
@@ -21,6 +22,7 @@ const { t } = useI18n()
     <template #actions>
       <Button
         :size="ButtonSize.Medium"
+        :icon="RotateCcw"
         :data-nav-initial="loadBlock !== null ? '' : undefined"
         @click="emit('answer', false)"
       >
@@ -30,6 +32,8 @@ const { t } = useI18n()
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
         :disabled="loadBlock !== null"
+        :icon="Play"
+        icon-filled
         :data-nav-initial="loadBlock !== null ? undefined : ''"
         @click="emit('answer', true)"
       >

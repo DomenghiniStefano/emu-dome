@@ -2,6 +2,7 @@
 // C01 «Scorciatoie da ricordare»: what to press for each shortcut, the hint beside the heading,
 // and «Modifica le scorciatoie» down to C03.
 import { useI18n } from 'vue-i18n'
+import { Pencil } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
 import type { RememberLine } from './shortcutLines'
@@ -30,7 +31,7 @@ const { t } = useI18n()
         <span>{{ l.name }}</span>
       </div>
     </Card>
-    <Button class="self-start" @click="emit('edit')">
+    <Button class="self-start" :icon="Pencil" @click="emit('edit')">
       {{ t('controls.overview.editShortcuts') }}
     </Button>
   </LabelledBlock>

@@ -121,6 +121,7 @@ onBeforeUnmount(() => {
       :can-go-back="index > 0"
       :skippable="step === 'controller'"
       :main-label="t(mainKey)"
+      :last="index === steps.length - 1"
       @next="next"
       @back="back"
     />

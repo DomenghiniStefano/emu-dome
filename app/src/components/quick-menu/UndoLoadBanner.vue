@@ -22,9 +22,9 @@ const { t } = useI18n()
       :variant="ButtonVariant.Soft"
       :size="ButtonSize.MenuCompact"
       class="min-w-0"
+      :icon="RotateCcw"
       @click="$emit('undo')"
     >
-      <RotateCcw :size="16" :stroke-width="1.75" aria-hidden="true" />
       {{ t('qm.undoLoad') }}
     </Button>
   </Card>

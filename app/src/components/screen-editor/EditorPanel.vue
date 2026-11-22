@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // The C09 editor's side panel (thick glass, the owner's mockup, option A): where to start from,
 // the selected screen's place and size in per cent, keeping the proportions, the grid, which
-// screen is in front, where the layout is saved, Annulla / Salva. «Riduci» (Select) folds it into
+// screen is in front, where the layout is saved, Annulla / Salva («Annulla», the quiet way out,
+// stays words, #104). «Riduci» (Select) folds it into
 // the pill at the top. The state is the editor's (useScreenEditor); this panel only shows it.
 import { useI18n } from 'vue-i18n'
+import { ChevronDown, Save } from '@lucide/vue'
 import type { CustomScreen, ScreenLayoutId } from '@/emu'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
@@ -81,7 +83,12 @@ function onTarget(to: string) {
         <Heading as="h2" :variant="HeadingVariant.PageTitle">{{ t('screenEditor.title') }}</Heading>
         <span class="text-caption text-ink-muted">{{ t('screenEditor.lead') }}</span>
       </div>
-      <Button :variant="ButtonVariant.Ghost" :size="ButtonSize.Small" @click="emit('collapse')">
+      <Button
+        :variant="ButtonVariant.Ghost"
+        :size="ButtonSize.Small"
+        :icon="ChevronDown"
+        @click="emit('collapse')"
+      >
         {{ t('screenEditor.collapse') }}
         <Kbd v-if="inputMode === 'controller'" :size="KbdSize.Small">
           {{ posName('generic', 'back', false) }}
@@ -145,7 +152,12 @@ function onTarget(to: string) {
       <Button :variant="ButtonVariant.Ghost" :disabled="busy" @click="emit('cancel')">
         {{ t('screenEditor.cancel') }}
       </Button>
-      <Button :variant="ButtonVariant.Primary" :disabled="busy || !canSave" @click="emit('save')">
+      <Button
+        :variant="ButtonVariant.Primary"
+        :icon="Save"
+        :disabled="busy || !canSave"
+        @click="emit('save')"
+      >
         {{ t('screenEditor.save') }}
       </Button>
     </div>

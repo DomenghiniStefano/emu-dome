@@ -4,6 +4,7 @@
 // and where «Riprendi» picks up. The first card's «Riprendi» is the view's main action.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Play, Save } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardPad } from '@/components/ui/card'
 import { cn } from '@/lib/cn'
@@ -54,11 +55,13 @@ const from = computed(() => resumeSource(props.point))
           :size="ButtonSize.Compact"
           :data-nav-initial="main ? '' : undefined"
           :disabled="!game.available"
+          :icon="Play"
+          icon-filled
           @click="emit('resume')"
         >
           {{ t(point?.none ? 'library.hero.play' : 'library.hero.resume') }}
         </Button>
-        <Button :size="ButtonSize.Compact" @click="emit('openSaves')">
+        <Button :size="ButtonSize.Compact" :icon="Save" @click="emit('openSaves')">
           {{ t('shell.saves') }}
         </Button>
       </div>

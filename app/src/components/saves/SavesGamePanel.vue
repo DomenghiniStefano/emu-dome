@@ -4,6 +4,7 @@
 // («Ripristina»; E04's note when an unreadable in-game save was set aside).
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Info, Share } from '@lucide/vue'
 import type { GameSaves, LibraryGame, QuickSave } from '@/emu'
 import { saveWhenLabel, sizeLabel } from '@/i18n/labels'
 import { Button } from '@/components/ui/button'
@@ -62,13 +63,15 @@ const inGameLine = computed(() =>
           {{ t('saves.gameMeta', { console: t(`console.${game.console}`), meta: detail }) }}
         </div>
       </div>
-      <Button @click="emit('openDetails')">{{ t('saves.details') }}</Button>
+      <Button :icon="Info" @click="emit('openDetails')">{{ t('saves.details') }}</Button>
     </div>
 
     <LabelledBlock title-as="h3" :title="t('saves.inGameTitle')">
       <Card :pad="CardPad.Snug" class="flex-row items-center gap-8">
         <span class="min-w-0 flex-1 tabular-nums">{{ inGameLine }}</span>
-        <Button v-if="saves.inGame" @click="emit('exportInGame')">{{ t('saves.export') }}</Button>
+        <Button v-if="saves.inGame" :icon="Share" @click="emit('exportInGame')">
+          {{ t('saves.export') }}
+        </Button>
       </Card>
     </LabelledBlock>
 

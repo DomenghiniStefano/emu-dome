@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // Kit (Trello #104): Button's own icon, `icon` before the words and `icon` + `label` alone, at the
-// sizes the proposal uses, on the desktop and on the phone (touch density). The review board of
-// the text-only buttons is kit/features/icon-buttons/.
+// sizes the app uses, on the desktop and on the phone (touch density). The review board of the
+// text-only buttons was decided by the owner (2026-11-22) and carried by every screen, so it is
+// gone; the rule is in docs/frontend-conventions.md («Icons on buttons»).
 import { Check, FolderPlus, Pin, Play, Save, Share, Trash2, Undo2, X } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import IconButtonsReview from '@/kit/features/icon-buttons/IconButtonsReview.vue'
 import KitSection from '@/kit/KitSection.vue'
 import KitState from '@/kit/KitState.vue'
 </script>
@@ -63,7 +63,9 @@ import KitState from '@/kit/KitState.vue'
     <KitState label="icon only · disabled">
       <Button :size="ButtonSize.IconRow" :icon="Trash2" label="Togli" disabled />
     </KitState>
-    <KitState label="On the phone (touch density): IconRow 44, icon + text Default and Large">
+    <KitState
+      label="On the phone (touch density): icons one step larger; IconRow 44, icon + text Default and Large"
+    >
       <div data-density="touch" class="flex flex-wrap items-center gap-8">
         <Button :size="ButtonSize.IconRow" :icon="Play" icon-filled label="Gioca questa" />
         <Button :icon="FolderPlus">Aggiungi una cartella…</Button>
@@ -72,6 +74,27 @@ import KitState from '@/kit/KitState.vue'
         </Button>
       </div>
     </KitState>
-    <template #review><IconButtonsReview /></template>
+    <KitState
+      label="RowAction: the phone list's «Riprendi» / «Gioca», 32 drawn, 44 to the touch (the dashed box)"
+    >
+      <div
+        data-density="touch"
+        class="flex w-page max-w-full items-center gap-12 rounded-card border border-line bg-surface-raised py-8 pr-8 pl-control-pad"
+      >
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+          <span class="truncate font-semibold">Pokémon Smeraldo</span>
+          <span class="truncate text-caption text-ink-muted">GBA · ieri</span>
+        </div>
+        <Button
+          :variant="ButtonVariant.Primary"
+          :size="ButtonSize.RowAction"
+          :icon="Play"
+          icon-filled
+          label="Riprendi"
+          class="before:outline-ring before:outline-ink-faint before:outline-dashed"
+        />
+        <Button :size="ButtonSize.RowAction" :icon="Play" icon-filled label="Gioca" />
+      </div>
+    </KitState>
   </KitSection>
 </template>

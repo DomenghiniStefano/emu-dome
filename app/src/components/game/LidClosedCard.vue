@@ -7,7 +7,7 @@
 // the keyboard; the hint names the shortcut.
 import { onMounted, ref } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
-import { Laptop } from '@lucide/vue'
+import { Laptop, PanelTopOpen } from '@lucide/vue'
 import { emu, type Pos } from '@/emu'
 import { Button, ButtonVariant } from '@/components/ui/button'
 import { Heading, HeadingVariant } from '@/components/ui/heading'
@@ -45,7 +45,7 @@ onMounted(async () => {
       <Laptop class="text-ink-muted" :size="24" :stroke-width="1.75" aria-hidden="true" />
       <Heading as="h2" :variant="HeadingVariant.PageTitle">{{ t('flow.lid.title') }}</Heading>
       <p class="m-0 text-ink-muted">{{ t('flow.lid.text') }}</p>
-      <Button ref="button" :variant="ButtonVariant.Soft" @click="emit('open')">
+      <Button ref="button" :variant="ButtonVariant.Soft" :icon="PanelTopOpen" @click="emit('open')">
         {{ t('flow.lid.open') }}
       </Button>
       <I18nT

@@ -6,7 +6,7 @@
 // question off: it stays in the status card. Shown outside the game only (CloudFlowOverlays).
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Save } from '@lucide/vue'
+import { Check, Copy, Save } from '@lucide/vue'
 import { emu, type CloudChoice, type CloudGameConflict, type CloudVersion } from '@/emu'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
@@ -101,12 +101,13 @@ async function resolve(choice: CloudChoice) {
       </RadioGroupItem>
     </RadioGroup>
     <template #actions>
-      <Button :size="ButtonSize.Medium" :disabled="busy" @click="resolve('both')">
+      <Button :size="ButtonSize.Medium" :icon="Copy" :disabled="busy" @click="resolve('both')">
         {{ t('cloud.conflict.keepBoth') }}
       </Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Check"
         :disabled="busy"
         @click="resolve(chosen)"
       >

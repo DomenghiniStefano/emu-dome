@@ -10,6 +10,7 @@
 // switches the mode, A uses the cover (on a button, presses it), B goes back.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Check, ChevronLeft } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { DialogTitle, DialogTitleSize } from '@/components/ui/dialog'
 import { Segmented, SegmentedItem } from '@/components/ui/segmented'
@@ -124,10 +125,13 @@ const imageStyle = computed(() =>
     </div>
     <p v-if="error" class="m-0 text-danger" role="alert">{{ error }}</p>
     <div class="flex justify-between gap-8">
-      <Button :size="ButtonSize.Medium" @click="emit('back')">{{ t('library.cover.back') }}</Button>
+      <Button :size="ButtonSize.Medium" :icon="ChevronLeft" @click="emit('back')">
+        {{ t('library.cover.back') }}
+      </Button>
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Check"
         :disabled="busy || !place"
         @click="crop.use"
       >

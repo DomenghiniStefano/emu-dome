@@ -4,7 +4,7 @@
 // «Wait»). A save failed: what failed, then «Close without saving» (focus and B on it). Only the
 // look and its controller scope: ClosingOverlay.vue places it.
 import { ref, useId } from 'vue'
-import { TriangleAlert } from '@lucide/vue'
+import { Hourglass, TriangleAlert, X } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { errorText } from '@/i18n/labels'
@@ -67,6 +67,7 @@ else useNavSection(root, { back })
       <Button
         :variant="ButtonVariant.Danger"
         :size="ButtonSize.Medium"
+        :icon="X"
         :data-nav-initial="ask.kind === 'failed' ? '' : undefined"
         @click="emit('closeAnyway')"
       >
@@ -76,6 +77,7 @@ else useNavSection(root, { back })
         v-if="ask.kind === 'timeout'"
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Hourglass"
         data-nav-initial
         @click="emit('wait')"
       >

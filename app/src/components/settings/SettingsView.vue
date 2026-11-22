@@ -246,10 +246,10 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           :variant="ButtonVariant.Ghost"
           :size="ButtonSize.TextLine"
           class="-ml-6"
+          :icon="ChevronLeft"
           data-nav-initial
           @click="showList"
         >
-          <ChevronLeft :size="16" :stroke-width="1.75" aria-hidden="true" />
           {{ t('settingsUi.title') }}
         </Button>
       </div>

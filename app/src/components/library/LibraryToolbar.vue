@@ -37,8 +37,7 @@ const { t } = useI18n()
         @toggle="k => emit('toggle', k)"
         @reset="emit('reset')"
       />
-      <Button @click="emit('addFolder')">
-        <Plus :size="16" :stroke-width="1.75" aria-hidden="true" />
+      <Button :icon="Plus" @click="emit('addFolder')">
         {{ t('library.addGames') }}
       </Button>
     </div>

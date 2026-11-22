@@ -25,8 +25,7 @@ const mark = { [FocusMark.Back]: '' }
     :variant="ButtonVariant.Ghost"
     :size="ButtonSize.IconTouch"
     class="-ml-10 self-start"
-    :aria-label="label"
-    :title="label"
+    :label="label"
     @click="$emit('click')"
   >
     <ChevronLeft :size="22" :stroke-width="1.75" aria-hidden="true" />

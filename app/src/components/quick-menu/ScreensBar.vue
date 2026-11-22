@@ -73,9 +73,9 @@ onBeforeUnmount(() => {
         v-if="dualScreen"
         v-bind="customiseMark"
         :variant="ButtonVariant.Soft"
+        :icon="Rows2"
         @click="emit('customise', $event)"
       >
-        <Rows2 :size="16" :stroke-width="1.75" aria-hidden="true" />
         {{ t('settings.screens.custom.button') }}
       </Button>
     </div>

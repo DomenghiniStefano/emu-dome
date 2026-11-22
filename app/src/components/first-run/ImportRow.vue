@@ -3,6 +3,7 @@
 // holds, then import the saves that match library games.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { FolderOpen, Import } from '@lucide/vue'
 import { Button, ButtonFade } from '@/components/ui/button'
 import { canImport, importLine, type ImportState } from './imports'
 import ReadyRow from './ReadyRow.vue'
@@ -43,12 +44,19 @@ const matches = computed(() => props.state.found?.matches.length ?? 0)
       <Button
         v-if="canImport(state)"
         :fade="ButtonFade.Dim"
+        :icon="Import"
         :disabled="busy"
         @click="emit('import')"
       >
         {{ t('firstRun.ready.import', { n: matches }, matches) }}
       </Button>
-      <Button v-else :fade="ButtonFade.Dim" :disabled="busy" @click="emit('pick')">
+      <Button
+        v-else
+        :fade="ButtonFade.Dim"
+        :icon="FolderOpen"
+        :disabled="busy"
+        @click="emit('pick')"
+      >
         {{ t('library.chooseFolder') }}
       </Button>
     </template>

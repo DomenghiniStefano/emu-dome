@@ -91,14 +91,13 @@ const meta = computed(() => gamePlayedLabel(props.game))
             :size="ButtonSize.CoverActionIcon"
             class="focus-ring-tight"
             data-cover-part="more"
-            :aria-label="t('library.moreFor', { title: game.title })"
+            :icon="Ellipsis"
+            :label="t('library.moreFor', { title: game.title })"
             :title="t('library.more')"
             aria-haspopup="menu"
             :aria-expanded="menuOpen"
             @click="(e: Event) => emit('toggleMenu', e)"
-          >
-            <Ellipsis :size="16" :stroke-width="1.75" aria-hidden="true" />
-          </Button>
+          />
           <CoverMenu
             v-if="menuOpen"
             :game="game"

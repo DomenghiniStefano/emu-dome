@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // One game of the library's list (#29, the phone's default view, mockup «Libreria sul telefono»
 // A): a small cover, the title on one line, the console's short name, «N versioni» for a family
-// of regional versions (#102) and when it was played, then its button at the right: «Riprendi»
+// of regional versions (#102) and when it was played, then its play button at the right, the
+// triangle alone (#104, ButtonSize.RowAction: no taller than the text, 44 to the touch): «Riprendi»
 // (the view's main action, accent) on the game played last when it has a save to pick up from,
-// «Gioca» on the others. A tap on the row (a right click too) opens the game's details (L04).
+// «Gioca» on the others, the words its name and tooltip. A tap on the row (a right click too) opens the game's details (L04).
 // A game that is not reachable (E01) is faded, and its button says why it cannot start.
 //
 // The row's click area lies under its content (which lets the taps through) and under the button,
@@ -11,6 +12,7 @@
 // `listStep`) as the windowed list expects.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Play } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import GameCover from '@/components/cover/GameCover.vue'
@@ -75,13 +77,13 @@ const meta = computed(() => gamePlayedLabel(props.game))
     </div>
     <Button
       :variant="resume ? ButtonVariant.Primary : ButtonVariant.Soft"
-      :size="ButtonSize.Tool"
-      class="relative"
+      :size="ButtonSize.RowAction"
+      :icon="Play"
+      icon-filled
+      :label="t(resume ? 'library.hero.resume' : 'library.hero.play')"
       data-cover-part="play"
       :aria-disabled="off || undefined"
       @click="resume ? emit('resume') : emit('play')"
-    >
-      {{ t(resume ? 'library.hero.resume' : 'library.hero.play') }}
-    </Button>
+    />
   </div>
 </template>

@@ -5,6 +5,7 @@
 // is «Annulla» too; in game Esc keeps its meaning (the quick menu).
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Play } from '@lucide/vue'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import { minutesSince } from './cloud'
@@ -31,6 +32,8 @@ const minutes = computed(() => minutesSince(props.ask.since))
       <Button
         :variant="ButtonVariant.Primary"
         :size="ButtonSize.Medium"
+        :icon="Play"
+        icon-filled
         data-nav-initial
         @click="emit('answer', true)"
       >

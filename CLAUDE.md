@@ -826,7 +826,8 @@ the workspace `Cargo.toml` version equal in `app/package.json` and `tauri.conf.j
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
 `components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`, no hand-written widget role (`dialog`,
-`radio`, `menu`…) outside `components/ui` except the shrinking list `HAND_ROLES_PENDING`; the rows and what each cannot see are in
+`radio`, `menu`…) outside `components/ui` except the shrinking list `HAND_ROLES_PENDING`, no `<Button>` named with both
+`aria-label` and `title` (an icon alone takes `label`, #104); the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
 `unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
@@ -864,6 +865,10 @@ key of the wrong kind.
   keys too (`nav.test.ts`, `components/ui/nav.test.ts`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
+- Which form a button takes (#104, docs/frontend-conventions.md «Icons on buttons»): main actions and the actions of
+  dialogs, cards, banners and step feet icon + words; repeated row / tile actions and toolbars the icon alone with
+  `label`; links, option pickers, tabs' words, page lists, click areas and pad keys words; a dialog's quiet way out
+  words. Its icon goes through Button's `icon`, not the slot.
 - What the conventions scanner cannot see: a length in % / vh / vw, an icon size passed as a prop (`:size="14"`), a
   `style` binding, a look-only `phone` / `touch` prop read in `<script>` or passed down to a child.
 - Clean code in the interface (see «Interface structure»): small components with one job, logic in composables and
@@ -914,8 +919,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `index.ts` re-exports, `variants.ts` holds the variants as `as const` constants (`ButtonVariant.Primary`, never
   `variant="primary"`), the parts are `.vue` files. Today: Button, Card, Chip, Tabs, Segmented, Slider, Select,
   Switch, Dialog, Popover, DropdownMenu, RadioGroup, Checkbox, Input, Heading, Badge, Kbd, Progress, EmptyState,
-  LinkRow, StatTile, SectionPage, LabelledBlock. RadioGroup and Checkbox have no look of their own: their items are
-  `as-child` on the screen's Card or Button. A screen never restyles a primitive; a missing look is a new variant.
+  LinkRow, StatTile, SectionPage, LabelledBlock, Tooltip. RadioGroup and Checkbox have no look of their own: their
+  items are `as-child` on the screen's Card or Button. A screen never restyles a primitive; a missing look is a new variant.
+  Buttons (#104): a Lucide icon through Button's `icon` prop (sized by the button, one step larger on the phone),
+  never drawn in the slot; an icon alone takes `label` (the existing text: accessible name and Tooltip, which opens
+  on the mouse's rest and on the controller's / keyboard's focus).
 - **Every visual value is a token**: colours, borders (width and colour, `theme/border.css`), margins, paddings, gaps,
   radius, shadows, opacity. Where a value has a role it has a role name (`radius-control`, `spacing-card-pad`,
   `spacing-section-x`…), so changing it everywhere is one edit. Values not decided yet are tokens under a

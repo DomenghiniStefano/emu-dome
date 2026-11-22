@@ -10,6 +10,7 @@
 // Controller / keyboard: the shell's nav scope.
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Gamepad2 } from '@lucide/vue'
 import { emu, type LibraryGame } from '@/emu'
 import { settingsUnder, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { gameScopeOf } from '@/lib/gameDetails'
@@ -68,7 +69,7 @@ useSettingsChanged(settingsUnder('pad.'), () => void load())
         }}
       </div>
       <div class="text-ink-muted">{{ t('details.controls.remapLead') }}</div>
-      <DetailsAction class="self-start" :disabled="!scope" @click="emit('remap')">
+      <DetailsAction class="self-start" :icon="Gamepad2" :disabled="!scope" @click="emit('remap')">
         {{ t('details.controls.remap') }}
       </DetailsAction>
     </DetailsCard>

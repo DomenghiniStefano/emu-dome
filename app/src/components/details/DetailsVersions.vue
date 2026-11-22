@@ -3,11 +3,13 @@
 // shown when the game is one of several regional versions. One row per version (gameVersions.ts):
 // its region's tag, its own title, region · play time · last played. The version on the
 // library's tile says «In libreria»; the others offer «Gioca questa» (starts that version) and
-// «Mostra questa in libreria» (pins it: the tile shows it whichever was played last).
+// «Mostra questa in libreria» (pins it: the tile shows it whichever was played last), each as its
+// icon alone (#104: repeated on every row; the words are its name and tooltip).
 //
 // Controller / keyboard: the rows' buttons are plain buttons in the details' nav section.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Pin, Play } from '@lucide/vue'
 import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
 import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
 import { Card, CardVariant } from '@/components/ui/card'
@@ -81,19 +83,20 @@ async function pin(g: LibraryGame) {
         <template v-else>
           <Button
             :variant="ButtonVariant.Soft"
-            :size="ButtonSize.Small"
+            :size="ButtonSize.IconRow"
+            :icon="Play"
+            icon-filled
+            :label="t('details.versions.play')"
             :aria-disabled="!r.game.available || undefined"
             @click="emit('play', r.game)"
-          >
-            {{ t('details.versions.play') }}
-          </Button>
+          />
           <Button
             :variant="ButtonVariant.GhostRegular"
-            :size="ButtonSize.Small"
+            :size="ButtonSize.IconRow"
+            :icon="Pin"
+            :label="t('details.versions.pin')"
             @click="pin(r.game)"
-          >
-            {{ t('details.versions.pin') }}
-          </Button>
+          />
         </template>
       </div>
     </Card>

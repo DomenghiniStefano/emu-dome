@@ -2,6 +2,7 @@
 // V01, the games that have saves: the title with «Importa…», the search, and one row per game
 // (what it has saved; «Salvataggio illeggibile» when its in-game save was set aside, E04).
 import { useI18n } from 'vue-i18n'
+import { Import } from '@lucide/vue'
 import type { GameId, LibraryGame } from '@/emu'
 import { Button } from '@/components/ui/button'
 import { SearchField } from '@/components/ui/search-field'
@@ -34,7 +35,7 @@ const { t } = useI18n()
   >
     <div class="flex items-center justify-between gap-8">
       <Heading as="h1">{{ t('shell.saves') }}</Heading>
-      <Button @click="emit('import')">{{ t('saves.import') }}</Button>
+      <Button :icon="Import" @click="emit('import')">{{ t('saves.import') }}</Button>
     </div>
     <SearchField v-model="query" :label="t('saves.search')" :placeholder="t('saves.search')" />
     <div class="flex flex-col gap-2">
