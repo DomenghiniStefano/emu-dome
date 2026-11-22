@@ -12,7 +12,7 @@ the EmuDome Design System artifact linked from `CLAUDE.md`.
   `quick-menu/QuickMenu.vue`…), its parts, its composables (`useX.ts`), its pure modules (`x.ts`) and their
   tests. A screen composes panels, a panel composes primitives. A component another feature reuses stays
   with the feature it belongs to and is imported from there (`settings/SettingRow.vue`,
-  `cover/GameCover.vue`, `saves/SlotTile.vue`). Features today: `controls`, `cover`, `details`,
+  `cover/GameCover.vue`, `saves/SlotTile.vue`). Features today: `cloud`, `controls`, `cover`, `details`,
   `first-run`, `game`, `library`, `notifications`, `quick-menu`, `saves`, `screen-editor`,
   `search`, `settings`, `shell`, `toasts`. A new feature folder is added to the `@source` list of
   `assets/main.css`, or Tailwind generates none of its classes.
