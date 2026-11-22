@@ -13,6 +13,7 @@ import ButtonSection from '@/kit/sections/ButtonSection.vue'
 import CaptureFieldSection from '@/kit/sections/CaptureFieldSection.vue'
 import CardSection from '@/kit/sections/CardSection.vue'
 import ChipSection from '@/kit/sections/ChipSection.vue'
+import DateTimeFieldSection from '@/kit/sections/DateTimeFieldSection.vue'
 import ClosingStripSection from '@/kit/sections/ClosingStripSection.vue'
 import DialogSection from '@/kit/sections/DialogSection.vue'
 import EmptyStateSection from '@/kit/sections/EmptyStateSection.vue'
@@ -96,6 +97,7 @@ useNavScope(root, { autofocus: true })
       <SliderSection />
       <ProgressSection />
       <SelectSection />
+      <DateTimeFieldSection />
       <InputSection />
       <DialogSection />
       <ClosingStripSection />

@@ -358,6 +358,34 @@
       keys: ["video.vsync", "video.path"],
     });
   }
+  // `rtc` (#102): a Saves page with the game clock's rows, `saves.rtc` set to `rtc` ("offset" or
+  // "fixed"), so its offset sliders or its date and time show.
+  if (scenario.rtc) {
+    const GM = ["default", "global", "game", "session"];
+    const clock = { levels: GM, mostUsed: false, wired: true };
+    const offset = { ...clock, showIf: { key: "saves.rtc", values: ["offset"], not: false } };
+    const slider = (min, max, unit) => ({ type: "slider", min, max, step: 1, unit });
+    entries.push(
+      entry("saves.rtc", "saves", choice("segments", ["real", "offset", "fixed"]), "real", clock),
+      entry("saves.rtcdays", "saves", slider(-364, 364, "days"), 0, offset),
+      entry("saves.rtchours", "saves", slider(-23, 23, "hours"), 0, offset),
+      entry("saves.rtcminutes", "saves", slider(-59, 59, "minutes"), 0, offset),
+      entry(
+        "saves.rtcdate",
+        "saves",
+        { type: "dateTime", minYear: 2000, maxYear: 2099 },
+        "2004-01-01T00:00",
+        { ...clock, showIf: { key: "saves.rtc", values: ["fixed"], not: false } },
+      ),
+    );
+    schema.pages.push("saves");
+    schema.groups.push({ id: "game", pages: ["saves"] });
+    schema.sections.push({
+      page: "saves",
+      id: "ingame",
+      keys: ["saves.rtc", "saves.rtcdays", "saves.rtchours", "saves.rtcminutes", "saves.rtcdate"],
+    });
+  }
   // `notifications` (X03, #32): what the bell shows, newest first, two unread.
   const notifications = scenario.notifications
     ? [
@@ -384,6 +412,12 @@
   const values = { "general.bgpause": true, "general.confirmdel": false };
   // TV mode (#30): `ui` fixes `general.ui` ("tv" / "desktop"; Automatica otherwise).
   if (scenario.ui) values["general.ui"] = scenario.ui;
+  if (scenario.rtc) {
+    values["saves.rtc"] = scenario.rtc;
+    values["saves.rtcdays"] = -3;
+    values["saves.rtchours"] = 5;
+    values["saves.rtcdate"] = "2024-02-29T07:05";
+  }
   const rows = (page) =>
     entries
       .filter((e) => e.page === page)

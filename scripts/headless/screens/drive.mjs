@@ -15,6 +15,8 @@ fs.mkdirSync(outDir, { recursive: true });
 // The shell's rail is the first <nav> of the page (no class: it survives the migration).
 const rail = (n) =>
   `document.querySelector('nav').querySelectorAll('button')[${n}].click()`;
+// Settings › Salvataggi, by its category's text in English or Italian.
+const openSaves = `(() => { const b = [...document.querySelectorAll('main button')].find(b => /^\\s*(Saves|Salvataggi)/i.test(b.textContent)); b && b.click(); return !!b })()`;
 
 // Library and shell (stream A of #62): every state in the three themes, at the smallest and the
 // largest window. A step is a script, `{ key }` (a trusted key press, so nav.ts shows its focus
@@ -175,6 +177,32 @@ const SCENARIOS = {
     ],
   },
   "settings-light": { mock: { theme: "light" }, steps: [rail(4)] },
+  // The game clock's rows (#102): «Shifted» with its sliders, «Fixed» with its date and time,
+  // the date field opened by the keyboard (Enter), in light too, and at the small window. The
+  // mock's fixed clock stops Vue's second handler of one event (its timestamp check), so a key
+  // that two handlers share (Reka's left / right between segments) does not move here.
+  "settings-rtc-offset": { mock: { rtc: "offset" }, steps: [rail(4), openSaves] },
+  "settings-rtc-fixed": { mock: { rtc: "fixed" }, steps: [rail(4), openSaves] },
+  "settings-rtc-fixed-open": {
+    mock: { rtc: "fixed" },
+    steps: [
+      rail(4),
+      openSaves,
+      `document.querySelector('[data-slot=date-time-field]').focus()`,
+      { key: "Enter" },
+      { key: "ArrowUp" },
+    ],
+  },
+  "settings-rtc-fixed-open-light": {
+    mock: { rtc: "fixed", theme: "light" },
+    steps: [rail(4), openSaves, `document.querySelector('[data-slot=date-time-field]').click()`],
+  },
+  "settings-rtc-fixed-small": {
+    mock: { rtc: "fixed" },
+    steps: [rail(4), openSaves],
+    width: 1024,
+    height: 640,
+  },
   "first-run": { mock: { firstRun: true }, steps: [] },
   "kit-dark": { mock: {}, steps: [], hash: "#kit", height: 1500 },
   "kit-black": {
@@ -207,6 +235,12 @@ const SCENARIOS = {
       `document.querySelectorAll('[data-slot=segmented-item]')[7].click()`,
       `document.querySelectorAll('[data-slot=segmented-item]')[3].click()`,
     ],
+    hash: "#kit",
+    height: 1500,
+  },
+  "kit-datetime-open": {
+    mock: {},
+    steps: [`document.querySelector('[data-slot=date-time-field]').click()`],
     hash: "#kit",
     height: 1500,
   },
