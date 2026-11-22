@@ -49,6 +49,7 @@ mod screens;
 mod settings;
 mod startup;
 mod theme;
+mod touch;
 mod tuning;
 mod updates;
 mod video;
@@ -525,6 +526,10 @@ pub fn run() {
             commands::input,
             commands::key,
             commands::pointer,
+            touch::touch_layouts,
+            touch::touch_set_layout,
+            touch::touch_stick,
+            touch::haptic,
             screens::screens_status,
             screens::screens_next_layout,
             screens::screens_set_layout,

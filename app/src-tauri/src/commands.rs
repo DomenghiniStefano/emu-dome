@@ -221,11 +221,13 @@ pub(crate) fn key(state: tauri::State<'_, AppState>, code: String, pressed: bool
     }
 }
 
-/// A game button from the touch controls (Android's overlay).
+/// A game button from the touch controls (Android's overlay): their own source, so letting go
+/// of the keyboard (the quick menu opening, the window losing the focus) never drops a button a
+/// finger still holds, nor the other way round.
 #[tauri::command]
 pub(crate) fn input(state: tauri::State<'_, AppState>, button: Button, pressed: bool) {
     if let Some(shared) = state.games.current().load().as_ref() {
-        shared.input.set(Source::Keyboard, button, pressed);
+        shared.input.set(Source::Touch, button, pressed);
     }
 }
 
