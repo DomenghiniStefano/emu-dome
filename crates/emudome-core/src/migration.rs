@@ -1,4 +1,5 @@
-//! The one-time move of the files named the old way to the game key (Trello #70).
+//! The one-time move of the files named the old way to the game key (Trello #70), and of the
+//! screenshots named by ROM file stem ([`run_screenshots`], Trello #85, its own marker).
 //!
 //! Before 2026-11-20 a game's files were not named by its [`GameKey`]:
 //! - saves, flat in the saves root and named by the ROM's file stem: `<stem>.sav`,
@@ -231,6 +232,43 @@ pub fn run(paths: &Paths, known: &[(String, GameKey)], now_ms: u64) -> Report {
     pass.saves(&facts);
     pass.settings_files(&facts);
     pass.device_file(&facts);
+    conclude(pass, known, b"70\n")
+}
+
+/// The one-time move of the screenshots named by ROM file stem
+/// (`<saves root>/screenshots/<stem> <time>.png`) into each game's screenshots folder
+/// ([`crate::screenshot::game_dir`], Trello #85), by the same rules as [`run`]: facts from the
+/// library only, a copy in `<work_dir>/backup/screenshots/` before the rename, what cannot be
+/// given to one game left where it is and reported, `<work_dir>/report.json`, and
+/// `<work_dir>/done` once a pass ends without errors over a library that knows a game.
+pub fn run_screenshots(
+    saves_root: &Path,
+    work_dir: &Path,
+    known: &[(String, GameKey)],
+    now_ms: u64,
+) -> Report {
+    let paths = Paths {
+        saves_root: saves_root.to_path_buf(),
+        settings_games: PathBuf::new(),
+        device_file: PathBuf::new(),
+        work_dir: work_dir.to_path_buf(),
+    };
+    let facts = Facts::new(known);
+    let mut pass = Pass {
+        paths: &paths,
+        report: Report {
+            ran_at: now_ms,
+            ..Report::default()
+        },
+        found: 0,
+    };
+    pass.screenshots(&facts);
+    conclude(pass, known, b"85\n")
+}
+
+/// The end of a pass: whether it is done, the report and the marker written.
+fn conclude(pass: Pass<'_>, known: &[(String, GameKey)], marker: &[u8]) -> Report {
+    let paths = pass.paths;
     let mut report = pass.report;
     let library_knows = !known.is_empty();
     report.done = report.errors.is_empty() && (library_knows || pass.found == 0);
@@ -247,7 +285,7 @@ pub fn run(paths: &Paths, known: &[(String, GameKey)], now_ms: u64) -> Report {
         log::warn!("game key migration report not written: {e}");
     }
     if report.done {
-        if let Err(e) = write_atomic(&paths.marker(), b"70\n") {
+        if let Err(e) = write_atomic(&paths.marker(), marker) {
             log::warn!("game key migration marker not written: {e}");
             report.done = false;
         }
@@ -347,6 +385,31 @@ impl Pass<'_> {
                     &format!("backups/{new_name}"),
                 ),
                 None => self.left(&file, LeftReason::UnknownName, Vec::new()),
+            }
+        }
+    }
+
+    /// The old screenshots of the screenshots root (its folders are the new layout).
+    fn screenshots(&mut self, facts: &Facts) {
+        let root = self.paths.saves_root.clone();
+        let dir = crate::screenshot::screenshots_dir(&root);
+        for (name, is_dir) in self.entries(&dir) {
+            if is_dir || name.starts_with('.') {
+                continue;
+            }
+            self.found += 1;
+            let file = dir.join(&name);
+            let Some((stem, new_name)) = crate::screenshot::legacy_name(&name) else {
+                self.left(&file, LeftReason::UnknownName, Vec::new());
+                continue;
+            };
+            match only(facts.by_stem.get(&stem.to_lowercase())) {
+                Ok(key) => {
+                    let dest = crate::screenshot::game_dir(&root, &key).join(new_name);
+                    let backup = self.paths.backup().join("screenshots").join(&name);
+                    self.move_file(&file, &dest, &backup, key);
+                }
+                Err((reason, games)) => self.left(&file, reason, games),
             }
         }
     }

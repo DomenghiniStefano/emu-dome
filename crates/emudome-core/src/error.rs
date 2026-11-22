@@ -150,6 +150,8 @@ pub enum ErrorCode {
     },
     /// The screenshot could not be encoded or written (no frame yet, folder not writable).
     ScreenshotFailed { detail: String },
+    /// A game's screenshots folder is there but could not be listed (L12 «Da uno screenshot»).
+    ScreenshotsUnreadable { detail: String },
     /// The open game's core has no way to close the lid (`core_profile::Lid::Unsupported`:
     /// Azahar, a one-screen console). The interface shows the lid disabled before this.
     LidUnsupported,

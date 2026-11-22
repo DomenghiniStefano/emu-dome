@@ -43,6 +43,7 @@
   "dataMoveFailed",
   "dataMoveConflict",
   "screenshotFailed",
+  "screenshotsUnreadable",
   "lidUnsupported",
   "screenLayoutUnavailable",
   "effectNotLoaded",
