@@ -1,7 +1,8 @@
 # Builds the Android APK (arm64-v8a) from a clean clone in one command, and with -Install puts it on
-# the phone connected over USB. Usage (PowerShell, from the repo root):
-#   ./scripts/android-build.ps1 [-Install] [-Release] [-DryRun]
-# Twin for Linux / Git Bash: sh scripts/android-build.sh [--install] [--release] [--dry-run].
+# the phone connected over USB; with -Bundle, the signed App Bundle (AAB) Google Play takes.
+# Usage (PowerShell, from the repo root):
+#   ./scripts/android-build.ps1 [-Install] [-Release] [-Bundle] [-DryRun]
+# Twin for Linux / Git Bash: sh scripts/android-build.sh [--install] [--release] [--bundle] [--dry-run].
 #
 # Steps: finds the Android SDK and NDK, checks the JDK, pnpm, the Rust target and (Windows)
 # symlinks; installs the frontend dependencies if app/node_modules is missing; fetches the Android
@@ -10,7 +11,9 @@
 # `pnpm tauri android build --ci --apk --split-per-abi --target aarch64` (`--debug` unless
 # -Release), which builds the frontend, the Rust library and the Gradle project in
 # app/src-tauri/gen/android; prints the APK's path and size; -Install runs `adb install -r` with
-# the SDK's adb. -DryRun stops after the tool checks and prints what it would run.
+# the SDK's adb. -Bundle builds `--aab` instead of `--apk`, always a signed release (Google Play
+# refuses anything else; it implies -Release and cannot go with -Install: adb installs APKs only).
+# -DryRun stops after the tool checks and prints what it would run.
 #
 # Needs: Node and pnpm (app/package.json), a JDK 17 (`java` on PATH or JAVA_HOME), the Android SDK
 # with platform 37, build-tools and an NDK (ANDROID_HOME / ANDROID_SDK_ROOT, else
@@ -18,7 +21,7 @@
 # <sdk>\ndk), `rustup target add aarch64-linux-android` once, and on Windows **developer mode on**
 # (Settings > System > For developers): the Tauri CLI links libemudome_app.so into jniLibs with a
 # symlink, which Windows refuses otherwise ("Creation symbolic link is not allowed").
-# -Release also needs the signing variables (EMUDOME_KEYSTORE, EMUDOME_KEYSTORE_PASSWORD,
+# -Release and -Bundle also need the signing variables (EMUDOME_KEYSTORE, EMUDOME_KEYSTORE_PASSWORD,
 # EMUDOME_KEY_ALIAS, EMUDOME_KEY_PASSWORD; see app/src-tauri/gen/android/app/build.gradle.kts):
 # the keystore lives outside the repository, never in it.
 # Gradle runs without a daemon (nothing left running after the build) unless GRADLE_OPTS already
@@ -30,6 +33,8 @@ param(
     [switch]$Install,
     # A signed release APK instead of the debug one.
     [switch]$Release,
+    # The signed release App Bundle (AAB) for Google Play instead of an APK (Trello #44).
+    [switch]$Bundle,
     # Only the tool checks; print the commands instead of running them.
     [switch]$DryRun
 )
@@ -103,11 +108,17 @@ function Invoke-Step([string]$dir, [string]$command, [string[]]$arguments, [stri
     if ($rc -ne 0) { Stop-Build $why }
 }
 
+# An App Bundle is always a signed release.
+if ($Bundle) { $Release = [switch]$true }
+
 $saved = @{ ANDROID_HOME = $env:ANDROID_HOME; NDK_HOME = $env:NDK_HOME; GRADLE_OPTS = $env:GRADLE_OPTS }
 $exitCode = 0
 try {
     # --- Tools
 
+    if ($Bundle -and $Install) {
+        Stop-Build '-Bundle builds an App Bundle for Google Play, which adb cannot install: drop -Install (or -Bundle).'
+    }
     $sdk = Find-Sdk
     if ($null -eq $sdk) {
         Stop-Build 'Android SDK not found: set ANDROID_HOME, or install it with Android Studio (%LOCALAPPDATA%\Android\Sdk).'
@@ -172,18 +183,26 @@ try {
     if (-not $env:GRADLE_OPTS -or $env:GRADLE_OPTS -notmatch 'org\.gradle\.daemon') {
         $env:GRADLE_OPTS = (@($env:GRADLE_OPTS, '-Dorg.gradle.daemon=false') | Where-Object { $_ }) -join ' '
     }
-    $arguments = @('tauri', 'android', 'build', '--ci', '--apk', '--split-per-abi', '--target', 'aarch64')
+    $format = if ($Bundle) { '--aab' } else { '--apk' }
+    $arguments = @('tauri', 'android', 'build', '--ci', $format, '--split-per-abi', '--target', 'aarch64')
     if (-not $Release) { $arguments += '--debug' }
     Invoke-Step $app 'pnpm' $arguments "the build failed (pnpm $($arguments -join ' '))."
 
     $kind = if ($Release) { 'release' } else { 'debug' }
-    $apk = Join-Path $app "src-tauri\gen\android\app\build\outputs\apk\arm64\$kind\app-arm64-$kind.apk"
+    $outputs = Join-Path $app 'src-tauri\gen\android\app\build\outputs'
+    $apk = if ($Bundle) {
+        # Gradle's bundleArm64Release task (the arm64 flavour of the split build).
+        Join-Path $outputs 'bundle\arm64Release\app-arm64-release.aab'
+    } else {
+        Join-Path $outputs "apk\arm64\$kind\app-arm64-$kind.apk"
+    }
+    $what = if ($Bundle) { 'AAB' } else { 'APK' }
     if ($DryRun) {
         Write-Host "would produce: $apk"
     } else {
         if (-not (Test-Path $apk)) { Stop-Build "the build ended but $apk is not there." }
         $size = (Get-Item $apk).Length
-        Write-Host ('APK: {0} ({1:N1} MB)' -f $apk, ($size / 1MB))
+        Write-Host ('{0}: {1} ({2:N1} MB)' -f $what, $apk, ($size / 1MB))
     }
 
     # --- Install

@@ -230,6 +230,29 @@ pub enum ErrorCode {
     /// Health: a part of EmuDome (`thread`: `video`, `audio`, `controllers`) stopped after an
     /// internal error (a panic caught in a build that unwinds; a release build aborts instead).
     ThreadStopped { thread: String },
+    /// This build of EmuDome cannot update itself: it was built without the update key (a local
+    /// or development build), or it runs where updates come from the store (Android, Google
+    /// Play). Trello #44.
+    UpdateUnavailable,
+    /// Looking for a new version failed (`detail`: offline, the release server's answer).
+    UpdateCheckFailed { detail: String },
+    /// Downloading the new version failed, or its signature did not match (`detail`): nothing
+    /// was installed.
+    UpdateDownloadFailed { detail: String },
+    /// The installer of the new version could not be started (`detail`): EmuDome stays as it is.
+    UpdateInstallFailed { detail: String },
+    /// «Riavvia e aggiorna» with no new version found yet.
+    UpdateNotReady,
+    /// «Riavvia e aggiorna» while a game is open: the game is closed first (its saves), never
+    /// cut by the restart.
+    UpdateGameOpen,
+    /// No log file to export: logging to a file could not start in this run (the data folder).
+    LogUnavailable,
+    /// The log could not be written where the user chose (`detail`).
+    LogExportFailed { detail: String },
+    /// A licence text shipped with EmuDome could not be read (`detail`): the installation is
+    /// incomplete, or this is a development build without the packaged files.
+    LicenceUnreadable { detail: String },
 }
 
 impl crate::StartError {

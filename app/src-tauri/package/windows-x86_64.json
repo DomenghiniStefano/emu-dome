@@ -4,8 +4,12 @@
   },
   "bundle": {
     "active": true,
+    "targets": [
+      "nsis"
+    ],
     "resources": {
       "../../LICENSE": "LICENSE.txt",
+      "../../THIRD_PARTY.md": "THIRD_PARTY.md",
       "../../cores/SOURCES.md": "cores/SOURCES.md",
       "../../cores/mgba_libretro.dll": "cores/mgba_libretro.dll",
       "../../cores/notices/windows-x86_64/mgba-LICENSE.txt": "cores/notices/mgba-LICENSE.txt",

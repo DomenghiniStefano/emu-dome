@@ -35,6 +35,8 @@
 /* Written in the structure from the start (#32). */
 @source '../components/search';
 @source '../components/notifications';
+@source '../components/about';
+@source '../components/updates';
 @source '../components/tv-mode';
 
 /* The touch density: `touch:` styles an element while the interface is laid out for a finger

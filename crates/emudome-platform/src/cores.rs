@@ -143,9 +143,79 @@ pub(crate) fn cores_lock() -> &'static str {
     CORES_LOCK
 }
 
+/// A core this build ships, as `cores.lock` describes it (the licences page, `about.lic`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShippedCore {
+    /// The lock's id (`mgba`).
+    pub id: String,
+    /// Its display name (`mGBA`).
+    pub name: String,
+    /// The consoles it runs, as the lock writes them (`GB, GBC, GBA`).
+    pub consoles: String,
+    /// Its licence, as an SPDX expression (`MPL-2.0 AND BSD-3-Clause`).
+    pub spdx: String,
+    pub version: String,
+    /// The upstream repository and the pinned commit (the source offer).
+    pub repo: String,
+    pub commit: String,
+    /// The licence files packaged with it under `cores/notices/`: its own first, then the
+    /// notices of what it bundles.
+    pub notices: Vec<String>,
+}
+
+/// The cores `cores.lock` ships (`ship: true`) with a build for `platform`, by id.
+/// One source of truth: nothing about a core is typed again in the app.
+pub fn shipped_cores(platform: &str) -> Vec<ShippedCore> {
+    shipped_in(CORES_LOCK, platform)
+}
+
+fn shipped_in(lock: &str, platform: &str) -> Vec<ShippedCore> {
+    let Ok(lock) = serde_json::from_str::<serde_json::Value>(lock) else {
+        log::error!("cores.lock compiled into this build is not JSON");
+        return Vec::new();
+    };
+    let text = |v: &serde_json::Value, path: &[&str]| -> String {
+        path.iter()
+            .try_fold(v, |v, k| v.get(k))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let Some(cores) = lock.get("cores").and_then(serde_json::Value::as_object) else {
+        return Vec::new();
+    };
+    cores
+        .iter()
+        .filter(|(_, core)| core.get("ship").and_then(serde_json::Value::as_bool) == Some(true))
+        .filter_map(|(id, core)| {
+            let build = core.get("builds")?.get(platform)?;
+            let mut notices = vec![text(core, &["license", "file"])];
+            notices.extend(
+                build
+                    .get("notices")
+                    .and_then(serde_json::Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(|n| text(n, &["file"])),
+            );
+            notices.retain(|n| !n.is_empty());
+            Some(ShippedCore {
+                id: id.clone(),
+                name: text(core, &["name"]),
+                consoles: text(core, &["consoles"]),
+                spdx: text(core, &["spdx"]),
+                version: text(core, &["source", "version"]),
+                repo: text(core, &["source", "repo"]),
+                commit: text(core, &["source", "commit"]),
+                notices,
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{find_in, locked_sha256, search_dirs, CoreLookupError, SearchPlaces};
+    use super::{find_in, locked_sha256, search_dirs, shipped_in, CoreLookupError, SearchPlaces};
     use std::path::{Path, PathBuf};
 
     const NAME: &str = "mgba_libretro.dll";
@@ -278,5 +348,24 @@ mod tests {
             locked_sha256(lock, "mgba", "windows-x86_64", "other.dll"),
             None
         );
+    }
+
+    #[test]
+    fn the_shipped_cores_come_from_the_lock_with_their_notices() {
+        let cores = shipped_in(super::cores_lock(), "windows-x86_64");
+        let ids: Vec<&str> = cores.iter().map(|c| c.id.as_str()).collect();
+        assert_eq!(ids, ["melondsds", "mgba"], "Azahar is not shipped yet");
+        let mgba = &cores[1];
+        assert_eq!(mgba.name, "mGBA");
+        assert!(mgba.spdx.contains("MPL-2.0"));
+        assert_eq!(mgba.commit.len(), 40);
+        assert_eq!(mgba.notices, ["mgba-LICENSE.txt", "mgba-inih-LICENSE.txt"]);
+        assert!(shipped_in(super::cores_lock(), "nowhere").is_empty());
+        assert!(shipped_in("not json", "windows-x86_64").is_empty());
+        let lock = r#"{"cores":{"a":{"ship":false,"builds":{"p":{}}},
+            "b":{"ship":true,"name":"B","license":{"file":"b.txt"},"builds":{"p":{"notices":[]}}}}}"#;
+        let only = shipped_in(lock, "p");
+        assert_eq!(only.len(), 1);
+        assert_eq!(only[0].notices, ["b.txt"]);
     }
 }

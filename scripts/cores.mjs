@@ -491,10 +491,21 @@ const sourcesMarkdown = lock => {
   ].join('\n')
 }
 
+/**
+ * The package formats of each desktop platform (Trello #44): the NSIS installer on Windows (its
+ * settings in tauri.conf.json), an AppImage and a deb on Linux (built on Linux only).
+ */
+const PACKAGE_TARGETS = {
+  'windows-x86_64': ['nsis'],
+  'linux-x86_64': ['appimage', 'deb'],
+}
+
 /** The Tauri config merged by `tauri build --config` for one desktop platform. */
 const packageConfig = (lock, platform) => {
   const resources = Object.fromEntries([
     ['../../LICENSE', 'LICENSE.txt'],
+    // The other components' licences, shown by the licences page (`about.lic`, about.rs).
+    ['../../THIRD_PARTY.md', 'THIRD_PARTY.md'],
     ['../../cores/SOURCES.md', 'cores/SOURCES.md'],
     ...shipped(lock).flatMap(([, core]) =>
       installedFiles(core, platform).map(f => [
@@ -507,7 +518,7 @@ const packageConfig = (lock, platform) => {
   ])
   return {
     build: { beforeBundleCommand: `node ../scripts/cores.mjs verify --platform ${platform} --package` },
-    bundle: { active: true, resources },
+    bundle: { active: true, targets: PACKAGE_TARGETS[platform], resources },
   }
 }
 

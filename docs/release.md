@@ -1,8 +1,8 @@
 # Releases
 
-How an EmuDome release is made, and what is not in place yet. Trello #83 wrote this down; #44 (packages per OS)
-and #50 (where builds are published) carry the work that is still open. Until #44 is done nothing here has been
-run end to end: no release exists yet.
+How an EmuDome release is made, and what is not in place yet. Trello #83 wrote this down; #44 added the packages
+per OS, the updates and the release keys, #50 decided where builds are published. Nothing here has been run end to
+end yet: no release exists.
 
 ## Today, as the code is
 
@@ -23,18 +23,29 @@ run end to end: no release exists yet.
   start (`emudome_core::data_move`, the old ones are left in place); Android data does not carry over (another
   package's private storage cannot be read). The Android OAuth client for Drive sync (#49) is registered for
   `it.domehub.emudome` with the debug keystore's SHA-1, and gets the release keystore's SHA-1 before a release.
-- **Packages.**
-  - Windows: `pnpm package:windows` (from `app/`) builds the NSIS installer with
-    `app/src-tauri/package/windows-x86_64.json`, which lists only the files of `cores.lock` and their licences;
-    its `beforeBundleCommand` (`scripts/cores.mjs verify --package`) checks them against their sha256 first.
-  - Linux: `pnpm package:linux` exists with its own list (`package/linux-x86_64.json`), but `bundle.targets` in
-    `tauri.conf.json` is `["nsis"]` only, so no AppImage or deb is produced yet. Adding the Linux targets is #44's
-    work, and a Linux package is built on Linux.
+- **Packages.** The package formats and the files in each are in `app/src-tauri/package/<platform>.json`,
+  generated from `cores.lock` by `node scripts/cores.mjs generate` (`targets`, `resources`): only the files of
+  `cores.lock` and their licences, `cores/SOURCES.md`, EmuDome's `LICENSE` (as `LICENSE.txt`) and `THIRD_PARTY.md`
+  (the licences page reads both, `about.lic`). Their `beforeBundleCommand` (`scripts/cores.mjs verify --package`)
+  checks the cores against their sha256 first.
+  - Windows: `pnpm package:windows` (from `app/`) builds the NSIS installer, **per user**
+    (`bundle.windows.nsis.installMode: "currentUser"` in `tauri.conf.json`: no administrator rights, installed
+    in the user's own local app data, Tauri's default for that mode). The data folders
+    (`%APPDATA%\it.domehub.emudome`, `%LOCALAPPDATA%\it.domehub.emudome`) are outside the install folder, so
+    uninstalling keeps saves, settings and the library. Tauri's uninstaller offers a «Delete the application
+    data» box, unticked by default (Tauri's template; to be seen in the owner's UAT): only a user who ticks it
+    loses them (it deletes both data folders). An update (below) runs the same installer in passive mode, over
+    the old version.
+  - Linux: `pnpm package:linux` on Linux builds an AppImage and a deb (`targets` of `package/linux-x86_64.json`);
+    the webview video path is the Linux default (`emudome-platform`). Never built yet: this machine has no Linux,
+    and mGBA for Linux is still unpinned (#92), so `verify --package` refuses it and a Linux release stays blocked
+    until #92.
   - Android: `./scripts/android-build.ps1 -Release` (`sh scripts/android-build.sh --release`) builds a signed
-    release APK (arm64-v8a) from a clean clone. The keystore lives outside the repository, named by
-    `EMUDOME_KEYSTORE`, `EMUDOME_KEYSTORE_PASSWORD`, `EMUDOME_KEY_ALIAS`, `EMUDOME_KEY_PASSWORD`
-    (`app/src-tauri/gen/android/app/build.gradle.kts`). Google Play wants an App Bundle (AAB), which the script
-    does not build yet (#44).
+    release APK (arm64-v8a) from a clean clone; `-Bundle` (`--bundle`) builds the signed App Bundle (AAB) Google
+    Play takes instead (`pnpm tauri android build --aab`, Gradle's `bundleArm64Release`; always a release, never
+    with `-Install`). The keystore lives outside the repository, named by `EMUDOME_KEYSTORE`,
+    `EMUDOME_KEYSTORE_PASSWORD`, `EMUDOME_KEY_ALIAS`, `EMUDOME_KEY_PASSWORD`
+    (`app/src-tauri/gen/android/app/build.gradle.kts`). Only `-DryRun` has been run for `-Bundle`.
 - **Cores.** Packages carry only the files `cores.lock` pins (version, URL or source build, sha256). mGBA for
   Windows and Android is built by EmuDome from the pinned source archive (Trello #88, `scripts/build-mgba.ps1`):
   the build is reproducible, but gives the pinned sha256 only with the toolchain `cores.lock` names (Visual Studio
@@ -48,7 +59,39 @@ run end to end: no release exists yet.
   `EMUDOME_ALLOW_UNSTABLE_CORES=1`, allowed for local test packages only, never for a release, until it is built on
   Linux (Trello #92, a release blocker for Linux only). Azahar is not packaged (Phase 3).
 - **Signing.** No Windows code signing for now (#50): the installer is unsigned and Windows SmartScreen warns on
-  first run. Android release builds are signed with the owner's keystore.
+  first run. Android release builds are signed with the owner's keystore. Desktop updates are signed with the
+  owner's update key (below).
+- **Updates** (#44, decided in #50: GitHub Releases, stable only). The desktop app updates itself with Tauri's
+  updater plugin (`emudome-platform/src/updater.rs`, `emudome_core::updates`, `app/src-tauri/src/updates.rs`):
+  it reads `latest.json` from the newest GitHub release that is not a pre-release
+  (`https://github.com/DomenghiniStefano/emu-dome/releases/latest/download/latest.json`; the cores' releases are
+  pre-releases, so they never count), downloads the package it names, checks its signature against the public
+  key built into the app, and runs it. `general.updates` (per device) says when: automatic (look at start and
+  every 6 hours, download in the background, then X06 offers «Riavvia e aggiorna»), ask first (look, offer; the
+  download starts on «Riavvia e aggiorna»), off (only «Controlla ora» in Settings › Informazioni looks). Never in
+  game: the card waits for the library, and installing refuses while a game is open. Android updates come from
+  Google Play (the rows are desktop only).
+  - The **public key** is a build-time value, `EMUDOME_UPDATER_PUBKEY` (like the Google client id): a build
+    without it cannot update itself and says so (`general.updates` disabled, «This version of EmuDome can't
+    update itself»). `tauri.conf.json` keeps `plugins.updater.pubkey` empty on purpose. `EMUDOME_UPDATER_ENDPOINT`
+    may point a test build at another manifest (https only in a release build).
+  - The **private key** never enters the repository nor the app: only the release build's environment has it
+    (`TAURI_SIGNING_PRIVATE_KEY`, its content or the path of a file outside the repository, and
+    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). `pnpm package:windows:release` / `package:linux:release` add
+    `package/updater.json` (`createUpdaterArtifacts`: the installer's `.sig` beside it), whose
+    `beforeBuildCommand` runs `node scripts/updater-manifest.mjs check-env` first: both keys set, a key file
+    outside the repository, no value printed. Losing the private key means the installed apps can never update
+    again (a new key needs a manual reinstall): keep it backed up, outside the repository.
+  - `latest.json` is written by `node scripts/updater-manifest.mjs write` from the built packages and their
+    `.sig` files, and uploaded to the release with them.
+
+## The update key (once, by the owner)
+
+1. Outside the repository: `pnpm tauri signer generate -w <a folder outside the repo>/emudome-updater.key` (from
+   `app/`), with a password. It writes the private key (`emudome-updater.key`) and the public key
+   (`emudome-updater.key.pub`). Back the private key and its password up; never commit, paste or upload them.
+2. Keep the public key's content for `EMUDOME_UPDATER_PUBKEY` (it is public: it may go in the release notes or a
+   machine's environment, never needs hiding, but the build reads it from the environment, not from the repo).
 
 ## The release flow
 
@@ -62,13 +105,21 @@ run end to end: no release exists yet.
    - the cores fetched from `cores.lock` (`./scripts/fetch-cores.ps1`, `sh scripts/fetch-cores.sh`,
      `./scripts/fetch-cores-android.ps1`; mGBA downloaded from its `cores-mgba-<commit>` release), each checked
      against its sha256, with no `EMUDOME_ALLOW_UNSTABLE_CORES`;
-   - Windows: `pnpm package:windows`; Linux: `pnpm package:linux` on Linux (once #44 adds its targets); Android:
-     `./scripts/android-build.ps1 -Release`.
+   - the update keys in the environment of that shell only (PowerShell: `$env:EMUDOME_UPDATER_PUBKEY = Get-Content
+     <folder>\emudome-updater.key.pub -Raw`, `$env:TAURI_SIGNING_PRIVATE_KEY = '<folder>\emudome-updater.key'`,
+     `$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = '<password>'`);
+   - Windows: `pnpm package:windows:release` (the NSIS installer and its `.sig`, in
+     `target/release/bundle/nsis/`); Linux: `pnpm package:linux:release` on Linux (blocked until #92); Android:
+     `./scripts/android-build.ps1 -Bundle` for Google Play (and `-Release` for an APK to attach);
+   - `node scripts/updater-manifest.mjs write --version <version> --notes "<what changed>" --out latest.json
+     windows-x86_64=<the setup .exe> [linux-x86_64=<the .AppImage>]`.
 4. Publish (decided in #50):
-   - **GitHub Releases** of the repository, on the tag: the installers, the APK, `cores/SOURCES.md` and the
-     licences next to them (the source offer for the cores, `THIRD_PARTY.md`);
+   - **GitHub Releases** of the repository, on the tag, **not** a pre-release (the updater only sees the latest
+     full release): the installers with their `.sig` files under the names `latest.json` gives, `latest.json`,
+     the APK, `cores/SOURCES.md` and the licences next to them (the source offer for the cores,
+     `THIRD_PARTY.md`). Upload `latest.json` last: from then on every installed app sees the new version;
    - **domehub.it**, the same files;
-   - **Google Play**, under the DomeHub developer account (needs the AAB, #44).
+   - **Google Play**, under the DomeHub developer account: the AAB of `-Bundle`.
 5. Merge `main` back into `develop` if anything was committed on the way.
 
 ## A new pin of a core EmuDome builds (today mGBA)
@@ -97,7 +148,10 @@ A published release is never replaced or edited: a new build is a new pin and a 
 
 ## Still open
 
-- How the app learns of a new version (update channel): not decided.
-- Linux packages (AppImage / deb) and the Android App Bundle: #44.
-- mGBA for Linux built from source (#92), then published in the same kind of release.
+- No release was built yet: the per-user installer, the uninstaller keeping the data, an update from one version
+  to the next and the AAB are the owner's UAT (#44).
+- The Linux packages were never built (no Linux here); mGBA for Linux built from source (#92), then published in
+  the same kind of release.
 - Windows code signing: not for now (#50).
+- The update's TLS goes through the system (`native-tls`: SChannel, OpenSSL on Linux): Tauri's default rustls
+  would add `webpki-root-certs` (CDLA-Permissive-2.0), not on `deny.toml`'s list until the owner decides.

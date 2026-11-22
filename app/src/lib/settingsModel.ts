@@ -16,6 +16,8 @@ import {
 } from '@/emu'
 import { nativeAvailable, videoMode } from './videoMode'
 import { refreshBiosStatus } from './biosStatus'
+import { UPDATE_ROWS, updateUnavailable } from './updates'
+import type { Message } from '@/i18n/message'
 
 let schemaPromise: Promise<SettingsSchema> | null = null
 
@@ -112,6 +114,9 @@ export function lockReason(
 ): string | null {
   if (!platformIncludes(entry.platform, schema.device))
     return entry.platform === 'desktop' ? 'settingsUi.lockedDesktop' : 'settingsUi.lockedPhone'
+  // A build without the update key cannot update itself (Trello #44, `emudome_platform::updater`).
+  if (UPDATE_ROWS.includes(entry.key) && updateUnavailable.value)
+    return 'settingsUi.lockedNoUpdates'
   // The console's emulator has no equivalent (`CoreProfile::unsupported_settings`).
   if (console && entry.unsupportedConsoles.includes(console)) return 'settingsUi.lockedConsole'
   // X05: the screen effects exist only on the Accelerated method.
@@ -159,6 +164,23 @@ export const FILE_PICKERS: Partial<Record<string, () => Promise<string | null>>>
       },
     ]),
   ),
+}
+
+/**
+ * Action rows that work (`about.*`, Trello #44): what the row's button does. Resolves a message
+ * to show once done, or null. A link row the Settings section opens itself (`about.lic`, its
+ * licences page) is not here.
+ */
+export const ROW_ACTIONS: Partial<Record<string, () => Promise<Message | null>>> = {
+  // The status that follows arrives on `updates://changed` (composables/useUpdates.ts).
+  'about.upd': async () => {
+    await emu.updates.check()
+    return null
+  },
+  'about.log': async () => {
+    const name = await emu.about.exportLog()
+    return name ? { key: 'settings.about.log.saved', params: { name } } : null
+  },
 }
 
 /**

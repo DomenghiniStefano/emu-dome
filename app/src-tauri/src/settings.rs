@@ -64,6 +64,7 @@ pub(crate) fn emit_changed(app: &AppHandle, keys: &[&str], level: Level) {
     crate::bios::settings_changed(app, keys);
     crate::screens::settings_changed(app, keys);
     crate::window::settings_changed(app, keys);
+    crate::updates::settings_changed(app, keys);
     if keys.iter().any(|k| REWIND_KEYS.contains(k)) {
         // The open game follows at once (no game: nothing to tell).
         let seconds = rewind_seconds(app, &Scope::Session);
