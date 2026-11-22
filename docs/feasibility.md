@@ -160,6 +160,17 @@ WebView on top.
 
 **Verdict**: feasible (M), as a `emudome-platform` Android input backend.
 
+**Built** (Trello #47, 2026-11-22; not run on a device yet): `emudome_platform::pads::PadSource` is the one
+controller source of the app's controller thread, SDL3 on the desktop and Android's input events on Android. The
+activity is not edited: the platform library's `GamepadInput.kt` wraps the activity window's `Window.Callback`
+(the DecorView asks the window for it at every event), so a gamepad's events are taken before the WebView, and
+registers an `InputDeviceListener`. Only gamepad / joystick devices are read (`SOURCE_GAMEPAD` or
+`SOURCE_JOYSTICK`, not virtual): the phone's own back key keeps the system bridge's route. Kotlin forwards raw key
+codes and axis values; the tables are Rust (`pads/android_map.rs`, tested on every system): `KEYCODE_BUTTON_A` is
+read as the bottom button (as SDL's own Android backend reads it), the right stick and the triggers are chosen
+from the device's motion ranges (a pair centred on 0 is a stick, a pair from 0 up a pair of triggers). The three
+points above are still to verify on a device.
+
 ## Brief for Claude Code · hardware rendering spike (`SET_HW_RENDER`)
 
 Owner decision 2026-11-17: a spike right after Phase 0, before the rest of Phase 1, to learn whether 3DS holds up on
