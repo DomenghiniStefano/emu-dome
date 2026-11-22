@@ -31,7 +31,7 @@ const shortcutsMarks = { [FocusMark.Shortcuts]: '', [FocusMark.SubInitial]: '' }
 
 <template>
   <MenuList>
-    <Card :variant="CardVariant.ListRow" class="gap-12">
+    <Card :variant="CardVariant.ListRow" class="gap-8">
       <span class="min-w-0 flex-1">
         <span class="block font-medium">{{ t('qm.controller') }}</span>
         <span class="block text-caption text-ink-muted">
@@ -46,13 +46,7 @@ const shortcutsMarks = { [FocusMark.Shortcuts]: '', [FocusMark.SubInitial]: '' }
       :schema="schema"
       @set="(key, v) => emit('set', key, v)"
     />
-    <Card
-      as="button"
-      :variant="CardVariant.ListRow"
-      class="gap-12"
-      disabled
-      :title="t('qm.notYet')"
-    >
+    <Card as="button" :variant="CardVariant.ListRow" class="gap-8" disabled :title="t('qm.notYet')">
       <span class="min-w-0 flex-1">
         <span class="block font-medium">{{ t('qm.remap') }}</span>
         <span class="block text-caption text-ink-muted">{{ t('qm.notYet') }}</span>
@@ -63,7 +57,7 @@ const shortcutsMarks = { [FocusMark.Shortcuts]: '', [FocusMark.SubInitial]: '' }
       as="button"
       v-bind="shortcutsMarks"
       :variant="CardVariant.ListRow"
-      class="gap-12"
+      class="gap-8"
       @click="emit('shortcuts', $event)"
     >
       <span class="min-w-0 flex-1">

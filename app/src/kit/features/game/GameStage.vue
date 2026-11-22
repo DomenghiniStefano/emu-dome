@@ -12,7 +12,7 @@ withDefaults(defineProps<{ panel?: boolean; scrim?: boolean }>(), {
 
 <template>
   <div
-    class="relative isolate flex w-full max-w-full overflow-hidden rounded-card bg-letterbox p-20 transform-gpu"
+    class="relative isolate flex w-full max-w-full overflow-hidden rounded-card bg-letterbox p-12 transform-gpu"
   >
     <div class="absolute inset-0 bg-linear-to-br from-cover-1 via-cover-3 to-cover-2"></div>
     <div class="absolute top-16 right-24 size-48 bg-accent"></div>
@@ -20,7 +20,7 @@ withDefaults(defineProps<{ panel?: boolean; scrim?: boolean }>(), {
     <div v-if="scrim" class="absolute inset-0 bg-game-scrim"></div>
     <div
       v-if="panel"
-      class="relative mx-auto flex w-panel max-w-full flex-col gap-16 rounded-16 border border-line p-20 shadow-panel glass-thick-flat"
+      class="relative mx-auto flex w-panel max-w-full flex-col gap-12 rounded-panel border border-line p-16 shadow-panel glass-thick-flat"
     >
       <slot />
     </div>

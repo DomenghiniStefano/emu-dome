@@ -114,8 +114,8 @@ const fade = computed(() => (dragging.value ? 'pointer-events-none opacity-0' : 
 
     <div
       v-if="!collapsed"
-      class="absolute top-16 transition-opacity duration-fast"
-      :class="[side === 'left' ? 'left-16' : 'right-16', fade]"
+      class="absolute top-12 transition-opacity duration-fast"
+      :class="[side === 'left' ? 'left-12' : 'right-12', fade]"
     >
       <EditorPanel
         v-model:keep="keep"
@@ -141,7 +141,7 @@ const fade = computed(() => (dragging.value ? 'pointer-events-none opacity-0' : 
     </div>
     <div
       v-else
-      class="absolute top-16 left-1/2 -translate-x-1/2 transition-opacity duration-fast"
+      class="absolute top-12 left-1/2 -translate-x-1/2 transition-opacity duration-fast"
       :class="fade"
     >
       <EditorPill
@@ -156,7 +156,7 @@ const fade = computed(() => (dragging.value ? 'pointer-events-none opacity-0' : 
 
     <!-- Only words: a screen's corner under it stays reachable. -->
     <div
-      class="pointer-events-none absolute bottom-16 left-1/2 -translate-x-1/2 transition-opacity duration-fast"
+      class="pointer-events-none absolute bottom-12 left-1/2 -translate-x-1/2 transition-opacity duration-fast"
       :class="fade"
     >
       <EditorHints />

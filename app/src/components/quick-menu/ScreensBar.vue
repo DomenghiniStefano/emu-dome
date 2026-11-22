@@ -57,8 +57,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="bar" class="flex flex-col gap-12 px-16 py-14">
-    <div class="flex items-center gap-12">
+  <div ref="bar" class="flex flex-col gap-8 px-12 py-10">
+    <div class="flex items-center gap-8">
       <BackButton :label="t('qm.label')" :hint="hint" @click="emit('back')" />
       <span class="text-heading">{{ t('qm.row.screens.name') }}</span>
       <span class="min-w-0 flex-1"></span>

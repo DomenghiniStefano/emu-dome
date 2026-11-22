@@ -85,7 +85,7 @@ const moreMark = { [FocusMark.MoreSlots]: '' }
       </Button>
       <span
         v-if="autoChosen"
-        class="flex h-touch items-center justify-center rounded-10 border border-dashed border-line-strong px-8 text-center text-caption-inline text-ink-muted"
+        class="flex items-center justify-center self-stretch rounded-control border border-dashed border-line-strong px-8 text-center text-caption-inline text-ink-muted"
       >
         {{ t('qm.autoUpdates') }}
       </span>

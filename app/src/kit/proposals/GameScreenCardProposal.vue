@@ -23,7 +23,7 @@ const sub = computed(() => {
 
 <template>
   <div
-    class="flex min-w-0 flex-col gap-4 rounded-card border bg-surface px-12 py-10"
+    class="flex min-w-0 flex-col gap-4 rounded-card border bg-surface px-8 py-6"
     :class="card.trial ? 'border-accent-text' : 'border-line'"
   >
     <span class="truncate text-caption-inline text-ink-muted">{{ name }}</span>

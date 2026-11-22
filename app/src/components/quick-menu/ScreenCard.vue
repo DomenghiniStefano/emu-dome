@@ -27,7 +27,7 @@ const firstMark = computed(() => (props.first ? { [FocusMark.SubInitial]: '' } :
 
 <template>
   <div
-    class="flex min-w-0 flex-col gap-4 rounded-10 border px-12 py-10"
+    class="flex min-w-0 flex-col gap-4 rounded-card border px-8 py-6"
     :class="card.trial ? 'border-accent-text bg-violet-tint' : 'border-line bg-surface'"
   >
     <span class="truncate text-caption-inline text-ink-muted">{{ name }}</span>
@@ -55,6 +55,6 @@ const firstMark = computed(() => (props.first ? { [FocusMark.SubInitial]: '' } :
         <ChevronRight :size="16" class="touch:size-18" :stroke-width="1.75" aria-hidden="true" />
       </Button>
     </div>
-    <span class="truncate text-overline-inline text-ink-muted">{{ sub }}</span>
+    <span class="line-clamp-2 text-overline-inline text-ink-muted">{{ sub }}</span>
   </div>
 </template>

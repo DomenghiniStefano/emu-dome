@@ -21,7 +21,7 @@ const { t } = useI18n()
 
 <template>
   <footer
-    class="flex items-center justify-between gap-12 pt-4 touch:grid touch:grid-cols-[auto_minmax(0,1fr)] touch:gap-8"
+    class="flex items-center justify-between gap-8 pt-4 touch:grid touch:grid-cols-[auto_minmax(0,1fr)] touch:gap-8"
   >
     <Button
       :variant="ButtonVariant.Danger"

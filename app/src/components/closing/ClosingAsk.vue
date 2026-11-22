@@ -38,11 +38,11 @@ else useNavSection(root, { back })
     ref="root"
     role="alertdialog"
     :aria-labelledby="titleId"
-    class="glass-thick-flat flex w-full max-w-closing-card flex-col gap-16 rounded-panel border border-line p-card-pad shadow-panel"
+    class="glass-thick-flat flex w-full max-w-closing-card flex-col gap-12 rounded-panel border border-line p-card-pad shadow-panel"
   >
-    <div class="flex items-start gap-12">
+    <div class="flex items-start gap-8">
       <span
-        class="grid size-control flex-none place-items-center rounded-full"
+        class="grid size-control flex-none place-items-center rounded-control"
         :class="
           ask.kind === 'timeout' ? 'bg-warning-soft text-warning' : 'bg-surface-raised text-danger'
         "

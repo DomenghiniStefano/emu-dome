@@ -40,17 +40,16 @@ function act(t: Toast) {
   t.action?.run()
 }
 
-// A toast with an action is a row at the touch minimum (44), its radius 12 pending Cowork (spec
-// Decision 5).
+// One shape for every toast: a row as tall as the large control (the touch minimum on the
+// phone), its text wrapping; one with an action only adds the button at its end. Each toast is
+// as wide as its own text (`items-start` / `items-center` on the stack).
 const stackClass = computed(() =>
-  props.inGame ? 'top-16 left-1/2 -translate-x-1/2 items-center' : 'bottom-16 left-16',
+  props.inGame ? 'top-12 left-1/2 -translate-x-1/2 items-center' : 'bottom-12 left-12 items-start',
 )
 const toastClass = (t: Toast) =>
   cn(
-    'glass-thick max-w-toast',
-    t.action
-      ? 'pointer-events-auto flex min-h-touch items-center gap-12 rounded-12 py-6 pr-6 pl-16 font-semibold whitespace-nowrap'
-      : 'rounded-10 px-14 py-10 font-medium',
+    'glass-thick flex max-w-toast min-h-control-lg items-center gap-8 rounded-card py-4 pl-10 font-medium touch:min-h-touch',
+    t.action ? 'pointer-events-auto pr-4' : 'pr-10',
     t.kind === ToastKind.Error && 'text-danger',
   )
 </script>
@@ -61,7 +60,7 @@ const toastClass = (t: Toast) =>
     aria-live="polite"
   >
     <div v-for="t in toasts.list.value" :key="t.id" :class="toastClass(t)">
-      <span>
+      <span class="min-w-0 flex-1">
         {{ t.text }}
         <span v-if="t.note" class="font-regular text-ink-muted before:content-['_·_']">
           {{ t.note }}

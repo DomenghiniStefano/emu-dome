@@ -21,7 +21,7 @@ const { t } = useI18n()
 
 <template>
   <div
-    class="flex items-center gap-10 rounded-full border border-line py-6 pr-6 pl-16 shadow-glass glass-thick-flat"
+    class="flex items-center gap-8 rounded-panel border border-line py-4 pr-4 pl-12 shadow-glass glass-thick-flat"
   >
     <span class="font-semibold">{{ screenName }}</span>
     <span class="text-caption text-ink-muted tabular-nums">

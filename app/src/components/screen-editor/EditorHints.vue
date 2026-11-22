@@ -40,7 +40,7 @@ const hints = computed<Hint[]>(() =>
 <template>
   <ul
     v-if="inputMode !== 'touch'"
-    class="m-0 flex list-none flex-wrap items-center gap-16 rounded-full border border-line px-16 py-8 text-caption text-ink-muted shadow-glass glass-thick-flat"
+    class="m-0 flex list-none flex-wrap items-center gap-12 rounded-panel border border-line px-12 py-6 text-caption text-ink-muted shadow-glass glass-thick-flat"
     :aria-label="t('screenEditor.hintsLabel')"
   >
     <li v-for="h in hints" :key="h.does" class="flex items-center gap-6">

@@ -49,7 +49,7 @@ const marks = computed(() =>
       crop
       :class="
         cn(
-          'aspect-3/2 w-full rounded-6 bg-surface-raised touch:aspect-2/1',
+          'aspect-3/2 w-full rounded-badge bg-surface-raised touch:aspect-2/1',
           empty && 'border border-dashed border-line-strong',
         )
       "
