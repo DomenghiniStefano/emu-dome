@@ -11,7 +11,7 @@ use super::{
     entry, CommitTarget, ConsoleId, DefaultValue, GameKey, Kind, Level, Scope, Settings, Value,
 };
 use crate::core_profile::CoreId;
-use crate::settings::schema::Device;
+use crate::settings::schema::{Device, Platform};
 use crate::ErrorCode;
 
 fn settings(dir: &TestDir) -> Settings {
@@ -1095,6 +1095,27 @@ fn option_platforms_name_real_options_and_spare_the_default() {
             );
         }
     }
+}
+
+#[test]
+fn keyboard_rows_are_left_out_of_the_phones_schema() {
+    // «Avanti veloce con la tastiera» (#118): the keyboard's Tab, nothing on a phone. A «solo
+    // PC» row stays in the phone's schema (shown disabled with the reason); a keyboard row does
+    // not reach it at all.
+    let keyboard: Vec<&str> = ENTRIES
+        .iter()
+        .filter(|e| e.platform == Platform::Keyboard)
+        .map(|e| e.key)
+        .collect();
+    assert_eq!(keyboard, ["speed.ffmode"]);
+    let listed =
+        |device: Device, key: &str| super::schema(device).entries.iter().any(|e| e.key == key);
+    assert!(listed(Device::Desktop, "speed.ffmode"));
+    assert!(!listed(Device::Phone, "speed.ffmode"));
+    assert!(listed(Device::Phone, "audio.out"), "a «solo PC» row stays");
+    assert!(listed(Device::Desktop, "touch.tedit"), "a phone row stays");
+    assert!(Platform::Keyboard.includes(Device::Desktop));
+    assert!(!Platform::Keyboard.includes(Device::Phone));
 }
 
 #[test]
@@ -2360,8 +2381,13 @@ fn the_entries_not_wired_yet_are_these() {
     assert_eq!(
         carried_out,
         [
+            "saves.import",
+            "pad.dev1",
+            "pad.dev2",
+            "library.hidden",
             "cloud.acct",
             "cloud.space",
+            "cloud.sgames",
             "about.ver",
             "about.upd",
             "about.lic",

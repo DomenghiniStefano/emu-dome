@@ -1243,13 +1243,9 @@
     },
     "pad": {
       "dev1": {
-        "name": "{controllerName}",
-        "desc": "Collegato · disposizione A/B {layout}",
-        "button": "Rimappa i pulsanti",
-        "value": {
-          "layoutNintendo": "come su Nintendo",
-          "layoutPrinted": "come stampata"
-        }
+        "name": "Controller",
+        "desc": "Cosa fa ogni pulsante, per tutti i giochi o per console",
+        "button": "Rimappa i pulsanti"
       },
       "dev2": {
         "name": "Tastiera",
@@ -1540,6 +1536,7 @@
       "hidden": {
         "name": "Giochi nascosti",
         "desc": "Giochi che hai tolto dalla libreria senza cancellarli.",
+        "button": "Mostra i giochi nascosti",
         "value": {
           "count": "{n} gioco | {n} giochi",
           "none": "Nessuno"
@@ -1590,6 +1587,7 @@
       "sgames": {
         "name": "Giochi su Google Drive",
         "desc": "Carica un gioco per scaricarlo sugli altri dispositivi.",
+        "button": "Apri i giochi su Drive",
         "value": {
           "count": "{n} gioco · {size} | {n} giochi · {size}"
         }
@@ -2539,7 +2537,8 @@
       "sticks": "Stick, grilletti e vibrazione",
       "sticksSub": "Zona morta {dead} % · grilletti {trig} %",
       "touch": "Controlli touch",
-      "touchSub": "Si personalizzano dal telefono"
+      "touchSub": "Si personalizzano dal telefono",
+      "touchEdit": "Posizione e dimensione dei pulsanti per ogni console"
     }
   },
   "saves": {
@@ -2696,6 +2695,7 @@
       "drive": "Google Drive",
       "driveDesc": "Copia salvataggi e impostazioni su ogni tuo dispositivo",
       "driveSignIn": "Accedi con Google",
+      "driveDone": "Accesso effettuato",
       "other": "Un’altra cartella o un altro emulatore",
       "otherDesc": "File .sav, .dsv o backup Action Replay (.duc)",
       "hintDesktop": "In gioco premi Esc o il pulsante Home del controller per il menu rapido.",

@@ -67,6 +67,9 @@ const props = defineProps<{
   game: GameFocus | null
   /** X01, the search everywhere: the setting whose page opens with its row lit (read on mount). */
   row?: SettingKey | null
+  /** With `row`: its layout editor opened at once (C01's «Controlli touch» → `touch.tedit`,
+   * #112), as its button would. */
+  editRow?: boolean
 }>()
 const emit = defineEmits<{ openControls: []; openCloud: [] }>()
 const { t } = useI18n()
@@ -182,6 +185,7 @@ function closeLicences() {
 // ends it) and focused, on its page.
 const lit = ref<SettingKey | null>(null)
 const litRow = props.row ?? null
+const editRow = props.editRow ?? false
 async function lightRow() {
   const e = litRow ? byKey.value.get(litRow) : undefined
   if (!e) return
@@ -201,6 +205,7 @@ onMounted(async () => {
   await scopeBar.findContextConsole()
   await store.loadAll()
   await lightRow()
+  if (litRow && editRow) editScreens(litRow)
   await store.loadRecent()
 })
 useSettingsChanged(EVERY_SETTING, store.onChanged)

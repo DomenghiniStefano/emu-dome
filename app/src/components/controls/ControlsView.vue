@@ -6,8 +6,9 @@
 // (board C02, 18/11): the device is changed on C01. With no controller connected the section
 // shows E05 until the keyboard is chosen.
 //
-// From Game details › Controlli (L07, the `game` prop from the shell's route) it opens on C02 at
-// «Solo questo gioco» for that game.
+// From Game details › Controlli (L07, the arrival's `game` from the shell's route) it opens on C02
+// at «Solo questo gioco» for that game; from Settings' `pad.dev1` / `pad.dev2` (#112) on C02 at
+// «Tutti i giochi», on the first controller or the keyboard.
 //
 // Controller: the shell's nav scope; this section's own steps (nav.ts `useNavSection`): L1 / R1
 // change tab one step below C01, back goes from there to C01; on C01 back is left to the shell
@@ -39,27 +40,29 @@ import {
   type DeviceId,
 } from './devices'
 import { cycle } from '@/lib/cycle'
+import { isShown, lockReason } from '@/lib/settingsModel'
 import { ControlsTab, tabOrRemap, tabsFor } from './tabs'
 import { useControlsData } from './useControlsData'
 import { SectionPage } from '@/design-system/components/section-page'
 
 const props = defineProps<{
-  /** L07 «Rimappa i pulsanti per questo gioco»: the game this section opened for (the shell's
-   * route, read on mount). */
-  game: GameFocus | null
+  /** Opened on C02 (the shell's route, read on mount): L07 «Rimappa i pulsanti per questo gioco»
+   * for its `game`, or Settings' controller / keyboard rows at «Tutti i giochi» (`keyboard`). */
+  arrival: { game: GameFocus | null; keyboard?: boolean } | null
 }>()
 const { t } = useI18n()
 
-const gameFocus = props.game
+const arrival = props.arrival
+const gameFocus = arrival?.game ?? null
 
 const View = { Overview: 'overview', Device: 'device' } as const
 type View = (typeof View)[keyof typeof View]
-/** C01, or one step below it (C02–C04): C02 when opened for a game. */
-const view = ref<View>(gameFocus ? View.Device : View.Overview)
+/** C01, or one step below it (C02–C04): C02 when opened for remapping. */
+const view = ref<View>(arrival ? View.Device : View.Overview)
 const root = ref<HTMLElement | null>(null)
 
 /** The chosen device; null = the first controller. */
-const chosen = ref<DeviceId | null>(null)
+const chosen = ref<DeviceId | null>(arrival?.keyboard ? 'keyboard' : null)
 const { schema, globalRows, pads, states } = useControlsData({
   onError: useErrorSink(),
   onPadGone: id => {
@@ -68,6 +71,13 @@ const { schema, globalRows, pads, states } = useControlsData({
 })
 
 const device = computed(() => deviceInUse(pads.value, chosen.value))
+/** C01's «Controlli touch» leads to the C06 editor where Settings' `touch.tedit` row opens it
+ * (a phone; #112), and only says where it is done elsewhere. */
+const touchEditable = computed(() => {
+  const s = schema.value
+  const e = s?.entries.find(x => x.key === 'touch.tedit')
+  return !!s && !!e && isShown(e, s) && lockReason(e, s, 'global') === null
+})
 const family = computed(() => familyOf(device.value))
 /** E05: no controller, and the keyboard not chosen. */
 const empty = computed(() => device.value === null)
@@ -121,6 +131,7 @@ useNavSection(root, { tab: stepTabs, back })
       :device="device"
       :states="states"
       :global-rows="globalRows"
+      :touch-editable="touchEditable"
       @pick="d => (chosen = d)"
       @open="openTab"
     />

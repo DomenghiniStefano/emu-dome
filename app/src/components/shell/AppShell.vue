@@ -65,6 +65,7 @@ import {
   arrived,
   backFrom,
   closeDetails,
+  jumpTo,
   openDetails,
   openSection,
   pickSection,
@@ -79,6 +80,7 @@ import {
 import type { Section } from './sections'
 import { hasOwnInitialFocus, isFlush, isTvLaidOut, sectionStep } from './shellLayout'
 import { useCoverHaze } from './useCoverHaze'
+import { provideShellJump } from './useShellJump'
 
 const emit = defineEmits<{
   openFile: []
@@ -176,6 +178,14 @@ function pick(s: Section) {
   if (s === section.value && details.value === null) visits.value++
   go(pickSection(route.value, s))
 }
+
+// A button of a section that leads to another (#112: Settings' rows of a feature that lives
+// elsewhere, C01's «Controlli touch»): the section mounts for its arrival.
+provideShellJump(j => {
+  const to = jumpTo(route.value, j)
+  if (to.section === section.value) visits.value++
+  go(to)
+})
 </script>
 
 <template>
@@ -248,6 +258,7 @@ function pick(s: Section) {
           <LibraryView
             v-else-if="section === 'library'"
             :return-to="arrivalFor(route, 'library')?.cover ?? null"
+            :show-hidden="arrivalFor(route, 'library')?.hidden ?? false"
             @open="(g, slot) => emit('openGame', g, slot)"
             @open-saves="g => go(savesFor(route, g.id))"
             @details="g => go(openDetails(route, g.id))"
@@ -265,12 +276,13 @@ function pick(s: Section) {
             :key="settingsVisit"
             :game="arrivalFor(route, 'settings')?.game ?? null"
             :row="arrivalFor(route, 'settings')?.row ?? null"
+            :edit-row="arrivalFor(route, 'settings')?.edit ?? false"
             @open-controls="go(openSection(route, 'controls'))"
             @open-cloud="go(openSection(route, 'cloud'))"
           />
           <ControlsView
             v-else-if="section === 'controls'"
-            :game="arrivalFor(route, 'controls')?.game ?? null"
+            :arrival="arrivalFor(route, 'controls')"
           />
           <CloudView v-else />
         </main>

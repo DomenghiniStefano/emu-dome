@@ -7,6 +7,7 @@ import {
   arrived,
   backFrom,
   closeDetails,
+  jumpTo,
   openDetails,
   moved,
   openSection,
@@ -66,7 +67,7 @@ describe('the shell route', () => {
     })
     expect(arrivalFor(settings, 'settings')?.row).toBeNull()
     expect(arrivalFor(settings, 'controls')).toBeNull()
-    expect(arrivalFor(remapFor(d, game), 'controls')?.game.title).toBe('Test')
+    expect(arrivalFor(remapFor(d, game), 'controls')?.game?.title).toBe('Test')
     // The details stay remembered behind every jump.
     expect(remapFor(d, game).details).toBe(id)
   })
@@ -80,6 +81,31 @@ describe('the shell route', () => {
       row: 'video.vsync',
     })
     expect(r.details).toBe(id)
+  })
+
+  it('a jump opens the section where a feature lives, for what it is about (#112)', () => {
+    const from = openSection(START, 'settings')
+    expect(jumpTo(from, 'cloudGames')).toMatchObject({ section: 'cloud', arrival: null })
+    const hidden = jumpTo(openDetails(START, id), 'hiddenGames')
+    expect(showingDetails(hidden)).toBe(false)
+    expect(arrivalFor(hidden, 'library')).toEqual({ section: 'library', hidden: true })
+    expect(arrivalFor(jumpTo(from, 'importSave'), 'saves')).toEqual({
+      section: 'saves',
+      game: null,
+      importing: true,
+    })
+    expect(arrivalFor(jumpTo(from, 'remapPad'), 'controls')).toEqual({
+      section: 'controls',
+      game: null,
+      keyboard: false,
+    })
+    expect(arrivalFor(jumpTo(from, 'remapKeyboard'), 'controls')?.keyboard).toBe(true)
+    expect(arrivalFor(jumpTo(openSection(START, 'controls'), 'touchEditor'), 'settings')).toEqual({
+      section: 'settings',
+      game: null,
+      row: 'touch.tedit',
+      edit: true,
+    })
   })
 
   it('an arrival is dropped once read; a route without one is left as it is', () => {
