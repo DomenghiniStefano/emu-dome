@@ -39,3 +39,32 @@ describe('showIfHolds', () => {
     expect(showIfHolds(strength(['true']), () => null)).toBe(false)
   })
 })
+
+describe('lockReason of a layout editor row (Trello #111)', () => {
+  const row = (type: string, platform = 'all', levels = ['console']) =>
+    ({
+      key: type === 'touchLayout' ? 'touch.tedit' : 'screens.custom',
+      kind: { type },
+      platform,
+      levels,
+      unsupportedConsoles: [],
+      needsNativeVideo: false,
+    }) as never
+  const on = (device: string) => ({ device }) as never
+
+  it('opens at «Tutti i giochi», where it asks for the console', async () => {
+    const { lockReason } = await import('./settingsModel')
+    expect(
+      lockReason(row('screenLayout', 'all', ['console', 'game']), on('desktop'), 'global'),
+    ).toBe(null)
+    expect(lockReason(row('touchLayout', 'phone'), on('phone'), 'global')).toBe(null)
+    expect(lockReason(row('touchLayout', 'phone'), on('phone'), 'console', 'gba')).toBe(null)
+  })
+
+  it('keeps the touch controls to the phone', async () => {
+    const { lockReason } = await import('./settingsModel')
+    expect(lockReason(row('touchLayout', 'phone'), on('desktop'), 'global')).toBe(
+      'settingsUi.lockedPhone',
+    )
+  })
+})

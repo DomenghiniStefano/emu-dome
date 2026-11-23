@@ -21,8 +21,9 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::core_profile::CoreId;
 use crate::settings::keys::{self, Reader};
-use crate::settings::Value;
+use crate::settings::{ConsoleId, Value};
 
 /// Which screen of the console. TypeScript: `ScreenId` (generated).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
@@ -1076,6 +1077,31 @@ impl CustomLayout {
     }
 }
 
+/// The frame a `console` game hands over at its own resolution (1×): what the editors draw in
+/// place of the game when none is open (Trello #111). Two-screen consoles as their core's
+/// [`Split`] stacks them.
+pub fn console_frame(console: ConsoleId) -> (u32, u32) {
+    let split = CoreId::for_console(console).profile().split;
+    split.frame_at_1x().unwrap_or(match console {
+        ConsoleId::Gb | ConsoleId::Gbc => (160, 144),
+        ConsoleId::Gba => (240, 160),
+        // Not reached: both have a two-screen split. Their 1× frames, in case one changes.
+        ConsoleId::Nds => (256, 384),
+        ConsoleId::N3ds => (400, 480),
+    })
+}
+
+/// Where a `console` game's screens would be drawn in `area` when it opens with `settings`: the
+/// first layout of the cycle, not swapped, its frame at 1× ([`console_frame`]). The C06 touch
+/// editor draws these as placeholders with no game open, so the controls are laid out around
+/// the picture the game will have.
+pub fn preview(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec<Placement> {
+    let split = CoreId::for_console(console).profile().split;
+    let (width, height) = console_frame(console);
+    let layout = settings.layout(settings.first(), false);
+    compose(&layout, &split.screens(width, height), area)
+}
+
 /// The `screens.*` settings of the open game (its changes «in prova» included), read once.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScreenSettings {
@@ -1332,9 +1358,10 @@ impl ScreenSession {
 #[cfg(test)]
 mod tests {
     use super::{
-        compose, fit, pointer_at, pointer_value, touch_at, Align, Area, Arrangement, Aspect,
-        CustomLayout, CustomScreen, Inset, Layout, LayoutId, Placement, PxRect, Rect, Rotation,
-        Scale, ScreenId, ScreenSession, ScreenSettings, ScreenStatus, Split,
+        compose, console_frame, fit, pointer_at, pointer_value, preview, touch_at, Align, Area,
+        Arrangement, Aspect, CustomLayout, CustomScreen, Inset, Layout, LayoutId, Placement,
+        PxRect, Rect, Rotation, Scale, ScreenId, ScreenSession, ScreenSettings, ScreenStatus,
+        Split,
     };
     use crate::settings::Value;
 
@@ -2750,5 +2777,58 @@ mod tests {
         let desk = device_settings(Device::Desktop);
         let d = CustomLayout::preset(&desk, LayoutId::Auto, DS, 412.0, 892.0);
         assert!((d.screens[0].w - 256.0 / 412.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn each_console_has_its_frame_at_1x() {
+        use crate::settings::ConsoleId;
+        assert_eq!(console_frame(ConsoleId::Gb), (160, 144));
+        assert_eq!(console_frame(ConsoleId::Gbc), (160, 144));
+        assert_eq!(console_frame(ConsoleId::Gba), (240, 160));
+        assert_eq!(console_frame(ConsoleId::Nds), (256, 384));
+        assert_eq!(console_frame(ConsoleId::N3ds), (400, 480));
+    }
+
+    #[test]
+    fn a_preview_places_the_screens_as_the_game_would_open() {
+        // Trello #111: C06 with no game draws where the game would be, the same compose.
+        use crate::settings::ConsoleId;
+        let gba = preview(
+            &ScreenSettings::default(),
+            ConsoleId::Gba,
+            area(1280.0, 800.0),
+        );
+        assert_eq!(gba.len(), 1);
+        assert_eq!(gba[0].id, ScreenId::Main);
+        assert_eq!(
+            gba,
+            compose(
+                &ScreenSettings::default().layout(LayoutId::Vertical, false),
+                &Split::Whole.screens(240, 160),
+                area(1280.0, 800.0),
+            )
+        );
+        // A phone upright, DS: two screens apart, as many as its cycle's first layout shows.
+        use crate::settings::schema::Device;
+        let phone = device_settings(Device::Phone);
+        let inset = Inset {
+            bottom: 0.3,
+            align: Align::Apart,
+            between: 36.0 / 780.0,
+            ..Inset::NONE
+        };
+        let a = Area {
+            width: 360.0,
+            height: 780.0,
+            inset,
+        };
+        let ds = preview(&phone, ConsoleId::Nds, a);
+        assert_eq!(
+            ds.iter().map(|p| p.id).collect::<Vec<_>>(),
+            [ScreenId::Top, ScreenId::Bottom]
+        );
+        assert!(ds.iter().all(|p| p.dst.y + p.dst.h <= 780.0 * 0.7 + 0.5));
+        let three = preview(&phone, ConsoleId::N3ds, a);
+        assert_eq!(three.len(), 2);
     }
 }

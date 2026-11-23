@@ -25,6 +25,7 @@ import {
   activeLayout,
   add,
   defaultLayout,
+  isDualScreen,
   minSize,
   missing,
   moveTo,
@@ -33,6 +34,7 @@ import {
   pinchSize,
   remove,
   replace,
+  reservedInset,
   resizeTo,
   SIZE_STEP,
   withOpacity,
@@ -84,6 +86,12 @@ export function useTouchEditor(o: TouchEditorOptions) {
     opacityMax: setup.value?.opacityMax ?? 100,
   }))
   const addable = computed(() => missing(draft.value, setup.value?.available ?? []))
+  /** The edges the layout keeps clear of the game, as in game (TouchLayer): with no game open
+   * the editor draws where the screens would be in the rest (Trello #111). Of the history's
+   * present, so a drag on its way asks for nothing. */
+  const inset = computed(() =>
+    reservedInset(history.value.present, area.value, boxOf, isDualScreen(o.console)),
+  )
 
   // ---- Loading (rule 7: the newest answer only) ----
   const loads = latest()
@@ -385,6 +393,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
 
   return {
     area,
+    inset,
     orientation,
     setup,
     prefs,

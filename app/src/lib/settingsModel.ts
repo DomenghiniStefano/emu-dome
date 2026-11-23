@@ -106,8 +106,12 @@ export function pageLevels(entries: SettingEntry[]): Set<SettingLevel> {
   return out
 }
 
+/** A row whose button opens a layout editor (the screens' C09, the touch controls' C06). */
+export const opensLayoutEditor = (entry: SettingEntry) =>
+  entry.kind.type === 'screenLayout' || entry.kind.type === 'touchLayout'
+
 /**
- * Why a row cannot be changed here: i18n key of the reason, or null when it can. `console`: the
+ * Why a row cannot be changed here:i18n key of the reason, or null when it can. `console`: the
  * console of the scope being edited (null at Global, or when the caller has none).
  */
 export function lockReason(
@@ -127,6 +131,9 @@ export function lockReason(
   if (entry.needsNativeVideo && videoMode.value !== 'native')
     return nativeAvailable.value ? 'settingsUi.lockedNeedsNative' : 'qm.noNative'
   if (entry.kind.type === 'action' || entry.kind.type === 'apply') return null
+  // A layout editor's row (C09, C06; Trello #111) at «Tutti i giochi» asks for the console first
+  // (settings/layoutEditors.ts), then saves at that console's level.
+  if (level === 'global' && opensLayoutEditor(entry)) return null
   // Session («in prova», quick menu): open to what can be saved per console or per game.
   if (level === 'session')
     return entry.levels.includes('console') || entry.levels.includes('game')

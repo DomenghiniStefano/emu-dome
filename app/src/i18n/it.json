@@ -1360,7 +1360,7 @@
     "touch": {
       "tedit": {
         "name": "Personalizza i controlli touch",
-        "desc": "Sposta e ridimensiona i pulsanti sopra il gioco in pausa.",
+        "desc": "Sposta e ridimensiona i pulsanti nel verso in cui tieni il telefono.",
         "button": "Apri l’editor"
       },
       "tport": {
@@ -2131,6 +2131,17 @@
     "lockedDesktop": "Solo su questo computer.",
     "lockedNeedsNative": "Richiede il metodo di visualizzazione Accelerato: sceglilo nel menu rapido, in «Schermi e immagine».",
     "lockedConsole": "Non disponibile su questa console: il suo emulatore non ha questa opzione.",
+    "layoutEditor": {
+      "screens": {
+        "title": "Scegli la console",
+        "text": "La disposizione degli schermi che salvi vale per tutti i giochi di quella console."
+      },
+      "touch": {
+        "title": "Scegli la console",
+        "text": "I controlli touch che salvi valgono per tutti i giochi di quella console, nel verso in cui tieni ora il telefono."
+      },
+      "cancel": "Annulla"
+    },
     "notYet": "Arriva con un prossimo aggiornamento.",
     "emptyOnly": "Nessuna impostazione modificata qui. Tutti i valori sono ereditati.",
     "noResults": "Nessuna impostazione per «{query}»",
@@ -2243,6 +2254,7 @@
     "shortcutsHint": "Tieni premuto {modifier} e premi un pulsante",
     "remap": "Rimappa i pulsanti per questo gioco",
     "screenshot": "Cattura schermata",
+    "editLayout": "Modifica la disposizione",
     "reset": "Riavvia il gioco",
     "close": "Chiudi il gioco",
     "trial": "{n} modifiche in prova: {names}",

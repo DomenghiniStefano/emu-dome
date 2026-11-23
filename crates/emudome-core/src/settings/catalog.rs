@@ -505,13 +505,14 @@ pub static ENTRIES: &[Entry] = &[
     }])
     .phase(2),
     // Per console, not global (owner, 2026-11-21): a DS layout never stretches a 3DS screen.
+    // Phase 1, ahead of its page (Trello #111): the C09 editor opens from Settings without a
+    // game, the only row of «Schermi di DS e 3DS» shown before phase 2.
     e(
         "screens.custom",
         Kind::ScreenLayout,
         DefaultValue::List(&[]),
         CG,
-    )
-    .phase(2),
+    ),
     slider("screens.ratio", 70, (50, 90, 5), Unit::Percent, CG).phase(2),
     // Its «Come sul DS» button sets 90 px (the real gap at 1×).
     slider("screens.gap", 0, (0, 120, 1), Unit::Px, CG).phase(2),
@@ -635,11 +636,11 @@ pub static ENTRIES: &[Entry] = &[
     sel("pad.repeat", &["slow", "normal", "fast"], "normal", G),
     // ---- Controlli touch (touch) ----
     // The user's own layouts (Trello #29): per console, both orientations, edited in C06 and kept
-    // on this device (a layout fits one phone). Shape in `crate::touch::Layouts`.
+    // on this device (a layout fits one phone). Shape in `crate::touch::Layouts`. Phase 1, ahead
+    // of its page (Trello #111): the C06 editor opens from Settings without a game.
     e("touch.tedit", Kind::TouchLayout, DefaultValue::List(&[]), C)
         .device()
-        .phone()
-        .phase(4),
+        .phone(),
     // Per orientation: the default layout or the user's own (`touch.tedit`, the default while
     // none is saved). C06's «Salva» picks `custom` for the console.
     sel("touch.tport", &["default", "custom"], "default", ALL)
@@ -654,7 +655,7 @@ pub static ENTRIES: &[Entry] = &[
     // «Contorno», the outline alone, both drawn from the design system's tokens and faded as a
     // whole; the old `glass` / `outlines` / `contrast` are read as these (store.rs, layout 2).
     // Imported skins (`.deltaskin`, RetroArch overlays) are Phase 5. Phase 1 (owner, 2026-11-22:
-    // the style is picked in Settings now), the only row of «Controlli touch» shown before phase 4.
+    // the style is picked in Settings now), shown before phase 4 like `touch.tedit`.
     seg("touch.tskin", &["smoke", "outline"], "smoke", G).phone(),
     // Multiplies the style's own fade (each style draws the controls at about 60 %): at 100 they
     // show as the style draws them.

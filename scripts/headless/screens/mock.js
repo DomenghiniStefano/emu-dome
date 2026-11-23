@@ -425,6 +425,18 @@
       { page: "cloud", id: "when", keys: ["cloud.sauto"] },
     );
   }
+  // `layoutRows` (Trello #111): the pages of the two editor rows (their entries are added below).
+  if (scenario.layoutRows) {
+    schema.pages.unshift("screens", "touch");
+    schema.groups.unshift(
+      { id: "game", pages: ["screens"] },
+      { id: "controls", pages: ["touch"] },
+    );
+    schema.sections.push(
+      { page: "screens", id: "layout", keys: ["screens.custom"] },
+      { page: "touch", id: "layout", keys: ["touch.tedit"] },
+    );
+  }
   // `search` (X01, #32): a Video page with the rows the search scenarios find, their synonyms as
   // the catalogue has them («tearing» finds nothing by name and suggests V-Sync).
   if (scenario.search) {
@@ -523,6 +535,23 @@
   // `touch.tlost`, `touch.tland`…), each a row of the page.
   for (const [key, value] of Object.entries(scenario.touchRows ?? {}))
     entries.push(entry(key, "touch", { type: "text" }, value, { phase: 4 }));
+  // `layoutRows` (Trello #111): the two editor rows of the catalogue in phase 1, on their pages
+  // (Schermi di DS e 3DS, Controlli touch), as Rust's schema has them.
+  if (scenario.layoutRows) {
+    const wired = { wired: true, mostUsed: false, phase: 1 };
+    entries.push(
+      entry("screens.custom", "screens", { type: "screenLayout" }, [], {
+        ...wired,
+        levels: ["default", "console", "game", "session"],
+      }),
+      entry("touch.tedit", "touch", { type: "touchLayout" }, [], {
+        ...wired,
+        levels: ["default", "console"],
+        perDevice: true,
+        platform: "phone",
+      }),
+    );
+  }
   if (scenario.rtc) {
     values["saves.rtc"] = scenario.rtc;
     values["saves.rtcdays"] = -3;
@@ -1336,8 +1365,11 @@
   // screen teal, each with a lighter border, placed as `screens::compose` places them on a phone
   // (the `auto` layout filling its room: stacked upright with the inset's `between` and
   // `apart`, side by side on its side; crates/emudome-core/src/screens.rs, its phone tests).
-  const dual = scenario.game === "nds" || scenario.game === "3ds";
-  const n3ds = scenario.game === "3ds";
+  // `frameConsole` (Trello #111): the console whose screens `screens_preview` places with no game
+  // open (the C06 editor from Settings); a game open places its own.
+  const framed = scenario.game ?? scenario.frameConsole;
+  const dual = framed === "nds" || framed === "3ds";
+  const n3ds = framed === "3ds";
   const TOP = n3ds ? { w: 400, h: 240 } : { w: 256, h: 192 };
   const BOTTOM = n3ds ? { w: 320, h: 240 } : { w: 256, h: 192 };
   const FRAME = dual ? { w: TOP.w, h: TOP.h + BOTTOM.h } : { w: 240, h: 160 };
@@ -1543,6 +1575,8 @@
         return scenario.frame
           ? placements(args.area)
           : { frameWidth: 0, frameHeight: 0, placements: [] };
+      // C06 from Settings (Trello #111): where `frameConsole`'s screens would go in the area.
+      if (cmd === "screens_preview") return placements(args.area).placements;
       // A game open (`game`): its stats (#124: a null answer read as a stats object threw in
       // gameFlow.ts). Not `running`, so the frame count that never moves is no hang (E11).
       if (cmd === "stats" && !("stats" in answers))

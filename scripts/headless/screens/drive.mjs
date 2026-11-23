@@ -3,6 +3,7 @@
 // Chrome must already run headless with --remote-debugging-port=<cdpPort>.
 import fs from "node:fs";
 import path from "node:path";
+import { layoutEditorScenarios } from "./layout-editors.mjs";
 import { phoneShellScenarios } from "./phone-shell.mjs";
 import { quickMenuScenarios } from "./quick-menu.mjs";
 import { startFailedStep, touchScenarios } from "./touch.mjs";
@@ -303,6 +304,7 @@ const SCENARIOS = {
   ...quickMenuScenarios,
   ...touchScenarios,
   ...phoneShellScenarios,
+  ...layoutEditorScenarios,
 };
 
 // Saves (V01–V06, and the slot tile in Game details): every state in Scuro / Nero / Chiaro, at

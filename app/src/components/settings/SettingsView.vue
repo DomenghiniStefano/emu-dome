@@ -18,14 +18,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft, Info } from '@lucide/vue'
-import type {
-  ConsoleId,
-  SettingEntry,
-  SettingKey,
-  SettingRecent,
-  SettingsSchema,
-  SettingsScope,
-} from '@/emu'
+import type { ConsoleId, SettingEntry, SettingKey, SettingRecent, SettingsSchema } from '@/emu'
 import LicencesPage from '@/components/about/LicencesPage.vue'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import TouchEditor from '@/components/touch/TouchEditor.vue'
@@ -36,6 +29,14 @@ import type { GameFocus } from '@/lib/gameDetails'
 import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
 import { loadSchema, lockReason, msg } from '@/lib/settingsModel'
+import LayoutConsoleChooser from './LayoutConsoleChooser.vue'
+import {
+  chosenTarget,
+  directTarget,
+  editorOf,
+  type EditorTarget,
+  type LayoutEditor,
+} from './layoutEditors'
 import SettingRowView from './SettingRow.vue'
 import SettingsCategories from './SettingsCategories.vue'
 import SettingsOverview from './SettingsOverview.vue'
@@ -139,26 +140,27 @@ useNavSection(root, {
 })
 
 // `screens.custom` (C09): the screens editor over the whole window, at the page's scope;
-// `touch.tedit` (C06): the touch controls editor for the page's console. Closed, the focus goes
-// back to the row's button.
-const editing = ref<{
-  scope: SettingsScope
-  console: ConsoleId
-  editor: 'screens' | 'touch'
-} | null>(null)
+// `touch.tedit` (C06): the touch controls editor for the page's console. With no console the
+// editor has layouts for (at «Tutti i giochi»), the console is chosen first (Trello #111,
+// layoutEditors.ts). Closed, the focus goes back to the row's button.
+const editing = ref<EditorTarget | null>(null)
+const choosing = ref<LayoutEditor | null>(null)
 let editOpener: HTMLElement | null = null
 function editScreens(key: SettingKey = 'screens.custom') {
-  const s = scope.value
-  if (!('console' in s)) return
   editOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  editing.value = {
-    scope: s,
-    console: s.console,
-    editor: key === 'touch.tedit' ? 'touch' : 'screens',
-  }
+  const editor = editorOf(key)
+  const target = directTarget(editor, scope.value)
+  if (target) editing.value = target
+  else choosing.value = editor
+}
+function chooseConsole(console: ConsoleId) {
+  const editor = choosing.value
+  choosing.value = null
+  if (editor) editing.value = chosenTarget(editor, console)
 }
 function closeEditor() {
   editing.value = null
+  choosing.value = null
   void nextTick(() => editOpener?.focus())
 }
 
@@ -369,6 +371,12 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       :scope="editing.scope"
       :status="null"
       @close="closeEditor"
+    />
+    <LayoutConsoleChooser
+      v-if="choosing"
+      :editor="choosing"
+      @choose="chooseConsole"
+      @cancel="closeEditor"
     />
   </div>
 </template>

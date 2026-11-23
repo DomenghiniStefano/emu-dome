@@ -337,6 +337,21 @@ pub fn screens_preset_custom(
     CustomLayout::preset(&settings, layout, split, width, height)
 }
 
+/// Where a `console` game's screens would be drawn in `area` (CSS pixels of the window, the touch
+/// controls' inset) if it opened now with the settings `scope` resolves: the C06 touch editor
+/// opened from Settings draws them as placeholders, with no game (Trello #111). Composed by
+/// `emudome_core::screens` like the game itself.
+#[tauri::command]
+pub fn screens_preview(
+    app: AppHandle,
+    scope: Scope,
+    console: ConsoleId,
+    area: PointerArea,
+) -> Vec<Placement> {
+    let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
+    emudome_core::screens::preview(&settings, console, area.area())
+}
+
 /// Stores the custom layout at `scope`: `console` or `game` to save it, `session` to preview it
 /// live «in prova» (then committed or dropped with the quick menu's session, like any setting).
 /// Removing it is `settings_reset` of `screens.custom`. An invalid layout is refused with

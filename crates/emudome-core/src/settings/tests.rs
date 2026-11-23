@@ -1306,6 +1306,33 @@ fn rows_show_by_the_value_of_another_row() {
 }
 
 #[test]
+fn the_layout_editors_show_now_ahead_of_their_pages() {
+    // Trello #111: the C09 and C06 rows open their editors from Settings in phase 1; the rest of
+    // their pages keeps its phase (the screens' rows 2, the touch rows 4 but the style and the
+    // vibration).
+    let phase = |key: &str| entry(key).map(|e| e.phase);
+    assert_eq!(phase("screens.custom"), Some(CURRENT_PHASE));
+    assert_eq!(phase("touch.tedit"), Some(CURRENT_PHASE));
+    let custom = entry("screens.custom").expect("the screens editor row");
+    assert!(matches!(custom.kind, Kind::ScreenLayout));
+    assert!(custom.wired && custom.levels.console && custom.levels.game && !custom.levels.global);
+    let tedit = entry("touch.tedit").expect("the touch editor row");
+    assert!(matches!(tedit.kind, Kind::TouchLayout));
+    assert!(tedit.wired && tedit.levels.console && !tedit.levels.global && !tedit.levels.game);
+    for key in [
+        "screens.cycle",
+        "screens.ratio",
+        "screens.gap",
+        "screens.rot",
+    ] {
+        assert_eq!(phase(key), Some(2), "{key}");
+    }
+    for key in ["touch.tport", "touch.tland", "touch.topac", "touch.thide"] {
+        assert_eq!(phase(key), Some(4), "{key}");
+    }
+}
+
+#[test]
 fn the_vibration_strength_shows_only_with_the_vibration_on() {
     let cond = entry("touch.thapt")
         .and_then(|e| e.show_if)
