@@ -41,6 +41,9 @@ import type { CoreRestart } from '@/generated/app/CoreRestart'
 import type { CoverSource } from '@/generated/app/CoverSource'
 import type { Licence } from '@/generated/app/Licence'
 import type { StorageStatus } from '@/generated/app/StorageStatus'
+import type { StorageBreakdown } from '@/generated/app/StorageBreakdown'
+import type { StorageQuickGame } from '@/generated/app/StorageQuickGame'
+import type { StorageQuickPick } from '@/generated/app/StorageQuickPick'
 import type { GameScreenshot } from '@/generated/app/GameScreenshot'
 import type { PickedImage } from '@/generated/app/PickedImage'
 import type { FolderSaves } from '@/generated/app/FolderSaves'
@@ -196,6 +199,13 @@ export type { CoreRestart } from '@/generated/app/CoreRestart'
 export type { CoverSource } from '@/generated/app/CoverSource'
 export type { Licence } from '@/generated/app/Licence'
 export type { StorageStatus } from '@/generated/app/StorageStatus'
+export type { StorageBreakdown } from '@/generated/app/StorageBreakdown'
+export type { StorageGame } from '@/generated/app/StorageGame'
+export type { StorageGameLocation } from '@/generated/app/StorageGameLocation'
+export type { StorageQuickGame } from '@/generated/app/StorageQuickGame'
+export type { StorageQuickSlot } from '@/generated/app/StorageQuickSlot'
+export type { StorageQuickPick } from '@/generated/app/StorageQuickPick'
+export type { StorageScreenshotCount } from '@/generated/app/StorageScreenshotCount'
 export type { LicenceKind } from '@/generated/app/LicenceKind'
 export type { GameScreenshot } from '@/generated/app/GameScreenshot'
 export type { PickedImage } from '@/generated/app/PickedImage'
@@ -529,6 +539,21 @@ export const emu = {
   /** E13 (#29): the room left where the saves are written; null when the system does not say. */
   storage: {
     status: () => invoke<StorageStatus | null>('storage_status'),
+    /** «Gestisci lo spazio»: the disk's room and what EmuDome's files weigh (no Drive check). */
+    breakdown: () => invoke<StorageBreakdown>('storage_breakdown'),
+    /** «Salvataggi rapidi › Scegli»: every game's quick saves. */
+    quickSaves: () => invoke<StorageQuickGame[]>('storage_quick_saves'),
+    /** Deletes the quick saves picked (never an in-game save); how many went. */
+    deleteQuick: (picked: StorageQuickPick[]) => invoke<number>('storage_delete_quick', { picked }),
+    /** Deletes screenshots of a game by name; how many went. */
+    deleteScreenshots: (game: GameId, names: string[]) =>
+      invoke<number>('storage_delete_screenshots', { game, names }),
+    /** «File temporanei › Svuota»: the bytes freed. */
+    clearTemp: () => invoke<number>('storage_clear_temp'),
+    /** «Togli dal telefono»: a game file in EmuDome's own folder that Drive has; bytes freed. */
+    removeGame: (id: GameId) => invoke<number>('storage_remove_game', { id }),
+    /** «Apri la cartella»: the game's folder in the system's file manager (the desktop). */
+    openFolder: (id: GameId) => invoke<void>('storage_open_folder', { id }),
   },
   /** Android's back at the shell's root (#29): the app to the background; false on the desktop. */
   leaveToBackground: () => invoke<boolean>('leave_to_background'),

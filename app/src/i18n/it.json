@@ -606,7 +606,10 @@
     "updateGameOpen": "Chiudi prima il gioco, poi riavvia per aggiornare. I salvataggi restano come sono.",
     "logUnavailable": "In questa sessione non c’è un file di registro. Riavvia EmuDome e riprova.",
     "logExportFailed": "Non riesco a salvare il registro ({detail}). Scegli un’altra cartella e riprova.",
-    "licenceUnreadable": "Non riesco a leggere questa licenza ({detail}). Reinstalla EmuDome per riaverla."
+    "licenceUnreadable": "Non riesco a leggere questa licenza ({detail}). Reinstalla EmuDome per riaverla.",
+    "storageGameNotRemovable": "EmuDome toglie solo i giochi che ha scaricato lui e che sono anche su Google Drive. Questo gestiscilo con l’app dei file.",
+    "storageDeleteFailed": "Non riesco a eliminare tutto ({detail}). Quello che è già andato non torna: riprova per il resto.",
+    "storageFolderUnavailable": "Non riesco ad aprire la cartella ({detail}). Aprila con l’app dei file."
   },
   "errorCauses": {
     "romUnreadable": {
@@ -734,7 +737,7 @@
       "saves": {
         "quick": "SALVATAGGI RAPIDI",
         "ingame": "SALVATAGGIO DEL GIOCO",
-        "folder": "CARTELLA"
+        "folder": "CARTELLA E SPAZIO"
       },
       "pad": {
         "devices": "DISPOSITIVI COLLEGATI",
@@ -1239,6 +1242,11 @@
         "name": "Cartella dei salvataggi",
         "desc": "Dove EmuDome tiene salvataggi e salvataggi rapidi su questo dispositivo.",
         "button": "Cambia cartella…"
+      },
+      "space": {
+        "name": "Gestisci lo spazio",
+        "desc": "Cosa occupa spazio su questo dispositivo, e come liberarlo senza perdere i salvataggi.",
+        "button": "Apri"
       }
     },
     "pad": {
@@ -2798,7 +2806,66 @@
   "storage": {
     "low": "Spazio quasi finito: {free} liberi",
     "manage": "Gestisci lo spazio",
-    "manageNotYet": "La gestione dello spazio arriva in un prossimo aggiornamento."
+    "page": {
+      "title": "Gestisci lo spazio",
+      "free": "{size} liberi",
+      "of": "di {size}",
+      "parts": {
+        "games": "Giochi {size}",
+        "quick": "Salvataggi rapidi {size}",
+        "other": "Altro {size}",
+        "apps": "Altre app"
+      },
+      "games": "Giochi, dal più pesante",
+      "onDrive": "SU DRIVE",
+      "inFolder": "In {folder}",
+      "inYourFolder": "In una tua cartella",
+      "remove": "Togli dal telefono",
+      "removeHere": "Togli da questo dispositivo",
+      "openFolder": "Apri la cartella",
+      "noGames": "Nessun gioco su questo dispositivo.",
+      "yourFiles": "I giochi nelle tue cartelle li gestisci tu, con l’app dei file: EmuDome non cancella mai i tuoi file.",
+      "otherData": "Altri dati",
+      "quick": "Salvataggi rapidi",
+      "quickLine": "{size} · {slots} slot in {games} gioco | {size} · {slots} slot in {games} giochi",
+      "shots": "Screenshot",
+      "shotsLine": "{size} · {n} immagine | {size} · {n} immagini",
+      "temp": "File temporanei",
+      "tempLine": "{size} · si ricreano da soli",
+      "choose": "Scegli",
+      "open": "Apri",
+      "empty": "Svuota",
+      "measuring": "Sto misurando lo spazio…",
+      "cancel": "Annulla",
+      "askRemoveTitle": "Togliere {title} dal telefono?",
+      "askRemoveTitleHere": "Togliere {title} da questo dispositivo?",
+      "askRemoveText": "Il file del gioco va via da questo dispositivo. I salvataggi restano e il gioco resta in libreria: lo riscarichi da Google Drive quando vuoi.",
+      "askTempTitle": "Svuotare i file temporanei?",
+      "askTempText": "Si ricreano da soli quando servono: il primo avvio di un gioco 3DS può essere più lento. I salvataggi restano.",
+      "removed": "{title} tolto: {size} liberati.",
+      "cleared": "File temporanei svuotati: {size} liberati."
+    },
+    "quick": {
+      "intro": "Scegli i salvataggi rapidi da eliminare. I salvataggi del gioco restano.",
+      "none": "Nessun salvataggio rapido.",
+      "unknownGame": "Gioco non in libreria",
+      "slotLine": "{when} · {size}",
+      "deleteNone": "Elimina",
+      "delete": "Elimina {n} · {size}",
+      "askTitle": "Eliminare {n} salvataggio rapido? | Eliminare {n} salvataggi rapidi?",
+      "askText": "Non si possono recuperare. I salvataggi del gioco restano.",
+      "askConfirm": "Elimina",
+      "deleted": "{n} salvataggio rapido eliminato. | {n} salvataggi rapidi eliminati."
+    },
+    "shots": {
+      "none": "Nessuno screenshot.",
+      "deleteNone": "Elimina",
+      "delete": "Elimina {n}",
+      "askTitle": "Eliminare {n} screenshot? | Eliminare {n} screenshot?",
+      "askText": "Non si possono recuperare. Le copertine fatte da uno screenshot restano.",
+      "askConfirm": "Elimina",
+      "deleted": "{n} screenshot eliminato. | {n} screenshot eliminati."
+    }
   },
   "updates": {
     "title": "Aggiornamento disponibile",
