@@ -30,10 +30,20 @@ use crate::{events, CurrentShared};
 /// (`speed.ffval`, `speed.slow`, read into `PadConfig`).
 const NORMAL: Speed = Speed::Factor(1.0);
 
-/// Payload of `emu://nav`: `{ action: "up" | "down" | "left" | "right" | "confirm" | "back" }`.
+/// Payload of `emu://nav`: `{ action: "up" | "down" | ... | "back", system }`. `system`: the step
+/// is Android's own back button, not a controller's, so the interface neither shows the focus
+/// ring nor takes the controller as the input in use (#131).
 #[derive(Clone, Serialize)]
 pub struct NavEvent {
     action: Nav,
+    system: bool,
+}
+
+/// Payload of `emu://menu`: `{ system }`, as [`NavEvent`]'s (Android's back opening the quick
+/// menu in game, #131).
+#[derive(Clone, Serialize)]
+pub struct MenuEvent {
+    system: bool,
 }
 
 /// Payload of `emu://hotkey`: what a shortcut changed, for the interface to show. Codes and
@@ -208,7 +218,13 @@ impl Runner {
 
     fn run(&mut self, action: Action, from: Origin) {
         match action {
-            Action::Nav(nav) => self.emit(events::NAV, NavEvent { action: nav }),
+            Action::Nav(nav) => self.emit(
+                events::NAV,
+                NavEvent {
+                    action: nav,
+                    system: false,
+                },
+            ),
             Action::Press(hotkey) => self.press(hotkey, from),
             Action::Release(hotkey) => self.release(hotkey, from),
         }
@@ -216,7 +232,7 @@ impl Runner {
 
     fn press(&mut self, hotkey: Hotkey, from: Origin) {
         match hotkey {
-            Hotkey::ToggleMenu => self.emit(events::MENU, ()),
+            Hotkey::ToggleMenu => self.emit(events::MENU, MenuEvent { system: false }),
             Hotkey::SaveState => {
                 self.send(Command::SaveState(self.pads.slot()));
             }
@@ -376,8 +392,14 @@ pub(crate) fn back_button(app: &AppHandle) {
         state.menu_open.load(std::sync::atomic::Ordering::Relaxed),
     );
     let sent = match route {
-        BackRoute::Menu => app.emit(events::MENU, ()),
-        BackRoute::Nav => app.emit(events::NAV, NavEvent { action: Nav::Back }),
+        BackRoute::Menu => app.emit(events::MENU, MenuEvent { system: true }),
+        BackRoute::Nav => app.emit(
+            events::NAV,
+            NavEvent {
+                action: Nav::Back,
+                system: true,
+            },
+        ),
     };
     if let Err(e) = sent {
         log::warn!("back button ({route:?}) not delivered: {e}");
@@ -390,6 +412,15 @@ pub(crate) fn back_button(app: &AppHandle) {
 #[tauri::command]
 pub(crate) fn leave_to_background() -> bool {
     emudome_platform::move_to_background()
+}
+
+/// Android's system bars hidden (`on`) or shown again, for the layout editors opened from
+/// Settings with no game (#131): they place the controls and the screens as a game is placed, and
+/// a game has the whole screen. While a game is open its own hook holds them hidden
+/// (`game_hooks`), and the editors over it do not call this. The desktop: nothing.
+#[tauri::command]
+pub(crate) fn set_immersive(on: bool) {
+    emudome_platform::set_immersive(on);
 }
 
 #[cfg(test)]

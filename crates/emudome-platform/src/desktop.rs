@@ -43,6 +43,9 @@ pub fn move_to_background() -> bool {
     false
 }
 
+/// No system bars to hide: the window's own full screen is `video.window`.
+pub fn set_immersive(_on: bool) {}
+
 pub fn packaged_core(_name: &str) -> Option<PathBuf> {
     None
 }

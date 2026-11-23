@@ -28,7 +28,9 @@ export function useGameKeys(session: GameSession) {
   }
 
   function onKey(e: KeyboardEvent, pressed: boolean) {
-    if (pressed) showFocusRing()
+    // Not for the system's back key, should the webview pass it on: Android's back reaches the
+    // page as a step of its own (`emu://nav`, `system`) and shows no ring (#131).
+    if (pressed && e.code !== 'BrowserBack' && e.key !== 'GoBack') showFocusRing()
     const route = keyRoute(
       e.code,
       pressed,

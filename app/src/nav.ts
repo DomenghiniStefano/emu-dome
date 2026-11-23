@@ -323,9 +323,10 @@ function sectionOwns(path: Scope[], scope: Scope, action: NavAction): boolean {
   )
 }
 
-/** One step to the scopes that receive the steps (`activePath`). */
-export function dispatchNav(action: NavAction) {
-  showFocusRing()
+/** One step to the scopes that receive the steps (`activePath`). `ring: false` for a step that is
+ * not a move without the mouse (Android's own back, #131): the focus ring stays as it was. */
+export function dispatchNav(action: NavAction, opts: { ring?: boolean } = {}) {
+  if (opts.ring !== false) showFocusRing()
   const path = activePath()
   const scope = movementScope(path)
   const root = scope?.root.value

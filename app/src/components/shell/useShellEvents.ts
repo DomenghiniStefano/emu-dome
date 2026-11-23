@@ -85,14 +85,18 @@ export function useShellEvents(
         e => session.settingsConcern(e.key),
         () => void session.loadSettings(),
       ),
-      emu.onMenu(() => {
-        usedController()
-        showFocusRing()
+      // Android's own back (`system`) is neither a controller nor a step without the mouse: no
+      // focus ring, and the input in use stays what it was (#131).
+      emu.onMenu(system => {
+        if (!system) {
+          usedController()
+          showFocusRing()
+        }
         report(session.toggleMenu())
       }),
-      emu.onNav(action => {
-        usedController()
-        dispatchNav(action)
+      emu.onNav((action, system) => {
+        if (!system) usedController()
+        dispatchNav(action, { ring: !system })
       }),
       emu.onHotkey(session.onHotkey),
       // A screen effect could not be used: the game shows without it.

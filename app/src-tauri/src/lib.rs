@@ -163,7 +163,8 @@ impl AppState {
 /// What lives as long as a game is open, in the order it starts (it stops in reverse): the
 /// native renderer's source, the settings session («in prova»), the core options that follow
 /// the settings, the screens' layout and lid (after the session it reads), the window's size
-/// (`video.winsize`), the library's play time, the Drive marker's heartbeat.
+/// (`video.winsize`), Android's system bars hidden, the library's play time, the Drive marker's
+/// heartbeat.
 fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
     let (a, b) = (app.clone(), app.clone());
     let renderer = Hooks::new(
@@ -200,6 +201,13 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         move |g| window::apply(&a, window::Why::Game(g.console)),
         || {},
     );
+    // Android: the system bars hidden while the game is open, the quick menu and its editors
+    // included (they place the controls over the game as it is drawn), shown again in the shell
+    // (#131). The desktop: nothing.
+    let immersive = Hooks::new(
+        |_| emudome_platform::set_immersive(true),
+        || emudome_platform::set_immersive(false),
+    );
     let (a, b) = (app.clone(), app.clone());
     let play_time = Hooks::new(
         move |g| {
@@ -215,6 +223,7 @@ fn game_hooks(app: &tauri::AppHandle) -> Vec<Hooks> {
         core_options,
         screens,
         window_size,
+        immersive,
         play_time,
         // The Drive «in use» marker and its heartbeat (#31), while sync is on.
         cloud::heartbeat_hooks(app),
@@ -515,9 +524,11 @@ pub fn run() {
             closing::close_wait,
             closing::close_anyway,
             game::abandon_game,
-            // The phone (#29): E13's room left, Android's back at the shell's root.
+            // The phone (#29): E13's room left, Android's back at the shell's root, the system
+            // bars for the layout editors outside a game (#131).
             storage::storage_status,
             hotkeys::leave_to_background,
+            hotkeys::set_immersive,
             commands::list_slots,
             commands::set_speed,
             commands::set_paused,

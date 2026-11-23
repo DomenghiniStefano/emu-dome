@@ -149,6 +149,7 @@
      The rail's side column keeps at least 28 from the camera's edge (the mockup's room for the
      notch), more if the system says so. */
   --spacing-safe-top: env(safe-area-inset-top, 0px);
+  --spacing-safe-bottom: env(safe-area-inset-bottom, 0px);
   --spacing-tabbar-bottom: max(var(--spacing-4), env(safe-area-inset-bottom, 0px));
   --spacing-safe-left: env(safe-area-inset-left, 0px);
   --spacing-safe-right: env(safe-area-inset-right, 0px);

@@ -11,6 +11,8 @@ import android.os.VibratorManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.util.Log
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
@@ -64,6 +66,47 @@ object SystemBridge {
     @JvmStatic
     fun moveToBack(activity: Activity) {
         activity.runOnUiThread { activity.moveTaskToBack(true) }
+    }
+
+    /**
+     * The system bars (Trello #131, Rust's `set_immersive`): hidden while a game is open, the whole
+     * screen the game's (a swipe shows them for a moment), shown again in the shell, which then
+     * lays itself out inside their insets (the page's `env(safe-area-inset-*)`). Applied again
+     * each time the window gets the focus back (the notification shade, another app, a system
+     * dialog can leave the bars shown). Before Android 11 nothing changes: the bars stay as the
+     * system shows them. Called from any thread.
+     */
+    @JvmStatic
+    fun setImmersive(activity: Activity, on: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        immersive = on
+        activity.runOnUiThread {
+            if (!focusWatched) {
+                focusWatched = true
+                activity.window.decorView.viewTreeObserver.addOnWindowFocusChangeListener { focused ->
+                    if (focused) applyBars(activity)
+                }
+            }
+            applyBars(activity)
+        }
+    }
+
+    /** Whether the bars are wanted hidden ([setImmersive]); read on the UI thread. */
+    @Volatile
+    private var immersive = false
+
+    /** The window's focus listener is added once (UI thread only). */
+    private var focusWatched = false
+
+    private fun applyBars(activity: Activity) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val controller = activity.window.insetsController ?: return
+        if (immersive) {
+            controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsets.Type.systemBars())
+        } else {
+            controller.show(WindowInsets.Type.systemBars())
+        }
     }
 
     /** The game the app was started with: the `game` extra (adb), else the document of «Open with». */

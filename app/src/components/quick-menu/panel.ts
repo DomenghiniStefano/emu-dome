@@ -18,6 +18,8 @@ export const PanelLayout = {
    * Phone in portrait: a bottom sheet under the game, as tall as its content (owner, 2026-11-22:
    * the first level is one row of tiles and a strip, «Altro» grows the same sheet), never higher
    * than leaves `sheet-game-min` of the game above it; no handle. G09 starts at a fixed place.
+   * Its foot keeps above the navigation bar should the system show it (`safe-bottom`; in game
+   * the bars are hidden and it is 0, #131).
    */
   Sheet: 'sheet',
   /**
@@ -47,9 +49,9 @@ export const panelVariants = cva('glass-thick-flat flex flex-col border-line', {
       [PanelLayout.Bar]:
         'absolute bottom-16 left-1/2 w-bar max-w-[calc(100vw-var(--spacing-window-margin))] -translate-x-1/2 gap-12 rounded-panel border shadow-panel',
       [PanelLayout.Sheet]:
-        'absolute inset-x-0 bottom-0 max-h-[calc(100%-var(--spacing-sheet-game-min))] gap-8 rounded-t-panel border-t px-12 pt-12 pb-16 text-lead shadow-sheet',
+        'absolute inset-x-0 bottom-0 max-h-[calc(100%-var(--spacing-sheet-game-min))] gap-8 rounded-t-panel border-t px-12 pt-12 pb-[calc(var(--spacing-16)+var(--spacing-safe-bottom))] text-lead shadow-sheet',
       [PanelLayout.Side]:
-        'absolute inset-y-0 right-0 w-side-panel max-w-full gap-8 border-l pt-side-panel-top pr-side-panel-end pb-12 pl-12 text-lead shadow-sheet',
+        'absolute inset-y-0 right-0 w-side-panel max-w-full gap-8 border-l pt-side-panel-top pr-side-panel-end pb-[calc(var(--spacing-12)+var(--spacing-safe-bottom))] pl-12 text-lead shadow-sheet',
     },
     top: {
       [SheetTop.Content]: '',
@@ -69,13 +71,14 @@ export function sheetPanel(view: QuickMenuView): string {
 }
 
 /** What the quick menu keeps clear of the game: the phone's sheet (the bottom), its side panel
- * (the right), nothing (the desktop's panel over the dimmed game, the editors over the game at
- * its real size), or `bar` (G09 on desktop: ScreensBar measures its own). */
+ * (the right), nothing (the desktop's panel over the dimmed game, C09 over the game at its real
+ * size), or `own`: the page shown sends its own (G09 on desktop: ScreensBar; C06: TouchEditor,
+ * the game placed for the touch layout being edited, #131). */
 export const MenuInset = {
   Sheet: 'sheet',
   Side: 'side',
   None: 'none',
-  Bar: 'bar',
+  Own: 'own',
 } as const
 export type MenuInset = (typeof MenuInset)[keyof typeof MenuInset]
 
@@ -85,7 +88,7 @@ export type MenuInset = (typeof MenuInset)[keyof typeof MenuInset]
  * board's game image over the sheet), beside the side panel it is centred in what is left.
  */
 export function panelInset(
-  kind: Exclude<MenuInset, 'bar'>,
+  kind: Exclude<MenuInset, 'own'>,
   rect: { left: number; top: number },
   view: { width: number; height: number },
 ): InsetPx {
