@@ -7,7 +7,7 @@
 
    Two kinds of name:
    - numbers: the design system's grid (README «Spazio»: `space-2` … `space-48`), plus the off-grid
-     steps the screens use today (10, 14, 18), marked, until Cowork decides whether they stay;
+     steps the screens use today (10, 14, 18), marked, until a design decision says whether they stay;
    - words: sizes that mean something (a control's height, a dialog's width). */
 @theme {
   --spacing: initial;
@@ -30,7 +30,7 @@
   --spacing-10: 10px;
   --spacing-14: 14px;
   --spacing-18: 18px;
-  /* Pending Cowork, off the grid too: 52, the tall rows and actions of the focus moments (the
+  /* Pending design, off the grid too: 52, the tall rows and actions of the focus moments (the
      quick menu's speeds, the rail's sections, the phone's main action, a cover's actions row). */
   --spacing-52: 52px;
 
@@ -39,7 +39,7 @@
   --spacing-control-sm: 24px;
   --spacing-control: 28px;
   --spacing-control-lg: 32px;
-  /* Pending Cowork (spec Decision 5: fold into 32 or 40, or a fourth step): 36, a dialog's and a
+  /* Pending design (spec Decision 5: fold into 32 or 40, or a fourth step): 36, a dialog's and a
      page's pair of actions, a cover's actions, the quick menu's compact actions, the phone's tabs. */
   --spacing-control-md: 30px;
   /* The top bar's height (tokens.json `titlebar`). */
@@ -71,7 +71,7 @@
   /* A slider's value beside it. */
   --spacing-value: 64px;
 
-  /* Settings (#62, the values of the screen as it is; not in the design system yet: Cowork). */
+  /* Settings (#62, the values of the screen as it is; not in the design system yet: design). */
   /* A section's side column of pages (the settings categories). */
   --spacing-sidebar: 248px;
   /* The widest a page's content grows (a settings page). */
@@ -116,7 +116,7 @@
   --spacing-block-gap: var(--spacing-6);
 }
 
-/* Pending Cowork (spec Decision 5, «Handed back to design»): every other size the screens use
+/* Pending design (spec Decision 5, «Handed back to design»): every other size the screens use
    today, off the design system's scales, named once here by what it is for. A change of look is an
    edit here, never in a screen. Steps first, then sizes by area. */
 @theme {
@@ -302,7 +302,7 @@
 @theme {
   --container-*: initial;
   --breakpoint-*: initial;
-  /* Pending Cowork: below this window width the Controls overview stacks its two columns. */
+  /* Pending design: below this window width the Controls overview stacks its two columns. */
   --breakpoint-controls-stack: 900px;
   /* Pending (owner): below this window width (a phone upright, 320-430) the Settings scope bar
      stacks its level cards, so a level's name stays on its line above its description. */

@@ -32,7 +32,7 @@ export function levelScope(
   return { level: 'global' }
 }
 
-/** As the Settings section does: the console of the last game played (TODO Cowork, #41). */
+/** As the Settings section does: the console of the last game played (TODO design, #41). */
 export function lastPlayedConsole(games: LibraryGame[]): ConsoleId | null {
   const last = [...games]
     .filter(g => g.lastPlayed !== null)

@@ -24,7 +24,7 @@ const layout = useDeviceLayout()
   >
     <!-- Decoration: the wordmark beside it says the name. -->
     <img :src="markSmall" alt="" aria-hidden="true" class="block h-mark-small w-auto" />
-    <!-- The wordmark's 14px and -0.025em are off the type scale (Cowork, spec Decision 5). -->
+    <!-- The wordmark's 14px and -0.025em are off the type scale (design, spec Decision 5). -->
     <div class="text-wordmark">EmuDome</div>
     <div class="flex-1"></div>
     <Button

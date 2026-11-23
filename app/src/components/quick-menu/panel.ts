@@ -1,6 +1,6 @@
 // Where the quick menu's glass panel sits and how it is cut, per layout: the desktop's panel, the
 // G09 bar, the phone's sheet, the phone's side panel. Its shadows (`shadow-panel`, `shadow-sheet`)
-// and the 640 / 1040 widths are pending tokens, awaiting Cowork (spec Decision 5).
+// and the 640 / 1040 widths are pending tokens, awaiting a design decision (spec Decision 5).
 import { cva } from 'class-variance-authority'
 import { NO_INSET, type InsetPx } from '@/components/game/inset'
 import { QuickMenuView } from './view'

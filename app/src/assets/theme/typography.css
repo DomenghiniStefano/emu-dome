@@ -19,7 +19,7 @@
 
   --tracking-*: initial;
   --leading-*: initial;
-  /* Pending Cowork: lines off the scale, each one place's: a cover's title (19), the quick menu's
+  /* Pending design: lines off the scale, each one place's: a cover's title (19), the quick menu's
      speed segments (17). */
   --leading-cover: 19px;
   --leading-stacked: 17px;
@@ -63,7 +63,7 @@
   --text-overline--letter-spacing: 0.08em;
 
   /* Off the design system's scale, in use today and needed by a primitive. Named by role
-     until Cowork places them (spec, «Handed back to design»):
+     until a design decision places them (spec, «Handed back to design»):
      - cta: the main action's label (`.btn-primary`, 14px on the inherited 18px line);
      - dialog: a dialog's title (FlowDialog, 18 / 24). */
   --text-cta: 14px;
@@ -86,8 +86,8 @@
   --text-pad-system--font-weight: 600;
   --text-pad-system--letter-spacing: 0.06em;
 
-  /* Pending Cowork (spec Decision 5, «Handed back to design»): steps in use today, off the
-     scale, named once here until Cowork places them. No weight where the screens inherit it.
+  /* Pending design (spec Decision 5, «Handed back to design»): steps in use today, off the
+     scale, named once here until a design decision places them. No weight where the screens inherit it.
      - caption-tall: caption on the body's 18px line (key caps, a tester's key, hints beside a
        control, a tile's actions);
      - caption-tight: caption on a 14px line (a quick save's date on the phone);
@@ -221,7 +221,7 @@
   --tv-scale: 1;
 }
 
-/* Pending Cowork: an inline icon on a line of text, nudged down onto the letters' middle (the
+/* Pending design: an inline icon on a line of text, nudged down onto the letters' middle (the
    library's «unreachable folders» hint). vertical-align has no theme namespace in Tailwind, so
    the value is a named utility, as the stacking layers are (layers.css). */
 @utility align-icon {

@@ -1,6 +1,6 @@
 // The level the Settings section edits (the scope bar): «Tutti i giochi», «Giochi <console> ▾»
 // (the consoles with games in the library, starting on the open game's console, else the last
-// one played: Cowork, #41) and, when the section opened from a game's details (L06), «Solo questo
+// one played: design, #41) and, when the section opened from a game's details (L06), «Solo questo
 // gioco» for that game, chosen on arrival.
 import { computed, ref, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // «…» of a game (board L01 «Altre azioni» on a cover, #59 item 2; L04 in the game details): the
 // game's actions that have a backend today, those listed in `items`. «Scegli la copertina…»
-// opens L12 and is offered from the game details only (Cowork, #40); favourite and hide go
+// opens L12 and is offered from the game details only (design, #40); favourite and hide go
 // through `library.setFlags`.
 // On the DropdownMenu primitive, hanging from the parent's «…» button (`anchor`); open while
 // mounted (the parent shows it with `v-if`, so a grid of covers holds no closed menus), closed by

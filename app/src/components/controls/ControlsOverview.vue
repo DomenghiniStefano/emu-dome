@@ -7,7 +7,7 @@
 // 12-button grid of C02. Then the rows down to C02 «Rimappa i pulsanti», C04 «Stick, grilletti e
 // vibrazione» and the touch controls (customised on the phone).
 //
-// TODO(Cowork, C01): the board also lists controllers used before and now disconnected
+// TODO(design, C01): the board also lists controllers used before and now disconnected
 // («Non collegato · ricordato»); EmuDome does not remember controllers yet.
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

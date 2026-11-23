@@ -11,7 +11,7 @@ export const HeadingVariant = {
   Heading: 'heading',
   // A page's or a block's title (Library, Saves, Settings, Controls, an empty state).
   Title: 'title',
-  // A quick menu page's title (`page-title`, pending Cowork).
+  // A quick menu page's title (`page-title`, pending design).
   PageTitle: 'pageTitle',
   // A scene's title (a first run step, a game starting or closing): display type, smaller on
   // the phone (`display-md`).

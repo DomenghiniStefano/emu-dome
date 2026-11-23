@@ -49,7 +49,7 @@ async function exportInGame() {
 </script>
 
 <template>
-  <!-- The phone's card text is 14px (spec Decision 5, Cowork); its buttons take it. -->
+  <!-- The phone's card text is 14px (spec Decision 5, design); its buttons take it. -->
   <DetailsCard as="aside" class="gap-8 touch:gap-6 touch:text-cta-inline">
     <Heading as="h2" :variant="HeadingVariant.Overline">{{ t('saves.inGameTitle') }}</Heading>
     <div v-if="phone" class="tabular-nums">

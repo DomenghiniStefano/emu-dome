@@ -2,8 +2,8 @@
 // The Settings section's left column: the title, the search, «In primo piano» (T01) and the
 // schema's pages by group, each with how many of its settings are changed at the level edited.
 // The page shown is marked (`aria-current`) only while no search is typed. In a short window the
-// entries give up height before the column scrolls (`shrink`, as the list always did: Cowork to
-// decide whether it should scroll instead).
+// entries give up height before the column scrolls (`shrink`, as the list always did; whether it
+// should scroll instead is a design decision).
 // The phone held upright (#29, settingsPane.ts): the list alone, full width, scrolling; while a
 // search is typed, only the title and the field, the results under them.
 import { useI18n } from 'vue-i18n'

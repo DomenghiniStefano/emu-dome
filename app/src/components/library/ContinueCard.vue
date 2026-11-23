@@ -26,7 +26,7 @@ const from = computed(() => resumeSource(props.point))
   <Card :pad="CardPad.Tight" class="min-w-0 flex-row gap-10">
     <!-- 96px is the picture's own width, kept 3:2 at the top of the card (`self-start`: it never
          stretches to the card's height); a game that is not reachable fades it to 45%
-         (Cowork: `disabled` is 40%). -->
+         (design: `disabled` is 40%). -->
     <SaveThumb
       :src="point?.thumbUrl"
       crop

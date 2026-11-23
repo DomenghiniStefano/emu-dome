@@ -42,7 +42,7 @@ defineExpose({ focusCurrent })
 </script>
 
 <template>
-  <!-- The rail's 76px width is its own (the design system's `sidebar` is 56: Cowork). -->
+  <!-- The rail's 76px width is its own (the design system's `sidebar` is 56: design). -->
   <nav
     ref="nav"
     :class="
@@ -63,7 +63,7 @@ defineExpose({ focusCurrent })
         @click="emit('pick', s)"
       >
         <component :is="SECTION_ICONS[s]" :size="20" :stroke-width="1.75" aria-hidden="true" />
-        <!-- 10/12 is off the type scale (the smallest step is 11/14: Cowork). -->
+        <!-- 10/12 is off the type scale (the smallest step is 11/14: design). -->
         <span class="text-rail font-medium whitespace-nowrap">{{ t(`shell.${s}`) }}</span>
       </Button>
     </template>

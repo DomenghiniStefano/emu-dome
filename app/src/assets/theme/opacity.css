@@ -7,11 +7,11 @@
   /* A setting that cannot be changed at this level, a choice that is not available yet
      (SettingRow `.locked`, `.not-yet`). */
   --opacity-locked: 0.55;
-  /* Pending Cowork (spec Decision 5 proposes 0.5 -> `locked` 0.55): half faded, the disabled look
+  /* Pending design (spec Decision 5 proposes 0.5 -> `locked` 0.55): half faded, the disabled look
      of the quick menu's actions, of a list row that cannot be opened yet (Controls) and of the
      first run's row actions. */
   --opacity-dim: 0.5;
-  /* Pending Cowork: a value under its name, a little quieter (the quick menu's speed factors, a
+  /* Pending design: a value under its name, a little quieter (the quick menu's speed factors, a
      console chip's count), and a game whose file is missing (the library's covers, 45%; the
      title and details under them, 60%). */
   --opacity-soft: 0.8;

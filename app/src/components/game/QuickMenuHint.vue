@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // G06: how to open the quick menu, at the top over the game, the first few games. It fades out
-// (600 ms, a value waiting for Cowork: spec Decision 5).
+// (600 ms, a value waiting for a design decision: spec Decision 5).
 import { useI18n } from 'vue-i18n'
 import { Kbd } from '@/components/ui/kbd'
 

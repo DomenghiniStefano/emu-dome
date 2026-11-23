@@ -22,7 +22,7 @@ export const BadgeVariant = {
 export type BadgeVariant = (typeof BadgeVariant)[keyof typeof BadgeVariant]
 
 export const BadgeSize = {
-  // A tag: square corners (`radius-badge`), 11px on a 16px line (`badge`, pending Cowork).
+  // A tag: square corners (`radius-badge`), 11px on a 16px line (`badge`, pending design).
   Tag: 'tag',
   // Once a round pill; since the compact look (owner, 2026-11-22) the same square tag as Tag, so
   // a state has one shape whatever its colour. Kept so callers need no change.
