@@ -90,7 +90,9 @@ export function platformIncludes(platform: SettingPlatform, device: SettingDevic
   switch (platform) {
     case 'all':
       return true
+    // A keyboard row is not in the phone's schema at all (`Platform::listed_on`, #118).
     case 'desktop':
+    case 'keyboard':
       return device === 'desktop'
     case 'phone':
     case 'touch':
@@ -121,7 +123,9 @@ export function lockReason(
   console: ConsoleId | null = null,
 ): string | null {
   if (!platformIncludes(entry.platform, schema.device))
-    return entry.platform === 'desktop' ? 'settingsUi.lockedDesktop' : 'settingsUi.lockedPhone'
+    return platformIncludes(entry.platform, 'desktop')
+      ? 'settingsUi.lockedDesktop'
+      : 'settingsUi.lockedPhone'
   // A build without the update key cannot update itself (Trello #44, `emudome_platform::updater`).
   if (UPDATE_ROWS.includes(entry.key) && updateUnavailable.value)
     return 'settingsUi.lockedNoUpdates'

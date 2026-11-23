@@ -87,6 +87,9 @@ pub enum Platform {
     Phone,
     /// Only where there is a touch screen. For now that means the phone.
     Touch,
+    /// About the keyboard: the desktop. Unlike «solo PC» it is left out of the phone's schema
+    /// altogether (not shown disabled there): a keyboard row says nothing on a phone (#118).
+    Keyboard,
 }
 
 /// What this device is, from `emudome_platform`. TypeScript: `SettingDevice` (generated).
@@ -102,10 +105,19 @@ impl Platform {
     pub fn includes(self, device: Device) -> bool {
         match (self, device) {
             (Platform::All, Device::Desktop | Device::Phone)
-            | (Platform::Desktop, Device::Desktop)
+            | (Platform::Desktop | Platform::Keyboard, Device::Desktop)
             | (Platform::Phone | Platform::Touch, Device::Phone) => true,
-            (Platform::Desktop, Device::Phone)
+            (Platform::Desktop | Platform::Keyboard, Device::Phone)
             | (Platform::Phone | Platform::Touch, Device::Desktop) => false,
+        }
+    }
+
+    /// Whether an entry of this platform is in `device`'s schema at all: every one is (one for
+    /// another device shown disabled with the reason), except a keyboard row off the desktop.
+    pub fn listed_on(self, device: Device) -> bool {
+        match self {
+            Platform::Keyboard => self.includes(device),
+            Platform::All | Platform::Desktop | Platform::Phone | Platform::Touch => true,
         }
     }
 }
@@ -649,6 +661,7 @@ pub fn schema(device: Device) -> SchemaDto {
         sections: super::catalog::SECTIONS,
         entries: super::catalog::ENTRIES
             .iter()
+            .filter(|e| e.platform.listed_on(device))
             .map(|e| EntryDto {
                 key: e.key,
                 page: e.page(),
