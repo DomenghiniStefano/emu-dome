@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { i18n } from './index'
 import {
+  causeText,
   changedWhenLabel,
   daysApart,
   lastPlayedLabel,
@@ -134,6 +135,27 @@ describe('errorText', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     expect(errorText({ code: 'nothingToUndo' })).toBe(i18n.global.t('errors.nothingToUndo'))
     expect(warn).not.toHaveBeenCalled()
+  })
+  it('tells a file error by its cause, never by a path (Trello #128)', () => {
+    const path = '/storage/emulated/0/Download/ROMs/Pokemon Emerald (USA).gba'
+    for (const locale of ['en', 'it'] as const) {
+      i18n.global.locale.value = locale
+      for (const cause of ['notFound', 'permissionDenied', 'other'] as const) {
+        const text = errorText({
+          code: 'romUnreadable',
+          params: { file: 'Pokemon Emerald (USA).gba', path, cause },
+        })
+        expect(text).toBe(causeText('romUnreadable', cause))
+        expect(text).not.toContain('/')
+        expect(text).not.toContain('{')
+      }
+      const folder = errorText({
+        code: 'saveFolderUnavailable',
+        params: { folder: 'C:/data/saves/gba/1a', cause: 'permissionDenied' },
+      })
+      expect(folder).toContain(causeText('saveFolderUnavailable', 'permissionDenied'))
+      expect(folder).not.toContain('C:/data')
+    }
   })
 })
 
