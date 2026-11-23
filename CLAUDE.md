@@ -538,8 +538,17 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     to the new surface). It presents only when something changed (a new frame wakes it through
     `Shared::frame_wake`, or a message), else sleeps; a minimized window draws nothing; a failed present waits
     8 ms. A detach waits for the GPU to finish before the surface goes (Android destroys it right after). Pacing
-    options (present-driven / audio-driven): `docs/video-pacing.md`.
+    options (present-driven / audio-driven): `docs/video-pacing.md`. `video.vsync` picks the present mode
+    (on: `AutoVsync`, off: `AutoNoVsync`), applied at once by configuring the surface again; the
+    `EMUDOME_PRESENT_MODE` knob overrides it (`tuning.rs`). The row is disabled on Compatible.
   - **Webview**: the RGBA frames reach a `<canvas>` through the `emu://frame?since=N` protocol.
+  - **Smoothing** (`video.filter`, `emudome_core::effects::Smoothing`): «none» nearest, «light» sharp bilinear (each
+    pixel enlarged by the largest whole scale that fits along the frame's axes, blended only across what is left),
+    «soft» bilinear. Native: one linear sampler, the shader picks the sample point per screen (`game_uv`, the
+    `Screen` uniform's `smoothing` and `scale`), clamped inside the screen's own part of the frame so two screens
+    never bleed into each other; the effect's own output is still sampled nearest. Webview: `screenSmoothing`
+    (`screenDraw.ts`), the screen enlarged sharp into a canvas of its own, then drawn smoothed. Live on a change,
+    «in prova» included.
   - **Screens** (Trello #28): both paths draw each screen of the frame where `emudome_core::screens::compose`
     puts it for the open game's layout (`screens.*`, the layout shown, swapped or not, and `video.aspect` and
     `video.scale` for every console: 4:3 / 16:9 stretch the composed picture, «fit» / «integer» / «fill» size it,
@@ -749,7 +758,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Unit tests of `app/src-tauri` must not reach Tauri's runtime (an `AppHandle` method called from tested code): the
   test exe then imports Windows entry points it cannot load and dies with `STATUS_ENTRYPOINT_NOT_FOUND`
   (`health.rs`). Keep the `AppHandle` behind a closure made where the app exists.
-- A catalogue entry can be marked wired while nothing reads it (`video.filter`, Trello #109). Before building on a
+- A catalogue entry can be marked wired while nothing reads it (`video.filter`, `video.vsync`, `speed.spstart`,
+  Trello #109 / #123, wired since). Before building on a
   setting, grep for its reader (`settings/keys.rs`, the interface), not only `wired`.
 - Samsung's launcher (One UI) fills an adaptive icon's transparent background with black and crops it tighter than the
   72 dp preview: the Android icon has a solid background (amber) behind the mark, and is checked on a phone.
@@ -1037,7 +1047,7 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   rows (`cores.*all`, still links to nothing) show the count of options the pinned build declares
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
-- 16 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
+- 18 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
 - Touch controls (Trello #29): layouts per console and orientation (defaults for GB / GBC, GBA, DS and 3DS, the
   user's own from C06 kept per device), tap / hold / turbo (the repeat is the interface's, about 12 a second: the
@@ -1240,7 +1250,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   and end (no per-chunk progress), and a resumable upload resumes within its call, not after a restart; the
   download has no free-disk check before it starts; G04's `thumb` is always null; `games()` lists every app file
   in one `list_all` and downloads each device's library list (one request per device). Deletions never travel (a
-  file missing on one side is copied back). `changes.list` is implemented but no run uses it yet. Android: sign-in
+  file missing on one side is copied back). The side background images (`<app data>/backgrounds/`) are not synced,
+  so `video.surroundImg` is per device; a name whose file is missing draws the built-in background (`GameSurround.vue`)
+  and is logged. `changes.list` is implemented but no run uses it yet. Android: sign-in
   refused (`cloudSignInUnsupported`; plan in `emudome-platform/src/cloud.rs`), so nothing syncs there, and no TLS
   roots there (`emudome-sync/src/http.rs`). Linux: the Secret Service backend is not compiled or tried on this
   machine. The browser page after the sign-in shows the texts `cloud_sign_in` receives from the interface.
