@@ -1,5 +1,5 @@
 // The open game's settings the shell applies itself (fast forward, undo, rewind, colour
-// correction), at session level so its «in prova» changes count.
+// correction, the webview canvas's smoothing), at session level so its «in prova» changes count.
 import { ref, type Ref } from 'vue'
 import { emu, type GameInfo } from '@/emu'
 import { latest } from '@/lib/latest'

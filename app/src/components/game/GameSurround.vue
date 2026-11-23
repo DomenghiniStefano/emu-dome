@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // «Sfondo ai lati del gioco» (`video.surround*`, Settings board › Video) while a game runs: the
 // space around the game filled with the cover's colour, a built-in background (optionally
-// moving slowly), or the user's image, under «Oscura lo sfondo». Values are the open game's
+// moving slowly), or the user's image (the built-in one when that image is not on this device),
+// under «Oscura lo sfondo». Values are the open game's
 // (session level, so console and game values apply), followed live.
 //
 // Native video: a full-window layer with one hole per screen where video.rs draws it, as Rust's
@@ -78,6 +79,22 @@ const image = computed(() => {
   const v = values.value['video.surroundImg']
   return typeof v === 'string' && v ? backgroundUrl(v) : null
 })
+// The image named is not on this device (#126: the backgrounds folder is not synced): the
+// built-in background is drawn instead of a blank. Rust logs the missing file.
+const imageMissing = ref(false)
+watch(
+  image,
+  url => {
+    imageMissing.value = false
+    if (!url) return
+    const probe = new Image()
+    probe.onerror = () => {
+      if (image.value === url) imageMissing.value = true
+    }
+    probe.src = url
+  },
+  { immediate: true },
+)
 
 /** The background to paint, or null for the plain black of the video. */
 const background = computed<string | null>(() => {
@@ -89,6 +106,7 @@ const background = computed<string | null>(() => {
     case 'builtin':
       return BUILTIN_BACKGROUNDS[builtin.value] ?? AURORA
     case 'image':
+      if (image.value && imageMissing.value) return BUILTIN_BACKGROUNDS[builtin.value] ?? AURORA
       return image.value ? `center / cover no-repeat url("${image.value}"), #000` : null
     default:
       // `black`, and `blur` until the video draws it (shown disabled in the settings).

@@ -21,9 +21,12 @@ export interface GameSettings {
   undoAllowed: boolean
   /** `a11y.cblind`: the colour correction on the game. */
   colourBlind: string
+  /** `video.filter`: how the webview canvas smooths the game (the native renderer reads it in
+   * Rust). */
+  smoothing: string
 }
 
-export const GAME_SETTING_PAGES = ['speed', 'saves', 'a11y'] as const
+export const GAME_SETTING_PAGES = ['speed', 'saves', 'a11y', 'video'] as const
 
 export function gameSettingsFrom(
   rows: { key: string; value: SettingValue | null }[],
@@ -34,6 +37,7 @@ export function gameSettingsFrom(
     ffSpeed: modeSpeeds(of('speed.ffval'), of('speed.slow')).ff,
     undoAllowed: of('saves.undo') !== false,
     colourBlind: String(of('a11y.cblind') ?? 'none'),
+    smoothing: String(of('video.filter') ?? 'light'),
   }
 }
 

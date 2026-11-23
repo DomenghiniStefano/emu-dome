@@ -7,7 +7,9 @@ use emudome_core::core_profile::{state_load_block, CoreId, Renderer, StateLoadBl
 use emudome_core::n3ds::fallback::FallbackWatch;
 use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::settings::ConsoleId;
-use emudome_core::{ErrorCode, Event, GameKey, GameReader, Session, SessionOptions, VideoSetup};
+use emudome_core::{
+    Command, ErrorCode, Event, GameKey, GameReader, Session, SessionOptions, Speed, VideoSetup,
+};
 use emudome_platform::CoreLookupError;
 use serde::Serialize;
 use tauri::{Emitter, Manager};
@@ -15,6 +17,7 @@ use ts_rs::TS;
 
 use crate::game_session::{AfterEnd, Opened};
 use crate::health::{Part, SharedHealth};
+use crate::pads::PadsState;
 use crate::{bios, closing, cloud, library, migration, saves, settings, AppState};
 
 #[derive(Serialize, TS)]
@@ -31,10 +34,15 @@ pub(crate) struct GameInfo {
     resumable: bool,
     /// `saves.autoexit`: closing writes the auto quick save (G14 lists the step).
     autosave_on_exit: bool,
+    /// The game's own quick slot (#110), current from its start: the last one chosen for it,
+    /// else the first.
+    quick_slot: u8,
     /// Why loading states is off for this game on the renderer it runs with (Trello #93), else
     /// null: the interface shows every load (Carica, the resume question's «Riprendi») disabled
     /// with this reason, and the session refuses them, rewind included.
     state_load_block: Option<StateLoadBlock>,
+    /// The speed it starts at (`speed.spstart`).
+    speed: Speed,
 }
 
 /// Which core to use for a file, and its console, by its extension.
@@ -464,6 +472,9 @@ fn open_path(
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
     saves::before_open(app, &save_dir, &game)?;
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
+    // The game's own quick slot (#110), read here, off the emulation thread, after the pull.
+    let quick_slot =
+        emudome_core::quick_slot::restore(&emudome_core::GameFiles::new(&save_dir, &game));
     let (renderer, video) = game_video(app, state, core);
     // Trello #93: on this renderer the core would crash loading a state of this game.
     let state_load_block = state_load_block(core, renderer, &game);
@@ -503,6 +514,11 @@ fn open_path(
         e.into_code(core.name())
     })?;
 
+    // `speed.spstart`: queued before the first frame runs.
+    if flow.start_speed != NORMAL_SPEED {
+        session.send(Command::SetSpeed(flow.start_speed));
+    }
+
     // The core's events go to the interface.
     let app_events = app.clone();
     std::thread::spawn(move || {
@@ -515,6 +531,8 @@ fn open_path(
     if let Some(tone) = state.bench.as_ref().and_then(|b| b.tone()) {
         shared.audio.set_test_tone(Some(tone));
     }
+    // The shortcuts reach the game only once it is open: they use its quick slot from the start.
+    app.state::<PadsState>().set_slot(quick_slot);
     state.games.open(
         session,
         &Opened {
@@ -542,9 +560,14 @@ fn open_path(
         core: core.name().into(),
         resumable,
         autosave_on_exit: flow.autosave_on_exit,
+        quick_slot,
         state_load_block,
+        speed: flow.start_speed,
     })
 }
+
+/// The speed a game runs at unless `speed.spstart` says otherwise.
+const NORMAL_SPEED: Speed = Speed::Factor(1.0);
 
 /// Closes the open game (back to the library) through the close flow; returns once it is
 /// closed. Off the event loop: it waits for the exit writes and the user's choice.

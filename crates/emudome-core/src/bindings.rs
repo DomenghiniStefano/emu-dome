@@ -421,6 +421,16 @@ impl Default for PadConfig {
     }
 }
 
+/// The speed a speed setting holds (`speed.ffval`, `speed.slow`, `speed.spstart`): its value, or
+/// the catalogue's default when it is not a speed. Every option of the speed settings is a speed
+/// (`every_speed_option_is_a_speed`): the last fallback is never reached.
+pub fn speed_setting<F: Fn(&str) -> Option<Value>>(settings: &Reader<F>, key: TextKey) -> Speed {
+    let default = || Reader::new(|_| None).text(key);
+    Speed::from_option(&settings.text(key))
+        .or_else(|| Speed::from_option(&default()))
+        .unwrap_or(Speed::Factor(1.0))
+}
+
 impl PadConfig {
     /// Builds the config from the resolved settings (`get(key)` → value, `None` for the
     /// schema default). A missing value or one of the wrong shape is the catalogue's default.
@@ -428,14 +438,7 @@ impl PadConfig {
         let settings = Reader::new(get);
         // Sliders are percentages (0..=100 in the catalogue).
         let percent = |key| u8::try_from(settings.int(key).clamp(0, 100)).unwrap_or(u8::MAX);
-        // Every option of the speed settings is a speed (`every_speed_option_is_a_speed`); the
-        // last fallback is never reached.
-        let speed = |key: TextKey| {
-            let default = || Reader::new(|_| None).text(key);
-            Speed::from_option(&settings.text(key))
-                .or_else(|| Speed::from_option(&default()))
-                .unwrap_or(Speed::Factor(1.0))
-        };
+        let speed = |key: TextKey| speed_setting(&settings, key);
         let modifier = match settings.text(keys::PAD_MODIFIER).as_str() {
             "r3" => Pos::R3,
             "select" => Pos::Back,
