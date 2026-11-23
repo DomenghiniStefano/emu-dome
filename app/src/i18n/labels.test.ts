@@ -106,6 +106,37 @@ describe('timeAgoLabel', () => {
   })
 })
 
+describe('errorText', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('never shows an exception’s own message, only the generic text; the detail is logged', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const thrown = new TypeError("Cannot read properties of undefined (reading 'filter')")
+    for (const locale of ['en', 'it'] as const) {
+      i18n.global.locale.value = locale
+      const text = errorText(thrown)
+      expect(text).toBe(i18n.global.t('errors.unexpected'))
+      expect(text).not.toContain('Cannot read')
+      expect(text).not.toContain('{')
+    }
+    expect(warn).toHaveBeenCalledWith(expect.any(String), thrown)
+  })
+  it('gives the generic text to a string, null and a code with no text', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const generic = i18n.global.t('errors.unexpected')
+    expect(errorText('boom')).toBe(generic)
+    expect(errorText(null)).toBe(generic)
+    expect(errorText({ code: 'notACodeWeKnow' })).toBe(generic)
+  })
+  it('keeps an ErrorCode’s own text', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(errorText({ code: 'nothingToUndo' })).toBe(i18n.global.t('errors.nothingToUndo'))
+    expect(warn).not.toHaveBeenCalled()
+  })
+})
+
 describe('stateLoadBlockText', () => {
   // Every reason Rust can send (a Record: typecheck fails when the generated union grows).
   const REASONS: Record<StateLoadBlock, true> = { vulkanNoTitleId: true }

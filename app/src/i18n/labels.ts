@@ -17,7 +17,11 @@ export function isErrorCode(e: unknown): e is ErrorCode {
  */
 export type ErrorSink = (e: unknown) => void
 
-/** Readable text for any error: known codes are translated, anything else is shown as a detail. */
+/**
+ * Readable text for any error: known codes are translated; anything else (a JavaScript exception,
+ * a code with no text) gets the generic `errors.unexpected`, its detail in the log only: the
+ * engine's English message never reaches the user (engineering rule 6).
+ */
 export function errorText(e: unknown): string {
   if (isErrorCode(e) && known(`errors.${e.code}`)) {
     const params: Record<string, unknown> = { ...('params' in e ? e.params : {}) }
@@ -45,8 +49,8 @@ export function errorText(e: unknown): string {
     }
     return t(`errors.${e.code}`, params)
   }
-  const detail = isErrorCode(e) ? e.code : e instanceof Error ? e.message : String(e)
-  return t('errors.unexpected', { detail })
+  console.warn('unexpected error, shown with the generic message:', e)
+  return t('errors.unexpected')
 }
 
 /** Why loading states is off for the open game (`GameInfo.stateLoadBlock`, Trello #93): the one
