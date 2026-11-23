@@ -36,7 +36,7 @@ import SettingSwatches from './SettingSwatches.vue'
 import SettingTextField from './SettingTextField.vue'
 import SettingToggle from './SettingToggle.vue'
 import { rowActionIcon } from './rowActionIcon'
-import { chosenList } from './settingRowModel'
+import { chosenList, onlyHere } from './settingRowModel'
 import { useRowChoose } from './useRowChoose'
 import { useSettingRow } from './useSettingRow'
 
@@ -111,7 +111,7 @@ const choose = useRowChoose(
         :name="name"
         :desc="sub ?? desc"
         :changed-here="state.changedHere"
-        :only-on="entry.perDevice ? schema.device : null"
+        :only-on="onlyHere(entry, schema)"
         :locked="disabled"
       >
         <!-- the level marks under the description, so the control keeps its place at every level -->

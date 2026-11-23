@@ -8,6 +8,7 @@ import {
   descNotes,
   hasRuntimeOptions,
   offeredOptions,
+  onlyHere,
   rowState,
   rowValue,
   runtimeOptions,
@@ -48,6 +49,20 @@ const row = (source: SettingRow['source'], value: SettingRow['value'] = true): S
   value,
   source,
   changed: source !== 'default',
+})
+
+describe('onlyHere', () => {
+  const phone: SettingsSchema = { ...schema, device: 'phone' }
+  it('badges a per-device row with this device', () => {
+    expect(onlyHere(entry({ perDevice: true }), phone)).toBe('phone')
+    expect(onlyHere(entry({ perDevice: false }), phone)).toBeNull()
+  })
+
+  it('never badges a row this device does not have (library.watch on a phone)', () => {
+    const desktopOnly = entry({ perDevice: true, platform: 'desktop' })
+    expect(onlyHere(desktopOnly, phone)).toBeNull()
+    expect(onlyHere(desktopOnly, schema)).toBe('desktop')
+  })
 })
 
 describe('rowState', () => {
