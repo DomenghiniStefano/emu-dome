@@ -14,7 +14,7 @@ import { useI18n } from 'vue-i18n'
 import { emu, type GameId, type LibraryGame } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
 import { library } from '@/lib/library'
-import { Tabs, TabsList, TabsSize, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsSize, TabsTrigger } from '@/design-system/components/tabs'
 import CoverPicker from '@/components/cover/CoverPicker.vue'
 import DetailsControls from './DetailsControls.vue'
 import DetailsFiles from './DetailsFiles.vue'
@@ -29,7 +29,7 @@ import { DETAILS_TABS, isDetailsTab, tabLabelKey, type DetailsTab } from './tabs
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import { focusInitial, useEscapeBack, useNavSection } from '@/nav'
 import { useResumePoint } from './useResumePoint'
-import { SectionPage, SectionWidth } from '@/components/ui/section-page'
+import { SectionPage, SectionWidth } from '@/design-system/components/section-page'
 
 const props = defineProps<{ id: GameId }>()
 const emit = defineEmits<{

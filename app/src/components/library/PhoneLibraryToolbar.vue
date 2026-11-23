@@ -6,8 +6,8 @@
 // side, one row for both. No heading: the tab bar or the side column already says Libreria.
 import { useI18n } from 'vue-i18n'
 import { Plus } from '@lucide/vue'
-import { Button, ButtonSize } from '@/components/ui/button'
-import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
+import { Button, ButtonSize } from '@/design-system/components/button'
+import { Segmented, SegmentedItem, SegmentedVariant } from '@/design-system/components/segmented'
 import type { ConsoleId } from '@/emu'
 import { GAMES_VIEWS, isGamesView, type ConsoleChip, type GamesView } from './libraryView'
 import type { ShowKey, Sort } from './librarySort'

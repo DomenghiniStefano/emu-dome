@@ -2,7 +2,7 @@
 // A number on a range (`slider`), with its value in words beside it. The setting is written when
 // a change ends (a release, a key), not on every step of a drag.
 import { ref, watch } from 'vue'
-import { Slider, SliderVariant } from '@/components/ui/slider'
+import { Slider, SliderVariant } from '@/design-system/components/slider'
 
 const props = defineProps<{
   label: string

@@ -4,7 +4,7 @@
 // small tiles of the quick menu and «Continua a giocare»). The caller gives its shape (aspect
 // ratio, width, radius), and may swap the black for a surface or the game's colour.
 import type { HTMLAttributes } from 'vue'
-import { cn } from '@/lib/cn'
+import { cn } from '@/design-system/lib/cn'
 
 const props = defineProps<{
   src?: string | null

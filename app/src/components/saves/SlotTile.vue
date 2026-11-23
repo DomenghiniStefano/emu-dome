@@ -7,9 +7,9 @@
 // The parent decides what «…» offers (V03): the Automatico slot has no Rinomina, Blocca, Elimina.
 import { useI18n } from 'vue-i18n'
 import { Ellipsis, Play, TriangleAlert } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Card, CardPad } from '@/components/ui/card'
-import { cn } from '@/lib/cn'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Card, CardPad } from '@/design-system/components/card'
+import { cn } from '@/design-system/lib/cn'
 import SaveThumb from './SaveThumb.vue'
 
 withDefaults(

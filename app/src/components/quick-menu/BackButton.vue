@@ -2,9 +2,9 @@
 // «‹ Menu rapido»: back one level (B / Esc). On the phone «‹ Indietro» (owner, 2026-11-22: icon
 // and name), at the touch minimum.
 import { ChevronLeft } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { FocusMark } from './view'
-import { Kbd, KbdSize } from '@/components/ui/kbd'
+import { Kbd, KbdSize } from '@/design-system/components/kbd'
 
 defineProps<{
   /** Where back leads: the button's text. */

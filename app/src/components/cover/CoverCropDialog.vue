@@ -6,7 +6,7 @@
 // Controller: the step's own nav scope; B, Esc and «Indietro» close it.
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Dialog, DialogContent, DialogSize } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogSize } from '@/design-system/components/dialog'
 import { emu } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
 import CoverCrop from './CoverCrop.vue'

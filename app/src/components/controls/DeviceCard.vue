@@ -2,8 +2,8 @@
 // A device on C01: its icon, name and state, and «In uso» on the controller the section starts
 // on. One of the devices' radio group: choosing it sets what the rest of C01 shows.
 import type { Component } from 'vue'
-import { Card, CardVariant } from '@/components/ui/card'
-import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
+import { Card, CardVariant } from '@/design-system/components/card'
+import { Badge, BadgeSize, BadgeVariant } from '@/design-system/components/badge'
 
 defineProps<{
   icon: Component

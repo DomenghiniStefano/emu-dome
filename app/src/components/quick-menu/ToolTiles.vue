@@ -2,10 +2,10 @@
 // The tools on desktop (Strumenti): one tile each; those that cannot be used are disabled and
 // the note under them says why.
 import { useI18n } from 'vue-i18n'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import type { Tool } from './tools'
 import { openerMark } from './view'
-import { LabelledBlock } from '@/components/ui/labelled-block'
+import { LabelledBlock } from '@/design-system/components/labelled-block'
 
 defineProps<{
   tools: Tool[]

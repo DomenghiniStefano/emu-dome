@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // E12: the game runs slower than normal; a lighter setting is suggested.
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize } from '@/components/ui/button'
-import { DialogTone } from '@/components/ui/dialog'
+import { Button, ButtonSize } from '@/design-system/components/button'
+import { DialogTone } from '@/design-system/components/dialog'
 import FlowDialog from './FlowDialog.vue'
 
 defineProps<{ fps: number; target: number }>()

@@ -4,8 +4,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LogIn } from '@lucide/vue'
-import { Button, ButtonFade } from '@/components/ui/button'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Button, ButtonFade } from '@/design-system/components/button'
+import { Card, CardVariant } from '@/design-system/components/card'
 import type { FolderImport } from '@/emu'
 import type { ImportState } from './imports'
 import { readyCovers } from './library'
@@ -15,7 +15,7 @@ import { CoverSize } from '@/components/cover/variants'
 import ImportRow from './ImportRow.vue'
 import ReadyRow from './ReadyRow.vue'
 import StepLayout from './StepLayout.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 defineProps<{
   phone: boolean

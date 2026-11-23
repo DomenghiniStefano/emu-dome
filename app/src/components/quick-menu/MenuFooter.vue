@@ -4,8 +4,8 @@
 // in use (none on touch, nor in the phone's sheet).
 import { useI18n } from 'vue-i18n'
 import { Play, Power } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Kbd, KbdSize, KbdVariant } from '@/components/ui/kbd'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Kbd, KbdSize, KbdVariant } from '@/design-system/components/kbd'
 
 defineProps<{
   /** The key that resumes with the input in use, or null. */

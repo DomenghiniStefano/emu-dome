@@ -12,7 +12,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type {
   ConsoleId,
   SettingEntry,
@@ -22,7 +22,7 @@ import type {
   SettingValue,
 } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
-import { cn } from '@/lib/cn'
+import { cn } from '@/design-system/lib/cn'
 import { FILE_PICKERS, msg } from '@/lib/settingsModel'
 import { chosenList, swatchKey, toggleChosen } from '@/components/settings/settingRowModel'
 import { useSettingRow } from '@/components/settings/useSettingRow'

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // One row of C03's shortcut list: the action, what to press (the default slot) with its badge
 // when reserved, and the row's own control (the `change` slot: «Cambia», or nothing).
-import { Badge, BadgeVariant } from '@/components/ui/badge'
+import { Badge, BadgeVariant } from '@/design-system/components/badge'
 defineProps<{
   action: string
   /** A reserved or keyboard-only row: the action in muted ink. */

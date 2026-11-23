@@ -2,13 +2,13 @@
 // «I tuoi giochi» over the grid: the console chips, the order and L03, «Aggiungi giochi».
 import { useI18n } from 'vue-i18n'
 import { Plus } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/design-system/components/button'
 import type { ConsoleId } from '@/emu'
 import type { ShowKey, Sort } from './librarySort'
 import ConsoleChips from './ConsoleChips.vue'
 import type { ConsoleChip } from './libraryView'
 import SortFilterButton from './SortFilterButton.vue'
-import { Heading } from '@/components/ui/heading'
+import { Heading } from '@/design-system/components/heading'
 
 defineProps<{
   chips: ConsoleChip[]

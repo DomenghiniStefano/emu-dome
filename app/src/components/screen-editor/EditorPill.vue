@@ -4,8 +4,8 @@
 // drag and resize.
 import { useI18n } from 'vue-i18n'
 import { Save, SlidersHorizontal } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Kbd, KbdSize } from '@/components/ui/kbd'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Kbd, KbdSize } from '@/design-system/components/kbd'
 import { posName } from '@/lib/controls'
 import { inputMode } from '@/lib/inputMode'
 

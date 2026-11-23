@@ -22,7 +22,7 @@ import { useI18n } from 'vue-i18n'
 import type { GameFocus } from '@/lib/gameDetails'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavSection } from '@/nav'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/design-system/components/tabs'
 import ControlsOverview from './ControlsOverview.vue'
 import ControlsRemap from './ControlsRemap.vue'
 import ControlsShortcuts from './ControlsShortcuts.vue'
@@ -41,7 +41,7 @@ import {
 import { cycle } from '@/lib/cycle'
 import { ControlsTab, tabOrRemap, tabsFor } from './tabs'
 import { useControlsData } from './useControlsData'
-import { SectionPage } from '@/components/ui/section-page'
+import { SectionPage } from '@/design-system/components/section-page'
 
 const props = defineProps<{
   /** L07 «Rimappa i pulsanti per questo gioco»: the game this section opened for (the shell's

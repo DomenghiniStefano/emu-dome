@@ -5,7 +5,7 @@
 // a joint. Settings files of an older layout are moved to these ids by the settings engine
 // (store.rs, layout 2). Imported skins (our pack format, `.deltaskin`, RetroArch overlays) are
 // Phase 5 (docs/decisions.md).
-import { ButtonVariant } from '@/components/ui/button'
+import { ButtonVariant } from '@/design-system/components/button'
 
 export const TOUCH_SKINS = ['smoke', 'outline'] as const
 export type TouchSkin = (typeof TOUCH_SKINS)[number]

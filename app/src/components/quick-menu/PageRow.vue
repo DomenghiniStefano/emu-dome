@@ -5,7 +5,7 @@
 // (`pressed`: «Scambia gli schermi», the lid).
 import type { Component } from 'vue'
 import { ChevronRight } from '@lucide/vue'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 
 withDefaults(
   defineProps<{

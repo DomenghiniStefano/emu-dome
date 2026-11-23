@@ -1,4 +1,4 @@
-// nav.ts beyond the primitives (components/ui/nav.test.ts): the first focus of a screen, Esc as
+// nav.ts beyond the primitives (design-system/components/nav.test.ts): the first focus of a screen, Esc as
 // `back`, the scope tree (who receives the steps, `back` / `tab` bubbling) and which elements a
 // step can land on. happy-dom computes no layout: every element gets a rect (10x10 at the origin
 // unless placed), so it counts as shown.

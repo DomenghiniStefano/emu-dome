@@ -3,7 +3,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { X } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type { ScanSummary } from '@/lib/library'
 import { consoleCounts } from '@/lib/consoleCounts'
 import LibraryBanner from './LibraryBanner.vue'

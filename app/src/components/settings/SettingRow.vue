@@ -13,7 +13,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Undo2 } from '@lucide/vue'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type {
   ConsoleId,
   SettingEntry,

@@ -2,10 +2,10 @@
 // E05: no controller connected. The keyboard can be chosen meanwhile.
 import { useI18n } from 'vue-i18n'
 import { Gamepad2, Keyboard } from '@lucide/vue'
-import { Button, ButtonSize } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
-import { Heading } from '@/components/ui/heading'
-import { SectionPage } from '@/components/ui/section-page'
+import { Button, ButtonSize } from '@/design-system/components/button'
+import { EmptyState } from '@/design-system/components/empty-state'
+import { Heading } from '@/design-system/components/heading'
+import { SectionPage } from '@/design-system/components/section-page'
 
 const emit = defineEmits<{ keyboard: [] }>()
 const { t } = useI18n()

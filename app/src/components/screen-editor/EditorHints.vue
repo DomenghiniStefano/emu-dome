@@ -4,7 +4,7 @@
 // controls editor shows the same keys, with its own words for what picking does (`pick`).
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Kbd } from '@/components/ui/kbd'
+import { Kbd } from '@/design-system/components/kbd'
 import { posName } from '@/lib/controls'
 import { inputMode } from '@/lib/inputMode'
 

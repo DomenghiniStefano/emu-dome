@@ -2,7 +2,7 @@
 // C02's toolbar: «Si applica a» (the level the table is edited at, shown with more than one) and
 // «Disposizione A/B» (`pad.ab`, controllers only).
 import { useI18n } from 'vue-i18n'
-import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
+import { Segmented, SegmentedItem, SegmentedVariant } from '@/design-system/components/segmented'
 import type { ConsoleId } from '@/emu'
 import { levelName, type RemapLevel } from './levels'
 

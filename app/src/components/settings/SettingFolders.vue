@@ -3,7 +3,7 @@
 // and updates the setting.
 import { useI18n } from 'vue-i18n'
 import { Folder, FolderPlus, X } from '@lucide/vue'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { emu } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
 import { folderLabel, library } from '@/lib/library'

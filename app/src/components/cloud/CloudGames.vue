@@ -2,9 +2,9 @@
 // The tab «Giochi su Google Drive» (Trello #31): every game of this library or of Drive, with
 // where its file is and what to do with it (useCloudGames).
 import { useI18n } from 'vue-i18n'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import RowColumns from '@/components/settings/RowColumns.vue'
-import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
+import { EmptyState, EmptyStateVariant } from '@/design-system/components/empty-state'
 import CloudGameRow from './CloudGameRow.vue'
 import { cloud } from './cloudState'
 import { useCloudGames } from './useCloudGames'

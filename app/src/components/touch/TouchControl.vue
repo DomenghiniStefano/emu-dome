@@ -12,7 +12,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Button as GameButton, TouchControl } from '@/emu'
-import { Button, ButtonSize } from '@/components/ui/button'
+import { Button, ButtonSize } from '@/design-system/components/button'
 import PadShape, { type PadShapeKind } from './PadShape.vue'
 import TouchDpad from './TouchDpad.vue'
 import TouchStick from './TouchStick.vue'

@@ -3,8 +3,8 @@
 // colour, a line below, and a bar that keeps moving while the work has no known length (or shows
 // how far it is, `value` 0–100: the saves coming down from Drive, G03).
 // Layer `scene` (35), between the overlays and the dialogs.
-import { Heading, HeadingVariant } from '@/components/ui/heading'
-import { Progress } from '@/components/ui/progress'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
+import { Progress } from '@/design-system/components/progress'
 
 withDefaults(
   defineProps<{

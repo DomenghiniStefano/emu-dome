@@ -9,9 +9,9 @@ import { onMounted, ref } from 'vue'
 import { I18nT, useI18n } from 'vue-i18n'
 import { Laptop, PanelTopOpen } from '@lucide/vue'
 import { emu, type Pos } from '@/emu'
-import { Button, ButtonVariant } from '@/components/ui/button'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
-import { Kbd } from '@/components/ui/kbd'
+import { Button, ButtonVariant } from '@/design-system/components/button'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
+import { Kbd } from '@/design-system/components/kbd'
 import { posName } from '@/lib/controls'
 
 const emit = defineEmits<{ open: [] }>()

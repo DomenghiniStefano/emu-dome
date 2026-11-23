@@ -4,7 +4,7 @@
 import { nextTick, onMounted, ref } from 'vue'
 import { flow } from '@/components/game/gameFlow'
 import { START, type Route } from '@/components/shell/route'
-import { useDensity } from '@/composables/useDensity'
+import { useDensity } from '@/design-system/lib/useDensity'
 import { uiMode, useUiMode } from '@/composables/useUiMode'
 import { coarsePointer, useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useClosing } from '@/components/closing/useClosing'

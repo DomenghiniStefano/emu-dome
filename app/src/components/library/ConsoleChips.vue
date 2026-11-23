@@ -3,9 +3,9 @@
 // `short` (the phone, #29): the consoles' short names (GBA, DS) on one row that scrolls sideways
 // when it does not fit, instead of the long names wrapping.
 import { useI18n } from 'vue-i18n'
-import { Chip, ChipVariant } from '@/components/ui/chip'
+import { Chip, ChipVariant } from '@/design-system/components/chip'
 import type { ConsoleId } from '@/emu'
-import { cn } from '@/lib/cn'
+import { cn } from '@/design-system/lib/cn'
 import type { ConsoleChip } from './libraryView'
 
 withDefaults(

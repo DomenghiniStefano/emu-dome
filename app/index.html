@@ -15,7 +15,7 @@
       and the bar just appears.
 
       Plain CSS: the tokens are CSS variables Vite loads later, so the few values the splash needs
-      are written here, each mirroring its token (src/assets/theme/) or the mockup:
+      are written here, each mirroring its token (src/design-system/tokens/) or the mockup:
       - #0e0f13 `--bg` (Scuro), whatever the theme: the window's own background is that graphite;
       - the glow: 15% (#…26) of the default accent #faa40f, the mockup's;
       - the mark 120px wide, 14px over the bar (the mockup's);
@@ -125,7 +125,7 @@
   <body>
     <div id="app"></div>
     <div id="splash" aria-hidden="true">
-      <img class="splash-mark" src="/src/assets/brand/emudome-mark.svg" alt="" />
+      <img class="splash-mark" src="/src/design-system/brand/emudome-mark.svg" alt="" />
       <div class="splash-bar"><span class="splash-band"></span></div>
     </div>
     <script type="module" src="/src/main.ts"></script>

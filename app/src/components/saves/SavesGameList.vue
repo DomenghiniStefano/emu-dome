@@ -4,11 +4,11 @@
 import { useI18n } from 'vue-i18n'
 import { Import } from '@lucide/vue'
 import type { GameId, LibraryGame } from '@/emu'
-import { Button } from '@/components/ui/button'
-import { SearchField } from '@/components/ui/search-field'
+import { Button } from '@/design-system/components/button'
+import { SearchField } from '@/design-system/components/search-field'
 import SavesGameRow from './SavesGameRow.vue'
-import { Heading } from '@/components/ui/heading'
-import { Badge, BadgeVariant } from '@/components/ui/badge'
+import { Heading } from '@/design-system/components/heading'
+import { Badge, BadgeVariant } from '@/design-system/components/badge'
 
 /** A game of the list with its line: what it has saved, and whether a save was set aside. */
 export interface SavesListRow {

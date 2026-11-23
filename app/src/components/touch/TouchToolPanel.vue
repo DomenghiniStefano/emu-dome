@@ -6,9 +6,9 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { TouchBehaviour, TouchControl, TouchControlId } from '@/emu'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Segmented, SegmentedItem } from '@/components/ui/segmented'
-import { Slider } from '@/components/ui/slider'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Segmented, SegmentedItem } from '@/design-system/components/segmented'
+import { Slider } from '@/design-system/components/slider'
 import type { ToolPanel } from './useTouchEditor'
 
 const props = defineProps<{

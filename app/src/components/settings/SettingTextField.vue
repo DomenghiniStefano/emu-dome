@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // A short text (`text`): written when the field is left or Enter is pressed (`change`).
-import { Input, InputVariant } from '@/components/ui/input'
+import { Input, InputVariant } from '@/design-system/components/input'
 
 defineProps<{ label: string; value: string; placeholder: string; disabled: boolean }>()
 const emit = defineEmits<{ set: [string] }>()

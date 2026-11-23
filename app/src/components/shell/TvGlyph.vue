@@ -5,7 +5,7 @@
 import { computed, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight, Circle, Square, Triangle, X } from '@lucide/vue'
-import { Kbd, KbdSize, KbdVariant } from '@/components/ui/kbd'
+import { Kbd, KbdSize, KbdVariant } from '@/design-system/components/kbd'
 import { uiMode } from '@/composables/useUiMode'
 import { actionPos, padGlyph, type PadAction, type PadShape } from '@/lib/padGlyphs'
 

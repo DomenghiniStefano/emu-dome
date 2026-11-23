@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // A one-of-a-few choice shown as segments (`choice`, style `segments`).
-import { Segmented, SegmentedItem } from '@/components/ui/segmented'
+import { Segmented, SegmentedItem } from '@/design-system/components/segmented'
 import type { RowOption } from './useSettingRow'
 
 defineProps<{ label: string; value: string; options: RowOption[]; disabled: boolean }>()

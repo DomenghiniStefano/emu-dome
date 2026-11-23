@@ -4,7 +4,7 @@
 // Decision 5).
 import { useI18n } from 'vue-i18n'
 import { Library } from '@lucide/vue'
-import { Heading } from '@/components/ui/heading'
+import { Heading } from '@/design-system/components/heading'
 
 const { t } = useI18n()
 </script>

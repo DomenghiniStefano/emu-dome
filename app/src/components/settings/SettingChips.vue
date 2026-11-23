@@ -5,8 +5,8 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, Pencil } from '@lucide/vue'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Chip, ChipVariant } from '@/components/ui/chip'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Chip, ChipVariant } from '@/design-system/components/chip'
 import { toggleChosen } from './settingRowModel'
 import type { RowOption } from './useSettingRow'
 

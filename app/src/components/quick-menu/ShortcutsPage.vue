@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // G10: the controller shortcuts, read-only (they are edited in Controls, C03).
 import type { ComboRow, Pos } from '@/emu'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import { comboText, hotkeyName } from '@/lib/controls'
 import MenuList from './MenuList.vue'
 import { FocusMark } from './view'

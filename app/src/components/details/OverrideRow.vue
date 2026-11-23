@@ -4,7 +4,7 @@
 // value under the name, the console's under it.
 import { useI18n } from 'vue-i18n'
 import { Undo2 } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type { OverrideRow } from './gameOverrides'
 
 defineProps<{ row: OverrideRow; consoleName: string; phone: boolean }>()

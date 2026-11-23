@@ -7,7 +7,12 @@ System artifact linked from `CLAUDE.md`.
 
 ## Layout of `app/src`
 
-- `components/ui/<name>/`: the **primitives**, the only place a raw `<button>` / `<input>` is written.
+- `design-system/`: the whole design system, mapped in its own `README.md`: `index.css` (the entry),
+  `tokens/`, `styles/utilities.css` (the named looks), `components/<name>/` (the **primitives**, the only place a
+  raw `<button>` / `<input>` is written), `lib/` (`cn`, `themeKeys`, `colour`, `accent`, `useDensity`), `brand/`,
+  `kit/` (the Kit page). It imports nothing of the app but `@/nav` and `@/generated/…`; `kit/` is the exception
+  (it shows the feature components too). Held by ESLint (`app/eslint.config.js`, its fixture test
+  `app/src/design-system/boundary.lint.test.ts`).
 - `components/<feature>/`: everything one feature is, together: its screen root (`library/LibraryView.vue`,
   `quick-menu/QuickMenu.vue`…), its parts, its composables (`useX.ts`), its pure modules (`x.ts`) and their
   tests. A screen composes panels, a panel composes primitives. A component another feature reuses stays
@@ -15,15 +20,14 @@ System artifact linked from `CLAUDE.md`.
   `cover/GameCover.vue`, `saves/SlotTile.vue`). Features today: `cloud`, `controls`, `cover`, `details`,
   `first-run`, `game`, `library`, `notifications`, `quick-menu`, `saves`, `screen-editor`,
   `search`, `settings`, `shell`, `storage`, `toasts`, `touch`. A new feature folder is added to the `@source` list of
-  `assets/main.css`, or Tailwind generates none of its classes.
-- `composables/`: the `useX` functions used by two or more features or by the app root (`useDensity`,
-  `useDeviceLayout`, `useListeners`, `useSettingsChanged`, `useToasts` with `useErrorSink`); `lib/`: plain modules and
-  helpers shared the same way (`cn`, `cycle`, `design/`, `settingsModel`, `controls`, `theme`…). A
+  `design-system/index.css`, or Tailwind generates none of its classes.
+- `composables/`: the `useX` functions used by two or more features or by the app root (`useDeviceLayout`,
+  `useListeners`, `useSettingsChanged`, `useToasts` with `useErrorSink`, `useUiMode`); `lib/`: plain modules and
+  helpers shared the same way (`cycle`, `settingsModel`, `controls`, `theme`, `appearance`…). A
   module only one feature uses moves into that feature's folder.
 - The root holds the app's wiring only: `main.ts`, `App.vue`, `emu.ts` (the only file that calls
   `invoke`, the typed bridge to Rust), `nav.ts` (the focus navigation), `styles.css`, `i18n/`
-  (messages, `Message` / `useSay`, code → text labels), `assets/` (tokens and named utilities), `kit/`
-  (the Kit page), `generated/` (the bridge's types and the catalogue's keys, written by the Rust
+  (messages, `Message` / `useSay`, code → text labels), `design-system/`, `generated/` (the bridge's types and the catalogue's keys, written by the Rust
   contract tests, never edited by hand; import them through `@/emu`, and type a setting key as
   `SettingKey`, never `string`).
 
@@ -51,7 +55,7 @@ reads the same in every file, and a move changes only the moved file's importers
   if still fresh. Held by review.
 - A count goes through vue-i18n's plural form (`"{n} game | {n} games"`, `t(key, { n }, n)`).
 
-## Primitives (`components/ui/`)
+## Primitives (`design-system/components/`)
 
 - All on **Reka UI**; none hand-made. One folder per primitive: `index.ts` re-exports, the parts are
   `.vue` files, `variants.ts` holds the looks.
@@ -75,18 +79,18 @@ reads the same in every file, and a move changes only the moved file's importers
   «Chiudi», «Non ora») stays words, so the main action stands out. The phone list's play button is
   `ButtonSize.RowAction`: 32 drawn, 44 to the touch.
 
-## Kit page (`kit/`)
+## Kit page (`design-system/kit/`)
 
 `#kit` in `pnpm dev`, development only (`lib/devRoutes.ts`, mounted by `main.ts` only under
 `import.meta.env.DEV`). Every primitive in every state, the three themes, the five accents, the touch
 density. It is where a primitive or variant is tried before a screen uses it, and what
 `scripts/headless/kit-nav.mjs` drives in a real browser.
 
-## Tokens (`assets/theme/`)
+## Tokens (`design-system/tokens/`)
 
 Tailwind v4 reads the token files in `@theme` with its default scales **reset** (`--<namespace>-*:
 initial`): a value that is not a token generates no class. Preflight is off; the document's base is
-`styles.css`. One file per family, imported by `assets/main.css`:
+`styles.css`. One file per family, imported by `design-system/index.css`:
 
 | File | Family | Classes |
 | --- | --- | --- |
@@ -111,19 +115,19 @@ initial`): a value that is not a token generates no class. Preflight is off; the
   The decision is taken with the owner (there is no separate design session), then it is an edit of
   that one line.
 - Compound looks (glass, glows, gradients, focus rings drawn inside a frame) are named utilities in
-  `assets/utilities.css`, written through the tokens.
+  `design-system/styles/utilities.css`, written through the tokens.
 - Themes (Scuro / Nero / Chiaro) and the runtime accent are CSS variables (`theme.ts`, `appearance.ts`,
   `accent.ts`); classes point at them, so a theme change needs no class. The default accent (amber)
   is written in `colors.css`, every other swatch computed by `accent.ts`'s rules; `accent.test.ts`
   holds the default's values to the same rules, so a change to one shows in the other. Text on the
   accent is `on-accent` (white or dark per swatch), never a fixed white.
-- `cn()` (`lib/cn.ts`) merges classes; it learns the token names from the theme CSS itself
-  (`lib/design/themeKeys.ts`), so `cn('text-label', 'text-ink')` keeps both.
+- `cn()` (`design-system/lib/cn.ts`) merges classes; it learns the token names from the theme CSS itself
+  (`design-system/lib/themeKeys.ts`), so `cn('text-label', 'text-ink')` keeps both.
 
 ## Touch density
 
 The phone, upright or on its side, sets `data-density="touch"` on `<html>` once
-(`composables/useDensity.ts`, called by `App.vue`, Trello #29). Where the shell's sections sit (the
+(`design-system/lib/useDensity.ts`, called by `App.vue`, Trello #29). Where the shell's sections sit (the
 rail, the phone's tab bar, the rail on the camera's edge) is `lib/phoneLayout.ts`'s decision, read
 through `composables/useDeviceLayout.ts` (`nav`, `camera`); the system's bars and the notch are kept
 clear with the `safe-*` / `camera-*` spacing tokens. Primitives and screens style their touch look with the `touch:` variant (`touch:h-touch`).
@@ -178,7 +182,7 @@ come from `lib/padGlyphs.ts` (by position and `pad.confirm`; the d-pad's ◀ ▶
 - One generic rule for elements that own their keys, recognised by the attributes Reka renders (never
   by component name): they take the arrows along their axis and Enter; at their ends the focus moves
   spatially. Select and Dialog take B while open and give the focus back on close.
-- Tested in Vitest (`nav.test.ts`, `components/ui/nav.test.ts`) and in a real browser
+- Tested in Vitest (`nav.test.ts`, `design-system/components/nav.test.ts`) and in a real browser
   (`scripts/headless/kit-nav.mjs`).
 
 ## Text (`i18n/`)
@@ -202,15 +206,15 @@ class fires too.
 | `alpha-modifier` | `bg-ink/50` | — |
 | `dark-variant` | `dark:` | — |
 | `literal-variant` | `variant="primary"` / `size="…"` on a component | a string through a variable; other closed-set props |
-| `raw-control` | `<button>` / `<input>` outside `components/ui` | render functions, `<component :is>` |
+| `raw-control` | `<button>` / `<input>` outside `design-system/components` | render functions, `<component :is>` |
 | `style-block` | any `<style>` block | — |
 | `arbitrary-length` | px / rem / em in brackets: `w-[13px]`, `top-[calc(100%+4px)]`, `[@media(max-width:900px)]:` | % / vh / vw, `style` bindings, component props (`:size="14"` on an icon), classes built from numbers |
 | `arbitrary-scale` | `opacity-[…]`, `z-[…]`, `duration-[…]`, `delay-[…]`, `ease-[…]` | `style` bindings |
 | `numeric-scale` | bare-number utilities the theme cannot reset: `opacity-40`, `z-5`, `duration-300`, `border-2`, `outline-offset-2`, `ring-2`, `scale-95` | layout counts are allowed on purpose (`grid-cols-3`, `aspect-3/2`, `rotate-90`) |
 | `important` | `w-48!`, `!w-48` | in scripts and `.ts`, a `!` class with no `-` or `:` (`flex!`) |
 | `look-only-prop` | a `phone` / `touch` prop used only in `:class` | a prop read in `<script>`, passed down, or of another name |
-| `button-name` | a `<Button>` with both `aria-label` and `title` (static or bound) outside `components/ui`: an icon alone takes `label` (accessible name and Tooltip) | a Button in a render function or `<component :is>`, attributes in a `v-bind="{…}"` object |
-| `hand-role` | `role="dialog"`, `alertdialog`, `radio`, `radiogroup`, `checkbox`, `menu`, `menuitem`, `listbox`, `option`, `switch`, `tab`, `tablist` (static or `:role`) outside `components/ui`; the files not moved yet are in `HAND_ROLES_PENDING` with the reason | a role set from a script, a render function, a `:role` built from a variable |
+| `button-name` | a `<Button>` with both `aria-label` and `title` (static or bound) outside `design-system/components`: an icon alone takes `label` (accessible name and Tooltip) | a Button in a render function or `<component :is>`, attributes in a `v-bind="{…}"` object |
+| `hand-role` | `role="dialog"`, `alertdialog`, `radio`, `radiogroup`, `checkbox`, `menu`, `menuitem`, `listbox`, `option`, `switch`, `tab`, `tablist` (static or `:role`) outside `design-system/components`; the files not moved yet are in `HAND_ROLES_PENDING` with the reason | a role set from a script, a render function, a `:role` built from a variable |
 
 Allowed by construction: values built only from tokens (`calc(100%+var(--spacing-6))`, grid templates
 of `fr` / `minmax` / `auto` / `var`), keywords (`text-[length:inherit]`), property lists

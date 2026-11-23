@@ -31,7 +31,7 @@ import { useSaveImport } from './useSaveImport'
 import { useSavesOverview } from './useSavesOverview'
 import { useSaveShortcut } from './useSaveShortcut'
 import { useSavesSettings } from './useSavesSettings'
-import { SectionPage } from '@/components/ui/section-page'
+import { SectionPage } from '@/design-system/components/section-page'
 
 const props = defineProps<{
   /**

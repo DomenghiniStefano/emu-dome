@@ -5,8 +5,8 @@ import { useI18n } from 'vue-i18n'
 import { ArchiveRestore } from '@lucide/vue'
 import type { SaveBackup } from '@/emu'
 import { saveWhenLabel } from '@/i18n/labels'
-import { Button, ButtonSize } from '@/components/ui/button'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Button, ButtonSize } from '@/design-system/components/button'
+import { Card, CardVariant } from '@/design-system/components/card'
 import RowColumns from '@/components/settings/RowColumns.vue'
 
 defineProps<{ backups: SaveBackup[] }>()

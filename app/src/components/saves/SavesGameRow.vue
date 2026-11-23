@@ -3,7 +3,7 @@
 // it has saved, or its console), and an optional badge (the slot). A button: the list and the
 // «Scegli il gioco» dialog choose a game with it; `selected` marks the chosen one.
 import type { LibraryGame } from '@/emu'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverSize } from '@/components/cover/variants'
 

@@ -8,14 +8,14 @@
 // search is typed, only the title and the field, the results under them.
 import { useI18n } from 'vue-i18n'
 import { Search } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Input, InputVariant } from '@/components/ui/input'
-import { cn } from '@/lib/cn'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Input, InputVariant } from '@/design-system/components/input'
+import { cn } from '@/design-system/lib/cn'
 import type { SettingsSchema } from '@/emu'
 import { msg } from '@/lib/settingsModel'
 import { OVERVIEW } from './settingsPage'
 import { SettingsPane } from './settingsPane'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{
   schema: SettingsSchema

@@ -3,7 +3,7 @@
 // pressed, it listens for the new one) and what the row has to say (used twice, changed).
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CaptureField, CaptureFieldVariant } from '@/components/ui/capture-field'
+import { CaptureField, CaptureFieldVariant } from '@/design-system/components/capture-field'
 import { RemapRowStatus } from './remapTable'
 
 const props = defineProps<{

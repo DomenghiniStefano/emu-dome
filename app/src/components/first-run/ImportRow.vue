@@ -4,7 +4,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FolderOpen, Import } from '@lucide/vue'
-import { Button, ButtonFade } from '@/components/ui/button'
+import { Button, ButtonFade } from '@/design-system/components/button'
 import { canImport, importLine, type ImportState } from './imports'
 import ReadyRow from './ReadyRow.vue'
 

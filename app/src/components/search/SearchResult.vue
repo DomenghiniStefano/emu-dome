@@ -22,7 +22,7 @@ import {
   Settings2,
   Snail,
 } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverSize } from '@/components/cover/variants'
 import type { KeyAction } from '@/lib/keyboard'

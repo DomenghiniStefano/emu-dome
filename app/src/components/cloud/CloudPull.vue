@@ -7,7 +7,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { SkipForward } from '@lucide/vue'
 import { emu, type CloudProgress } from '@/emu'
-import { Button, ButtonSize } from '@/components/ui/button'
+import { Button, ButtonSize } from '@/design-system/components/button'
 import { useNavScope } from '@/nav'
 import { failCloud } from './cloudState'
 

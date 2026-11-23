@@ -4,10 +4,10 @@
 import { useI18n } from 'vue-i18n'
 import { MonitorSmartphone } from '@lucide/vue'
 import type { CloudDevice } from '@/emu'
-import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Badge, BadgeSize, BadgeVariant } from '@/design-system/components/badge'
+import { Card, CardVariant } from '@/design-system/components/card'
 import RowColumns from '@/components/settings/RowColumns.vue'
-import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
+import { EmptyState, EmptyStateVariant } from '@/design-system/components/empty-state'
 import { saveWhenLabel } from '@/i18n/labels'
 import { useCloudDevices } from './useCloudLists'
 

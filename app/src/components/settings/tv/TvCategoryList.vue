@@ -4,7 +4,7 @@
 // its settings are changed at the level edited. As on the desk, moving onto a page does not
 // switch it, confirming it does; the column scrolls when the screen is short.
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type { SettingsSchema } from '@/emu'
 import { msg } from '@/lib/settingsModel'
 

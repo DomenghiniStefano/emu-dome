@@ -14,7 +14,7 @@ export default defineConfig({
     __VUE_I18N_LEGACY_API__: false,
     __INTLIFY_PROD_DEVTOOLS__: false,
   },
-  // `@/` is src/: the design system's modules (components/ui, lib) import each other through it,
+  // `@/` is src/: the design system's modules (design-system/components, lib) import each other through it,
   // as shadcn-vue's components.json expects.
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
@@ -29,6 +29,6 @@ export default defineConfig({
     // Vitest does not load CSS by default and hands a `?raw` import an empty string. cn() reads
     // its token names from the theme files, so those load as source. A file missing here fails
     // as a wrong answer, not as an error: the import yields '' and the test reads "no tokens".
-    css: { include: [/src\/assets\/theme\/.+\.css/] },
+    css: { include: [/src\/design-system\/tokens\/.+\.css/] },
   },
 })

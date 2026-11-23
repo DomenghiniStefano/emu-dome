@@ -1,6 +1,6 @@
 <!-- Fixture of scripts/scan-conventions.mjs: written the way the design system asks; no rule fires. -->
 <script setup lang="ts">
-import { Button, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonVariant } from '@/design-system/components/button'
 const props = defineProps<{ phone: boolean; touch?: boolean }>()
 const dark = { light: 'x' }
 const label = props.touch ? 'a' : 'b'

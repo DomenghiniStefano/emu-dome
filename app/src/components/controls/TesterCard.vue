@@ -3,8 +3,8 @@
 // do when there is something to say (C02: the capture's hint), the 12-button tester, and what the
 // last press did (`last`; `idle` until the first press).
 import { useI18n } from 'vue-i18n'
-import { Card } from '@/components/ui/card'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Card } from '@/design-system/components/card'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 import ButtonTester from './ButtonTester.vue'
 
 defineProps<{

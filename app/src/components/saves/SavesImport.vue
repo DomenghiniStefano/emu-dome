@@ -7,11 +7,11 @@ import { useI18n } from 'vue-i18n'
 import { File as FileIcon, Gamepad2, Import } from '@lucide/vue'
 import type { GameSaves, ImportCandidate, LibraryGame } from '@/emu'
 import { saveWhenLabel } from '@/i18n/labels'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Card } from '@/design-system/components/card'
 import ImportStep from './ImportStep.vue'
 import SaveWarning from './SaveWarning.vue'
-import { Heading } from '@/components/ui/heading'
+import { Heading } from '@/design-system/components/heading'
 
 const props = defineProps<{
   candidate: ImportCandidate | null

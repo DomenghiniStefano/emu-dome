@@ -13,9 +13,9 @@ import {
   Trash2,
 } from '@lucide/vue'
 import type { CloudActivity, CloudActivityKind } from '@/emu'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import RowColumns from '@/components/settings/RowColumns.vue'
-import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
+import { EmptyState, EmptyStateVariant } from '@/design-system/components/empty-state'
 import { errorText, saveWhenLabel } from '@/i18n/labels'
 import { activityLine } from './cloud'
 import { gameTitle } from './cloudState'

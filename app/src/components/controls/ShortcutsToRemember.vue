@@ -3,11 +3,11 @@
 // and «Modifica le scorciatoie» down to C03.
 import { useI18n } from 'vue-i18n'
 import { Pencil } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Button } from '@/design-system/components/button'
+import { Card, CardVariant } from '@/design-system/components/card'
 import type { RememberLine } from './shortcutLines'
-import { Kbd } from '@/components/ui/kbd'
-import { LabelledBlock } from '@/components/ui/labelled-block'
+import { Kbd } from '@/design-system/components/kbd'
+import { LabelledBlock } from '@/design-system/components/labelled-block'
 
 defineProps<{ lines: RememberLine[]; hint: string }>()
 const emit = defineEmits<{ edit: [] }>()

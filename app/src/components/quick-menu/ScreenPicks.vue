@@ -2,7 +2,7 @@
 // G09 quick picks over the cards: image size, smoothing and the screen effect in one press.
 // A pick that would change a setting locked here is disabled; the setting's card says why.
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type { ScreenPick, ScreenPickId } from './screenPicks'
 
 defineProps<{

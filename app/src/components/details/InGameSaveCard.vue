@@ -10,7 +10,7 @@ import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { saveWhenLabel } from '@/i18n/labels'
 import DetailsAction from './DetailsAction.vue'
 import DetailsCard from './DetailsCard.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{ game: LibraryGame; saves: GameSaves | null; phone: boolean }>()
 const emit = defineEmits<{

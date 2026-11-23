@@ -3,9 +3,9 @@
 // stays words (#104), so the confirmation is the one with an icon.
 import { useI18n } from 'vue-i18n'
 import { RefreshCw } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { FocusMark } from './view'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const emit = defineEmits<{ cancel: []; confirm: [] }>()
 

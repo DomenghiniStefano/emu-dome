@@ -15,7 +15,7 @@ import { loadGameSaves } from './gameSaves'
 import InGameSaveCard from './InGameSaveCard.vue'
 import QuickSaveDialog from '@/components/saves/QuickSaveDialog.vue'
 import SlotTile from '@/components/saves/SlotTile.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{ game: LibraryGame; phone: boolean }>()
 const emit = defineEmits<{

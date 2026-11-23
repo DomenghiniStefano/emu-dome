@@ -7,7 +7,7 @@ import type { LibraryGame, SettingDevice } from '@/emu'
 import { sizeLabel } from '@/i18n/labels'
 import DetailsCard from './DetailsCard.vue'
 import { deviceLine, gameFacts } from './gameFiles'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{ game: LibraryGame; device?: SettingDevice | null }>()
 

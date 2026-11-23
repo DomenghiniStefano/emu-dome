@@ -11,7 +11,7 @@ export const EDITOR_SCREENS: EditorScreen[] = ['top', 'bottom']
 /**
  * The snapping grid: the area cut in this many steps each way. The d-pad moves by one step, a
  * drag snaps to it when «Aggancia alla griglia» is on. The grid drawn behind the screens
- * (`bg-editor-grid`, assets/utilities.css) uses the same count.
+ * (`bg-editor-grid`, design-system/styles/utilities.css) uses the same count.
  */
 export const GRID = 32
 /** The smallest a screen gets, as a share of the area's width. */

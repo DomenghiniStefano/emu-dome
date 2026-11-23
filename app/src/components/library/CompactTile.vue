@@ -13,7 +13,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Play } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverSize, CoverStackLayer, coverStackVariants } from '@/components/cover/variants'
 import type { LibraryGame } from '@/emu'

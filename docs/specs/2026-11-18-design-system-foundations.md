@@ -1,6 +1,10 @@
 # Design system, cycle 1: foundations and primitives (spec)
 
 **Date:** 2026-11-18 · **Card:** Trello #61 (cycles 2 and 3: #62, #63)
+
+> A record of cycle 1: its paths are those of the time. Since `2026-11-23-design-system-folder.md` the design
+> system lives in `app/src/design-system/` (`assets/theme/` → `tokens/`, `assets/main.css` → `index.css`,
+> `components/ui/` → `components/`, `kit/` → `kit/` inside it); its `README.md` is the current map.
 **Source of names and values:** EmuDome Design System README and `tokens.json`
 (https://claude.ai/artifact/TEz4yQgd1w27HRQLt4beAy), then `app/src/styles.css` and the screens.
 **Status:** approved by the owner (2026-11-18), 0BSD allowed. Points marked **Cowork** still need

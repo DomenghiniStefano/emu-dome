@@ -7,8 +7,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Check, LogIn } from '@lucide/vue'
 import type { CloudStatus, ErrorCode } from '@/emu'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 import { errorText } from '@/i18n/labels'
 
 const props = defineProps<{ status: CloudStatus; signingIn: boolean }>()

@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectTriggerVariant,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/design-system/components/select'
 
 const props = defineProps<{
   label: string

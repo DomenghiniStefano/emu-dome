@@ -4,8 +4,8 @@
 // TODO(E04): «Apri la cartella» needs an opener for folders (no plugin yet).
 import { useI18n } from 'vue-i18n'
 import { ArchiveRestore, Play } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { DialogTone } from '@/components/ui/dialog'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { DialogTone } from '@/design-system/components/dialog'
 import { dateTimeLabel } from '@/i18n/labels'
 import FlowDialog from './FlowDialog.vue'
 

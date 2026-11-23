@@ -4,9 +4,9 @@
 // away by itself, its time counted from when the stack shows it (errors stay longer outside the
 // game), so one pushed before the stack was mounted still gets its full time.
 import { computed, onBeforeUnmount, watch } from 'vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { useToasts } from '@/composables/useToasts'
-import { cn } from '@/lib/cn'
+import { cn } from '@/design-system/lib/cn'
 import { ToastKind, toastDuration, type Toast } from './toasts'
 
 const props = defineProps<{ inGame?: boolean }>()

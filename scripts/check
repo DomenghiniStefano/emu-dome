@@ -356,12 +356,12 @@ forbid 'no emoji' 'Use a Lucide icon or plain text.' \
 # "User interface: never hardcoded": text nodes and static placeholder / title / aria-label /
 # alt / label attributes in the .vue templates must go through t(). The rules, the exemptions
 # (<kbd>, <code>, the product and key names) and what it cannot see are in the script.
-# app/src/kit/ is left out, and from this gate only: the Kit page is development-only (main.ts
+# app/src/design-system/kit/ is left out, and from this gate only: the Kit page is development-only (main.ts
 # mounts it behind import.meta.env.DEV, the production build drops it) and its labels name the
 # primitives' states for whoever builds them, not for the user.
 printf '\n=== visible text\n'
 # shellcheck disable=SC2046 # one path per word; the repo has no spaces in .vue paths
-node scripts/visible-text.mjs $(git ls-files --cached --others --exclude-standard -- '*.vue' ':!app/src/kit/') ||
+node scripts/visible-text.mjs $(git ls-files --cached --others --exclude-standard -- '*.vue' ':!app/src/design-system/kit/') ||
 	failed="$failed [visible text]"
 
 # The design system's conventions (docs/frontend-conventions.md): tokens, primitives, variant

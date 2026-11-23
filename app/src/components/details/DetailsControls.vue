@@ -18,7 +18,7 @@ import { useErrorSink } from '@/composables/useToasts'
 import DetailsAction from './DetailsAction.vue'
 import DetailsCard from './DetailsCard.vue'
 import { hasOwnRemap, hasTouchScreen, pointerLabel, type PadRows } from './gameControls'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{

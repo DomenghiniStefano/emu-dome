@@ -120,7 +120,7 @@ never shipped.
 
 ### Fonts
 
-No font file is shipped. `app/src/styles.css` and the font token (`app/src/assets/theme/typography.css`)
+No font file is shipped. `app/src/styles.css` and the font token (`app/src/design-system/tokens/typography.css`)
 name `'Geist'` first in `font-family`, but nothing
 loads it (no `@font-face`, no font file, no remote stylesheet): it is used only when the user has it
 installed, otherwise the system font is used. If Geist is ever bundled, it is under the SIL Open Font
@@ -128,7 +128,7 @@ License 1.1: list it here and ship its `OFL.txt` next to the font files.
 
 ### Icons and images
 
-- **App icon and mark** (`app/src/assets/brand/emudome-mark.svg` and `emudome-mark-small.svg`, the two
+- **App icon and mark** (`app/src/design-system/brand/emudome-mark.svg` and `emudome-mark-small.svg`, the two
   masters; `app/src-tauri/icons/`, every size, `app-icon.png` and `icon.ico`; the Android launcher icons
   `app/src-tauri/gen/android/app/src/main/res/mipmap-*/` with the adaptive background in
   `values/ic_launcher_background.xml`): EmuDome's own work, part of EmuDome under GPL-3.0-or-later

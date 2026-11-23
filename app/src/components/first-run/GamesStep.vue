@@ -4,16 +4,16 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Folder, FolderPlus, X } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Card, CardVariant } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { StatTile } from '@/components/ui/stat-tile'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Card, CardVariant } from '@/design-system/components/card'
+import { Progress } from '@/design-system/components/progress'
+import { StatTile } from '@/design-system/components/stat-tile'
 import { emu } from '@/emu'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
 import { consoleCounts, countByConsole } from '@/lib/consoleCounts'
 import { chooseFolder, library } from '@/lib/library'
 import StepLayout from './StepLayout.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const { t } = useI18n()
 const toasts = useToasts()

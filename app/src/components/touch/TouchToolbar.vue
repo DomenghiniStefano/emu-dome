@@ -21,8 +21,12 @@ import {
   Undo2,
   X,
 } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/design-system/components/dropdown-menu'
 import { fitToolbar, TOOLS, type Tool, type ToolbarFit } from './editorToolbar'
 import type { ToolPanel } from './useTouchEditor'
 

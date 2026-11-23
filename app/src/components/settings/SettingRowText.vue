@@ -5,7 +5,7 @@
 // this text and greys the name (the control beside it keeps its colour).
 import { useI18n } from 'vue-i18n'
 import type { SettingDevice } from '@/emu'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/design-system/components/badge'
 
 defineProps<{
   name: string

@@ -11,7 +11,7 @@
 // cancels from the choice); Esc does the same; a click outside does nothing, as before.
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Dialog, DialogContent, DialogSize } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogSize } from '@/design-system/components/dialog'
 import { emu, type GameScreenshot, type LibraryGame } from '@/emu'
 import { errorText } from '@/i18n/labels'
 import { latest } from '@/lib/latest'

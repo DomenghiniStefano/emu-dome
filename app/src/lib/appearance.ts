@@ -7,7 +7,7 @@
 // - `a11y.transp`: `data-transp="reduce"` on <html> (glass becomes solid surface, haze off).
 // «Come il sistema» follows `prefers-reduced-motion` / `prefers-reduced-transparency`.
 import { ref } from 'vue'
-import { accentTokens } from './accent'
+import { accentTokens } from '@/design-system/lib/accent'
 import { onSettingsChanged } from '@/composables/useSettingsChanged'
 import { emu, type SettingKey, type SettingRow, type SettingValue } from '@/emu'
 import { GLOBAL } from './settingsModel'

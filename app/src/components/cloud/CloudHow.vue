@@ -4,7 +4,7 @@
 import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FolderLock, Gamepad2, MonitorSmartphone, RefreshCw, Split } from '@lucide/vue'
-import { Card } from '@/components/ui/card'
+import { Card } from '@/design-system/components/card'
 
 const { t } = useI18n()
 

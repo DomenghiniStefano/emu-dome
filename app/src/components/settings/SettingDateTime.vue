@@ -2,7 +2,7 @@
 // A date and time (`dateTime`, `saves.rtcdate`): the DateTimeField primitive, its value in words
 // in the UI language. The setting is written when its popover closes, once.
 import { useI18n } from 'vue-i18n'
-import { DateTimeField, DateTimeFieldVariant } from '@/components/ui/date-time-field'
+import { DateTimeField, DateTimeFieldVariant } from '@/design-system/components/date-time-field'
 import { settingDateTimeLabel } from '@/i18n/labels'
 
 defineProps<{

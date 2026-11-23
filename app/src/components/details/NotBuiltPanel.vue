@@ -2,7 +2,7 @@
 // A tab that is not built yet (L08 Codici trucco, L09 Patch e traduzioni): what it will do, and
 // that it arrives later (X05, the reason).
 import { useI18n } from 'vue-i18n'
-import { Card } from '@/components/ui/card'
+import { Card } from '@/design-system/components/card'
 
 defineProps<{ tab: 'cheats' | 'patches' }>()
 

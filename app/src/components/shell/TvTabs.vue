@@ -7,7 +7,7 @@
 // section has no first control of its own.
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { uiMode } from '@/composables/useUiMode'
 import { gamepadName } from '@/i18n/labels'
 import { SECTION_ICONS, SECTIONS, type Section } from './sections'

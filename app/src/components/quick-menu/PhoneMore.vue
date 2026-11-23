@@ -4,7 +4,7 @@
 // and «Chiudi il gioco» last, apart, in danger ink: two taps on purpose. The rows are
 // phoneMenu.ts's; what each does is QuickMenu.vue's.
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import PageRow from './PageRow.vue'
 import type { MoreId, MoreRow } from './phoneMenu'
 import { openerMark } from './view'

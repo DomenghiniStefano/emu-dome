@@ -1,4 +1,4 @@
-<!-- Fixture of scripts/scan-conventions.mjs: a raw control outside components/ui. -->
+<!-- Fixture of scripts/scan-conventions.mjs: a raw control outside design-system/components. -->
 <template>
   <button class="h-control" @click="go">x</button>
 </template>

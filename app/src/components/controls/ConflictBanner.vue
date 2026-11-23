@@ -4,7 +4,7 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeftRight, Undo2 } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/design-system/components/button'
 
 defineProps<{ text: string }>()
 const emit = defineEmits<{ swap: []; cancel: [] }>()

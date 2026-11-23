@@ -11,7 +11,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Ellipsis, Play } from '@lucide/vue'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type { LibraryGame } from '@/emu'
 import { gamePlayedLabel } from '@/i18n/labels'
 import CoverMenu from '@/components/cover/CoverMenu.vue'
