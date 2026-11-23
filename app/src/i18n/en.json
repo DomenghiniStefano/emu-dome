@@ -1339,7 +1339,7 @@
     "touch": {
       "tedit": {
         "name": "Customise touch controls",
-        "desc": "Move and resize the buttons over the paused game.",
+        "desc": "Move and resize the buttons for the way you hold the phone.",
         "button": "Open the editor"
       },
       "tport": {
@@ -2110,6 +2110,17 @@
     "lockedDesktop": "Only on this computer.",
     "lockedNeedsNative": "Needs the Accelerated display method: choose it in the quick menu, under “Screens and picture”.",
     "lockedConsole": "Not available on this console: its emulator has no such option.",
+    "layoutEditor": {
+      "screens": {
+        "title": "Choose the console",
+        "text": "The screen layout you save holds for every game of that console."
+      },
+      "touch": {
+        "title": "Choose the console",
+        "text": "The touch controls you save hold for every game of that console, the way you hold the phone now."
+      },
+      "cancel": "Cancel"
+    },
     "notYet": "This arrives in a future update.",
     "emptyOnly": "No settings changed here. Every value is inherited.",
     "noResults": "No settings for “{query}”",
@@ -2222,6 +2233,7 @@
     "shortcutsHint": "Hold {modifier} and press a button",
     "remap": "Remap the buttons for this game",
     "screenshot": "Take screenshot",
+    "editLayout": "Edit the layout",
     "reset": "Restart game",
     "close": "Close game",
     "trial": "{n} changes on trial: {names}",

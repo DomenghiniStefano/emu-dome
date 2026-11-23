@@ -90,8 +90,6 @@ const wide = computed(
     kind.value.type === 'apply' ||
     kind.value.type === 'folders',
 )
-/** A screen layout is edited for one two-screen console (or one of its games) at a time. */
-const twoScreens = computed(() => props.console === 'nds' || props.console === '3ds')
 
 function set(v: SettingValue) {
   if (!disabled.value) emit('set', v)
@@ -219,23 +217,25 @@ async function choose() {
         >
           {{ t('settingsUi.openControls') }}
         </Button>
-        <!-- screen layout: edited in the C09 screens editor -->
+        <!-- screen layout: edited in the C09 screens editor (the page asks for the console
+             when its scope has none with two screens) -->
         <Button
           v-else-if="kind.type === 'screenLayout'"
           :variant="ButtonVariant.Soft"
           :fade="ButtonFade.None"
-          :disabled="disabled || compact || !twoScreens"
+          :disabled="disabled || compact"
           :icon="actionIcon"
           @click="emit('edit')"
         >
           {{ buttonText }}
         </Button>
-        <!-- touch controls: edited in the C06 editor, for one console at a time -->
+        <!-- touch controls: edited in the C06 editor, for one console at a time (the page asks
+             for it at «Tutti i giochi») -->
         <Button
           v-else-if="kind.type === 'touchLayout'"
           :variant="ButtonVariant.Soft"
           :fade="ButtonFade.None"
-          :disabled="disabled || compact || !console"
+          :disabled="disabled || compact"
           :icon="actionIcon"
           @click="emit('edit')"
         >

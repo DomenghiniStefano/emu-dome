@@ -61,8 +61,6 @@ const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
 const kind = computed(() => props.entry.kind)
 const edit = computed(() => tvEdit(props.entry))
 const disabled = computed(() => state.value.disabled)
-/** A screen layout is edited for one two-screen console (or one of its games) at a time. */
-const twoScreens = computed(() => props.console === 'nds' || props.console === '3ds')
 
 function set(v: SettingValue) {
   if (!disabled.value) emit('set', v)
@@ -113,12 +111,12 @@ const actionText = computed(() =>
 /** ◀ ▶ change the value in place (tvSettingRow.ts). */
 const inPlace = computed(() => edit.value === 'toggle' || edit.value === 'step')
 /** What A does, said by the arrow at the end: a sheet or an action follows (not on a locked
- * row, an action with no button, or a screen layout away from a two-screen console). */
+ * row, or an action with no button). */
 const leadsOn = computed(() => {
   if (disabled.value) return false
   if (edit.value === 'sheet') return true
   if (edit.value !== 'run') return false
-  if (kind.value.type === 'screenLayout') return twoScreens.value
+  if (kind.value.type === 'screenLayout') return true
   return kind.value.type === 'bindings' || buttonText.value !== ''
 })
 
@@ -160,7 +158,8 @@ async function confirm() {
     return
   }
   if (k.type === 'bindings') return emit('open')
-  if (k.type === 'screenLayout') return twoScreens.value ? emit('edit') : undefined
+  // The page asks for the console when its scope has none with two screens (Trello #111).
+  if (k.type === 'screenLayout') return emit('edit')
   if (k.type === 'file' || k.type === 'action') {
     // A file row with its own picker opens it here, the others let the page do it (the desk's).
     const pick = FILE_PICKERS[key.value]

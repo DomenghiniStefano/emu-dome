@@ -6,21 +6,24 @@
 // rest, «Riduci» folds it into a pill (TouchEditorPill) and «Salva» stores the layout on this
 // device for the console and the way the phone is held. It fades while a control is dragged.
 // Opened from the quick menu's «Controlli» (the game paused behind it, `live`) and from Settings
-// › Controlli touch at a console's scope (no game: a dark ground).
+// › Controlli touch (no game: a dark ground with the console's screens drawn where the game would
+// show them, TouchPreviewScreens, Trello #111).
 // Controller: L1 / R1 pick a control, the d-pad moves it, the right stick resizes it, X steps its
 // opacity, Select folds the toolbar, A saves, B leaves without saving. Keyboard: PageUp /
 // PageDown or [ ], the arrows, Shift + arrows, Ctrl + Z / Ctrl + Y, Enter, Esc. The state and the
 // steps are useTouchEditor's, the geometry touchLayout.ts's.
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ConsoleId } from '@/emu'
+import type { ConsoleId, ScreenPlacement } from '@/emu'
 import EditorHints from '@/components/screen-editor/EditorHints.vue'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavScope } from '@/nav'
 import TouchControl from './TouchControl.vue'
 import TouchEditorPill from './TouchEditorPill.vue'
+import TouchPreviewScreens from './TouchPreviewScreens.vue'
 import TouchToolPanel from './TouchToolPanel.vue'
 import TouchToolbar from './TouchToolbar.vue'
+import { useScreenPreview } from './useScreenPreview'
 import { useTouchEditor, type ToolPanel } from './useTouchEditor'
 
 const props = defineProps<{
@@ -40,6 +43,10 @@ const editor = useTouchEditor({
   close: () => emit('close'),
 })
 const { draft, selected, current, collapsed, panel, gesturing, busy, prefs, limits } = editor
+/** No game behind (Settings): the console's screens where the game would show them. */
+const previewScreens = props.live
+  ? ref<ScreenPlacement[]>([])
+  : useScreenPreview(props.console, editor.area, editor.inset, useErrorSink())
 useNavScope(root, {
   back: editor.discard,
   tab: dir => editor.pickNext(dir),
@@ -72,6 +79,7 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
     :aria-label="t('touch.editor.title')"
     @pointerdown="editor.pointerDown"
   >
+    <TouchPreviewScreens v-if="!live" :console="props.console" :placements="previewScreens" />
     <div class="pointer-events-none absolute inset-0 bg-touch-grid" aria-hidden="true"></div>
 
     <TouchControl
