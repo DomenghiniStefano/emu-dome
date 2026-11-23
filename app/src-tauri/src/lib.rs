@@ -545,6 +545,7 @@ pub fn run() {
             screens::screens_custom,
             screens::screens_set_custom,
             screens::screens_preset_custom,
+            screens::screens_preview,
             commands::stats,
             commands::video_mode,
             commands::set_video_mode,
