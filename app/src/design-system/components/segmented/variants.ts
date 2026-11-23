@@ -17,7 +17,9 @@ export const SegmentedVariant = {
 } as const
 export type SegmentedVariant = (typeof SegmentedVariant)[keyof typeof SegmentedVariant]
 
-export const segmentedVariants = cva('', {
+// Disabled (`data-disabled`, set by Segmented: Reka's root does not): the whole group faded like
+// Button and Input (#132).
+export const segmentedVariants = cva('data-disabled:opacity-disabled', {
   variants: {
     variant: {
       [SegmentedVariant.Default]:

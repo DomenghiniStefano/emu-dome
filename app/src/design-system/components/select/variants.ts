@@ -13,8 +13,9 @@ export const SelectTriggerVariant = {
 } as const
 export type SelectTriggerVariant = (typeof SelectTriggerVariant)[keyof typeof SelectTriggerVariant]
 
+// Disabled (a locked setting's list, #132): faded like Input and DateTimeField.
 export const selectTriggerVariants = cva(
-  'flex cursor-pointer items-center gap-6 rounded-control border px-field-pad text-left font-sans text-label enabled:hover:bg-surface-hover disabled:cursor-not-allowed',
+  'flex cursor-pointer items-center gap-6 rounded-control border px-field-pad text-left font-sans text-label enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-disabled',
   {
     variants: {
       variant: {
