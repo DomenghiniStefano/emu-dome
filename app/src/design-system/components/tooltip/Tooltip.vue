@@ -16,13 +16,18 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from 'reka-ui'
-import { tokenPx, zoomedReference } from '@/design-system/components/select/zoomedReference'
+import {
+  tokenPx,
+  zoomedBoundary,
+  zoomedReference,
+} from '@/design-system/components/select/zoomedReference'
 import { TOOLTIP_EDGE, TOOLTIP_GAP, tooltipVariants } from './variants'
 
 const props = defineProps<{ anchor: HTMLElement; text: string }>()
 const emit = defineEmits<{ close: [] }>()
 
 const reference = computed(() => zoomedReference(props.anchor))
+const boundary = zoomedBoundary()
 </script>
 
 <template>
@@ -35,6 +40,7 @@ const reference = computed(() => zoomedReference(props.anchor))
           side="top"
           :side-offset="tokenPx(TOOLTIP_GAP)"
           :collision-padding="tokenPx(TOOLTIP_EDGE)"
+          :collision-boundary="boundary"
           :class="tooltipVariants()"
         >
           {{ text }}
