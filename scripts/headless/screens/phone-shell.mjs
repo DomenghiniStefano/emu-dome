@@ -14,6 +14,12 @@ const back = `window.__emit('emu://nav', { action: 'back' })`;
 const click = (re) =>
   `(() => { const b = [...document.querySelectorAll('button')].find(b => /${re}/.test(b.textContent.trim())); b && b.click(); return !!b })()`;
 
+/** A button of the page (not the tab bar's or the side column's) whose words match `re`. */
+const clickMain = (re) =>
+  `(() => { const b = [...document.querySelectorAll('main button')].find(b => /${re}/.test(b.textContent.trim())); b && b.click(); return !!b })()`;
+/** The page's scrolling box to its end. */
+const scrollEnd = `(() => { for (const el of document.querySelectorAll('main, [data-slot=section-page], *')) if (el.scrollHeight > el.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight; return true })()`;
+
 const SHELL = {
   // The library (#29): the list by default, the compact grid when `library.view` says so (three
   // columns upright, more on the side), with more games than fit and quick saves (`gameSaves`:
@@ -60,6 +66,33 @@ const SHELL = {
   "controls-pad-keyboard": {
     mock: { pads: true },
     steps: [{ key: "ShiftLeft" }, section(2)],
+  },
+  // With no controller on a touch device (#132): E05 one card over «Controlli touch» (the
+  // editor's row, `layoutRows` gives the schema `touch.tedit`).
+  "controls-touch": { mock: { layoutRows: true }, steps: [section(2)] },
+  // Settings › Libreria (#132): «Copertine generate» locked, its list faded with the row; its
+  // «Mostra i giochi nascosti» opens the library with the hidden game and L03's chip on; a tap
+  // on the chip turns it off.
+  "settings-library": {
+    mock: { richSettings: true, hiddenGame: true },
+    steps: [section(4), clickMain("^(Libreria)"), scrollEnd],
+  },
+  "library-hidden": {
+    mock: { richSettings: true, hiddenGame: true },
+    steps: [
+      section(4),
+      clickMain("^(Libreria)"),
+      click("^Mostra i giochi nascosti$"),
+    ],
+  },
+  "library-hidden-off": {
+    mock: { richSettings: true, hiddenGame: true },
+    steps: [
+      section(4),
+      clickMain("^(Libreria)"),
+      click("^Mostra i giochi nascosti$"),
+      click("^Anche i giochi nascosti$"),
+    ],
   },
   cloud: { mock: {}, steps: [section(3)] },
   // Every row kind of the test schema (#124): still the phone's one column and its tab bar.

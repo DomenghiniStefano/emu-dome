@@ -83,6 +83,8 @@
     "Tales",
     "Advance",
   ];
+  // `hiddenGame` (#132): «Star Pilot» is hidden (the library leaves it out until L03 shows it).
+  if (scenario.hiddenGame) games[4].hidden = true;
   for (let n = 0; n < (scenario.manyGames ?? 0); n++) {
     const consoles = ["gba", "nds", "gb", "gbc"];
     const console_ = consoles[n % consoles.length];
@@ -767,6 +769,20 @@
         "normal",
         { levels: G, mostUsed: false },
       ),
+      // Settings › Libreria (#132): «Mostra i giochi nascosti» (wired) over «Copertine generate»,
+      // a list nothing reads yet (its field faded with the row).
+      entry("library.hidden", "library", { type: "action", style: "link" }, null, {
+        levels: G,
+        mostUsed: false,
+        wired: true,
+      }),
+      entry(
+        "library.covers",
+        "library",
+        choice("list", ["color_title", "rom_icon", "title_only"]),
+        "color_title",
+        { levels: G, mostUsed: false },
+      ),
     ];
     const all = [...entries, ...more, ...speed, ...pad];
     const pages = [
@@ -813,6 +829,7 @@
         { page: "fx", id: "adjust", keys: ["fx.fxint"] },
         { page: "pad", id: "buttons", keys: ["pad.remap"] },
         { page: "library", id: "folders", keys: ["library.folders"] },
+        { page: "library", id: "view", keys: ["library.hidden", "library.covers"] },
         { page: "presets", id: "ready", keys: ["presets.preset"] },
         { page: "presets", id: "file", keys: ["presets.export"] },
         { page: "bios", id: "gba", keys: ["bios.bgba"] },

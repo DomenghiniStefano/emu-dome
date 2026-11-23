@@ -38,7 +38,11 @@ without opening the app.
   surface: the holes show black). `phone-controls-pad*` (#118): Controls with a controller, without
   the keyboard's card, and with it once a physical key was pressed (`{ key }` step);
   `phone-settings-rich*` (#124): every row kind of `richSettings` in the phone's one column (the rich
-  schema takes the scenario's device).
+  schema takes the scenario's device). #132: `phone-controls-touch*` (no controller, `layoutRows`: E05 a card
+  over «Controlli touch»), `phone-settings-library*` (a locked list faded with its row),
+  `phone-library-hidden*` / `phone-library-hidden-off*` (`hiddenGame: true` hides «Star Pilot»; Settings'
+  «Mostra i giochi nascosti», L03's chip on the phone's toolbar, tapped off), and in `touch.mjs`
+  `touch-editor-size-open*` / `touch-editor-size-back*` (Android's back closes C06's tool panel first).
 - `libraryView: "list" | "grid"` fixes `library.view` (#29; otherwise the list on `device: "phone"`,
   the grid elsewhere, and the toolbar's switch writes it). The phone's library: the `phone-library*`
   scenarios of `phone-shell.mjs` (the list, the compact grid, the switch, the regional versions, L03);
