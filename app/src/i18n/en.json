@@ -550,7 +550,7 @@
     "notificationsWriteFailed": "Couldn’t save the notifications: check the free disk space and try again.",
     "notificationsReadFailed": "Couldn’t read the notifications file, so the change wasn’t kept and the file was left as it is. Check that the file can be opened, then try again.",
     "coverInvalid": "This image can’t be opened. Choose a JPG or PNG file.",
-    "unexpected": "Something went wrong: {detail}",
+    "unexpected": "Something went wrong. Try again; if it happens again, restart EmuDome.",
     "nothingToUndo": "There’s no load to undo.",
     "undoFailed": "Couldn’t go back to before the load: {detail}. Load another quick save.",
     "saveUnreadable": "The in-game save can’t be read, so EmuDome set it aside. Restore a backup from Saves.",
@@ -2315,6 +2315,7 @@
     "e05": {
       "title": "No controller connected",
       "lead": "Connect a controller with a cable or over Bluetooth: EmuDome recognises it by itself. Meanwhile you can play with the keyboard.",
+      "leadTouch": "Connect a controller with a cable or over Bluetooth: EmuDome recognises it by itself. Meanwhile you can play with the touch controls.",
       "keyboard": "See the keyboard keys"
     },
     "levelGame": "This game only",

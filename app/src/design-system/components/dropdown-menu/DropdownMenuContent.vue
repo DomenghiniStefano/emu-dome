@@ -13,7 +13,11 @@
 import type { DropdownMenuContentEmits } from 'reka-ui'
 import { computed } from 'vue'
 import { DropdownMenuContent, DropdownMenuPortal, useForwardPropsEmits } from 'reka-ui'
-import { tokenPx, zoomedReference } from '@/design-system/components/select/zoomedReference'
+import {
+  tokenPx,
+  zoomedBoundary,
+  zoomedReference,
+} from '@/design-system/components/select/zoomedReference'
 import DropdownMenuNavScope from './DropdownMenuNavScope.vue'
 import { DROPDOWN_MENU_GAP, DropdownMenuVariant, dropdownMenuVariants } from './variants'
 
@@ -28,6 +32,7 @@ const emits = defineEmits<DropdownMenuContentEmits>()
 const forwarded = useForwardPropsEmits({}, emits)
 
 const reference = computed(() => (props.anchor ? zoomedReference(props.anchor) : undefined))
+const boundary = zoomedBoundary()
 
 function onPointerDownOutside(e: CustomEvent<{ originalEvent: PointerEvent }>) {
   const target = e.detail.originalEvent.target
@@ -44,6 +49,7 @@ function onPointerDownOutside(e: CustomEvent<{ originalEvent: PointerEvent }>) {
       align="end"
       :side-offset="tokenPx(DROPDOWN_MENU_GAP)"
       :collision-padding="tokenPx(DROPDOWN_MENU_GAP)"
+      :collision-boundary="boundary"
       :reference="reference"
       :class="dropdownMenuVariants({ variant })"
       @open-auto-focus.prevent

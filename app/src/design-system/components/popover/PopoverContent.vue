@@ -18,8 +18,8 @@ import { computed } from 'vue'
 import { PopoverContent, PopoverPortal, useForwardPropsEmits } from 'reka-ui'
 import {
   tokenPx,
+  zoomedBoundary,
   zoomedReference,
-  zoomedViewport,
 } from '@/design-system/components/select/zoomedReference'
 import PopoverNavScope from './PopoverNavScope.vue'
 import {
@@ -41,8 +41,7 @@ const emits = defineEmits<PopoverContentEmits>()
 const forwarded = useForwardPropsEmits({}, emits)
 
 const reference = computed(() => (props.anchor ? zoomedReference(props.anchor) : undefined))
-// Reka types its boundary as elements; Floating UI, which it hands it to, also takes a rectangle.
-const boundary = zoomedViewport() as unknown as Element
+const boundary = zoomedBoundary()
 
 function onPointerDownOutside(e: CustomEvent<{ originalEvent: PointerEvent }>) {
   const target = e.detail.originalEvent.target

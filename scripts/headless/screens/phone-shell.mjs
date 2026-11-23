@@ -53,8 +53,21 @@ const SHELL = {
     focus: true,
   },
   saves: { mock: {}, steps: [section(1)] },
+  // Controls with no keyboard (#118): E05 offers the touch controls, a controller's overview has
+  // no keyboard card; once a physical key was pressed the keyboard shows again.
   controls: { mock: {}, steps: [section(2)] },
+  "controls-pad": { mock: { pads: true }, steps: [section(2)] },
+  "controls-pad-keyboard": {
+    mock: { pads: true },
+    steps: [{ key: "ShiftLeft" }, section(2)],
+  },
   cloud: { mock: {}, steps: [section(3)] },
+  // Every row kind of the test schema (#124): still the phone's one column and its tab bar.
+  "settings-rich": { mock: { richSettings: true }, steps: [section(4)] },
+  "settings-rich-page": {
+    mock: { richSettings: true },
+    steps: [section(4), click("^(Video)")],
+  },
   settings: { mock: {}, steps: [section(4)] },
   // Upright: a page over the list, and a search's results under the field (#29).
   "settings-page": {

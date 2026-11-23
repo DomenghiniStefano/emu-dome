@@ -12,8 +12,10 @@
 const escape = `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }))`;
 const click = (re) =>
   `(() => { const b = [...document.querySelectorAll('button')].find(b => /${re}/.test(b.textContent.trim())); b && b.click(); return !!b })()`;
+// On the phone «Controlli» is in the quick menu's «Altro», not on its first level (#108).
 const openEditor = [
   escape,
+  click("^(More|Altro)$"),
   click("^(Controls|Controlli)"),
   `(() => { const b = document.querySelector('[data-qm-touch-edit]'); b && b.click(); return !!b })()`,
 ];
@@ -75,6 +77,12 @@ add(
 );
 add("editor-folded", { steps: [...openEditor, click("Riduci$")] }, ["p390", "l740"]);
 add("lost-ask", { mock: { pads: true }, steps: [disconnect] }, ["p390", "l844"]);
+// G06 on the phone (#118): no hint with only the touch controls, Home with a controller, Esc
+// once a physical key was pressed (a `{ key }` step).
+const showHint = `import('/src/components/game/gameFlow.ts').then(m => { m.flow.hint = true; return true })`;
+add("hint-touch", { steps: [showHint], stepMs: 200 }, ["p780"]);
+add("hint-pad", { mock: { pads: true }, steps: [showHint], stepMs: 200 }, ["p780"]);
+add("hint-keyboard", { steps: [{ key: "ShiftLeft" }, showHint], stepMs: 200 }, ["p780"]);
 add(
   "lost-toast",
   // In game a toast stays 2 s: the picture is taken before it goes.

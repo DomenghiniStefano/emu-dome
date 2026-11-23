@@ -51,3 +51,12 @@ export function zoomedViewport() {
     },
   }
 }
+
+/**
+ * `zoomedViewport` as the `collision-boundary` of every Reka popper of the design system
+ * (Popover, Select, DropdownMenu, Tooltip; #107). Reka types its boundary as elements; Floating
+ * UI, which it hands it to, also takes a rectangle.
+ */
+export function zoomedBoundary(): Element {
+  return zoomedViewport() as unknown as Element
+}
