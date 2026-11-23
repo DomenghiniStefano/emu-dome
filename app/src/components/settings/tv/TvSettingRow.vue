@@ -21,10 +21,10 @@ import type {
   SettingsSchema,
   SettingValue,
 } from '@/emu'
-import { useErrorSink } from '@/composables/useToasts'
 import { cn } from '@/design-system/lib/cn'
-import { FILE_PICKERS, msg } from '@/lib/settingsModel'
+import { msg } from '@/lib/settingsModel'
 import { chosenList, swatchKey, toggleChosen } from '@/components/settings/settingRowModel'
+import { useRowChoose } from '@/components/settings/useRowChoose'
 import { useSettingRow } from '@/components/settings/useSettingRow'
 import TvChoiceSheet, { type SheetOption } from './TvChoiceSheet.vue'
 import { opensSheet, stepOption, stepSlider, toggled, tvEdit } from './tvSettingRow'
@@ -48,14 +48,15 @@ const emit = defineEmits<{
   reset: []
   /** A binding list: open the Controls section. */
   open: []
-  /** A file row without a picker of its own (`video.surroundImg`): the page opens it. */
+  /** A row the page carries out (`video.surroundImg`'s picker, `about.lic`): useRowChoose. */
   choose: []
   /** A screen layout: open the C09 screens editor. */
   edit: []
+  /** The Google account (`cloud.acct`): open the Cloud section. */
+  openCloud: []
 }>()
 
 const { t, te } = useI18n()
-const failWith = useErrorSink()
 const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
@@ -161,17 +162,14 @@ async function confirm() {
   }
   if (k.type === 'bindings') return emit('open')
   if (k.type === 'screenLayout') return twoScreens.value ? emit('edit') : undefined
-  if (k.type === 'file' || k.type === 'action') {
-    // A file row with its own picker opens it here, the others let the page do it (the desk's).
-    const pick = FILE_PICKERS[key.value]
-    if (!pick) return emit('choose')
-    try {
-      await pick()
-    } catch (err) {
-      failWith(err)
-    }
-  }
+  // A file or action row: as the desk's button does (useRowChoose).
+  if (k.type === 'file' || k.type === 'action') await choose()
 }
+const choose = useRowChoose(
+  () => key.value,
+  () => disabled.value,
+  { openCloud: () => emit('openCloud'), choose: () => emit('choose') },
+)
 
 function more() {
   if (state.value.changedHere) emit('reset')
