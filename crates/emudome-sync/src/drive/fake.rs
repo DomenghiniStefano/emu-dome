@@ -227,7 +227,7 @@ async fn bytes_of(content: Content) -> Result<Vec<u8>, SyncError> {
         Content::Bytes(b) => Ok(b),
         Content::File { path, .. } => tokio::fs::read(&path)
             .await
-            .map_err(|e| SyncError::Local(format!("{}: {e}", path.display()))),
+            .map_err(|e| SyncError::local(&path, &e)),
     }
 }
 
@@ -381,7 +381,7 @@ impl DriveApi for FakeDrive {
         let bytes = self.download(id).await?;
         tokio::fs::write(to, &bytes)
             .await
-            .map_err(|e| SyncError::Local(format!("{}: {e}", to.display())))?;
+            .map_err(|e| SyncError::local(to, &e))?;
         progress(bytes.len() as u64);
         Ok(Downloaded {
             md5: md5_hex(&bytes),

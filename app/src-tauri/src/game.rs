@@ -509,12 +509,7 @@ fn game_video(app: &tauri::AppHandle, state: &AppState, core: CoreId) -> (Render
                 "{}: no Vulkan device ({e:#}), software renderer",
                 core.name()
             );
-            health.set(
-                Part::HwRender,
-                Some(ErrorCode::HwRenderFallback {
-                    detail: format!("{e:#}"),
-                }),
-            );
+            health.set(Part::HwRender, Some(ErrorCode::HwRenderFallback));
             (Renderer::Software, VideoSetup::default())
         }
     }

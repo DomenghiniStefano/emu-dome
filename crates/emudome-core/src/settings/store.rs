@@ -46,7 +46,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
 
 use super::{ConsoleId, GameKey};
-use crate::ErrorCode;
+use crate::{ErrorCode, IoCause};
 
 /// One level's values as stored: `key → JSON value`, unknown keys included.
 pub type Layer = Map<String, Json>;
@@ -396,14 +396,14 @@ impl Store {
                 self.unreadable.remove(path);
                 Ok(T::default())
             }
-            Read::Failed(detail) => {
+            Read::Failed { cause, detail } => {
                 if self.unreadable.insert(path.to_path_buf()) {
                     log::warn!(
                         "settingsReadFailed: {}: {detail}; writes to it are refused until it reads",
                         path.display()
                     );
                 }
-                Err(ErrorCode::SettingsReadFailed { detail })
+                Err(ErrorCode::SettingsReadFailed { cause })
             }
         }
     }
@@ -414,8 +414,12 @@ enum Read<T> {
     Found(T),
     /// No file (or a file that was not JSON, now moved aside).
     Missing,
-    /// The file is there but could not be read: never to be written over.
-    Failed(String),
+    /// The file is there but could not be read: never to be written over. `detail` (the OS's
+    /// text) for the log.
+    Failed {
+        cause: IoCause,
+        detail: String,
+    },
 }
 
 fn apply_to(layer: &mut Layer, changes: &[&Change<'_>]) {
@@ -465,7 +469,12 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Read<T> {
         {
             return Read::Missing
         }
-        Err(e) => return Read::Failed(e.to_string()),
+        Err(e) => {
+            return Read::Failed {
+                cause: IoCause::of(&e),
+                detail: e.to_string(),
+            }
+        }
     };
     match serde_json::from_str(&text) {
         Ok(value) => Read::Found(value),
@@ -478,9 +487,10 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Read<T> {
             );
             match fs::rename(path, &aside) {
                 Ok(()) => Read::Missing,
-                Err(not_moved) => Read::Failed(format!(
-                    "not valid JSON ({e}) and not moved aside ({not_moved})"
-                )),
+                Err(not_moved) => Read::Failed {
+                    cause: IoCause::of(&not_moved),
+                    detail: format!("not valid JSON ({e}) and not moved aside ({not_moved})"),
+                },
             }
         }
     }
@@ -488,15 +498,17 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Read<T> {
 
 /// Writes `value` as pretty JSON, atomically.
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), ErrorCode> {
-    let mut bytes = serde_json::to_vec_pretty(value).map_err(write_failed)?;
+    let mut bytes = serde_json::to_vec_pretty(value)
+        .map_err(|e| write_failed(IoCause::Other, &format!("{}: {e}", path.display())))?;
     bytes.push(b'\n');
-    crate::write_atomic(path, &bytes).map_err(write_failed)
+    crate::write_atomic(path, &bytes)
+        .map_err(|e| write_failed(IoCause::of(&e), &format!("{}: {e}", path.display())))
 }
 
-fn write_failed(e: impl std::fmt::Display) -> ErrorCode {
-    ErrorCode::SettingsWriteFailed {
-        detail: e.to_string(),
-    }
+/// `settingsWriteFailed` for `cause`; the technical `detail` goes to the log only.
+pub(crate) fn write_failed(cause: IoCause, detail: &dyn std::fmt::Display) -> ErrorCode {
+    log::warn!("settingsWriteFailed: {detail}");
+    ErrorCode::SettingsWriteFailed { cause }
 }
 
 #[cfg(test)]

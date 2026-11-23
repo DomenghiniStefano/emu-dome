@@ -157,6 +157,53 @@ describe('errorText', () => {
       expect(folder).not.toContain('C:/data')
     }
   })
+  it('words a file of EmuDome’s own data by the shared set, a chosen folder by its own', () => {
+    for (const locale of ['en', 'it'] as const) {
+      i18n.global.locale.value = locale
+      const data = i18n.global.t('errorCauses.data.permissionDenied')
+      const slot = errorText({
+        code: 'stateSaveFailed',
+        params: { slot: 2, cause: 'permissionDenied' },
+      })
+      expect(slot).toContain(data)
+      expect(slot).toContain('2')
+      expect(
+        errorText({ code: 'settingsReadFailed', params: { cause: 'permissionDenied' } }),
+      ).toContain(data)
+      const log = errorText({ code: 'logExportFailed', params: { cause: 'notFound' } })
+      expect(log).toContain(i18n.global.t('errorCauses.logExportFailed.notFound'))
+      expect(causeText('logExportFailed', 'notFound')).not.toBe(
+        causeText('libraryWriteFailed', 'notFound'),
+      )
+    }
+  })
+  it('words a cover’s image and a sign-in by their reason, one text each (Trello #128)', () => {
+    for (const locale of ['en', 'it'] as const) {
+      i18n.global.locale.value = locale
+      const covers = (['format', 'tooLarge', 'missing', 'other'] as const).map(reason =>
+        errorText({ code: 'coverInvalid', params: { reason } }),
+      )
+      expect(new Set(covers).size).toBe(4)
+      expect(covers[1]).toBe(i18n.global.t('errorReasons.coverInvalid.tooLarge'))
+      const signIn = errorText({ code: 'cloudSignInFailed', params: { reason: 'notGranted' } })
+      expect(signIn).toContain(i18n.global.t('errorReasons.cloudSignInFailed.notGranted'))
+      for (const text of [...covers, signIn]) expect(text).not.toContain('{')
+    }
+  })
+  it('says what to do without a technical detail for the codes that dropped theirs', () => {
+    for (const code of [
+      'openFailed',
+      'coreIncompatible',
+      'cloudOffline',
+      'audioUnavailable',
+      'updateCheckFailed',
+      'licenceUnreadable',
+    ] as const) {
+      const text = errorText({ code })
+      expect(text).toBe(i18n.global.t(`errors.${code}`))
+      expect(text).not.toContain('{')
+    }
+  })
 })
 
 describe('stateLoadBlockText', () => {

@@ -138,32 +138,15 @@ mod tests {
         let health = Health::default();
         health.set(
             Part::Audio,
-            Some(ErrorCode::AudioUnavailable {
-                detail: "no device".into(),
+            Some(ErrorCode::ThreadStopped {
+                thread: "audio".into(),
             }),
         );
-        health.set(
-            Part::NativeVideo,
-            Some(ErrorCode::NativeVideoFallback {
-                detail: "no GPU".into(),
-            }),
-        );
-        health.set(
-            Part::Audio,
-            Some(ErrorCode::AudioUnavailable {
-                detail: "unplugged".into(),
-            }),
-        );
+        health.set(Part::NativeVideo, Some(ErrorCode::NativeVideoFallback));
+        health.set(Part::Audio, Some(ErrorCode::AudioUnavailable));
         assert_eq!(
             health.list(),
-            vec![
-                ErrorCode::NativeVideoFallback {
-                    detail: "no GPU".into()
-                },
-                ErrorCode::AudioUnavailable {
-                    detail: "unplugged".into()
-                },
-            ]
+            vec![ErrorCode::NativeVideoFallback, ErrorCode::AudioUnavailable]
         );
         health.set(Part::Audio, None);
         assert_eq!(health.list().len(), 1);

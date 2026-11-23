@@ -63,12 +63,7 @@ pub fn start(app: &tauri::App) {
         });
     if let Err(e) = spawned {
         log::error!("game key migration thread: {e}");
-        finish(
-            app.handle(),
-            Some(ErrorCode::SavesMigrationFailed {
-                detail: e.to_string(),
-            }),
-        );
+        finish(app.handle(), Some(ErrorCode::SavesMigrationFailed));
     }
 }
 
@@ -122,7 +117,7 @@ fn paths(app: &AppHandle) -> tauri::Result<Paths> {
 
 fn failed(detail: String) -> Option<ErrorCode> {
     log::warn!("savesMigrationFailed: {detail}");
-    Some(ErrorCode::SavesMigrationFailed { detail })
+    Some(ErrorCode::SavesMigrationFailed)
 }
 
 /// One pass of each move; the problem to show, if any (the saves' first).
@@ -157,8 +152,9 @@ fn run_screenshots(app: &AppHandle, paths: &Paths) -> Option<ErrorCode> {
         report.errors.len(),
         report.done
     );
-    (!report.errors.is_empty()).then(|| ErrorCode::SavesMigrationFailed {
-        detail: report.errors.join("; "),
+    (!report.errors.is_empty()).then(|| {
+        log::warn!("savesMigrationFailed: {}", report.errors.join("; "));
+        ErrorCode::SavesMigrationFailed
     })
 }
 

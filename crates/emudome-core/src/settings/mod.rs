@@ -205,10 +205,8 @@ impl Settings {
         }
         match file_of(scope) {
             Some(file) => {
-                let json =
-                    serde_json::to_value(&value).map_err(|e| ErrorCode::SettingsWriteFailed {
-                        detail: e.to_string(),
-                    })?;
+                let json = serde_json::to_value(&value)
+                    .map_err(|e| store::write_failed(crate::IoCause::Other, &e))?;
                 self.store.apply(
                     &file,
                     &[Change {
@@ -292,10 +290,8 @@ impl Settings {
                 if !entry.levels.accepts(level) {
                     return Err(level_refused(entry, level));
                 }
-                let json =
-                    serde_json::to_value(value).map_err(|e| ErrorCode::SettingsWriteFailed {
-                        detail: e.to_string(),
-                    })?;
+                let json = serde_json::to_value(value)
+                    .map_err(|e| store::write_failed(crate::IoCause::Other, &e))?;
                 Ok(Change {
                     key: entry.key,
                     per_device: entry.per_device,

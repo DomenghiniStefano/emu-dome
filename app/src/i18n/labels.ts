@@ -1,14 +1,20 @@
 // Backend data → text: error codes, speeds, controller names. The backend sends codes
 // and values only; every sentence comes from the message files.
 import { i18n, t } from './index'
-import { hasCause, type CauseCode } from './causes'
+import { CAUSE_CODES, hasCause, hasReason, type CauseCode, type WithReason } from './causes'
 import type { ErrorCode, GamepadEvent, IoCause, Speed, StateLoadBlock } from '@/emu'
 
 const known = (key: string) => i18n.global.te(key)
 
-/** Why a file could not be used (Trello #128), in words: the cause's text for that code. */
+/** Why a file could not be used (Trello #128), in words: the cause's text for that code (its
+ * own, or the set it shares). */
 export function causeText(code: CauseCode, cause: IoCause): string {
-  return t(`errorCauses.${code}.${cause}`)
+  return t(`errorCauses.${CAUSE_CODES[code]}.${cause}`)
+}
+
+/** Why a failure EmuDome tells apart happened (a cover's image, the Google sign-in), in words. */
+export function reasonText(e: WithReason): string {
+  return t(`errorReasons.${e.code}.${e.params.reason}`)
 }
 
 /** Shape check for an `ErrorCode` coming back from a command or an event. */
@@ -43,6 +49,7 @@ export function errorText(e: unknown): string {
     }
     if (e.code === 'stateLoadUnsupported') params.reason = stateLoadBlockText(e.params.reason)
     if (hasCause(e)) params.cause = causeText(e.code, e.params.cause)
+    if (hasReason(e)) params.reason = reasonText(e)
     if (e.code === 'graphicsApiUnavailable') {
       // `video.api`'s option: its name as the settings show it.
       const option = `settings.video.api.option.${e.params.api}`

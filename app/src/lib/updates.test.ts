@@ -35,7 +35,7 @@ describe('updates', () => {
     expect(updateLine(status({ state: 'idle' }), when)).toEqual({
       key: 'settings.about.upd.status.idle',
     })
-    const error = { code: 'updateCheckFailed', params: { detail: 'offline' } } as const
+    const error = { code: 'updateCheckFailed' } as const
     expect(updateLine(status({ state: 'failed', error }), when)).toEqual({ error })
   })
 

@@ -21,8 +21,11 @@ fn write_marker(app: &AppHandle) -> Result<(), ErrorCode> {
     let Some(path) = marker(app) else {
         return Ok(());
     };
-    let failed = |e: std::io::Error| ErrorCode::SettingsWriteFailed {
-        detail: e.to_string(),
+    let failed = |e: std::io::Error| {
+        log::warn!("first run marker not written ({}): {e}", path.display());
+        ErrorCode::SettingsWriteFailed {
+            cause: emudome_core::IoCause::of(&e),
+        }
     };
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(failed)?;

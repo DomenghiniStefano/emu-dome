@@ -308,7 +308,7 @@ impl Writer<'_> {
         if let Err(e) = crate::write_atomic(&self.files.sram, ram) {
             log::warn!("game save not written: {e}");
             return Err(ErrorCode::SaveFileFailed {
-                detail: format!("{e:#}"),
+                cause: crate::IoCause::of(&e),
             });
         }
         Ok(())
@@ -560,9 +560,15 @@ impl Session {
         let written = match self.done.recv_timeout(timeout) {
             Ok(written) => written,
             Err(RecvTimeoutError::Timeout) => return None,
-            Err(RecvTimeoutError::Disconnected) => Err(ErrorCode::SaveFileFailed {
-                detail: format!("the emulation thread {:?} panicked", thread.thread().name()),
-            }),
+            Err(RecvTimeoutError::Disconnected) => {
+                log::error!(
+                    "the emulation thread {:?} ended without its exit writes",
+                    thread.thread().name()
+                );
+                Err(ErrorCode::SaveFileFailed {
+                    cause: crate::IoCause::Other,
+                })
+            }
         };
         if let Some(thread) = self.thread.take() {
             if thread.join().is_err() {
@@ -875,7 +881,7 @@ mod tests {
         };
         let failed = ErrorCode::StateSaveFailed {
             slot: AUTO_SLOT,
-            detail: "disk full".into(),
+            cause: crate::IoCause::Other,
         };
         let written = write_on_exit(&stub(), &writer, true, |_| Err(failed.clone()));
         assert_eq!(written, Err(failed));
@@ -976,14 +982,14 @@ mod tests {
         let mut session = fake_session_writing(dir.path("failing_libretro.dll"), |rx, _| {
             while !matches!(rx.recv(), Ok(Command::Stop) | Err(_)) {}
             Err(ErrorCode::SaveFileFailed {
-                detail: "disk full".into(),
+                cause: crate::IoCause::Other,
             })
         });
         session.stop();
         assert_eq!(
             session.wait(Duration::from_secs(10)),
             Some(Err(ErrorCode::SaveFileFailed {
-                detail: "disk full".into()
+                cause: crate::IoCause::Other
             }))
         );
         // Joined: waiting again has nothing left to wait for.

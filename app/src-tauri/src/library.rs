@@ -26,7 +26,7 @@ use emudome_core::library::{
     Identity, Library, NotAGame, OpenedDocument, Region, ScanInput, ScanReport, Skipped,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
-use emudome_core::{ErrorCode, GameKey};
+use emudome_core::{ErrorCode, GameKey, ImageProblem, IoCause};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -697,7 +697,7 @@ fn ext_type(ext: &str) -> &'static str {
 }
 
 /// The image format of `bytes` from its signature, as a file extension.
-pub(crate) fn image_ext(bytes: &[u8]) -> Option<&'static str> {
+fn image_ext(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
         Some("png")
     } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
@@ -709,19 +709,33 @@ pub(crate) fn image_ext(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-/// The bytes of a cover source on disk, at most [`MAX_COVER_BYTES`], PNG / JPEG / WebP by its
-/// signature.
-fn read_source(source: &Path) -> Result<(Vec<u8>, &'static str), ErrorCode> {
-    let invalid = |detail: String| ErrorCode::CoverInvalid { detail };
-    let size = std::fs::metadata(source)
-        .map_err(|e| invalid(e.to_string()))?
-        .len();
+/// The bytes of an image file the user picked (a cover's source, a background), at most
+/// [`MAX_COVER_BYTES`], PNG / JPEG / WebP by its signature, with its extension. Refused with
+/// `coverInvalid` and the reason; the file's own error in the log.
+pub(crate) fn read_image(source: &Path) -> Result<(Vec<u8>, &'static str), ErrorCode> {
+    let unreadable = |e: std::io::Error| {
+        cover::invalid(ImageProblem::Missing, format!("{}: {e}", source.display()))
+    };
+    let size = std::fs::metadata(source).map_err(unreadable)?.len();
     if size > MAX_COVER_BYTES {
-        return Err(invalid(format!("{size} bytes, limit {MAX_COVER_BYTES}")));
+        return Err(cover::invalid(
+            ImageProblem::TooLarge,
+            format!("{size} bytes, limit {MAX_COVER_BYTES}"),
+        ));
     }
-    let bytes = std::fs::read(source).map_err(|e| invalid(e.to_string()))?;
-    let ext = image_ext(&bytes).ok_or_else(|| invalid("not a PNG, JPEG or WebP image".into()))?;
-    Ok((bytes, ext_type(ext)))
+    let bytes = std::fs::read(source).map_err(unreadable)?;
+    let ext = image_ext(&bytes).ok_or_else(|| {
+        cover::invalid(
+            ImageProblem::Format,
+            format!("{}: not a PNG, JPEG or WebP image", source.display()),
+        )
+    })?;
+    Ok((bytes, ext))
+}
+
+/// The bytes of a cover source on disk ([`read_image`]) with their media type.
+fn read_source(source: &Path) -> Result<(Vec<u8>, &'static str), ErrorCode> {
+    read_image(source).map(|(bytes, ext)| (bytes, ext_type(ext)))
 }
 
 /// The user cover file of revision `rev`: always the normalized JPEG.
@@ -741,8 +755,9 @@ fn write_cover(
     let jpeg = cover::make(bytes, view)?;
     let name = user_cover_name(id, rev);
     emudome_core::write_atomic(&covers.join(&name), &jpeg).map_err(|e| {
+        log::warn!("cover {name} not written: {e}");
         ErrorCode::LibraryWriteFailed {
-            detail: e.to_string(),
+            cause: IoCause::of(&e),
         }
     })?;
     Ok(name)
@@ -1023,9 +1038,10 @@ pub fn identify_game_file(
 fn not_a_game(e: NotAGame, unreadable: impl FnOnce(&std::io::Error) -> ErrorCode) -> ErrorCode {
     match e {
         NotAGame::Io(io) => unreadable(&io),
-        NotAGame::Extension | NotAGame::Header(_) => ErrorCode::GameUnidentified {
-            detail: e.to_string(),
-        },
+        NotAGame::Extension | NotAGame::Header(_) => {
+            log::warn!("gameUnidentified: {e}");
+            ErrorCode::GameUnidentified
+        }
         NotAGame::Encrypted => ErrorCode::GameEncrypted,
     }
 }
@@ -1033,11 +1049,12 @@ fn not_a_game(e: NotAGame, unreadable: impl FnOnce(&std::io::Error) -> ErrorCode
 /// Every file the library knows the key of, for the one-time game key migration;
 /// `libraryReadFailed` while `library.json` cannot be read (nothing may be decided then).
 pub fn known_files(app: &AppHandle) -> Result<Vec<(String, GameKey)>, ErrorCode> {
-    let state = app
-        .try_state::<LibraryState>()
-        .ok_or_else(|| ErrorCode::LibraryReadFailed {
-            detail: "library not open".into(),
-        })?;
+    let state = app.try_state::<LibraryState>().ok_or_else(|| {
+        log::warn!("library not open");
+        ErrorCode::LibraryReadFailed {
+            cause: IoCause::Other,
+        }
+    })?;
     let mut lib = state.lib.lock();
     lib.readable()?;
     Ok(lib.known_files())
@@ -1247,10 +1264,12 @@ pub fn library_screenshots(
     id: GameKey,
 ) -> Result<Vec<ScreenshotDto>, ErrorCode> {
     let dir = emudome_core::screenshot::game_dir(&state.save_dir(), &id);
-    let shots =
-        emudome_core::screenshot::list(&dir).map_err(|e| ErrorCode::ScreenshotsUnreadable {
-            detail: format!("{}: {e}", dir.display()),
-        })?;
+    let shots = emudome_core::screenshot::list(&dir).map_err(|e| {
+        log::warn!("screenshots of {} not listed: {e}", dir.display());
+        ErrorCode::ScreenshotsUnreadable {
+            cause: IoCause::of(&e),
+        }
+    })?;
     Ok(shots
         .into_iter()
         .map(|s| ScreenshotDto {
@@ -1317,18 +1336,20 @@ fn set_cover_image(
             match picked.as_ref() {
                 Some(p) if p.token == *token => p.bytes.clone(),
                 Some(_) | None => {
-                    return Err(ErrorCode::CoverInvalid {
-                        detail: format!("picked image {token} is no longer there"),
-                    })
+                    return Err(cover::invalid(
+                        ImageProblem::Missing,
+                        format!("picked image {token} is no longer there"),
+                    ))
                 }
             }
         }
         CoverSource::Screenshot { name } => {
             let dir = emudome_core::screenshot::game_dir(&app.state::<AppState>().save_dir(), id);
             let file = emudome_core::screenshot::file(&dir, name).ok_or_else(|| {
-                ErrorCode::CoverInvalid {
-                    detail: format!("{id} has no screenshot {name:?}"),
-                }
+                cover::invalid(
+                    ImageProblem::Missing,
+                    format!("{id} has no screenshot {name:?}"),
+                )
             })?;
             read_source(&file)?.0
         }

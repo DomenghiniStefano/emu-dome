@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use emudome_core::IoCause;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
 
@@ -63,13 +64,13 @@ pub struct SyncIndex {
     file: PathBuf,
     data: Data,
     /// Why the file could not be read, while it cannot: no write may replace it.
-    read_failed: Option<String>,
+    read_failed: Option<(IoCause, String)>,
 }
 
 enum Read {
     Found(Data),
     Missing,
-    Failed(String),
+    Failed(IoCause, String),
 }
 
 impl SyncIndex {
@@ -95,12 +96,12 @@ impl SyncIndex {
                 self.read_failed = None;
             }
             Read::Missing => self.read_failed = None,
-            Read::Failed(detail) => {
+            Read::Failed(cause, detail) => {
                 log::warn!(
                     "cloudIndexReadFailed: {}: {detail}; sync refused until it reads",
                     self.file.display()
                 );
-                self.read_failed = Some(detail);
+                self.read_failed = Some((cause, detail));
             }
         }
     }
@@ -112,7 +113,7 @@ impl SyncIndex {
             self.read();
         }
         match &self.read_failed {
-            Some(detail) => Err(SyncError::IndexReadFailed(detail.clone())),
+            Some((cause, detail)) => Err(SyncError::IndexReadFailed(*cause, detail.clone())),
             None => Ok(()),
         }
     }
@@ -161,7 +162,7 @@ impl SyncIndex {
         if let Some(id) = &self.data.device_id {
             return Ok(id.clone());
         }
-        let id = crate::oauth::random_token(12).map_err(|e| SyncError::Local(e.to_string()))?;
+        let id = crate::oauth::random_token(12).map_err(SyncError::local_other)?;
         self.data.device_id = Some(id.clone());
         self.save().inspect_err(|_| self.data.device_id = None)?;
         Ok(id)
@@ -182,10 +183,9 @@ impl SyncIndex {
     fn save(&mut self) -> Result<(), SyncError> {
         self.data.schema = self.data.schema.max(SCHEMA_VERSION);
         let mut text = serde_json::to_vec_pretty(&self.data)
-            .map_err(|e| SyncError::Local(format!("sync index: {e}")))?;
+            .map_err(|e| SyncError::local_other(format!("sync index: {e}")))?;
         text.push(b'\n');
-        emudome_core::write_atomic(&self.file, &text)
-            .map_err(|e| SyncError::Local(format!("{}: {e}", self.file.display())))
+        emudome_core::write_atomic(&self.file, &text).map_err(|e| SyncError::local(&self.file, &e))
     }
 }
 
@@ -198,7 +198,7 @@ fn read_data(path: &Path) -> Read {
         {
             return Read::Missing
         }
-        Err(e) => return Read::Failed(e.to_string()),
+        Err(e) => return Read::Failed(IoCause::of(&e), e.to_string()),
     };
     match serde_json::from_str(&text) {
         Ok(data) => Read::Found(data),
@@ -211,9 +211,10 @@ fn read_data(path: &Path) -> Read {
             );
             match fs::rename(path, &aside) {
                 Ok(()) => Read::Missing,
-                Err(not_moved) => Read::Failed(format!(
-                    "not valid JSON ({e}) and not moved aside ({not_moved})"
-                )),
+                Err(not_moved) => Read::Failed(
+                    IoCause::of(&not_moved),
+                    format!("not valid JSON ({e}) and not moved aside ({not_moved})"),
+                ),
             }
         }
     }
@@ -300,11 +301,11 @@ mod tests {
         let mut index = SyncIndex::open(&dir.path("sync"));
         assert!(matches!(
             index.set("x", entry("aa")),
-            Err(SyncError::IndexReadFailed(_))
+            Err(SyncError::IndexReadFailed(..))
         ));
         assert!(matches!(
             index.device_id(),
-            Err(SyncError::IndexReadFailed(_))
+            Err(SyncError::IndexReadFailed(..))
         ));
         assert!(dir.path("sync/index.json/inside").is_dir(), "untouched");
         // Once it reads again, writes work.
@@ -323,7 +324,7 @@ mod tests {
         fs::write(dir.path("sync"), b"").unwrap();
         assert!(matches!(
             index.set("b", entry("bb")),
-            Err(SyncError::Local(_))
+            Err(SyncError::Local(..))
         ));
         assert_eq!(index.get("b"), None);
         assert_eq!(index.get("a"), Some(&entry("aa")));

@@ -352,26 +352,18 @@ pub async fn settings_choose_background(app: AppHandle, scope: Scope) -> Result<
     let Some(source) = crate::library::pick_image(&app) else {
         return Ok(false);
     };
-    let invalid = |detail: String| ErrorCode::CoverInvalid { detail };
-    let size = std::fs::metadata(&source)
-        .map_err(|e| invalid(e.to_string()))?
-        .len();
-    if size > crate::library::MAX_COVER_BYTES {
-        return Err(invalid(format!(
-            "{size} bytes, limit {}",
-            crate::library::MAX_COVER_BYTES
-        )));
-    }
-    let bytes = std::fs::read(&source).map_err(|e| invalid(e.to_string()))?;
-    let ext = crate::library::image_ext(&bytes)
-        .ok_or_else(|| invalid("not a PNG, JPEG or WebP image".into()))?;
+    let (bytes, ext) = crate::library::read_image(&source)?;
     let name = background_name(&bytes, ext);
-    let dir = backgrounds_dir(&app).ok_or_else(|| ErrorCode::SettingsWriteFailed {
-        detail: "no app data folder".into(),
+    let dir = backgrounds_dir(&app).ok_or_else(|| {
+        log::warn!("background: no app data folder");
+        ErrorCode::SettingsWriteFailed {
+            cause: emudome_core::IoCause::NotFound,
+        }
     })?;
     emudome_core::write_atomic(&dir.join(&name), &bytes).map_err(|e| {
+        log::warn!("background {name} not written: {e}");
         ErrorCode::SettingsWriteFailed {
-            detail: e.to_string(),
+            cause: emudome_core::IoCause::of(&e),
         }
     })?;
     let state = app.state::<SettingsState>();

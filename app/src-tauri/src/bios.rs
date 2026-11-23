@@ -100,11 +100,17 @@ fn choose(app: &AppHandle, key: &str, file: &Path) -> Result<Status, ErrorCode> 
         }
     })?;
     let all = bios::TABLES.iter().flat_map(|t| t.slots.iter());
-    let dir = core_dir(app, table.core.name()).ok_or_else(|| ErrorCode::BiosFileFailed {
-        detail: "no app local data folder".into(),
+    let dir = core_dir(app, table.core.name()).ok_or_else(|| {
+        log::warn!("bios: no app local data folder");
+        ErrorCode::BiosFileFailed {
+            cause: emudome_core::IoCause::NotFound,
+        }
     })?;
-    let failed = |e: std::io::Error| ErrorCode::BiosFileFailed {
-        detail: e.to_string(),
+    let failed = |e: std::io::Error| {
+        log::warn!("bios: EmuDome's copy in {} not written: {e}", dir.display());
+        ErrorCode::BiosFileFailed {
+            cause: emudome_core::IoCause::of(&e),
+        }
     };
     let status = match bios::assess(spec, all, &probe) {
         Assessment::Install => {

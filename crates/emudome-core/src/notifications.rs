@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value as Json;
 use ts_rs::TS;
 
-use crate::ErrorCode;
+use crate::{ErrorCode, IoCause};
 
 /// The layout written today.
 pub const SCHEMA: u64 = 1;
@@ -168,16 +168,13 @@ impl Notifications {
 pub struct Store {
     path: PathBuf,
     /// `Err`: the file is there but could not be read; it is read again at the next call.
-    state: Result<Notifications, String>,
+    state: Result<Notifications, IoCause>,
 }
 
 impl Store {
     /// Reads `path`; a missing file is an empty list.
     pub fn open(path: PathBuf) -> Self {
         let state = read(&path);
-        if let Err(e) = &state {
-            log::warn!("notifications not read ({}): {e}", path.display());
-        }
         Self { path, state }
     }
 
@@ -188,9 +185,7 @@ impl Store {
         }
         self.state
             .as_mut()
-            .map_err(|detail| ErrorCode::NotificationsReadFailed {
-                detail: detail.clone(),
-            })
+            .map_err(|cause| ErrorCode::NotificationsReadFailed { cause: *cause })
     }
 
     pub fn list(&mut self) -> Result<Vec<Notification>, ErrorCode> {
@@ -224,18 +219,27 @@ impl Store {
 
     fn save(&mut self) -> Result<(), ErrorCode> {
         let bytes = self.ready()?.to_bytes();
-        write(&self.path, &bytes).map_err(|e| ErrorCode::NotificationsWriteFailed {
-            detail: e.to_string(),
+        write(&self.path, &bytes).map_err(|e| {
+            log::warn!("notifications not written ({}): {e}", self.path.display());
+            ErrorCode::NotificationsWriteFailed {
+                cause: IoCause::of(&e),
+            }
         })
     }
 }
 
-fn read(path: &Path) -> Result<Notifications, String> {
-    match std::fs::read(path) {
-        Ok(bytes) => Notifications::parse(&bytes),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Notifications::default()),
-        Err(e) => Err(e.to_string()),
-    }
+/// The file's notifications; why not (logged here with the OS's or the parser's text).
+fn read(path: &Path) -> Result<Notifications, IoCause> {
+    let (cause, detail) = match std::fs::read(path) {
+        Ok(bytes) => match Notifications::parse(&bytes) {
+            Ok(n) => return Ok(n),
+            Err(detail) => (IoCause::Other, detail),
+        },
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Notifications::default()),
+        Err(e) => (IoCause::of(&e), e.to_string()),
+    };
+    log::warn!("notifications not read ({}): {detail}", path.display());
+    Err(cause)
 }
 
 fn write(path: &Path, bytes: &[u8]) -> io::Result<()> {

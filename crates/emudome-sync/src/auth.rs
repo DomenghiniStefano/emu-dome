@@ -8,6 +8,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use emudome_core::SignInProblem;
 use parking_lot::Mutex;
 
 use crate::loopback::{Loopback, Pages};
@@ -159,10 +160,12 @@ impl Auth {
         let pkce = Pkce::new()?;
         let state = oauth::random_token(16)?;
         let url = oauth::authorization_url(&self.endpoints, client, &redirect_uri, &pkce, &state)?;
-        open(url.as_str()).map_err(|e| SyncError::SignInFailed(format!("browser: {e}")))?;
+        open(url.as_str()).map_err(|e| {
+            SyncError::SignInFailed(SignInProblem::Browser, format!("browser: {e}"))
+        })?;
         let code = tokio::time::timeout(timeout, loopback.wait(&state, pages))
             .await
-            .map_err(|_| SyncError::SignInFailed("timed out".into()))??;
+            .map_err(|_| SyncError::SignInFailed(SignInProblem::TimedOut, "timed out".into()))??;
         let tokens = oauth::exchange_code(
             &self.http,
             &self.endpoints,
@@ -175,7 +178,7 @@ impl Auth {
         .await?;
         let refresh = tokens
             .refresh
-            .ok_or_else(|| SyncError::SignInFailed("no refresh token in the reply".into()))?;
+            .ok_or_else(|| SyncError::sign_in("no refresh token in the reply"))?;
         self.save_refresh(refresh).await?;
         *self.access.lock().await = Some(tokens.access);
         Ok(())
@@ -203,6 +206,7 @@ mod tests {
     use std::sync::Arc;
     use std::time::Duration;
 
+    use emudome_core::SignInProblem;
     use serde_json::json;
 
     use super::{Auth, MemoryStore, SecretStore};
@@ -301,7 +305,10 @@ mod tests {
             .sign_in(|_| Ok(()), &Pages::plain(), Duration::from_millis(50))
             .await
             .unwrap_err();
-        assert_eq!(e, SyncError::SignInFailed("timed out".into()));
+        assert_eq!(
+            e,
+            SyncError::SignInFailed(SignInProblem::TimedOut, "timed out".into())
+        );
         assert!(store.load().unwrap().is_none());
         assert!(server.requests().is_empty());
     }

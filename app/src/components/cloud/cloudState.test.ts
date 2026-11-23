@@ -48,7 +48,7 @@ const status = (over: Partial<CloudStatus> = {}): CloudStatus => ({
   error: null,
   ...over,
 })
-const offline = { code: 'cloudOffline', params: { detail: 'dns' } } as const
+const offline = { code: 'cloudOffline' } as const
 const conflict = (hex: string, title = 'T'): CloudGameConflict => ({
   id: id(hex),
   title,

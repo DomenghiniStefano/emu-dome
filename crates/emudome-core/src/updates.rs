@@ -444,9 +444,7 @@ mod tests {
         assert_eq!(f.tick(T0 + CHECK_EVERY_MS - 1), None);
         assert_eq!(f.tick(T0 + CHECK_EVERY_MS), Some(UpdateAction::Check));
         let t1 = T0 + CHECK_EVERY_MS;
-        let offline = ErrorCode::UpdateCheckFailed {
-            detail: "offline".into(),
-        };
+        let offline = ErrorCode::UpdateCheckFailed;
         assert_eq!(f.checked(Err(offline.clone()), t1), None);
         assert_eq!(f.status().state, UpdateState::Failed { error: offline });
         assert_eq!(
@@ -482,10 +480,7 @@ mod tests {
                 version: v("0.0.2")
             }))
         );
-        f.downloaded(
-            v("0.0.2"),
-            Err(ErrorCode::UpdateDownloadFailed { detail: "x".into() }),
-        );
+        f.downloaded(v("0.0.2"), Err(ErrorCode::UpdateDownloadFailed));
         assert_eq!(f.check_now(T0 + 5), Ok(Some(UpdateAction::Check)));
         f.checked(Ok(Some(v("0.0.3"))), T0 + 5);
         assert!(f.status().prompt);
@@ -496,9 +491,7 @@ mod tests {
         let mut f = UpdateFlow::new(true, UpdatePolicy::Auto);
         f.tick(T0);
         f.checked(Ok(Some(v("0.0.2"))), T0);
-        let bad = ErrorCode::UpdateDownloadFailed {
-            detail: "signature".into(),
-        };
+        let bad = ErrorCode::UpdateDownloadFailed;
         assert_eq!(f.downloaded(v("0.0.2"), Err(bad.clone())), None);
         assert_eq!(f.status().state, UpdateState::Failed { error: bad });
         assert_eq!(f.install(), Err(ErrorCode::UpdateNotReady));
@@ -508,12 +501,7 @@ mod tests {
         f.downloaded(v("0.0.2"), Ok(()));
         f.later();
         f.install().unwrap();
-        f.install_failed(
-            v("0.0.2"),
-            ErrorCode::UpdateInstallFailed {
-                detail: "denied".into(),
-            },
-        );
+        f.install_failed(v("0.0.2"), ErrorCode::UpdateInstallFailed);
         assert_eq!(
             f.status().state,
             UpdateState::Ready {

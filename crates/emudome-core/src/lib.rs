@@ -50,7 +50,7 @@ pub mod video_sink;
 pub use atomic::write_atomic;
 pub use console::ConsoleId;
 pub use core::{GameFiles, StartError};
-pub use error::{ErrorCode, IoCause};
+pub use error::{ErrorCode, ImageProblem, IoCause, SignInProblem};
 pub use frame::{rgba_png, Frame};
 pub use game_key::GameKey;
 pub use session::{

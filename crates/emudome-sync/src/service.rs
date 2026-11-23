@@ -33,7 +33,7 @@ use std::time::Duration;
 
 use emudome_core::library::GameRecord;
 use emudome_core::settings::ConsoleId;
-use emudome_core::{ErrorCode, GameKey};
+use emudome_core::{ErrorCode, GameKey, IoCause};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value as Json};
@@ -361,7 +361,7 @@ struct StateData {
 struct StateFile {
     path: PathBuf,
     data: StateData,
-    unreadable: Option<String>,
+    unreadable: Option<(IoCause, String)>,
 }
 
 impl StateFile {
@@ -375,7 +375,8 @@ impl StateFile {
         }
     }
 
-    fn read(path: &Path) -> (StateData, Option<String>) {
+    fn read(path: &Path) -> (StateData, Option<(IoCause, String)>) {
+        let failed = |e: &std::io::Error| Some((IoCause::of(e), e.to_string()));
         match std::fs::read(path) {
             Ok(bytes) => match serde_json::from_slice::<StateData>(&bytes) {
                 Ok(data) => (data, None),
@@ -383,36 +384,34 @@ impl StateFile {
                     log::warn!("cloud: {} is not valid ({e}): set aside", path.display());
                     let aside = path.with_extension("json.unreadable");
                     if let Err(e) = std::fs::rename(path, &aside) {
-                        return (StateData::default(), Some(e.to_string()));
+                        return (StateData::default(), failed(&e));
                     }
                     (StateData::default(), None)
                 }
             },
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => (StateData::default(), None),
-            Err(e) => (StateData::default(), Some(e.to_string())),
+            Err(e) => (StateData::default(), failed(&e)),
         }
     }
 
     fn change(&mut self, f: impl FnOnce(&mut StateData)) -> Result<(), SyncError> {
         if self.unreadable.is_some() {
             let (data, unreadable) = Self::read(&self.path);
-            if let Some(e) = unreadable {
-                self.unreadable = Some(e.clone());
-                return Err(SyncError::IndexReadFailed(format!(
-                    "{}: {e}",
-                    self.path.display()
-                )));
+            if let Some((cause, e)) = unreadable {
+                self.unreadable = Some((cause, e.clone()));
+                return Err(SyncError::IndexReadFailed(
+                    cause,
+                    format!("{}: {e}", self.path.display()),
+                ));
             }
             self.data = data;
             self.unreadable = None;
         }
         f(&mut self.data);
         self.data.schema = STATE_SCHEMA;
-        let mut bytes =
-            serde_json::to_vec_pretty(&self.data).map_err(|e| SyncError::Local(e.to_string()))?;
+        let mut bytes = serde_json::to_vec_pretty(&self.data).map_err(SyncError::local_other)?;
         bytes.push(b'\n');
-        emudome_core::write_atomic(&self.path, &bytes)
-            .map_err(|e| SyncError::Local(format!("{}: {e}", self.path.display())))
+        emudome_core::write_atomic(&self.path, &bytes).map_err(|e| SyncError::local(&self.path, &e))
     }
 }
 
@@ -1064,7 +1063,7 @@ impl<D: DriveApi> CloudService<D> {
         let path = PathBuf::from(&game.path);
         let size = tokio::fs::metadata(&path)
             .await
-            .map_err(|e| SyncError::Local(format!("{}: {e}", path.display())))?
+            .map_err(|e| SyncError::local(&path, &e))?
             .len();
         self.progress(Phase::Uploading, Some(&game.id), 0, size);
         let name = rom_name(&game.id, &path);
@@ -1136,7 +1135,7 @@ impl<D: DriveApi> CloudService<D> {
         let dir = self.paths.games.join(game.console().id());
         tokio::fs::create_dir_all(&dir)
             .await
-            .map_err(|e| SyncError::Local(format!("{}: {e}", dir.display())))?;
+            .map_err(|e| SyncError::local(&dir, &e))?;
         let target = free_name(&dir, &clean_name(&title), &ext);
         let temp = dir.join(format!(
             ".{}.{}-download.emudome-tmp",
@@ -1161,7 +1160,7 @@ impl<D: DriveApi> CloudService<D> {
         }
         tokio::fs::rename(&temp, &target)
             .await
-            .map_err(|e| SyncError::Local(format!("{}: {e}", target.display())))?;
+            .map_err(|e| SyncError::local(&target, &e))?;
         Ok(target)
     }
 
