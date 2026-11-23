@@ -21,12 +21,26 @@ import { errorText } from '@/i18n/labels'
 import { familyIndex } from '@/lib/families'
 import { latest } from '@/lib/latest'
 
-/** What L11 «N giochi aggiunti» shows after a scan that added games. */
+/**
+ * What L11 «N giochi aggiunti» shows after a scan that added games, or that skipped files of a
+ * folder the user just picked (#127: an encrypted 3DS game, a file not recognised).
+ */
 export interface ScanSummary {
   added: number
   /** New games per console, counted from the ids that were not there before the scan. */
   perConsole: Partial<Record<ConsoleId, number>>
+  /** Files with a game's extension the scan did not take, by reason. */
+  skipped: { encrypted: number; unrecognised: number }
 }
+
+const NONE_SKIPPED: ScanSummary['skipped'] = { encrypted: 0, unrecognised: 0 }
+
+/**
+ * A folder the user picked is being scanned: its skipped files are said once it ends. The scans
+ * EmuDome starts by itself (at start, a folder changing) find the same files again each time and
+ * say nothing about them.
+ */
+let picked = false
 
 export const library = reactive({
   /** False until the first `get` answered (or failed). */
@@ -100,34 +114,40 @@ export function applyLibraryChange(change: LibraryChanged) {
   library.games = markRaw(library.games.map(g => rows.get(g.id) ?? g))
 }
 
-async function scanDone(added: number) {
+async function scanDone(added: number, skippedNow: ScanSummary['skipped']) {
   await reloadLibrary()
   library.scanning = false
   library.progress = null
-  if (added <= 0) {
+  const skipped = picked ? skippedNow : NONE_SKIPPED
+  picked = false
+  if (added <= 0 && skipped.encrypted + skipped.unrecognised === 0) {
     before = null
     return
   }
   const perConsole: ScanSummary['perConsole'] = {}
-  for (const g of library.games) {
-    if (before && before.has(g.id)) continue
-    perConsole[g.console] = (perConsole[g.console] ?? 0) + 1
-  }
+  if (added > 0)
+    for (const g of library.games) {
+      if (before && before.has(g.id)) continue
+      perConsole[g.console] = (perConsole[g.console] ?? 0) + 1
+    }
   before = null
-  library.summary = mergeSummary(library.summary, { added, perConsole })
+  library.summary = mergeSummary(library.summary, { added, perConsole, skipped })
 }
 
 /**
  * L11 counts every scan since it was last closed (#127): the first run scans each folder added
  * (and each file picked) on its own, so the banner it leaves says all the games they added, not
- * the last scan's.
+ * the last scan's. Skipped files are counted again by every scan (each scan walks every folder),
+ * so the newest count of them is the one said.
  */
 export function mergeSummary(shown: ScanSummary | null, next: ScanSummary): ScanSummary {
   if (!shown) return next
   const perConsole: ScanSummary['perConsole'] = { ...shown.perConsole }
   for (const [c, n] of Object.entries(next.perConsole) as [ConsoleId, number][])
     perConsole[c] = (perConsole[c] ?? 0) + n
-  return { added: shown.added + next.added, perConsole }
+  const skipped =
+    next.skipped.encrypted + next.skipped.unrecognised > 0 ? next.skipped : shown.skipped
+  return { added: shown.added + next.added, perConsole, skipped }
 }
 
 /**
@@ -149,7 +169,10 @@ export async function startLibrary(): Promise<() => void> {
           library.progress = { checked: e.checked, found: e.found }
           return
         case 'done':
-          void scanDone(e.added)
+          void scanDone(e.added, {
+            encrypted: e.skippedEncrypted,
+            unrecognised: e.skippedUnrecognised,
+          })
       }
     }),
   ]
@@ -167,21 +190,27 @@ export async function startLibrary(): Promise<() => void> {
 
 /** «Scegli una cartella…»: the backend adds the folder and scans it. Errors come back as text. */
 export async function chooseFolder(): Promise<string | null> {
+  // Set before: the scan of a small folder can end before the picker's answer arrives.
+  picked = true
   try {
-    await emu.library.chooseFolder()
+    if ((await emu.library.chooseFolder()) === null) picked = false
     return null
   } catch (e) {
+    picked = false
     return errorText(e)
   }
 }
 
 /** E01 «Scegli un'altra cartella»: a new folder replaces the unreachable one. */
 export async function replaceFolder(old: string): Promise<string | null> {
+  picked = true
   try {
     const chosen = await emu.library.chooseFolder()
+    if (chosen === null) picked = false
     if (chosen !== null && chosen !== old) await emu.library.removeFolder(old)
     return null
   } catch (e) {
+    picked = false
     return errorText(e)
   }
 }

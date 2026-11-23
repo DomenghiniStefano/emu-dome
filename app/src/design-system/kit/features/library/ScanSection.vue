@@ -10,6 +10,7 @@ import { KitGroup } from '@/design-system/kit/review'
 
 const noop = () => {}
 const EVERY = { gb: 211, gbc: 187, gba: 612, nds: 251, '3ds': 23 }
+const NONE = { encrypted: 0, unrecognised: 0 }
 </script>
 
 <template>
@@ -25,18 +26,38 @@ const EVERY = { gb: 211, gbc: 187, gba: 612, nds: 251, '3ds': 23 }
     </KitState>
     <KitState label="Summary · one console">
       <div class="w-page-md max-w-full">
-        <ScanSummary :summary="{ added: 1, perConsole: { gba: 1 } }" @close="noop" />
+        <ScanSummary :summary="{ added: 1, perConsole: { gba: 1 }, skipped: NONE }" @close="noop" />
       </div>
     </KitState>
     <KitState label="Summary · every console">
       <div class="w-page-md max-w-full">
-        <ScanSummary :summary="{ added: 1284, perConsole: EVERY }" @close="noop" />
+        <ScanSummary :summary="{ added: 1284, perConsole: EVERY, skipped: NONE }" @close="noop" />
+      </div>
+    </KitState>
+    <KitState label="Summary · a picked folder: added and skipped (#127)">
+      <div class="w-page-md max-w-full">
+        <ScanSummary
+          :summary="{
+            added: 2,
+            perConsole: { gba: 1, nds: 1 },
+            skipped: { encrypted: 1, unrecognised: 2 },
+          }"
+          @close="noop"
+        />
+      </div>
+    </KitState>
+    <KitState label="Summary · a picked folder: only an encrypted 3DS game (#127)">
+      <div class="w-page-md max-w-full">
+        <ScanSummary
+          :summary="{ added: 0, perConsole: {}, skipped: { encrypted: 1, unrecognised: 0 } }"
+          @close="noop"
+        />
       </div>
     </KitState>
     <KitState label="All three over the grid, narrow (tile-min)">
       <div class="flex w-tile-min flex-col gap-8">
         <ScanProgress :progress="{ found: 1284 }" />
-        <ScanSummary :summary="{ added: 1284, perConsole: EVERY }" @close="noop" />
+        <ScanSummary :summary="{ added: 1284, perConsole: EVERY, skipped: NONE }" @close="noop" />
         <UnreachableBanner
           :folder="{ path: 'E:/Giochi', name: 'E:/Giochi', count: 1 }"
           @replace="noop"
