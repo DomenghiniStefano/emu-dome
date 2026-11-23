@@ -66,6 +66,23 @@ pub enum CoreLookupError {
     /// The file found is not the one `cores.lock` pins for this platform (or could not be read
     /// to tell): it is never loaded.
     Mismatch { path: PathBuf },
+    /// No search folder holds the file, and this build does not ship the core for this platform
+    /// (`cores.lock`'s `ship` off, or no build for it): the console is not available on this
+    /// device yet, nothing is broken. Only where no development place can hold it (a release,
+    /// or Android, whose cores come from the package).
+    NotShipped,
+}
+
+/// Whether `lock` ships `core` (`ship: true`) with a build for `platform`.
+pub(crate) fn ships(lock: &str, core: &str, platform: &str) -> bool {
+    let Ok(lock) = serde_json::from_str::<serde_json::Value>(lock) else {
+        return false;
+    };
+    let Some(entry) = lock.get("cores").and_then(|c| c.get(core)) else {
+        return false;
+    };
+    entry.get("ship").and_then(serde_json::Value::as_bool) == Some(true)
+        && entry.get("builds").and_then(|b| b.get(platform)).is_some()
 }
 
 /// The sha256 (lowercase hex) `lock` pins for `core`'s library `file_name` on `platform`, if the
@@ -367,5 +384,21 @@ mod tests {
         let only = shipped_in(lock, "p");
         assert_eq!(only.len(), 1);
         assert_eq!(only[0].notices, ["b.txt"]);
+    }
+
+    #[test]
+    fn a_core_ships_only_with_ship_on_and_a_build_for_the_platform() {
+        let lock = r#"{"cores":{"a":{"ship":false,"builds":{"p":{}}},
+            "b":{"ship":true,"builds":{"p":{}}}}}"#;
+        assert!(super::ships(lock, "b", "p"));
+        assert!(!super::ships(lock, "b", "q"), "no build for that platform");
+        assert!(!super::ships(lock, "a", "p"), "ship off");
+        assert!(!super::ships(lock, "c", "p"), "not in the lock");
+        assert!(!super::ships("not json", "b", "p"));
+        // The real lock: Azahar is fetchable but not shipped, on Android too (#127).
+        let real = super::cores_lock();
+        assert!(super::ships(real, "mgba", "android-arm64-v8a"));
+        assert!(super::ships(real, "melondsds", "android-arm64-v8a"));
+        assert!(!super::ships(real, "azahar", "android-arm64-v8a"));
     }
 }

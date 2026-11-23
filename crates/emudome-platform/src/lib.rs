@@ -193,16 +193,32 @@ pub fn core_search_dirs(resource_dir: Option<&Path>) -> Vec<PathBuf> {
 /// build accepts the file only if its sha256 is the one `cores.lock` pins for this platform
 /// (when the lock pins one). Where the system loads libraries by name (Android: the `.so`
 /// packaged in the APK) and no folder holds the file, the bare file name is returned for the
-/// dynamic loader.
+/// dynamic loader, if the build ships that core for this platform.
+///
+/// A core no folder holds and this build does not ship ([`core_shipped`]) is
+/// [`CoreLookupError::NotShipped`] where no development place could hold it (a release, or the
+/// package's cores on Android): its console is not available on this device yet (#127).
 pub fn find_core(core: &str, resource_dir: Option<&Path>) -> Result<PathBuf, CoreLookupError> {
     let name = core_file_name(core);
     let verify = imp::CORES_LOCK_PLATFORM
         .filter(|_| !DEV_CORE_PATHS)
         .map(|platform| (cores::cores_lock(), platform));
     cores::find_in(&core_search_dirs(resource_dir), &name, core, verify).or_else(|e| match e {
-        CoreLookupError::NotFound => imp::packaged_core(&name).ok_or(CoreLookupError::NotFound),
-        CoreLookupError::Mismatch { .. } => Err(e),
+        CoreLookupError::NotFound => {
+            let from_package = imp::packaged_core(&name);
+            if !core_shipped(core) && (!DEV_CORE_PATHS || from_package.is_some()) {
+                return Err(CoreLookupError::NotShipped);
+            }
+            from_package.ok_or(CoreLookupError::NotFound)
+        }
+        CoreLookupError::Mismatch { .. } | CoreLookupError::NotShipped => Err(e),
     })
+}
+
+/// Whether this build ships `core` for this platform (`cores.lock`: `ship` on and a build for
+/// [`CORES_PLATFORM`]). False on a platform the lock has no key for.
+pub fn core_shipped(core: &str) -> bool {
+    imp::CORES_PLATFORM.is_some_and(|platform| cores::ships(cores::cores_lock(), core, platform))
 }
 
 /// True where the native video cannot draw on Tauri's window and gets a surface of

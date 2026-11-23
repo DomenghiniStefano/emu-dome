@@ -440,6 +440,10 @@ fn open_path(
         .map_err(|e| match e {
             CoreLookupError::NotFound => ErrorCode::CoreNotFound { file },
             CoreLookupError::Mismatch { .. } => ErrorCode::CoreDamaged { file },
+            // Not in this build for this platform (3DS on Android, #127): not a broken install.
+            CoreLookupError::NotShipped => ErrorCode::CoreUnavailable {
+                console: game.console().id().into(),
+            },
         })?;
     // A game on this core was let go (E11, or a close that timed out): its thread may still be
     // inside the core's module. Checked before closing the open game, which stays open.
