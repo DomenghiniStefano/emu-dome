@@ -262,6 +262,9 @@ impl<C: Core> EmuLoop<C> {
             Command::LoadState(slot) => self.load_state(slot),
             Command::UndoLoad => self.undo_load(),
             Command::UndoSave => self.undo_save(),
+            Command::SetQuickSlot(slot) => self
+                .io
+                .send(io::Job::QuickSlot(crate::quick_slot::clamp(slot))),
             Command::SetCoreOption { key, value } => self.core.set_core_option(key, value),
             Command::Reset => self.core.reset(),
             Command::Rewind(on) => self.set_rewinding(on),
@@ -1178,5 +1181,56 @@ mod tests {
         assert_eq!(calls.lock().ended, Some(true));
         assert!(!files.sram.exists());
         assert!(!files.slot(AUTO_SLOT).exists());
+    }
+
+    #[test]
+    fn the_quick_slot_is_recorded_clamped_and_restored_when_the_game_opens_again() {
+        let mut r = rig("loop-quick-slot");
+        assert_eq!(crate::quick_slot::restore(&r.files), 1);
+        r.cmd(Command::SetQuickSlot(4));
+        assert!(r.events().iter().all(|e| !matches!(e, Event::Error { .. })));
+        assert_eq!(
+            crate::quick_slot::read(&r.files),
+            crate::quick_slot::Found::Slot(4)
+        );
+        // Out of range: the nearest quick slot.
+        r.cmd(Command::SetQuickSlot(0));
+        r.events();
+        assert_eq!(crate::quick_slot::restore(&r.files), 1);
+        r.cmd(Command::SetQuickSlot(77));
+        r.cmd(Command::Stop);
+        let Rig { lp, files, .. } = r;
+        assert_eq!(lp.finish(), Ok(()));
+        // The next open reads what the last session wrote.
+        assert_eq!(
+            crate::quick_slot::restore(&files),
+            crate::hotkeys::LAST_SLOT
+        );
+    }
+
+    #[test]
+    fn an_unreadable_quick_slot_is_left_as_it_is_until_the_user_moves_it() {
+        let mut r = rig("loop-quick-slot-broken");
+        let path = r.files.quick_slot();
+        std::fs::write(&path, b"{ broken").unwrap();
+        assert_eq!(crate::quick_slot::restore(&r.files), 1);
+        r.frames(3);
+        r.cmd(Command::SaveState(2));
+        r.cmd(Command::Flush);
+        r.events();
+        assert_eq!(std::fs::read(&path).unwrap(), b"{ broken");
+        // A change the user makes is the one thing that writes it again.
+        r.cmd(Command::SetQuickSlot(3));
+        r.events();
+        assert_eq!(crate::quick_slot::restore(&r.files), 3);
+    }
+
+    #[test]
+    fn a_let_go_session_does_not_record_the_quick_slot() {
+        let mut r = rig("loop-quick-slot-let-go");
+        r.dead.store(true, Ordering::SeqCst);
+        r.cmd(Command::SetQuickSlot(6));
+        r.events();
+        assert!(!r.files.quick_slot().exists());
     }
 }
