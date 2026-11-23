@@ -2,7 +2,7 @@
 // One quick-save slot to choose in the menu (G07, G08): its picture, name and date; on the phone's
 // sheet larger text and a wider picture. The chosen one takes the focus when the menu or the page
 // opens. Its picture is the saves' SaveThumb, cropped. (Saves' SlotTile is a different card, with
-// its own actions; the two looks are Cowork's to bring together.)
+// its own actions; the two looks are still to be brought together (design).)
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SlotInfo } from '@/emu'

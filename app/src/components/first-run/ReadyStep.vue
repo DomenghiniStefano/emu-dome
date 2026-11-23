@@ -54,7 +54,7 @@ const count = computed(() => library.games.length)
         <div class="text-caption text-ink-muted wrap-anywhere">
           {{ t('firstRun.ready.driveDesc') }}
         </div>
-        <!-- Muted like the line above, not faint (Cowork: faint for «not yet»?). -->
+        <!-- Muted like the line above, not faint (design: faint for «not yet»?). -->
         <div class="text-caption text-ink-muted wrap-anywhere">{{ t('settingsUi.notYet') }}</div>
         <template #action>
           <Button :fade="ButtonFade.Dim" :icon="LogIn" disabled :title="t('settingsUi.notYet')">

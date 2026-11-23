@@ -184,7 +184,7 @@ export function saveWhenLabel(ms: number, now = Date.now()): string {
 
 /** A quick save slot's date on the quick menu's tiles (G07, G08): short date and time
  * ("11/18/26, 9:30 AM"), as the board's tiles have room for. Saves writes the same save with
- * `saveWhenLabel`: two boards, two formats (Cowork's to bring together). */
+ * `saveWhenLabel`: two boards, two formats (still to be brought together (design)). */
 export function slotDateLabel(ms: number): string {
   return format(ms, { dateStyle: 'short', timeStyle: 'short' })
 }

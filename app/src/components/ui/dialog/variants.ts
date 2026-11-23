@@ -16,7 +16,7 @@ export const DialogSize = {
   Default: 'default',
   // A choice laid out wide (L12 «Scegli la copertina»): the panel's width, the screen behind
   // blurred; the panel scrolls when the window is short. The 8px blur and the 640px width are
-  // not design system values yet (Cowork, spec Decision 5).
+  // not design system values yet (design, spec Decision 5).
   Wide: 'wide',
   // The search everywhere (X01, #32): the panel's width, near the top of the window
   // (`palette-top`, the whole width on the phone), no padding of its own (its rows are edge to

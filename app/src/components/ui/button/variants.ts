@@ -120,7 +120,7 @@ export const ButtonSize = {
   // A step's way out beside the main action (first run «Indietro», «Salta»): Tall, and on the
   // phone 48px in lead's size.
   Footer: 'footer',
-  // 30px (control-md, pending Cowork): a dialog's and a page's pair of actions. Primary is 12px
+  // 30px (control-md, pending design): a dialog's and a page's pair of actions. Primary is 12px
   // wide on each side here.
   Medium: 'medium',
   // 24px with the standard padding (the library's «Continua a giocare»).
@@ -238,7 +238,7 @@ export type ButtonSize = (typeof ButtonSize)[keyof typeof ButtonSize]
 
 // How a disabled button shows it, `disabled` or `aria-disabled` (one that cannot act but still
 // takes a press, to say why: the game details' «Riprendi» when the file is missing). Normal: 40% (`opacity-disabled`). Dim: half faded
-// (`opacity-dim`, pending Cowork: the quick menu's actions, the first run's row actions). None: not
+// (`opacity-dim`, pending design: the quick menu's actions, the first run's row actions). None: not
 // faded, because what holds it already says it cannot be used (a settings row fades its text, a
 // link turns faint) or the look itself must not change (a colour swatch).
 export const ButtonFade = {

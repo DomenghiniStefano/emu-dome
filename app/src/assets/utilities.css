@@ -168,7 +168,7 @@
 /* The band of an indeterminate progress bar (ui/progress: a library scan, a game starting or
    closing): no total is known, so a band sweeps the track, 1.4 s a pass. «Riduci le animazioni»
    shows it full and half faded. The 1.4s loop is not a design system duration yet
-   (`duration-loop`, Cowork). */
+   (`duration-loop`, design). */
 @keyframes progress-sweep {
   from {
     transform: translateX(-100%);
@@ -224,7 +224,7 @@
 /* A game's own colour behind its details (GameDetails, board «Dettagli»): `--cover-tint` is the
    game's colour, set on the page. The header fades from a third of it to nothing, and the cover
    glows in two thirds of it. The glow's names and the fixed drop shadow under it are spec
-   Decision 5's `glow-cover`, still for Cowork: the values are the screen's own. */
+   Decision 5's `glow-cover`, still a design decision: the values are the screen's own. */
 @utility bg-cover-fade {
   background: linear-gradient(
     180deg,

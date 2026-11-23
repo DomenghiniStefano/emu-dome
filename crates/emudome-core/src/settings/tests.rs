@@ -872,7 +872,7 @@ fn scopes_and_errors_have_the_interface_shape() {
 
 // ---- Schema invariants ----
 
-/// Cowork's final option ids: lowercase letters, digits, `_` and `.` (speeds like `0.5`),
+/// The design's final option ids: lowercase letters, digits, `_` and `.` (speeds like `0.5`),
 /// starting and ending with a letter or digit. The interface turns `.` into `_` in i18n keys.
 fn is_option_id(id: &str) -> bool {
     let edge = |c: char| c.is_ascii_lowercase() || c.is_ascii_digit();

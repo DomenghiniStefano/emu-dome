@@ -1,5 +1,5 @@
 //! The static catalogue: every setting of the app, page by page, in the design's order
-//! (Cowork's settings catalogue, 155 entries, Trello comment of 2026-11-17), plus the Game Boy,
+//! (the design's settings catalogue, 155 entries, Trello comment of 2026-11-17), plus the Game Boy,
 //! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89), plus the game clock's
 //! offset and date rows (Trello #102): 164 (`library.versions` replaced `library.region`, #102),
 //! plus «Se il controller si scollega» (`touch.tlost`, E14, Trello #29), plus the library's
@@ -8,7 +8,7 @@
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
 //!
-//! Slider ranges and steps, the chips' defaults and the per-option platforms are Cowork's
+//! Slider ranges and steps, the chips' defaults and the per-option platforms are the design's
 //! (design review of 2026-11-17, Trello #26).
 
 use super::schema::{
@@ -882,7 +882,7 @@ pub static ENTRIES: &[Entry] = &[
 
 /// Extra words the settings search matches, in every language, beside the entry's name and
 /// description: `(key, words)`, where a key `<page>.*` covers every entry of the page
-/// (Cowork, Trello #41). Matched without case and accents, like the names.
+/// (design, Trello #41). Matched without case and accents, like the names.
 pub static SYNONYMS: &[(&str, &[&str])] = &[
     ("video.vsync", &["tearing", "strappo"]),
     (

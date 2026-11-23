@@ -77,7 +77,7 @@ const inGameLine = computed(() =>
 
     <LabelledBlock title-as="h3" :title="t('saves.quickTitle')">
       <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03).
-           The date only: a quick save has no play time of its own (Cowork, #37).
+           The date only: a quick save has no play time of its own (design, #37).
            `outdated`: an older version of its core made it (saves.rs, `is_outdated`). -->
       <div
         v-if="saves.quick.length"

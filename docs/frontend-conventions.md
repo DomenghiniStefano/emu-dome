@@ -106,9 +106,10 @@ initial`): a value that is not a token generates no class. Preflight is off; the
 - **Role tokens**: where a value has a role it gets a role name pointing at a step
   (`--spacing-card-pad: var(--spacing-16)`, `radius-control`, `spacing-section-x`), so changing every
   card's padding is one edit.
-- **«Pending Cowork» tokens**: a value the design system has not decided yet is a token under a
-  `Pending Cowork` comment in its family's file, named by what it is for, never a literal in a screen.
-  The decision is then an edit of that one line.
+- **«Pending design» tokens**: a value the design system has not decided yet is a token under a
+  `Pending design` comment in its family's file, named by what it is for, never a literal in a screen.
+  The decision is taken with the owner (there is no separate design session), then it is an edit of
+  that one line.
 - Compound looks (glass, glows, gradients, focus rings drawn inside a frame) are named utilities in
   `assets/utilities.css`, written through the tokens.
 - Themes (Scuro / Nero / Chiaro) and the runtime accent are CSS variables (`theme.ts`, `appearance.ts`,

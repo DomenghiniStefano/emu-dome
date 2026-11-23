@@ -31,7 +31,7 @@
   --ink-muted: #a4a8b5;
   --ink-faint: #6b6f7b;
   /* The default accent: amber, the app icon's (Trello #96). `--violet` is the swatch itself (the
-     name is historical: glows, tints and edges mix it). Crown and deep are the icon's (Cowork);
+     name is historical: glows, tints and edges mix it). Crown and deep are the icon's (design);
      every other value is what accent.ts computes for this swatch, as for any other, and
      accent.test.ts holds them to it. Text on amber is dark: white would be 2:1. */
   --violet: #faa40f;
@@ -58,11 +58,11 @@
      - on-cover: text on a generated cover, the same in every theme (the design system's
        `on-cover`);
      - cover-badge: the veil under a cover's console badge (the design system's `cover-scrim`
-       is #000000b3: Cowork);
+       is #000000b3: design);
      - cover-action: the «…» button over a cover, 90% of surface-raised;
      - warning-tint / warning-edge: the fill and edge of a warning banner (E01; a conflict in
        ControlsRemap and ControlsShortcuts), 10% and 33% of `--warning` (the design system's
-       `warning-soft` is 14%: Cowork). */
+       `warning-soft` is 14%: design). */
   --on-cover: #ffffff;
   --cover-badge: #000000a6;
   --cover-action: color-mix(in srgb, var(--surface-raised) 90%, transparent);
@@ -81,8 +81,8 @@
      done, the accent's text colour at 53%. */
   --dot: #ffffff33;
   --dot-done: color-mix(in srgb, var(--accent-text) 53%, transparent);
-  /* Pending Cowork (spec Decision 5, «Handed back to design»): the quick menu's own values, the
-     same in every theme, named once here until Cowork places them.
+  /* Pending design (spec Decision 5, «Handed back to design»): the quick menu's own values, the
+     same in every theme, named once here until a design decision places them.
      - game-scrim: the paused game behind the menu (the design system's `scene-scrim` is not
        decided yet);
      - on-accent-edge: a key hint's edge on the main action's accent fill, half of the text on
@@ -218,7 +218,7 @@
   /* Step dots */
   --color-dot: var(--dot);
   --color-dot-done: var(--dot-done);
-  /* The quick menu (pending Cowork) */
+  /* The quick menu (pending design) */
   --color-game-scrim: var(--game-scrim);
   --color-on-accent-edge: var(--on-accent-edge);
   /* The touch controls' styles (pending owner) */
@@ -238,7 +238,7 @@
 }
 
 /* New in cycle 2 (Controls, Trello #62): the row waiting for a button (ControlsRemap), and a quick
-   menu card changed «in prova» (G09), 10% of the accent, following it. Cowork: the design system
+   menu card changed «in prova» (G09), 10% of the accent, following it. Design: the design system
    has no tint of the accent. */
 :root {
   --violet-tint: color-mix(in srgb, var(--violet) 10%, transparent);

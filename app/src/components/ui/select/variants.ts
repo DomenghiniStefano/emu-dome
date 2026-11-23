@@ -8,7 +8,7 @@ export const SelectTriggerVariant = {
   // The choice inside a sentence or a title (Settings scope bar «Giochi <console> ▾»): no edge and
   // no fill until hovered, in the surrounding text's colour and semibold, 26px high (taller when
   // a narrow title wraps it, never over the line under it) and pulled 3px up and 10px left so its
-  // text lines up with the text around it (off the scale: Cowork).
+  // text lines up with the text around it (off the scale: design).
   InTitle: 'inTitle',
 } as const
 export type SelectTriggerVariant = (typeof SelectTriggerVariant)[keyof typeof SelectTriggerVariant]

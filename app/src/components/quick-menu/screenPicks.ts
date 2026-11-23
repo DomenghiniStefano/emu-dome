@@ -1,4 +1,4 @@
-// G09 quick picks (Cowork on #43, from #38): each sets image size, smoothing and the screen
+// G09 quick picks (design on #43, from #38): each sets image size, smoothing and the screen
 // effect together, «in prova» like every other change in the quick menu.
 import type { SettingKey, SettingValue } from '@/emu'
 

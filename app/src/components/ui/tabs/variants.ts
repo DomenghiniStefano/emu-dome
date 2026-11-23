@@ -4,7 +4,7 @@ export const TabsSize = {
   // A section's tabs (ControlsView: `tab`).
   Default: 'default',
   // The game details' tabs (GameDetails: `tab-lg`). On the phone tabs that scroll sideways (board
-  // «Tel-Dettagli»): control-md (pending Cowork), a 14px label on the caller's line, raised and
+  // «Tel-Dettagli»): control-md (pending design), a 14px label on the caller's line, raised and
   // edged, a control's corners; the active one on accent-soft in accent text, no underline.
   Large: 'large',
 } as const

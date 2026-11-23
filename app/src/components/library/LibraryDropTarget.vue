@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Files or folders dragged over the window, outside the game: they go into the library.
-// The blur (8) and the title's tracking (none, unlike the title step) wait for Cowork (spec
+// The blur (8) and the title's tracking (none, unlike the title step) wait for a design decision (spec
 // Decision 5).
 import { useI18n } from 'vue-i18n'
 import { Library } from '@lucide/vue'

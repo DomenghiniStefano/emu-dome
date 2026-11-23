@@ -15,7 +15,7 @@ export const KbdSize = {
   // at least as wide (a one-character key is square), the caption on the body's line.
   Default: 'default',
   // A hint beside an action's label (Esc, B): 18 tall and at least as wide, the badge's type
-  // (pending Cowork).
+  // (pending design).
   Small: 'small',
   // TV mode (#30): a face button of the connected controller, seen from the sofa (the button bar,
   // the hero's actions): a round key, 30 tall, the TV hint's type.

@@ -8,7 +8,7 @@
 :root {
   --shadow-float: 0 24px 64px #0000008c, 0 2px 8px #00000059;
   /* A cover at rest (LibraryView). The design system's `shadow-card` has a lighter Chiaro value,
-     0 1px 2px #1a1b2014: not applied until Cowork says so (spec, Decision 5). */
+     0 1px 2px #1a1b2014: not applied until a design decision says so (spec, Decision 5). */
   --shadow-card: 0 1px 2px #00000052;
 }
 :root[data-theme='light'] {
@@ -35,9 +35,9 @@
   --shadow-glow-lg: 0 0 60px color-mix(in srgb, var(--violet) 35%, transparent);
   /* The active tab's underline, drawn inside so it takes no room. */
   --shadow-tab: inset 0 -2px 0 var(--accent-text);
-  /* A slider's thumb lifted off its track (not in the design system yet: Cowork). */
+  /* A slider's thumb lifted off its track (not in the design system yet: design). */
   --shadow-thumb: 0 1px 3px #00000080;
-  /* Pending Cowork (spec Decision 5): the quick menu's own, the same in every theme.
+  /* Pending design (spec Decision 5): the quick menu's own, the same in every theme.
      - panel: the panel's lit top edge and a deeper shadow than `float`, over the paused game;
      - sheet: the phone's sheet lifted off the game above it. */
   --shadow-panel: inset 0 1px 0 var(--glass-edge), 0 32px 96px #000000a6;
@@ -50,7 +50,7 @@
   --blur-glass: 24px;
   /* Behind focus moments and under dialogs. */
   --blur-scene: 32px;
-  /* Pending Cowork: the paused game behind the quick menu (2), the screen behind the cover picker
+  /* Pending design: the paused game behind the quick menu (2), the screen behind the cover picker
      and the drop target (8). */
   --blur-veil: 2px;
   --blur-dim: 8px;

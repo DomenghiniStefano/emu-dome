@@ -5,7 +5,7 @@
 // comes from `useButtonTester` (components/controls).
 //
 // The cells' 8px radius and their 12px label on the 18px line are pending tokens (`radius-8`,
-// `caption-tall`), until Cowork places them (spec Decision 5).
+// `caption-tall`), until a design decision places them (spec Decision 5).
 defineProps<{
   cells: { id: string; label: string }[]
   held: Set<string>

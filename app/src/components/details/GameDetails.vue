@@ -3,7 +3,7 @@
 // the Library section. L04 on top (DetailsHero); under it six tabs: L05 Salvataggi, L06
 // Impostazioni del gioco, L07 Controlli, L08 Codici trucco and L09 Patch e traduzioni (not built
 // yet: the reason, X05), L10 File e informazioni. «…» offers L12 «Scegli la copertina…», which is
-// reachable from here only (Cowork #40), as does «Cambia…» in L10.
+// reachable from here only (design, #40), as does «Cambia…» in L10.
 // Phone in portrait (device phone, as the settings schema tells it): the tabs as scrolling pills.
 //
 // Controller / keyboard: the shell's nav scope covers it; this view's own steps (nav.ts

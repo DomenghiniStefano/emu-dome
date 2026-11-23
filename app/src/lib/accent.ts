@@ -7,7 +7,7 @@
 //   fill darkened until white does;
 // - hover, deep and crown take the shape of the design system's first ramp (VIOLET_RAMP: the
 //   same OKLCH lightness steps from the fill), except the default's deep and crown, which are the
-//   icon's own (Cowork, colors.css);
+//   icon's own (design, colors.css);
 // - `accent-text` and `focus-ring` are moved in lightness per theme until they reach 4.5:1 on
 //   every surface of that theme, including a selected chip (`accent-soft` over `surface-raised`).
 // Pure: appearance.ts writes the result into the page.
