@@ -326,12 +326,7 @@ impl AudioOutput {
         if let Err(e) = spawned {
             log::error!("audio thread not started: {e}");
             metrics.lock().error = Some(format!("thread: {e}"));
-            health.set(
-                Part::Audio,
-                Some(ErrorCode::AudioUnavailable {
-                    detail: e.to_string(),
-                }),
-            );
+            health.set(Part::Audio, Some(ErrorCode::AudioUnavailable));
         }
         Self {
             _stop: stop_tx,
@@ -469,9 +464,9 @@ impl Output {
                 Err(e) => {
                     let detail = format!("{e:#}");
                     log::error!("no audio output: {detail}");
-                    self.metrics.lock().error = Some(detail.clone());
+                    self.metrics.lock().error = Some(detail);
                     self.health
-                        .set(Part::Audio, Some(ErrorCode::AudioUnavailable { detail }));
+                        .set(Part::Audio, Some(ErrorCode::AudioUnavailable));
                     match stop.recv_timeout(retry) {
                         Ok(()) | Err(RecvTimeoutError::Disconnected) => return,
                         Err(RecvTimeoutError::Timeout) => {}

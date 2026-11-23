@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use emudome_core::library::GameRecord;
 use emudome_core::settings::ConsoleId;
 use emudome_core::storage::{self as files, QuickFile, RemoveError, TempPlaces};
-use emudome_core::{ErrorCode, GameKey};
+use emudome_core::{ErrorCode, GameKey, IoCause};
 use emudome_platform::DiskSpace;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
@@ -254,8 +254,11 @@ struct Places {
 }
 
 fn places(app: &AppHandle) -> Result<Places, ErrorCode> {
-    let fail = |e: tauri::Error| ErrorCode::StorageDeleteFailed {
-        detail: format!("no data folder: {e}"),
+    let fail = |e: tauri::Error| {
+        log::warn!("storage: no data folder: {e}");
+        ErrorCode::StorageDeleteFailed {
+            cause: IoCause::Other,
+        }
     };
     let data = crate::dirs::data(app).map_err(fail)?;
     let local = crate::dirs::local(app).map_err(fail)?;
@@ -355,7 +358,7 @@ fn breakdown(app: &AppHandle) -> Result<Breakdown, ErrorCode> {
 /// Drive is not asked here (no network wait): the interface asks `cloud_games` after.
 #[tauri::command]
 pub async fn storage_breakdown(app: AppHandle) -> Result<Breakdown, ErrorCode> {
-    crate::blocking(app, |app| breakdown(app)).await?
+    crate::blocking(app, breakdown).await?
 }
 
 /// «Salvataggi rapidi › Scegli»: every game's quick saves (the open game's too, shown; deleting
@@ -388,8 +391,9 @@ fn refuse_open<'a>(
 }
 
 fn delete_failed((done, e): (usize, std::io::Error)) -> ErrorCode {
+    log::warn!("storage: deletion stopped after {done}: {e}");
     ErrorCode::StorageDeleteFailed {
-        detail: format!("{e} (after {done})"),
+        cause: IoCause::of(&e),
     }
 }
 
@@ -447,8 +451,11 @@ pub async fn storage_remove_game(app: AppHandle, id: GameKey) -> Result<u64, Err
         .find(|g| g.id == id && g.listed)
         .ok_or_else(|| ErrorCode::LibraryGameUnknown { id: id.to_string() })?;
     refuse_open(&app, std::iter::once(&id))?;
-    let games = cloud::games_dir(&app).map_err(|e| ErrorCode::StorageDeleteFailed {
-        detail: format!("no data folder: {e}"),
+    let games = cloud::games_dir(&app).map_err(|e| {
+        log::warn!("storage: no data folder: {e}");
+        ErrorCode::StorageDeleteFailed {
+            cause: IoCause::Other,
+        }
     })?;
     let file = PathBuf::from(&record.path);
     if emudome_platform::is_content_uri(&record.path) || !files::is_in_folder(&games, &file) {
@@ -462,9 +469,12 @@ pub async fn storage_remove_game(app: AppHandle, id: GameKey) -> Result<u64, Err
         refuse_open(app, std::iter::once(&id))?;
         let freed = files::remove_game_file(&games, &file).map_err(|e| match e {
             RemoveError::NotOurs => ErrorCode::StorageGameNotRemovable,
-            RemoveError::Io(e) => ErrorCode::StorageDeleteFailed {
-                detail: format!("{}: {e}", file.display()),
-            },
+            RemoveError::Io(e) => {
+                log::warn!("storage: {} not removed: {e}", file.display());
+                ErrorCode::StorageDeleteFailed {
+                    cause: IoCause::of(&e),
+                }
+            }
         })?;
         library::file_removed(app, &id)?;
         Ok(freed)
@@ -480,11 +490,13 @@ pub fn storage_open_folder(app: AppHandle, id: GameKey) -> Result<(), ErrorCode>
         .into_iter()
         .find(|g| g.id == id)
         .ok_or_else(|| ErrorCode::LibraryGameUnknown { id: id.to_string() })?;
-    let folder = folder_to_open(&record).ok_or_else(|| ErrorCode::StorageFolderUnavailable {
-        detail: "a document picked through the system".into(),
+    let folder = folder_to_open(&record).ok_or_else(|| {
+        log::warn!("storage: no folder to open for a document picked through the system");
+        ErrorCode::StorageFolderUnavailable
     })?;
-    emudome_platform::open_folder(&folder).map_err(|e| ErrorCode::StorageFolderUnavailable {
-        detail: format!("{}: {e}", folder.display()),
+    emudome_platform::open_folder(&folder).map_err(|e| {
+        log::warn!("storage: {} not opened: {e}", folder.display());
+        ErrorCode::StorageFolderUnavailable
     })
 }
 

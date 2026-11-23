@@ -10,6 +10,7 @@
 
 use std::time::Duration;
 
+use emudome_core::SignInProblem;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -63,10 +64,10 @@ impl Loopback {
     pub async fn bind() -> Result<Self, SyncError> {
         let listener = TcpListener::bind(("127.0.0.1", 0))
             .await
-            .map_err(|e| SyncError::SignInFailed(format!("loopback listener: {e}")))?;
+            .map_err(|e| SyncError::sign_in(format!("loopback listener: {e}")))?;
         let port = listener
             .local_addr()
-            .map_err(|e| SyncError::SignInFailed(format!("loopback listener: {e}")))?
+            .map_err(|e| SyncError::sign_in(format!("loopback listener: {e}")))?
             .port();
         Ok(Self {
             listener,
@@ -89,7 +90,7 @@ impl Loopback {
                 .listener
                 .accept()
                 .await
-                .map_err(|e| SyncError::SignInFailed(format!("loopback accept: {e}")))?;
+                .map_err(|e| SyncError::sign_in(format!("loopback accept: {e}")))?;
             let Ok(Some(target)) = tokio::time::timeout(REQUEST_TIMEOUT, read_target(&mut stream))
                 .await
                 .map_err(|_| ())
@@ -105,10 +106,21 @@ impl Loopback {
                 }
                 Outcome::Failed(reason) => {
                     respond(&mut stream, 200, &pages.failed).await;
-                    return Err(SyncError::SignInFailed(reason));
+                    return Err(SyncError::SignInFailed(problem_of(&reason), reason));
                 }
             }
         }
+    }
+}
+
+/// What a failed redirect means for the user: Google's `access_denied` (the user did not allow
+/// EmuDome on the consent page) is told apart; anything else (another `error`, a state
+/// mismatch) is `Other`.
+fn problem_of(reason: &str) -> SignInProblem {
+    if reason.ends_with(": access_denied") {
+        SignInProblem::NotGranted
+    } else {
+        SignInProblem::Other
     }
 }
 
@@ -175,6 +187,7 @@ async fn respond(stream: &mut TcpStream, status: u16, html: &str) {
 
 #[cfg(test)]
 mod tests {
+    use emudome_core::SignInProblem;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpStream;
 
@@ -247,9 +260,15 @@ mod tests {
         let waiting = tokio::spawn(async move { lb.wait("st", &pages).await });
         let page = get(&addr, "/?error=access_denied&state=st").await;
         assert!(page.contains("not completed"), "{page}");
+        // The user's refusal is told apart from any other failure.
         assert!(matches!(
             waiting.await.unwrap(),
-            Err(crate::SyncError::SignInFailed(_))
+            Err(crate::SyncError::SignInFailed(SignInProblem::NotGranted, _))
         ));
+        assert_eq!(super::problem_of("state mismatch"), SignInProblem::Other);
+        assert_eq!(
+            super::problem_of("refused by Google: server_error"),
+            SignInProblem::Other
+        );
     }
 }

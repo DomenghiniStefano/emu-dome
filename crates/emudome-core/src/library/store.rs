@@ -22,7 +22,7 @@ use super::group::{families, family_key, Family, Member, Pins};
 use super::identity::Identity;
 use super::scan::{ScanOutcome, Skipped};
 use crate::settings::ConsoleId;
-use crate::{ErrorCode, GameKey};
+use crate::{ErrorCode, GameKey, ImageProblem, IoCause};
 
 /// Which picture a cover shows. TypeScript: `CoverKind` (generated).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -135,7 +135,7 @@ pub struct Library {
     file: PathBuf,
     db: Db,
     /// Why the file could not be read, while it cannot: no write may replace it.
-    read_failed: Option<String>,
+    read_failed: Option<IoCause>,
 }
 
 impl Library {
@@ -159,12 +159,12 @@ impl Library {
                 self.read_failed = None;
             }
             ReadDb::Missing => self.read_failed = None,
-            ReadDb::Failed(detail) => {
+            ReadDb::Failed { cause, detail } => {
                 log::warn!(
                     "libraryReadFailed: {}: {detail}; changes are refused until it reads",
                     self.file.display()
                 );
-                self.read_failed = Some(detail);
+                self.read_failed = Some(cause);
             }
         }
     }
@@ -175,10 +175,8 @@ impl Library {
         if self.read_failed.is_some() {
             self.read();
         }
-        match &self.read_failed {
-            Some(detail) => Err(ErrorCode::LibraryReadFailed {
-                detail: detail.clone(),
-            }),
+        match self.read_failed {
+            Some(cause) => Err(ErrorCode::LibraryReadFailed { cause }),
             None => Ok(()),
         }
     }
@@ -357,14 +355,16 @@ impl Library {
         let game = self.game_mut(id)?;
         match kind {
             CoverKind::Icon if !game.has_icon => {
-                return Err(ErrorCode::CoverInvalid {
-                    detail: "the ROM has no icon".into(),
-                })
+                return Err(crate::cover::invalid(
+                    ImageProblem::Missing,
+                    format!("{id}: the ROM has no icon"),
+                ))
             }
             CoverKind::User if user_file.is_none() => {
-                return Err(ErrorCode::CoverInvalid {
-                    detail: "no image".into(),
-                })
+                return Err(crate::cover::invalid(
+                    ImageProblem::Missing,
+                    format!("{id}: no image"),
+                ))
             }
             CoverKind::Icon | CoverKind::User | CoverKind::Generated => {}
         }
@@ -436,16 +436,17 @@ impl Library {
     /// Writes the file (the in-memory state stays as it is if this fails; the next write
     /// carries it). Refused while the file could not be read: it is never written over.
     pub fn save(&self) -> Result<(), ErrorCode> {
-        if let Some(detail) = &self.read_failed {
-            return Err(ErrorCode::LibraryReadFailed {
-                detail: detail.clone(),
-            });
+        if let Some(cause) = self.read_failed {
+            return Err(ErrorCode::LibraryReadFailed { cause });
         }
-        let write_failed = |e: String| ErrorCode::LibraryWriteFailed { detail: e };
+        let write_failed = |cause: IoCause, e: &dyn std::fmt::Display| {
+            log::warn!("libraryWriteFailed: {}: {e}", self.file.display());
+            ErrorCode::LibraryWriteFailed { cause }
+        };
         let mut bytes =
-            serde_json::to_vec_pretty(&self.db).map_err(|e| write_failed(e.to_string()))?;
+            serde_json::to_vec_pretty(&self.db).map_err(|e| write_failed(IoCause::Other, &e))?;
         bytes.push(b'\n');
-        crate::write_atomic(&self.file, &bytes).map_err(|e| write_failed(e.to_string()))
+        crate::write_atomic(&self.file, &bytes).map_err(|e| write_failed(IoCause::of(&e), &e))
     }
 }
 
@@ -501,8 +502,12 @@ enum ReadDb {
     Found(Db),
     /// No file (or a file that was not JSON, now moved aside).
     Missing,
-    /// The file is there but could not be read: never to be written over.
-    Failed(String),
+    /// The file is there but could not be read: never to be written over. `detail` (the OS's
+    /// text) for the log.
+    Failed {
+        cause: IoCause,
+        detail: String,
+    },
 }
 
 fn read_db(path: &Path) -> ReadDb {
@@ -515,7 +520,12 @@ fn read_db(path: &Path) -> ReadDb {
         {
             return ReadDb::Missing
         }
-        Err(e) => return ReadDb::Failed(e.to_string()),
+        Err(e) => {
+            return ReadDb::Failed {
+                cause: IoCause::of(&e),
+                detail: e.to_string(),
+            }
+        }
     };
     match serde_json::from_str(&text) {
         Ok(db) => ReadDb::Found(db),
@@ -528,9 +538,10 @@ fn read_db(path: &Path) -> ReadDb {
             );
             match fs::rename(path, &aside) {
                 Ok(()) => ReadDb::Missing,
-                Err(not_moved) => ReadDb::Failed(format!(
-                    "not valid JSON ({e}) and not moved aside ({not_moved})"
-                )),
+                Err(not_moved) => ReadDb::Failed {
+                    cause: IoCause::of(&not_moved),
+                    detail: format!("not valid JSON ({e}) and not moved aside ({not_moved})"),
+                },
             }
         }
     }

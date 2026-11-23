@@ -49,10 +49,16 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
   again (`EMUDOME_BLESS=1 cargo test -p emudome-core contract`) + `errors.<code>` in **both** message files: the
   contract test and `app/src/i18n/parity.test.ts` fail until all three are there. A file or folder that cannot be
   read or created is sent as values, never as the OS's sentence (which holds the path; that goes to the log): its
-  name / path and an `IoCause` (`notFound`, `permissionDenied`, `other`, from the `io::ErrorKind`), each code with
-  a cause having one text per cause, `errorCauses.<code>.<cause>` (`app/src/i18n/causes.ts` lists them; parity
-  checks them). `romUnreadable` carries `file` (a document's display name), `path` (a document's URI) and
-  `cause`; G02 shows the file name, the cause's text, then the path on a muted line clamped to two.
+  name / path and an `IoCause` (`notFound`, `permissionDenied`, `other`, from the `io::ErrorKind`; `IoCause::of_any`
+  finds it in an `anyhow` chain), each code with a cause having one text per cause, `errorCauses.<set>.<cause>`:
+  the code's own set, or `data`, shared by the codes about a file in EmuDome's own data folder (settings, library,
+  notifications, saves, states, screenshots, BIOS copies, the sync index). A failure EmuDome tells apart further
+  carries a small `reason` enum (`ImageProblem` for `coverInvalid`, `SignInProblem` for `cloudSignInFailed`), one
+  text per value, `errorReasons.<code>.<reason>`; anything else (a loader's, a GPU's, the network's or the
+  updater's text) goes to the log where it happens and the code carries no detail at all. `app/src/i18n/causes.ts`
+  lists the codes, sets and reasons; parity checks every text and that no `errors.*` message has a `{detail}`.
+  `romUnreadable` carries `file` (a document's display name), `path` (a document's URI) and `cause`; G02 shows the
+  file name, the cause's text, then the path on a muted line clamped to two.
 - Kept file names: `docs/fase0-esito.md` and `docs/combo-tasti.md` keep their Italian names (other documents link to them); their content is English.
 
 ## Current state: Phase 1 desktop shell, Phase 2 core work started
@@ -916,8 +922,9 @@ list in a test and shown disabled. Seen failing once on a new `ErrorCode` varian
 key of the wrong kind.
 
 **Held only by review** (no script can see them):
-- The Rust backend sends codes and values, never sentences (the contract checks that each code has its texts, not
-  what a `detail` holds).
+- The Rust backend sends codes and values, never sentences (the contract checks that each code has its texts and
+  parity that no message shows a `{detail}`, not what a string parameter holds: `effectNotLoaded`'s `detail`, the
+  shader compiler's text, is the one left, and no message shows it).
 - Text built in `<script>` or TypeScript (toasts, computed labels) goes through `t()`: the visible-text gate reads
   templates only.
 - Features live in the shell, not in the cores; a feature a core cannot support is shown disabled with the reason.

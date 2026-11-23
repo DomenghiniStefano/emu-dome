@@ -87,8 +87,9 @@ pub(crate) fn set_video_mode(
     }
     webview
         .set_background_color(Some(mode.webview_background()))
-        .map_err(|e| ErrorCode::WebviewBackgroundFailed {
-            detail: e.to_string(),
+        .map_err(|e| {
+            log::warn!("webview background not changed: {e}");
+            ErrorCode::WebviewBackgroundFailed
         })?;
     *state.video_mode.lock() = mode;
     let current = state.games.current().load_full();

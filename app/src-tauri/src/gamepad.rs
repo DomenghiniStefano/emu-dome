@@ -167,12 +167,7 @@ pub fn spawn(
         });
     if let Err(e) = spawned {
         log::error!("controller thread not started: {e}");
-        health.set(
-            Part::Controllers,
-            Some(ErrorCode::ControllersUnavailable {
-                detail: e.to_string(),
-            }),
-        );
+        health.set(Part::Controllers, Some(ErrorCode::ControllersUnavailable));
     }
 }
 
@@ -188,10 +183,7 @@ fn run(
         Ok(source) => source,
         Err(detail) => {
             log::warn!("controllers unavailable ({}): {detail}", PadSource::BACKEND);
-            health.set(
-                Part::Controllers,
-                Some(ErrorCode::ControllersUnavailable { detail }),
-            );
+            health.set(Part::Controllers, Some(ErrorCode::ControllersUnavailable));
             return;
         }
     };

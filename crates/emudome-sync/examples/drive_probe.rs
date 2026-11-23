@@ -146,7 +146,7 @@ async fn run(command: &str, rest: &[String]) -> Result<(), SyncError> {
             let Some(file) = rest.first() else { usage() };
             let path = Path::new(file);
             let size = std::fs::metadata(path)
-                .map_err(|e| SyncError::Local(format!("{file}: {e}")))?
+                .map_err(|e| SyncError::local(path, &e))?
                 .len();
             let quota = drive.quota().await?;
             if !quota.fits(size) {
@@ -195,7 +195,7 @@ async fn run(command: &str, rest: &[String]) -> Result<(), SyncError> {
                 return Err(SyncError::Request("download does not match its MD5".into()));
             }
             emudome_core::write_atomic(Path::new(out), &bytes)
-                .map_err(|e| SyncError::Local(format!("{out}: {e}")))?;
+                .map_err(|e| SyncError::local(Path::new(out), &e))?;
             println!(
                 "downloaded {} bytes to {out}, md5 {md5} (matches Drive)",
                 bytes.len()

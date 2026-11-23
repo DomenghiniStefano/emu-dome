@@ -503,12 +503,9 @@ impl Video {
                     }
                     Err(e) => {
                         log::error!("native video: surface not usable: {e:#}");
-                        let detail = format!("{e:#}");
-                        self.metrics.lock().surface_error = Some(detail.clone());
-                        self.health.set(
-                            Part::Surface,
-                            Some(ErrorCode::VideoSurfaceFailed { detail }),
-                        );
+                        self.metrics.lock().surface_error = Some(format!("{e:#}"));
+                        self.health
+                            .set(Part::Surface, Some(ErrorCode::VideoSurfaceFailed));
                     }
                 }
             }

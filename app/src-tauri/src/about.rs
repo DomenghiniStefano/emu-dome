@@ -135,10 +135,10 @@ pub async fn about_licence_text(
     file: String,
 ) -> Result<String, ErrorCode> {
     crate::blocking(app, move |app| {
-        let packaged =
-            packaged_path(&licences(), &id, &file).ok_or_else(|| ErrorCode::LicenceUnreadable {
-                detail: format!("{id}: no file {file}"),
-            })?;
+        let Some(packaged) = packaged_path(&licences(), &id, &file) else {
+            log::warn!("licence {id}: no file {file}");
+            return Err(ErrorCode::LicenceUnreadable);
+        };
         let mut tried = Vec::new();
         if let Ok(dir) = app.path().resource_dir() {
             tried.push(dir.join(&packaged));
@@ -153,7 +153,8 @@ pub async fn about_licence_text(
                 Err(e) => last = format!("{}: {e}", path.display()),
             }
         }
-        Err(ErrorCode::LicenceUnreadable { detail: last })
+        log::warn!("licence {id} {file} not read: {last}");
+        Err(ErrorCode::LicenceUnreadable)
     })
     .await?
 }
@@ -174,8 +175,11 @@ pub async fn about_export_log(app: AppHandle) -> Result<Option<String>, ErrorCod
         ) else {
             return Ok(None);
         };
-        let failed = |e: std::io::Error| ErrorCode::LogExportFailed {
-            detail: e.to_string(),
+        let failed = |e: std::io::Error| {
+            log::warn!("log not exported to {}: {e}", dest.display());
+            ErrorCode::LogExportFailed {
+                cause: emudome_core::IoCause::of(&e),
+            }
         };
         let bytes = emudome_platform::log_file::read_current().map_err(failed)?;
         emudome_core::write_atomic(&dest, &bytes).map_err(failed)?;

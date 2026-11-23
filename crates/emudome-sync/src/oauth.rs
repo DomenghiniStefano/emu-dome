@@ -16,6 +16,7 @@ use std::fmt;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use emudome_core::SignInProblem;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
@@ -110,7 +111,7 @@ impl fmt::Debug for Secret {
 /// `n` bytes from the system's random source, as base64url without padding.
 pub fn random_token(n: usize) -> Result<String, SyncError> {
     let mut bytes = vec![0u8; n];
-    getrandom::fill(&mut bytes).map_err(|e| SyncError::SignInFailed(format!("random: {e}")))?;
+    getrandom::fill(&mut bytes).map_err(|e| SyncError::sign_in(format!("random: {e}")))?;
     Ok(URL_SAFE_NO_PAD.encode(bytes))
 }
 
@@ -169,7 +170,7 @@ pub fn authorization_url(
             ("prompt", "consent"),
         ],
     )
-    .map_err(|e| SyncError::SignInFailed(format!("authorization URL: {e}")))
+    .map_err(|e| SyncError::sign_in(format!("authorization URL: {e}")))
 }
 
 /// What the token endpoint gave.
@@ -237,12 +238,16 @@ pub async fn exchange_code(
         .await
         .required()
         .map_err(|e| match e {
-            TokenError::Refused(reason) => SyncError::SignInFailed(reason),
+            TokenError::Refused(reason) => SyncError::sign_in(reason),
             TokenError::Other(e) => e,
         })?;
     let tokens = tokens_from(reply, now);
     if !tokens.scope.split(' ').any(|s| s == DRIVE_FILE_SCOPE) {
-        return Err(SyncError::SignInFailed("Drive access not granted".into()));
+        // The consent page lets the user leave Drive's box unticked.
+        return Err(SyncError::SignInFailed(
+            SignInProblem::NotGranted,
+            "Drive access not granted".into(),
+        ));
     }
     Ok(tokens)
 }
@@ -370,6 +375,7 @@ impl RequireReply for Result<Option<TokenReply>, TokenError> {
 
 #[cfg(test)]
 mod tests {
+    use emudome_core::SignInProblem;
     use serde_json::json;
 
     use super::{
@@ -516,11 +522,14 @@ mod tests {
         for (code, want) in [
             (
                 "no-drive",
-                SyncError::SignInFailed("Drive access not granted".into()),
+                SyncError::SignInFailed(
+                    SignInProblem::NotGranted,
+                    "Drive access not granted".into(),
+                ),
             ),
             (
                 "stale",
-                SyncError::SignInFailed("invalid_grant: Bad Request".into()),
+                SyncError::SignInFailed(SignInProblem::Other, "invalid_grant: Bad Request".into()),
             ),
         ] {
             let e = exchange_code(

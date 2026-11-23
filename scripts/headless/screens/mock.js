@@ -1258,7 +1258,7 @@
     const HOUR = 3600000;
     const mode = scenario.cloud ?? "out";
     const signedIn = ["in", "conflict", "offline"].includes(mode);
-    const offline = { code: "cloudOffline", params: { detail: "dns error" } };
+    const offline = { code: "cloudOffline" };
     const status = {
       configured: mode !== "notConfigured",
       supported: true,

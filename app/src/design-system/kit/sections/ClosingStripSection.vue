@@ -10,7 +10,7 @@ import KitSection from '@/design-system/kit/KitSection.vue'
 import KitState from '@/design-system/kit/KitState.vue'
 import { IssueStatus } from '@/design-system/kit/review'
 
-const diskFull = { code: 'saveFileFailed', params: { detail: 'disk full' } } as const
+const diskFull = { code: 'saveFileFailed', params: { cause: 'other' } } as const
 // CloudPushStrip's words (G14, #31), the longest the strip carries today.
 const PUSH = {
   busy: 'Copia dei salvataggi su Google Drive',

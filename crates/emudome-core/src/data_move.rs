@@ -307,14 +307,13 @@ fn failed(plan: &Plan, mut report: Report, old: String) -> Outcome {
         log::warn!("data move: {e}");
     }
     write_report(plan, &report);
-    let more = report.errors.len().saturating_sub(1);
-    let mut detail = report.errors.first().cloned().unwrap_or_default();
-    if more > 0 {
-        detail.push_str(&format!(" (and {more} more, see {})", report_path(plan)));
-    }
+    // The errors themselves (OS texts with paths in them) are in the log and the report.
     Outcome {
         use_old: true,
-        problem: Some(ErrorCode::DataMoveFailed { old, detail }),
+        problem: Some(ErrorCode::DataMoveFailed {
+            old,
+            report: report_path(plan),
+        }),
         report,
     }
 }

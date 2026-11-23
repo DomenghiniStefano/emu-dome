@@ -397,21 +397,21 @@ async fn read_all(content: &Content) -> Result<Vec<u8>, SyncError> {
         Content::Bytes(b) => Ok(b.clone()),
         Content::File { path, .. } => tokio::fs::read(path)
             .await
-            .map_err(|e| SyncError::Local(format!("{}: {e}", path.display()))),
+            .map_err(|e| SyncError::local(path, &e)),
     }
 }
 
 async fn read_range(content: &Content, offset: u64, len: u64) -> Result<Vec<u8>, SyncError> {
-    let len = usize::try_from(len).map_err(|e| SyncError::Local(e.to_string()))?;
+    let len = usize::try_from(len).map_err(SyncError::local_other)?;
     match content {
         Content::Bytes(b) => {
-            let start = usize::try_from(offset).map_err(|e| SyncError::Local(e.to_string()))?;
+            let start = usize::try_from(offset).map_err(SyncError::local_other)?;
             b.get(start..start + len)
                 .map(<[u8]>::to_vec)
-                .ok_or_else(|| SyncError::Local("range outside the content".into()))
+                .ok_or_else(|| SyncError::local_other("range outside the content"))
         }
         Content::File { path, .. } => {
-            let local = |e: std::io::Error| SyncError::Local(format!("{}: {e}", path.display()));
+            let local = |e: std::io::Error| SyncError::local(path, &e);
             let mut file = tokio::fs::File::open(path).await.map_err(local)?;
             file.seek(std::io::SeekFrom::Start(offset))
                 .await
@@ -720,7 +720,7 @@ impl<T: TokenSource> DriveApi for RestDrive<T> {
         if !response.status().is_success() {
             return Err(read_error(response).await.into_sync(0));
         }
-        let local = |e: std::io::Error| SyncError::Local(format!("{}: {e}", to.display()));
+        let local = |e: std::io::Error| SyncError::local(to, &e);
         let mut file = tokio::fs::File::create(to).await.map_err(local)?;
         let mut md5 = Md5::new();
         let mut size = 0u64;

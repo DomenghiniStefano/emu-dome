@@ -22,7 +22,7 @@ use image::{DynamicImage, ImageDecoder, ImageReader, Limits, RgbImage, RgbaImage
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::ErrorCode;
+use crate::{ErrorCode, ImageProblem};
 
 /// Width of every cover EmuDome writes.
 pub const COVER_WIDTH: u32 = 600;
@@ -58,35 +58,51 @@ pub struct CoverView {
     pub height: f64,
 }
 
-fn invalid(detail: impl Into<String>) -> ErrorCode {
-    ErrorCode::CoverInvalid {
-        detail: detail.into(),
-    }
+/// `coverInvalid` for `problem`; the technical `detail` goes to the log only.
+pub fn invalid(problem: ImageProblem, detail: impl std::fmt::Display) -> ErrorCode {
+    log::warn!("cover image refused ({problem:?}): {detail}");
+    ErrorCode::CoverInvalid { reason: problem }
+}
+
+/// An image the decoder refused: over its limits, else not an image it reads.
+fn undecodable(e: &image::ImageError) -> ErrorCode {
+    let problem = if matches!(e, image::ImageError::Limits(_)) {
+        ImageProblem::TooLarge
+    } else {
+        ImageProblem::Format
+    };
+    invalid(problem, e)
 }
 
 /// Decodes a source image within the limits, turned by its EXIF orientation.
 pub fn decode(bytes: &[u8]) -> Result<RgbaImage, ErrorCode> {
     if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_SOURCE_BYTES {
-        return Err(invalid(format!(
-            "{} bytes, limit {MAX_SOURCE_BYTES}",
-            bytes.len()
-        )));
+        return Err(invalid(
+            ImageProblem::TooLarge,
+            format!("{} bytes, limit {MAX_SOURCE_BYTES}", bytes.len()),
+        ));
     }
     let mut reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
-        .map_err(|e| invalid(e.to_string()))?;
+        .map_err(|e| invalid(ImageProblem::Format, e))?;
     let mut limits = Limits::default();
     limits.max_image_width = Some(MAX_SIDE);
     limits.max_image_height = Some(MAX_SIDE);
     limits.max_alloc = Some(u64::from(MAX_SIDE) * u64::from(MAX_SIDE) * 4 + (32 << 20));
     reader.limits(limits);
-    let mut decoder = reader.into_decoder().map_err(|e| invalid(e.to_string()))?;
+    let mut decoder = reader.into_decoder().map_err(|e| undecodable(&e))?;
     let (w, h) = decoder.dimensions();
-    if w == 0 || h == 0 || w > MAX_SIDE || h > MAX_SIDE {
-        return Err(invalid(format!("{w}×{h}, limit {MAX_SIDE} a side")));
+    if w == 0 || h == 0 {
+        return Err(invalid(ImageProblem::Format, format!("{w}×{h}")));
     }
-    let orientation = decoder.orientation().map_err(|e| invalid(e.to_string()))?;
-    let mut image = DynamicImage::from_decoder(decoder).map_err(|e| invalid(e.to_string()))?;
+    if w > MAX_SIDE || h > MAX_SIDE {
+        return Err(invalid(
+            ImageProblem::TooLarge,
+            format!("{w}×{h}, limit {MAX_SIDE} a side"),
+        ));
+    }
+    let orientation = decoder.orientation().map_err(|e| undecodable(&e))?;
+    let mut image = DynamicImage::from_decoder(decoder).map_err(|e| undecodable(&e))?;
     image.apply_orientation(orientation);
     Ok(image.into_rgba8())
 }
@@ -100,18 +116,22 @@ pub fn dimensions(bytes: &[u8]) -> Result<(u32, u32), ErrorCode> {
 fn check_view(view: &CoverView, width: u32, height: u32) -> Result<(), ErrorCode> {
     let values = [view.x, view.y, view.width, view.height];
     if values.iter().any(|v| !v.is_finite()) || view.width <= 0.0 || view.height <= 0.0 {
-        return Err(invalid(format!("view {view:?}")));
+        return Err(invalid(ImageProblem::Other, format!("view {view:?}")));
     }
     let shape = view.width / view.height;
     let wanted = f64::from(COVER_WIDTH) / f64::from(COVER_HEIGHT);
     if (shape - wanted).abs() > wanted * SHAPE_TOLERANCE {
-        return Err(invalid(format!("view {view:?} is not 2:3")));
+        return Err(invalid(
+            ImageProblem::Other,
+            format!("view {view:?} is not 2:3"),
+        ));
     }
     let largest = f64::from(width.max(height)) * MAX_VIEW_SCALE;
     if view.height > largest || view.x.abs() > largest || view.y.abs() > largest {
-        return Err(invalid(format!(
-            "view {view:?} far from a {width}×{height} image"
-        )));
+        return Err(invalid(
+            ImageProblem::Other,
+            format!("view {view:?} far from a {width}×{height} image"),
+        ));
     }
     Ok(())
 }
@@ -190,7 +210,7 @@ pub fn encode(cover: &RgbImage) -> Result<Vec<u8>, ErrorCode> {
     let mut bytes = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut bytes, JPEG_QUALITY)
         .encode_image(cover)
-        .map_err(|e| invalid(e.to_string()))?;
+        .map_err(|e| invalid(ImageProblem::Other, e))?;
     Ok(bytes)
 }
 
@@ -207,7 +227,7 @@ mod tests {
     use image::{ImageFormat, Rgba, RgbaImage};
 
     use super::{decode, dimensions, make, CoverView, COVER_HEIGHT, COVER_WIDTH, MAX_SIDE};
-    use crate::ErrorCode;
+    use crate::{ErrorCode, ImageProblem};
 
     /// `w` × `h`, red on the left half and blue on the right.
     fn halves(w: u32, h: u32) -> RgbaImage {
@@ -242,6 +262,14 @@ mod tests {
 
     fn invalid(result: Result<impl std::fmt::Debug, ErrorCode>) -> bool {
         matches!(result, Err(ErrorCode::CoverInvalid { .. }))
+    }
+
+    /// The reason a refused image is refused for.
+    fn reason(result: Result<impl std::fmt::Debug, ErrorCode>) -> Option<ImageProblem> {
+        match result {
+            Err(ErrorCode::CoverInvalid { reason }) => Some(reason),
+            Ok(_) | Err(_) => None,
+        }
     }
 
     #[test]
@@ -314,15 +342,25 @@ mod tests {
 
     #[test]
     fn refuses_what_is_not_a_usable_image_or_view() {
-        assert!(invalid(decode(b"not an image at all")));
+        // Each refusal says why, as the interface words it (Trello #128).
+        assert_eq!(
+            reason(decode(b"not an image at all")),
+            Some(ImageProblem::Format)
+        );
         // A GIF is not one of the codecs compiled in.
-        assert!(invalid(decode(b"GIF89a\x01\x00\x01\x00\x00\x00\x00;")));
+        assert_eq!(
+            reason(decode(b"GIF89a\x01\x00\x01\x00\x00\x00\x00;")),
+            Some(ImageProblem::Format)
+        );
         let too_wide = encoded(
             &RgbaImage::from_pixel(MAX_SIDE + 1, 1, Rgba([0, 0, 0, 255])),
             ImageFormat::Png,
         );
-        assert!(invalid(decode(&too_wide)));
-        assert!(invalid(decode(&vec![0u8; 16 * 1024 * 1024 + 1])));
+        assert_eq!(reason(decode(&too_wide)), Some(ImageProblem::TooLarge));
+        assert_eq!(
+            reason(decode(&vec![0u8; 16 * 1024 * 1024 + 1])),
+            Some(ImageProblem::TooLarge)
+        );
         let png = encoded(&halves(30, 20), ImageFormat::Png);
         let view = |x: f64, y: f64, width: f64, height: f64| CoverView {
             x,

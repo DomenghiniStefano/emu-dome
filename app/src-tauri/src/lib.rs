@@ -421,14 +421,12 @@ pub fn run() {
                     Ok(r) => Some(r),
                     Err(e) => {
                         log::error!("native video unavailable, using the webview: {e:#}");
-                        let detail = format!("{e:#}");
                         health.set(
                             health::Part::NativeVideo,
-                            Some(ErrorCode::NativeVideoFallback {
-                                detail: detail.clone(),
-                            }),
+                            Some(ErrorCode::NativeVideoFallback),
                         );
-                        native_error = Some(detail);
+                        // The bench report's copy (`bench.rs`), not the interface's.
+                        native_error = Some(format!("{e:#}"));
                         None
                     }
                 }

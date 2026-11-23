@@ -4,10 +4,12 @@
 //! for codes without parameters). The interface turns each code into text through i18n
 //! (`errors.<code>` in `app/src/i18n/*.json`); the TypeScript type is generated from this enum
 //! into `app/src/generated/ErrorCode.ts`, with the list of codes in `error-codes.json`, which a
-//! Vitest test holds against both message files (`crate::contract`). `detail` parameters carry technical text (English, from the OS or a
-//! library) that the interface may show as is, never a sentence meant for the user. A file that
-//! could not be read or written is told by its name or path and an [`IoCause`], each a value of
-//! its own, never by the OS's sentence (which has the path inside it, Trello #128).
+//! Vitest test holds against both message files (`crate::contract`). No code carries the OS's
+//! or a library's text for the interface (Trello #128): a file that could not be read or written
+//! is told by its name or path and an [`IoCause`], each a value of its own; a failure EmuDome can
+//! tell apart further has a small reason enum ([`ImageProblem`], [`SignInProblem`]); the
+//! technical text goes to the log where the failure happens. The one `detail` left
+//! (`effectNotLoaded`, the shader compiler's text) is not shown by the interface.
 
 use std::path::Path;
 
@@ -53,6 +55,47 @@ impl From<std::io::ErrorKind> for IoCause {
     }
 }
 
+impl IoCause {
+    /// The cause of the first `io::Error` in `e`'s chain; `Other` when none is (the failure was
+    /// not the file system's).
+    pub fn of_any(e: &anyhow::Error) -> Self {
+        e.chain()
+            .find_map(|c| c.downcast_ref::<std::io::Error>())
+            .map_or(IoCause::Other, Self::of)
+    }
+}
+
+/// Why a picked image cannot become a cover or a background (`coverInvalid`): the interface has
+/// one text per reason (`errorReasons.coverInvalid.<reason>`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ImageProblem {
+    /// Not a PNG, JPEG or WebP image, or one that cannot be decoded.
+    Format,
+    /// Over the size limits (16 MiB, 8192 px a side).
+    TooLarge,
+    /// The image is not there any more (the picked image, the screenshot, the ROM's icon), or
+    /// its file cannot be read.
+    Missing,
+    /// Anything else (a framing out of bounds, the cover could not be encoded).
+    Other,
+}
+
+/// Why the Google sign-in did not finish (`cloudSignInFailed`), as far as EmuDome can tell:
+/// one text per reason (`errorReasons.cloudSignInFailed.<reason>`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum SignInProblem {
+    /// The system's browser could not be opened.
+    Browser,
+    /// The sign-in was not completed in time.
+    TimedOut,
+    /// The user (or Google) did not grant EmuDome access to Drive.
+    NotGranted,
+    /// Anything else (Google refused the code, the local redirect could not listen).
+    Other,
+}
+
 impl ErrorCode {
     /// The game file at `path` cannot be read (`cause`): its name and its path as values.
     pub fn rom_unreadable(path: &Path, cause: IoCause) -> Self {
@@ -82,11 +125,13 @@ pub enum ErrorCode {
     /// The core file found is not the one this build ships (its sha256 differs from
     /// `cores.lock`'s): it is not loaded. The installation is damaged or was tampered with.
     CoreDamaged { file: String },
-    /// The core or the game failed to load, for a reason none of the codes below names.
-    OpenFailed { detail: String },
+    /// The core or the game failed to load, for a reason none of the codes below names (the
+    /// emulation thread did not start). The reason is in the log only.
+    OpenFailed,
     /// The core file cannot be loaded or is not a libretro core EmuDome can drive (damaged,
     /// another architecture, a function missing): reinstalling EmuDome puts the right one back.
-    CoreIncompatible { detail: String },
+    /// The loader's text is in the log only.
+    CoreIncompatible,
     /// The game file cannot be read: `file` is its name (a document's display name), `path`
     /// where it is (a document's URI), `cause` why. The OS's own text goes to the log only.
     RomUnreadable {
@@ -106,7 +151,7 @@ pub enum ErrorCode {
     DocumentNeedsPath { core: String },
     /// The file opened has the extension of a console but its content is not a game of it (its
     /// header does not match): it has no identity, so it has no place for its saves.
-    GameUnidentified { detail: String },
+    GameUnidentified,
     /// E10: the 3DS game is encrypted; EmuDome plays decrypted games only (it never decrypts,
     /// and never adds an encrypted game to the library).
     GameEncrypted,
@@ -133,14 +178,16 @@ pub enum ErrorCode {
     AppClosing,
     /// The native video path does not exist on this system.
     NativeVideoUnavailable,
-    /// The webview background could not be changed when switching video mode.
-    WebviewBackgroundFailed { detail: String },
+    /// The webview background could not be changed when switching video mode (the webview's
+    /// text in the log only).
+    WebviewBackgroundFailed,
     /// The slot has no saved state yet.
     SlotEmpty { slot: u8 },
-    /// The state could not be saved into the slot.
-    StateSaveFailed { slot: u8, detail: String },
+    /// The state could not be saved into the slot (`cause`: the write's; `Other` when the core
+    /// could not serialize its state).
+    StateSaveFailed { slot: u8, cause: IoCause },
     /// The slot file exists but could not be read.
-    StateLoadFailed { slot: u8, detail: String },
+    StateLoadFailed { slot: u8, cause: IoCause },
     /// The core refused the state (another game or another core version).
     StateInvalid { slot: u8 },
     /// Loading states (a quick load, the auto quick save, «Annulla il caricamento», rewind) is
@@ -161,32 +208,33 @@ pub enum ErrorCode {
     /// setting holds no value (an action).
     SettingInvalidValue { key: String },
     /// A settings file could not be written.
-    SettingsWriteFailed { detail: String },
+    SettingsWriteFailed { cause: IoCause },
     /// A settings file is there but could not be read (permission, I/O error): it is not
     /// written over, so the change was not saved. Writes work again once it reads.
-    SettingsReadFailed { detail: String },
+    SettingsReadFailed { cause: IoCause },
     /// A library folder cannot be read now (missing, disconnected drive, no permission).
     LibraryFolderUnreachable { path: String },
     /// No game in the library has this id.
     LibraryGameUnknown { id: String },
     /// The game is in the library but its file cannot be reached now.
     LibraryGameUnavailable { id: String },
-    /// The library database could not be written.
-    LibraryWriteFailed { detail: String },
+    /// The library database (or a cover file) could not be written.
+    LibraryWriteFailed { cause: IoCause },
     /// The library database is there but could not be read: it is not written over, so the
     /// change was not saved. Writes work again once it reads.
-    LibraryReadFailed { detail: String },
+    LibraryReadFailed { cause: IoCause },
     /// The notifications file (`<app local data>/notifications.json`, X03) could not be written.
-    NotificationsWriteFailed { detail: String },
+    NotificationsWriteFailed { cause: IoCause },
     /// The notifications file is there but could not be read: it is not written over, so the
     /// change was not kept. Writes work again once it reads.
-    NotificationsReadFailed { detail: String },
-    /// The chosen cover cannot be used (not an image, too large, or no icon in the ROM).
-    CoverInvalid { detail: String },
+    NotificationsReadFailed { cause: IoCause },
+    /// The chosen cover (or background image) cannot be used: `reason` says why.
+    CoverInvalid { reason: ImageProblem },
     /// «Annulla il caricamento» with no load to undo in this session.
     NothingToUndo,
-    /// The core refused the state from before the last load.
-    UndoFailed { detail: String },
+    /// «Annulla» could not go back: the core refused the state from before the last load, or
+    /// the slot from before the last save could not be written back. The reason is in the log.
+    UndoFailed,
     /// E04: the in-game save of `game` cannot be used (unreadable, empty, too large). It was
     /// moved aside as `aside`; `backup_at` is the Unix ms of the newest backup, if there is one.
     #[serde(rename_all = "camelCase")]
@@ -197,22 +245,26 @@ pub enum ErrorCode {
     },
     /// The game is open: its saves cannot change under the running session.
     SaveGameOpen,
-    /// The chosen file is not a save EmuDome can import.
-    SaveImportInvalid { detail: String },
-    /// A save file could not be read, written, copied or deleted.
-    SaveFileFailed { detail: String },
+    /// The chosen file is not a save EmuDome can import (empty, too large, not the format its
+    /// extension says; which, in the log).
+    SaveImportInvalid,
+    /// A save file could not be read, written, copied or deleted (`cause`; `Other` when no
+    /// file was at fault, e.g. the emulation thread ended before its exit writes).
+    SaveFileFailed { cause: IoCause },
     /// The one-time move of the saves and settings named the old way (by ROM file name, by
     /// path hash) to the game key could not run or stopped on an error. Nothing was lost: what
-    /// was not moved is where it was, and it is tried again at the next start.
-    SavesMigrationFailed { detail: String },
+    /// was not moved is where it was, and it is tried again at the next start. The errors are
+    /// in the log.
+    SavesMigrationFailed,
     /// The one-time move ended, but `left` old files could not be given to one game for sure
     /// (no library game, several with that file name, or already a file at the new place): they
     /// stay where they were, untouched, listed in the report file `report`.
     SavesMigrationIncomplete { left: usize, report: String },
     /// Health: the one-time copy of the data to the folders of the new app identifier (Trello
     /// #90) did not finish. Nothing was lost: this run uses the old folder `old`, untouched, and
-    /// the copy is tried again at the next start.
-    DataMoveFailed { old: String, detail: String },
+    /// the copy is tried again at the next start. `report` is the report file that lists the
+    /// errors (`migration-90/report.json`), the log too.
+    DataMoveFailed { old: String, report: String },
     /// Health: the folders of the new app identifier (`new`) already held data, so the data of
     /// the old ones (`old`) was not copied over it. The old folders stay as they are; the new
     /// ones are used. Shown at the start that found it; `report` lists the folders.
@@ -221,10 +273,10 @@ pub enum ErrorCode {
         new: String,
         report: String,
     },
-    /// The screenshot could not be encoded or written (no frame yet, folder not writable).
-    ScreenshotFailed { detail: String },
+    /// The screenshot could not be written (`cause`; `Other` when it could not be encoded).
+    ScreenshotFailed { cause: IoCause },
     /// A game's screenshots folder is there but could not be listed (L12 «Da uno screenshot»).
-    ScreenshotsUnreadable { detail: String },
+    ScreenshotsUnreadable { cause: IoCause },
     /// The open game's core has no way to close the lid (`core_profile::Lid::Unsupported`:
     /// Azahar, a one-screen console). The interface shows the lid disabled before this.
     LidUnsupported,
@@ -241,7 +293,7 @@ pub enum ErrorCode {
     /// The chosen file is the one of another BIOS / firmware row (`slot`).
     BiosOtherSlot { slot: Slot },
     /// EmuDome's copy of a BIOS / firmware file could not be written or deleted.
-    BiosFileFailed { detail: String },
+    BiosFileFailed { cause: IoCause },
     /// DSi mode was asked for without the DS and DSi system files: the game runs as a DS.
     BiosDsiFilesMissing,
     /// Booting through the DS menu was asked for without the DS system files: the game starts
@@ -252,44 +304,45 @@ pub enum ErrorCode {
     CloudNotConfigured,
     /// No Google account is signed in on this device.
     CloudNotSignedIn,
-    /// The Google sign-in did not finish (refused, the browser closed, time ran out, Google
-    /// refused the code); `detail` says which.
-    CloudSignInFailed { detail: String },
+    /// The Google sign-in did not finish; `reason` says why, as far as EmuDome can tell (the
+    /// technical text in the log).
+    CloudSignInFailed { reason: SignInProblem },
     /// Signing in to Google is not possible on this system yet (Android: Phase 4).
     CloudSignInUnsupported,
     /// The Google sign-in was revoked or expired: only signing in again helps.
     CloudAccessExpired,
     /// Google Drive could not be reached (no network, a timeout): nothing changed, the sync is
     /// tried again later.
-    CloudOffline { detail: String },
+    CloudOffline,
     /// Google Drive has no room for `needed` bytes (`available` left, 0 when Drive only said it
     /// is full).
     CloudQuotaFull { needed: u64, available: u64 },
-    /// Google Drive answered with an error none of the other codes names.
-    CloudRequestFailed { detail: String },
+    /// Google Drive answered with an error none of the other codes names (its status and
+    /// reason in the log).
+    CloudRequestFailed,
     /// The sync index (`<app data>/sync/index.json`) is there but cannot be read: sync stops
     /// and the file is not written over until it reads again.
-    CloudIndexReadFailed { detail: String },
+    CloudIndexReadFailed { cause: IoCause },
     /// The system's credential store refused (Linux without a Secret Service, a locked
-    /// keyring): the Google sign-in cannot be kept on this device.
-    CloudCredentialsUnavailable { detail: String },
+    /// keyring): the Google sign-in cannot be kept on this device. The store's text in the log.
+    CloudCredentialsUnavailable,
     /// Health (`emu://health`, `diagnostics`): the native video could not start, the game is
-    /// drawn in the interface's canvas instead.
-    NativeVideoFallback { detail: String },
+    /// drawn in the interface's canvas instead. Each health code's reason is in the log only.
+    NativeVideoFallback,
     /// Health: a game whose core draws on the GPU (3DS) found no Vulkan device to render on
     /// (another graphics API, no Vulkan driver): it runs with the core's software renderer.
-    HwRenderFallback { detail: String },
+    HwRenderFallback,
     /// Health: the graphics API chosen in `video.api` (`api`: the option id, `vulkan`, `d3d12`,
     /// `opengl`) has no GPU on this system: EmuDome chose one by itself for this run.
     GraphicsApiUnavailable { api: String },
     /// Health: the surface the system handed over (Android's) cannot be drawn on; nothing is
     /// shown until the next one.
-    VideoSurfaceFailed { detail: String },
+    VideoSurfaceFailed,
     /// Health: no audio output (no device, the device refused the stream, it went away);
     /// EmuDome keeps trying and clears this once a stream plays.
-    AudioUnavailable { detail: String },
+    AudioUnavailable,
     /// Health: the controllers cannot be used in this run (SDL did not start).
-    ControllersUnavailable { detail: String },
+    ControllersUnavailable,
     /// Health: the last game on `core` (`azahar`) could not reach its save folder and wrote into
     /// the core's own user folder (`folder`) instead, shared by every game of that core: the
     /// progress of that session is there, not with the game's saves (Trello #97). Seen by
@@ -302,13 +355,14 @@ pub enum ErrorCode {
     /// or development build), or it runs where updates come from the store (Android, Google
     /// Play). Trello #44.
     UpdateUnavailable,
-    /// Looking for a new version failed (`detail`: offline, the release server's answer).
-    UpdateCheckFailed { detail: String },
-    /// Downloading the new version failed, or its signature did not match (`detail`): nothing
+    /// Looking for a new version failed (offline, the release server's answer: in the log).
+    UpdateCheckFailed,
+    /// Downloading the new version failed, or its signature did not match (in the log): nothing
     /// was installed.
-    UpdateDownloadFailed { detail: String },
-    /// The installer of the new version could not be started (`detail`): EmuDome stays as it is.
-    UpdateInstallFailed { detail: String },
+    UpdateDownloadFailed,
+    /// The installer of the new version could not be started (in the log): EmuDome stays as it
+    /// is.
+    UpdateInstallFailed,
     /// «Riavvia e aggiorna» with no new version found yet.
     UpdateNotReady,
     /// «Riavvia e aggiorna» while a game is open: the game is closed first (its saves), never
@@ -316,33 +370,31 @@ pub enum ErrorCode {
     UpdateGameOpen,
     /// No log file to export: logging to a file could not start in this run (the data folder).
     LogUnavailable,
-    /// The log could not be written where the user chose (`detail`).
-    LogExportFailed { detail: String },
-    /// A licence text shipped with EmuDome could not be read (`detail`): the installation is
-    /// incomplete, or this is a development build without the packaged files.
-    LicenceUnreadable { detail: String },
+    /// The log could not be written where the user chose (`cause`).
+    LogExportFailed { cause: IoCause },
+    /// A licence text shipped with EmuDome could not be read: the installation is incomplete,
+    /// or this is a development build without the packaged files (which file, in the log).
+    LicenceUnreadable,
     /// «Togli dal telefono» on a game EmuDome may not remove: its file is not in EmuDome's own
     /// games folder (a file of the user's), or not on Google Drive (it could not come back).
     StorageGameNotRemovable,
-    /// A deletion of «Gestisci lo spazio» stopped (`detail`); what went before it is gone, the
-    /// rest is as it was.
-    StorageDeleteFailed { detail: String },
-    /// «Apri la cartella»: the game's folder could not be shown (`detail`).
-    StorageFolderUnavailable { detail: String },
+    /// A deletion of «Gestisci lo spazio» stopped (`cause`; the file, in the log); what went
+    /// before it is gone, the rest is as it was.
+    StorageDeleteFailed { cause: IoCause },
+    /// «Apri la cartella»: the game's folder could not be shown (why, in the log).
+    StorageFolderUnavailable,
 }
 
 impl crate::StartError {
     /// The code the interface shows for a game that did not start on `core` (its name, e.g.
-    /// `mgba`).
+    /// `mgba`). The error's own text is for the log (its `Display`), logged by the caller.
     pub fn into_code(self, core: &str) -> ErrorCode {
         match self {
             crate::StartError::CoreNeedsRestart => ErrorCode::CoreNeedsRestart {
                 core: core.to_owned(),
             },
-            crate::StartError::CoreUnloadable { detail }
-            | crate::StartError::CoreIncompatible { detail } => {
-                ErrorCode::CoreIncompatible { detail }
-            }
+            crate::StartError::CoreUnloadable { .. }
+            | crate::StartError::CoreIncompatible { .. } => ErrorCode::CoreIncompatible,
             crate::StartError::RomUnreadable { path, cause, .. } => {
                 ErrorCode::rom_unreadable(&path, cause)
             }
@@ -350,7 +402,7 @@ impl crate::StartError {
             crate::StartError::GameNeedsPath => ErrorCode::DocumentNeedsPath {
                 core: core.to_owned(),
             },
-            crate::StartError::ThreadFailed { detail } => ErrorCode::OpenFailed { detail },
+            crate::StartError::ThreadFailed { .. } => ErrorCode::OpenFailed,
             crate::StartError::SaveFolderUnavailable { folder, cause, .. } => {
                 ErrorCode::SaveFolderUnavailable {
                     folder: folder.display().to_string(),
@@ -400,9 +452,19 @@ mod tests {
                 core: "mgba".into()
             }
         );
+        // The loader's text (it holds the core's path) stays in the log.
         assert_eq!(
-            code(StartError::CoreUnloadable { detail: "x".into() }),
-            ErrorCode::CoreIncompatible { detail: "x".into() }
+            serde_json::to_value(code(StartError::CoreUnloadable {
+                detail: "C:/EmuDome/cores/mgba_libretro.dll: bad image".into()
+            }))
+            .unwrap(),
+            serde_json::json!({ "code": "coreIncompatible" })
+        );
+        assert_eq!(
+            code(StartError::ThreadFailed {
+                detail: "os error 8".into()
+            }),
+            ErrorCode::OpenFailed
         );
         // The file and its path as values of their own, the OS's text left out (Trello #128).
         assert_eq!(
@@ -451,6 +513,23 @@ mod tests {
             IoCause::Other
         );
         assert_eq!(IoCause::of(&Error::other("x")), IoCause::Other);
+        // Through an anyhow chain: the io::Error under the context, or Other without one.
+        let wrapped = anyhow::Error::new(Error::from(ErrorKind::PermissionDenied))
+            .context("cannot write the slot");
+        assert_eq!(IoCause::of_any(&wrapped), IoCause::PermissionDenied);
+        assert_eq!(
+            IoCause::of_any(&anyhow::anyhow!("core refused")),
+            IoCause::Other
+        );
+        assert_eq!(
+            serde_json::to_value(ErrorCode::StateSaveFailed {
+                slot: 3,
+                cause: IoCause::of_any(&wrapped)
+            })
+            .unwrap(),
+            serde_json::json!({ "code": "stateSaveFailed",
+                "params": { "slot": 3, "cause": "permissionDenied" } })
+        );
         // A path with no file name keeps the whole path as its name.
         assert_eq!(
             ErrorCode::rom_unreadable(std::path::Path::new("/"), IoCause::Other),

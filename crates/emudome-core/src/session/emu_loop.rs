@@ -332,10 +332,11 @@ impl<C: Core> EmuLoop<C> {
                 true
             }
             Err(e) => {
+                log::warn!("quick save: slot {slot} not serialized: {e:#}");
                 self.send(Event::Error {
                     error: ErrorCode::StateSaveFailed {
                         slot,
-                        detail: format!("{e:#}"),
+                        cause: crate::IoCause::of_any(&e),
                     },
                 });
                 false
@@ -374,11 +375,12 @@ impl<C: Core> EmuLoop<C> {
         let event = match self.undo.take() {
             Some(Undo::Load(data)) => match self.core.unserialize(&data) {
                 Ok(()) => Event::LoadUndone,
-                Err(e) => Event::Error {
-                    error: ErrorCode::UndoFailed {
-                        detail: format!("{e:#}"),
-                    },
-                },
+                Err(e) => {
+                    log::warn!("undo load: the core refused the state from before: {e:#}");
+                    Event::Error {
+                        error: ErrorCode::UndoFailed,
+                    }
+                }
             },
             kept @ (Some(Undo::Save) | None) => {
                 self.undo = kept;
@@ -594,9 +596,10 @@ impl<C: Core> EmuLoop<C> {
             }
             Ok(false) => Ok(()),
             Err(e) => {
+                log::warn!("auto quick save not written: {e:#}");
                 let error = ErrorCode::StateSaveFailed {
                     slot: AUTO_SLOT,
-                    detail: format!("{e:#}"),
+                    cause: crate::IoCause::of_any(&e),
                 };
                 self.send(Event::Error {
                     error: error.clone(),
@@ -718,9 +721,10 @@ fn load_slot(core: &mut impl Core, files: &GameFiles, slot: u8) -> Result<(), Er
         if e.kind() == std::io::ErrorKind::NotFound {
             ErrorCode::SlotEmpty { slot }
         } else {
+            log::warn!("slot {slot} not read: {e}");
             ErrorCode::StateLoadFailed {
                 slot,
-                detail: e.to_string(),
+                cause: crate::IoCause::of(&e),
             }
         }
     })?;

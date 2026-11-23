@@ -297,7 +297,7 @@ mod tests {
 
     fn disk_full() -> ErrorCode {
         ErrorCode::SaveFileFailed {
-            detail: "disk full".into(),
+            cause: crate::IoCause::Other,
         }
     }
 

@@ -115,11 +115,12 @@ impl Worker {
                 let event = match self.undo.take() {
                     Some((slot, before)) => match before.restore(&self.files, slot) {
                         Ok(()) => Event::SaveUndone { slot },
-                        Err(e) => Event::Error {
-                            error: ErrorCode::UndoFailed {
-                                detail: e.to_string(),
-                            },
-                        },
+                        Err(e) => {
+                            log::warn!("undo save: slot {slot} not written back: {e}");
+                            Event::Error {
+                                error: ErrorCode::UndoFailed,
+                            }
+                        }
                     },
                     None => Event::Error {
                         error: ErrorCode::NothingToUndo,
@@ -135,23 +136,30 @@ impl Worker {
                         log::warn!("quick slot {slot} not recorded: {e}");
                         self.send(Event::Error {
                             error: ErrorCode::SaveFileFailed {
-                                detail: format!("quick-slot.json: {e}"),
+                                cause: crate::IoCause::of(&e),
                             },
                         });
                     }
                 }
             }
             Job::Screenshot { frame, dir, at } => {
-                let res = frame.to_png().map_err(|e| e.to_string()).and_then(|png| {
-                    crate::screenshot::write(&dir, &png, at).map_err(|e| e.to_string())
-                });
+                let res = frame
+                    .to_png()
+                    .map_err(|e| (crate::IoCause::Other, e.to_string()))
+                    .and_then(|png| {
+                        crate::screenshot::write(&dir, &png, at)
+                            .map_err(|e| (crate::IoCause::of(&e), e.to_string()))
+                    });
                 self.send(match res {
                     Ok(path) => Event::ScreenshotSaved {
                         path: path.to_string_lossy().into_owned(),
                     },
-                    Err(detail) => Event::Error {
-                        error: ErrorCode::ScreenshotFailed { detail },
-                    },
+                    Err((cause, detail)) => {
+                        log::warn!("screenshot not saved: {detail}");
+                        Event::Error {
+                            error: ErrorCode::ScreenshotFailed { cause },
+                        }
+                    }
                 });
             }
             Job::Sync(done) => {
@@ -191,12 +199,15 @@ impl Worker {
                     self.send(Event::StateSaved { slot });
                 }
             }
-            Err(e) => self.send(Event::Error {
-                error: ErrorCode::StateSaveFailed {
-                    slot,
-                    detail: format!("{e:#}"),
-                },
-            }),
+            Err(e) => {
+                log::warn!("quick save: slot {slot} not written: {e:#}");
+                self.send(Event::Error {
+                    error: ErrorCode::StateSaveFailed {
+                        slot,
+                        cause: crate::IoCause::of_any(&e),
+                    },
+                })
+            }
         }
     }
 }

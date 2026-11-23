@@ -8,7 +8,7 @@ const progress = (
   error: ClosingProgress['error'] = null,
 ): ClosingProgress => ({ phase, purpose, error })
 
-const diskFull = { code: 'saveFileFailed', params: { detail: 'disk full' } } as const
+const diskFull = { code: 'saveFileFailed', params: { cause: 'other' } } as const
 
 describe('closingView', () => {
   it('shows nothing before a close', () => {

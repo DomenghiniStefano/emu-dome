@@ -47,7 +47,7 @@ const game = (over: Partial<CloudGame>): CloudGame => ({
 
 describe('statusPill', () => {
   it('puts a run first, then a failure, the conflicts, the pending games', () => {
-    const offline = { code: 'cloudOffline', params: { detail: 'x' } } as const
+    const offline = { code: 'cloudOffline' } as const
     expect(statusPill(status({ syncing: true, error: offline }))).toEqual({ kind: 'syncing' })
     expect(statusPill(status({ error: offline, conflicts: [id('a')] }))).toEqual({
       kind: 'error',

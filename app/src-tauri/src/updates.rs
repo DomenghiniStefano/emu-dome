@@ -169,10 +169,12 @@ fn carry_out_all(app: &AppHandle, updates: &Updates, first: Option<UpdateAction>
     }
 }
 
-fn detail(e: UpdateError) -> Result<String, ErrorCode> {
+/// The code of a step that failed: no updater as itself, any other failure as `failed` (its
+/// text is in the log, written by the caller).
+fn code_of(e: UpdateError, failed: ErrorCode) -> ErrorCode {
     match e {
-        UpdateError::Unavailable => Err(ErrorCode::UpdateUnavailable),
-        UpdateError::Failed(detail) => Ok(detail),
+        UpdateError::Unavailable => ErrorCode::UpdateUnavailable,
+        UpdateError::Failed(_) => failed,
     }
 }
 
@@ -194,8 +196,7 @@ fn carry_out(app: &AppHandle, updates: &Updates, action: UpdateAction) -> Option
                 }
                 Err(e) => {
                     log::warn!("update check failed: {e:?}");
-                    Err(detail(e)
-                        .map_or_else(|c| c, |detail| ErrorCode::UpdateCheckFailed { detail }))
+                    Err(code_of(e, ErrorCode::UpdateCheckFailed))
                 }
             };
             inner.flow.checked(found, now_ms())
@@ -221,8 +222,7 @@ fn carry_out(app: &AppHandle, updates: &Updates, action: UpdateAction) -> Option
                 }
                 Err(e) => {
                     log::warn!("update download failed: {e:?}");
-                    Err(detail(e)
-                        .map_or_else(|c| c, |detail| ErrorCode::UpdateDownloadFailed { detail }))
+                    Err(code_of(e, ErrorCode::UpdateDownloadFailed))
                 }
             };
             inner.flow.downloaded(version, result)
@@ -243,8 +243,8 @@ fn carry_out(app: &AppHandle, updates: &Updates, action: UpdateAction) -> Option
                             Ok(()) => return None,
                             Err(e) => e,
                         };
-                        detail(e)
-                            .map_or_else(|c| c, |detail| ErrorCode::UpdateInstallFailed { detail })
+                        log::warn!("update install failed: {e:?}");
+                        code_of(e, ErrorCode::UpdateInstallFailed)
                     }
                     _ => ErrorCode::UpdateNotReady,
                 }

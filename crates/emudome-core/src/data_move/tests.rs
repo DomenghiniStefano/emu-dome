@@ -198,7 +198,8 @@ fn a_copy_that_fails_keeps_the_old_folders_in_use_and_is_tried_again() {
     assert!(!failed.report.done);
     assert!(matches!(
         &failed.problem,
-        Some(ErrorCode::DataMoveFailed { old, .. }) if old.ends_with("com.domenghini.emudome")
+        Some(ErrorCode::DataMoveFailed { old, report })
+            if old.ends_with("com.domenghini.emudome") && report.ends_with("report.json")
     ));
     assert!(!dir.path(&format!("{NEW_DATA}/migration-90/done")).exists());
     assert_eq!(inventory(&dir, OLD_LOCAL), old_local);

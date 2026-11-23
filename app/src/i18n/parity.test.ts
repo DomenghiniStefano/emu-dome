@@ -10,7 +10,7 @@ import codes from '@/generated/error-codes.json'
 import catalog from '@/generated/settings-catalog.json'
 import { swatchKey } from '@/components/settings/settingRowModel'
 import { msg } from '@/lib/settingsModel'
-import { CAUSE_CODES, IO_CAUSES } from './causes'
+import { CAUSE_CODES, IO_CAUSES, REASON_CODES } from './causes'
 import enMessages from './en.json'
 import itMessages from './it.json'
 
@@ -88,23 +88,63 @@ describe('error codes (emudome_core::ErrorCode)', () => {
 })
 
 describe('the causes of a file error (emudome_core::IoCause, Trello #128)', () => {
-  const wanted = Object.keys(CAUSE_CODES).flatMap(code =>
-    Object.keys(IO_CAUSES).map(cause => `errorCauses.${code}.${cause}`),
+  // Each code's text set (its own or a shared one), every cause of each.
+  const sets = [...new Set(Object.values(CAUSE_CODES))]
+  const wanted = sets.flatMap(set =>
+    Object.keys(IO_CAUSES).map(cause => `errorCauses.${set}.${cause}`),
   )
 
-  it('each code that has a cause has a text per cause in both files', () => {
+  it('each text set of a code that has a cause has a text per cause in both files', () => {
     expect(wanted.length).toBeGreaterThan(0)
     expect(missing(wanted)).toEqual([])
   })
 
-  it('no cause text is left for a code or a cause Rust does not send', () => {
+  it('no cause text is left for a set no code uses or a cause Rust does not send', () => {
     const known = new Set(wanted)
     const stray = [...files.en.keys()].filter(k => k.startsWith('errorCauses.') && !known.has(k))
     expect(stray).toEqual([])
   })
 
-  it('every code that has a cause is a code', () => {
+  it('every code that has a cause is a code, and its message shows the cause', () => {
     expect(Object.keys(CAUSE_CODES).filter(code => !codes.includes(code))).toEqual([])
+    const silent = Object.keys(CAUSE_CODES).filter(
+      code => !files.en.get(`errors.${code}`)?.includes('{cause}'),
+    )
+    expect(silent).toEqual([])
+  })
+})
+
+describe('the reasons of a failure EmuDome tells apart (ImageProblem, SignInProblem; #128)', () => {
+  const wanted = Object.entries(REASON_CODES).flatMap(([code, reasons]) =>
+    Object.keys(reasons).map(reason => `errorReasons.${code}.${reason}`),
+  )
+
+  it('each code that has a reason has a text per reason in both files', () => {
+    expect(wanted.length).toBeGreaterThan(0)
+    expect(missing(wanted)).toEqual([])
+  })
+
+  it('no reason text is left for a code or a reason Rust does not send', () => {
+    const known = new Set(wanted)
+    const stray = [...files.en.keys()].filter(k => k.startsWith('errorReasons.') && !known.has(k))
+    expect(stray).toEqual([])
+  })
+
+  it('every code that has a reason is a code, and its message shows the reason', () => {
+    expect(Object.keys(REASON_CODES).filter(code => !codes.includes(code))).toEqual([])
+    const silent = Object.keys(REASON_CODES).filter(
+      code => !files.en.get(`errors.${code}`)?.includes('{reason}'),
+    )
+    expect(silent).toEqual([])
+  })
+})
+
+describe('no error shows a technical detail (Trello #128)', () => {
+  it('no message of a backend code has a {detail} placeholder', () => {
+    const withDetail = [...files.en]
+      .filter(([key, text]) => key.startsWith('errors.') && text.includes('{detail}'))
+      .map(([key]) => key)
+    expect(withDetail).toEqual([])
   })
 })
 

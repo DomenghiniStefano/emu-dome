@@ -22,10 +22,18 @@ fn now_ms() -> u64 {
     crate::unix_ms(SystemTime::now()).unwrap_or_default()
 }
 
-fn file_failed(e: impl std::fmt::Display) -> ErrorCode {
+/// `saveFileFailed` for `e`: its cause for the interface, its text for the log.
+fn file_failed(e: std::io::Error) -> ErrorCode {
+    log::warn!("saveFileFailed: {e}");
     ErrorCode::SaveFileFailed {
-        detail: e.to_string(),
+        cause: emudome_core::IoCause::of(&e),
     }
+}
+
+/// `saveImportInvalid`: why, for the log only (the interface asks for another file).
+fn import_invalid(e: saves::ImportError) -> ErrorCode {
+    log::warn!("saveImportInvalid: {e}");
+    ErrorCode::SaveImportInvalid
 }
 
 /// `saves.backups`: how many backups of each in-game save to keep (0 = none).
@@ -307,7 +315,7 @@ pub async fn saves_restore_latest(app: AppHandle, game: GameKey) -> Result<(), E
         let newest = saves::backups(&save_dir, &game)
             .into_iter()
             .next()
-            .ok_or_else(|| file_failed("no backup"))?;
+            .ok_or_else(|| file_failed(std::io::Error::other("no backup")))?;
         saves::restore(&save_dir, &game, &newest.name, now_ms(), keep_backups(app))
             .map_err(file_failed)
     })
@@ -372,10 +380,7 @@ pub async fn saves_import_pick(app: AppHandle) -> Result<Option<ImportDto>, Erro
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
     let bytes = std::fs::read(&file).map_err(file_failed)?;
-    let (format, data) =
-        saves::parse_import(&bytes, &file_name).map_err(|e| ErrorCode::SaveImportInvalid {
-            detail: e.to_string(),
-        })?;
+    let (format, data) = saves::parse_import(&bytes, &file_name).map_err(import_invalid)?;
     Ok(Some(ImportDto {
         path: file.to_string_lossy().into_owned(),
         file_name,
@@ -407,10 +412,7 @@ fn import_one(
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
     let bytes = std::fs::read(file).map_err(file_failed)?;
-    let (_, data) =
-        saves::parse_import(&bytes, &file_name).map_err(|e| ErrorCode::SaveImportInvalid {
-            detail: e.to_string(),
-        })?;
+    let (_, data) = saves::parse_import(&bytes, &file_name).map_err(import_invalid)?;
     saves::import(&state.save_dir(), game, &data, now_ms(), keep_backups(app)).map_err(file_failed)
 }
 

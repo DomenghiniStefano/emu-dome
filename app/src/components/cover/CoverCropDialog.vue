@@ -28,7 +28,7 @@ onMounted(async () => {
     if (props.request.game !== game || props.request.name !== name) return
     const shot = shots.find(s => s.name === name)
     if (!shot) {
-      failWith({ code: 'coverInvalid', params: { detail: name } })
+      failWith({ code: 'coverInvalid', params: { reason: 'missing' } })
       emit('close')
       return
     }

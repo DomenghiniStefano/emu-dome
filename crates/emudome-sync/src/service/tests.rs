@@ -485,7 +485,7 @@ async fn an_unreadable_state_file_is_never_written_over() {
     let s = pc.service(&drive, "PC");
     assert!(matches!(
         s.mark_pending(&key()),
-        Err(SyncError::IndexReadFailed(_))
+        Err(SyncError::IndexReadFailed(..))
     ));
     assert!(pc.dir.path("sync/state.json").is_dir());
     // Not valid JSON: set aside, started empty.

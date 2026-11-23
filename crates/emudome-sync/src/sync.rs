@@ -763,22 +763,22 @@ fn stamp(now: u64, device: &str) -> String {
 async fn read_file(path: &Path) -> Result<Vec<u8>, SyncError> {
     tokio::fs::read(path)
         .await
-        .map_err(|e| SyncError::Local(format!("{}: {e}", path.display())))
+        .map_err(|e| SyncError::local(path, &e))
 }
 
 async fn write_file(path: &Path, bytes: Vec<u8>) -> Result<(), SyncError> {
     let target = path.to_path_buf();
     tokio::task::spawn_blocking(move || emudome_core::write_atomic(&target, &bytes))
         .await
-        .map_err(|e| SyncError::Local(e.to_string()))?
-        .map_err(|e| SyncError::Local(format!("{}: {e}", path.display())))
+        .map_err(SyncError::local_other)?
+        .map_err(|e| SyncError::local(path, &e))
 }
 
 async fn local_md5(path: &Path) -> Result<Option<String>, SyncError> {
     match tokio::fs::read(path).await {
         Ok(bytes) => Ok(Some(md5_hex(&bytes))),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(SyncError::Local(format!("{}: {e}", path.display()))),
+        Err(e) => Err(SyncError::local(path, &e)),
     }
 }
 
@@ -792,7 +792,7 @@ async fn scan_local(dir: &Path) -> Result<BTreeMap<String, LocalFile>, SyncError
         Ok(out)
     })
     .await
-    .map_err(|e| SyncError::Local(e.to_string()))?
+    .map_err(SyncError::local_other)?
 }
 
 fn scan_into(
@@ -800,7 +800,7 @@ fn scan_into(
     prefix: &str,
     out: &mut BTreeMap<String, LocalFile>,
 ) -> Result<(), SyncError> {
-    let local = |e: std::io::Error| SyncError::Local(format!("{}: {e}", dir.display()));
+    let local = |e: std::io::Error| SyncError::local(dir, &e);
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound && prefix.is_empty() => return Ok(()),

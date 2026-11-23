@@ -133,8 +133,11 @@ impl Cloud {
             return Ok(s.clone());
         }
         let auth = self.auth()?;
-        let folder = |e: tauri::Error| ErrorCode::SaveFileFailed {
-            detail: format!("no data folder: {e}"),
+        let folder = |e: tauri::Error| {
+            log::warn!("cloud: no data folder: {e}");
+            ErrorCode::SaveFileFailed {
+                cause: emudome_core::IoCause::NotFound,
+            }
         };
         let data = crate::dirs::data(app).map_err(folder)?;
         let paths = Paths {
