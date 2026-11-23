@@ -93,10 +93,7 @@ export function useSettingRow(props: SettingRowInput) {
     )
   })
 
-  const name = computed(() => {
-    if (key.value === 'pad.dev1') return t('settings.pad.dev1.name', { controllerName: '' })
-    return t(msg.name(key.value))
-  })
+  const name = computed(() => t(msg.name(key.value)))
 
   /** `cloud.acct`: signed in as whom, signed out, or why this build / system cannot sign in. */
   function cloudAccountText(): string {

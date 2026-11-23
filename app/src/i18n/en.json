@@ -1243,13 +1243,9 @@
     },
     "pad": {
       "dev1": {
-        "name": "{controllerName}",
-        "desc": "Connected · A/B layout {layout}",
-        "button": "Remap buttons",
-        "value": {
-          "layoutNintendo": "like on Nintendo",
-          "layoutPrinted": "as printed"
-        }
+        "name": "Controller",
+        "desc": "What each button does, for all games or per console",
+        "button": "Remap buttons"
       },
       "dev2": {
         "name": "Keyboard",
@@ -1540,6 +1536,7 @@
       "hidden": {
         "name": "Hidden games",
         "desc": "Games you removed from the library without deleting them.",
+        "button": "Show hidden games",
         "value": {
           "count": "{n} game | {n} games",
           "none": "None"
@@ -1590,6 +1587,7 @@
       "sgames": {
         "name": "Games on Google Drive",
         "desc": "Upload a game to download it on your other devices.",
+        "button": "Open games on Drive",
         "value": {
           "count": "{n} game · {size} | {n} games · {size}"
         }
@@ -2539,7 +2537,8 @@
       "sticks": "Sticks, triggers and vibration",
       "sticksSub": "Dead zone {dead}% · triggers {trig}%",
       "touch": "Touch controls",
-      "touchSub": "You customise them on your phone"
+      "touchSub": "You customise them on your phone",
+      "touchEdit": "Place and size the buttons for each console"
     }
   },
   "saves": {
@@ -2696,6 +2695,7 @@
       "drive": "Google Drive",
       "driveDesc": "Copy saves and settings to all your devices",
       "driveSignIn": "Sign in with Google",
+      "driveDone": "Signed in",
       "other": "Another folder or another emulator",
       "otherDesc": ".sav, .dsv files or Action Replay backups (.duc)",
       "hintDesktop": "In game, press Esc or the controller's Home button for the quick menu.",

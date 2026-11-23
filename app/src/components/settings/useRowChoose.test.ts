@@ -4,6 +4,7 @@ import { defineComponent, h } from 'vue'
 import type { SettingKey } from '@/emu'
 import { i18n } from '@/i18n'
 import { createToasts, provideToasts, type Toasts } from '@/composables/useToasts'
+import { provideShellJump } from '@/components/shell/useShellJump'
 import { useRowChoose } from './useRowChoose'
 
 const bridge = vi.hoisted(() => ({
@@ -24,6 +25,7 @@ const flush = () => new Promise(r => setTimeout(r, 0))
 
 function setup(key: SettingKey, disabled = false) {
   const page = { openCloud: vi.fn(), choose: vi.fn() }
+  const jump = vi.fn()
   const toasts: Toasts = createToasts()
   let choose!: () => Promise<void>
   const Row = defineComponent({
@@ -40,12 +42,13 @@ function setup(key: SettingKey, disabled = false) {
     defineComponent({
       setup() {
         provideToasts(toasts)
+        provideShellJump(jump)
         return () => h(Row)
       },
     }),
     { global: { plugins: [i18n] } },
   )
-  return { page, toasts, choose }
+  return { page, toasts, choose, jump }
 }
 
 beforeEach(() => {
@@ -78,6 +81,25 @@ describe('useRowChoose', () => {
     await choose()
     expect(page.openCloud).toHaveBeenCalledOnce()
     expect(page.choose).not.toHaveBeenCalled()
+  })
+
+  it('leads a row of a feature that lives elsewhere to its section (#112)', async () => {
+    const cases = [
+      ['cloud.sgames', 'cloudGames'],
+      ['library.hidden', 'hiddenGames'],
+      ['saves.import', 'importSave'],
+      ['pad.dev1', 'remapPad'],
+      ['pad.dev2', 'remapKeyboard'],
+    ] as const
+    for (const [key, to] of cases) {
+      const row = setup(key)
+      await row.choose()
+      expect(row.jump).toHaveBeenCalledExactlyOnceWith(to)
+      expect(row.page.choose).not.toHaveBeenCalled()
+    }
+    const off = setup('pad.dev1', true)
+    await off.choose()
+    expect(off.jump).not.toHaveBeenCalled()
   })
 
   it('opens a file row’s own picker here, and leaves every other row to the page', async () => {

@@ -69,7 +69,7 @@ export function stateLoadBlockText(reason: StateLoadBlock): string {
 /** A setting's name from its key (`settings.<key>.name`), or the key when it has none. */
 function settingName(key: string): string {
   const name = `settings.${key}.name`
-  return known(name) ? t(name, { controllerName: '' }).trim() : key
+  return known(name) ? t(name) : key
 }
 
 /** "1×", "0.5×" / "0,5×" in the UI language, or "Max". Empty with no speed. */

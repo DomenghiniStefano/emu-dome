@@ -5,7 +5,9 @@
 // controller's shortcuts come from the bindings in force (`DEFAULT_COMBOS` with `pad.combos`),
 // the keyboard's from its one table (keyboard.ts): never a list here. The tester is the
 // 12-button grid of C02. Then the rows down to C02 «Rimappa i pulsanti», C04 «Stick, grilletti e
-// vibrazione» and the touch controls (customised on the phone).
+// vibrazione» and the touch controls: on the phone a row down to the C06 editor (Settings ›
+// Controlli touch with the editor open, its console chosen first; #112), elsewhere a plain row
+// that says they are customised on the phone (no chevron: it leads nowhere).
 //
 // TODO(design, C01): the board also lists controllers used before and now disconnected
 // («Non collegato · ricordato»); EmuDome does not remember controllers yet.
@@ -23,6 +25,7 @@ import {
 } from '@/emu'
 import { useKeyboardKeys } from '@/composables/useKeyboardKeys'
 import { useErrorSink } from '@/composables/useToasts'
+import { useShellJump } from '@/components/shell/useShellJump'
 import { gamepadName } from '@/i18n/labels'
 import { buttonName, keyName, posName, testerCells } from '@/lib/controls'
 import { GLOBAL } from '@/lib/settingsModel'
@@ -45,6 +48,8 @@ const props = defineProps<{
   device: Device
   states: PadState[]
   globalRows: Record<string, SettingRow>
+  /** The touch controls can be edited on this device (Settings' `touch.tedit` row is open). */
+  touchEditable: boolean
 }>()
 const emit = defineEmits<{
   pick: [DeviceId]
@@ -53,6 +58,7 @@ const emit = defineEmits<{
 }>()
 const { t } = useI18n()
 const failWith = useErrorSink()
+const jump = useShellJump()
 
 const family = computed(() => familyOf(props.device))
 const isKeyboard = computed(() => props.device === 'keyboard')
@@ -182,6 +188,13 @@ const sticksSub = computed(() =>
             @click="emit('open', ControlsTab.Sticks)"
           />
           <LinkRow
+            v-if="touchEditable && jump"
+            :name="t('controls.overview.touch')"
+            :sub="t('controls.overview.touchEdit')"
+            @click="jump('touchEditor')"
+          />
+          <LinkRow
+            v-else
             as="div"
             :name="t('controls.overview.touch')"
             :sub="t('controls.overview.touchSub')"

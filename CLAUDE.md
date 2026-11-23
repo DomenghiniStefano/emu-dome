@@ -670,7 +670,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 167 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
   (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
-  the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform, phase, `show_if` on another row's value, `wired`: whether anything
+  the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform
+  (a row of another device is shown disabled with the reason, except `Platform::Keyboard`, left out of the phone's
+  schema altogether: `speed.ffmode`), phase, `show_if` on another row's value, `wired`: whether anything
   reads it, the unwired ones shown disabled with «arrives in a future update»); the interface builds its
   pages from `settings_schema` and never lists settings by hand. A key the interface names is a `SettingKey`
   (generated union); one the Rust code reads is a typed constant of `settings/keys.rs`, its default the catalogue's. Levels Default → Global → Console → Game →
@@ -1070,8 +1072,14 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   test); Azahar's is not measured yet.
 - 18 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
   list is `the_entries_not_wired_yet_are_these` in settings/tests.rs). The action rows carried out are `cloud.acct`,
-  `cloud.space`, `about.ver`, `about.upd`, `about.lic` and `about.log` (the same test); every other action row is
-  disabled with that reason, and no preset card is carried out.
+  `cloud.space`, `about.ver`, `about.upd`, `about.lic` and `about.log`, and the rows that lead to where their
+  feature lives (`settings/rowJumps.ts`, through the shell's `Jump` / `jumpTo` in `shell/route.ts`, provided by
+  AppShell with `shell/useShellJump.ts`): `cloud.sgames` the Cloud section (its first tab is the games),
+  `library.hidden` the library with L03's «Nascosti» on (in TV the desk's grid: the shelves leave hidden games out),
+  `saves.import` the Saves import with no game chosen, `pad.dev1` / `pad.dev2` C02 at «Tutti i giochi» on the
+  first controller / the keyboard (the same test); every other action row is disabled with that reason, and no
+  preset card is carried out. C01's «Controlli touch» on a phone opens Settings › Controlli touch with the C06
+  editor (its console chosen first, the `touch.tedit` row's own path); elsewhere it is a plain row with no chevron.
 - Touch controls (Trello #29): layouts per console and orientation (defaults for GB / GBC, GBA, DS and 3DS, the
   user's own from C06 kept per device), tap / hold / turbo (the repeat is the interface's, about 12 a second: the
   core has no turbo of its own), vibration on Android, `touch.thide` / `touch.tpad`, two built-in styles from the
@@ -1309,7 +1317,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   most, else a notice). G04 shows outside the game only (its answer writes the saves the core holds); a conflict
   met while a game starts waits in the queue and in the status card. G04's versions have no picture (`thumb` is
   null). «Cosa sincronizzare» edits at «Tutti i giochi» only (`cloud.squick` per console stays in Settings ›
-  Cloud). A failed `cloud_launch_check` never blocks an open.
+  Cloud). A failed `cloud_launch_check` never blocks an open. The first run's S06 «Accedi con Google» signs in the
+  same way (`useCloudAccount`, `first-run/DriveRow.vue`), disabled with `cloudNotConfigured` /
+  `cloudSignInUnsupported` where it cannot; the first run finishes without it.
 - Android folders and files (Trello #47): not run on a device by the checks (the owner's UAT on the S23). A 3DS game
   (Azahar, `need_fullpath`) from a document whose descriptor cannot be opened again by path is refused
   (`documentNeedsPath`): the fix is serving it through libretro's VFS interface (the host has none yet), not a copy

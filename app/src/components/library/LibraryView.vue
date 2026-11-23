@@ -54,6 +54,9 @@ import LibraryEmpty from './LibraryEmpty.vue'
 const props = defineProps<{
   /** Back from this game's details: its cover takes the first focus (read on mount). */
   returnTo: GameId | null
+  /** Settings' «Giochi nascosti» (#112): L03's «Nascosti» switch on (read on mount); in TV
+   * mode the desk's grid, whose switch shows them (the shelves leave hidden games out). */
+  showHidden: boolean
 }>()
 const emit = defineEmits<{
   /** `slot`: the quick save to load once the game runs («Riprendi»). */
@@ -74,6 +77,8 @@ const root = ref<HTMLElement | null>(null)
 const { sort, setSort, resetSort } = useLibrarySort(failWith)
 const { show, consoleFilter, chips, games, filtering, toggleShow, clearShow, clearFilters } =
   useLibraryFilters(sort)
+const showingHidden = props.showHidden
+if (showingHidden) show.hidden = true
 /** L03 «Ripristina»: the switches off and the order back to its default. */
 async function resetFilters() {
   clearShow()
@@ -122,7 +127,9 @@ const unreachable = computed(() => unreachableFolders(library.folders, library.g
 onBeforeUnmount(() => (library.summary = null))
 
 /** TV mode with games: the shelves. */
-const shelves = computed(() => uiMode.tv && library.loaded && library.games.length > 0)
+const shelves = computed(
+  () => uiMode.tv && !showingHidden && library.loaded && library.games.length > 0,
+)
 </script>
 
 <template>

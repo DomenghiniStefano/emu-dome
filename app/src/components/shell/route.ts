@@ -20,17 +20,27 @@ import type { Section } from './sections'
 
 /** What a section is opened for, once. */
 export type Arrival =
-  /** Back from a game's details: the grid focuses that game's cover. */
-  | { section: 'library'; cover: GameId }
-  /** The Saves section on one game; `importing`: its import (V05) for that game. */
-  | { section: 'saves'; game: GameId; importing: boolean }
+  /**
+   * Back from a game's details: the grid focuses that game's cover (`cover`); or the grid with
+   * L03's «Nascosti» switch on (`hidden`: Settings' `library.hidden`, #112).
+   */
+  | { section: 'library'; cover?: GameId; hidden?: boolean }
+  /**
+   * The Saves section on one game; `importing`: its import (V05) for that game, or with no game
+   * (Settings' `saves.import`, #112) the import with the game found from the file's name.
+   */
+  | { section: 'saves'; game: GameId | null; importing: boolean }
   /**
    * The Settings section at «Solo questo gioco» (L06, `game`), or on one setting's page with its
-   * row lit (`row`: the search everywhere, X01).
+   * row lit (`row`: the search everywhere, X01); `edit`: the row's layout editor opened at once
+   * (C01's «Controlli touch», #112).
    */
-  | { section: 'settings'; game: GameFocus | null; row: SettingKey | null }
-  /** L07: button remapping (C02) at «Solo questo gioco». */
-  | { section: 'controls'; game: GameFocus }
+  | { section: 'settings'; game: GameFocus | null; row: SettingKey | null; edit?: boolean }
+  /**
+   * Button remapping (C02): L07 at «Solo questo gioco» (`game`), or Settings' `pad.dev1` /
+   * `pad.dev2` at «Tutti i giochi» (#112) on the first controller or the keyboard (`keyboard`).
+   */
+  | { section: 'controls'; game: GameFocus | null; keyboard?: boolean }
 
 export interface Route {
   section: Section
@@ -139,6 +149,55 @@ export const remapFor = (r: Route, g: Pick<LibraryGame, 'id' | 'console' | 'titl
   section: 'controls',
   arrival: { section: 'controls', game: focusOf(g) },
 })
+
+/**
+ * Where a button of another screen leads (#112): a section, opened for what the button is about.
+ * Settings' rows `cloud.sgames`, `library.hidden`, `saves.import`, `pad.dev1`, `pad.dev2`
+ * (settings/rowJumps.ts, through useShellJump), and C01's «Controlli touch».
+ */
+export type Jump =
+  /** The Cloud section: its first tab is «Giochi su Google Drive». */
+  | 'cloudGames'
+  /** The library's grid with the hidden games shown. */
+  | 'hiddenGames'
+  /** The Saves section's import (V05), no game chosen yet. */
+  | 'importSave'
+  /** C02 on the first controller, at «Tutti i giochi». */
+  | 'remapPad'
+  /** C02 on the keyboard, at «Tutti i giochi». */
+  | 'remapKeyboard'
+  /** Settings › Controlli touch with the C06 editor opened (its console chosen first). */
+  | 'touchEditor'
+
+/** The route a jump leads to. */
+export function jumpTo(r: Route, j: Jump): Route {
+  switch (j) {
+    case 'cloudGames':
+      return openSection(r, 'cloud')
+    case 'hiddenGames':
+      return {
+        ...r,
+        section: 'library',
+        details: null,
+        arrival: { section: 'library', hidden: true },
+      }
+    case 'importSave':
+      return { ...r, section: 'saves', arrival: { section: 'saves', game: null, importing: true } }
+    case 'remapPad':
+    case 'remapKeyboard':
+      return {
+        ...r,
+        section: 'controls',
+        arrival: { section: 'controls', game: null, keyboard: j === 'remapKeyboard' },
+      }
+    case 'touchEditor':
+      return {
+        ...r,
+        section: 'settings',
+        arrival: { section: 'settings', game: null, row: 'touch.tedit', edit: true },
+      }
+  }
+}
 
 /** The section has read its arrival: the route without it (the same route when it had none). */
 export const arrived = (r: Route): Route => (r.arrival ? { ...r, arrival: null } : r)

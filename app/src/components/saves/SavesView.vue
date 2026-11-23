@@ -45,9 +45,9 @@ const props = defineProps<{
   /**
    * Opened for one game (the shell's route, read on mount): «Salvataggi» on a «Continua a
    * giocare» card (L01), «Mostra i backup» (L05) show it; `importing`, «Importa…» (L05), opens
-   * its import (V05).
+   * its import (V05); Settings' `saves.import` (#112) the import with no game (`game` null).
    */
-  arrival: { game: GameId; importing: boolean } | null
+  arrival: { game: GameId | null; importing: boolean } | null
 }>()
 const emit = defineEmits<{
   openGame: [game: LibraryGame, slot: number]
@@ -220,7 +220,8 @@ onMounted(async () => {
   await settings.load()
   if (arrival?.importing) {
     mode.value = 'import'
-    await importer.resetFor(arrival.game)
+    if (arrival.game) await importer.resetFor(arrival.game)
+    else importer.reset()
   }
   await refresh()
   void shortcut.load()

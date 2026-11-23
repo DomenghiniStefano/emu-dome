@@ -3,4 +3,4 @@
 /**
  * Which devices an entry exists on.
  */
-export type SettingPlatform = "all" | "desktop" | "phone" | "touch";
+export type SettingPlatform = "all" | "desktop" | "phone" | "touch" | "keyboard";

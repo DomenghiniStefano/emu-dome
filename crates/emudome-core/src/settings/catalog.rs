@@ -248,6 +248,14 @@ impl Entry {
         }
     }
 
+    /// About the keyboard: the desktop's, left out of the phone's schema (`Platform::Keyboard`).
+    const fn keyboard(self) -> Self {
+        Self {
+            platform: Platform::Keyboard,
+            ..self
+        }
+    }
+
     /// «solo telefono».
     const fn phone(self) -> Self {
         Self {
@@ -549,7 +557,8 @@ pub static ENTRIES: &[Entry] = &[
     seg("audio.lat", &["low", "balanced", "safe"], "balanced", G).device(),
     // ---- Velocità di gioco (speed) ----
     seg("speed.spstart", &["0.5", "1", "2"], "1", GG),
-    seg("speed.ffmode", &["hold", "toggle"], "hold", G),
+    // The keyboard's Tab (`keyboard::KeyRouter`): not on a phone's schema (#118).
+    seg("speed.ffmode", &["hold", "toggle"], "hold", G).keyboard(),
     seg("speed.ffval", &["2", "3", "4", "max"], "4", GG).most_used(),
     seg("speed.slow", &["0.25", "0.5", "0.75"], "0.5", G),
     // On by default for GB, GBC, GBA and NDS on a computer; off on a phone (memory, battery) and
@@ -597,11 +606,13 @@ pub static ENTRIES: &[Entry] = &[
         GM,
     )
     .show_if("saves.rtc", &["fixed"]),
-    act("saves.import", GM),
+    // The rows below lead to where the feature lives (#112, the interface's `ROW_JUMPS`):
+    // Saves › import, Controls › C02, the library's hidden games, Cloud › its games.
+    act("saves.import", GM).carried_out(),
     act("saves.savedir", G).device(),
     // ---- Controller e tastiera (pad) ----
-    link("pad.dev1", G),
-    link("pad.dev2", G).pc(),
+    link("pad.dev1", G).carried_out(),
+    link("pad.dev2", G).pc().carried_out(),
     seg("pad.ab", &["nintendo", "printed"], "nintendo", G),
     bindings("pad.remap", BindingTable::Remap, ALL),
     link("pad.turbo", ALL),
@@ -734,7 +745,7 @@ pub static ENTRIES: &[Entry] = &[
     // `library.region` (owner, 2026-11-22: no region rule, the tile shows the version launched
     // last).
     sw("library.versions", true, G),
-    link("library.hidden", G),
+    link("library.hidden", G).carried_out(),
     sel(
         "library.covers",
         &["color_title", "rom_icon", "title_only"],
@@ -751,7 +762,7 @@ pub static ENTRIES: &[Entry] = &[
     sw("cloud.ssaves", true, G),
     seg("cloud.squick", &["all", "last", "none"], "all", GC),
     sw("cloud.ssettings", true, G),
-    link("cloud.sgames", G),
+    link("cloud.sgames", G).carried_out(),
     seg("cloud.sauto", &["game", "manual"], "game", G),
     // Phone only, and nothing tells Wi-Fi from mobile data yet (nor can Android sign in).
     sw("cloud.swifi", true, G).device().phone().not_wired(),
