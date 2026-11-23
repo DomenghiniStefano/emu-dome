@@ -752,7 +752,8 @@
       "online",
     ];
     const s = {
-      device: "desktop",
+      // The same device as the plain schema: a phone scenario gets the phone's Settings (#124).
+      device: schema.device,
       currentPhase: 1,
       pages,
       groups: [
@@ -994,15 +995,17 @@
       },
     },
   };
-  const titleOf = (path) => path.replace(/^.*\//, "").replace(/\.[^.]+$/, "");
+  // The saves are keyed by the game's id (`saves_summary { games }`, `saves_game { game }`); the
+  // table above names them by title.
+  const titleOf = (id) => games.find((g) => g.id === id)?.title ?? "";
   const savesAnswer = (cmd, args) => {
     if (cmd === "saves_summary")
-      return args.paths
-        .filter((p) => savesOf[titleOf(p)])
-        .map((p) => ({ path: p, ...savesOf[titleOf(p)].summary }));
+      return args.games
+        .filter((id) => savesOf[titleOf(id)])
+        .map((id) => ({ game: id, ...savesOf[titleOf(id)].summary }));
     if (cmd === "saves_game")
       return (
-        savesOf[titleOf(args.path)]?.game ?? {
+        savesOf[titleOf(args.game)]?.game ?? {
           inGame: null,
           quick: [],
           backups: [],
@@ -1069,6 +1072,7 @@
           core: "mgba",
           resumable: false,
           autosaveOnExit: false,
+          stateLoadBlock: null,
         }
       : gameInfo,
     // `nativeVideo`: the Accelerated method in use (the screen effects can change).
@@ -1089,6 +1093,7 @@
             core: "mgba",
             resumable: false,
             autosaveOnExit: true,
+            stateLoadBlock: null,
           },
           stats: {
             running: false,
@@ -1526,7 +1531,23 @@
       if (cmd === "settings_page")
         return rich ? rich.rowsAt(args.page, args.scope) : rows(args.page);
       if (cmd === "library_scan") return null;
-      if (cmd === "screens_placements" && scenario.frame) return placements(args.area);
+      if (cmd === "screens_placements")
+        // No game picture: nothing to place (never null: Rust always answers placements).
+        return scenario.frame
+          ? placements(args.area)
+          : { frameWidth: 0, frameHeight: 0, placements: [] };
+      // A game open (`game`): its stats (#124: a null answer read as a stats object threw in
+      // gameFlow.ts). Not `running`, so the frame count that never moves is no hang (E11).
+      if (cmd === "stats" && !("stats" in answers))
+        return {
+          running: false,
+          emuFps: 59.7,
+          targetFps: 59.7,
+          speed: { kind: "factor", value: 1 },
+          paused: false,
+          frames: 600,
+          autoSavedAt: null,
+        };
       if (cmd === "set_video_inset") window.__videoInset = args;
       // The touch controls (#29): a console's controls as `ControlId::of`, no layout saved
       // unless the scenario gives one (`touchSaved`: a landscape layout).
