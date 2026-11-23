@@ -21,6 +21,8 @@ defineProps<{
   rows: SavesListRow[]
   /** The game shown on the right; null while the import is. */
   current: GameId | null
+  /** The phone's one column: the list alone, full width. */
+  full?: boolean
 }>()
 const query = defineModel<string>('query', { required: true })
 const emit = defineEmits<{ pick: [LibraryGame]; import: [] }>()
@@ -30,7 +32,10 @@ const { t } = useI18n()
 
 <template>
   <aside
-    class="flex min-h-0 flex-none basis-game-list flex-col gap-8 overflow-auto border-r border-line px-8 py-12"
+    :class="[
+      'flex min-h-0 flex-col gap-8 overflow-auto px-8 py-12',
+      full ? 'flex-1' : 'flex-none basis-game-list border-r border-line',
+    ]"
     :aria-label="t('saves.games')"
   >
     <div class="flex items-center justify-between gap-8">
