@@ -1144,7 +1144,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   its row or cover (`resumeTarget`). On the phone the shell has no cover-coloured haze (plain graphite; the
   desktop and TV keep it) and the top bar's search field on its side shows no Ctrl K (#105). Not yet: the «…»
   menu (favourite, hide) on a row or a compact tile (in the game's details only). Not yet: the «Gestisci lo
-  spazio» screen (not designed: the button is faded and a press says it arrives later); the safe areas, the camera
+  spazio» screen (designed and approved on #29, mockup S1–S3, not built: the button is faded and a press says it
+  arrives later); the safe areas, the camera
   side and `moveTaskToBack` are checked headless and by review only, not on a device yet.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
@@ -1155,9 +1156,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   menu page shows it «in prova» (G09, G10, G16: seven rows), every other is disabled with «Aprila dalle
   Impostazioni della libreria»; another game closes this one as «Chiudi il gioco» does (G14, close flow) and
   then opens, with no question before (none designed). The page opened shows its first control, the row is not
-  lit. The only notification
-  recorded today is a controller connected after start; sync done, cover not found and update ready (X06) have
-  no producer and no `Notice` kind yet, and X06's install behaviour waits for the owner's answer and #44.
+  lit. The notifications recorded today are a controller connected after start and an update ready
+  (`Notice::UpdateReady`, recorded by `updates.rs` once per version per run); sync done and cover not found have no
+  producer and no `Notice` kind yet, and X06's install behaviour waits for the owner's answer and #44.
 - Cores are pinned (`cores.lock`: commit, URL, sha256; Trello #71) and packages list only those files with their
   licences and `cores/SOURCES.md`. mGBA for Windows and Android is built by EmuDome from the pinned source archive
   of the commit the buildbot built (Trello #88, `scripts/build-mgba.ps1`): reproducible, but only with the toolchain
