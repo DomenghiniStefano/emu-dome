@@ -646,6 +646,12 @@
       "page": "touch"
     },
     {
+      "key": "touch.tvib",
+      "kind": "toggle",
+      "options": [],
+      "page": "touch"
+    },
+    {
       "key": "touch.thapt",
       "kind": "slider",
       "options": [],

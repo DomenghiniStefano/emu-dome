@@ -42,6 +42,7 @@ import PhoneHome from './PhoneHome.vue'
 import PhoneMore from './PhoneMore.vue'
 import PhoneSaves from './PhoneSaves.vue'
 import { MoreId, StripId, moreRows, stripButtons, type MoreRow } from './phoneMenu'
+import { deviceEntries, useDeviceSettings } from './useDeviceSettings'
 import { sameSpeed } from '@/lib/speeds'
 import QuickMenuHome from './QuickMenuHome.vue'
 import QuickSaves from './QuickSaves.vue'
@@ -148,6 +149,7 @@ const {
   entriesOf,
   start: startSession,
 } = useTrialSession(failWith)
+const { rows: deviceRows, load: loadDevice, set: setDevice } = useDeviceSettings(failWith)
 const {
   slots,
   chosen,
@@ -447,6 +449,7 @@ const searchKeys = computed(() => searchKeyLabels(inputMode.value).map(k => t(k)
 
 onMounted(async () => {
   await startSession()
+  await loadDevice()
   await loadSlots()
   void focusChosenSlot()
   await loadShortcuts()
@@ -639,7 +642,10 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
             :modifier="modifier"
             :shortcut-count="boundCount"
             :touch="layout.coarse"
+            :device-entries="deviceEntries(QuickMenuView.Controls, schema)"
+            :device-rows="deviceRows"
             @set="setSession"
+            @set-device="setDevice"
             @shortcuts="e => open(QuickMenuView.Shortcuts, e)"
             @touch-edit="e => open(QuickMenuView.TouchEditor, e)"
           />

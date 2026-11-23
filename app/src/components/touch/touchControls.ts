@@ -30,7 +30,8 @@ export function prefsFrom(rows: readonly SettingRow[]): TouchPrefs & { lost: Los
     landscape: layoutChoice(value('touch.tland')),
     skin: touchSkin(value('touch.tskin')),
     opacity: num(value('touch.topac'), DEFAULT_PREFS.opacity),
-    haptics: num(value('touch.thapt'), DEFAULT_PREFS.haptics),
+    // «Vibrazione» off: no vibration, whatever the strength.
+    haptics: value('touch.tvib') === false ? 0 : num(value('touch.thapt'), DEFAULT_PREFS.haptics),
     hide: hideAfter(value('touch.thide')),
     hideWithPad: value('touch.tpad') !== false,
     lost: lostChoice(value('touch.tlost')),

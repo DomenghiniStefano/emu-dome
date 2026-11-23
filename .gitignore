@@ -1,6 +1,8 @@
 /target
 /crates/hw-render-spike/target
 node_modules/
+# TypeScript's incremental build cache (vue-tsc, the editor): rebuilt on every typecheck.
+*.tsbuildinfo
 app/dist/
 # Tauri's generated files: gen/schemas is rewritten by every build; gen/android is the Android
 # project, versioned (its own .gitignore files keep its build outputs, the copied .so files and

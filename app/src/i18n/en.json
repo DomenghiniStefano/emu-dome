@@ -1370,9 +1370,13 @@
         "name": "Opacity",
         "desc": "How visible the buttons are over the game."
       },
+      "tvib": {
+        "name": "Vibration",
+        "desc": "The phone vibrates a little when you press a touch button."
+      },
       "thapt": {
-        "name": "Vibration on touch",
-        "desc": "A small vibration on every press."
+        "name": "Vibration strength",
+        "desc": "How strongly it vibrates on every press."
       },
       "thide": {
         "name": "Hide the buttons after",

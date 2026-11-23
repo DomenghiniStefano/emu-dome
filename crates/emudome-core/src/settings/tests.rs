@@ -7,7 +7,9 @@ use serde_json::json;
 
 use super::catalog::{CURRENT_PHASE, ENTRIES, GROUPS, PAGES, SECTIONS};
 use super::test_dir::TestDir;
-use super::{entry, CommitTarget, ConsoleId, GameKey, Kind, Level, Scope, Settings, Value};
+use super::{
+    entry, CommitTarget, ConsoleId, DefaultValue, GameKey, Kind, Level, Scope, Settings, Value,
+};
 use crate::core_profile::CoreId;
 use crate::settings::schema::Device;
 use crate::ErrorCode;
@@ -889,7 +891,7 @@ fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
     // `library.region` (owner, 2026-11-22, #102), plus «Se il controller si scollega»
     // (`touch.tlost`, E14, owner 2026-11-22, #29), plus the library's Lista / Griglia
     // (`library.view`, owner 2026-11-22, #29).
-    assert_eq!(ENTRIES.len(), 166);
+    assert_eq!(ENTRIES.len(), 167);
 }
 
 #[test]
@@ -1223,8 +1225,13 @@ fn show_if_names_a_choice_of_the_same_page_and_its_options() {
         let other = entry(cond.key).expect("show_if names an entry");
         assert_eq!(other.page(), e.page(), "{}", e.key);
         assert!(!cond.values.is_empty(), "{}", e.key);
-        let Kind::Choice { options, .. } = other.kind else {
-            panic!("{}: show_if on a {:?}", e.key, other.kind);
+        // A switch is named by its value as text: `true` or `false`.
+        let options: &[&str] = if let Kind::Choice { options, .. } = other.kind {
+            options
+        } else if matches!(other.kind, Kind::Toggle) {
+            &["true", "false"]
+        } else {
+            panic!("{}: show_if on a {:?}", e.key, other.kind)
         };
         for v in cond.values {
             assert!(
@@ -1245,7 +1252,8 @@ fn show_if_names_a_choice_of_the_same_page_and_its_options() {
             "saves.rtcdays",
             "saves.rtchours",
             "saves.rtcminutes",
-            "saves.rtcdate"
+            "saves.rtcdate",
+            "touch.thapt"
         ]
     );
 }
@@ -1274,6 +1282,28 @@ fn rows_show_by_the_value_of_another_row() {
     assert!(shown("video.surroundDim", None));
     let cond = entry("video.surroundSet").and_then(|e| e.show_if);
     assert_eq!(cond.map(|c| c.holds(Some(&Value::Bool(true)))), Some(false));
+}
+
+#[test]
+fn the_vibration_strength_shows_only_with_the_vibration_on() {
+    let cond = entry("touch.thapt")
+        .and_then(|e| e.show_if)
+        .expect("conditional row");
+    assert_eq!(cond.key, "touch.tvib");
+    assert!(cond.holds(Some(&Value::Bool(true))));
+    assert!(!cond.holds(Some(&Value::Bool(false))));
+    // No value is none of the listed ones (a value of the wrong kind never gets here: the store
+    // drops it when it reads the file).
+    assert!(!cond.holds(None));
+    let vib = entry("touch.tvib").expect("the vibration switch");
+    assert!(matches!(vib.kind, Kind::Toggle));
+    assert!(matches!(vib.default, DefaultValue::Bool(true)));
+    // Shown now, on this device only, kept on the phone.
+    assert_eq!(
+        (vib.phase, entry("touch.thapt").map(|e| e.phase)),
+        (1, Some(1))
+    );
+    assert!(vib.per_device && vib.levels.global && !vib.levels.console && !vib.levels.game);
 }
 
 #[test]

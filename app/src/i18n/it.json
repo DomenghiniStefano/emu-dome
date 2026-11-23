@@ -1370,9 +1370,13 @@
         "name": "Opacità",
         "desc": "Quanto si vedono i pulsanti sopra il gioco."
       },
+      "tvib": {
+        "name": "Vibrazione",
+        "desc": "Il telefono vibra un poco quando premi un pulsante touch."
+      },
       "thapt": {
-        "name": "Vibrazione al tocco",
-        "desc": "Una piccola vibrazione a ogni pressione."
+        "name": "Intensità della vibrazione",
+        "desc": "Quanto vibra a ogni pressione."
       },
       "thide": {
         "name": "Nascondi i pulsanti dopo",

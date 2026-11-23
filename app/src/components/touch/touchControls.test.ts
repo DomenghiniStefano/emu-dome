@@ -44,6 +44,12 @@ describe('touch controls', () => {
     })
   })
 
+  it('does not vibrate with «Vibrazione» off, whatever the strength', () => {
+    expect(prefsFrom([row('touch.tvib', false), row('touch.thapt', 60)]).haptics).toBe(0)
+    expect(prefsFrom([row('touch.tvib', true), row('touch.thapt', 60)]).haptics).toBe(60)
+    expect(prefsFrom([row('touch.thapt', 60)]).haptics).toBe(60)
+  })
+
   it('reads a style it does not know as «Fumé»', () => {
     for (const old of ['glass', 'outlines', 'contrast', 42])
       expect(prefsFrom([row('touch.tskin', old)]).skin).toBe('smoke')
