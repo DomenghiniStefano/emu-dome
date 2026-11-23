@@ -118,7 +118,7 @@ async function replace(path: string) {
 }
 const unreachable = computed(() => unreachableFolders(library.folders, library.games))
 
-// L11 seen: leaving the view closes it, as its ✕ does.
+// L11 seen: leaving the view closes it, as its close button does.
 onBeforeUnmount(() => (library.summary = null))
 
 /** TV mode with games: the shelves. */
