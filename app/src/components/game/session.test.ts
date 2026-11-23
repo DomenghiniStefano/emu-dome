@@ -53,6 +53,7 @@ describe('crashReport', () => {
     core: 'mgba',
     resumable: false,
     autosaveOnExit: true,
+    quickSlot: 1,
     stateLoadBlock: null,
     speed: { kind: 'factor', value: 1 },
   }

@@ -438,6 +438,7 @@ pub(crate) struct GameStrings {
 /// [`GameKey`], never its file name):
 /// - `game.sav`: the in-game save (cartridge battery);
 /// - `auto.state`, `slotN.state` (+ `.png` thumbnail, + `.json` record): quick saves;
+/// - `quick-slot.json`: the slot the quick save shortcuts use ([`crate::quick_slot`]);
 /// - `backups/<unix ms>.<reason>.sav`, `broken-<unix ms>.sav` ([`crate::saves`]).
 ///
 /// The same folder is the core's save directory for the session (`GET_SAVE_DIRECTORY`), so what
@@ -477,6 +478,11 @@ impl GameFiles {
     /// What wrote a slot (core and app versions, [`crate::saves::SlotMeta`]).
     pub fn meta(&self, slot: u8) -> PathBuf {
         self.slot(slot).with_extension("json")
+    }
+
+    /// The game's quick slot (`quick-slot.json`, [`crate::quick_slot`]).
+    pub fn quick_slot(&self) -> PathBuf {
+        self.dir.join("quick-slot.json")
     }
 
     /// The game's own folder: its saves, slots, backups, and the core's save directory.

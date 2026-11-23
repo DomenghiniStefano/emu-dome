@@ -17,6 +17,7 @@ use ts_rs::TS;
 
 use crate::game_session::{AfterEnd, Opened};
 use crate::health::{Part, SharedHealth};
+use crate::pads::PadsState;
 use crate::{bios, closing, cloud, library, migration, saves, settings, AppState};
 
 #[derive(Serialize, TS)]
@@ -33,6 +34,9 @@ pub(crate) struct GameInfo {
     resumable: bool,
     /// `saves.autoexit`: closing writes the auto quick save (G14 lists the step).
     autosave_on_exit: bool,
+    /// The game's own quick slot (#110), current from its start: the last one chosen for it,
+    /// else the first.
+    quick_slot: u8,
     /// Why loading states is off for this game on the renderer it runs with (Trello #93), else
     /// null: the interface shows every load (Carica, the resume question's «Riprendi») disabled
     /// with this reason, and the session refuses them, rewind included.
@@ -468,6 +472,9 @@ fn open_path(
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
     saves::before_open(app, &save_dir, &game)?;
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
+    // The game's own quick slot (#110), read here, off the emulation thread, after the pull.
+    let quick_slot =
+        emudome_core::quick_slot::restore(&emudome_core::GameFiles::new(&save_dir, &game));
     let (renderer, video) = game_video(app, state, core);
     // Trello #93: on this renderer the core would crash loading a state of this game.
     let state_load_block = state_load_block(core, renderer, &game);
@@ -524,6 +531,8 @@ fn open_path(
     if let Some(tone) = state.bench.as_ref().and_then(|b| b.tone()) {
         shared.audio.set_test_tone(Some(tone));
     }
+    // The shortcuts reach the game only once it is open: they use its quick slot from the start.
+    app.state::<PadsState>().set_slot(quick_slot);
     state.games.open(
         session,
         &Opened {
@@ -551,6 +560,7 @@ fn open_path(
         core: core.name().into(),
         resumable,
         autosave_on_exit: flow.autosave_on_exit,
+        quick_slot,
         state_load_block,
         speed: flow.start_speed,
     })

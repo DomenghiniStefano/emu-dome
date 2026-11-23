@@ -33,6 +33,7 @@ pub mod migration;
 pub mod n3ds;
 pub mod nds;
 pub mod notifications;
+pub mod quick_slot;
 pub mod rewind;
 pub mod save_path;
 pub mod saves;

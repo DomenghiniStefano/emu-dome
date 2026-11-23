@@ -300,6 +300,11 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          screenshot.rs (screenshots keyed by the game, #85:
                          `saves/screenshots/<console>/<hex>/<YYYY-MM-DD_HH-MM-SS>.png`, outside the game's
                          saves folder (not synced, not in a core's path budget); listing, plain-name check)
+                         quick_slot.rs (each game's quick slot, #110: `quick-slot.json` in its saves folder,
+                         `{ "$schema": 1, "slot": n }`, synced with the saves (not a quick save for
+                         `cloud.squick`); read when the game opens (`restore`: none or unreadable = slot 1,
+                         an unreadable file left as it is), written by the session's I/O worker at every
+                         move (`Command::SetQuickSlot`); clamped to 1–9; unit-tested)
                          cover.rs (#85: a cover from the user's image or a screenshot: PNG / JPEG / WebP at
                          most 16 MiB and 8192 px a side, EXIF orientation applied, the 2:3 `CoverView` the
                          interface chose, the spare space the image blurred and dimmed, 600 × 900, JPEG 90,
@@ -526,7 +531,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   session's end-of-thread check (`AfterEnd`) also starts the game's push in the background (`cloud::after_exit`);
   nothing waits for it, and a game let go or ended by `RunEvent::Exit` stays pending for the next start.
 - Writes while the game runs (quick saves, the periodic auto quick save and `.sav` flush, «Annulla» of a save,
-  screenshots) go to the session's I/O worker (`session/io.rs`, thread `emudome-io`): the emulation thread only
+  screenshots, the game's quick slot) go to the session's I/O worker (`session/io.rs`, thread `emudome-io`): the emulation thread only
   serializes and copies the bytes; the worker reads what the slot held, writes atomically, encodes the PNG and sends
   the event. The emulation thread waits for it before reading a slot (load), before `Flush` and at the end of the
   session, whose exit writes stay synchronous. Rewind serializes into reused buffers and encodes its differences on
@@ -1144,8 +1149,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   level of «Salva rapido» / «Carica rapido» on Rust's current slot, «Riprendi» and a strip «Riavvolgi» (when
   `speed.rew` is on: held, the game unpaused meanwhile; A / Enter rewind for 1 s) / «Accelera» / «Silenzia» /
   «Altro»; «Altro» and «Altro › Salvataggi» growing the same sheet, no handle, a tap on the game resumes; a 300 px
-  side panel on its side; «Rendi rapido» moves Rust's current slot, so it holds for every game until the app
-  quits, not per game), E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone:
+  side panel on its side; «Rendi rapido» makes the chosen slot the game's quick slot with `set_slot`, the same
+  slot the shortcuts move, kept per game in its saves folder: `emudome_core::quick_slot`), E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone:
   no «Continua a giocare» and no heading, its own toolbar (`PhoneLibraryToolbar`:
   short console names on a sideways-scrolling row, the order's name, Lista / Griglia, a square «+»; one row on its
   side), the games as a list (the default; two columns of rows on its side, #105) or a compact grid as
