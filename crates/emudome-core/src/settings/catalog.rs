@@ -610,6 +610,8 @@ pub static ENTRIES: &[Entry] = &[
     // Saves › import, Controls › C02, the library's hidden games, Cloud › its games.
     act("saves.import", GM).carried_out(),
     act("saves.savedir", G).device(),
+    // «Gestisci lo spazio» (#29): the page of what EmuDome's files weigh, in the page's place.
+    link("saves.space", G).carried_out(),
     // ---- Controller e tastiera (pad) ----
     link("pad.dev1", G).carried_out(),
     link("pad.dev2", G).pc().carried_out(),
@@ -1083,7 +1085,7 @@ pub static SECTIONS: &[Section] = &[
     Section {
         page: "saves",
         id: "folder",
-        keys: &["saves.savedir"],
+        keys: &["saves.savedir", "saves.space"],
     },
     Section {
         page: "pad",
@@ -1338,8 +1340,8 @@ mod tests {
     fn has_the_designs_entries_with_unique_keys_on_known_pages() {
         // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102);
         // `library.versions` took the place of `library.region` (#102), plus E14's
-        // `touch.tlost` (#29), plus `library.view` (#29).
-        assert_eq!(ENTRIES.len(), 167);
+        // `touch.tlost` (#29), plus `library.view` and `saves.space` (#29).
+        assert_eq!(ENTRIES.len(), 168);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),
