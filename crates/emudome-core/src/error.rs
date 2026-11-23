@@ -5,7 +5,11 @@
 //! (`errors.<code>` in `app/src/i18n/*.json`); the TypeScript type is generated from this enum
 //! into `app/src/generated/ErrorCode.ts`, with the list of codes in `error-codes.json`, which a
 //! Vitest test holds against both message files (`crate::contract`). `detail` parameters carry technical text (English, from the OS or a
-//! library) that the interface may show as is, never a sentence meant for the user.
+//! library) that the interface may show as is, never a sentence meant for the user. A file that
+//! could not be read or written is told by its name or path and an [`IoCause`], each a value of
+//! its own, never by the OS's sentence (which has the path inside it, Trello #128).
+
+use std::path::Path;
 
 use serde::Serialize;
 use ts_rs::TS;
@@ -13,6 +17,55 @@ use ts_rs::TS;
 use crate::bios::Slot;
 use crate::settings::Level;
 use crate::GameKey;
+
+/// Why a file or folder could not be read or created, as the interface needs it to say what to
+/// do: the kind of an `io::Error`, never its text (that stays in the log). The interface has one
+/// text per code and cause (`errorCauses.<code>.<cause>`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum IoCause {
+    /// It is not there (moved, deleted, a disconnected drive).
+    NotFound,
+    /// The system refused EmuDome access (permissions; on Android, a folder's permission given
+    /// back).
+    PermissionDenied,
+    /// Any other failure (a read error, a damaged disk, a name the system cannot take).
+    Other,
+}
+
+impl IoCause {
+    /// The cause of `e`.
+    pub fn of(e: &std::io::Error) -> Self {
+        Self::from(e.kind())
+    }
+}
+
+impl From<std::io::ErrorKind> for IoCause {
+    // `ErrorKind` is non-exhaustive and grows: compared, not matched, so a new kind is `Other`.
+    fn from(kind: std::io::ErrorKind) -> Self {
+        if kind == std::io::ErrorKind::NotFound {
+            IoCause::NotFound
+        } else if kind == std::io::ErrorKind::PermissionDenied {
+            IoCause::PermissionDenied
+        } else {
+            IoCause::Other
+        }
+    }
+}
+
+impl ErrorCode {
+    /// The game file at `path` cannot be read (`cause`): its name and its path as values.
+    pub fn rom_unreadable(path: &Path, cause: IoCause) -> Self {
+        ErrorCode::RomUnreadable {
+            file: path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| path.display().to_string()),
+            path: path.display().to_string(),
+            cause,
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "code", content = "params", rename_all = "camelCase")]
@@ -34,8 +87,17 @@ pub enum ErrorCode {
     /// The core file cannot be loaded or is not a libretro core EmuDome can drive (damaged,
     /// another architecture, a function missing): reinstalling EmuDome puts the right one back.
     CoreIncompatible { detail: String },
-    /// The game file cannot be read (moved, deleted, a disconnected drive, no permission).
-    RomUnreadable { detail: String },
+    /// The game file cannot be read: `file` is its name (a document's display name), `path`
+    /// where it is (a document's URI), `cause` why. The OS's own text goes to the log only.
+    RomUnreadable {
+        file: String,
+        path: String,
+        cause: IoCause,
+    },
+    /// The game came as a document (Android) that is not a file on this device (a cloud
+    /// provider's stream, `file` its name): it cannot be read again from its start, as cores and
+    /// EmuDome do. Copying it to the device's storage helps.
+    DocumentNotLocal { file: String },
     /// The core read the game and refused it: a bad or incomplete dump, an encrypted 3DS game,
     /// a format this core does not run.
     CoreRefusedGame,
@@ -60,7 +122,7 @@ pub enum ErrorCode {
     /// The game's save folder (`folder`) could not be created (no permission, a file in its
     /// place, a disconnected drive): the game does not start, since its core would write its
     /// saves elsewhere (Azahar: its own folder, shared by every game; Trello #97).
-    SaveFolderUnavailable { folder: String, detail: String },
+    SaveFolderUnavailable { folder: String, cause: IoCause },
     /// A game on this core stopped answering and was let go (E11): its thread may still hold
     /// the core, so the core cannot open another game until EmuDome is restarted. `core` is the
     /// core's name (e.g. `mgba`).
@@ -172,8 +234,8 @@ pub enum ErrorCode {
     /// The screen effect `name` (a built-in one or the user's `.slangp` file name) could not
     /// be loaded or drawn; the game shows without it.
     EffectNotLoaded { name: String, detail: String },
-    /// The chosen BIOS / firmware file cannot be read.
-    BiosUnreadable { detail: String },
+    /// The chosen BIOS / firmware file cannot be read (`cause`).
+    BiosUnreadable { cause: IoCause },
     /// The chosen file has a size the row's file never has (`size` in bytes).
     BiosWrongSize { size: u64 },
     /// The chosen file is the one of another BIOS / firmware row (`slot`).
@@ -273,16 +335,18 @@ impl crate::StartError {
             | crate::StartError::CoreIncompatible { detail } => {
                 ErrorCode::CoreIncompatible { detail }
             }
-            crate::StartError::RomUnreadable { detail } => ErrorCode::RomUnreadable { detail },
+            crate::StartError::RomUnreadable { path, cause, .. } => {
+                ErrorCode::rom_unreadable(&path, cause)
+            }
             crate::StartError::CoreRefusedGame => ErrorCode::CoreRefusedGame,
             crate::StartError::GameNeedsPath => ErrorCode::DocumentNeedsPath {
                 core: core.to_owned(),
             },
             crate::StartError::ThreadFailed { detail } => ErrorCode::OpenFailed { detail },
-            crate::StartError::SaveFolderUnavailable { folder, detail } => {
+            crate::StartError::SaveFolderUnavailable { folder, cause, .. } => {
                 ErrorCode::SaveFolderUnavailable {
                     folder: folder.display().to_string(),
-                    detail,
+                    cause,
                 }
             }
         }
@@ -301,7 +365,7 @@ impl From<crate::save_path::SavePathTooLong> for ErrorCode {
 
 #[cfg(test)]
 mod tests {
-    use super::ErrorCode;
+    use super::{ErrorCode, IoCause};
 
     #[test]
     fn a_save_folder_too_deep_says_where_and_by_how_much() {
@@ -332,13 +396,16 @@ mod tests {
             code(StartError::CoreUnloadable { detail: "x".into() }),
             ErrorCode::CoreIncompatible { detail: "x".into() }
         );
+        // The file and its path as values of their own, the OS's text left out (Trello #128).
         assert_eq!(
-            code(StartError::RomUnreadable {
-                detail: "gone".into()
-            }),
-            ErrorCode::RomUnreadable {
-                detail: "gone".into()
-            }
+            serde_json::to_value(code(StartError::RomUnreadable {
+                path: "D:/games/Kirby (USA).gba".into(),
+                cause: IoCause::NotFound,
+                detail: "The system cannot find the file specified. (os error 2)".into(),
+            }))
+            .unwrap(),
+            serde_json::json!({ "code": "romUnreadable", "params": {
+                "file": "Kirby (USA).gba", "path": "D:/games/Kirby (USA).gba", "cause": "notFound" } })
         );
         assert_eq!(
             code(StartError::CoreRefusedGame),
@@ -351,11 +418,39 @@ mod tests {
         assert_eq!(
             serde_json::to_value(code(StartError::SaveFolderUnavailable {
                 folder: "saves/3ds/00".into(),
+                cause: IoCause::PermissionDenied,
                 detail: "denied".into(),
             }))
             .unwrap(),
             serde_json::json!({ "code": "saveFolderUnavailable",
-                "params": { "folder": "saves/3ds/00", "detail": "denied" } })
+                "params": { "folder": "saves/3ds/00", "cause": "permissionDenied" } })
+        );
+    }
+
+    #[test]
+    fn an_io_error_becomes_its_cause_and_a_new_kind_is_other() {
+        use std::io::{Error, ErrorKind};
+        assert_eq!(
+            IoCause::of(&Error::from(ErrorKind::NotFound)),
+            IoCause::NotFound
+        );
+        assert_eq!(
+            IoCause::of(&Error::from(ErrorKind::PermissionDenied)),
+            IoCause::PermissionDenied
+        );
+        assert_eq!(
+            IoCause::of(&Error::from(ErrorKind::UnexpectedEof)),
+            IoCause::Other
+        );
+        assert_eq!(IoCause::of(&Error::other("x")), IoCause::Other);
+        // A path with no file name keeps the whole path as its name.
+        assert_eq!(
+            ErrorCode::rom_unreadable(std::path::Path::new("/"), IoCause::Other),
+            ErrorCode::RomUnreadable {
+                file: "/".into(),
+                path: "/".into(),
+                cause: IoCause::Other
+            }
         );
     }
 

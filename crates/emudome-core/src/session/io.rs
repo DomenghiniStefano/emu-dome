@@ -41,6 +41,8 @@ pub(super) enum Job {
     UndoSave,
     /// A load replaced the save's «Annulla»: what the slot held is let go.
     ForgetUndo,
+    /// The game's quick slot, already clamped ([`crate::quick_slot::write`]).
+    QuickSlot(u8),
     /// G13: the frame as a PNG in the game's screenshots folder, named after `at`.
     Screenshot {
         frame: Frame,
@@ -126,6 +128,19 @@ impl Worker {
                 self.send(event);
             }
             Job::ForgetUndo => self.undo = None,
+            Job::QuickSlot(slot) => {
+                // A session let go writes nothing more.
+                if self.writer().alive() {
+                    if let Err(e) = crate::quick_slot::write(&self.files, slot) {
+                        log::warn!("quick slot {slot} not recorded: {e}");
+                        self.send(Event::Error {
+                            error: ErrorCode::SaveFileFailed {
+                                detail: format!("quick-slot.json: {e}"),
+                            },
+                        });
+                    }
+                }
+            }
             Job::Screenshot { frame, dir, at } => {
                 let res = frame.to_png().map_err(|e| e.to_string()).and_then(|png| {
                     crate::screenshot::write(&dir, &png, at).map_err(|e| e.to_string())

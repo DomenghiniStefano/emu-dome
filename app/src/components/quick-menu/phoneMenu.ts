@@ -150,11 +150,3 @@ export const QUICK_SLOT_LAST = 9
 export function canMakeQuick(slot: number, quick: number): boolean {
   return slot >= QUICK_SLOT_FIRST && slot <= QUICK_SLOT_LAST && slot !== quick
 }
-
-/** The steps of «slot successivo» that move the quick slot from `from` to `to` (both in 1–9),
- * the shorter way round, and its direction. */
-export function quickSlotSteps(from: number, to: number): { forward: boolean; count: number } {
-  const n = QUICK_SLOT_LAST - QUICK_SLOT_FIRST + 1
-  const ahead = (((to - from) % n) + n) % n
-  return ahead <= n - ahead ? { forward: true, count: ahead } : { forward: false, count: n - ahead }
-}

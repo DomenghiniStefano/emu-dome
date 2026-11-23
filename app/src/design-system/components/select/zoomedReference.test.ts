@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { pageZoom, zoomedReference, zoomedViewport } from './zoomedReference'
+import { pageZoom, zoomedBoundary, zoomedReference, zoomedViewport } from './zoomedReference'
 
 describe('zoomedReference', () => {
   afterEach(() => {
@@ -36,5 +36,13 @@ describe('zoomedViewport', () => {
     document.documentElement.style.setProperty('zoom', '1.2')
     expect(v.width).toBeCloseTo(window.innerWidth / 1.2)
     expect(v.height).toBeCloseTo(window.innerHeight / 1.2)
+  })
+
+  it('is the boundary every popper gets, read each time', () => {
+    const b = zoomedBoundary() as unknown as DOMRectReadOnly
+    document.documentElement.style.setProperty('zoom', '1.2')
+    expect([b.x, b.y]).toEqual([0, 0])
+    expect(b.width).toBeCloseTo(window.innerWidth / 1.2)
+    expect(b.height).toBeCloseTo(window.innerHeight / 1.2)
   })
 })

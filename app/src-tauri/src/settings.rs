@@ -121,6 +121,8 @@ pub struct GameFlow {
     pub rewind_seconds: Option<u32>,
     /// `audio.ff`: the audio in fast forward and slow motion.
     pub fast_audio: FastAudio,
+    /// `speed.spstart`: the speed the game starts at.
+    pub start_speed: emudome_core::Speed,
     /// The core options the settings ask for (`settings::core_values`).
     pub core_options: Vec<emudome_core::settings::core_values::MappedOption>,
     /// The user's name on the console (`consoles.dsname` for a DS game), `None`: the OS user.
@@ -188,6 +190,7 @@ pub fn game_flow(
             ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba | ConsoleId::N3ds => None,
         },
         fast_audio: fast_audio(app, &scope),
+        start_speed: emudome_core::bindings::speed_setting(&settings, keys::SPEED_START),
         bios: crate::bios::plan(app, core, console, &read),
         core_options: emudome_core::settings::core_values::mapped(core, console, read),
     }
@@ -319,8 +322,9 @@ pub fn settings_session_discard(
 /// The one setting that holds a background image.
 const BACKGROUND_KEY: &str = keys::VIDEO_SURROUND_IMG.as_str();
 
-/// Where the chosen images are copied: `<app data>/backgrounds`, beside the synced settings, so
-/// the setting (a file name there) keeps working when the original file moves.
+/// Where the chosen images are copied: `<app data>/backgrounds`, so the setting (a file name
+/// there) keeps working when the original file moves. The folder is not synced, so the setting is
+/// per device (#126); a name whose file is not here is drawn as the built-in background instead.
 fn backgrounds_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
     crate::dirs::data(app)
         .inspect_err(|e| log::warn!("app data dir: {e}"))
@@ -329,7 +333,7 @@ fn backgrounds_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
 }
 
 /// The name an image is stored under: its content's sha256, so choosing the same image twice
-/// keeps one copy, on every device and Rust version (the folder and the setting sync).
+/// keeps one copy, on every Rust version.
 /// Images stored before 2026-11-21 keep their old name (16 hex digits of `DefaultHasher`, which
 /// changes between Rust versions): the setting still names them and they are still served.
 fn background_name(bytes: &[u8], ext: &str) -> String {
@@ -385,8 +389,14 @@ pub fn background_response(app: &AppHandle, name: &str) -> tauri::http::Response
     let found = backgrounds_dir(app)
         .and_then(|dir| crate::dirs::file_in(&dir, name))
         .and_then(|file| {
+            // Not on this device (#126): the interface draws the built-in background instead.
             std::fs::read(&file)
-                .inspect_err(|e| log::warn!("background {}: {e}", file.display()))
+                .inspect_err(|e| {
+                    log::warn!(
+                        "background {}: {e}; the built-in background is shown",
+                        file.display()
+                    );
+                })
                 .ok()
                 .map(|bytes| (bytes, crate::library::image_type(&file)))
         });

@@ -21,6 +21,7 @@ import {
   type RemapRow,
   type SettingRow,
 } from '@/emu'
+import { useKeyboardKeys } from '@/composables/useKeyboardKeys'
 import { useErrorSink } from '@/composables/useToasts'
 import { gamepadName } from '@/i18n/labels'
 import { buttonName, keyName, posName, testerCells } from '@/lib/controls'
@@ -55,6 +56,8 @@ const failWith = useErrorSink()
 
 const family = computed(() => familyOf(props.device))
 const isKeyboard = computed(() => props.device === 'keyboard')
+/** The keyboard's card: on the phone only once a physical keyboard was used (#118). */
+const keyboardKeys = useKeyboardKeys()
 
 // ---- Bindings in force at «Tutti i giochi»: the shortcuts and what a press does in the game ----
 const combos = ref<ComboRow[]>([])
@@ -139,6 +142,7 @@ const sticksSub = computed(() =>
         @click="emit('pick', p.id)"
       />
       <DeviceCard
+        v-if="keyboardKeys || isKeyboard"
         :icon="Keyboard"
         :name="t('controls.keyboard')"
         :detail="t('controls.keyboardDetail')"

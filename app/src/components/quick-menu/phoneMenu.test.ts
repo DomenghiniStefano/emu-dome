@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ScreenStatus } from '@/emu'
-import { MoreId, StripId, canMakeQuick, moreRows, quickSlotSteps, stripButtons } from './phoneMenu'
+import { MoreId, StripId, canMakeQuick, moreRows, stripButtons } from './phoneMenu'
 import { QuickMenuView, phoneParent } from './view'
 
 describe('stripButtons', () => {
@@ -90,14 +90,6 @@ describe('the quick slot', () => {
     expect(canMakeQuick(2, 1)).toBe(true)
     expect(canMakeQuick(9, 1)).toBe(true)
     expect(canMakeQuick(10, 1)).toBe(false)
-  })
-
-  it('moves the shorter way round with the slot steps', () => {
-    expect(quickSlotSteps(1, 1)).toEqual({ forward: true, count: 0 })
-    expect(quickSlotSteps(1, 3)).toEqual({ forward: true, count: 2 })
-    expect(quickSlotSteps(3, 1)).toEqual({ forward: false, count: 2 })
-    expect(quickSlotSteps(1, 9)).toEqual({ forward: false, count: 1 })
-    expect(quickSlotSteps(9, 1)).toEqual({ forward: true, count: 1 })
   })
 })
 

@@ -398,7 +398,11 @@ pub static ENTRIES: &[Entry] = &[
         ALL,
     )
     .show_if("video.surround", &["builtin"]),
-    file("video.surroundImg", ALL).show_if("video.surround", &["image"]),
+    // Per device: the image is a file of this device's `backgrounds/` folder, which is not synced
+    // (#126); a synced name would reach devices without the file.
+    file("video.surroundImg", ALL)
+        .device()
+        .show_if("video.surround", &["image"]),
     slider("video.surroundDim", 40, (0, 80, 5), Unit::Percent, ALL)
         .show_unless("video.surround", &["black"]),
     sw("video.surroundAnim", false, G).show_if("video.surround", &["builtin"]),
@@ -434,7 +438,8 @@ pub static ENTRIES: &[Entry] = &[
         G,
     )
     .device(),
-    sw("video.vsync", true, ALL).device(),
+    // The native surface's present mode; the webview's canvas is presented by the webview.
+    sw("video.vsync", true, ALL).device().native_video(),
     sel(
         "video.api",
         &["auto", "vulkan", "d3d12", "opengl"],
@@ -605,7 +610,10 @@ pub static ENTRIES: &[Entry] = &[
     slider("pad.dead", 15, (0, 50, 1), Unit::Percent, G),
     slider("pad.stickdpad", 50, (20, 90, 5), Unit::Percent, GC),
     slider("pad.trig", 50, (10, 90, 5), Unit::Percent, G),
-    slider("pad.rumble", 70, (0, 100, 10), Unit::Percent, GG).phase(2),
+    // No rumble backend yet (the DS Rumble Pak is `consoles.slot2`, the core's own).
+    slider("pad.rumble", 70, (0, 100, 10), Unit::Percent, GG)
+        .phase(2)
+        .not_wired(),
     sel(
         "pad.gyro",
         &["controller", "phone", "mouse", "right_stick", "off"],
@@ -734,8 +742,10 @@ pub static ENTRIES: &[Entry] = &[
     )
     .not_wired(),
     // ---- Cloud (cloud) ----
-    act("cloud.acct", G).device(),
-    action("cloud.space", ActionStyle::Storage, G),
+    // «Accedi con Google» / «Apri Cloud» open the Cloud section, where the account is signed in
+    // and out (SettingRow, TvSettingRow); the space row shows the sync's last measure (#31).
+    act("cloud.acct", G).device().carried_out(),
+    action("cloud.space", ActionStyle::Storage, G).carried_out(),
     // Read by the Drive sync (`app/src-tauri/src/cloud.rs`, `emudome_sync::service::Prefs`).
     sw("cloud.ssaves", true, G),
     seg("cloud.squick", &["all", "last", "none"], "all", GC),
@@ -863,7 +873,10 @@ pub static ENTRIES: &[Entry] = &[
     link("adv.devtools", G).pc().phase(5).on_page(ADV),
     // ---- Online e integrazioni (online) ----
     // Empty = none («Nessuno»).
-    e("online.wfc", Kind::Text, DefaultValue::Text(""), G).phase(2),
+    // No Wi-Fi Connection backend yet.
+    e("online.wfc", Kind::Text, DefaultValue::Text(""), G)
+        .phase(2)
+        .not_wired(),
     act("online.ra", G).device().phase(5),
     sw("online.discord", false, G)
         .device()
@@ -871,7 +884,8 @@ pub static ENTRIES: &[Entry] = &[
         .phase(5)
         .not_wired(),
     // ---- Informazioni (about) ----
-    info("about.ver", G),
+    // The app's version, as Tauri reports it (useSettingRow, `emu.appVersion`).
+    info("about.ver", G).carried_out(),
     // «Controlla ora»: one check whatever `general.updates` says (Trello #44). Desktop only, like
     // the updates themselves.
     act("about.upd", G).pc().carried_out(),

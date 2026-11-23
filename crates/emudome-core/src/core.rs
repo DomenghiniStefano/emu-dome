@@ -7,6 +7,7 @@ use anyhow::{bail, Result};
 use libloading::Library;
 
 use crate::callbacks::Callbacks;
+use crate::error::IoCause;
 use crate::GameKey;
 use libretro_sys::symbols::{
     RetroApiVersion, RetroDeinit, RetroGetMemoryData, RetroGetMemorySize, RetroGetSystemAvInfo,
@@ -33,8 +34,13 @@ pub enum StartError {
     /// The file loads but is not a libretro core EmuDome can drive (another API version, a
     /// function missing).
     CoreIncompatible { detail: String },
-    /// The game file cannot be read.
-    RomUnreadable { detail: String },
+    /// The game file at `path` cannot be read: `cause` for the interface, `detail` (the OS's
+    /// text) for the log only.
+    RomUnreadable {
+        path: PathBuf,
+        cause: IoCause,
+        detail: String,
+    },
     /// The core looked at the game and refused it (`retro_load_game` returned false): a bad dump,
     /// an encrypted 3DS game, a format this core does not run.
     CoreRefusedGame,
@@ -43,7 +49,11 @@ pub enum StartError {
     /// The game's save folder ([`GameFiles::dir`]) could not be created. Refused before the core
     /// loads: a core that cannot reach it writes elsewhere (Azahar falls back to its own user
     /// folder, shared by every game; Trello #97).
-    SaveFolderUnavailable { folder: PathBuf, detail: String },
+    SaveFolderUnavailable {
+        folder: PathBuf,
+        cause: IoCause,
+        detail: String,
+    },
     /// The core opens the game file by itself (`need_fullpath`, Azahar) and the game is a
     /// document read through its descriptor whose path the system will not open again (Android
     /// 17, some providers): refused before the core sees it.
@@ -58,7 +68,9 @@ impl std::fmt::Display for StartError {
             StartError::CoreIncompatible { detail } => {
                 write!(f, "not a usable libretro core: {detail}")
             }
-            StartError::RomUnreadable { detail } => write!(f, "cannot read the game: {detail}"),
+            StartError::RomUnreadable { path, detail, .. } => {
+                write!(f, "cannot read the game {}: {detail}", path.display())
+            }
             StartError::CoreRefusedGame => write!(f, "the core refused the game"),
             StartError::ThreadFailed { detail } => {
                 write!(f, "the emulation thread failed: {detail}")
@@ -67,7 +79,7 @@ impl std::fmt::Display for StartError {
                 f,
                 "the core opens the game by its path, and this document cannot be opened by path"
             ),
-            StartError::SaveFolderUnavailable { folder, detail } => {
+            StartError::SaveFolderUnavailable { folder, detail, .. } => {
                 write!(
                     f,
                     "cannot create the save folder {}: {detail}",
@@ -346,7 +358,9 @@ impl GameContent {
     ) -> Result<Self, StartError> {
         let c = |s: &std::ffi::OsStr| {
             CString::new(s.to_string_lossy().as_bytes()).map_err(|_| StartError::RomUnreadable {
-                detail: format!("a NUL byte in the path {}", game.display()),
+                path: game.to_path_buf(),
+                cause: IoCause::Other,
+                detail: "a NUL byte in the path".into(),
             })
         };
         let path = c(game.as_os_str())?;
@@ -354,7 +368,9 @@ impl GameContent {
             None
         } else {
             Some(read(game).map_err(|e| StartError::RomUnreadable {
-                detail: format!("{}: {e}", game.display()),
+                path: game.to_path_buf(),
+                cause: IoCause::of(&e),
+                detail: e.to_string(),
             })?)
         };
         Ok(Self {
@@ -438,6 +454,7 @@ pub(crate) struct GameStrings {
 /// [`GameKey`], never its file name):
 /// - `game.sav`: the in-game save (cartridge battery);
 /// - `auto.state`, `slotN.state` (+ `.png` thumbnail, + `.json` record): quick saves;
+/// - `quick-slot.json`: the slot the quick save shortcuts use ([`crate::quick_slot`]);
 /// - `backups/<unix ms>.<reason>.sav`, `broken-<unix ms>.sav` ([`crate::saves`]).
 ///
 /// The same folder is the core's save directory for the session (`GET_SAVE_DIRECTORY`), so what
@@ -479,6 +496,11 @@ impl GameFiles {
         self.slot(slot).with_extension("json")
     }
 
+    /// The game's quick slot (`quick-slot.json`, [`crate::quick_slot`]).
+    pub fn quick_slot(&self) -> PathBuf {
+        self.dir.join("quick-slot.json")
+    }
+
     /// The game's own folder: its saves, slots, backups, and the core's save directory.
     pub fn dir(&self) -> &Path {
         &self.dir
@@ -497,6 +519,7 @@ mod tests {
     use std::path::Path;
 
     use super::{GameContent, StartError};
+    use crate::error::IoCause;
     use crate::settings::test_dir::TestDir;
 
     /// A 3DS game is 0.5-4 GB: for a `need_fullpath` core the host passes the path only and
@@ -532,9 +555,10 @@ mod tests {
         let dir = TestDir::new("core-fullpath");
         let missing = dir.path("not-there.3ds");
         assert!(GameContent::read(&missing, true, |p| std::fs::read(p)).is_ok());
+        // The interface gets the file and why, never the OS's sentence (Trello #128).
         assert!(matches!(
             GameContent::read(&missing, false, |p| std::fs::read(p)),
-            Err(StartError::RomUnreadable { .. })
+            Err(StartError::RomUnreadable { path, cause: IoCause::NotFound, .. }) if path == missing
         ));
     }
 

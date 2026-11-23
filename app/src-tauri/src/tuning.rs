@@ -7,7 +7,7 @@
 //! | Variable | Values | Default | What it changes |
 //! | --- | --- | --- | --- |
 //! | `EMUDOME_VIDEO` | `native`, `webview` | per OS (`emudome_platform::native_video_default`) | where the game is drawn |
-//! | `EMUDOME_PRESENT_MODE` | `fifo`, `fiforelaxed`, `mailbox`, `immediate`, `autovsync`, `autonovsync` | `autovsync` | wgpu present mode of the native surface |
+//! | `EMUDOME_PRESENT_MODE` | `fifo`, `fiforelaxed`, `mailbox`, `immediate`, `autovsync`, `autonovsync` | the `video.vsync` setting (on: `autovsync`, off: `autonovsync`) | wgpu present mode of the native surface |
 //! | `EMUDOME_FRAME_LATENCY` | `1`..`3` | `1` | frames the GPU may queue ahead (`desired_maximum_frame_latency`) |
 //! | `EMUDOME_AUDIO_TARGET_MS` | `10`..`500` | the `audio.lat` setting (Balanced: `60`) | audio queue fill the resampler steers towards |
 //! | `EMUDOME_AUDIO_BUFFER` | `default` or frames (`256`, `512`...) | `default` | device buffer requested from cpal |
@@ -57,7 +57,8 @@ pub enum PresentMode {
 pub struct VideoTuning {
     /// `None`: the operating system's default.
     pub path: Option<VideoPath>,
-    pub present_mode: PresentMode,
+    /// `None`: the `video.vsync` setting's.
+    pub present_mode: Option<PresentMode>,
     /// Frames the GPU may queue ahead of the one on screen.
     pub frame_latency: u32,
     /// `WGPU_BACKEND` as given (wgpu reads it itself).
@@ -138,9 +139,7 @@ impl Tuning {
                 "webview" => Some(VideoPath::Webview),
                 _ => None,
             }),
-            present_mode: r
-                .parse("EMUDOME_PRESENT_MODE", parse_present_mode)
-                .unwrap_or(PresentMode::AutoVsync),
+            present_mode: r.parse("EMUDOME_PRESENT_MODE", parse_present_mode),
             frame_latency: r
                 .parse("EMUDOME_FRAME_LATENCY", |v| {
                     v.parse().ok().filter(|n| (1..=3).contains(n))
@@ -261,7 +260,7 @@ mod tests {
     fn defaults_are_the_app_behaviour() {
         let t = tuning(&[]);
         assert_eq!(t.video.path, None);
-        assert_eq!(t.video.present_mode, PresentMode::AutoVsync);
+        assert_eq!(t.video.present_mode, None, "the video.vsync setting's");
         assert_eq!(t.video.frame_latency, DEFAULT_FRAME_LATENCY);
         assert_eq!(t.audio.target_ms, None, "the audio.lat setting's");
         assert_eq!(t.audio.device, None, "the audio.out setting's");
@@ -288,7 +287,7 @@ mod tests {
             ("EMUDOME_BENCH_TONE", "0.05"),
         ]);
         assert_eq!(t.video.path, Some(VideoPath::Webview));
-        assert_eq!(t.video.present_mode, PresentMode::Mailbox);
+        assert_eq!(t.video.present_mode, Some(PresentMode::Mailbox));
         assert_eq!(t.video.frame_latency, 3);
         assert_eq!(t.audio.target_ms, Some(100));
         assert_eq!(t.audio.buffer, AudioBuffer::Frames(512));
@@ -309,7 +308,7 @@ mod tests {
             ("EMUDOME_FRAME_LATENCY", "9"),
             ("EMUDOME_AUDIO_BUFFER", "huge"),
         ]);
-        assert_eq!(t.video.present_mode, PresentMode::AutoVsync);
+        assert_eq!(t.video.present_mode, None);
         assert_eq!(t.video.frame_latency, DEFAULT_FRAME_LATENCY);
         assert_eq!(t.audio.buffer, AudioBuffer::Default);
         assert_eq!(

@@ -18,6 +18,7 @@ import {
   type SettingRow,
   type SettingsSchema,
 } from '@/emu'
+import { useKeyboardKeys } from '@/composables/useKeyboardKeys'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
 import { useErrorSink } from '@/composables/useToasts'
 import { combosList, comboText, hotkeyName, keyName, posName, useCapture } from '@/lib/controls'
@@ -108,6 +109,8 @@ function comboOf(r: ComboRow): string {
 }
 /** Fullscreen has no controller shortcut: its key, from the keyboard table. */
 const fullscreenKey = keyName(KEYBOARD_SHORTCUTS.find(k => k.action === 'fullscreen')?.code ?? '')
+/** That row on the phone only once a physical keyboard was used (#118). */
+const keyboardKeys = useKeyboardKeys()
 
 onMounted(() => void load())
 useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
@@ -167,7 +170,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void load())
               @cancel="conflict = null"
             />
           </template>
-          <ShortcutRow :action="t('controls.keys.fullscreen')" muted>
+          <ShortcutRow v-if="keyboardKeys" :action="t('controls.keys.fullscreen')" muted>
             {{ t('controls.keyboardOnly', { key: fullscreenKey }) }}
           </ShortcutRow>
         </RowColumns>

@@ -441,6 +441,25 @@ mod tests {
     }
 
     #[test]
+    fn the_quick_slot_moved_in_a_game_is_its_own_when_it_opens_again() {
+        let dir = Dir::new("gs-quick-slot");
+        let games = games(&Log::default());
+        let (game, other) = (key("0b"), key("0c"));
+        let files = |g: &GameKey| GameFiles::new(&dir.0.join("saves"), g);
+        let quick = |g: &GameKey| emudome_core::quick_slot::restore(&files(g));
+        // A game never moved opens on the first slot.
+        assert_eq!(quick(&game), 1);
+        open(&games, &dir.0, &game, "q_libretro.dll", FakeCore::new());
+        games.send(Command::SetQuickSlot(7)).unwrap();
+        let mut leaving = games.take().unwrap();
+        leaving.stop();
+        while leaving.wait(Duration::from_millis(100)).is_none() {}
+        // Written before the thread ended; the other game keeps its own.
+        assert_eq!(quick(&game), 7);
+        assert_eq!(quick(&other), 1);
+    }
+
+    #[test]
     fn the_after_end_check_is_handed_over_once_the_thread_ended() {
         let dir = Dir::new("gs-after-end");
         let log = Log::default();

@@ -33,6 +33,7 @@ pub mod migration;
 pub mod n3ds;
 pub mod nds;
 pub mod notifications;
+pub mod quick_slot;
 pub mod rewind;
 pub mod save_path;
 pub mod saves;
@@ -49,7 +50,7 @@ pub mod video_sink;
 pub use atomic::write_atomic;
 pub use console::ConsoleId;
 pub use core::{GameFiles, StartError};
-pub use error::ErrorCode;
+pub use error::{ErrorCode, IoCause};
 pub use frame::{rgba_png, Frame};
 pub use game_key::GameKey;
 pub use session::{

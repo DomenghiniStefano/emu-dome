@@ -213,6 +213,7 @@ const label = (tool: Tool) => t(`touch.editor.${tool}`)
            size, so it never widens what scrolls around it. -->
       <div class="invisible pointer-events-none absolute top-0 left-0 size-0 overflow-hidden">
         <div ref="measure" class="flex gap-4" aria-hidden="true" inert>
+          <!-- no-action: measured copies (dead-button) -->
           <Button
             v-for="tool in TOOLS"
             :key="tool"
@@ -222,6 +223,7 @@ const label = (tool: Tool) => t(`touch.editor.${tool}`)
             :label="label(tool)"
             tabindex="-1"
           />
+          <!-- no-action: measured copy -->
           <Button
             data-measure="more"
             :size="ButtonSize.ToolIcon"
@@ -229,9 +231,11 @@ const label = (tool: Tool) => t(`touch.editor.${tool}`)
             :label="t('touch.editor.more')"
             tabindex="-1"
           />
+          <!-- no-action: measured copy -->
           <Button data-measure="collapse" :size="ButtonSize.Tool" :icon="ChevronUp" tabindex="-1">
             {{ t('touch.editor.collapse') }}
           </Button>
+          <!-- no-action: measured copy -->
           <Button
             data-measure="save"
             :size="ButtonSize.Tool"

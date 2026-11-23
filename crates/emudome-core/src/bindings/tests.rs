@@ -280,9 +280,9 @@ fn backspace_is_rewind_and_select_moved_to_the_right_shift() {
 
 #[test]
 fn every_speed_option_is_a_speed() {
-    use crate::settings::keys::{SPEED_FF, SPEED_SLOW};
+    use crate::settings::keys::{SPEED_FF, SPEED_SLOW, SPEED_START};
     use crate::settings::Kind;
-    for key in [SPEED_FF, SPEED_SLOW] {
+    for key in [SPEED_FF, SPEED_SLOW, SPEED_START] {
         let Kind::Choice { options, .. } = key.entry().kind else {
             panic!("{} is a choice", key.as_str());
         };
@@ -290,6 +290,19 @@ fn every_speed_option_is_a_speed() {
             assert!(Speed::from_option(id).is_some(), "{}: {id}", key.as_str());
         }
     }
+}
+
+#[test]
+fn the_speed_at_start_is_its_setting_or_the_default() {
+    use crate::settings::keys::{Reader, SPEED_START};
+    let at = |v: Option<&str>| {
+        let settings = Reader::new(|_| v.map(|v| Value::Text(v.into())));
+        super::speed_setting(&settings, SPEED_START)
+    };
+    assert_eq!(at(None), Speed::Factor(1.0));
+    assert_eq!(at(Some("0.5")), Speed::Factor(0.5));
+    assert_eq!(at(Some("2")), Speed::Factor(2.0));
+    assert_eq!(at(Some("fast")), Speed::Factor(1.0));
 }
 
 #[test]

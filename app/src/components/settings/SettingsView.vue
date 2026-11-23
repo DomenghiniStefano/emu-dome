@@ -210,8 +210,15 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
     ref="root"
     :class="['flex min-h-0 flex-1', pane !== SettingsPane.Both && 'flex-col']"
   >
+    <!-- `about.lic` in TV: the desk's licences page, scaled up as the sections not laid out for
+         TV are (AppShell), in the place of the TV rows. -->
+    <div v-if="uiMode.tv && licences" class="flex min-h-0 flex-1 flex-col tv:zoom-tv">
+      <SectionPage as="main" :width="SectionWidth.Full">
+        <LicencesPage @close="closeLicences" />
+      </SectionPage>
+    </div>
     <TvSettings
-      v-if="uiMode.tv"
+      v-else-if="uiMode.tv"
       :schema="schema"
       :page="page"
       :sections="sections"
@@ -224,7 +231,8 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
       @set="store.set"
       @reset="store.reset"
       @open-controls="emit('openControls')"
-      @choose="store.chooseBackground"
+      @open-cloud="emit('openCloud')"
+      @choose="choose"
       @edit="editScreens"
       @unlit="lit = null"
       @level="l => (scopeBar.level.value = l)"

@@ -15,7 +15,7 @@ use std::sync::Arc;
 use emudome_core::bindings::{default_combo, Family, PadConfig, Pos};
 use emudome_core::hotkeys::{self, Hotkey, Status};
 use emudome_core::settings::{keys, Scope, Value};
-use emudome_core::ErrorCode;
+use emudome_core::{Command, ErrorCode};
 use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -65,8 +65,10 @@ pub struct Pads {
     pub watch: AtomicBool,
     /// The interface is capturing a button: the router acts on nothing (no game, no menu).
     pub capture: AtomicBool,
-    /// The current quick save slot: L3 + R1 / L3 + L1 and F1 / F4 save to and load from it,
-    /// L3 + d-pad left / right and F2 / F3 move it (0 until first moved: slot 1).
+    /// The open game's quick slot (Trello #110): L3 + R1 / L3 + L1 and F1 / F4 save to and load
+    /// from it, L3 + d-pad left / right, F2 / F3 and «Rendi rapido» move it. Set from the game's
+    /// `quick-slot.json` when it opens (`game.rs`); every move is recorded there by the session
+    /// (`Command::SetQuickSlot`). 0 before any game: slot 1.
     slot: AtomicU8,
 }
 
@@ -84,6 +86,13 @@ impl Pads {
     /// Moves the current slot one step (`forward`: next), wrapping; answers the new slot.
     pub fn step_slot(&self, forward: bool) -> u8 {
         let slot = hotkeys::step_slot(self.slot(), forward);
+        self.slot.store(slot, Ordering::Relaxed);
+        slot
+    }
+
+    /// Makes `slot` (clamped to the quick slots) the current slot; answers it.
+    pub fn set_slot(&self, slot: u8) -> u8 {
+        let slot = emudome_core::quick_slot::clamp(slot);
         self.slot.store(slot, Ordering::Relaxed);
         slot
     }
@@ -143,11 +152,18 @@ pub fn current_slot(pads: State<'_, PadsState>) -> u8 {
     pads.slot()
 }
 
-/// Keyboard F2 / F3: the previous / next slot, the same one L3 + d-pad left / right moves.
-/// Answers the new slot (the interface shows «Slot N»).
+/// The phone quick menu's «Rendi rapido»: `slot` (clamped to the quick slots) becomes the open
+/// game's quick slot, the one the shortcuts move, and is recorded for that game. Answers the
+/// slot now current; `noGame` without a game.
 #[tauri::command]
-pub fn step_slot(pads: State<'_, PadsState>, forward: bool) -> u8 {
-    pads.step_slot(forward)
+pub fn set_slot(
+    state: State<'_, crate::AppState>,
+    pads: State<'_, PadsState>,
+    slot: u8,
+) -> Result<u8, ErrorCode> {
+    let slot = emudome_core::quick_slot::clamp(slot);
+    state.games.send(Command::SetQuickSlot(slot))?;
+    Ok(pads.set_slot(slot))
 }
 
 /// While on, the controllers neither play nor navigate: the Controls section is waiting for

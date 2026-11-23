@@ -15,8 +15,11 @@ without opening the app.
 - `mock.js` answers every `invoke` with fixed data (games, saves, settings) and fixes the clock, so
   two runs are identical. A scenario sets its options (`theme`, `emptyLibrary`, `firstRun`, …).
 - `drive.mjs` lists the scenarios; a stream that migrates a screen adds the scenarios it needs.
-  A name ending in `*` takes every scenario starting with it (`shell-*`, `saves-*`,
-  `controls-*`, `qm-*`: the quick menu's, from `quick-menu.mjs`). A scenario can set `width` /
+  A `*` in a name stands for any text (`shell-*`, `saves-*`, `controls-*`, `qm-*`: the quick
+  menu's, from `quick-menu.mjs`; `saves-*-dark-s`: one theme and size of each). Each scenario prints
+  `step failed` for a step that threw or found nothing, and the page's `error:` / `warning:` console
+  lines and uncaught exceptions: a stale mock shows there (the user only sees the generic «Something
+  went wrong» toast, `errors.unexpected`). A scenario can set `width` /
   `height`, `touch` (a touch screen: `(pointer: coarse)`), `reducedMotion`, `focus` (the focus
   ring shows), and `freeze` (CSS animations stopped at their first frame). Its steps can reach the
   app's own modules (`import('/src/components/game/gameFlow.ts')`) and play a backend event with the mock's
@@ -32,7 +35,10 @@ without opening the app.
   (`l780`), and `phone-surround-<nds|3ds|gba>-<p412|p780|l892|l780>` (#105): the native video with
   a built-in side background (`surround: "builtin"` in the mock gives the video page that row and
   value), one hole per screen where the mock's `screens_placements` puts it (headless has no native
-  surface: the holes show black).
+  surface: the holes show black). `phone-controls-pad*` (#118): Controls with a controller, without
+  the keyboard's card, and with it once a physical key was pressed (`{ key }` step);
+  `phone-settings-rich*` (#124): every row kind of `richSettings` in the phone's one column (the rich
+  schema takes the scenario's device).
 - `libraryView: "list" | "grid"` fixes `library.view` (#29; otherwise the list on `device: "phone"`,
   the grid elsewhere, and the toolbar's switch writes it). The phone's library: the `phone-library*`
   scenarios of `phone-shell.mjs` (the list, the compact grid, the switch, the regional versions, L03);
@@ -59,8 +65,9 @@ without opening the app.
 - The touch controls (#29, the `touch-*` scenarios from `touch.mjs`, in Italian, at 390 × 844, 360 × 740,
   844 × 390 and 740 × 360, some at 320 × 640): the overlay in game (`game: "gb" | "gba" | "nds" | "3ds"`), the
   styles «Fumé» (the default) and «Contorno» (`touch-skin-outline*`) and E14 (`touchRows` gives the touch page's
-  values, `touchSaved` a saved landscape layout), and the C06 editor opened from the quick menu's «Controlli» (a
-  tool open, «Altro» open, folded). `touch-look-<smoke|outline>-<nds|3ds|gba>-<p780|l780>`: the compact controls
+  values, `touchSaved` a saved landscape layout), and the C06 editor opened from the quick menu's «Altro ›
+  Controlli» (a tool open, «Altro» open, folded). `touch-hint-<touch|pad|keyboard>-p780` (#118): G06 with only
+  the touch controls (no hint), a controller (Home) and a physical key pressed (Esc). `touch-look-<smoke|outline>-<nds|3ds|gba>-<p780|l780>`: the compact controls
   on the Galaxy S23 as its webview reports itself (360 × 780, 780 × 360) with its camera's 38 px, both styles over
   a game picture.
 - The phone's layouts with a game picture (#29, `touch-frame-*`, `touch-qm-frame-*`, `touch-qm-turned*`,

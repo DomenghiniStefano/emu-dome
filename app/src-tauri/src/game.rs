@@ -7,7 +7,10 @@ use emudome_core::core_profile::{state_load_block, CoreId, Renderer, StateLoadBl
 use emudome_core::n3ds::fallback::FallbackWatch;
 use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::settings::ConsoleId;
-use emudome_core::{ErrorCode, Event, GameKey, GameReader, Session, SessionOptions, VideoSetup};
+use emudome_core::{
+    Command, ErrorCode, Event, GameKey, GameReader, IoCause, Session, SessionOptions, Speed,
+    StartError, VideoSetup,
+};
 use emudome_platform::CoreLookupError;
 use serde::Serialize;
 use tauri::{Emitter, Manager};
@@ -15,6 +18,7 @@ use ts_rs::TS;
 
 use crate::game_session::{AfterEnd, Opened};
 use crate::health::{Part, SharedHealth};
+use crate::pads::PadsState;
 use crate::{bios, closing, cloud, library, migration, saves, settings, AppState};
 
 #[derive(Serialize, TS)]
@@ -31,10 +35,15 @@ pub(crate) struct GameInfo {
     resumable: bool,
     /// `saves.autoexit`: closing writes the auto quick save (G14 lists the step).
     autosave_on_exit: bool,
+    /// The game's own quick slot (#110), current from its start: the last one chosen for it,
+    /// else the first.
+    quick_slot: u8,
     /// Why loading states is off for this game on the renderer it runs with (Trello #93), else
     /// null: the interface shows every load (Carica, the resume question's «Riprendi») disabled
     /// with this reason, and the session refuses them, rewind included.
     state_load_block: Option<StateLoadBlock>,
+    /// The speed it starts at (`speed.spstart`).
+    speed: Speed,
 }
 
 /// Which core to use for a file, and its console, by its extension.
@@ -279,12 +288,10 @@ impl GameFile {
                 document: None,
             });
         }
-        let cache = app
-            .path()
-            .app_cache_dir()
-            .map_err(|e| ErrorCode::RomUnreadable {
-                detail: format!("{given}: no cache folder: {e}"),
-            })?;
+        let cache = app.path().app_cache_dir().map_err(|e| {
+            log::warn!("{given}: no cache folder: {e}");
+            document_unreadable(given, None, IoCause::Other)
+        })?;
         let document =
             emudome_platform::open_content(given, &cache).map_err(|e| content_error(given, e))?;
         log::info!("{given}: document {:?}", document.name());
@@ -309,21 +316,129 @@ impl GameFile {
     pub(crate) fn document(&self) -> Option<&emudome_platform::ContentFile> {
         self.document.as_ref()
     }
+
+    /// This file cannot be read (`e`, logged): its name and where it is as the user knows them
+    /// (a document's display name and URI, never the link EmuDome reads it through).
+    pub(crate) fn unreadable(&self, e: &std::io::Error) -> ErrorCode {
+        log::warn!("{}: cannot be read: {e}", self.given);
+        self.label().unreadable(IoCause::of(e))
+    }
+
+    /// What the user knows this file by, kept for the errors once the file is handed over.
+    fn label(&self) -> FileLabel {
+        FileLabel {
+            path: self.path.clone(),
+            document: self.document.as_ref().map(|d| DocumentLabel {
+                uri: self.given.clone(),
+                name: d.name().map(str::to_owned),
+            }),
+        }
+    }
 }
 
-/// A document that could not be opened, for the interface: the game file cannot be read, and
-/// the detail says why (no new code: the interface already tells it with what to check).
+/// A game file as the user knows it: a path, or a document's URI and display name.
+struct FileLabel {
+    path: PathBuf,
+    document: Option<DocumentLabel>,
+}
+
+struct DocumentLabel {
+    uri: String,
+    name: Option<String>,
+}
+
+impl FileLabel {
+    fn unreadable(&self, cause: IoCause) -> ErrorCode {
+        match &self.document {
+            None => ErrorCode::rom_unreadable(&self.path, cause),
+            Some(d) => document_unreadable(&d.uri, d.name.as_deref(), cause),
+        }
+    }
+
+    /// A start that failed, told with this file's name and place: the core read a document
+    /// through a link named after it, whose path means nothing to the user.
+    fn start_error(&self, e: StartError, core: &str) -> ErrorCode {
+        match e {
+            StartError::RomUnreadable { cause, .. } => self.unreadable(cause),
+            StartError::CoreNeedsRestart
+            | StartError::CoreUnloadable { .. }
+            | StartError::CoreIncompatible { .. }
+            | StartError::CoreRefusedGame
+            | StartError::ThreadFailed { .. }
+            | StartError::SaveFolderUnavailable { .. }
+            | StartError::GameNeedsPath => e.into_code(core),
+        }
+    }
+}
+
+/// A document (`uri`) that cannot be read (`cause`): its display name (`name`, else asked of the
+/// provider, else the URI's last part) and its URI, which is what the user can recognise.
+fn document_unreadable(uri: &str, name: Option<&str>, cause: IoCause) -> ErrorCode {
+    ErrorCode::RomUnreadable {
+        file: document_label(uri, name),
+        path: uri.to_owned(),
+        cause,
+    }
+}
+
+/// What to call a document: its display name, else the provider's, else the URI's last part.
+fn document_label(uri: &str, name: Option<&str>) -> String {
+    name.map(str::to_owned)
+        .or_else(|| emudome_platform::document_name(uri))
+        .unwrap_or_else(|| uri_file_name(uri))
+}
+
+/// The file name a `content://` URI ends with, decoded (`…/document/primary%3AGames%2FKirby.gba`
+/// is `Kirby.gba`); the URI itself when nothing is left.
+fn uri_file_name(uri: &str) -> String {
+    let last = uri.trim_end_matches('/').rsplit('/').next().unwrap_or(uri);
+    let decoded = percent_decode(last);
+    let name = decoded.rsplit([':', '/']).next().unwrap_or_default();
+    if name.is_empty() {
+        uri.to_owned()
+    } else {
+        name.to_owned()
+    }
+}
+
+/// `%XX` escapes decoded (UTF-8, lossy); a malformed escape is kept as it is.
+fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = bytes
+            .get(i + 1..i + 3)
+            .and_then(|h| std::str::from_utf8(h).ok())
+            .and_then(|h| u8::from_str_radix(h, 16).ok());
+        if let (b'%', Some(b)) = (bytes[i], hex) {
+            out.push(b);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// A document that could not be opened, for the interface: the file and why, as values; the
+/// provider's own text goes to the log.
 fn content_error(uri: &str, e: emudome_platform::ContentError) -> ErrorCode {
     use emudome_platform::ContentError;
-    let detail = match e {
-        ContentError::Unreadable(detail) => detail,
-        ContentError::NotLocal => format!(
-            "{uri} is not a file on this device (a cloud document?): copy the game to the \
-             device's storage and open it from there"
-        ),
-        ContentError::Unsupported => format!("{uri}: documents open on Android only"),
-    };
-    ErrorCode::RomUnreadable { detail }
+    match e {
+        ContentError::Unreadable(detail) => {
+            log::warn!("{uri}: the document cannot be opened: {detail}");
+            document_unreadable(uri, None, IoCause::Other)
+        }
+        ContentError::NotLocal => ErrorCode::DocumentNotLocal {
+            file: document_label(uri, None),
+        },
+        ContentError::Unsupported => {
+            log::warn!("{uri}: documents open on Android only");
+            document_unreadable(uri, None, IoCause::Other)
+        }
+    }
 }
 
 /// The session's end-of-thread check, extended to keep `document` open until then: a core may
@@ -416,6 +531,7 @@ fn open_path(
     title: Option<String>,
     library: bool,
 ) -> Result<GameInfo, ErrorCode> {
+    let label = file.label();
     let GameFile {
         path: game_path,
         document,
@@ -425,12 +541,14 @@ fn open_path(
     migration::wait(app);
     let (core, console) = core_for(&game_path)?;
     refuse_encrypted(console, &game_path, document.as_ref())?;
-    // A document is read through its descriptor (Android 17 may refuse its path).
+    // A document is read through its descriptor (Android 17 may refuse its path), duplicated
+    // here: duplicates share the position, which the checks above moved.
     let game_file = match &document {
         None => None,
         Some(doc) => Some(GameReader {
-            file: doc.reader().map_err(|e| ErrorCode::RomUnreadable {
-                detail: format!("{}: {e}", game_path.display()),
+            file: doc.reader().map_err(|e| {
+                log::warn!("{}: cannot be read: {e}", game_path.display());
+                label.unreadable(IoCause::of(&e))
             })?,
             path_opens: doc.reopenable(),
         }),
@@ -468,6 +586,9 @@ fn open_path(
     // E04 (a broken in-game save is set aside and the open refused) and the launch backup.
     saves::before_open(app, &save_dir, &game)?;
     let resumable = flow.resume == "ask" && emudome_core::has_auto_save(&save_dir, &game);
+    // The game's own quick slot (#110), read here, off the emulation thread, after the pull.
+    let quick_slot =
+        emudome_core::quick_slot::restore(&emudome_core::GameFiles::new(&save_dir, &game));
     let (renderer, video) = game_video(app, state, core);
     // Trello #93: on this renderer the core would crash loading a state of this game.
     let state_load_block = state_load_block(core, renderer, &game);
@@ -504,8 +625,13 @@ fn open_path(
     )
     .map_err(|e| {
         log::warn!("{} did not start: {e}", core.name());
-        e.into_code(core.name())
+        label.start_error(e, core.name())
     })?;
+
+    // `speed.spstart`: queued before the first frame runs.
+    if flow.start_speed != NORMAL_SPEED {
+        session.send(Command::SetSpeed(flow.start_speed));
+    }
 
     // The core's events go to the interface.
     let app_events = app.clone();
@@ -519,6 +645,8 @@ fn open_path(
     if let Some(tone) = state.bench.as_ref().and_then(|b| b.tone()) {
         shared.audio.set_test_tone(Some(tone));
     }
+    // The shortcuts reach the game only once it is open: they use its quick slot from the start.
+    app.state::<PadsState>().set_slot(quick_slot);
     state.games.open(
         session,
         &Opened {
@@ -546,9 +674,14 @@ fn open_path(
         core: core.name().into(),
         resumable,
         autosave_on_exit: flow.autosave_on_exit,
+        quick_slot,
         state_load_block,
+        speed: flow.start_speed,
     })
 }
+
+/// The speed a game runs at unless `speed.spstart` says otherwise.
+const NORMAL_SPEED: Speed = Speed::Factor(1.0);
 
 /// Closes the open game (back to the library) through the close flow; returns once it is
 /// closed. Off the event loop: it waits for the exit writes and the user's choice.
@@ -574,7 +707,27 @@ pub(crate) fn abandon_game(state: tauri::State<'_, AppState>) {
 
 #[cfg(test)]
 mod tests {
-    use super::file_title;
+    use super::{file_title, uri_file_name};
+
+    /// A document whose display name cannot be read is named by its URI's last part, decoded:
+    /// never the whole URI as the file's name (Trello #128).
+    #[test]
+    fn a_document_without_a_display_name_is_named_by_its_uri() {
+        assert_eq!(
+            uri_file_name(
+                "content://com.android.externalstorage.documents/tree/primary%3AGames/document/\
+                 primary%3AGames%2FKirby%20(USA).gba"
+            ),
+            "Kirby (USA).gba"
+        );
+        assert_eq!(uri_file_name("content://media/external/file/123"), "123");
+        // A malformed escape is kept, and nothing left gives the URI back.
+        assert_eq!(uri_file_name("content://x/a%2"), "a%2");
+        assert_eq!(
+            uri_file_name("content://x/doc/raw%3A"),
+            "content://x/doc/raw%3A"
+        );
+    }
 
     #[test]
     fn a_file_title_is_its_name_without_folder_and_extension() {

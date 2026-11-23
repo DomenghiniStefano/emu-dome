@@ -24,6 +24,7 @@ import {
 import { settingValueText } from '@/components/details/gameOverrides'
 import { rowVisible, shownOn } from '@/components/settings/settingsPage'
 import { useSettingsValues } from '@/components/settings/useSettingsValues'
+import { useKeyboardKeys } from '@/composables/useKeyboardKeys'
 import { useErrorSink } from '@/composables/useToasts'
 import { playTimeLabel } from '@/i18n/labels'
 import { useSay, type Message } from '@/i18n/message'
@@ -76,6 +77,8 @@ export function useSearchSources(context: () => SearchContext) {
   const say = useSay()
   const failWith = useErrorSink()
   const said = (m: Message | null) => (m ? say(m) : null)
+  /** F11 beside fullscreen: on the phone only once a physical keyboard was used (#118). */
+  const keyboardKeys = useKeyboardKeys()
 
   const schema = ref<SettingsSchema | null>(null)
   const byKey = computed(() => new Map((schema.value?.entries ?? []).map(e => [e.key, e])))
@@ -118,7 +121,7 @@ export function useSearchSources(context: () => SearchContext) {
         kind: 'action',
         id: FULLSCREEN,
         name: hotkeyName(FULLSCREEN),
-        shortcut: f11 ? keyName(f11.code) : null,
+        shortcut: f11 && keyboardKeys.value ? keyName(f11.code) : null,
         reason: said(actionReason(FULLSCREEN, here)),
       },
     ]

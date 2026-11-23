@@ -1,9 +1,15 @@
 // Backend data → text: error codes, speeds, controller names. The backend sends codes
 // and values only; every sentence comes from the message files.
 import { i18n, t } from './index'
-import type { ErrorCode, GamepadEvent, Speed, StateLoadBlock } from '@/emu'
+import { hasCause, type CauseCode } from './causes'
+import type { ErrorCode, GamepadEvent, IoCause, Speed, StateLoadBlock } from '@/emu'
 
 const known = (key: string) => i18n.global.te(key)
+
+/** Why a file could not be used (Trello #128), in words: the cause's text for that code. */
+export function causeText(code: CauseCode, cause: IoCause): string {
+  return t(`errorCauses.${code}.${cause}`)
+}
 
 /** Shape check for an `ErrorCode` coming back from a command or an event. */
 export function isErrorCode(e: unknown): e is ErrorCode {
@@ -17,7 +23,11 @@ export function isErrorCode(e: unknown): e is ErrorCode {
  */
 export type ErrorSink = (e: unknown) => void
 
-/** Readable text for any error: known codes are translated, anything else is shown as a detail. */
+/**
+ * Readable text for any error: known codes are translated; anything else (a JavaScript exception,
+ * a code with no text) gets the generic `errors.unexpected`, its detail in the log only: the
+ * engine's English message never reaches the user (engineering rule 6).
+ */
 export function errorText(e: unknown): string {
   if (isErrorCode(e) && known(`errors.${e.code}`)) {
     const params: Record<string, unknown> = { ...('params' in e ? e.params : {}) }
@@ -32,6 +42,7 @@ export function errorText(e: unknown): string {
       params.name = known(option) ? t(option) : e.params.name
     }
     if (e.code === 'stateLoadUnsupported') params.reason = stateLoadBlockText(e.params.reason)
+    if (hasCause(e)) params.cause = causeText(e.code, e.params.cause)
     if (e.code === 'graphicsApiUnavailable') {
       // `video.api`'s option: its name as the settings show it.
       const option = `settings.video.api.option.${e.params.api}`
@@ -45,8 +56,8 @@ export function errorText(e: unknown): string {
     }
     return t(`errors.${e.code}`, params)
   }
-  const detail = isErrorCode(e) ? e.code : e instanceof Error ? e.message : String(e)
-  return t('errors.unexpected', { detail })
+  console.warn('unexpected error, shown with the generic message:', e)
+  return t('errors.unexpected')
 }
 
 /** Why loading states is off for the open game (`GameInfo.stateLoadBlock`, Trello #93): the one

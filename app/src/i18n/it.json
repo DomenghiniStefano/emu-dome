@@ -527,7 +527,8 @@
     "coreDamaged": "Il core {file} non è quello fornito con EmuDome, quindi non è stato caricato. Reinstalla EmuDome.",
     "openFailed": "Non riesco ad aprire il gioco. Controlla che il file sia un gioco GBA funzionante. Dettagli: {detail}",
     "coreIncompatible": "Non riesco ad avviare l'emulatore di questa console. Reinstalla EmuDome. Dettagli: {detail}",
-    "romUnreadable": "Non riesco a leggere il file del gioco. Controlla che sia ancora lì e che il suo disco sia collegato. Dettagli: {detail}",
+    "romUnreadable": "{cause}",
+    "documentNotLocal": "Questo file non è salvato su questo dispositivo: forse è in una cartella cloud. Copialo nella memoria del telefono e aprilo da lì.",
     "coreRefusedGame": "L'emulatore non riesce ad avviare questo gioco. Controlla che il file sia una copia completa e funzionante del gioco.",
     "documentNeedsPath": "Questo gioco non si può aprire da dove si trova: l'emulatore {core} deve aprire il file da solo e il sistema lo fa leggere solo a EmuDome. L'apertura di questi giochi dai documenti arriva in un prossimo aggiornamento.",
     "coreNeedsRestart": "Un gioco sul core {core} ha smesso di rispondere. Riavvia EmuDome per aprire di nuovo i giochi con questo core.",
@@ -553,7 +554,7 @@
     "notificationsWriteFailed": "Impossibile salvare le notifiche: controlla lo spazio libero sul disco e riprova.",
     "notificationsReadFailed": "Non riesco a leggere il file delle notifiche, quindi la modifica non è stata tenuta e il file è rimasto com’era. Controlla che il file si possa aprire, poi riprova.",
     "coverInvalid": "Questa immagine non si apre. Scegli un file JPG o PNG.",
-    "unexpected": "Qualcosa è andato storto: {detail}",
+    "unexpected": "Qualcosa è andato storto. Riprova; se succede ancora, riavvia EmuDome.",
     "nothingToUndo": "Non c’è un caricamento da annullare.",
     "undoFailed": "Non riesco a tornare a prima del caricamento: {detail}. Carica un altro salvataggio rapido.",
     "saveUnreadable": "Il salvataggio del gioco non si legge, quindi EmuDome l’ha messo da parte. Ripristina un backup da Salvataggi.",
@@ -563,7 +564,7 @@
     "gameUnidentified": "Questo file non è un gioco che EmuDome riconosce: la sua intestazione non corrisponde alla console. Controlla che sia un dump completo e funzionante. Dettagli: {detail}",
     "gameEncrypted": "Questo gioco 3DS è criptato ed EmuDome avvia solo giochi decriptati. Decriptalo con la tua console, poi aprilo di nuovo.",
     "savePathTooLong": "Questo gioco non può partire: la sua cartella dei salvataggi ({folder}) è troppo profonda. L’emulatore ha bisogno lì di percorsi da {length} caratteri e Windows ne accetta {limit}. Attiva i percorsi lunghi in Windows (il criterio «Abilita percorsi lunghi Win32»), riavvia EmuDome, poi apri di nuovo il gioco.",
-    "saveFolderUnavailable": "Questo gioco non può partire: non riesco a creare la sua cartella dei salvataggi ({folder}). Controlla che la cartella dei dati di EmuDome sia su un disco collegato e scrivibile, poi apri di nuovo il gioco. Dettagli: {detail}",
+    "saveFolderUnavailable": "Questo gioco non può partire: non riesco a creare la sua cartella dei salvataggi. {cause}",
     "savesMigrationFailed": "Non riesco a spostare i tuoi vecchi salvataggi al loro nuovo posto. Non hai perso nulla: restano dov’erano e EmuDome riprova al prossimo avvio. Dettagli: {detail}",
     "savesMigrationIncomplete": "I tuoi salvataggi sono al loro nuovo posto, ma {left} vecchi file non si possono assegnare con certezza a un gioco e sono rimasti dov’erano. Trovi l’elenco in {report}.",
     "dataMoveFailed": "Non riesco a copiare i tuoi dati nella nuova cartella di EmuDome. Non hai perso nulla: per ora EmuDome continua a usare la vecchia cartella ({old}) e riprova al prossimo avvio. Dettagli: {detail}",
@@ -573,7 +574,7 @@
     "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio. Metti in pausa il gioco dal menu rapido.",
     "screenLayoutUnavailable": "Questa disposizione degli schermi non è disponibile per questo gioco. Scegline un’altra dal menu rapido.",
     "effectNotLoaded": "Non riesco a usare l’effetto «{name}», quindi il gioco si vede senza. Scegli un altro effetto o un altro file.",
-    "biosUnreadable": "Non riesco a leggere questo file: {detail}. Controlla che ci sia ancora e sceglilo di nuovo.",
+    "biosUnreadable": "{cause}",
     "biosWrongSize": "Questo file non ha la dimensione giusta per questa voce. Scegli il file giusto.",
     "biosOtherSlot": "Questo file è di un’altra voce di questa pagina. Sceglilo lì.",
     "biosFileFailed": "Non riesco a salvare la copia del file di EmuDome: {detail}. Controlla lo spazio libero e riprova.",
@@ -606,6 +607,23 @@
     "logUnavailable": "In questa sessione non c’è un file di registro. Riavvia EmuDome e riprova.",
     "logExportFailed": "Non riesco a salvare il registro ({detail}). Scegli un’altra cartella e riprova.",
     "licenceUnreadable": "Non riesco a leggere questa licenza ({detail}). Reinstalla EmuDome per riaverla."
+  },
+  "errorCauses": {
+    "romUnreadable": {
+      "notFound": "Non trovo il file del gioco. Controlla che sia ancora nella sua cartella e che il disco sia collegato.",
+      "permissionDenied": "EmuDome non ha il permesso di leggere il file. Scegli di nuovo la sua cartella.",
+      "other": "Non riesco a leggere il file del gioco. Controlla che il disco sia collegato e riprova."
+    },
+    "saveFolderUnavailable": {
+      "notFound": "Il disco con i dati di EmuDome potrebbe essere scollegato: collegalo, poi apri di nuovo il gioco.",
+      "permissionDenied": "EmuDome non ha il permesso di scrivere nella sua cartella dei dati. Controlla i permessi, poi apri di nuovo il gioco.",
+      "other": "Controlla che la cartella dei dati di EmuDome sia su un disco collegato e con spazio libero, poi apri di nuovo il gioco."
+    },
+    "biosUnreadable": {
+      "notFound": "Non trovo questo file. Controlla che ci sia ancora e sceglilo di nuovo.",
+      "permissionDenied": "EmuDome non ha il permesso di leggere questo file. Spostalo in una cartella accessibile e sceglilo di nuovo.",
+      "other": "Non riesco a leggere questo file. Controlla che ci sia ancora e sceglilo di nuovo."
+    }
   },
   "consoleShort": {
     "gb": "GB",
@@ -2318,6 +2336,7 @@
     "e05": {
       "title": "Nessun controller collegato",
       "lead": "Collega un controller con il cavo o via Bluetooth: EmuDome lo riconosce da solo. Nel frattempo puoi giocare con la tastiera.",
+      "leadTouch": "Collega un controller con il cavo o via Bluetooth: EmuDome lo riconosce da solo. Nel frattempo puoi giocare con i controlli touch.",
       "keyboard": "Vedi i tasti della tastiera"
     },
     "levelGame": "Solo questo gioco",

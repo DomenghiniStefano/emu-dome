@@ -24,8 +24,9 @@ export function createGameState() {
     turboHeld: ref(false),
     /** The controller in use (quick menu). */
     controller: ref<string | null>(null),
-    /** The current slot (L3 + ← →, F2 / F3 move it; L3 + R1 / L1, F1 / F4 use it): the quick
-     * menu opens on it. Rust holds it (`current_slot`), shared by the controller and the keyboard. */
+    /** The open game's quick slot (L3 + ← →, F2 / F3 and «Rendi rapido» move it; L3 + R1 / L1,
+     * F1 / F4 use it): the quick menu opens on it. Rust holds it (`current_slot`), shared by the
+     * controller and the keyboard, and records it per game (#110): `GameInfo.quickSlot` at start. */
     comboSlot: ref(1),
     /** The slot of the last load, until the next save or load: «Annulla il caricamento»
      * (`saves.undo`). */

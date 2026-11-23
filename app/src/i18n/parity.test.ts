@@ -10,6 +10,7 @@ import codes from '@/generated/error-codes.json'
 import catalog from '@/generated/settings-catalog.json'
 import { swatchKey } from '@/components/settings/settingRowModel'
 import { msg } from '@/lib/settingsModel'
+import { CAUSE_CODES, IO_CAUSES } from './causes'
 import enMessages from './en.json'
 import itMessages from './it.json'
 
@@ -83,6 +84,27 @@ describe('error codes (emudome_core::ErrorCode)', () => {
       .map(key => key.split('.')[1]!)
       .filter(code => !known.has(code))
     expect(stray).toEqual([])
+  })
+})
+
+describe('the causes of a file error (emudome_core::IoCause, Trello #128)', () => {
+  const wanted = Object.keys(CAUSE_CODES).flatMap(code =>
+    Object.keys(IO_CAUSES).map(cause => `errorCauses.${code}.${cause}`),
+  )
+
+  it('each code that has a cause has a text per cause in both files', () => {
+    expect(wanted.length).toBeGreaterThan(0)
+    expect(missing(wanted)).toEqual([])
+  })
+
+  it('no cause text is left for a code or a cause Rust does not send', () => {
+    const known = new Set(wanted)
+    const stray = [...files.en.keys()].filter(k => k.startsWith('errorCauses.') && !known.has(k))
+    expect(stray).toEqual([])
+  })
+
+  it('every code that has a cause is a code', () => {
+    expect(Object.keys(CAUSE_CODES).filter(code => !codes.includes(code))).toEqual([])
   })
 })
 

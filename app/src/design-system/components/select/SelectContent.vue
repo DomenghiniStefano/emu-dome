@@ -16,7 +16,10 @@ import {
 } from 'reka-ui'
 import { cn } from '@/design-system/lib/cn'
 import SelectNavScope from './SelectNavScope.vue'
-import { zoomedReference } from './zoomedReference'
+import { zoomedBoundary, zoomedReference } from './zoomedReference'
+
+// Attributes (an `aria-label`) go to the list, not to the portal around it.
+defineOptions({ inheritAttrs: false })
 
 const props = withDefaults(
   defineProps<
@@ -32,8 +35,9 @@ const delegated = computed(() => {
 })
 const forwarded = useForwardPropsEmits(delegated, emits)
 
-// The trigger (or the anchor) in CSS px, so the list lands under it at any interface scale
-// (zoomedReference.ts).
+// The trigger (or the anchor) in CSS px, so the list lands under it at any interface scale, and
+// the window in CSS px as the edge it is kept inside (zoomedReference.ts, #107).
+const boundary = zoomedBoundary()
 const select = injectSelectRootContext()
 const reference = computed(() => {
   const el = props.anchor ?? select.triggerElement.value
@@ -50,7 +54,8 @@ const ink = computed(() => {
   <SelectPortal>
     <SelectContent
       data-slot="select-content"
-      v-bind="forwarded"
+      v-bind="{ ...forwarded, ...$attrs }"
+      :collision-boundary="boundary"
       :reference="reference"
       :style="{ color: ink }"
       :class="

@@ -1,11 +1,11 @@
 // Headless screenshots over CDP. Usage:
-//   node drive.mjs <cdpPort> <baseUrl> <outDir> [scenario names or prefixes ending in *...]
+//   node drive.mjs <cdpPort> <baseUrl> <outDir> [scenario names, `*` for any text...]
 // Chrome must already run headless with --remote-debugging-port=<cdpPort>.
 import fs from "node:fs";
 import path from "node:path";
 import { phoneShellScenarios } from "./phone-shell.mjs";
 import { quickMenuScenarios } from "./quick-menu.mjs";
-import { touchScenarios } from "./touch.mjs";
+import { startFailedStep, touchScenarios } from "./touch.mjs";
 
 const [cdpPort, baseUrl, outDir, ...only] = process.argv.slice(2);
 const here = path.dirname(
@@ -312,7 +312,8 @@ const SCENARIOS = {
 // run (no screen shows it yet).
 const T = {
   more: ["More actions for the slot", "Altre azioni per lo slot"],
-  import: ["Import…", "Importa…"],
+  // The list's button, and the empty screen's.
+  import: ["Import…", "Importa…", "Import saves…", "Importa salvataggi…"],
   delete: ["Delete", "Elimina"],
   pick: ["Choose a file…", "Scegli un file…"],
   other: ["Choose another game…", "Scegli un altro gioco…"],
@@ -423,7 +424,18 @@ const SHELL = {
     mock: {},
     steps: [
       flowSet(
-        `{ startError: { title: 'Pocket Quest Advance', reason: 'The file could not be read.' } }`,
+        `{ startError: { title: 'Pocket Quest Advance', reason: 'The file could not be read.', file: null, path: null } }`,
+      ),
+    ],
+  },
+  // G02 for a game file that is gone (#128): its name, the cause's text, a deep desktop path.
+  "flow-start-error-file": {
+    mock: {},
+    steps: [
+      startFailedStep(
+        "Pocket Quest Advance (Europe) (En,Fr,De,Es,It).gba",
+        "E:\\Giochi\\Emulazione\\Nintendo\\Game Boy Advance\\Collezione completa (No-Intro 2026-11)\\Pocket Quest Advance (Europe) (En,Fr,De,Es,It).gba",
+        "notFound",
       ),
     ],
   },
@@ -602,7 +614,9 @@ for (const [view, c] of Object.entries(CONTROLS)) {
   for (const theme of ["dark", "black", "light"]) {
     for (const [size, [width, height]] of Object.entries(SIZES)) {
       SCENARIOS[`controls-${view}-${theme}-${size}`] = {
-        mock: { theme, pads: c.pads ?? true, lang: "en" },
+        // The desktop's layout fixed: with a controller connected, Automatica would ask the TV
+        // question (#30) over the section.
+        mock: { theme, pads: c.pads ?? true, lang: "en", ui: "desktop" },
         steps: [rail(2), ...c.steps],
         width,
         height,
@@ -827,8 +841,9 @@ for (const theme of ["dark", "black", "light"])
 const padTab = (button) => [rail(2), `__clickText('button', ${JSON.stringify(button)})`];
 const esc = `window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }))`;
 const ROW_HOSTS = {
-  "ctl-shortcuts": { pad: true, steps: padTab("Modifica le scorciatoie") },
-  "ctl-sticks": { pad: true, steps: padTab("Stick, grilletti") },
+  // `ui: "desktop"`: with a controller, Automatica would ask the TV question (#30) over them.
+  "ctl-shortcuts": { pad: true, ui: "desktop", steps: padTab("Modifica le scorciatoie") },
+  "ctl-sticks": { pad: true, ui: "desktop", steps: padTab("Stick, grilletti") },
   "qm-home": { inGame: true, steps: [esc] },
   "qm-speed": {
     inGame: true,
@@ -936,12 +951,32 @@ async function page() {
   });
   let id = 0;
   const pending = new Map();
+  // The page's errors and warnings (`console.error` / `console.warn`, uncaught exceptions): a
+  // stale mock shows here first (an unexpected error reaches the user only as the generic toast).
+  const problems = [];
+  const text = (args) =>
+    args
+      .map((a) => a.value ?? a.description ?? a.type)
+      .join(" ")
+      .slice(0, 300);
   ws.onmessage = (m) => {
     const msg = JSON.parse(m.data);
     if (msg.id && pending.has(msg.id)) {
       pending.get(msg.id)(msg);
       pending.delete(msg.id);
     }
+    if (
+      msg.method === "Runtime.consoleAPICalled" &&
+      ["error", "warning"].includes(msg.params.type)
+    )
+      problems.push(`${msg.params.type}: ${text(msg.params.args)}`);
+    if (msg.method === "Runtime.exceptionThrown")
+      problems.push(
+        `exception: ${msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text}`.slice(
+          0,
+          300,
+        ),
+      );
   };
   const send = (method, params = {}) =>
     new Promise((ok) => {
@@ -953,7 +988,7 @@ async function page() {
     ws.close();
     await fetch(`http://127.0.0.1:${cdpPort}/json/close/${target.id}`);
   };
-  return { send, close };
+  return { send, close, problems };
 }
 
 // Search everywhere and notifications (X01–X03, #32), in Italian as the mockup: the top bar, the
@@ -1106,12 +1141,19 @@ async function act(p, step) {
 }
 
 for (const [name, s] of Object.entries(SCENARIOS)) {
-  // A name ending in `*` takes every scenario that starts with it (`saves-*`).
+  // A `*` stands for any text: `saves-*` takes every scenario starting with `saves-`,
+  // `saves-*-dark-s` one theme and size of each.
   const wanted = (o) =>
-    o.endsWith("*") ? name.startsWith(o.slice(0, -1)) : name === o;
+    new RegExp(
+      `^${o
+        .split("*")
+        .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
+        .join(".*")}$`,
+    ).test(name);
   if (only.length && !only.some(wanted)) continue;
   const p = await page();
   await p.send("Page.enable");
+  await p.send("Runtime.enable");
   await p.send("Emulation.setDeviceMetricsOverride", {
     width: s.width ?? 1280,
     height: s.height ?? 800,
@@ -1188,6 +1230,7 @@ for (const [name, s] of Object.entries(SCENARIOS)) {
     expression: "JSON.stringify([...new Set(window.__mockCalls || [])])",
     returnByValue: true,
   });
+  for (const problem of new Set(p.problems)) console.log(name, problem);
   console.log(name, "ok", calls.result?.result?.value);
   await p.close();
 }

@@ -438,6 +438,27 @@ fn sync_rule_today_a_portable_value_found_in_device_json_is_ignored() {
 }
 
 #[test]
+fn sync_rule_the_side_background_image_stays_on_its_device() {
+    // #126: the image is a file of this device's `backgrounds/` folder, never synced, so the
+    // name of it is per device too: another device never gets a name with no file.
+    let key = "video.surroundImg";
+    assert!(entry(key).unwrap().per_device);
+    let dir = TestDir::new("sync-surround-img");
+    let mut s = settings(&dir);
+    s.begin_session(ConsoleId::Gba, game());
+    s.set(key, &Scope::Global, Value::Text("ab12.png".into()))
+        .unwrap();
+    s.set(key, &game_scope(), Value::Text("cd34.png".into()))
+        .unwrap();
+    assert!(!synced_text(&dir).contains(key));
+    assert!(dir.read("local/device.json").contains("cd34.png"));
+    assert_eq!(
+        value_of(&mut s, key, &Scope::Session),
+        (Some(Value::Text("cd34.png".into())), Level::Game)
+    );
+}
+
+#[test]
 fn sync_rule_today_a_synced_file_changed_elsewhere_wins_whole_no_merge_yet() {
     // Today the last write of a file wins as a whole: a file changed by another device replaces
     // what this one read; a value set here before it, and not written again, is gone. The merge
@@ -2290,6 +2311,7 @@ fn the_entries_not_wired_yet_are_these() {
             "screens.stereo",
             "audio.mic",
             "speed.runahead",
+            "pad.rumble",
             "pad.gyro",
             "library.group",
             "library.covers",
@@ -2298,6 +2320,7 @@ fn the_entries_not_wired_yet_are_these() {
             "adv.advon",
             "adv.inputs",
             "adv.framecnt",
+            "online.wfc",
             "online.discord",
         ]
     );
@@ -2307,5 +2330,15 @@ fn the_entries_not_wired_yet_are_these() {
         .filter(|e| !e.has_value() && e.wired)
         .map(|e| e.key)
         .collect();
-    assert_eq!(carried_out, ["about.upd", "about.lic", "about.log"]);
+    assert_eq!(
+        carried_out,
+        [
+            "cloud.acct",
+            "cloud.space",
+            "about.ver",
+            "about.upd",
+            "about.lic",
+            "about.log"
+        ]
+    );
 }

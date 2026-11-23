@@ -993,8 +993,12 @@ pub fn identify_path(app: &AppHandle, path: &Path) -> Result<Identity, ErrorCode
         let lib = state.lib.lock();
         lib.cache().get(path.to_string_lossy().as_ref()).cloned()
     });
-    library::identify_cached(path, cached.as_ref())
-        .map_err(|e| not_a_game(&path.display().to_string(), e))
+    library::identify_cached(path, cached.as_ref()).map_err(|e| {
+        not_a_game(e, |io| {
+            log::warn!("{}: cannot be read: {io}", path.display());
+            ErrorCode::rom_unreadable(path, emudome_core::IoCause::of(io))
+        })
+    })
 }
 
 /// What a game file opened outside the library is: [`identify_path`] for a path; a document is
@@ -1010,19 +1014,15 @@ pub fn identify_game_file(
     let cached = app
         .try_state::<LibraryState>()
         .and_then(|state| state.lib.lock().cache().get(file.given()).cloned());
-    let mut reader = document.reader().map_err(|e| ErrorCode::RomUnreadable {
-        detail: format!("{}: {e}", file.given()),
-    })?;
+    let mut reader = document.reader().map_err(|e| file.unreadable(&e))?;
     library::identify_open_file(file.path(), &mut reader, cached.as_ref())
-        .map_err(|e| not_a_game(file.given(), e))
+        .map_err(|e| not_a_game(e, |io| file.unreadable(io)))
 }
 
-/// A file that is not a game, for the interface.
-fn not_a_game(shown: &str, e: NotAGame) -> ErrorCode {
+/// A file that is not a game, for the interface; `unreadable` tells a read that failed.
+fn not_a_game(e: NotAGame, unreadable: impl FnOnce(&std::io::Error) -> ErrorCode) -> ErrorCode {
     match e {
-        NotAGame::Io(e) => ErrorCode::RomUnreadable {
-            detail: format!("{shown}: {e}"),
-        },
+        NotAGame::Io(io) => unreadable(&io),
         NotAGame::Extension | NotAGame::Header(_) => ErrorCode::GameUnidentified {
             detail: e.to_string(),
         },
