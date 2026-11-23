@@ -9,6 +9,7 @@ import {
   Heart,
   Library,
   Play,
+  Power,
   RefreshCw,
   Save,
   Search,
@@ -455,7 +456,7 @@ const PAD_STYLES = [
       </div>
     </KitState>
     <KitState
-      label="The phone quick menu's first level: QuickTile (Soft, Primary), QuickRow, Strip (on: aria-pressed)"
+      label="The phone quick menu's first level: QuickTile (Soft, Primary), QuickRow, Strip (on: aria-pressed), StripDanger"
     >
       <div data-density="touch" class="flex w-panel flex-col gap-8 text-lead">
         <div class="grid grid-cols-3 gap-8">
@@ -494,6 +495,14 @@ const PAD_STYLES = [
             aria-pressed="true"
           >
             Unmute
+          </Button>
+          <Button
+            :variant="ButtonVariant.StripDanger"
+            :size="ButtonSize.Strip"
+            :icon="Power"
+            aria-label="Close game"
+          >
+            Close
           </Button>
           <Button :variant="ButtonVariant.Strip" :size="ButtonSize.Strip" :icon="Ellipsis">
             More

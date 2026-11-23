@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import type { ScreenStatus } from '@/emu'
-import { MoreId, StripId, canMakeQuick, moreRows, stripButtons } from './phoneMenu'
+import {
+  MoreId,
+  SIDE_STRIP_ONE_ROW,
+  StripId,
+  canMakeQuick,
+  moreRows,
+  stripButtons,
+  stripTwoRows,
+} from './phoneMenu'
 import { QuickMenuView, phoneParent } from './view'
 
 describe('stripButtons', () => {
   const off = { rewind: false, fastForward: false, muted: false }
 
-  it('shows three buttons when rewind is off for the game', () => {
+  it('shows four buttons when rewind is off for the game', () => {
     expect(stripButtons(off).map(b => b.id)).toEqual([
       StripId.FastForward,
       StripId.Mute,
+      StripId.Close,
       StripId.More,
     ])
   })
@@ -19,29 +28,55 @@ describe('stripButtons', () => {
       StripId.Rewind,
       StripId.FastForward,
       StripId.Mute,
+      StripId.Close,
       StripId.More,
     ])
   })
 
   it('names each button with a verb, «Riattiva» while muted, and lights what is on', () => {
     const plain = stripButtons(off)
-    expect(plain.map(b => b.label)).toEqual(['qm.verb.ff', 'qm.verb.mute', 'qm.moreLabel'])
-    expect(plain.map(b => b.pressed)).toEqual([false, false, undefined])
+    expect(plain.map(b => b.label)).toEqual([
+      'qm.verb.ff',
+      'qm.verb.mute',
+      'qm.verb.close',
+      'qm.moreLabel',
+    ])
+    expect(plain.map(b => b.pressed)).toEqual([false, false, undefined, undefined])
     const on = stripButtons({ rewind: true, fastForward: true, muted: true })
     expect(on.map(b => b.label)).toEqual([
       'qm.verb.rewind',
       'qm.verb.ff',
       'qm.verb.unmute',
+      'qm.verb.close',
       'qm.moreLabel',
     ])
-    expect(on.map(b => b.pressed)).toEqual([undefined, true, true, undefined])
+    expect(on.map(b => b.pressed)).toEqual([undefined, true, true, undefined, undefined])
+  })
+
+  it('has «Chiudi il gioco» one tap away (#121): in danger ink, named in full, «Altro» last', () => {
+    for (const rewind of [false, true]) {
+      const list = stripButtons({ ...off, rewind })
+      const close = list.filter(b => b.danger)
+      expect(close.map(b => b.id)).toEqual([StripId.Close])
+      expect(close[0]?.name).toBe('qm.close')
+      expect(list.at(-1)?.id).toBe(StripId.More)
+      expect(list.at(-2)?.id).toBe(StripId.Close)
+    }
+  })
+})
+
+describe('stripTwoRows', () => {
+  it('splits the strip only on its side with five buttons', () => {
+    expect(stripTwoRows(true, SIDE_STRIP_ONE_ROW)).toBe(false)
+    expect(stripTwoRows(true, SIDE_STRIP_ONE_ROW + 1)).toBe(true)
+    expect(stripTwoRows(false, SIDE_STRIP_ONE_ROW + 1)).toBe(false)
   })
 })
 
 describe('moreRows', () => {
   const status = (s: Partial<ScreenStatus>): ScreenStatus => s as ScreenStatus
 
-  it('lists the pages, the screenshot, restart and «Chiudi il gioco» last on a one-screen game', () => {
+  it('lists the pages, the screenshot and restart last on a one-screen game', () => {
     const rows = moreRows({ dualScreen: false, screens: null })
     expect(rows.map(r => r.id)).toEqual([
       MoreId.Saves,
@@ -51,7 +86,6 @@ describe('moreRows', () => {
       MoreId.Layout,
       MoreId.Screenshot,
       MoreId.Restart,
-      MoreId.Close,
     ])
     expect(rows.filter(r => r.page).map(r => r.page)).toEqual([
       QuickMenuView.Slots,
@@ -62,8 +96,6 @@ describe('moreRows', () => {
     ])
     // «Modifica la disposizione» (Trello #111): a verb, the touch editor's icon.
     expect(rows.find(r => r.id === MoreId.Layout)?.label).toBe('qm.editLayout')
-    expect(rows.at(-1)?.danger).toBe(true)
-    expect(rows.filter(r => r.danger)).toHaveLength(1)
   })
 
   it('adds swap and the lid on a DS, pressed as the screens are', () => {
@@ -74,7 +106,7 @@ describe('moreRows', () => {
     expect(rows.map(r => r.id)).toContain(MoreId.CloseLid)
     expect(rows.find(r => r.id === MoreId.SwapScreens)?.pressed).toBe(true)
     expect(rows.find(r => r.id === MoreId.CloseLid)?.pressed).toBe(false)
-    expect(rows.at(-1)?.id).toBe(MoreId.Close)
+    expect(rows.at(-1)?.id).toBe(MoreId.Restart)
   })
 
   it('leaves the lid out where the core has none (3DS)', () => {

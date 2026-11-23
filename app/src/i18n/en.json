@@ -2342,7 +2342,8 @@
       "rewind": "Rewind",
       "ff": "Speed up",
       "mute": "Mute",
-      "unmute": "Unmute"
+      "unmute": "Unmute",
+      "close": "Close"
     },
     "back": "Back",
     "savesPage": "Saves",

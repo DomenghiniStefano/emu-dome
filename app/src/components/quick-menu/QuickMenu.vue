@@ -8,7 +8,7 @@
 // NDS / 3DS: swap and the lid among the tools, the layout card first on G09, and from there the
 // C09 screens editor over the whole game (Trello #28).
 // The phone (owner, 2026-11-22, proposal «A»): a basic first level (PhoneHome: «Salva rapido»,
-// «Carica rapido» on the quick slot, «Riprendi», the strip) and a second level «Altro» growing
+// «Carica rapido» on the quick slot, «Riprendi», the strip with «Chiudi il gioco», #121) and a second level «Altro» growing
 // the same sheet (PhoneMore; «Altro › Salvataggi» is PhoneSaves, the pages G16 / G09 / G10 as
 // on desktop). In portrait a bottom sheet under the game, as tall as its content, no handle; on
 // its side (#29) a 300 px panel at the right edge, the game beside it. A tap on the game resumes;
@@ -276,6 +276,9 @@ function runStrip(id: StripId, e: Event) {
       return emit('speed', toggledSpeed(props.speed, modes.value.ff))
     case StripId.Mute:
       return emit('mute', !props.muted)
+    case StripId.Close:
+      // The close flow, as the desktop's «Chiudi il gioco» (MenuFooter).
+      return emit('close')
     case StripId.More:
       return open(QuickMenuView.More, e)
     case StripId.Rewind:
@@ -307,8 +310,6 @@ function runMore(row: MoreRow, e: Event) {
       return emit('toggleLid')
     case MoreId.Restart:
       return open(QuickMenuView.Restart, e)
-    case MoreId.Close:
-      return emit('close')
     case MoreId.Saves:
     case MoreId.Speed:
     case MoreId.Screens:

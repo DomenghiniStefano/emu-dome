@@ -1216,7 +1216,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`quick-menu/PhoneHome.vue`, `PhoneMore.vue`, `PhoneSaves.vue`, `phoneMenu.ts`: a first
   level of «Salva rapido» / «Carica rapido» on Rust's current slot, «Riprendi» and a strip «Riavvolgi» (when
   `speed.rew` is on: held, the game unpaused meanwhile; A / Enter rewind for 1 s) / «Accelera» / «Silenzia» /
-  «Altro»; «Altro» and «Altro › Salvataggi» growing the same sheet («Altro» also has «Modifica la disposizione»,
+  «Chiudi» («Chiudi il gioco», danger ink, the close flow, #121) / «Altro» (on its side five go in two rows, three
+  above and two below); «Altro» and «Altro › Salvataggi» growing the same sheet («Altro» also has «Modifica la disposizione»,
   C06 for the game's console, back onto that row when it closes, #111), no handle, a tap on the game resumes; a 300 px
   side panel on its side; «Rendi rapido» makes the chosen slot the game's quick slot with `set_slot`, the same
   slot the shortcuts move, kept per game in its saves folder: `emudome_core::quick_slot`), E13's warning (`storage_status`), Android's back at the shell's root. The library on the phone:

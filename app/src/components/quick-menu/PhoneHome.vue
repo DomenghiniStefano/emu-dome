@@ -2,7 +2,7 @@
 // The phone quick menu's first level (owner, 2026-11-22, proposal «A»): «Salva rapido» and
 // «Carica rapido» on the quick slot (the controller shortcuts' slot), one tap each, and
 // «Riprendi», the sheet's only amber; under them the strip («Riavvolgi» when rewind is on for the
-// game, «Accelera», «Silenzia», «Altro»). Above them, while there is one, the line of a save made
+// game, «Accelera», «Silenzia», «Chiudi il gioco» in danger ink, «Altro»). Above them, while there is one, the line of a save made
 // here or of a load that can be undone. Upright: one row of three tiles. On its side: «Salva
 // rapido» a row, «Carica rapido» growing into the free height with the frame it goes back to, the
 // strip, «Riprendi» at the bottom under the right thumb. What each does is QuickMenu.vue's.
@@ -16,7 +16,7 @@ import { cn } from '@/design-system/lib/cn'
 import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import SavedLine from './SavedLine.vue'
 import UndoLoadBanner from './UndoLoadBanner.vue'
-import { StripId, type StripButton } from './phoneMenu'
+import { StripId, stripTwoRows, type StripButton } from './phoneMenu'
 import { isEmptySlot } from './slots'
 import { FocusMark, QuickMenuView, openerMark } from './view'
 
@@ -57,6 +57,9 @@ const loadLine = computed(() =>
         when: slotTimeLabel(props.quickInfo?.savedAt ?? 0),
       }),
 )
+/** Five on its side: three above, two below (a grid of six columns). */
+const twoRows = computed(() => stripTwoRows(props.side, props.strip.length))
+const TOP_ROW = 3
 /** The menu opens on «Salva rapido» (and comes back to it from «Altro» without an opener). */
 const saveMark = { 'data-nav-initial': '', [FocusMark.ChosenSlot]: '' }
 const moreMark = openerMark(QuickMenuView.More)
@@ -176,16 +179,22 @@ onBeforeUnmount(release)
     </Button>
   </template>
 
-  <nav class="flex gap-4" :aria-label="t('qm.toolsTitle')">
+  <nav :class="cn('flex gap-4', twoRows && 'grid grid-cols-6')" :aria-label="t('qm.toolsTitle')">
     <Button
-      v-for="b in strip"
+      v-for="(b, i) in strip"
       :key="b.id"
       v-bind="b.id === StripId.More ? moreMark : {}"
-      :variant="ButtonVariant.Strip"
+      :variant="b.danger ? ButtonVariant.StripDanger : ButtonVariant.Strip"
       :size="ButtonSize.Strip"
       :icon="b.icon"
       :aria-pressed="b.pressed"
-      :class="b.id === StripId.Rewind ? 'touch-none' : undefined"
+      :aria-label="b.name ? t(b.name) : undefined"
+      :class="
+        cn(
+          b.id === StripId.Rewind && 'touch-none',
+          twoRows && (i < TOP_ROW ? 'col-span-2' : 'col-span-3'),
+        )
+      "
       @pointerdown="b.id === StripId.Rewind ? pointerDown($event) : undefined"
       @pointerup="b.id === StripId.Rewind ? release() : undefined"
       @pointercancel="b.id === StripId.Rewind ? release() : undefined"
