@@ -1,7 +1,8 @@
 // The quick menu's part of the window kept clear of the game (#29): the phone's sheet or side
 // panel measured where it is, again whenever it moves or changes size, the window is resized or
 // the phone turned, so the game is laid out beside the panel and never left where the other way
-// round put it. The desktop's G09 bar measures its own (ScreensBar).
+// round put it. The desktop's G09 bar measures its own (ScreensBar), and C06 sends its own
+// (TouchEditor).
 import { nextTick, onBeforeUnmount, onMounted, watch, type Ref } from 'vue'
 import { NO_INSET, type InsetPx } from '@/components/game/inset'
 import { MenuInset, panelInset } from './panel'
@@ -15,7 +16,7 @@ export function useMenuInset(
 
   function report() {
     const k = kind()
-    if (k === MenuInset.Bar) return
+    if (k === MenuInset.Own) return
     const el = panel.value
     if (!el || k === MenuInset.None) return emit(NO_INSET)
     const r = el.getBoundingClientRect()

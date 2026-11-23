@@ -2,8 +2,9 @@
    and the numbers live here once.
    - sticky: a bar that sticks to the top of its scrolling page, over the rows that scroll under
      it (the settings scope bar: 5);
-   - raised: a panel or menu over its own screen (LibraryFilters, CoverMenu: 10);
-   - menu: a menu open under its trigger (SettingSelectMenu: 20);
+   - raised: a panel over its own screen (LibraryFilters: 10);
+   - menu: a menu open under its trigger (SettingSelectMenu, every DropdownMenu: 20), also over
+     the quick menu's layer, which is the same 20 earlier in the page;
    - overlay: what covers the screen without blocking it (the quick menu hint G06, the drop
      target): 30;
    - scene: a game starting or closing (GameScene, G01 / G14): over the overlays, under the

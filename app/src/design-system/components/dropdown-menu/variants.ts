@@ -7,7 +7,10 @@ export const DropdownMenuVariant = {
 } as const
 export type DropdownMenuVariant = (typeof DropdownMenuVariant)[keyof typeof DropdownMenuVariant]
 
-export const dropdownMenuVariants = cva('glass-thick z-raised flex flex-col', {
+// `z-menu`, as Select's list: portaled to the page's end, it stays over the quick menu that holds
+// its button (C06's «Altro» over a game, #131; `z-raised` put it under the menu's layer, where a
+// tap reached the editor behind it and closed the menu).
+export const dropdownMenuVariants = cva('glass-thick z-menu flex flex-col', {
   variants: {
     variant: {
       [DropdownMenuVariant.Actions]: 'min-w-menu-min gap-px p-2',

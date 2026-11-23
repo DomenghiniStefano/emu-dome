@@ -5,17 +5,20 @@
 // glass toolbar at the top (TouchToolbar) has undo / redo, add, size, opacity, behaviour and the
 // rest, «Riduci» folds it into a pill (TouchEditorPill) and «Salva» stores the layout on this
 // device for the console and the way the phone is held. It fades while a control is dragged.
-// Opened from the quick menu's «Controlli» (the game paused behind it, `live`) and from Settings
+// Opened from the quick menu's «Controlli» (the game paused behind it, `live`, placed for the
+// layout being edited as TouchLayer places it in game: `inset`) and from Settings
 // › Controlli touch (no game: a dark ground with the console's screens drawn where the game would
 // show them, TouchPreviewScreens, Trello #111).
 // Controller: L1 / R1 pick a control, the d-pad moves it, the right stick resizes it, X steps its
 // opacity, Select folds the toolbar, A saves, B leaves without saving. Keyboard: PageUp /
 // PageDown or [ ], the arrows, Shift + arrows, Ctrl + Z / Ctrl + Y, Enter, Esc. The state and the
 // steps are useTouchEditor's, the geometry touchLayout.ts's.
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ConsoleId, ScreenPlacement } from '@/emu'
+import type { InsetPx } from '@/components/game/inset'
 import EditorHints from '@/components/screen-editor/EditorHints.vue'
+import { useImmersive } from '@/composables/useImmersive'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavScope } from '@/nav'
 import TouchControl from './TouchControl.vue'
@@ -31,7 +34,12 @@ const props = defineProps<{
   /** A game is open behind (the quick menu); else Settings, over a dark ground. */
   live: boolean
 }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{
+  close: []
+  /** Over a game (`live`): the edges the layout being edited keeps clear of it, as TouchLayer
+   * keeps them in game, so the game is placed where it plays (#131); each step sends it again. */
+  inset: [InsetPx]
+}>()
 
 const { t } = useI18n()
 const root = ref<HTMLElement | null>(null)
@@ -47,6 +55,18 @@ const { draft, selected, current, collapsed, panel, gesturing, busy, prefs, limi
 const previewScreens = props.live
   ? ref<ScreenPlacement[]>([])
   : useScreenPreview(props.console, editor.area, editor.inset, useErrorSink())
+// Over a game: the game itself laid out for the layout being edited (once it is loaded, so the
+// game never jumps to the whole window first).
+watch(
+  [editor.inset, editor.loaded],
+  ([inset, loaded]) => {
+    if (props.live && loaded) emit('inset', inset)
+  },
+  { immediate: true },
+)
+// From Settings: the whole screen, as a game has it (Android's bars hidden, #131), so the
+// controls and the screens are where they will be in game.
+useImmersive(!props.live)
 useNavScope(root, {
   back: editor.discard,
   tab: dir => editor.pickNext(dir),
