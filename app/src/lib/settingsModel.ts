@@ -70,6 +70,10 @@ export function isShown(entry: SettingEntry, schema: SettingsSchema): boolean {
  * Whether a row is shown with the values of its page (`show_if`, mirror of `ShowIf::holds`):
  * `value(key)` is the other row's value resolved at the level being edited.
  */
+/** A choice by its option id, a switch by `true` / `false` (as `ShowIf::holds`). */
+const matches = (values: readonly string[], v: string | boolean) =>
+  typeof v === 'boolean' ? values.includes(v ? 'true' : 'false') : values.includes(v)
+
 export function showIfHolds(
   entry: SettingEntry,
   value: (key: SettingKey) => SettingValue | null | undefined,
@@ -77,7 +81,7 @@ export function showIfHolds(
   const cond = entry.showIf
   if (!cond) return true
   const v = value(cond.key)
-  const listed = typeof v === 'string' && cond.values.includes(v)
+  const listed = typeof v === 'string' || typeof v === 'boolean' ? matches(cond.values, v) : false
   return listed !== cond.not
 }
 

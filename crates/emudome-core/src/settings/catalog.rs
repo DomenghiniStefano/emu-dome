@@ -3,7 +3,7 @@
 //! Game Boy Color and DSi BIOS rows (owner, 2026-11-21, Trello #89), plus the game clock's
 //! offset and date rows (Trello #102): 164 (`library.versions` replaced `library.region`, #102),
 //! plus «Se il controller si scollega» (`touch.tlost`, E14, Trello #29), plus the library's
-//! Lista / Griglia (`library.view`, #29): 166.
+//! Lista / Griglia (`library.view`, #29), plus «Vibrazione» (`touch.tvib`, #114): 167.
 //!
 //! Option ids are stable snake_case English ids derived from the design's Italian labels; the
 //! visible texts live in the interface's message files (`settings.<page>.<key>.option.<id>`).
@@ -653,10 +653,14 @@ pub static ENTRIES: &[Entry] = &[
     slider("touch.topac", 100, (10, 100, 5), Unit::Percent, ALL)
         .phone()
         .phase(4),
+    // «Vibrazione» (Trello #114): the touch controls' vibration on a press, on or off; the only
+    // thing in the app that vibrates. Shown now (phase 1) with its strength, also in the quick menu
+    // › Controlli, where it is set for this device at once (not «in prova»).
+    sw("touch.tvib", true, G).device().phone(),
     slider("touch.thapt", 40, (0, 100, 10), Unit::Percent, G)
         .device()
         .phone()
-        .phase(4),
+        .show_if("touch.tvib", &["true"]),
     seg("touch.thide", &["never", "5s", "10s"], "never", G)
         .phone()
         .phase(4),
@@ -885,6 +889,7 @@ pub static ENTRIES: &[Entry] = &[
 /// (design, Trello #41). Matched without case and accents, like the names.
 pub static SYNONYMS: &[(&str, &[&str])] = &[
     ("video.vsync", &["tearing", "strappo"]),
+    ("touch.tvib", &["haptic", "aptico", "vibra"]),
     (
         "video.scale",
         &["zoom", "pixel perfect", "integer", "intero"],
@@ -1096,6 +1101,7 @@ pub static SECTIONS: &[Section] = &[
         id: "behaviour",
         keys: &[
             "touch.topac",
+            "touch.tvib",
             "touch.thapt",
             "touch.thide",
             "touch.tpad",
@@ -1307,7 +1313,7 @@ mod tests {
         // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102);
         // `library.versions` took the place of `library.region` (#102), plus E14's
         // `touch.tlost` (#29), plus `library.view` (#29).
-        assert_eq!(ENTRIES.len(), 166);
+        assert_eq!(ENTRIES.len(), 167);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),

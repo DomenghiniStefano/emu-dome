@@ -78,6 +78,14 @@ export const SESSION_ROWS: Partial<Record<QuickMenuView, SettingKey[]>> = {
   [QuickMenuView.Speed]: ['speed.ffval', 'speed.slow', 'audio.ff'],
 }
 
+/**
+ * The rows a page sets for this device at once, not «in prova» (useDeviceSettings): entries kept
+ * on the device at «Tutti i giochi» only. «Vibrazione» (Trello #114) on a phone.
+ */
+export const DEVICE_ROWS: Partial<Record<QuickMenuView, SettingKey[]>> = {
+  [QuickMenuView.Controls]: ['touch.tvib'],
+}
+
 /** The pages that show settings «in prova». */
 export const SESSION_VIEWS = Object.keys(SESSION_ROWS) as QuickMenuView[]
 

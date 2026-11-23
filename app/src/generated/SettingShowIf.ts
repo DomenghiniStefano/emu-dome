@@ -3,6 +3,7 @@ import type { SettingKey } from "./SettingKey";
 
 /**
  * When a row is shown: the value of another entry of the same page, resolved at the level being
- * edited, is (or with `not`, is not) one of `values`. TypeScript: `SettingShowIf` (generated).
+ * edited, is (or with `not`, is not) one of `values` (a choice's option ids, a switch's
+ * `true` / `false`). TypeScript: `SettingShowIf` (generated).
  */
 export type SettingShowIf = { key: SettingKey, values: Array<string>, not: boolean, };

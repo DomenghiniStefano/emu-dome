@@ -328,7 +328,8 @@ impl DefaultRule {
 }
 
 /// When a row is shown: the value of another entry of the same page, resolved at the level being
-/// edited, is (or with `not`, is not) one of `values`. TypeScript: `SettingShowIf` (generated).
+/// edited, is (or with `not`, is not) one of `values` (a choice's option ids, a switch's
+/// `true` / `false`). TypeScript: `SettingShowIf` (generated).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[ts(rename = "SettingShowIf")]
 pub struct ShowIf {
@@ -344,7 +345,9 @@ impl ShowIf {
     pub fn holds(&self, value: Option<&Value>) -> bool {
         let listed = match value {
             Some(Value::Text(id)) => self.values.contains(&id.as_str()),
-            Some(Value::Bool(_) | Value::Int(_) | Value::List(_)) | None => false,
+            // A switch is named by its value as text.
+            Some(Value::Bool(on)) => self.values.contains(&if *on { "true" } else { "false" }),
+            Some(Value::Int(_) | Value::List(_)) | None => false,
         };
         listed != self.not
     }

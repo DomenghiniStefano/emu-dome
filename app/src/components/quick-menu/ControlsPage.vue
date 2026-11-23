@@ -22,9 +22,13 @@ defineProps<{
   shortcutCount: number
   /** A touch screen: the row that opens the C06 touch controls editor (#29). */
   touch: boolean
+  /** The rows set for this device at once (`touch.tvib`, #114) and their Global values. */
+  deviceEntries: SettingEntry[]
+  deviceRows: Record<string, SettingRow>
 }>()
 const emit = defineEmits<{
   set: [SettingKey, SettingValue]
+  setDevice: [SettingKey, SettingValue]
   shortcuts: [Event]
   touchEdit: [Event]
 }>()
@@ -50,6 +54,14 @@ const touchEditMarks = { [FocusMark.TouchEdit]: '' }
       :rows="rows"
       :schema="schema"
       @set="(key, v) => emit('set', key, v)"
+    />
+    <SessionSettingRows
+      v-if="schema && deviceEntries.length > 0"
+      :entries="deviceEntries"
+      :rows="deviceRows"
+      :schema="schema"
+      level="global"
+      @set="(key, v) => emit('setDevice', key, v)"
     />
     <Card
       v-if="touch"
