@@ -5,8 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { AUTO_SLOT, emu, type GameId, type GameInfo, type LibraryGame } from '@/emu'
 import { clearToLaunch } from '@/components/cloud/cloudState'
 import { flow } from './gameFlow'
-import { errorText } from '@/i18n/labels'
-import { launchFailure, type Launch } from './launch'
+import { launchFailure, startProblem, type Launch } from './launch'
 import type { GameSession } from './useGameSession'
 import type { Toasts } from '@/composables/useToasts'
 
@@ -65,7 +64,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
         broken = { launch, game: failure.game }
         flow.saveBroken = { title, backupAt: failure.backupAt }
       } else {
-        flow.startError = { title, reason: failure.reason }
+        flow.startError = { title, ...failure.problem }
       }
       return null
     } finally {
@@ -171,7 +170,7 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
     try {
       await emu.saves.restoreLatest(b.game)
     } catch (e) {
-      flow.startError = { title: b.launch.title, reason: errorText(e) }
+      flow.startError = { title: b.launch.title, ...startProblem(e) }
       return
     }
     await start(b.launch)

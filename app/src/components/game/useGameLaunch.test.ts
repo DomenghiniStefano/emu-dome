@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
 import type { GameInfo, LibraryGame } from '@/emu'
 import { i18n } from '@/i18n'
-import { errorText } from '@/i18n/labels'
+import { causeText, errorText } from '@/i18n/labels'
 import { flow } from './gameFlow'
-import { launchFailure } from './launch'
+import { launchFailure, startProblem } from './launch'
 import { useGameLaunch } from './useGameLaunch'
 import type { GameSession } from './useGameSession'
 import type { Toasts } from '@/composables/useToasts'
@@ -58,6 +58,9 @@ const kirbyUnreadable = {
   params: { game: 'gba:0c', aside: 'broken-2.sav', backupAt: 1800 },
 }
 
+/** G02 for a failure that names no file. */
+const noFile = { file: null, path: null }
+
 function setup() {
   const session = {
     begin: vi.fn(async () => {}),
@@ -109,11 +112,35 @@ describe('launch', () => {
     })
     expect(launchFailure({ code: 'io' })).toEqual({
       kind: 'startError',
-      reason: errorText({ code: 'io' }),
+      problem: { reason: errorText({ code: 'io' }), ...noFile },
     })
     expect(launchFailure(new Error('boom'))).toEqual({
       kind: 'startError',
-      reason: errorText(new Error('boom')),
+      problem: { reason: errorText(new Error('boom')), ...noFile },
+    })
+  })
+
+  it('shows the file and its place as Rust sends them, never parsed from the text (#128)', () => {
+    const uri = 'content://com.android.providers.downloads.documents/document/msf%3A1000'
+    const rom = {
+      code: 'romUnreadable',
+      params: { file: 'Kirby (USA).gba', path: uri, cause: 'permissionDenied' },
+    } as const
+    expect(startProblem(rom)).toEqual({
+      reason: causeText('romUnreadable', 'permissionDenied'),
+      file: 'Kirby (USA).gba',
+      path: uri,
+    })
+    const cloud = { code: 'documentNotLocal', params: { file: 'Kirby.gba' } } as const
+    expect(startProblem(cloud)).toEqual({ reason: errorText(cloud), file: 'Kirby.gba', path: null })
+    const folder = {
+      code: 'saveFolderUnavailable',
+      params: { folder: 'D:/EmuDome/saves/gba/1a', cause: 'notFound' },
+    } as const
+    expect(startProblem(folder)).toEqual({
+      reason: errorText(folder),
+      file: null,
+      path: 'D:/EmuDome/saves/gba/1a',
     })
   })
 })
@@ -182,7 +209,11 @@ describe('useGameLaunch', () => {
     bridge.openGame.mockRejectedValueOnce({ code: 'io' })
     await launch.openFile(uri)
     expect(bridge.title).toHaveBeenCalledWith(uri)
-    expect(flow.startError).toEqual({ title: 'Kirby', reason: errorText({ code: 'io' }) })
+    expect(flow.startError).toEqual({
+      title: 'Kirby',
+      reason: errorText({ code: 'io' }),
+      ...noFile,
+    })
 
     // A name the provider does not tell: a generic title, still not the URI.
     bridge.title.mockResolvedValueOnce(null)
@@ -237,7 +268,11 @@ describe('useGameLaunch', () => {
     const { launch, session } = setup()
     bridge.libraryOpen.mockRejectedValueOnce({ code: 'io' })
     await launch.openLibraryGame(minish, 3)
-    expect(flow.startError).toEqual({ title: minish.title, reason: errorText({ code: 'io' }) })
+    expect(flow.startError).toEqual({
+      title: minish.title,
+      reason: errorText({ code: 'io' }),
+      ...noFile,
+    })
     expect(flow.launching).toBeNull()
     expect(session.begin).not.toHaveBeenCalled()
     expect(bridge.loadState).not.toHaveBeenCalled()
@@ -337,7 +372,11 @@ describe('useGameLaunch', () => {
       bridge.restoreLatest.mockRejectedValueOnce({ code: 'io' })
       await launch.useLatestBackup()
       expect(bridge.restoreLatest).toHaveBeenCalledWith('gba:0c')
-      expect(flow.startError).toEqual({ title: 'kirby', reason: errorText({ code: 'io' }) })
+      expect(flow.startError).toEqual({
+        title: 'kirby',
+        reason: errorText({ code: 'io' }),
+        ...noFile,
+      })
       expect(bridge.openGame).toHaveBeenCalledOnce()
       expect(session.begin).not.toHaveBeenCalled()
     })

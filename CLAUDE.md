@@ -47,7 +47,12 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
   (e.g. `emu://gamepad-connected` with `{ name }`). The interface turns them into text in `app/src/i18n/labels.ts`
   (`errorText`, `speedLabel`, `gamepadName`). A new error = a new `ErrorCode` variant, the generated files made
   again (`EMUDOME_BLESS=1 cargo test -p emudome-core contract`) + `errors.<code>` in **both** message files: the
-  contract test and `app/src/i18n/parity.test.ts` fail until all three are there.
+  contract test and `app/src/i18n/parity.test.ts` fail until all three are there. A file or folder that cannot be
+  read or created is sent as values, never as the OS's sentence (which holds the path; that goes to the log): its
+  name / path and an `IoCause` (`notFound`, `permissionDenied`, `other`, from the `io::ErrorKind`), each code with
+  a cause having one text per cause, `errorCauses.<code>.<cause>` (`app/src/i18n/causes.ts` lists them; parity
+  checks them). `romUnreadable` carries `file` (a document's display name), `path` (a document's URI) and
+  `cause`; G02 shows the file name, the cause's text, then the path on a muted line clamped to two.
 - Kept file names: `docs/fase0-esito.md` and `docs/combo-tasti.md` keep their Italian names (other documents link to them); their content is English.
 
 ## Current state: Phase 1 desktop shell, Phase 2 core work started

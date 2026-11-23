@@ -524,7 +524,8 @@
     "coreDamaged": "Core {file} is not the one EmuDome ships, so it was not loaded. Reinstall EmuDome.",
     "openFailed": "Couldn't open the game. Check that the file is a working GBA game. Details: {detail}",
     "coreIncompatible": "The emulator for this console could not be started. Reinstall EmuDome. Details: {detail}",
-    "romUnreadable": "Couldn't read the game file. Check that it is still there and that its drive is connected. Details: {detail}",
+    "romUnreadable": "{cause}",
+    "documentNotLocal": "This file isn’t stored on this device: it may be in a cloud folder. Copy it to the phone’s storage and open it from there.",
     "coreRefusedGame": "The emulator could not run this game. Check that the file is a complete, working copy of the game.",
     "documentNeedsPath": "This game can't be opened from where it is: the {core} emulator has to open the file by itself, and the system lets EmuDome read it only directly. Opening these games from documents is coming in a future update.",
     "coreNeedsRestart": "A game on the {core} core stopped answering. Restart EmuDome to open games on this core again.",
@@ -560,7 +561,7 @@
     "gameUnidentified": "This file isn’t a game EmuDome can recognise: its header doesn’t match its console. Check that it’s a complete, working dump. Details: {detail}",
     "gameEncrypted": "This 3DS game is encrypted, and EmuDome plays decrypted games only. Decrypt it with your own console, then open it again.",
     "savePathTooLong": "This game can’t start: its save folder ({folder}) is too deep. The emulator needs paths of {length} characters there, and Windows allows {limit}. Turn on long paths in Windows (the “Enable Win32 long paths” policy), restart EmuDome, then open the game again.",
-    "saveFolderUnavailable": "This game can’t start: couldn’t create its save folder ({folder}). Check that EmuDome’s data folder is on a connected drive and writable, then open the game again. Details: {detail}",
+    "saveFolderUnavailable": "This game can’t start: couldn’t create its save folder. {cause}",
     "savesMigrationFailed": "Couldn’t move your old saves to their new place. Nothing was lost: they stay where they were and EmuDome tries again at the next start. Details: {detail}",
     "savesMigrationIncomplete": "Your saves moved to their new place, but {left} old files couldn’t be matched to one game for sure and stayed where they were. See the list in {report}.",
     "dataMoveFailed": "Couldn’t copy your data to EmuDome’s new folder. Nothing was lost: for now EmuDome keeps using the old folder ({old}) and tries again at the next start. Details: {detail}",
@@ -570,7 +571,7 @@
     "lidUnsupported": "This game’s emulator can’t close the lid. Pause the game from the quick menu instead.",
     "screenLayoutUnavailable": "This screen layout isn’t available for this game. Pick another one in the quick menu.",
     "effectNotLoaded": "Couldn’t use the effect “{name}”, so the game shows without it. Choose another effect or another file.",
-    "biosUnreadable": "Couldn’t read this file: {detail}. Check that it’s still there and choose it again.",
+    "biosUnreadable": "{cause}",
     "biosWrongSize": "This file doesn’t have the right size for this row. Choose the right file.",
     "biosOtherSlot": "This file belongs to another row of this page. Choose it there.",
     "biosFileFailed": "Couldn’t save EmuDome’s copy of the file: {detail}. Check the free disk space and try again.",
@@ -603,6 +604,23 @@
     "logUnavailable": "There’s no log file in this session. Restart EmuDome and try again.",
     "logExportFailed": "Couldn’t save the log ({detail}). Choose another folder and try again.",
     "licenceUnreadable": "Couldn’t read this licence ({detail}). Reinstall EmuDome to get it back."
+  },
+  "errorCauses": {
+    "romUnreadable": {
+      "notFound": "Can’t find the game file. Check that it’s still in its folder and that its drive is connected.",
+      "permissionDenied": "EmuDome isn’t allowed to read the file. Choose its folder again.",
+      "other": "Couldn’t read the game file. Check that its drive is connected, then try again."
+    },
+    "saveFolderUnavailable": {
+      "notFound": "The drive with EmuDome’s data may be disconnected: connect it, then open the game again.",
+      "permissionDenied": "EmuDome isn’t allowed to write in its data folder. Check its permissions, then open the game again.",
+      "other": "Check that EmuDome’s data folder is on a connected drive with free space, then open the game again."
+    },
+    "biosUnreadable": {
+      "notFound": "Can’t find this file. Check that it’s still there and choose it again.",
+      "permissionDenied": "EmuDome isn’t allowed to read this file. Move it to a folder you can open and choose it again.",
+      "other": "Couldn’t read this file. Check that it’s still there and choose it again."
+    }
   },
   "consoleShort": {
     "gb": "GB",
