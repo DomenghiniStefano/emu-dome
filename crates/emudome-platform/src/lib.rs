@@ -134,6 +134,22 @@ pub fn move_to_background() -> bool {
     imp::move_to_background()
 }
 
+/// Whether [`open_folder`] can show a folder in the system's file manager here: the desktop.
+/// Android's games live in folders the user picked through the system (`content://` trees),
+/// which no file manager is opened on: «Apri la cartella» is not offered there.
+pub const OPEN_FOLDER: bool = imp::OPEN_FOLDER;
+
+/// Shows `folder` in the system's file manager («Apri la cartella», «Gestisci lo spazio»,
+/// Trello #29): Explorer on Windows, the desktop's default (`xdg-open`) on Linux. Returns once
+/// the file manager is started; `Unsupported` where [`OPEN_FOLDER`] is false.
+pub fn open_folder(folder: &Path) -> std::io::Result<()> {
+    imp::open_folder(folder)
+}
+
+/// The folder of the app's cache where the named links to opened `content://` documents go
+/// (Android; [`open_content`]): links only, made again when a document opens.
+pub const CONTENT_LINKS_DIR: &str = content::LINKS_DIR;
+
 /// The whole screen for the game (Trello #131): Android hides the status and navigation bars
 /// while `on` (a swipe shows them for a moment) and shows them again when it is off, so the shell
 /// outside a game keeps them and lays itself out inside their insets. Called by the game flow:

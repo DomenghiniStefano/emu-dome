@@ -247,7 +247,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 167 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 168 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
                          compiled, and `Reader` (a value or the catalogue's default),
@@ -298,6 +298,12 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          or hidden games), the version shown: the user's pin, else the one
                          launched last, else the one added first (#102); pure, unit-tested)
                          first_run.rs (first run: its steps, whether to show it; pure, unit-tested)
+                         storage.rs («Gestisci lo spazio», #29: sizes walked without following links,
+                         the quick saves (`auto.state` / `slotN.state` with their thumbnail and
+                         record) and screenshots of every game, the temporary files, and the only
+                         deletions the screen makes: picked quick saves and screenshots, the
+                         temporary files, a game file inside EmuDome's games folder; unit-tested,
+                         every in-game save surviving each)
                          updates.rs (EmuDome updating itself, #44: `UpdateFlow`, `general.updates` auto / ask /
                          off as a state machine, every time passed in; `UpdateStatus` for the interface;
                          pure, unit-tested)
@@ -340,6 +346,8 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          paths.rs (how long a path this process can create: `path_limits`, Windows long
                          paths for the process and the `LongPathsEnabled` policy, read only);
                          storage.rs (`disk_space`: the room on a path's volume, fs2, every system; E13),
+                         `open_folder` / `OPEN_FOLDER` (a folder in the system's file manager: Explorer,
+                         xdg-open; none on Android), `CONTENT_LINKS_DIR`,
                          `move_to_background` (Android's back at the shell's root: `SystemBridge.moveToBack`;
                          false on the desktop), `set_immersive` (Android's system bars hidden while
                          a game is open, `SystemBridge.setImmersive`; nothing on the desktop);
@@ -435,7 +443,10 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          closing.rs (the close flow carried out: worker, emu://closing, exit when saved)
                          health.rs (what is not working: ErrorCodes per part, emu://health, diagnostics)
                          storage.rs (E13, #29: `storage_status`, the room on the data folder's disk and
-                         whether it is low: under 500 MB; `None` when the system does not say)
+                         whether it is low: under 500 MB; `None` when the system does not say;
+                         «Gestisci lo spazio»: `storage_breakdown`, `storage_quick_saves`, the
+                         `storage_delete_*` / `storage_clear_temp` / `storage_remove_game` deletions,
+                         `storage_open_folder`)
                          notifications.rs (X03: the store of emudome_core::notifications, the
                          notifications_* commands, notifications://changed; `record` writes off the
                          caller's thread: gamepad.rs records a controller connected after start)
@@ -469,7 +480,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          components/<feature>/ one folder per feature: shell (AppShell: rail + sections,
                          outside the game; on the phone PhoneTabBar upright, the rail as a column on the
                          camera's edge on its side, lib/phoneLayout.ts decides, #29), storage (E13's
-                         StorageWarning, phone only), library, details, saves, settings, controls, quick-menu,
+                         StorageWarning, phone only; StoragePage «Gestisci lo spazio», its
+                         SpaceCard, StorageGameRow, QuickSavesChooser, ScreenshotsGallery,
+                         StorageConfirm; storage.ts the pure decisions, tested), library, details, saves, settings, controls, quick-menu,
                          game (GameCanvas: webview mode, the game flow,
                          useScreenStatus: the open game's `ScreenStatus` from `emu://screens`,
                          LidClosedCard: G15 «Coperchio chiuso»),
@@ -675,7 +688,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 167 entries on 18 pages: key
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 168 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
   (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
   the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform
@@ -1212,10 +1225,23 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   touch controls instead); G06 names Home there only with a controller connected, and with neither does not show
   (`game/quickMenuHint.ts`). The Settings descriptions that name keys (`video.fps`, `speed.ffmode`, `speed.rew`)
   are catalogue texts and still name them on the phone. Not yet: the «…»
-  menu (favourite, hide) on a row or a compact tile (in the game's details only). Not yet: the «Gestisci lo
-  spazio» screen (designed and approved on #29, mockup S1–S3, not built: the button is faded and a press says it
-  arrives later); the safe areas, the camera
+  menu (favourite, hide) on a row or a compact tile (in the game's details only). The safe areas, the camera
   side and `moveTaskToBack` are checked headless and by review only, not on a device yet.
+- «Gestisci lo spazio» (#29, S1–S3; `components/storage/StoragePage.vue`, `app/src-tauri/src/storage.rs`,
+  `emudome_core::storage`): opened by E13's button (the shell's jump `manageSpace`) and by Settings › Salvataggi's
+  `saves.space` row, in the page's place like the licences page, on every device. The space card (free / total, the
+  bar of games / quick saves / EmuDome's other files / other apps), the games here from the heaviest, «Altri dati»
+  (quick saves «Scegli», screenshots «Apri», temporary files «Svuota»). «Togli dal telefono» («… da questo
+  dispositivo» off the phone) only for a game file in `<app local data>/games/` (a Drive download) that Drive has
+  (asked of Drive before deleting; the button shows once `cloud_games` answered); the game stays in the library
+  unavailable (faded) and Cloud lists it «Solo su Drive» for «Scarica». A game of the user's folders shows
+  «In <cartella>» and, on the desktop, «Apri la cartella» (`emudome_platform::open_folder`; Android: no button).
+  Every deletion asks first (whatever `general.confirmdel` says) and never touches `game.sav`, backups or a core's
+  own files. Temporary files are the document links (`<cache>/content`, Android), a Drive download's leftover
+  temporary file older than an hour, and Azahar's shader cache (`<game>/Azahar/shaders`, the folder name taken
+  from Citra's layout, not seen on a device) of a 3DS game not open. Not yet: the screenshots gallery is per game
+  with its own selection, not the details' look; sizes are walked on every open (no cache); the
+  other apps' share counts games on another disk as ours.
 - Audio off 1× follows `audio.ff` for fast forward and slow motion alike (no separate slow-motion setting).
 - Search and notifications (#32): one palette opens from the shell and from the quick menu (Y, Ctrl + K; the
   hint in the menu's foot). In the shell the controller's shortcuts are disabled with «Apri un gioco per usarla»

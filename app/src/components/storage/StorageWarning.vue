@@ -1,20 +1,20 @@
 <script setup lang="ts">
 // E13 «Telefono quasi pieno» (Trello #29, the owner's option C): a warning at the top of the
-// shell, «Spazio quasi finito: 380 MB liberi», with «Gestisci lo spazio». That button's screen
-// (the games by size, «Togli dal telefono») is not designed yet: the button shows faded, and a
-// press says it arrives in a future update. The phone only (the shell mounts it there); the
-// room is asked again whenever the shell shows (useStorageStatus.ts).
+// shell, «Spazio quasi finito: 380 MB liberi», with «Gestisci lo spazio», which opens that
+// screen (StoragePage, in Settings › Salvataggi, through the shell's jump). The phone only (the
+// shell mounts it there); the room is asked again whenever the shell shows (useStorageStatus.ts).
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { HardDrive } from '@lucide/vue'
-import { Button, ButtonFade } from '@/design-system/components/button'
-import { useToasts } from '@/composables/useToasts'
+import { ArrowRight, HardDrive } from '@lucide/vue'
+import { Button } from '@/design-system/components/button'
+import { useShellJump } from '@/components/shell/useShellJump'
 import { sizeLabel } from '@/i18n/labels'
 import { useStorageStatus } from './useStorageStatus'
 
 const { t } = useI18n()
-const toasts = useToasts()
 const { status } = useStorageStatus()
+// Mounted inside the shell, which provides the jump; elsewhere the button stays disabled.
+const jump = useShellJump()
 
 const free = computed(() => (status.value?.low ? sizeLabel(status.value.free) : null))
 </script>
@@ -27,11 +27,7 @@ const free = computed(() => (status.value?.low ? sizeLabel(status.value.free) : 
   >
     <HardDrive class="flex-none text-warning" :size="18" :stroke-width="1.75" aria-hidden="true" />
     <span class="min-w-0 flex-1">{{ t('storage.low', { free }) }}</span>
-    <Button
-      :fade="ButtonFade.Dim"
-      aria-disabled="true"
-      @click="toasts.notify(t('storage.manageNotYet'))"
-    >
+    <Button :icon="ArrowRight" :disabled="!jump" @click="jump?.('manageSpace')">
       {{ t('storage.manage') }}
     </Button>
   </div>

@@ -20,6 +20,7 @@ import { useI18n } from 'vue-i18n'
 import { ChevronLeft, Info } from '@lucide/vue'
 import type { ConsoleId, SettingEntry, SettingKey, SettingRecent, SettingsSchema } from '@/emu'
 import LicencesPage from '@/components/about/LicencesPage.vue'
+import StoragePage from '@/components/storage/StoragePage.vue'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import TouchEditor from '@/components/touch/TouchEditor.vue'
 import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChanged'
@@ -172,18 +173,25 @@ function closeEditor() {
   void nextTick(() => editOpener?.focus())
 }
 
-// `about.lic` (Trello #44): the licences page in the page's place; closed, the focus goes back
-// to the row's button. Another row's `choose` is the background image's picker.
-const licences = ref(false)
-let licencesOpener: HTMLElement | null = null
-function choose(key: SettingKey) {
-  if (key !== 'about.lic') return store.chooseBackground()
-  licencesOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-  licences.value = true
+// `about.lic` (Trello #44): the licences page in the page's place; `saves.space` (#29):
+// «Gestisci lo spazio» there too. Closed, the focus goes back to the row's button. Another row's
+// `choose` is the background image's picker.
+type AsidePage = 'licences' | 'space'
+const ASIDE_ROWS: Partial<Record<SettingKey, AsidePage>> = {
+  'about.lic': 'licences',
+  'saves.space': 'space',
 }
-function closeLicences() {
-  licences.value = false
-  void nextTick(() => licencesOpener?.focus())
+const aside = ref<AsidePage | null>(null)
+let asideOpener: HTMLElement | null = null
+function choose(key: SettingKey) {
+  const to = ASIDE_ROWS[key]
+  if (!to) return store.chooseBackground()
+  asideOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  aside.value = to
+}
+function closeAside() {
+  aside.value = null
+  void nextTick(() => asideOpener?.focus())
 }
 
 // X01: the row the search opened this section for, lit for `duration-highlight` (its animation
@@ -210,7 +218,11 @@ onMounted(async () => {
   await scopeBar.findContextConsole()
   await store.loadAll()
   await lightRow()
-  if (litRow && editRow) editScreens(litRow)
+  // E13's «Gestisci lo spazio» (#29) arrives as `saves.space` with `edit`: its page opens.
+  if (litRow && editRow) {
+    if (ASIDE_ROWS[litRow]) choose(litRow)
+    else editScreens(litRow)
+  }
   await store.loadRecent()
 })
 useSettingsChanged(EVERY_SETTING, store.onChanged)
@@ -222,11 +234,12 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
     ref="root"
     :class="['flex min-h-0 flex-1', pane !== SettingsPane.Both && 'flex-col']"
   >
-    <!-- `about.lic` in TV: the desk's licences page, scaled up as the sections not laid out for
-         TV are (AppShell), in the place of the TV rows. -->
-    <div v-if="uiMode.tv && licences" class="flex min-h-0 flex-1 flex-col tv:zoom-tv">
+    <!-- `about.lic` and `saves.space` in TV: the desk's page, scaled up as the sections not laid
+         out for TV are (AppShell), in the place of the TV rows. -->
+    <div v-if="uiMode.tv && aside" class="flex min-h-0 flex-1 flex-col tv:zoom-tv">
       <SectionPage as="main" :width="SectionWidth.Full">
-        <LicencesPage @close="closeLicences" />
+        <LicencesPage v-if="aside === 'licences'" @close="closeAside" />
+        <StoragePage v-else @close="closeAside" />
       </SectionPage>
     </div>
     <TvSettings
@@ -260,8 +273,9 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
     />
 
     <SectionPage v-if="!uiMode.tv && pageShown(pane)" as="main" :width="SectionWidth.Full">
-      <!-- A block of the page (held to its width), the way back at its start. -->
-      <div v-if="pane === SettingsPane.Page" class="flex">
+      <!-- A block of the page (held to its width), the way back at its start; a page shown in
+           the page's place (licences, «Gestisci lo spazio») has its own. -->
+      <div v-if="pane === SettingsPane.Page && !aside" class="flex">
         <Button
           :variant="ButtonVariant.Ghost"
           :size="ButtonSize.TextLine"
@@ -273,7 +287,8 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           {{ t('settingsUi.title') }}
         </Button>
       </div>
-      <LicencesPage v-if="licences" @close="closeLicences" />
+      <LicencesPage v-if="aside === 'licences'" @close="closeAside" />
+      <StoragePage v-else-if="aside === 'space'" @close="closeAside" />
       <SettingsOverview
         v-else-if="page === OVERVIEW && !searching"
         :schema="schema"
@@ -321,7 +336,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
         {{ t('settingsUi.resultsTitle', { query: query.trim() }) }}
       </Heading>
 
-      <template v-if="!licences">
+      <template v-if="!aside">
         <SettingsSection
           v-for="sec in sections"
           :key="`${sec.page}.${sec.id}`"

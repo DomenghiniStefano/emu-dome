@@ -321,6 +321,14 @@ pub enum ErrorCode {
     /// A licence text shipped with EmuDome could not be read (`detail`): the installation is
     /// incomplete, or this is a development build without the packaged files.
     LicenceUnreadable { detail: String },
+    /// «Togli dal telefono» on a game EmuDome may not remove: its file is not in EmuDome's own
+    /// games folder (a file of the user's), or not on Google Drive (it could not come back).
+    StorageGameNotRemovable,
+    /// A deletion of «Gestisci lo spazio» stopped (`detail`); what went before it is gone, the
+    /// rest is as it was.
+    StorageDeleteFailed { detail: String },
+    /// «Apri la cartella»: the game's folder could not be shown (`detail`).
+    StorageFolderUnavailable { detail: String },
 }
 
 impl crate::StartError {

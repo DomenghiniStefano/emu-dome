@@ -39,6 +39,10 @@ fn generate() -> Result<Generated, String> {
     g.ts::<crate::pads::ControlsBindings>()?;
     g.ts::<crate::about::Licence>()?;
     g.ts::<crate::storage::StorageStatus>()?;
+    // «Gestisci lo spazio» (#29).
+    g.ts::<crate::storage::Breakdown>()?;
+    g.ts::<crate::storage::QuickGame>()?;
+    g.ts::<crate::storage::QuickPick>()?;
     // The Cloud screens (#31): the commands' and the `cloud://` events' types.
     g.ts::<emudome_sync::service::CloudStatus>()?;
     g.ts::<emudome_sync::service::AccountDto>()?;

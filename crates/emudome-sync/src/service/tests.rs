@@ -396,6 +396,15 @@ async fn a_game_file_goes_up_comes_down_elsewhere_and_leaves_drive_only_when_ask
     assert_eq!(rows[0].state, GameState::Both);
     assert!(rows[0].saves_on_drive);
     assert!(s.status(ON).emudome_bytes.unwrap() >= 4096);
+    // Its file gone from this device («Togli dal telefono»): still in the library, and
+    // «Solo su Drive», so «Scarica» brings it back.
+    let gone = GameRecord {
+        available: false,
+        ..rec.clone()
+    };
+    let rows = s.games(std::slice::from_ref(&gone)).await.unwrap();
+    assert_eq!(rows[0].state, GameState::DriveOnly);
+    assert!(!rows[0].here);
 
     // Another device: only on Drive, with its size and the device that has it.
     let d = deck.service(&drive, "Deck");

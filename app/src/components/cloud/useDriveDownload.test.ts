@@ -8,7 +8,8 @@ import { LIBRARY_WAIT_MS, libraryRow } from './useDriveDownload'
 
 vi.mock('@/emu', () => ({ emu: {} }))
 
-const row = (hex: string) => ({ id: `3ds:${hex}` as GameId, title: hex }) as LibraryGame
+const row = (hex: string, available = true) =>
+  ({ id: `3ds:${hex}` as GameId, title: hex, available }) as LibraryGame
 
 afterEach(() => {
   library.games = markRaw([])
@@ -27,6 +28,14 @@ describe('libraryRow', () => {
     await nextTick()
     library.games = markRaw([row('01'), row('02')])
     expect(await found).toEqual(row('02'))
+  })
+
+  it('waits for a game removed from this device to have its file again (#29)', async () => {
+    library.games = markRaw([row('04', false)])
+    const found = libraryRow(row('04').id)
+    await nextTick()
+    library.games = markRaw([row('04')])
+    expect(await found).toEqual(row('04'))
   })
 
   it('gives up after its limit', async () => {

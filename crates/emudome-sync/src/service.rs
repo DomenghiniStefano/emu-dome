@@ -1017,7 +1017,10 @@ impl<D: DriveApi> CloudService<D> {
                     .filter(|(id, list)| *id != &my_id && list.games.iter().any(|g| g.id == key))
                     .map(|(_, list)| list.device_name.clone())
                     .collect();
-                let here = record.is_some();
+                // A library game whose file is gone from this device («Togli dal telefono», or
+                // a folder unreachable) is «Solo su Drive» when Drive has it: «Scarica» brings
+                // it back. Without a copy on Drive it stays «Solo qui», as before.
+                let here = record.is_some_and(|g| g.available || rom.is_none());
                 let on_drive = rom.is_some();
                 CloudGame {
                     console: key.console(),

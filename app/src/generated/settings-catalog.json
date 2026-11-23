@@ -484,6 +484,12 @@
       "page": "saves"
     },
     {
+      "key": "saves.space",
+      "kind": "action",
+      "options": [],
+      "page": "saves"
+    },
+    {
       "key": "pad.dev1",
       "kind": "action",
       "options": [],

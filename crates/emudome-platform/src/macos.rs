@@ -5,6 +5,16 @@ use std::path::PathBuf;
 pub use crate::desktop::*;
 
 pub const OS_NAME: &str = "macOS";
+
+pub const OPEN_FOLDER: bool = true;
+
+/// The Finder on the folder (started, not waited for).
+pub fn open_folder(folder: &std::path::Path) -> std::io::Result<()> {
+    std::process::Command::new("open")
+        .arg(folder)
+        .spawn()
+        .map(drop)
+}
 pub fn core_file_name(core: &str) -> String {
     format!("{core}_libretro.{DYLIB_EXT}")
 }

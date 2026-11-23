@@ -41,6 +41,7 @@ pub mod screens;
 pub mod screenshot;
 pub mod settings;
 pub mod speed_audio;
+pub mod storage;
 #[doc(hidden)]
 pub mod testing;
 pub mod touch;

@@ -32,8 +32,8 @@ export type Arrival =
   | { section: 'saves'; game: GameId | null; importing: boolean }
   /**
    * The Settings section at «Solo questo gioco» (L06, `game`), or on one setting's page with its
-   * row lit (`row`: the search everywhere, X01); `edit`: the row's layout editor opened at once
-   * (C01's «Controlli touch», #112).
+   * row lit (`row`: the search everywhere, X01); `edit`: the row's layout editor or page opened at
+   * once (C01's «Controlli touch», #112; E13's «Gestisci lo spazio», #29).
    */
   | { section: 'settings'; game: GameFocus | null; row: SettingKey | null; edit?: boolean }
   /**
@@ -168,6 +168,8 @@ export type Jump =
   | 'remapKeyboard'
   /** Settings › Controlli touch with the C06 editor opened (its console chosen first). */
   | 'touchEditor'
+  /** Settings › Salvataggi with «Gestisci lo spazio» opened (E13's button, #29). */
+  | 'manageSpace'
 
 /** The route a jump leads to. */
 export function jumpTo(r: Route, j: Jump): Route {
@@ -191,10 +193,16 @@ export function jumpTo(r: Route, j: Jump): Route {
         arrival: { section: 'controls', game: null, keyboard: j === 'remapKeyboard' },
       }
     case 'touchEditor':
+    case 'manageSpace':
       return {
         ...r,
         section: 'settings',
-        arrival: { section: 'settings', game: null, row: 'touch.tedit', edit: true },
+        arrival: {
+          section: 'settings',
+          game: null,
+          row: j === 'touchEditor' ? 'touch.tedit' : 'saves.space',
+          edit: true,
+        },
       }
   }
 }

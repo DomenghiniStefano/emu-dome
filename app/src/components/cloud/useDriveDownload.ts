@@ -12,9 +12,13 @@ import { applyGame, failCloud } from './cloudState'
 /** How long the library may take to list a downloaded game before the game is not opened. */
 export const LIBRARY_WAIT_MS = 20_000
 
-/** The library's row of `id` once it lists it; null after `ms`. */
+/**
+ * The library's row of `id` once it lists it with its file here (a game removed from this device
+ * stays listed, unavailable, until the download's scan finds it again, #29); null after `ms`.
+ */
 export function libraryRow(id: GameId, ms = LIBRARY_WAIT_MS): Promise<LibraryGame | null> {
-  const now = library.games.find(g => g.id === id)
+  const here = (g: LibraryGame) => g.id === id && g.available
+  const now = library.games.find(here)
   if (now) return Promise.resolve(now)
   return new Promise(resolve => {
     const timer = window.setTimeout(() => {
@@ -24,7 +28,7 @@ export function libraryRow(id: GameId, ms = LIBRARY_WAIT_MS): Promise<LibraryGam
     const stop = watch(
       () => library.games,
       games => {
-        const row = games.find(g => g.id === id)
+        const row = games.find(here)
         if (!row) return
         window.clearTimeout(timer)
         stop()

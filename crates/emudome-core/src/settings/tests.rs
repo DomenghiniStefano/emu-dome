@@ -911,8 +911,8 @@ fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
     // the game clock's offset and date rows (Trello #102), and `library.versions` in place of
     // `library.region` (owner, 2026-11-22, #102), plus «Se il controller si scollega»
     // (`touch.tlost`, E14, owner 2026-11-22, #29), plus the library's Lista / Griglia
-    // (`library.view`, owner 2026-11-22, #29).
-    assert_eq!(ENTRIES.len(), 167);
+    // (`library.view`, owner 2026-11-22, #29), plus «Gestisci lo spazio» (`saves.space`, #29).
+    assert_eq!(ENTRIES.len(), 168);
 }
 
 #[test]
@@ -2382,6 +2382,7 @@ fn the_entries_not_wired_yet_are_these() {
         carried_out,
         [
             "saves.import",
+            "saves.space",
             "pad.dev1",
             "pad.dev2",
             "library.hidden",

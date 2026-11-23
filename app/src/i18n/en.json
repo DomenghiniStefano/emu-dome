@@ -606,7 +606,10 @@
     "updateGameOpen": "Close the game first, then restart to update. Your saves stay as they are.",
     "logUnavailable": "There’s no log file in this session. Restart EmuDome and try again.",
     "logExportFailed": "Couldn’t save the log ({detail}). Choose another folder and try again.",
-    "licenceUnreadable": "Couldn’t read this licence ({detail}). Reinstall EmuDome to get it back."
+    "licenceUnreadable": "Couldn’t read this licence ({detail}). Reinstall EmuDome to get it back.",
+    "storageGameNotRemovable": "EmuDome only removes games it downloaded itself that are also on Google Drive. Manage this one with your files app.",
+    "storageDeleteFailed": "Couldn’t delete everything ({detail}). What’s already gone won’t come back: try again for the rest.",
+    "storageFolderUnavailable": "Couldn’t open the folder ({detail}). Open it with your files app."
   },
   "errorCauses": {
     "romUnreadable": {
@@ -734,7 +737,7 @@
       "saves": {
         "quick": "QUICK SAVES",
         "ingame": "IN-GAME SAVE",
-        "folder": "FOLDER"
+        "folder": "FOLDER AND STORAGE"
       },
       "pad": {
         "devices": "CONNECTED DEVICES",
@@ -1239,6 +1242,11 @@
         "name": "Saves folder",
         "desc": "Where EmuDome keeps saves and quick saves on this device.",
         "button": "Change folder…"
+      },
+      "space": {
+        "name": "Manage storage",
+        "desc": "What takes up space on this device, and how to free it without losing your saves.",
+        "button": "Open"
       }
     },
     "pad": {
@@ -2798,7 +2806,66 @@
   "storage": {
     "low": "Storage almost full: {free} free",
     "manage": "Manage storage",
-    "manageNotYet": "Managing storage arrives in a future update."
+    "page": {
+      "title": "Manage storage",
+      "free": "{size} free",
+      "of": "of {size}",
+      "parts": {
+        "games": "Games {size}",
+        "quick": "Quick saves {size}",
+        "other": "Other {size}",
+        "apps": "Other apps"
+      },
+      "games": "Games, largest first",
+      "onDrive": "ON DRIVE",
+      "inFolder": "In {folder}",
+      "inYourFolder": "In one of your folders",
+      "remove": "Remove from this phone",
+      "removeHere": "Remove from this device",
+      "openFolder": "Open the folder",
+      "noGames": "No games on this device.",
+      "yourFiles": "Games in your own folders are yours to manage, with your files app: EmuDome never deletes your files.",
+      "otherData": "Other data",
+      "quick": "Quick saves",
+      "quickLine": "{size} · {slots} slots in {games} game | {size} · {slots} slots in {games} games",
+      "shots": "Screenshots",
+      "shotsLine": "{size} · {n} image | {size} · {n} images",
+      "temp": "Temporary files",
+      "tempLine": "{size} · they rebuild themselves",
+      "choose": "Choose",
+      "open": "Open",
+      "empty": "Empty",
+      "measuring": "Measuring the space…",
+      "cancel": "Cancel",
+      "askRemoveTitle": "Remove {title} from this phone?",
+      "askRemoveTitleHere": "Remove {title} from this device?",
+      "askRemoveText": "The game file leaves this device. Your saves stay and the game stays in the library: download it again from Google Drive whenever you like.",
+      "askTempTitle": "Empty the temporary files?",
+      "askTempText": "They rebuild themselves when needed: a 3DS game may start more slowly the first time. Your saves stay.",
+      "removed": "{title} removed: {size} freed.",
+      "cleared": "Temporary files emptied: {size} freed."
+    },
+    "quick": {
+      "intro": "Choose the quick saves to delete. Your in-game saves stay.",
+      "none": "No quick saves.",
+      "unknownGame": "Game not in the library",
+      "slotLine": "{when} · {size}",
+      "deleteNone": "Delete",
+      "delete": "Delete {n} · {size}",
+      "askTitle": "Delete {n} quick save? | Delete {n} quick saves?",
+      "askText": "They can’t be recovered. Your in-game saves stay.",
+      "askConfirm": "Delete",
+      "deleted": "{n} quick save deleted. | {n} quick saves deleted."
+    },
+    "shots": {
+      "none": "No screenshots.",
+      "deleteNone": "Delete",
+      "delete": "Delete {n}",
+      "askTitle": "Delete {n} screenshot? | Delete {n} screenshots?",
+      "askText": "They can’t be recovered. Covers made from a screenshot stay.",
+      "askConfirm": "Delete",
+      "deleted": "{n} screenshot deleted. | {n} screenshots deleted."
+    }
   },
   "updates": {
     "title": "Update available",

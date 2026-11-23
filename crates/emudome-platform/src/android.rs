@@ -78,6 +78,16 @@ pub const NATIVE_VIDEO_DEFAULT: bool = true;
 pub const EXTERNAL_SURFACE: bool = true;
 pub const PHONE: bool = true;
 
+/// The user's game folders are picked trees (`content://`): no file manager is opened on them.
+pub const OPEN_FOLDER: bool = false;
+
+pub fn open_folder(_folder: &Path) -> std::io::Result<()> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "no file manager is opened on Android",
+    ))
+}
+
 pub fn init_logging() {
     let logger = android_logger::AndroidLogger::new(
         android_logger::Config::default()
