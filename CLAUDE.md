@@ -218,8 +218,15 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
 - Android's back button (Trello #14, `SystemBridge.kt` → `hotkeys::back_button`): in game with the quick menu
   closed it is the controller's menu button (`emu://menu`), anywhere else its B (`emu://nav` back). At the shell's
   root on the phone (#29) B goes to the section left last (the route's `trail`), then the Library, then leaves to the
-  background (`leave_to_background` → `SystemBridge.moveToBack`, the app keeps running). Not yet: «Open with» while
-  the app already runs (needs the interface).
+  background (`leave_to_background` → `SystemBridge.moveToBack`, the app keeps running). Both events carry `system:
+  true`, so the interface shows no focus ring for it and keeps the input in use as it was (#131). Not yet: «Open
+  with» while the app already runs (needs the interface).
+- Android's system bars (#131, `emudome_platform::set_immersive` → `SystemBridge.setImmersive`): shown in the shell,
+  which is edge-to-edge (`enableEdgeToEdge`) and keeps inside the bars through the `safe-*` spacing tokens
+  (`env(safe-area-inset-*)`, which the WebView reports); hidden (a swipe shows them for a moment) while a game is
+  open, the quick menu and its editors included (a hook of `game_hooks`), and while C06 / C09 are open from Settings
+  (`set_immersive` command, `composables/useImmersive.ts`), so the editors place things as a game is placed. Applied
+  again each time the window gets the focus back.
 - Homebrew test ROM: `tools/test-rom/emudome-test.gba`. Magenta screen, green while A is held (X key).
 
 ## Architecture
@@ -334,7 +341,8 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          paths for the process and the `LongPathsEnabled` policy, read only);
                          storage.rs (`disk_space`: the room on a path's volume, fs2, every system; E13),
                          `move_to_background` (Android's back at the shell's root: `SystemBridge.moveToBack`;
-                         false on the desktop);
+                         false on the desktop), `set_immersive` (Android's system bars hidden while
+                         a game is open, `SystemBridge.setImmersive`; nothing on the desktop);
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView;
                          SystemBridge: the back button, the launch intent's game, `content://` documents,
                          the folder / file pickers and the tree listing (#47);
@@ -699,8 +707,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   left out of ESLint and Prettier (compared byte for byte).
 - Events, every name a constant of `app/src-tauri/src/events.rs` (`<domain>://<event>`; `emu://` the emulator,
   `library://`, `settings://`, `saves://` theirs): `emu://session` (the session's `Event`s), `emu://gamepad-connected`,
-  `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`,
-  `emu://nav` (`{ action }`), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
+  `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`
+  (`{ system }`), `emu://nav` (`{ action, system }`; `system`: Android's back button), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
   `library://changed` (`LibraryChanged`: the rows that changed, the families of regional versions, or the
   whole library), `library://scan`,
@@ -1117,6 +1125,8 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   two screens 360 × 270 edge to edge (38–308, strip 308–344, 344–614), 359 × 269.25 on its side; the 3DS band 272,
   its top screen full width; on a 412 × 892 phone 412 × 309 each upright, 418 × 313.5 on its side. With the
   quick menu open the screens follow the menu's inset, which keeps no strip: they join, still filling their room.
+  C06 opened over the game sends the inset of the layout being edited instead (`TouchEditor`'s `inset`, the menu's
+  `MenuInset.Own`), so the game sits where it plays, again after each step of the edit.
   Native video's «Sfondo ai lati del gioco» cuts one hole per screen where Rust places it (`GameSurround.vue`
   asks `screens_placements` for the window's surface in physical pixels, `lib/surround.ts` `holesClipPath`; #105),
   so the room between two screens apart is painted too; screens that overlap (a custom layout) share one hole,
