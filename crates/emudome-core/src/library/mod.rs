@@ -25,7 +25,7 @@ pub use identity::{
 };
 pub use scan::{
     identify_cached, identify_open_file, scan, scan_with_documents, DocEntry, Documents, Found,
-    OpenedDocument, ScanInput, ScanOutcome,
+    OpenedDocument, ScanInput, ScanOutcome, Skipped,
 };
 pub use store::{
     cover_colour, CacheEntry, CoverKind, GameRecord, HashCache, Library, ScanReport, NAME_MAX,
