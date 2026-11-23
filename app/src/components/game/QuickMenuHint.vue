@@ -1,11 +1,14 @@
 <script setup lang="ts">
 // G06: how to open the quick menu, at the top over the game, the first few games. It fades out
-// (600 ms, a value waiting for a design decision: spec Decision 5).
+// (600 ms, a value waiting for a design decision: spec Decision 5). Esc only where a keyboard is
+// (on the phone once a physical one was used, #118).
 import { useI18n } from 'vue-i18n'
+import { useKeyboardKeys } from '@/composables/useKeyboardKeys'
 import { Kbd } from '@/design-system/components/kbd'
 
 defineProps<{ shown: boolean }>()
 const { t } = useI18n()
+const keyboardKeys = useKeyboardKeys()
 </script>
 
 <template>
@@ -15,8 +18,10 @@ const { t } = useI18n()
       class="glass-thick pointer-events-none fixed top-12 left-1/2 z-overlay flex -translate-x-1/2 items-center gap-6 rounded-card px-10 py-6 text-ink-muted"
       role="status"
     >
-      <Kbd>{{ t('flow.hintEsc') }}</Kbd>
-      <span>{{ t('flow.hintOr') }}</span>
+      <template v-if="keyboardKeys">
+        <Kbd>{{ t('flow.hintEsc') }}</Kbd>
+        <span>{{ t('flow.hintOr') }}</span>
+      </template>
       <Kbd>{{ t('flow.hintHome') }}</Kbd>
       <span>{{ t('flow.hintText') }}</span>
     </div>
