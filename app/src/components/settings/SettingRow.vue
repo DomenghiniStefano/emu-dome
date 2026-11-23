@@ -156,7 +156,13 @@ async function choose() {
         </Button>
       </SettingRowText>
 
-      <div class="flex flex-initial flex-wrap items-center justify-end gap-8">
+      <div
+        :class="[
+          'flex flex-initial flex-wrap items-center justify-end gap-8',
+          // A slider takes the row's width on a touch screen (SettingSlider).
+          kind.type === 'slider' && 'touch:basis-full',
+        ]"
+      >
         <SettingToggle
           v-if="kind.type === 'toggle'"
           :label="name"
