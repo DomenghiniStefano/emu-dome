@@ -976,6 +976,31 @@ pub fn records(app: &AppHandle) -> Vec<library::GameRecord> {
         .unwrap_or_default()
 }
 
+/// The name a library folder shows («In <cartella>», «Gestisci lo spazio»): a picked document
+/// tree's display name as the last scan saw it (Android), else the folder's last part.
+pub fn folder_name(app: &AppHandle, folder: &str) -> Option<String> {
+    if emudome_platform::is_content_uri(folder) {
+        let state = app.try_state::<LibraryState>()?;
+        let trees = state.trees.lock();
+        return trees.get(folder).and_then(|t| t.name.clone());
+    }
+    Path::new(folder)
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .or_else(|| Some(folder.to_owned()))
+}
+
+/// The game file of `id` was removed from this device («Togli dal telefono»): the game stays in
+/// the library, unavailable (faded), its saves and play time kept; `library://changed` tells.
+pub fn file_removed(app: &AppHandle, id: &GameKey) -> Result<(), ErrorCode> {
+    let state = app
+        .try_state::<LibraryState>()
+        .ok_or_else(|| ErrorCode::LibraryGameUnknown { id: id.to_string() })?;
+    state.lib.lock().set_unavailable(id)?;
+    emit_games(app, &state, &[id]);
+    Ok(())
+}
+
 /// A game file that arrived outside the library folders (downloaded from Google Drive) joins
 /// the library at the next scan, started now; `library://changed` tells when it is in.
 pub fn add_file(app: &AppHandle, path: PathBuf) {

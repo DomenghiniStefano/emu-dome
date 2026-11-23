@@ -84,5 +84,8 @@
   "updateGameOpen",
   "logUnavailable",
   "logExportFailed",
-  "licenceUnreadable"
+  "licenceUnreadable",
+  "storageGameNotRemovable",
+  "storageDeleteFailed",
+  "storageFolderUnavailable"
 ]

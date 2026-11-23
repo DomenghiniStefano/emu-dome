@@ -527,6 +527,13 @@ pub fn run() {
             // The phone (#29): E13's room left, Android's back at the shell's root, the system
             // bars for the layout editors outside a game (#131).
             storage::storage_status,
+            storage::storage_breakdown,
+            storage::storage_quick_saves,
+            storage::storage_delete_quick,
+            storage::storage_delete_screenshots,
+            storage::storage_clear_temp,
+            storage::storage_remove_game,
+            storage::storage_open_folder,
             hotkeys::leave_to_background,
             hotkeys::set_immersive,
             commands::list_slots,

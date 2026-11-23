@@ -25,6 +25,7 @@
 //! the service `it.domehub.emudome` and the account [`emudome_sync::auth::REFRESH_TOKEN_ACCOUNT`];
 //! never in a file or a log.
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -89,6 +90,23 @@ pub struct Cloud {
     heartbeat: Mutex<Option<Arc<AtomicBool>>>,
 }
 
+/// EmuDome's own games folder, `<app local data>/games/`: where «Scarica» puts a game from
+/// Drive. The only folder «Togli dal telefono» deletes a game file from (`storage.rs`).
+pub fn games_dir<R: tauri::Runtime, M: Manager<R>>(app: &M) -> tauri::Result<PathBuf> {
+    Ok(crate::dirs::local(app)?.join("games"))
+}
+
+/// Whether the game file of `id` is on Drive now (asked of Drive: `cloudNotSignedIn` and the
+/// other sign-in codes when sync cannot run).
+pub async fn on_drive(app: &AppHandle, id: &GameKey) -> Result<bool, ErrorCode> {
+    let service = app.state::<Cloud>().signed_service(app)?;
+    Ok(service
+        .games(&library::records(app))
+        .await?
+        .iter()
+        .any(|g| &g.id == id && g.on_drive))
+}
+
 fn configured() -> bool {
     OAuthClient::from_build().is_some()
 }
@@ -119,12 +137,11 @@ impl Cloud {
             detail: format!("no data folder: {e}"),
         };
         let data = crate::dirs::data(app).map_err(folder)?;
-        let local = crate::dirs::local(app).map_err(folder)?;
         let paths = Paths {
             saves_root: data.join("saves"),
             settings: data.join("settings"),
             sync: data.join("sync"),
-            games: local.join("games"),
+            games: games_dir(app).map_err(folder)?,
         };
         let notify_app = app.clone();
         let made = Arc::new(CloudService::new(
