@@ -114,7 +114,20 @@ async function scanDone(added: number) {
     perConsole[g.console] = (perConsole[g.console] ?? 0) + 1
   }
   before = null
-  library.summary = { added, perConsole }
+  library.summary = mergeSummary(library.summary, { added, perConsole })
+}
+
+/**
+ * L11 counts every scan since it was last closed (#127): the first run scans each folder added
+ * (and each file picked) on its own, so the banner it leaves says all the games they added, not
+ * the last scan's.
+ */
+export function mergeSummary(shown: ScanSummary | null, next: ScanSummary): ScanSummary {
+  if (!shown) return next
+  const perConsole: ScanSummary['perConsole'] = { ...shown.perConsole }
+  for (const [c, n] of Object.entries(next.perConsole) as [ConsoleId, number][])
+    perConsole[c] = (perConsole[c] ?? 0) + n
+  return { added: shown.added + next.added, perConsole }
 }
 
 /**

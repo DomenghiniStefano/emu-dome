@@ -152,6 +152,27 @@ describe('a scan (L11)', () => {
     await flush()
     expect(library.summary).toBeNull()
   })
+
+  it('counts every scan since the banner was last closed (#127: the first run)', async () => {
+    bridge.get.mockResolvedValue(answer([]))
+    await startLibrary()
+    scan({ phase: 'started' } as LibraryScanEvent)
+    bridge.get.mockResolvedValue(answer([game('a')]))
+    scan({ phase: 'done', added: 1 } as LibraryScanEvent)
+    await flush()
+    scan({ phase: 'started' } as LibraryScanEvent)
+    bridge.get.mockResolvedValue(answer([game('a'), game('b', 'nds')]))
+    scan({ phase: 'done', added: 1 } as LibraryScanEvent)
+    await flush()
+    expect(library.summary).toEqual({ added: 2, perConsole: { gba: 1, nds: 1 } })
+    // Closed, the next scan starts a new count.
+    library.summary = null
+    scan({ phase: 'started' } as LibraryScanEvent)
+    bridge.get.mockResolvedValue(answer([game('a'), game('b', 'nds'), game('c', 'nds')]))
+    scan({ phase: 'done', added: 1 } as LibraryScanEvent)
+    await flush()
+    expect(library.summary).toEqual({ added: 1, perConsole: { nds: 1 } })
+  })
 })
 
 describe('folderLabel', () => {

@@ -19,7 +19,10 @@
 // «Riprendi» on its row or cover (`resumeTarget`), the others «Gioca» (the list) or nothing (the
 // grid). The desktop shows the list too when the user picks it in Settings, with «Continua a
 // giocare» kept above it and «Gioca» on every row.
-import { computed, ref } from 'vue'
+//
+// L11 says every scan since it was closed (lib/library.ts `mergeSummary`) and is seen once: it
+// closes when this view goes (another section, a game's details, a game; #127).
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { FunnelX, TriangleAlert } from '@lucide/vue'
 import CloudDriveShelf from '@/components/cloud/CloudDriveShelf.vue'
@@ -114,6 +117,9 @@ async function replace(path: string) {
   if (failed) toasts.fail(failed)
 }
 const unreachable = computed(() => unreachableFolders(library.folders, library.games))
+
+// L11 seen: leaving the view closes it, as its ✕ does.
+onBeforeUnmount(() => (library.summary = null))
 
 /** TV mode with games: the shelves. */
 const shelves = computed(() => uiMode.tv && library.loaded && library.games.length > 0)
