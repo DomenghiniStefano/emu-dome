@@ -3,8 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <!-- `viewport-fit=cover`: the phone reports its bars and notch as env(safe-area-inset-*),
-         which the phone's shell keeps clear (theme/spacing.css, Trello #29). -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+         which the phone's shell keeps clear (theme/spacing.css, Trello #29).
+         No pinch zoom (`maximum-scale=1, user-scalable=no`): the touch controls, the native game
+         surface under the webview and the touch on a DS screen are all placed at zoom 1; a zoomed
+         page would no longer match them. The system's font size still applies. The same is
+         switched off in the Android WebView (MainActivity.kt) and double-tap zoom in styles.css. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <title>EmuDome</title>
     <!--
       The startup splash (Trello #101, the owner's mockup, option A): the mark alone, centred on
