@@ -840,7 +840,9 @@ px / rem / em length or bracketed opacity, z-index, duration or curve in a class
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
 `design-system/components`, no `<style>`, no `phone` / `touch` prop used only in `:class`, no hand-written widget role (`dialog`,
 `radio`, `menu`…) outside `design-system/components` except the shrinking list `HAND_ROLES_PENDING`, no `<Button>` named with both
-`aria-label` and `title` (an icon alone takes `label`, #104); the rows and what each cannot see are in
+`aria-label` and `title` (an icon alone takes `label`, #104), no `<Button>` / `<LinkRow>` / `<DropdownMenuItem>` /
+`<Card as="button">` with no action (a handler, `to`, submit, `as-child`, a static `disabled`, a wrapper that gives
+it one, the component's root, or `<!-- no-action: why -->`, #112); the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
 `unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
@@ -873,6 +875,8 @@ key of the wrong kind.
   e.g. the quick menu's rows, is still written in the interface).
 - A new reader of a setting marks it wired (`.not_wired()` removed in catalog.rs): the test lists the unwired ones,
   it cannot see a reader that is missing.
+- A control does what it says: the `dead-button` scanner rule sees that an action is bound, not that the handler
+  does something or that a parent listens to the event it emits; a feature not ready is disabled with its reason.
 - Every menu is fully usable with the controller: a new screen registers `useNavScope` (`app/src/nav.ts`)
   and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the scope tree and the primitives'
   keys too (`nav.test.ts`, `design-system/components/nav.test.ts`), the screens are not.
@@ -1038,7 +1042,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
 - 16 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
-  list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
+  list is `the_entries_not_wired_yet_are_these` in settings/tests.rs). The action rows carried out are `cloud.acct`,
+  `cloud.space`, `about.ver`, `about.upd`, `about.lic` and `about.log` (the same test); every other action row is
+  disabled with that reason, and no preset card is carried out.
 - Touch controls (Trello #29): layouts per console and orientation (defaults for GB / GBC, GBA, DS and 3DS, the
   user's own from C06 kept per device), tap / hold / turbo (the repeat is the interface's, about 12 a second: the
   core has no turbo of its own), vibration on Android, `touch.thide` / `touch.tpad`, two built-in styles from the

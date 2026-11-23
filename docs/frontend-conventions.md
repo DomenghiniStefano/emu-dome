@@ -214,6 +214,7 @@ class fires too.
 | `important` | `w-48!`, `!w-48` | in scripts and `.ts`, a `!` class with no `-` or `:` (`flex!`) |
 | `look-only-prop` | a `phone` / `touch` prop used only in `:class` | a prop read in `<script>`, passed down, or of another name |
 | `button-name` | a `<Button>` with both `aria-label` and `title` (static or bound) outside `design-system/components`: an icon alone takes `label` (accessible name and Tooltip) | a Button in a render function or `<component :is>`, attributes in a `v-bind="{…}"` object |
+| `dead-button` | a `<Button>`, `<LinkRow>`, `<DropdownMenuItem>` or `<Card as="button">` outside `design-system/` with no action: none of `@click` / `@select` / `@pointerdown` / `v-on`, `to`, `type="submit"`, `as-child`, `v-bind="…"`, a static `disabled`; allowed as the only child of RadioGroupItem / Checkbox / DropdownMenuItem / a `…Trigger` / `…Close` / an `as-child` tag, as the component's root (the caller's listeners fall through), as another element (`as="div"`), or after `<!-- no-action: why -->` | a handler that does nothing, an emit no parent listens to, a root whose callers pass no listener, a `v-bind` object without one, render functions, `<component :is>`, the Kit page |
 | `hand-role` | `role="dialog"`, `alertdialog`, `radio`, `radiogroup`, `checkbox`, `menu`, `menuitem`, `listbox`, `option`, `switch`, `tab`, `tablist` (static or `:role`) outside `design-system/components`; the files not moved yet are in `HAND_ROLES_PENDING` with the reason | a role set from a script, a render function, a `:role` built from a variable |
 
 Allowed by construction: values built only from tokens (`calc(100%+var(--spacing-6))`, grid templates
@@ -234,6 +235,9 @@ Other gates on the frontend: `scripts/visible-text.mjs` (hardcoded text in templ
 - The look (graphite, accent only on the main action, glass, Lucide icons) and every value the scanner
   cannot see: % / viewport lengths, icon sizes as props, `style` bindings.
 - A `phone` / `touch` prop that only changes the look but escapes `look-only-prop`.
+- A control does what it says (#112): `dead-button` sees only that an action is bound, not that the
+  handler does something or that a parent listens to the event it emits. A feature that is not
+  ready is shown disabled with its reason (`settingsUi.notYet`, X05), never live with no effect.
 - Which form a button takes (#104: icon + words, the icon alone with `label`, or words), and that its
   icon comes through `icon` rather than the slot (a slot glyph stays only where its size is its own:
   the phone's 24 px chevron, the bell with its badge).

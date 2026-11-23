@@ -1,0 +1,13 @@
+<!-- Fixture of scripts/scan-conventions.mjs: controls that look live and do nothing. -->
+<template>
+  <div class="flex gap-8">
+    <Button :icon="Save" :disabled="busy">{{ t('touch.editor.save') }}</Button>
+  </div>
+  <section>
+    <LinkRow :name="t('controls.overview.touch')" :sub="t('controls.overview.touchSub')" />
+    <Card as="button" :variant="CardVariant.ListRow">x</Card>
+    <DropdownMenuItem>
+      <Button :variant="ButtonVariant.Menu">x</Button>
+    </DropdownMenuItem>
+  </section>
+</template>

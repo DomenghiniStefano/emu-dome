@@ -11,12 +11,45 @@ const label = props.touch ? 'a' : 'b'
     class="flex gap-8 bg-surface text-ink opacity-disabled touch:px-14 touch-none"
     :class="{ 'gap-12': phone }"
   >
-    <Button v-if="!phone" :variant="ButtonVariant.Primary" :size="size">{{ dark.light }}</Button>
+    <Button v-if="!phone" :variant="ButtonVariant.Primary" :size="size" @click="go">{{ dark.light }}</Button>
     <span class="grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] -translate-1/2">{{ label }}</span>
     <section role="region" aria-label="x"><p role="alert" data-role="dialog">x</p></section>
     <div role="tabpanel"><div role="group" aria-roledescription="menu">y</div></div>
-    <Button :label="t('firstRun.games.removeFolder')" :title="t('firstRun.games.remove')" />
+    <Button :label="t('firstRun.games.removeFolder')" :title="t('firstRun.games.remove')" @click="go" />
     <Button :aria-label="t('touch.menu')" @click="() => (open = title)" />
-    <Button :data-title="x" :aria-label="y">z</Button>
+    <Button :data-title="x" :aria-label="y" @click.stop="go">z</Button>
+    <!-- dead-button's look-alikes: each control has its action, or says why it has none -->
+    <Button disabled :title="t('settingsUi.notYet')">x</Button>
+    <Button type="submit">x</Button>
+    <Button v-bind="actions">x</Button>
+    <Button as-child><a href="#kit">x</a></Button>
+    <Button as="span">x</Button>
+    <LinkRow as="div" :name="a" :sub="b" />
+    <LinkRow :name="a" :sub="b" @click="go" />
+    <Button :to="route">x</Button>
+    <Button v-on:click="go">x</Button>
+    <Button @pointerdown="press">x</Button>
+    <Card as="div" :variant="v">x</Card>
+    <Card as="button" :variant="v" @click="go">x</Card>
+    <RadioGroupItem value="a">
+      <Card as="button" :variant="v">x</Card>
+    </RadioGroupItem>
+    <Checkbox
+      v-model="remember"
+    >
+      <!-- the box -->
+      <Button :variant="ButtonVariant.Menu">x</Button>
+    </Checkbox>
+    <DropdownMenuItem @select="go">
+      <Button :variant="ButtonVariant.Menu">x</Button>
+    </DropdownMenuItem>
+    <PopoverTrigger :anchor="a">
+      <Button>x</Button>
+    </PopoverTrigger>
+    <div class="x" as-child>
+      <Button>x</Button>
+    </div>
+    <!-- no-action: a copy measured for its width, never shown -->
+    <Button :icon="Save">x</Button>
   </div>
 </template>
