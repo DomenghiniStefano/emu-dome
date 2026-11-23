@@ -742,8 +742,10 @@ pub static ENTRIES: &[Entry] = &[
     )
     .not_wired(),
     // ---- Cloud (cloud) ----
-    act("cloud.acct", G).device(),
-    action("cloud.space", ActionStyle::Storage, G),
+    // «Accedi con Google» / «Apri Cloud» open the Cloud section, where the account is signed in
+    // and out (SettingRow, TvSettingRow); the space row shows the sync's last measure (#31).
+    act("cloud.acct", G).device().carried_out(),
+    action("cloud.space", ActionStyle::Storage, G).carried_out(),
     // Read by the Drive sync (`app/src-tauri/src/cloud.rs`, `emudome_sync::service::Prefs`).
     sw("cloud.ssaves", true, G),
     seg("cloud.squick", &["all", "last", "none"], "all", GC),
@@ -882,7 +884,8 @@ pub static ENTRIES: &[Entry] = &[
         .phase(5)
         .not_wired(),
     // ---- Informazioni (about) ----
-    info("about.ver", G),
+    // The app's version, as Tauri reports it (useSettingRow, `emu.appVersion`).
+    info("about.ver", G).carried_out(),
     // «Controlla ora»: one check whatever `general.updates` says (Trello #44). Desktop only, like
     // the updates themselves.
     act("about.upd", G).pc().carried_out(),

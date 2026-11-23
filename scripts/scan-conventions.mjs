@@ -85,6 +85,18 @@
 //                     `label` stays allowed (the tooltip then shows it: a short word for a long
 //                     accessible name). Cannot see a Button rendered by a render function or
 //                     `<component :is>`, nor attributes passed in a `v-bind="{…}"` object.
+//   dead-button       a control with no action (Trello #112): a <Button>, <LinkRow>,
+//                     <DropdownMenuItem> or a <Card> rendered as a button (`as="button"`) outside
+//                     src/design-system with none of `@click` / `@select` / `@pointerdown` / `v-on`,
+//                     `to`, `type="submit"`, `as-child`, `v-bind="…"` or a static `disabled` (a bound
+//                     `:disabled` is live whenever it is false). Allowed without one: the only child
+//                     of a tag that gives it its action (RadioGroupItem, Checkbox, DropdownMenuItem,
+//                     a `…Trigger` / `…Close`, anything `as-child`), the component's root element
+//                     (its caller's listeners fall through), `as` another element (`as="div"`: not
+//                     a control), and a control after `<!-- no-action: why -->`. Cannot see a
+//                     handler that does nothing, an event emitted that no parent listens to, a
+//                     root element whose callers pass no listener, a `v-bind` object without one,
+//                     controls in a render function or `<component :is>`, nor the Kit page.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
@@ -171,6 +183,7 @@ export const RULES = [
   "look-only-prop",
   "hand-role",
   "button-name",
+  "dead-button",
 ];
 
 /** The open tags `<Name …>` of a template, quotes respected (a `>` inside `@click="() => x"`
@@ -194,6 +207,53 @@ function openTags(tpl, name) {
 }
 
 const ATTR = (name) => new RegExp(`(?<![\\w-])(?::|v-bind:)?${name}=`);
+
+// dead-button: what gives a control its action on its own tag. A bound `:disabled` is not one
+// (the control is live whenever it is false); a static `disabled` is.
+const ACTION_BINDING =
+  /(?<![\w-])(?:@|v-on:)(?:click|select|pointerdown)\b|(?<![\w-])v-on=|(?<![\w-])v-bind=|(?<![\w:-])(?::|v-bind:)?to=|(?<![\w:-])type="submit"|(?<![\w:-])as-child(?![\w-])|(?<![\w:-])disabled(?=[\s/>])/;
+// The tags that give their only child its action (Reka's `as-child` wrappers of ours).
+const ACTION_WRAPPER =
+  /^<(?:RadioGroupItem|Checkbox|DropdownMenuItem|[A-Z]\w*Trigger|[A-Z]\w*Close)(?![\w-])|(?<![\w:-])as-child(?![\w-])/;
+// `<!-- no-action: <why> -->` right before a control: it takes no action by design.
+const NO_ACTION = /<!--\s*no-action:[^>]*-->\s*$/;
+
+/** dead-button: the controls of a template with no action: a <Button>, <LinkRow>,
+ * <DropdownMenuItem> or a <Card> rendered as a button, with no handler, link, submit, `as-child`
+ * or static `disabled`, not wrapped by a tag that gives it one, not the component's root (whose
+ * caller's listeners fall through), and with no `no-action` comment before it. */
+function deadControls(tpl) {
+  const found = [];
+  // The component's root element: the first tag inside <template>.
+  const open = tpl.search(/<template[\s>]/);
+  const inside = tpl.indexOf(">", open) + 1;
+  const firstTag = open < 0 ? -1 : inside + tpl.slice(inside).search(/<[A-Za-z]/);
+  for (const name of ["Button", "LinkRow", "DropdownMenuItem", "Card"]) {
+    for (const tag of openTags(tpl, name)) {
+      const t = tag.text;
+      if (name === "Card" && !/(?<![\w:-])as="button"|(?<![\w-]):as="[^"]*'button'/.test(t)) continue;
+      if ((name === "Button" || name === "LinkRow") && /(?<![\w:-])as="(?!button")[^"]*"/.test(t)) continue;
+      if (ACTION_BINDING.test(t)) continue;
+      if (tag.index === firstTag) continue;
+      const before = tpl.slice(0, tag.index);
+      if (NO_ACTION.test(before)) continue;
+      // The open tag right before it (comments aside) is its parent: does it give the action?
+      const prev = before.replace(/<!--[\s\S]*?-->/g, "").trimEnd();
+      const last = [...prev.matchAll(/<([A-Za-z][\w-]*)/g)].at(-1);
+      if (last) {
+        const parent = openTags(prev.slice(last.index), last[1])[0];
+        if (
+          parent &&
+          last.index + parent.text.length === prev.length &&
+          ACTION_WRAPPER.test(parent.text)
+        )
+          continue;
+      }
+      found.push(tag);
+    }
+  }
+  return found;
+}
 
 /** The root <template> block of a .vue source, blanked outside it so offsets keep their lines. */
 function template(source) {
@@ -287,7 +347,7 @@ function lookOnlyProps(source, tpl) {
 export function scanSource(
   source,
   kind,
-  { insideUi = false, handRolesAllowed = false } = {},
+  { insideUi = false, handRolesAllowed = false, insideKit = false } = {},
 ) {
   const found = [];
   const lineOf = (offset) => source.slice(0, offset).split("\n").length;
@@ -350,6 +410,15 @@ export function scanSource(
           add("button-name", tag.index, "<Button> with aria-label and title: use `label`");
       }
     }
+    if (!insideUi && !insideKit) {
+      for (const tag of deadControls(tpl)) {
+        add(
+          "dead-button",
+          tag.index,
+          `${tag.text.match(/^<\w+/)[0]}> with no action: @click / @select / to / type="submit" / as-child, a static disabled, or <!-- no-action: why -->`,
+        );
+      }
+    }
     each("style-block", /^<style\b[^>]*>/gm);
     for (const p of lookOnlyProps(source, tpl)) {
       add("look-only-prop", p.index, `prop \`${p.name}\` used only in :class`);
@@ -377,6 +446,7 @@ function scanRepo() {
     const found = scanSource(source, kind, {
       insideUi: file.startsWith("design-system/components/"),
       handRolesAllowed: HAND_ROLES_PENDING.has(file),
+      insideKit: file.startsWith("design-system/kit/"),
     });
     findings.push(
       ...found.map((f) => `app/src/${file}:${f.line}: ${f.rule}: ${f.text}`),

@@ -2330,5 +2330,15 @@ fn the_entries_not_wired_yet_are_these() {
         .filter(|e| !e.has_value() && e.wired)
         .map(|e| e.key)
         .collect();
-    assert_eq!(carried_out, ["about.upd", "about.lic", "about.log"]);
+    assert_eq!(
+        carried_out,
+        [
+            "cloud.acct",
+            "cloud.space",
+            "about.ver",
+            "about.upd",
+            "about.lic",
+            "about.log"
+        ]
+    );
 }

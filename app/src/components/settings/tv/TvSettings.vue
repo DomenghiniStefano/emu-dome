@@ -49,8 +49,11 @@ const emit = defineEmits<{
   set: [key: SettingKey, value: SettingValue]
   reset: [key: SettingKey]
   openControls: []
-  choose: []
-  edit: []
+  /** The Google account's row: open the Cloud section. */
+  openCloud: []
+  /** A row the page carries out, by its key (the desk's `choose` / `editScreens`). */
+  choose: [key: SettingKey]
+  edit: [key: SettingKey]
   unlit: []
   /** A level chosen in the scope row's sheet (the desk's scope bar: `level`). */
   level: [EditLevel]
@@ -172,8 +175,9 @@ onMounted(() => {
               @set="v => emit('set', e.key, v)"
               @reset="emit('reset', e.key)"
               @open="emit('openControls')"
-              @choose="emit('choose')"
-              @edit="emit('edit')"
+              @open-cloud="emit('openCloud')"
+              @choose="emit('choose', e.key)"
+              @edit="emit('edit', e.key)"
             />
             <!-- A kind the TV layout does not draw: the desk's row, scaled up. -->
             <SettingRowView
@@ -190,8 +194,9 @@ onMounted(() => {
               @set="v => emit('set', e.key, v)"
               @reset="emit('reset', e.key)"
               @open="emit('openControls')"
-              @choose="emit('choose')"
-              @edit="emit('edit')"
+              @open-cloud="emit('openCloud')"
+              @choose="emit('choose', e.key)"
+              @edit="emit('edit', e.key)"
             />
           </div>
         </div>
