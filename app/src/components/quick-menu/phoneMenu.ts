@@ -8,6 +8,7 @@ import {
   FastForward,
   Gamepad2,
   Gauge,
+  Hand,
   Laptop,
   Power,
   RefreshCw,
@@ -73,6 +74,9 @@ export const MoreId = {
   Speed: 'speed',
   Screens: 'screens',
   Controls: 'controls',
+  /** «Modifica la disposizione»: the C06 touch controls editor, one tap less than through
+   * «Controlli» (Trello #111). */
+  Layout: 'layout',
   Screenshot: 'shot',
   SwapScreens: 'swap',
   CloseLid: 'lid',
@@ -117,6 +121,12 @@ export function moreRows(c: MoreContext): MoreRow[] {
       icon: Gamepad2,
       label: 'qm.row.controls.name',
       page: QuickMenuView.Controls,
+    },
+    {
+      id: MoreId.Layout,
+      icon: Hand,
+      label: 'qm.editLayout',
+      page: QuickMenuView.TouchEditor,
     },
     { id: MoreId.Screenshot, icon: Camera, label: 'qm.screenshot' },
   ]

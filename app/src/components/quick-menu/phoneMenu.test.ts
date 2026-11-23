@@ -48,6 +48,7 @@ describe('moreRows', () => {
       MoreId.Speed,
       MoreId.Screens,
       MoreId.Controls,
+      MoreId.Layout,
       MoreId.Screenshot,
       MoreId.Restart,
       MoreId.Close,
@@ -57,7 +58,10 @@ describe('moreRows', () => {
       QuickMenuView.Speed,
       QuickMenuView.Screens,
       QuickMenuView.Controls,
+      QuickMenuView.TouchEditor,
     ])
+    // «Modifica la disposizione» (Trello #111): a verb, the touch editor's icon.
+    expect(rows.find(r => r.id === MoreId.Layout)?.label).toBe('qm.editLayout')
     expect(rows.at(-1)?.danger).toBe(true)
     expect(rows.filter(r => r.danger)).toHaveLength(1)
   })

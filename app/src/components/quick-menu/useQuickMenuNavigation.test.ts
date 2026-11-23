@@ -70,6 +70,11 @@ function harness(parent?: (v: QuickMenuView) => QuickMenuView) {
                         ...openerMark('saves'),
                         onClick: (e: Event) => nav.open(QuickMenuView.Slots, e),
                       }),
+                      h('button', {
+                        id: 'layout-row',
+                        ...openerMark('layout'),
+                        onClick: (e: Event) => nav.open(QuickMenuView.TouchEditor, e),
+                      }),
                     ]
                   : null,
                 nav.view.value === QuickMenuView.Screens
@@ -236,6 +241,21 @@ describe('quick menu navigation on the phone (two levels)', () => {
 
     nav().back()
     expect(resume).toHaveBeenCalledOnce()
+  })
+
+  it('closes the touch editor opened from «Altro» back onto its row (Trello #111)', async () => {
+    const { wrapper, nav, home } = harness(phoneParent)
+    mounted = wrapper
+    await wrapper.find('#more').trigger('click')
+    await nextTick()
+    await wrapper.find('#layout-row').trigger('click')
+    expect(nav().view.value).toBe(QuickMenuView.TouchEditor)
+    nav().back()
+    await nextTick()
+    await nextTick()
+    expect(nav().view.value).toBe(QuickMenuView.More)
+    expect(focused()).toBe('layout-row')
+    expect(home).not.toHaveBeenCalled()
   })
 
   it('goes back from a page the search opened to «Altro»', async () => {

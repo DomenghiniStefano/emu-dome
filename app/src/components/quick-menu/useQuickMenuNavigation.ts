@@ -66,9 +66,12 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
   /** Opens a page; `e` is the click that opened it (null: the search). */
   function open(next: QuickMenuView, e: Event | null) {
     if (parentOf(next) === view.value) openers.set(view.value, openerOf(e))
+    if (next === QuickMenuView.TouchEditor) touchEditorFrom = view.value
     view.value = next
     void nextTick(focusPage)
   }
+  /** Where the C06 editor was opened: G10 «Controlli», or the phone's «Altro» (Trello #111). */
+  let touchEditorFrom: QuickMenuView = QuickMenuView.Controls
 
   function back() {
     if (view.value === QuickMenuView.Home) return hooks.resume()
@@ -83,7 +86,14 @@ export function useQuickMenuNavigation(root: Ref<HTMLElement | null>, hooks: Nav
       void nextTick(() => find(`[${FocusMark.Customise}]`)?.focus())
       return
     }
-    // The touch controls editor closes back onto G10, on the row that opened it.
+    // The touch controls editor closes back onto G10, on the row that opened it, or onto the
+    // phone's «Altro», on «Modifica la disposizione».
+    if (view.value === QuickMenuView.TouchEditor && touchEditorFrom === QuickMenuView.More) {
+      opener = openers.get(QuickMenuView.More) ?? null
+      view.value = QuickMenuView.More
+      void nextTick(() => focusOpener(QuickMenuView.More))
+      return
+    }
     if (view.value === QuickMenuView.TouchEditor) {
       view.value = QuickMenuView.Controls
       void nextTick(() => find(`[${FocusMark.TouchEdit}]`)?.focus())

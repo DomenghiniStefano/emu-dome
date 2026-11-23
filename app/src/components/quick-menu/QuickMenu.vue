@@ -313,7 +313,8 @@ function runMore(row: MoreRow, e: Event) {
     case MoreId.Speed:
     case MoreId.Screens:
     case MoreId.Controls:
-      // Pages: opened above.
+    case MoreId.Layout:
+      // Pages (and the C06 editor): opened above.
       return
   }
 }
