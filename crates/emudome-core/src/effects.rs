@@ -4,6 +4,7 @@
 //! `app/src-tauri/effects/`) or `file`, the user's own preset chosen in `fx.fxfile`;
 //! `fx.fxint` mixes the effect over the plain image and `fx.fxbright` brightens the effect.
 //! Pure: the renderer loads the preset, this module only decides which one and how strong.
+//! [`Smoothing`] is `video.filter`, the plain image's smoothing under any effect.
 
 use std::path::PathBuf;
 
@@ -65,12 +66,79 @@ fn percent(p: i64) -> f32 {
     p as f32 / 100.0
 }
 
+/// `video.filter`: how the plain image is smoothed when the game is enlarged (both video paths;
+/// a screen effect is drawn over it as before).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Smoothing {
+    /// `none`: sharp pixels (nearest).
+    None,
+    /// `light`: the pixels enlarged by the largest whole scale that fits, then smoothed for the
+    /// rest («sharp bilinear»): even pixels at any scale, soft only at their edges.
+    Light,
+    /// `soft`: smoothed all over (bilinear).
+    Soft,
+}
+
+impl Smoothing {
+    /// Its `video.filter` option id.
+    pub fn id(self) -> &'static str {
+        match self {
+            Smoothing::None => "none",
+            Smoothing::Light => "light",
+            Smoothing::Soft => "soft",
+        }
+    }
+
+    /// The smoothing the resolved `video.filter` asks for (a missing, mistyped or unknown value
+    /// is the catalogue's default).
+    pub fn from_settings(read: impl Fn(&str) -> Option<Value>) -> Self {
+        let settings = Reader::new(read);
+        let of = |id: &str| {
+            [Smoothing::None, Smoothing::Light, Smoothing::Soft]
+                .into_iter()
+                .find(|s| s.id() == id)
+        };
+        of(&settings.text(keys::VIDEO_FILTER))
+            .or_else(|| of(&Reader::new(|_| None).text(keys::VIDEO_FILTER)))
+            .unwrap_or(Smoothing::Light)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{from_settings, EffectChoice, EffectSource, BUILTIN};
+    use super::{from_settings, EffectChoice, EffectSource, Smoothing, BUILTIN};
     use crate::settings::keys;
     use crate::settings::{Kind, Value};
     use std::path::PathBuf;
+
+    #[test]
+    fn every_filter_option_is_a_smoothing_and_back() {
+        let Kind::Choice { options, .. } = keys::VIDEO_FILTER.entry().kind else {
+            panic!("video.filter is a choice");
+        };
+        let ids: Vec<&str> = [Smoothing::None, Smoothing::Light, Smoothing::Soft]
+            .iter()
+            .map(|s| s.id())
+            .collect();
+        assert_eq!(options, ids.as_slice());
+        for id in options {
+            let s = Smoothing::from_settings(|_| Some(text(id)));
+            assert_eq!(s.id(), *id);
+        }
+    }
+
+    #[test]
+    fn a_missing_or_unknown_filter_is_the_default_light() {
+        assert_eq!(Smoothing::from_settings(|_| None), Smoothing::Light);
+        assert_eq!(
+            Smoothing::from_settings(|_| Some(text("blur"))),
+            Smoothing::Light
+        );
+        assert_eq!(
+            Smoothing::from_settings(|_| Some(Value::Int(1))),
+            Smoothing::Light
+        );
+    }
 
     fn text(s: &str) -> Value {
         Value::Text(s.into())

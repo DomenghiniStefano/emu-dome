@@ -8,7 +8,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { uiZoom } from '@/lib/appearance'
 import { feColorMatrix, isColourBlindMode } from './colourBlind'
-import { screenDraws, type ScreenDraw } from './screenDraw'
+import { screenDraws, screenSmoothing, type ScreenDraw } from './screenDraw'
 import { NO_INSET, type InsetPx } from './inset'
 import { viewArea } from './screenTouch'
 import { emu, frameUrl, type BenchFrame } from '@/emu'
@@ -22,6 +22,8 @@ const props = defineProps<{
   colourBlind?: string
   /** A side background (GameSurround) is painted under the stage: no black of its own. */
   surround?: boolean
+  /** `video.filter`: `none`, `light` or `soft` (screenDraw.ts `screenSmoothing`). */
+  smoothing?: string
 }>()
 
 // The filter's id and matrix; none for `none`.
@@ -36,6 +38,8 @@ const { t } = useI18n()
 const canvas = ref<HTMLCanvasElement | null>(null)
 // The core's frame as it came; each screen is drawn from its part of it.
 const frame = document.createElement('canvas')
+// A smoothed screen, enlarged sharp by its whole scale before the smoothing (screenSmoothing).
+const enlarged = document.createElement('canvas')
 let seq = -1
 let running = true
 // Where the screens go, and the frame size Rust composed them for.
@@ -97,14 +101,35 @@ function paint() {
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.clearRect(0, 0, c.width, c.height)
   if (frame.width !== composedFor.w || frame.height !== composedFor.h) return
-  ctx.imageSmoothingEnabled = false
   for (const d of draws) {
     ctx.setTransform(1, 0, 0, 1, d.cx, d.cy)
     ctx.rotate(d.angle)
-    ctx.drawImage(frame, d.sx, d.sy, d.sw, d.sh, -d.w / 2, -d.h / 2, d.w, d.h)
+    const s = screenSmoothing(d, props.smoothing ?? 'light')
+    if (!s.smooth) {
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(frame, d.sx, d.sy, d.sw, d.sh, -d.w / 2, -d.h / 2, d.w, d.h)
+      continue
+    }
+    const w = d.sw * s.kx
+    const h = d.sh * s.ky
+    if (enlarged.width !== w || enlarged.height !== h) {
+      enlarged.width = w
+      enlarged.height = h
+    }
+    const e = enlarged.getContext('2d')
+    if (!e) continue
+    e.imageSmoothingEnabled = false
+    e.drawImage(frame, d.sx, d.sy, d.sw, d.sh, 0, 0, w, h)
+    // `medium`: bilinear for an enlargement in Chromium (WebView2, Android's WebView).
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'medium'
+    ctx.drawImage(enlarged, -d.w / 2, -d.h / 2, d.w, d.h)
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0)
 }
+
+// Another smoothing: the frame on screen drawn again at once (a paused game sends no new one).
+watch(() => props.smoothing, paint)
 
 async function tick() {
   if (!running) return

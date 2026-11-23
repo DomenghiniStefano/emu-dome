@@ -8,7 +8,6 @@ import { flow, gameStarted } from './gameFlow'
 import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
 import { insetShares, NO_INSET, sameInset, type InsetPx } from './inset'
-import { NORMAL } from '@/lib/speeds'
 import { quickSlotSteps } from '@/components/quick-menu/phoneMenu'
 import { createGameState } from './gameState'
 import { useGameEnding } from './useGameEnding'
@@ -58,7 +57,8 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
   async function begin(info: GameInfo, from: LibraryGame | null, resumeAuto = false) {
     playingGame.value = from
     game.value = info
-    speed.value = { ...NORMAL }
+    // `speed.spstart`: Rust started the game at it.
+    speed.value = { ...info.speed }
     menuOpen.value = false
     paused.value = false
     undoLoadSlot.value = null

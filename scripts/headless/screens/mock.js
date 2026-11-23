@@ -1052,6 +1052,8 @@
     autosaveOnExit: true,
     // Loading states works (Trello #93: none of these games is blocked).
     stateLoadBlock: null,
+    // `speed.spstart`: the speed the game starts at.
+    speed: { kind: "factor", value: 1 },
   };
   const answers = {
     // `game` (the quick menu's, named by console) or `inGame` (the settings' row hosts): a game
@@ -1069,6 +1071,7 @@
           core: "mgba",
           resumable: false,
           autosaveOnExit: false,
+          speed: { kind: "factor", value: 1 },
         }
       : gameInfo,
     // `nativeVideo`: the Accelerated method in use (the screen effects can change).
@@ -1089,6 +1092,7 @@
             core: "mgba",
             resumable: false,
             autosaveOnExit: true,
+            speed: { kind: "factor", value: 1 },
           },
           stats: {
             running: false,

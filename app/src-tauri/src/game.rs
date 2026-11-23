@@ -7,7 +7,9 @@ use emudome_core::core_profile::{state_load_block, CoreId, Renderer, StateLoadBl
 use emudome_core::n3ds::fallback::FallbackWatch;
 use emudome_core::save_path::{PathLimits, PathUnit};
 use emudome_core::settings::ConsoleId;
-use emudome_core::{ErrorCode, Event, GameKey, GameReader, Session, SessionOptions, VideoSetup};
+use emudome_core::{
+    Command, ErrorCode, Event, GameKey, GameReader, Session, SessionOptions, Speed, VideoSetup,
+};
 use emudome_platform::CoreLookupError;
 use serde::Serialize;
 use tauri::{Emitter, Manager};
@@ -35,6 +37,8 @@ pub(crate) struct GameInfo {
     /// null: the interface shows every load (Carica, the resume question's «Riprendi») disabled
     /// with this reason, and the session refuses them, rewind included.
     state_load_block: Option<StateLoadBlock>,
+    /// The speed it starts at (`speed.spstart`).
+    speed: Speed,
 }
 
 /// Which core to use for a file, and its console, by its extension.
@@ -503,6 +507,11 @@ fn open_path(
         e.into_code(core.name())
     })?;
 
+    // `speed.spstart`: queued before the first frame runs.
+    if flow.start_speed != NORMAL_SPEED {
+        session.send(Command::SetSpeed(flow.start_speed));
+    }
+
     // The core's events go to the interface.
     let app_events = app.clone();
     std::thread::spawn(move || {
@@ -543,8 +552,12 @@ fn open_path(
         resumable,
         autosave_on_exit: flow.autosave_on_exit,
         state_load_block,
+        speed: flow.start_speed,
     })
 }
+
+/// The speed a game runs at unless `speed.spstart` says otherwise.
+const NORMAL_SPEED: Speed = Speed::Factor(1.0);
 
 /// Closes the open game (back to the library) through the close flow; returns once it is
 /// closed. Off the event loop: it waits for the exit writes and the user's choice.

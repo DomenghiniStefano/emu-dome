@@ -1,4 +1,5 @@
-//! Screen effects (`fx.*`) on the native video path.
+//! Screen effects (`fx.*`), the pixel smoothing (`video.filter`) and V-Sync (`video.vsync`) on
+//! the native video path.
 //!
 //! The built-in presets (`app/src-tauri/effects/`, see THIRD_PARTY.md) are part of the binary
 //! and written once to `<app local data>/effects/<version>/`, where librashader reads them like
@@ -8,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-use emudome_core::effects::{self, EffectSource};
+use emudome_core::effects::{self, EffectSource, Smoothing};
 use emudome_core::settings::{keys, Scope, Value};
 use emudome_core::ErrorCode;
 use tauri::{AppHandle, Emitter, Manager};
@@ -124,13 +125,17 @@ fn effect_name(preset: &Path) -> String {
     }
 }
 
-/// The `fx.*` keys: a change to any of them calls [`apply`].
+/// The `fx.*` keys, `video.filter` and `video.vsync`: a change to any of them calls [`apply`].
 pub fn is_effect_key(key: &str) -> bool {
     key.starts_with("fx.")
+        || key == keys::VIDEO_FILTER.as_str()
+        || key == keys::VIDEO_VSYNC.as_str()
 }
 
-/// Sends the effect the settings ask for (seen from the open game, else from «Tutti i giochi»)
-/// to the native renderer. Without one (webview video) there is nothing to do.
+/// Sends the effect, the smoothing (`video.filter`) and V-Sync (`video.vsync`) the settings ask
+/// for (seen from the open game, else from «Tutti i giochi») to the native renderer. Without one
+/// (webview video) there is nothing to do: the canvas reads `video.filter` itself, and the
+/// webview presents it.
 pub fn apply(app: &AppHandle) {
     let Some(state) = app.try_state::<AppState>() else {
         return;
@@ -161,15 +166,19 @@ pub fn apply(app: &AppHandle) {
         [keys::FX_PICK.as_str(), keys::FX_FILE.as_str()]
             .into_iter()
             .chain([keys::FX_INTENSITY.as_str(), keys::FX_BRIGHTNESS.as_str()])
+            .chain([keys::VIDEO_FILTER.as_str(), keys::VIDEO_VSYNC.as_str()])
             .map(|key| (key, read(key)))
             .collect::<Vec<_>>()
     };
-    let choice = effects::from_settings(|key| {
+    let value = |key: &str| {
         values
             .iter()
             .find(|(k, _)| *k == key)
             .and_then(|(_, v)| v.clone())
-    });
+    };
+    renderer.set_smoothing(Smoothing::from_settings(value));
+    renderer.set_vsync(keys::Reader::new(value).bool(keys::VIDEO_VSYNC));
+    let choice = effects::from_settings(value);
     let builtin_dir = app
         .try_state::<EffectsState>()
         .and_then(|s| s.builtin_dir.clone());

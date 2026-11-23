@@ -380,13 +380,17 @@ pub fn run() {
             // intent's game; nothing on the desktop.
             let back_app = app.handle().clone();
             emudome_platform::attach_system(&ui, move || hotkeys::back_button(&back_app));
-            let surface = video::SurfaceSettings::from_tuning(&tuning.video);
-            // `video.api`: read once, the GPU is the run's (a change applies at the next start).
-            let api = emudome_core::settings::keys::Reader::new(settings::resolver(
+            let global = emudome_core::settings::keys::Reader::new(settings::resolver(
                 app.handle(),
                 &Scope::Global,
-            ))
-            .text(emudome_core::settings::keys::VIDEO_API);
+            ));
+            // `video.vsync` at startup; a change applies at once (`effects::apply`).
+            let surface = video::SurfaceSettings::from_tuning(
+                &tuning.video,
+                global.bool(emudome_core::settings::keys::VIDEO_VSYNC),
+            );
+            // `video.api`: read once, the GPU is the run's (a change applies at the next start).
+            let api = global.text(emudome_core::settings::keys::VIDEO_API);
             let (gpu, api_problem) = video::GpuService::with_api(video::GraphicsApi::from_id(&api));
             health.set(health::Part::GraphicsApi, api_problem);
             let mut native_error = None;

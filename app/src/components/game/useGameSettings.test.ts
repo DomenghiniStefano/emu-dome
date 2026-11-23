@@ -41,9 +41,10 @@ describe('useGameSettings', () => {
 
   it('an older load answering last is dropped', async () => {
     let answerOld!: (r: SettingRow[]) => void
-    // The first load reads three pages: the first answers late, the others at once.
+    // The first load reads four pages: the first answers late, the others at once.
     bridge.page
       .mockImplementationOnce(() => new Promise<SettingRow[]>(r => (answerOld = r)))
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
     const { load, settings } = setup()
