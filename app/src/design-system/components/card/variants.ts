@@ -40,7 +40,8 @@ export const CardVariant = {
   Tool: 'tool',
   // A row that leads to another page: icon, name, chevron (G07, G08). Not ui/link-row: its own edge
   // and fill, control-lg tall; on the phone the touch minimum (its «Altro» list). `selected`: a
-  // row that is on (the phone's «Scambia gli schermi»), neutral, never the accent.
+  // row that is on (the phone's «Scambia gli schermi»), neutral, never the accent. Focused, it
+  // stands over its neighbours, so the next row never covers the bottom of its ring (#131).
   NavRow: 'navRow',
   // A line of a list, no edge of its own (G10): the list draws the box.
   ListRow: 'listRow',
@@ -86,7 +87,7 @@ export const cardVariants = cva('flex flex-col text-left', {
       [CardVariant.Tool]:
         'h-tool items-center justify-center rounded-card border border-line bg-surface-raised px-8 text-center text-caption-inline font-semibold whitespace-nowrap enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-dim data-selected:border-accent-text data-selected:bg-accent-soft data-selected:text-accent-text touch:h-touch touch:flex-row touch:justify-start touch:bg-surface touch:px-10 touch:text-left touch:text-cta-inline touch:enabled:hover:bg-surface-hover touch:data-selected:bg-accent-soft',
       [CardVariant.NavRow]:
-        'h-control-lg flex-row items-center rounded-card border border-line bg-surface px-10 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked data-selected:border-line-strong data-selected:bg-surface-hover touch:h-touch',
+        'relative h-control-lg flex-row items-center rounded-card border border-line bg-surface px-10 text-ink focus:z-raised enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked data-selected:border-line-strong data-selected:bg-surface-hover touch:h-touch',
       [CardVariant.ListRow]:
         'min-h-control-lg flex-row items-center border-0 bg-transparent px-10 py-4 text-ink enabled:hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-locked',
     },

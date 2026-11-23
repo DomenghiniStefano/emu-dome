@@ -14,6 +14,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ConsoleId, ScreenStatus, SettingsScope } from '@/emu'
+import { useImmersive } from '@/composables/useImmersive'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavScope } from '@/nav'
 import EditorHints from './EditorHints.vue'
@@ -41,6 +42,8 @@ const editor = useScreenEditor({
   onError: useErrorSink(),
   close: () => emit('close'),
 })
+// From Settings: the whole screen, as a game has it (Android's bars hidden, #131).
+useImmersive(props.scope !== null)
 const {
   live,
   layout,

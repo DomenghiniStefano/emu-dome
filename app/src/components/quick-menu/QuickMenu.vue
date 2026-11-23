@@ -201,9 +201,9 @@ const panelClass = computed(() =>
 )
 /** What the menu keeps clear of the game: the phone's panel beside or under it (#29). */
 const insetKind = computed<MenuInset>(() =>
-  barShown.value
-    ? MenuInset.Bar
-    : editorShown.value || touchEditorShown.value || !phone.value
+  barShown.value || touchEditorShown.value
+    ? MenuInset.Own
+    : editorShown.value || !phone.value
       ? MenuInset.None
       : sheet.value
         ? MenuInset.Sheet
@@ -503,7 +503,7 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
 
     <!-- C06 over the game, the same way. -->
     <div v-else-if="touchEditorShown" ref="root" class="contents">
-      <TouchEditor :console="game.consoleId" live @close="back" />
+      <TouchEditor :console="game.consoleId" live @close="back" @inset="px => emit('inset', px)" />
     </div>
 
     <section
@@ -537,9 +537,10 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
         />
 
         <!-- The middle scrolls when it does not fit (the phone on its side): the header and the
-             footer stay; a swipe pans it and never reaches the game behind. -->
+             footer stay; a swipe pans it and never reaches the game behind. Room on every side
+             for the focus ring (outline and glow), which the scrolling box would clip (#131). -->
         <div
-          class="-mr-8 flex min-h-0 touch-pan-y flex-col gap-12 overflow-y-auto overscroll-contain pr-8 touch:flex-1 touch:gap-8"
+          class="-mx-8 -my-4 flex min-h-0 touch-pan-y flex-col gap-12 overflow-y-auto overscroll-contain px-8 py-4 touch:flex-1 touch:gap-8"
         >
           <!-- The phone's levels (owner, 2026-11-22). -->
           <PhoneHome

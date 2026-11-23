@@ -43,11 +43,12 @@ function act(t: Toast) {
 // One shape for every toast: a row as tall as the large control (the touch minimum on the
 // phone), its text wrapping; one with an action only adds the button at its end. In the shell
 // the stack starts past the rail, never over its sections. Each toast is
-// as wide as its own text (`items-start` / `items-center` on the stack).
+// as wide as its own text (`items-start` / `items-center` on the stack). In the shell it keeps
+// above Android's navigation bar, which the shell shows (#131).
 const stackClass = computed(() =>
   props.inGame
     ? 'top-12 left-1/2 -translate-x-1/2 items-center'
-    : 'bottom-12 left-rail ml-12 items-start tv:left-0',
+    : 'bottom-[calc(var(--spacing-12)+var(--spacing-safe-bottom))] left-rail ml-12 items-start tv:left-0',
 )
 const toastClass = (t: Toast) =>
   cn(

@@ -26,6 +26,7 @@ import { EVERY_SETTING, useSettingsChanged } from '@/composables/useSettingsChan
 import { uiMode } from '@/composables/useUiMode'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import type { GameFocus } from '@/lib/gameDetails'
+import { keyboardSeen, showNavKeys } from '@/lib/inputMode'
 import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
 import { loadSchema, lockReason, msg } from '@/lib/settingsModel'
@@ -111,6 +112,10 @@ const lockedNote = computed(() => {
 
 // The phone held upright: one pane at a time (the list until a page is picked).
 const layout = useDeviceLayout()
+/** The page's foot on the keyboard and the controller: only with one of them there (#131). */
+const navHint = computed(() =>
+  showNavKeys(layout.touchDensity.value, keyboardSeen.value, uiMode.pad !== null),
+)
 const listOpen = ref(true)
 const pane = computed(() =>
   settingsPane(layout.phone.value && !uiMode.tv, listOpen.value, searching.value),
@@ -358,7 +363,7 @@ useSettingsChanged(EVERY_SETTING, store.onChanged)
           :text="t('settingsUi.emptyOnly')"
         />
 
-        <div v-if="page !== OVERVIEW || searching" class="text-caption text-ink-muted">
+        <div v-if="navHint && (page !== OVERVIEW || searching)" class="text-caption text-ink-muted">
           {{ t('settingsUi.hint') }}
         </div>
       </template>

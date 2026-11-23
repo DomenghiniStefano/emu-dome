@@ -2,13 +2,10 @@ package it.domehub.emudome.platform
 
 import android.app.Activity
 import android.graphics.Color
-import android.os.Build
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.ViewGroup
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.webkit.WebView
 
 /**
@@ -49,17 +46,7 @@ object NativeSurface {
             0,
             ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
         )
+        // The system bars are hidden only while a game is open (SystemBridge.setImmersive).
         webView.setBackgroundColor(Color.TRANSPARENT)
-        hideSystemBars(activity)
-    }
-
-    /** In game the whole screen is the game's: status and navigation bars come back with a swipe. */
-    private fun hideSystemBars(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            activity.window.insetsController?.let {
-                it.hide(WindowInsets.Type.systemBars())
-                it.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
     }
 }

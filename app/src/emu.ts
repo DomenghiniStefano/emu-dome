@@ -486,9 +486,14 @@ export const emu = {
   },
   onEvent: (cb: (e: EmuEvent) => void): Promise<UnlistenFn> =>
     listen<EmuEvent>('emu://session', e => cb(e.payload)),
-  onMenu: (cb: () => void): Promise<UnlistenFn> => listen('emu://menu', () => cb()),
-  onNav: (cb: (action: NavAction) => void): Promise<UnlistenFn> =>
-    listen<{ action: NavAction }>('emu://nav', e => cb(e.payload.action)),
+  /** `system`: Android's own back button, not a controller (`hotkeys::MenuEvent`, #131). */
+  onMenu: (cb: (system: boolean) => void): Promise<UnlistenFn> =>
+    listen<{ system: boolean } | null>('emu://menu', e => cb(e.payload?.system === true)),
+  /** `system`: Android's own back button, not a controller (`hotkeys::NavEvent`, #131). */
+  onNav: (cb: (action: NavAction, system: boolean) => void): Promise<UnlistenFn> =>
+    listen<{ action: NavAction; system?: boolean }>('emu://nav', e =>
+      cb(e.payload.action, e.payload.system === true),
+    ),
   onHotkey: (cb: (e: HotkeyEvent) => void): Promise<UnlistenFn> =>
     listen<HotkeyEvent>('emu://hotkey', e => cb(e.payload)),
   /** A screen effect could not be used (`effectNotLoaded`): the game shows without it. */
@@ -527,6 +532,9 @@ export const emu = {
   },
   /** Android's back at the shell's root (#29): the app to the background; false on the desktop. */
   leaveToBackground: () => invoke<boolean>('leave_to_background'),
+  /** Android's system bars hidden / shown for a layout editor outside a game (#131); nothing on
+   * the desktop. A game holds them hidden by itself. */
+  setImmersive: (on: boolean) => invoke<void>('set_immersive', { on }),
   /** The «Informazioni» page's actions (`about.rs`). */
   about: {
     /** `about.lic`: EmuDome, the shipped cores and the other components, with their licences. */

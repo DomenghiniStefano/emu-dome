@@ -49,6 +49,15 @@ export function showKeyboardKeys(phone: boolean, seen: boolean): boolean {
   return !phone || seen
 }
 
+/**
+ * Whether a hint about moving with the keyboard and the controller is worth showing (the foot of
+ * every settings page, #131): always on a computer; on the phone once a physical keyboard has
+ * been used or while a controller is connected. A touch-only phone gets none.
+ */
+export function showNavKeys(phone: boolean, keyboardSeen: boolean, controller: boolean): boolean {
+  return showKeyboardKeys(phone, keyboardSeen) || controller
+}
+
 let watching = false
 /** Keys and the mouse mean keyboard; a finger means touch. Call once at startup. */
 export function watchInput() {

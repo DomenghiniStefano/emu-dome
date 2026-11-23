@@ -10,9 +10,9 @@
 pub const SESSION: &str = "emu://session";
 /// Closing a game, the window or the app: `close_flow::Progress`.
 pub const CLOSING: &str = "emu://closing";
-/// Open / close the quick menu (Guide, L3 + Start).
+/// Open / close the quick menu (Guide, L3 + Start, Android's back in game: `hotkeys::MenuEvent`).
 pub const MENU: &str = "emu://menu";
-/// One focus step in the interface from a controller (`hotkeys::NavEvent`).
+/// One focus step in the interface from a controller, or Android's back (`hotkeys::NavEvent`).
 pub const NAV: &str = "emu://nav";
 /// What a shortcut changed (`hotkeys::HotkeyEvent`).
 pub const HOTKEY: &str = "emu://hotkey";

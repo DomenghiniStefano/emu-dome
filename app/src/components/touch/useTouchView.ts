@@ -18,26 +18,45 @@ function readSafeEdges(probe: HTMLElement | null): SafeEdges {
   return { top: px(style.paddingTop), right: px(style.paddingRight), left: px(style.paddingLeft) }
 }
 
-/** The window, in CSS pixels, and its safe edges, following resizes and rotations. */
+/** The window, in CSS pixels, and its safe edges, following resizes and rotations, and the safe
+ * edges changing with no resize: Android hides its system bars once a game is open (#131) in a
+ * window that keeps its size, so the probe's own box (its paddings) is watched too. */
 export function useArea(): Ref<Area> {
   let probe: HTMLElement | null = null
+  let observer: ResizeObserver | null = null
   const measure = (): Area => ({
     width: window.innerWidth,
     height: window.innerHeight,
     safe: readSafeEdges(probe),
   })
   const area = ref<Area>(measure())
-  const resize = () => (area.value = measure())
+  const resize = () => {
+    const next = measure()
+    const now = area.value
+    const same =
+      next.width === now.width &&
+      next.height === now.height &&
+      next.safe?.top === now.safe?.top &&
+      next.safe?.right === now.safe?.right &&
+      next.safe?.left === now.safe?.left
+    if (!same) area.value = next
+  }
   onMounted(() => {
     probe = document.createElement('div')
     probe.className = 'pointer-events-none invisible fixed pt-safe-top pr-safe-right pl-safe-left'
     probe.setAttribute('aria-hidden', 'true')
     document.body.appendChild(probe)
     window.addEventListener('resize', resize)
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(resize)
+      observer.observe(probe, { box: 'border-box' })
+    }
     resize()
   })
   onBeforeUnmount(() => {
     window.removeEventListener('resize', resize)
+    observer?.disconnect()
+    observer = null
     probe?.remove()
     probe = null
   })

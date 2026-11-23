@@ -350,6 +350,27 @@ pub fn move_to_background() -> bool {
     }
 }
 
+/// `SystemBridge.setImmersive`: the system bars hidden while a game is open, shown in the shell
+/// (Trello #131).
+pub fn set_immersive(on: bool) {
+    let result = with_java("system bars", |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            "setImmersive",
+            "(Landroid/app/Activity;Z)V",
+            &[JValue::Object(activity), JValue::Bool(u8::from(on))],
+        )
+        .map(|_| ())
+    });
+    match result {
+        Ok(()) => log::info!(
+            "android system bars {}",
+            if on { "hidden" } else { "shown" }
+        ),
+        Err(e) => log::warn!("{e}"),
+    }
+}
+
 /// Runs `call` with a JNI environment on this thread (attached for the call when it is not a
 /// Java thread), the activity and the bridge class. A Java exception is cleared and returned as
 /// the error, prefixed with `what`.

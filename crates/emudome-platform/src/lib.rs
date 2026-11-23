@@ -134,6 +134,16 @@ pub fn move_to_background() -> bool {
     imp::move_to_background()
 }
 
+/// The whole screen for the game (Trello #131): Android hides the status and navigation bars
+/// while `on` (a swipe shows them for a moment) and shows them again when it is off, so the shell
+/// outside a game keeps them and lays itself out inside their insets. Called by the game flow:
+/// on while a game is open, the quick menu and its editors included. Returns at once (the system
+/// applies it on its UI thread); a failure only logs. The desktop: nothing (its window has its
+/// own full screen, `video.window`).
+pub fn set_immersive(on: bool) {
+    imp::set_immersive(on);
+}
+
 /// The app identifier before 2026-11-21 (Trello #90; now `it.domehub.emudome`, in
 /// `tauri.conf.json`). The system named the data folders after it.
 pub const OLD_IDENTIFIER: &str = "com.domenghini.emudome";

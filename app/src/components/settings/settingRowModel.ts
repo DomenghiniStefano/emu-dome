@@ -3,13 +3,14 @@
 // into text.
 import type {
   ConsoleId,
+  SettingDevice,
   SettingEntry,
   SettingLevel,
   SettingRow,
   SettingsSchema,
   SettingValue,
 } from '@/emu'
-import { lockReason, notYetWired } from '@/lib/settingsModel'
+import { lockReason, notYetWired, platformIncludes } from '@/lib/settingsModel'
 import { BUILTIN_BACKGROUNDS, SURROUND_CARDS } from '@/lib/surround'
 
 export interface RowState {
@@ -46,6 +47,13 @@ export function rowState(
     inheritedFrom: scoped && source && source !== 'default' && source !== level ? source : null,
     fallback: level !== 'global' && entry.levels.includes('global') ? 'global' : null,
   }
+}
+
+/** The device a per-device row is kept on («Solo su questo telefono»): this one, unless the row
+ * exists on another kind of device only (`library.watch` on a phone, #131), where the badge
+ * would contradict the row's own «Solo su questo computer». Null for every other row. */
+export function onlyHere(entry: SettingEntry, schema: SettingsSchema): SettingDevice | null {
+  return entry.perDevice && platformIncludes(entry.platform, schema.device) ? schema.device : null
 }
 
 /** What the row's description says around its own words: why it is locked (i18n key; null when
