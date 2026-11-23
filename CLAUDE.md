@@ -281,7 +281,10 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          into app/src/generated/, the staleness check; see the section of that name)
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
-                         title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
+                         title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache,
+                         the ROM files it skipped counted by reason (`Skipped`: encrypted 3DS,
+                         unrecognised; on `library://scan` done, said by L11 only after a folder the user
+                         picked, `lib/library.ts`);
                          store.rs library.json, games never deleted, the user's version pins;
                          group.rs the regional versions of one game as a family (GBA / NDS code
                          and 3DS product code without the region letter; never homebrew, GB / GBC
@@ -1155,7 +1158,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
-  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu
+  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`; its scope card scrolls with
+  the page instead of sticking, upright and on its side), Saves in one column upright and on its side (the
+  games, then a game's panel or the import over them with «‹ Salvataggi», `saves/SavesView.vue`), a rail item or
+  tab always opening its section at its root (the Library's grid even with details left open behind another
+  section; the section shown, picked again, mounted again: `route.ts` `pickSection`, `AppShell.vue`), the quick menu
   (`quick-menu/PhoneHome.vue`, `PhoneMore.vue`, `PhoneSaves.vue`, `phoneMenu.ts`: a first
   level of «Salva rapido» / «Carica rapido» on Rust's current slot, «Riprendi» and a strip «Riavvolgi» (when
   `speed.rew` is on: held, the game unpaused meanwhile; A / Enter rewind for 1 s) / «Accelera» / «Silenzia» /
@@ -1200,7 +1207,12 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (Trello #92). melonDS DS for Android is built by EmuDome too (upstream's asset has 4 KB pages,
   refused by Google Play), from v1.4.0's source archive and the pinned archives of the libraries its CMake fetches
   (`build.dependencies`, configured with `FETCHCONTENT_FULLY_DISCONNECTED`), published as `cores-melondsds-f394adb`;
-  its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds
+  its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3):
+  a core this build does not ship for its platform (`cores.lock` `ship` off, or no build there;
+  `emudome_platform::core_shipped`) and no folder holds is `CoreLookupError::NotShipped` in a release and on
+  Android, and opening its game says `coreUnavailable` («Nintendo 3DS isn't available on this device yet»), not a
+  reinstall; a desktop debug build without the file keeps `coreNotFound` (the fetch hint). The library still lists
+  those games with «Gioca» enabled (showing it disabled with the reason needs a design). The Gradle side of the lock builds
   (`scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
   source-built Android mGBA. 16 KB pages (Google Play, `docs/release.md` «Android: 16 KB pages»): the APK stores
   its libraries 16 KB-aligned, `libemudome_app.so` links with 16 KB pages (`.cargo/config.toml`), mGBA and the

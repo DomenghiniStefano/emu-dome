@@ -20,7 +20,7 @@ use ts_rs::TS;
 
 use super::group::{families, family_key, Family, Member, Pins};
 use super::identity::Identity;
-use super::scan::ScanOutcome;
+use super::scan::{ScanOutcome, Skipped};
 use crate::settings::ConsoleId;
 use crate::{ErrorCode, GameKey};
 
@@ -126,6 +126,8 @@ pub struct ScanReport {
     pub added: usize,
     /// Folders that could not be read.
     pub unreachable: Vec<String>,
+    /// The files with a game's extension the scan did not take, by reason.
+    pub skipped: Skipped,
 }
 
 /// The library of this device.
@@ -301,6 +303,7 @@ impl Library {
             found: seen.len(),
             added,
             unreachable: scan.unreachable,
+            skipped: scan.skipped,
         };
         self.db.hash_cache = scan.cache;
         self.save()?;

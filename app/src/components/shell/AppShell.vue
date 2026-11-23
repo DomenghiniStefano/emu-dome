@@ -24,6 +24,9 @@
 // Game details (L04–L10, #34) live in the Library section: shown instead of the grid while the
 // route names a game (a cover's click, right click or X; «Dettagli del gioco» in Saves).
 // Back (B, Esc, «‹ Libreria», the rail's Library) returns to the grid on that game's cover.
+// A rail item or tab always opens its section at its root (#127): the Library's grid even with
+// details left behind another section, and the section already shown mounted again (a Settings
+// page, a Saves panel on the phone close).
 // From there a game opens, and closing it comes back to the details; «Mostra i backup» /
 // «Importa…» (L05), «Apri tutte le impostazioni…» (L06) and «Rimappa…» (L07) jump to the
 // Saves, Settings and Controls sections for that one game.
@@ -73,6 +76,7 @@ import {
   showingDetails,
   type Route,
 } from './route'
+import type { Section } from './sections'
 import { hasOwnInitialFocus, isFlush, isTvLaidOut, sectionStep } from './shellLayout'
 import { useCoverHaze } from './useCoverHaze'
 
@@ -164,6 +168,14 @@ watch(
 
 /** A move: the section left goes onto the trail (route.ts `moved`). */
 const go = (to: Route) => (route.value = moved(route.value, to))
+
+/** Mounts of the section shown by picking it again: it starts again at its root. */
+const visits = ref(0)
+/** A rail item or tab: the section at its root (route.ts `pickSection`). */
+function pick(s: Section) {
+  if (s === section.value && details.value === null) visits.value++
+  go(pickSection(route.value, s))
+}
 </script>
 
 <template>
@@ -182,7 +194,7 @@ const go = (to: Route) => (route.value = moved(route.value, to))
       :edge="layout.camera.value"
       :current="section"
       :content-has-initial="hasOwnInitialFocus(section)"
-      @pick="s => go(pickSection(route, s))"
+      @pick="pick"
     />
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
       <AppTopBar v-if="!uiMode.tv" @search="openSearch" />
@@ -194,7 +206,7 @@ const go = (to: Route) => (route.value = moved(route.value, to))
         ref="tabs"
         :current="section"
         :content-has-initial="hasOwnInitialFocus(section)"
-        @pick="s => go(pickSection(route, s))"
+        @pick="pick"
       />
       <div class="flex min-h-0 flex-1">
         <AppRail
@@ -202,13 +214,14 @@ const go = (to: Route) => (route.value = moved(route.value, to))
           ref="rail"
           :current="section"
           :content-has-initial="hasOwnInitialFocus(section)"
-          @pick="s => go(pickSection(route, s))"
+          @pick="pick"
         />
         <!-- A section (or a game's details) coming in fades in with 4 px of rise (motion.css
-             `enter-rise`): keyed by what it shows, so each change mounts it again and plays it.
+             `enter-rise`): keyed by what it shows, so each change mounts it again and plays it;
+             `visits`: the section shown, picked again, mounts again at its root.
              «Riduci le animazioni» cuts it to its last frame (styles.css). -->
         <main
-          :key="details ?? section"
+          :key="`${details ?? section}:${visits}`"
           :class="
             cn(
               'flex min-w-0 flex-1 flex-col animate-[enter-rise_var(--transition-duration-fast)_var(--ease-out)]',
@@ -267,7 +280,7 @@ const go = (to: Route) => (route.value = moved(route.value, to))
         ref="tabBar"
         :current="section"
         :content-has-initial="hasOwnInitialFocus(section)"
-        @pick="s => go(pickSection(route, s))"
+        @pick="pick"
       />
       <TvButtonBar v-if="uiMode.tv" :hints="tvHints(section, details !== null)" />
     </div>

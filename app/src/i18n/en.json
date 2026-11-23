@@ -108,6 +108,8 @@
     "added": {
       "title": "No games added | 1 game added | {n} games added",
       "gbAndColor": "Game Boy and Game Boy Color",
+      "encrypted": "No encrypted 3DS games | 1 file skipped: it is an encrypted 3DS game, and EmuDome plays decrypted games only. Decrypt it with your own console. | {n} files skipped: they are encrypted 3DS games, and EmuDome plays decrypted games only. Decrypt them with your own console.",
+      "unrecognised": "No unrecognised files | 1 file skipped: it is not recognised as a game. Check that it is a complete copy. | {n} files skipped: they are not recognised as games. Check that they are complete copies.",
       "close": "Close the notice"
     },
     "unreachable": {
@@ -521,6 +523,7 @@
     "unsupportedFormat": "EmuDome can't open .{ext} files. Choose a GBA game (.gba, .gb, .gbc).",
     "consoleNotYet": "{console} support arrives in Phase {phase}. For now, open a GBA game.",
     "coreNotFound": "Core {file} not found. Run scripts/fetch-cores (see the README) or set EMUDOME_CORES_DIR.",
+    "coreUnavailable": "{console} isn't available on this device yet. It arrives in a future update.",
     "coreDamaged": "Core {file} is not the one EmuDome ships, so it was not loaded. Reinstall EmuDome.",
     "openFailed": "Couldn't open the game. Check that the file is a working GBA game. Details: {detail}",
     "coreIncompatible": "The emulator for this console could not be started. Reinstall EmuDome. Details: {detail}",

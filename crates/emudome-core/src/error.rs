@@ -76,6 +76,9 @@ pub enum ErrorCode {
     ConsoleNotYet { console: String, phase: u8 },
     /// The libretro core file was not found in any search directory.
     CoreNotFound { file: String },
+    /// This build does not ship the core of `console` (its id, e.g. `3ds`) for this platform
+    /// (`cores.lock`): the console is not available on this device yet. Not a broken install.
+    CoreUnavailable { console: String },
     /// The core file found is not the one this build ships (its sha256 differs from
     /// `cores.lock`'s): it is not loaded. The installation is damaged or was tampered with.
     CoreDamaged { file: String },

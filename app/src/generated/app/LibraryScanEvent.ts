@@ -3,4 +3,9 @@
 /**
  * Payload of `library://scan`. TypeScript: `LibraryScanEvent` (generated).
  */
-export type LibraryScanEvent = { "phase": "started" } | { "phase": "progress", checked: number, found: number, } | { "phase": "done", found: number, added: number, unreachable: Array<string>, };
+export type LibraryScanEvent = { "phase": "started" } | { "phase": "progress", checked: number, found: number, } | { "phase": "done", found: number, added: number, unreachable: Array<string>, 
+/**
+ * Files with a game's extension not taken (#127): encrypted 3DS games (E10), and files
+ * not recognised as a game.
+ */
+skippedEncrypted: number, skippedUnrecognised: number, };

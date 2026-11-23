@@ -31,7 +31,7 @@ export type ErrorSink = (e: unknown) => void
 export function errorText(e: unknown): string {
   if (isErrorCode(e) && known(`errors.${e.code}`)) {
     const params: Record<string, unknown> = { ...('params' in e ? e.params : {}) }
-    if (e.code === 'consoleNotYet') {
+    if (e.code === 'consoleNotYet' || e.code === 'coreUnavailable') {
       const name = `console.${e.params.console}`
       params.console = known(name) ? t(name) : e.params.console
     }

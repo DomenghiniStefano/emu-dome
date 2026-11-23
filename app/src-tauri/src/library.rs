@@ -23,7 +23,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use emudome_core::cover::{self, CoverView};
 use emudome_core::library::{
     self, core_of, cover_colour, region, CoverKind, DocEntry, Documents, Family, GameRecord,
-    Identity, Library, NotAGame, OpenedDocument, Region, ScanInput, ScanReport,
+    Identity, Library, NotAGame, OpenedDocument, Region, ScanInput, ScanReport, Skipped,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, GameKey};
@@ -247,6 +247,12 @@ pub(crate) enum ScanEvent {
         found: usize,
         added: usize,
         unreachable: Vec<String>,
+        /// Files with a game's extension not taken (#127): encrypted 3DS games (E10), and files
+        /// not recognised as a game.
+        #[serde(rename = "skippedEncrypted")]
+        skipped_encrypted: usize,
+        #[serde(rename = "skippedUnrecognised")]
+        skipped_unrecognised: usize,
     },
 }
 
@@ -433,6 +439,8 @@ pub fn start_scan(app: &AppHandle) {
                             found: 0,
                             added: 0,
                             unreachable: Vec::new(),
+                            skipped_encrypted: 0,
+                            skipped_unrecognised: 0,
                         },
                     );
                 }
@@ -495,13 +503,17 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
             found: 0,
             added: 0,
             unreachable: Vec::new(),
+            skipped: Skipped::default(),
         }
     });
     log::info!(
-        "library scan: {} games, {} added, {} folders unreachable, {:?}",
+        "library scan: {} games, {} added, {} folders unreachable, {} encrypted and {} \
+         unrecognised files skipped, {:?}",
         report.found,
         report.added,
         report.unreachable.len(),
+        report.skipped.encrypted,
+        report.skipped.unrecognised,
         started.elapsed()
     );
     cache_icons(app, state);
@@ -511,6 +523,8 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
             found: report.found,
             added: report.added,
             unreachable: report.unreachable,
+            skipped_encrypted: report.skipped.encrypted,
+            skipped_unrecognised: report.skipped.unrecognised,
         },
     );
     emit_all(app, state);
