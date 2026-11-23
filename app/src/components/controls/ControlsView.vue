@@ -4,7 +4,8 @@
 // step below, the chosen device with «‹ Controlli» back to C01 above its name and three tabs:
 // button remapping (C02), shortcuts (C03), sticks and triggers (C04). No device column there
 // (board C02, 18/11): the device is changed on C01. With no controller connected the section
-// shows E05 until the keyboard is chosen.
+// shows E05 until the keyboard is chosen (on a touch device E05 is a card above the touch controls
+// row, #132).
 //
 // From Game details › Controlli (L07, the arrival's `game` from the shell's route) it opens on C02
 // at «Solo questo gioco» for that game; from Settings' `pad.dev1` / `pad.dev2` (#112) on C02 at
@@ -123,7 +124,7 @@ useNavSection(root, { tab: stepTabs, back })
 
 <template>
   <div ref="root" class="flex min-h-0 flex-1">
-    <NoController v-if="empty" @keyboard="chosen = 'keyboard'" />
+    <NoController v-if="empty" :touch-editable="touchEditable" @keyboard="chosen = 'keyboard'" />
 
     <ControlsOverview
       v-else-if="view === View.Overview && device"
