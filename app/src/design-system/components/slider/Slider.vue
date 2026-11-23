@@ -49,7 +49,7 @@ const fill = computed(() => `${fillPercent(model.value, props.min, props.max)}%`
     :disabled="disabled"
     :class="
       cn(
-        'relative flex h-20 w-field touch-none items-center select-none data-[disabled]:cursor-not-allowed',
+        'relative flex h-20 w-field touch-none items-center select-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-disabled',
         props.class,
       )
     "

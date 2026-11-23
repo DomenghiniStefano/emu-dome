@@ -20,13 +20,14 @@ const forwarded = useForwardPropsEmits(delegated, emits)
 
 <template>
   <!-- 36 x 20 with a 16px knob (SettingRow): off, an edged track on surface-raised with the knob
-       at the start; on, the accent's track with its glow and the knob at the end. -->
+       at the start; on, the accent's track with its glow and the knob at the end. Disabled: faded
+       like Button and Input (#132). -->
   <SwitchRoot
     data-slot="switch"
     v-bind="forwarded"
     :class="
       cn(
-        'flex h-20 w-switch shrink-0 cursor-pointer justify-start rounded-full border border-line-strong bg-surface-raised p-2 data-[state=checked]:justify-end data-[state=checked]:border-0 data-[state=checked]:bg-accent-track data-[state=checked]:shadow-glow-sm disabled:cursor-not-allowed',
+        'flex h-20 w-switch shrink-0 cursor-pointer justify-start rounded-full border border-line-strong bg-surface-raised p-2 data-[state=checked]:justify-end data-[state=checked]:border-0 data-[state=checked]:bg-accent-track data-[state=checked]:shadow-glow-sm disabled:cursor-not-allowed disabled:opacity-disabled',
         props.class,
       )
     "

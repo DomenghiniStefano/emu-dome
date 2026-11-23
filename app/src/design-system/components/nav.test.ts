@@ -596,6 +596,18 @@ describe('Popover', () => {
     expect(screenBack).not.toHaveBeenCalled()
   })
 
+  it("Android's back (no ring) closes it first, with the focus nowhere after a tap (#132)", async () => {
+    const screenBack = vi.fn()
+    const open = mountPopover(screenBack)
+    open.value = true
+    await settle()
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    dispatchNav('back', { ring: false })
+    await settle()
+    expect(open.value).toBe(false)
+    expect(screenBack).not.toHaveBeenCalled()
+  })
+
   it('keeps the steps inside while open', async () => {
     mountPopover()
     one('#toggle').focus()

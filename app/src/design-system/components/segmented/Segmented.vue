@@ -35,6 +35,7 @@ function choose(value: unknown) {
     :loop="false"
     :model-value="model"
     :disabled="props.disabled"
+    :data-disabled="props.disabled ? '' : undefined"
     :class="cn(segmentedVariants({ variant }), props.class)"
     @update:model-value="choose"
   >

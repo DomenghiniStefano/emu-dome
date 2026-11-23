@@ -10,10 +10,11 @@
 // › Controlli touch (no game: a dark ground with the console's screens drawn where the game would
 // show them, TouchPreviewScreens, Trello #111).
 // Controller: L1 / R1 pick a control, the d-pad moves it, the right stick resizes it, X steps its
-// opacity, Select folds the toolbar, A saves, B leaves without saving. Keyboard: PageUp /
+// opacity, Select folds the toolbar, A saves, B closes the open tool panel first (size, opacity,
+// behaviour, add; #132), then leaves without saving. Keyboard: PageUp /
 // PageDown or [ ], the arrows, Shift + arrows, Ctrl + Z / Ctrl + Y, Enter, Esc. The state and the
 // steps are useTouchEditor's, the geometry touchLayout.ts's.
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ConsoleId, ScreenPlacement } from '@/emu'
 import type { InsetPx } from '@/components/game/inset'
@@ -67,8 +68,26 @@ watch(
 // From Settings: the whole screen, as a game has it (Android's bars hidden, #131), so the
 // controls and the screens are where they will be in game.
 useImmersive(!props.live)
+const toolbar = ref<{ $el: HTMLElement } | null>(null)
+/**
+ * Back (B, Esc, Android's back): an open tool panel closes first, the focus back on its button
+ * in the toolbar (or on «…», when the tool lives in its menu) if it was in the panel; then the
+ * editor is left without saving.
+ */
+function back() {
+  if (!panel.value) return editor.discard()
+  const bar = toolbar.value?.$el
+  const opener =
+    bar?.querySelector<HTMLElement>('[aria-pressed="true"]') ??
+    bar?.querySelector<HTMLElement>('[aria-expanded]')
+  panel.value = null
+  void nextTick(() => {
+    const active = document.activeElement
+    if (!active || active === document.body || !active.isConnected) opener?.focus()
+  })
+}
 useNavScope(root, {
-  back: editor.discard,
+  back,
   tab: dir => editor.pickNext(dir),
   own: editor.own,
   autofocus: true,
@@ -126,6 +145,7 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
           {{ where }}
         </span>
         <TouchToolbar
+          ref="toolbar"
           class="w-full"
           :can-undo="editor.canUndo.value"
           :can-redo="editor.canRedo.value"

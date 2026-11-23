@@ -75,6 +75,15 @@ add(
   { steps: [...openEditor, `document.querySelector('[aria-label="Altro"]').click()`] },
   ["p320", "p360", "p390"],
 );
+// Android's back with a tool open (#132): the panel closes, the editor stays.
+const systemBack = `window.__emit('emu://nav', { action: 'back', system: true }); true`;
+const sizeTool = [
+  ...openEditor,
+  `(() => { const b = [...document.querySelectorAll('button')].find(b => /^Dimensione$/.test(b.textContent.trim())) ?? document.querySelector('[aria-label="Altro"]'); b && b.click(); return !!b })()`,
+  `(() => { const m = [...document.querySelectorAll('[role=menuitem]')].find(b => /Dimensione/.test(b.textContent)); m && m.click(); return true })()`,
+];
+add("editor-size-open", { steps: sizeTool }, ["p780", "l780"]);
+add("editor-size-back", { steps: [...sizeTool, systemBack] }, ["p780", "l780"]);
 add("editor-folded", { steps: [...openEditor, click("Riduci$")] }, ["p390", "l740"]);
 add("lost-ask", { mock: { pads: true }, steps: [disconnect] }, ["p390", "l844"]);
 // G06 on the phone (#118): no hint with only the touch controls, Home with a controller, Esc
