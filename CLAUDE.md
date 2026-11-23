@@ -1142,7 +1142,12 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   `library.view` says (per device: the list on a phone, the grid elsewhere; a desktop that picks the list in
   Settings gets it under «Continua a giocare», «Gioca» on every row), the game played last carrying «Riprendi» on
   its row or cover (`resumeTarget`). On the phone the shell has no cover-coloured haze (plain graphite; the
-  desktop and TV keep it) and the top bar's search field on its side shows no Ctrl K (#105). Not yet: the «…»
+  desktop and TV keep it) and the top bar's search field on its side shows no Ctrl K (#105). The keyboard's keys
+  (C01's «Tastiera» card, C03's fullscreen row, E05's button, G06's Esc, the search's F11) show on the phone only
+  once a physical keyboard has been used in the run (#118, `lib/inputMode.ts` `keyboardSeen`; E05 then names the
+  touch controls instead); G06 names Home there only with a controller connected, and with neither does not show
+  (`game/quickMenuHint.ts`). The Settings descriptions that name keys (`video.fps`, `speed.ffmode`, `speed.rew`)
+  are catalogue texts and still name them on the phone. Not yet: the «…»
   menu (favourite, hide) on a row or a compact tile (in the game's details only). Not yet: the «Gestisci lo
   spazio» screen (designed and approved on #29, mockup S1–S3, not built: the button is faded and a press says it
   arrives later); the safe areas, the camera
