@@ -4,10 +4,12 @@ import { defineComponent, h } from 'vue'
 import type { GameInfo, Stats } from '@/emu'
 import { HANG_MS, SLOW_MS, flow, gameStarted } from './gameFlow'
 import { createGameState } from './gameState'
-import { useGameEnding } from './useGameEnding'
+import { SAVE_WAIT_MS, useGameEnding } from './useGameEnding'
 
-const bridge = vi.hoisted(() => ({ stats: vi.fn(), closeGame: vi.fn() }))
-vi.mock('@/emu', () => ({ emu: { stats: bridge.stats, closeGame: bridge.closeGame } }))
+const bridge = vi.hoisted(() => ({ stats: vi.fn(), closeGame: vi.fn(), saveState: vi.fn() }))
+vi.mock('@/emu', () => ({
+  emu: { stats: bridge.stats, closeGame: bridge.closeGame, saveState: bridge.saveState },
+}))
 
 const stats = (frames: number, over: Partial<Stats> = {}) =>
   ({
@@ -40,7 +42,14 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.clearAllMocks()
   gameStarted()
-  Object.assign(flow, { crashed: null, slow: null, closing: null, ending: false, resumeAsk: false })
+  Object.assign(flow, {
+    crashed: null,
+    slow: null,
+    closing: null,
+    closeAsk: null,
+    ending: false,
+    resumeAsk: false,
+  })
 })
 afterEach(() => vi.useRealTimers())
 
@@ -150,6 +159,123 @@ describe('the game ending', () => {
     expect(error).toHaveBeenCalledWith(new Error('ipc'))
     expect(state.game.value).toBeNull()
     error.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('nothing unsaved: «Chiudi il gioco» closes without asking', async () => {
+    bridge.stats.mockResolvedValue(stats(10, { unsaved: false }))
+    bridge.closeGame.mockResolvedValue(undefined)
+    const { state, ending, wrapper } = setup()
+    const closing = ending.requestClose()
+    await vi.advanceTimersByTimeAsync(400)
+    expect(await closing).toBe(true)
+    expect(flow.closeAsk).toBeNull()
+    expect(bridge.closeGame).toHaveBeenCalledOnce()
+    expect(state.game.value).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('progress not saved: asks first; «Annulla» keeps the game open', async () => {
+    bridge.stats.mockResolvedValue(stats(10, { unsaved: true }))
+    const { state, ending, wrapper } = setup()
+    const closing = ending.requestClose()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(flow.closeAsk).toEqual({ autosave: true, saving: false })
+    // A second press while asked does nothing.
+    expect(await ending.requestClose()).toBe(false)
+    ending.answerClose('cancel')
+    expect(await closing).toBe(false)
+    expect(flow.closeAsk).toBeNull()
+    expect(bridge.closeGame).not.toHaveBeenCalled()
+    expect(state.game.value).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('«Chiudi senza salvare» closes as before, with no quick save', async () => {
+    bridge.stats.mockResolvedValue(stats(10, { unsaved: true }))
+    bridge.closeGame.mockResolvedValue(undefined)
+    const { state, ending, wrapper } = setup()
+    const closing = ending.requestClose()
+    await vi.advanceTimersByTimeAsync(0)
+    ending.answerClose('discard')
+    await vi.advanceTimersByTimeAsync(400)
+    expect(await closing).toBe(true)
+    expect(bridge.saveState).not.toHaveBeenCalled()
+    expect(state.game.value).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('«Salva e chiudi» saves into the quick slot and closes once it is written', async () => {
+    bridge.stats.mockResolvedValue(stats(10, { unsaved: true }))
+    bridge.closeGame.mockResolvedValue(undefined)
+    bridge.saveState.mockResolvedValue(undefined)
+    const { state, ending, wrapper } = setup()
+    state.comboSlot.value = 3
+    const closing = ending.requestClose()
+    await vi.advanceTimersByTimeAsync(0)
+    ending.answerClose('save')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(bridge.saveState).toHaveBeenCalledWith(3)
+    expect(flow.closeAsk?.saving).toBe(true)
+    // Another slot's save, or the auto quick save, is not the one waited for.
+    ending.onSaveEvent({ type: 'stateSaved', slot: 1 })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(bridge.closeGame).not.toHaveBeenCalled()
+    ending.onSaveEvent({ type: 'stateSaved', slot: 3 })
+    await vi.advanceTimersByTimeAsync(400)
+    expect(await closing).toBe(true)
+    expect(bridge.closeGame).toHaveBeenCalledOnce()
+    expect(state.game.value).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('«Salva e chiudi» whose save fails keeps the game open', async () => {
+    bridge.stats.mockResolvedValue(stats(10, { unsaved: true }))
+    bridge.saveState.mockResolvedValue(undefined)
+    const { state, ending, wrapper } = setup()
+    const closing = ending.requestClose()
+    await vi.advanceTimersByTimeAsync(0)
+    ending.answerClose('save')
+    await vi.advanceTimersByTimeAsync(0)
+    ending.onSaveEvent({
+      type: 'error',
+      error: { code: 'stateSaveFailed', params: { slot: 1, cause: 'other' } },
+    })
+    expect(await closing).toBe(false)
+    expect(flow.closeAsk).toBeNull()
+    expect(bridge.closeGame).not.toHaveBeenCalled()
+    expect(state.game.value).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('«Salva e chiudi» with no answer in time reports it and keeps the game open', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    bridge.stats.mockResolvedValue(stats(10, { unsaved: true }))
+    bridge.saveState.mockResolvedValue(undefined)
+    const { ending, wrapper } = setup()
+    const closing = ending.requestClose()
+    await vi.advanceTimersByTimeAsync(0)
+    ending.answerClose('save')
+    await vi.advanceTimersByTimeAsync(SAVE_WAIT_MS)
+    expect(await closing).toBe(false)
+    expect(error).toHaveBeenCalledWith({
+      code: 'stateSaveFailed',
+      params: { slot: 1, cause: 'other' },
+    })
+    expect(bridge.closeGame).not.toHaveBeenCalled()
+    error.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('the game gone while asked (the window closed) drops the question', async () => {
+    bridge.stats.mockResolvedValue(stats(10, { unsaved: true }))
+    const { ending, wrapper } = setup()
+    const closing = ending.requestClose()
+    await vi.advanceTimersByTimeAsync(0)
+    ending.end()
+    expect(await closing).toBe(false)
+    expect(flow.closeAsk).toBeNull()
+    expect(bridge.closeGame).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 

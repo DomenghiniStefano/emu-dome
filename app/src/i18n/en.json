@@ -2259,7 +2259,15 @@
     "brokenNoBackup": "We can’t read the save of {game}. We set it aside.",
     "brokenUse": "Use the backup",
     "brokenPlay": "Play without a save",
-    "close": "Close"
+    "close": "Close",
+    "unsaved": {
+      "title": "Close without saving?",
+      "textAuto": "Your latest progress will be kept only in the auto quick save.",
+      "textLost": "Your latest progress will be lost.",
+      "save": "Save and close",
+      "discard": "Close without saving",
+      "cancel": "Cancel"
+    }
   },
   "qm": {
     "picks": {

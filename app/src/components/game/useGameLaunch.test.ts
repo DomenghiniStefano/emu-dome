@@ -65,6 +65,7 @@ function setup() {
   const session = {
     begin: vi.fn(async () => {}),
     close: vi.fn(async () => {}),
+    requestClose: vi.fn(async () => true),
     end: vi.fn(),
     game: ref<GameInfo | null>(null),
   }
@@ -163,7 +164,10 @@ describe('useGameLaunch', () => {
   it('opens another library game only once the open one has closed (#32, the quick menu search)', async () => {
     const { launch, session } = setup()
     const order: string[] = []
-    session.close.mockImplementationOnce(async () => void order.push('close'))
+    session.requestClose.mockImplementationOnce(async () => {
+      order.push('close')
+      return true
+    })
     bridge.libraryOpen.mockImplementationOnce(async () => {
       order.push('open')
       return info('MINISH')
@@ -172,6 +176,14 @@ describe('useGameLaunch', () => {
     expect(order).toEqual(['close', 'open'])
     expect(bridge.libraryOpen).toHaveBeenCalledWith('gba:01')
     expect(session.begin).toHaveBeenCalledWith(info('MINISH'), minish, false)
+  })
+
+  it('opens nothing when the open game stays («Chiudere senza salvare?» answered «Annulla»)', async () => {
+    const { launch, session } = setup()
+    session.requestClose.mockResolvedValueOnce(false)
+    await launch.switchToLibraryGame(minish)
+    expect(bridge.libraryOpen).not.toHaveBeenCalled()
+    expect(session.begin).not.toHaveBeenCalled()
   })
 
   it('asks for a file when none is given; a cancelled picker opens nothing', async () => {

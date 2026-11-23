@@ -124,11 +124,12 @@ export function useGameLaunch(session: GameSession, toasts: Toasts) {
 
   /**
    * Another library game while one is open (the search from the quick menu, #32): the open one
-   * closes as «Chiudi il gioco» does (G14, the close flow #86 with its «Wait» / «Close anyway»),
-   * then this one opens.
+   * closes as «Chiudi il gioco» does («Chiudere senza salvare?» first when there is progress not
+   * in a quick save, then G14, the close flow #86 with its «Wait» / «Close anyway»), then this
+   * one opens; nothing opens when the open one stays («Annulla», a quick save that failed).
    */
   async function switchToLibraryGame(g: LibraryGame) {
-    await session.close()
+    if (!(await session.requestClose())) return
     await openLibraryGame(g)
   }
 

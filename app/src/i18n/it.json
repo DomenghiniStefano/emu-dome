@@ -2259,7 +2259,15 @@
     "brokenNoBackup": "Non riusciamo a leggere il salvataggio di {game}. L’abbiamo messo da parte.",
     "brokenUse": "Usa il backup",
     "brokenPlay": "Gioca senza salvataggio",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "unsaved": {
+      "title": "Chiudere senza salvare?",
+      "textAuto": "Gli ultimi progressi resteranno solo nel salvataggio rapido automatico.",
+      "textLost": "Gli ultimi progressi andranno persi.",
+      "save": "Salva e chiudi",
+      "discard": "Chiudi senza salvare",
+      "cancel": "Annulla"
+    }
   },
   "qm": {
     "picks": {

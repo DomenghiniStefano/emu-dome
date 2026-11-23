@@ -165,7 +165,7 @@ onMounted(async () => {
       @load="session.loadFromMenu"
       @undo-load="session.undoLoad"
       @reset="session.restart"
-      @close="session.close"
+      @close="session.requestClose"
       @mute="session.setMuted"
       @fullscreen="session.toggleFullscreen"
       @screenshot="session.screenshot"
@@ -204,6 +204,7 @@ onMounted(async () => {
     @broken-use="launch.useLatestBackup"
     @broken-play="launch.playWithoutSave"
     @broken-close="launch.closeBroken"
+    @close-answer="session.answerClose"
   />
 
   <!-- Google Drive sync (#31): G05, G04 outside the game, G14's strip after a game closed. -->
