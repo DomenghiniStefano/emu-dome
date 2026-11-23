@@ -271,12 +271,51 @@ mod tests {
     use emudome_core::core_profile::CoreId;
     use emudome_core::testing::{FakeCore, Gate};
     use emudome_core::{
-        core_needs_restart, Closed, Command, ConsoleId, GameFiles, GameKey, Session,
-        SessionOptions, AUTO_SLOT, CLOSE_TIMEOUT,
+        core_needs_restart, Closed, Command, ConsoleId, ExitWrites, GameFiles, GameKey, Session,
+        SessionOptions, Shared, AUTO_SLOT,
     };
     use parking_lot::Mutex;
 
-    use super::{GameSession, Hooks, Opened};
+    use super::{GameSession, Hooks, Leaving, Opened};
+
+    /// The bound on anything a test waits for that happens at once on an idle machine (frames,
+    /// a thread ending, its exit writes): generous, so a machine loaded by parallel builds and
+    /// tests never fails a test that is right (Trello #129). Nothing here counts within a time
+    /// window: each wait is on the fact the test then asserts.
+    const PATIENCE: Duration = Duration::from_secs(30);
+
+    /// Waits until `done`, at most [`PATIENCE`].
+    fn wait_until(what: &str, mut done: impl FnMut() -> bool) {
+        let started = Instant::now();
+        while !done() {
+            assert!(
+                started.elapsed() < PATIENCE,
+                "{what}: not within {PATIENCE:?}"
+            );
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+
+    /// The frames the session ran so far.
+    fn frames(shared: &Shared) -> u64 {
+        shared.stats.lock().frames
+    }
+
+    /// Stops a game taken out of the app and waits for its thread, at most [`PATIENCE`].
+    fn stop_and_wait(leaving: &mut Leaving) -> ExitWrites {
+        leaving.stop();
+        leaving
+            .wait(PATIENCE)
+            .unwrap_or_else(|| panic!("the thread did not end within {PATIENCE:?}"))
+    }
+
+    /// Waits until a session that was let go woke up and ended: its core was told `end`.
+    fn wait_let_go_ended(fake: &FakeCore) {
+        wait_until("the let-go thread ended", || {
+            fake.calls.lock().ended.is_some()
+        });
+        assert_eq!(fake.calls.lock().ended, Some(true), "ended as let go");
+    }
 
     /// A fresh folder under the system temp dir, removed when dropped.
     struct Dir(PathBuf);
@@ -346,22 +385,34 @@ mod tests {
 
     /// Opens `game` on a fake core (`core` names its file, for `coreNeedsRestart`) and waits
     /// until it ran a few frames.
-    fn open(games: &GameSession, dir: &Path, game: &GameKey, core: &str, fake: FakeCore) {
+    fn open(
+        games: &GameSession,
+        dir: &Path,
+        game: &GameKey,
+        core: &str,
+        fake: FakeCore,
+    ) -> Arc<Shared> {
         let opts = options(dir, game, core, true);
-        open_with(games, opts, fake, true);
+        open_with(games, opts, fake, true)
     }
 
-    fn open_with(games: &GameSession, opts: SessionOptions, fake: FakeCore, wait_frames: bool) {
-        open_after(games, opts, fake, wait_frames, None);
+    fn open_with(
+        games: &GameSession,
+        opts: SessionOptions,
+        fake: FakeCore,
+        wait_frames: bool,
+    ) -> Arc<Shared> {
+        open_after(games, opts, fake, wait_frames, None)
     }
 
+    /// The session's shared state is returned, for a test to wait on its frames.
     fn open_after(
         games: &GameSession,
         opts: SessionOptions,
         fake: FakeCore,
         wait_frames: bool,
         after_end: Option<super::AfterEnd>,
-    ) {
+    ) -> Arc<Shared> {
         let game = opts.game.clone();
         let (tx, _rx) = std::sync::mpsc::channel();
         let session = Session::start_with(opts, tx, fake).unwrap();
@@ -379,12 +430,9 @@ mod tests {
             after_end,
         );
         if wait_frames {
-            let started = Instant::now();
-            while shared.stats.lock().frames < 3 {
-                assert!(started.elapsed() < Duration::from_secs(10), "no frames");
-                std::thread::sleep(Duration::from_millis(5));
-            }
+            wait_until("three frames", || frames(&shared) >= 3);
         }
+        shared
     }
 
     fn counter(path: &Path) -> Option<u64> {
@@ -418,13 +466,7 @@ mod tests {
             Err(emudome_core::ErrorCode::NoGame)
         );
         assert_eq!(games.in_use(), Some(game.clone()));
-        leaving.stop();
-        let written = loop {
-            if let Some(written) = leaving.wait(Duration::from_millis(100)) {
-                break written;
-            }
-        };
-        assert_eq!(written, Ok(()));
+        assert_eq!(stop_and_wait(&mut leaving), Ok(()));
         assert_eq!(games.in_use(), None);
         assert_exit_writes(&GameFiles::new(&dir.0.join("saves"), &game));
         assert_eq!(
@@ -452,8 +494,7 @@ mod tests {
         open(&games, &dir.0, &game, "q_libretro.dll", FakeCore::new());
         games.send(Command::SetQuickSlot(7)).unwrap();
         let mut leaving = games.take().unwrap();
-        leaving.stop();
-        while leaving.wait(Duration::from_millis(100)).is_none() {}
+        assert_eq!(stop_and_wait(&mut leaving), Ok(()));
         // Written before the thread ended; the other game keeps its own.
         assert_eq!(quick(&game), 7);
         assert_eq!(quick(&other), 1);
@@ -475,8 +516,7 @@ mod tests {
             Some(Box::new(move || flag.store(true, Ordering::SeqCst))),
         );
         let mut leaving = games.take().unwrap();
-        leaving.stop();
-        while leaving.wait(Duration::from_millis(100)).is_none() {}
+        assert_eq!(stop_and_wait(&mut leaving), Ok(()));
         let check = leaving.take_after_end().expect("the check");
         assert!(leaving.take_after_end().is_none(), "handed over once");
         assert!(!ran.load(Ordering::SeqCst));
@@ -490,14 +530,11 @@ mod tests {
         let games = games(&Log::default());
         let game = key("02");
         open(&games, &dir.0, &game, "b_libretro.dll", FakeCore::new());
-        assert_eq!(
-            games.close(CLOSE_TIMEOUT),
-            Some((CoreId::Mgba, Closed::Joined))
-        );
+        assert_eq!(games.close(PATIENCE), Some((CoreId::Mgba, Closed::Joined)));
         assert_eq!(games.in_use(), None);
         assert_exit_writes(&GameFiles::new(&dir.0.join("saves"), &game));
         // Nothing open: nothing to close.
-        assert_eq!(games.close(CLOSE_TIMEOUT), None);
+        assert_eq!(games.close(PATIENCE), None);
     }
 
     #[test]
@@ -511,7 +548,7 @@ mod tests {
             FakeCore::new(),
             true,
         );
-        games.close(CLOSE_TIMEOUT);
+        assert_eq!(games.close(PATIENCE), Some((CoreId::Mgba, Closed::Joined)));
         let files = GameFiles::new(&dir.0.join("saves"), &game);
         assert!(counter(&files.sram).is_some());
         assert!(!files.slot(AUTO_SLOT).exists());
@@ -525,13 +562,12 @@ mod tests {
         open(&games, &dir.0, &first, "d_libretro.dll", FakeCore::new());
         // What opening does: the close flow first, then the new game.
         let mut leaving = games.take().unwrap();
-        leaving.stop();
-        while leaving.wait(Duration::from_millis(100)).is_none() {}
+        assert_eq!(stop_and_wait(&mut leaving), Ok(()));
         open(&games, &dir.0, &second, "d_libretro.dll", FakeCore::new());
         assert_exit_writes(&GameFiles::new(&dir.0.join("saves"), &first));
         assert_eq!(games.in_use(), Some(second.clone()));
         // The second one's in-game save, written when it closes, reads back as that game's.
-        games.close(CLOSE_TIMEOUT);
+        assert_eq!(games.close(PATIENCE), Some((CoreId::Mgba, Closed::Joined)));
         assert_exit_writes(&GameFiles::new(&dir.0.join("saves"), &second));
     }
 
@@ -540,22 +576,21 @@ mod tests {
         let dir = Dir::new("gs-flush");
         let games = games(&Log::default());
         let game = key("06");
-        open(&games, &dir.0, &game, "e_libretro.dll", FakeCore::new());
+        let shared = open(&games, &dir.0, &game, "e_libretro.dll", FakeCore::new());
         let files = GameFiles::new(&dir.0.join("saves"), &game);
         assert_eq!(games.send(Command::Flush), Ok(()));
-        let started = Instant::now();
-        while !files.slot(AUTO_SLOT).exists() {
-            assert!(started.elapsed() < Duration::from_secs(10), "not flushed");
-            std::thread::sleep(Duration::from_millis(5));
-        }
-        // Written atomically: what is there is complete.
-        let flushed = counter(&files.sram).unwrap();
-        assert!(flushed >= 3);
+        // The in-game save comes first, then the auto quick save: once that one is there, the
+        // flush is done. Written atomically: what is there is complete.
+        wait_until("the flush", || files.slot(AUTO_SLOT).exists());
+        let flushed = counter(&files.sram).expect("the flushed in-game save");
+        assert!(flushed >= 3, "{flushed}");
+        assert_eq!(counter(&files.slot(AUTO_SLOT)), Some(flushed));
         assert!(games.is_open());
-        // ...and it keeps running, its closing save newer.
-        std::thread::sleep(Duration::from_millis(100));
-        games.close(CLOSE_TIMEOUT);
-        assert!(counter(&files.sram).unwrap() > flushed);
+        // ...and it keeps running (frames past the flushed one), its closing save newer.
+        wait_until("a frame after the flush", || frames(&shared) > flushed);
+        assert_eq!(games.close(PATIENCE), Some((CoreId::Mgba, Closed::Joined)));
+        let closed = counter(&files.sram).expect("the closing in-game save");
+        assert!(closed > flushed, "{closed} {flushed}");
     }
 
     #[test]
@@ -569,19 +604,32 @@ mod tests {
         let gate = Gate::new();
         let opts = options(&dir.0, &game, "hung_libretro.dll", true);
         let core_path = opts.core_path.clone();
-        open_with(&games, opts, FakeCore::stuck(gate.clone()), false);
-        assert!(
-            gate.wait_held(Duration::from_secs(10)),
-            "the core never ran"
+        let fake = FakeCore::stuck(gate.clone());
+        open_with(&games, opts, fake.clone(), false);
+        assert!(gate.wait_held(PATIENCE), "the core never ran");
+        // The core stays stuck until the gate opens, which only this test does: an abandon that
+        // waited for the thread would never answer. On its own thread, so that a regression
+        // fails (the gate opened, the thread joined) instead of hanging the test.
+        let abandoned = std::thread::scope(|s| {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let games = &games;
+            s.spawn(move || tx.send(games.abandon()));
+            let abandoned = rx.recv_timeout(PATIENCE);
+            if abandoned.is_err() {
+                gate.open();
+            }
+            abandoned
+        });
+        assert_eq!(
+            abandoned,
+            Ok(Some(CoreId::Mgba)),
+            "abandon waited for the stuck thread"
         );
-        let started = Instant::now();
-        assert_eq!(games.abandon(), Some(CoreId::Mgba));
-        assert!(started.elapsed() < Duration::from_secs(1), "abandon waited");
         assert_eq!(games.in_use(), None);
         assert!(core_needs_restart(&core_path));
         // The thread wakes up later: it is dead and writes nothing.
         gate.open();
-        std::thread::sleep(Duration::from_millis(200));
+        wait_let_go_ended(&fake);
         assert_eq!(counter(&files.sram), Some(41));
         assert!(!files.slot(AUTO_SLOT).exists());
     }
@@ -597,19 +645,19 @@ mod tests {
         let gate = Gate::new();
         let opts = options(&dir.0, &game, "stuck_libretro.dll", true);
         let core_path = opts.core_path.clone();
-        open_with(&games, opts, FakeCore::stuck(gate.clone()), false);
-        assert!(
-            gate.wait_held(Duration::from_secs(10)),
-            "the core never ran"
-        );
+        let fake = FakeCore::stuck(gate.clone());
+        open_with(&games, opts, fake.clone(), false);
+        assert!(gate.wait_held(PATIENCE), "the core never ran");
+        // Stuck until the gate opens: the close times out whatever the machine's load.
         assert_eq!(
             games.close(Duration::from_millis(200)),
             Some((CoreId::Mgba, Closed::Abandoned))
         );
         assert!(core_needs_restart(&core_path));
         gate.open();
-        std::thread::sleep(Duration::from_millis(200));
+        wait_let_go_ended(&fake);
         assert_eq!(counter(&files.sram), Some(42));
+        assert!(!files.slot(AUTO_SLOT).exists());
     }
 
     #[test]
@@ -621,13 +669,10 @@ mod tests {
         let opts = options(&dir.0, &game, "slow_libretro.dll", true);
         let core_path = opts.core_path.clone();
         open_with(&games, opts, FakeCore::stuck(gate.clone()), false);
-        assert!(
-            gate.wait_held(Duration::from_secs(10)),
-            "the core never ran"
-        );
+        assert!(gate.wait_held(PATIENCE), "the core never ran");
         let mut leaving = games.take().unwrap();
         leaving.stop();
-        // «Wait»: still running, not let go.
+        // «Wait» (stuck until the gate opens): still running, not let go.
         assert_eq!(leaving.wait(Duration::from_millis(100)), None);
         assert!(!core_needs_restart(&core_path));
         assert_eq!(games.in_use(), Some(game.clone()));
