@@ -491,6 +491,19 @@
       keys: ["saves.rtc", "saves.rtcdays", "saves.rtchours", "saves.rtcminutes", "saves.rtcdate"],
     });
   }
+  // `spaceRow` (#29): a Saves page with «Gestisci lo spazio» (`saves.space`, a link row).
+  if (scenario.spaceRow) {
+    entries.push(
+      entry("saves.space", "saves", { type: "action", style: "link" }, null, {
+        levels: ["default", "global"],
+        mostUsed: false,
+        wired: true,
+      }),
+    );
+    schema.pages.push("saves");
+    schema.groups.push({ id: "game", pages: ["saves"] });
+    schema.sections.push({ page: "saves", id: "folder", keys: ["saves.space"] });
+  }
   // `notifications` (X03, #32): what the bell shows, newest first, two unread.
   const notifications = scenario.notifications
     ? [
@@ -1622,6 +1635,82 @@
         return scenario.storage === "low"
           ? { free: 380 * 1024 * 1024, total: 128 * 1024 ** 3, low: true }
           : { free: 40 * 1024 ** 3, total: 128 * 1024 ** 3, low: false };
+      // «Gestisci lo spazio» (#29): two games EmuDome downloaded that Drive has with `cloud: "in"`
+      // («Coral Orbit», «Dual Screen Tales»), one it downloaded that Drive has not, two in the
+      // user's folders (openable on the desktop), quick saves, screenshots and temporary files.
+      // Every deletion answers as if it went.
+      if (cmd.startsWith("storage_")) {
+        const GiB = 1024 ** 3;
+        const MiB = 1024 ** 2;
+        const desk = (scenario.device ?? (scenario.phone ? "phone" : "desktop")) !== "phone";
+        const free = scenario.storage === "low" ? 380 * MiB : 40 * GiB;
+        const own = { games: 3.3 * GiB, quick: 3.1 * GiB, other: 2.4 * GiB };
+        const app = { kind: "app" };
+        const game = (id, title, console_, size, location) => ({
+          id,
+          title,
+          console: console_,
+          size,
+          location,
+        });
+        const storage = {
+          storage_breakdown: {
+            free,
+            total: 128 * GiB,
+            gamesBytes: own.games,
+            quickBytes: own.quick,
+            otherBytes: own.other,
+            otherAppsBytes: 128 * GiB - free - own.games - own.quick - own.other,
+            games: [
+              game("3ds:0a", "Coral Orbit", "3ds", 1.8 * GiB, app),
+              game("nds:02", "Dual Screen Tales", "nds", 1.2 * GiB, app),
+              game("gba:01", "Pocket Quest Advance", "gba", 256 * MiB, {
+                kind: "folder",
+                name: desk ? "Games" : "Download",
+                openable: desk,
+              }),
+              game("gba:05", "Star Pilot", "gba", 64 * MiB, {
+                kind: "folder",
+                name: null,
+                openable: false,
+              }),
+              game("gb:03", "Tiny Blocks", "gb", 1 * MiB, app),
+            ],
+            quickSlots: 46,
+            quickGames: 12,
+            screenshotBytes: 420 * MiB,
+            screenshotCount: 318,
+            screenshotGames: [
+              { id: "gba:01", count: 2 },
+              { id: "nds:02", count: 2 },
+            ],
+            tempBytes: 1.9 * GiB,
+          },
+          storage_quick_saves: [
+            {
+              id: "nds:02",
+              slots: [
+                { slot: 0, size: 12 * MiB, savedAt: FIXED - 3600000 },
+                { slot: 1, size: 12 * MiB, savedAt: FIXED - 2 * day },
+                { slot: 2, size: 11 * MiB, savedAt: FIXED - 9 * day },
+              ],
+            },
+            {
+              id: "gba:01",
+              slots: [
+                { slot: 0, size: 450 * 1024, savedAt: FIXED - day },
+                { slot: 3, size: 448 * 1024, savedAt: null },
+              ],
+            },
+          ],
+          storage_delete_quick: (args.picked ?? []).length,
+          storage_delete_screenshots: (args.names ?? []).length,
+          storage_clear_temp: 1.9 * GiB,
+          storage_remove_game: 1.2 * GiB,
+          storage_open_folder: null,
+        };
+        if (cmd in storage) return JSON.parse(JSON.stringify(storage[cmd]));
+      }
       // Android's back at the shell's root (#29): the app went to the background.
       if (cmd === "leave_to_background") return true;
       if (scenario.saves && cmd.startsWith("saves_")) {
