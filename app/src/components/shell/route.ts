@@ -4,8 +4,8 @@
 //
 // - `section`: the rail's current section.
 // - `details`: the game whose details the Library section shows (L04–L10, #34), null = the grid.
-//   Kept while another section is open: the rail's Library comes back to them, and so does closing
-//   a game opened from them.
+//   Kept while another section is open: Android's back and «Apri la libreria» come back to them,
+//   and so does closing a game opened from them; the rail's (or a tab's) Library is the grid.
 // - `arrival`: what a section is opened for, from another screen (the jumps of a game's details,
 //   «Salvataggi» on a «Continua a giocare» card, back from the details onto their cover). The
 //   section reads it once, when it mounts; the shell then drops it (`arrived`), so coming back to
@@ -84,9 +84,12 @@ export const openSection = (r: Route, section: Section): Route => ({
   arrival: null,
 })
 
-/** The rail: its Library while the details are shown goes back to the grid. */
+/**
+ * The rail, the phone's tab bar, TV's tabs: a section at its root. Its Library is the grid, even
+ * when the details were left open behind another section (#127).
+ */
 export const pickSection = (r: Route, section: Section): Route =>
-  section === 'library' && showingDetails(r) ? closeDetails(r) : openSection(r, section)
+  section === 'library' && r.details !== null ? closeDetails(r) : openSection(r, section)
 
 /** L04: a game's details, in the Library section. */
 export const openDetails = (r: Route, game: GameId): Route => ({

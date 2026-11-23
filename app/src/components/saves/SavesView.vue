@@ -11,8 +11,13 @@
 // The parts and their logic live in saves/: this view loads, decides what is shown and passes
 // the events on. Controller / keyboard: the shell's nav scope covers this view; the dialogs open
 // their own.
-import { computed, onMounted, ref, watch } from 'vue'
+//
+// The phone, upright or on its side (#127): one column, as Settings does upright: the list of
+// games first; picking one (or «Importa…») opens its panel over the list, with ‹ back to it
+// (B / Android's back too). Opened for a game (`arrival`), the panel shows first.
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ChevronLeft } from '@lucide/vue'
 import { emu, type GameId, type GameSaves, type LibraryGame } from '@/emu'
 import { useSettingsChanged } from '@/composables/useSettingsChanged'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
@@ -32,6 +37,9 @@ import { useSavesOverview } from './useSavesOverview'
 import { useSaveShortcut } from './useSaveShortcut'
 import { useSavesSettings } from './useSavesSettings'
 import { SectionPage } from '@/design-system/components/section-page'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { useDeviceLayout } from '@/composables/useDeviceLayout'
+import { focusInitial, useNavSection } from '@/nav'
 
 const props = defineProps<{
   /**
@@ -100,9 +108,40 @@ async function refresh() {
   await loadDetails()
 }
 
+// ---- The phone: one column ----
+
+const layout = useDeviceLayout()
+const oneColumn = layout.touchDensity
+/** One column: the list shows, not the panel. Opened for a game, its panel first. */
+const listOpen = ref(arrival === null)
+const listShown = computed(() => !oneColumn.value || listOpen.value)
+const panelShown = computed(() => !oneColumn.value || !listOpen.value)
+
+/** One column: the panel over the list, its first control focused. */
+function openPanel() {
+  listOpen.value = false
+  void nextTick(() => {
+    if (oneColumn.value && root.value) focusInitial(root.value)
+  })
+}
+/** One column: back to the list, on the game that was shown. */
+function showList() {
+  listOpen.value = true
+  void nextTick(() =>
+    root.value?.querySelector<HTMLElement>('aside [aria-current="true"], aside button')?.focus(),
+  )
+}
+
 function pick(g: LibraryGame) {
   selectedId.value = g.id
   mode.value = 'game'
+  openPanel()
+}
+
+/** «Annulla» of the import: the game shown before, or the list in one column. */
+function cancelImport() {
+  mode.value = 'game'
+  if (oneColumn.value) showList()
 }
 
 /** «Gioca da qui»: the chosen game, on that slot. */
@@ -157,6 +196,7 @@ const gamesByTitle = computed(() => sortByTitle(library.games))
 function startImport() {
   mode.value = 'import'
   importer.reset()
+  openPanel()
 }
 
 // ---- E03 ----
@@ -169,6 +209,8 @@ const emptyText = computed(() =>
 
 const root = ref<HTMLElement | null>(null)
 useFocusWhenLoaded(root, loaded)
+// One column on a panel: B / Android's back return to the list; anywhere else the shell's back.
+useNavSection(root, { back: () => (oneColumn.value && !listOpen.value ? showList() : false) })
 watch(
   () => library.games,
   () => void refresh(),
@@ -199,14 +241,29 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
 
     <template v-else-if="loaded">
       <SavesGameList
+        v-if="listShown"
         v-model:query="query"
         :rows="rows"
         :current="mode === 'game' ? (selected?.id ?? null) : null"
+        :full="oneColumn"
         @pick="pick"
         @import="startImport"
       />
 
-      <SectionPage as="main">
+      <SectionPage v-if="panelShown" as="main">
+        <!-- One column: the way back to the list, at the panel's start. -->
+        <div v-if="oneColumn" class="flex">
+          <Button
+            :variant="ButtonVariant.Ghost"
+            :size="ButtonSize.TextLine"
+            class="-ml-6"
+            :icon="ChevronLeft"
+            data-nav-initial
+            @click="showList"
+          >
+            {{ t('shell.saves') }}
+          </Button>
+        </div>
         <SavesImport
           v-if="mode === 'import'"
           :candidate="candidate"
@@ -216,7 +273,7 @@ useSettingsChanged(['pad.combos', 'pad.mod'], () => void shortcut.load())
           :importing="importing"
           @pick-file="importer.pickFile"
           @choose-game="choosingGame = true"
-          @cancel="mode = 'game'"
+          @cancel="cancelImport"
           @import="importer.run"
         />
 

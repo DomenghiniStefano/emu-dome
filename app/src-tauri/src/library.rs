@@ -23,7 +23,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use emudome_core::cover::{self, CoverView};
 use emudome_core::library::{
     self, core_of, cover_colour, region, CoverKind, DocEntry, Documents, Family, GameRecord,
-    Identity, Library, NotAGame, OpenedDocument, Region, ScanInput, ScanReport,
+    Identity, Library, NotAGame, OpenedDocument, Region, ScanInput, ScanReport, Skipped,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, GameKey};
@@ -247,6 +247,12 @@ pub(crate) enum ScanEvent {
         found: usize,
         added: usize,
         unreachable: Vec<String>,
+        /// Files with a game's extension not taken (#127): encrypted 3DS games (E10), and files
+        /// not recognised as a game.
+        #[serde(rename = "skippedEncrypted")]
+        skipped_encrypted: usize,
+        #[serde(rename = "skippedUnrecognised")]
+        skipped_unrecognised: usize,
     },
 }
 
@@ -433,6 +439,8 @@ pub fn start_scan(app: &AppHandle) {
                             found: 0,
                             added: 0,
                             unreachable: Vec::new(),
+                            skipped_encrypted: 0,
+                            skipped_unrecognised: 0,
                         },
                     );
                 }
@@ -495,13 +503,17 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
             found: 0,
             added: 0,
             unreachable: Vec::new(),
+            skipped: Skipped::default(),
         }
     });
     log::info!(
-        "library scan: {} games, {} added, {} folders unreachable, {:?}",
+        "library scan: {} games, {} added, {} folders unreachable, {} encrypted and {} \
+         unrecognised files skipped, {:?}",
         report.found,
         report.added,
         report.unreachable.len(),
+        report.skipped.encrypted,
+        report.skipped.unrecognised,
         started.elapsed()
     );
     cache_icons(app, state);
@@ -511,6 +523,8 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
             found: report.found,
             added: report.added,
             unreachable: report.unreachable,
+            skipped_encrypted: report.skipped.encrypted,
+            skipped_unrecognised: report.skipped.unrecognised,
         },
     );
     emit_all(app, state);
@@ -979,8 +993,12 @@ pub fn identify_path(app: &AppHandle, path: &Path) -> Result<Identity, ErrorCode
         let lib = state.lib.lock();
         lib.cache().get(path.to_string_lossy().as_ref()).cloned()
     });
-    library::identify_cached(path, cached.as_ref())
-        .map_err(|e| not_a_game(&path.display().to_string(), e))
+    library::identify_cached(path, cached.as_ref()).map_err(|e| {
+        not_a_game(e, |io| {
+            log::warn!("{}: cannot be read: {io}", path.display());
+            ErrorCode::rom_unreadable(path, emudome_core::IoCause::of(io))
+        })
+    })
 }
 
 /// What a game file opened outside the library is: [`identify_path`] for a path; a document is
@@ -996,19 +1014,15 @@ pub fn identify_game_file(
     let cached = app
         .try_state::<LibraryState>()
         .and_then(|state| state.lib.lock().cache().get(file.given()).cloned());
-    let mut reader = document.reader().map_err(|e| ErrorCode::RomUnreadable {
-        detail: format!("{}: {e}", file.given()),
-    })?;
+    let mut reader = document.reader().map_err(|e| file.unreadable(&e))?;
     library::identify_open_file(file.path(), &mut reader, cached.as_ref())
-        .map_err(|e| not_a_game(file.given(), e))
+        .map_err(|e| not_a_game(e, |io| file.unreadable(io)))
 }
 
-/// A file that is not a game, for the interface.
-fn not_a_game(shown: &str, e: NotAGame) -> ErrorCode {
+/// A file that is not a game, for the interface; `unreadable` tells a read that failed.
+fn not_a_game(e: NotAGame, unreadable: impl FnOnce(&std::io::Error) -> ErrorCode) -> ErrorCode {
     match e {
-        NotAGame::Io(e) => ErrorCode::RomUnreadable {
-            detail: format!("{shown}: {e}"),
-        },
+        NotAGame::Io(io) => unreadable(&io),
         NotAGame::Extension | NotAGame::Header(_) => ErrorCode::GameUnidentified {
             detail: e.to_string(),
         },

@@ -140,6 +140,21 @@ add(
   { mock: { frame: true, slots: "some" }, steps: [escape, { resize: [412, 892] }] },
   ["l892"],
 );
-// G02 with a long reason that has no break point for a line (the S23's Android path).
-const startFailed = `import('/src/components/game/gameFlow.ts').then(m => { m.flow.startError = { title: 'emudome-test', reason: 'Non riesco a leggere il file del gioco. Controlla che sia ancora lì e che il suo disco sia collegato. Dettagli: /sdcard/Android/data/it.domehub.emudome/files/test/emudome-test.gba: Permission denied (os error 13)' }; return true })`;
-add("start-failed", { mock: { game: false }, steps: [startFailed] }, ["p412", "p390", "p360", "p320"]);
+// G02 for a game file that cannot be read (#128): Rust's code as it comes (the file, its place
+// and the cause as values) turned into the dialog by the app's own `startProblem`; the place a
+// long Android document URI with no break point, clamped to two lines.
+export const startFailedStep = (file, path, cause) =>
+  `Promise.all([import('/src/components/game/gameFlow.ts'), import('/src/components/game/launch.ts')]).then(([f, l]) => { f.flow.startError = { title: ${JSON.stringify(file.replace(/\.[^.]+$/, ""))}, ...l.startProblem({ code: 'romUnreadable', params: { file: ${JSON.stringify(file)}, path: ${JSON.stringify(path)}, cause: ${JSON.stringify(cause)} } }) }; return true })`;
+const startFailed = startFailedStep(
+  "emudome-test.gba",
+  "content://com.android.externalstorage.documents/tree/primary%3ADownload%2FROMs%2FGame%20Boy%20Advance/document/primary%3ADownload%2FROMs%2FGame%20Boy%20Advance%2Femudome-test.gba",
+  "permissionDenied",
+);
+add("start-failed", { mock: { game: false }, steps: [startFailed] }, [
+  "p412",
+  "p390",
+  "p780",
+  "p360",
+  "p320",
+  "l780",
+]);

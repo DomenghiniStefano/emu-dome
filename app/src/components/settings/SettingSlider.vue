@@ -24,9 +24,12 @@ watch(
 </script>
 
 <template>
-  <div class="flex items-center gap-8">
+  <!-- On a touch screen the slider takes its whole line (SettingRow gives it the row's width), its
+       value at the end: no gap between them (#127). -->
+  <div class="flex items-center gap-8 touch:w-full">
     <Slider
       v-model="shown"
+      class="touch:w-auto touch:flex-1"
       :variant="SliderVariant.EdgeFill"
       :min="min"
       :max="max"

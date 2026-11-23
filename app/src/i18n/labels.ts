@@ -1,9 +1,15 @@
 // Backend data → text: error codes, speeds, controller names. The backend sends codes
 // and values only; every sentence comes from the message files.
 import { i18n, t } from './index'
-import type { ErrorCode, GamepadEvent, Speed, StateLoadBlock } from '@/emu'
+import { hasCause, type CauseCode } from './causes'
+import type { ErrorCode, GamepadEvent, IoCause, Speed, StateLoadBlock } from '@/emu'
 
 const known = (key: string) => i18n.global.te(key)
+
+/** Why a file could not be used (Trello #128), in words: the cause's text for that code. */
+export function causeText(code: CauseCode, cause: IoCause): string {
+  return t(`errorCauses.${code}.${cause}`)
+}
 
 /** Shape check for an `ErrorCode` coming back from a command or an event. */
 export function isErrorCode(e: unknown): e is ErrorCode {
@@ -25,7 +31,7 @@ export type ErrorSink = (e: unknown) => void
 export function errorText(e: unknown): string {
   if (isErrorCode(e) && known(`errors.${e.code}`)) {
     const params: Record<string, unknown> = { ...('params' in e ? e.params : {}) }
-    if (e.code === 'consoleNotYet') {
+    if (e.code === 'consoleNotYet' || e.code === 'coreUnavailable') {
       const name = `console.${e.params.console}`
       params.console = known(name) ? t(name) : e.params.console
     }
@@ -36,6 +42,7 @@ export function errorText(e: unknown): string {
       params.name = known(option) ? t(option) : e.params.name
     }
     if (e.code === 'stateLoadUnsupported') params.reason = stateLoadBlockText(e.params.reason)
+    if (hasCause(e)) params.cause = causeText(e.code, e.params.cause)
     if (e.code === 'graphicsApiUnavailable') {
       // `video.api`'s option: its name as the settings show it.
       const option = `settings.video.api.option.${e.params.api}`

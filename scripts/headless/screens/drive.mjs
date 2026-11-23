@@ -6,7 +6,7 @@ import path from "node:path";
 import { layoutEditorScenarios } from "./layout-editors.mjs";
 import { phoneShellScenarios } from "./phone-shell.mjs";
 import { quickMenuScenarios } from "./quick-menu.mjs";
-import { touchScenarios } from "./touch.mjs";
+import { startFailedStep, touchScenarios } from "./touch.mjs";
 
 const [cdpPort, baseUrl, outDir, ...only] = process.argv.slice(2);
 const here = path.dirname(
@@ -426,7 +426,18 @@ const SHELL = {
     mock: {},
     steps: [
       flowSet(
-        `{ startError: { title: 'Pocket Quest Advance', reason: 'The file could not be read.' } }`,
+        `{ startError: { title: 'Pocket Quest Advance', reason: 'The file could not be read.', file: null, path: null } }`,
+      ),
+    ],
+  },
+  // G02 for a game file that is gone (#128): its name, the cause's text, a deep desktop path.
+  "flow-start-error-file": {
+    mock: {},
+    steps: [
+      startFailedStep(
+        "Pocket Quest Advance (Europe) (En,Fr,De,Es,It).gba",
+        "E:\\Giochi\\Emulazione\\Nintendo\\Game Boy Advance\\Collezione completa (No-Intro 2026-11)\\Pocket Quest Advance (Europe) (En,Fr,De,Es,It).gba",
+        "notFound",
       ),
     ],
   },

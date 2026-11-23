@@ -49,18 +49,22 @@ const inGameLine = computed(() =>
 
 <template>
   <section class="flex flex-col gap-12">
-    <div class="flex items-center gap-12">
-      <GameCover
-        :size="CoverSize.Row"
-        class="flex-none"
-        :game="game"
-        :badge="false"
-        :title="false"
-      />
-      <div class="min-w-0 flex-1">
-        <Heading>{{ game.title }}</Heading>
-        <div class="text-ink-muted tabular-nums">
-          {{ t('saves.gameMeta', { console: t(`console.${game.console}`), meta: detail }) }}
+    <!-- On a touch screen the cover and the title keep `hero-text` before «Dettagli del gioco»
+         wraps under them (a phone held upright), so the title never breaks a word per line. -->
+    <div class="flex flex-wrap items-center gap-12">
+      <div class="flex min-w-0 flex-1 items-center gap-12 touch:basis-hero-text">
+        <GameCover
+          :size="CoverSize.Row"
+          class="flex-none"
+          :game="game"
+          :badge="false"
+          :title="false"
+        />
+        <div class="min-w-0 flex-1">
+          <Heading>{{ game.title }}</Heading>
+          <div class="text-ink-muted tabular-nums">
+            {{ t('saves.gameMeta', { console: t(`console.${game.console}`), meta: detail }) }}
+          </div>
         </div>
       </div>
       <Button :icon="Info" @click="emit('openDetails')">{{ t('saves.details') }}</Button>

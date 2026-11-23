@@ -36,15 +36,17 @@ describe('the shell route', () => {
     expect(arrivalFor(arrived(back), 'library')).toBeNull()
   })
 
-  it('keeps the details while another section is open, and the rail comes back to them', () => {
+  it('keeps the details while another section is open; the rail goes to the grid (#127)', () => {
     const away = pickSection(openDetails(START, id), 'saves')
     expect(away.section).toBe('saves')
     expect(showingDetails(away)).toBe(false)
+    // The rail's (or the tab bar's) Library: the grid, on the game's cover.
     const again = pickSection(away, 'library')
-    expect(showingDetails(again)).toBe(true)
+    expect(showingDetails(again)).toBe(false)
+    expect(arrivalFor(again, 'library')).toEqual({ section: 'library', cover: id })
     // The rail's Library on the details themselves: back to the grid.
-    expect(showingDetails(pickSection(again, 'library'))).toBe(false)
-    // «Apri la libreria» from Saves is the library as it is.
+    expect(showingDetails(pickSection(openDetails(START, id), 'library'))).toBe(false)
+    // «Apri la libreria» from Saves, and Android's back, are the library as it is.
     expect(showingDetails(openSection(away, 'library'))).toBe(true)
   })
 

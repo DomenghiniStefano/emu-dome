@@ -64,6 +64,8 @@ const pull = computed(() => progressOf(cloud.progress, 'pulling', null))
     v-if="flow.startError"
     :title="flow.startError.title"
     :reason="flow.startError.reason"
+    :file="flow.startError.file"
+    :path="flow.startError.path"
     @close="emit('startErrorClose')"
   />
 

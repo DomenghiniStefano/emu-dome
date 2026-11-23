@@ -47,7 +47,12 @@ Rust shell with Tauri 2 and a Vue/Vite interface. The emulation cores are interc
   (e.g. `emu://gamepad-connected` with `{ name }`). The interface turns them into text in `app/src/i18n/labels.ts`
   (`errorText`, `speedLabel`, `gamepadName`). A new error = a new `ErrorCode` variant, the generated files made
   again (`EMUDOME_BLESS=1 cargo test -p emudome-core contract`) + `errors.<code>` in **both** message files: the
-  contract test and `app/src/i18n/parity.test.ts` fail until all three are there.
+  contract test and `app/src/i18n/parity.test.ts` fail until all three are there. A file or folder that cannot be
+  read or created is sent as values, never as the OS's sentence (which holds the path; that goes to the log): its
+  name / path and an `IoCause` (`notFound`, `permissionDenied`, `other`, from the `io::ErrorKind`), each code with
+  a cause having one text per cause, `errorCauses.<code>.<cause>` (`app/src/i18n/causes.ts` lists them; parity
+  checks them). `romUnreadable` carries `file` (a document's display name), `path` (a document's URI) and
+  `cause`; G02 shows the file name, the cause's text, then the path on a muted line clamped to two.
 - Kept file names: `docs/fase0-esito.md` and `docs/combo-tasti.md` keep their Italian names (other documents link to them); their content is English.
 
 ## Current state: Phase 1 desktop shell, Phase 2 core work started
@@ -276,7 +281,10 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          into app/src/generated/, the staleness check; see the section of that name)
                          speed_audio.rs (audio off 1×: `audio.ff` mute / resample / WSOLA time-stretch; pure)
                          library/ (game library: identity.rs console, `<console>:<hex>` id from the content,
-                         title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache;
+                         title and NDS/3DS icon; scan.rs folder walk with a path+size+mtime hash cache,
+                         the ROM files it skipped counted by reason (`Skipped`: encrypted 3DS,
+                         unrecognised; on `library://scan` done, said by L11 only after a folder the user
+                         picked, `lib/library.ts`);
                          store.rs library.json, games never deleted, the user's version pins;
                          group.rs the regional versions of one game as a family (GBA / NDS code
                          and 3DS product code without the region letter; never homebrew, GB / GBC
@@ -859,7 +867,9 @@ px / rem / em length or bracketed opacity, z-index, duration or curve in a class
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
 `design-system/components`, no `<style>`, no `phone` / `touch` prop used only in `:class`, no hand-written widget role (`dialog`,
 `radio`, `menu`…) outside `design-system/components` except the shrinking list `HAND_ROLES_PENDING`, no `<Button>` named with both
-`aria-label` and `title` (an icon alone takes `label`, #104); the rows and what each cannot see are in
+`aria-label` and `title` (an icon alone takes `label`, #104), no `<Button>` / `<LinkRow>` / `<DropdownMenuItem>` /
+`<Card as="button">` with no action (a handler, `to`, submit, `as-child`, a static `disabled`, a wrapper that gives
+it one, the component's root, or `<!-- no-action: why -->`, #112); the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
 `unix` anywhere; `desktop` / `mobile` and `[target.…]` tables in `Cargo.toml` too, except the temporary list in the gate:
@@ -892,6 +902,8 @@ key of the wrong kind.
   e.g. the quick menu's rows, is still written in the interface).
 - A new reader of a setting marks it wired (`.not_wired()` removed in catalog.rs): the test lists the unwired ones,
   it cannot see a reader that is missing.
+- A control does what it says: the `dead-button` scanner rule sees that an action is bound, not that the handler
+  does something or that a parent listens to the event it emits; a feature not ready is disabled with its reason.
 - Every menu is fully usable with the controller: a new screen registers `useNavScope` (`app/src/nav.ts`)
   and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the scope tree and the primitives'
   keys too (`nav.test.ts`, `design-system/components/nav.test.ts`), the screens are not.
@@ -1057,7 +1069,9 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (`CoreProfile::declared_options`, measured with `headless --list-options`, held to `cores.lock`'s version by a
   test); Azahar's is not measured yet.
 - 18 catalogue entries have no reader yet (`wired: false`, shown disabled with «arrives in a future update»; the
-  list is `the_entries_not_wired_yet_are_these` in settings/tests.rs), and no action or preset card is carried out.
+  list is `the_entries_not_wired_yet_are_these` in settings/tests.rs). The action rows carried out are `cloud.acct`,
+  `cloud.space`, `about.ver`, `about.upd`, `about.lic` and `about.log` (the same test); every other action row is
+  disabled with that reason, and no preset card is carried out.
 - Touch controls (Trello #29): layouts per console and orientation (defaults for GB / GBC, GBA, DS and 3DS, the
   user's own from C06 kept per device), tap / hold / turbo (the repeat is the interface's, about 12 a second: the
   core has no turbo of its own), vibration on Android, `touch.thide` / `touch.tpad`, two built-in styles from the
@@ -1156,7 +1170,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   it through. The
   library's banners (unreachable folders, the scan, «N giochi aggiunti») are not shown over the shelves.
 - The phone (#29, the shell's half): the tab bar upright, the rail as a column on the camera's edge on its side
-  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`), the quick menu
+  (`screen.orientation`), Settings in one column upright (`settings/settingsPane.ts`; its scope card scrolls with
+  the page instead of sticking, upright and on its side), Saves in one column upright and on its side (the
+  games, then a game's panel or the import over them with «‹ Salvataggi», `saves/SavesView.vue`), a rail item or
+  tab always opening its section at its root (the Library's grid even with details left open behind another
+  section; the section shown, picked again, mounted again: `route.ts` `pickSection`, `AppShell.vue`), the quick menu
   (`quick-menu/PhoneHome.vue`, `PhoneMore.vue`, `PhoneSaves.vue`, `phoneMenu.ts`: a first
   level of «Salva rapido» / «Carica rapido» on Rust's current slot, «Riprendi» and a strip «Riavvolgi» (when
   `speed.rew` is on: held, the game unpaused meanwhile; A / Enter rewind for 1 s) / «Accelera» / «Silenzia» /
@@ -1202,7 +1220,12 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   (Trello #92). melonDS DS for Android is built by EmuDome too (upstream's asset has 4 KB pages,
   refused by Google Play), from v1.4.0's source archive and the pinned archives of the libraries its CMake fetches
   (`build.dependencies`, configured with `FETCHCONTENT_FULLY_DISCONNECTED`), published as `cores-melondsds-f394adb`;
-  its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3). The Gradle side of the lock builds
+  its Windows and Linux files are still upstream's release assets. Azahar is fetchable but not packaged (Phase 3):
+  a core this build does not ship for its platform (`cores.lock` `ship` off, or no build there;
+  `emudome_platform::core_shipped`) and no folder holds is `CoreLookupError::NotShipped` in a release and on
+  Android, and opening its game says `coreUnavailable` («Nintendo 3DS isn't available on this device yet»), not a
+  reinstall; a desktop debug build without the file keeps `coreNotFound` (the fetch hint). The library still lists
+  those games with «Gioca» enabled (showing it disabled with the reason needs a design). The Gradle side of the lock builds
   (`scripts/android-build.ps1`: melonDS DS packaged, sha256-checked) but was not run on a device yet, nor was the
   source-built Android mGBA. 16 KB pages (Google Play, `docs/release.md` «Android: 16 KB pages»): the APK stores
   its libraries 16 KB-aligned, `libemudome_app.so` links with 16 KB pages (`.cargo/config.toml`), mGBA and the

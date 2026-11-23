@@ -22,8 +22,7 @@ import type {
   SettingsSchema,
   SettingValue,
 } from '@/emu'
-import { useErrorSink, useToasts } from '@/composables/useToasts'
-import { FILE_PICKERS, ROW_ACTIONS, msg } from '@/lib/settingsModel'
+import { msg } from '@/lib/settingsModel'
 import SettingSelect from './SettingSelect.vue'
 import SettingCards from './SettingCards.vue'
 import SettingChips from './SettingChips.vue'
@@ -38,6 +37,7 @@ import SettingTextField from './SettingTextField.vue'
 import SettingToggle from './SettingToggle.vue'
 import { rowActionIcon } from './rowActionIcon'
 import { chosenList } from './settingRowModel'
+import { useRowChoose } from './useRowChoose'
 import { useSettingRow } from './useSettingRow'
 
 const props = defineProps<{
@@ -74,8 +74,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const failWith = useErrorSink()
-const toasts = useToasts()
 const { key, value, state, name, desc, noFile, fileName, buttonText, options } =
   useSettingRow(props)
 const kind = computed(() => props.entry.kind)
@@ -95,30 +93,12 @@ function set(v: SettingValue) {
   if (!disabled.value) emit('set', v)
 }
 
-/** A file row with its own picker (FILE_PICKERS) opens it here, an action row with a backend
- * (ROW_ACTIONS) runs it here, the others let the page do it. */
-async function choose() {
-  if (key.value === 'cloud.acct') return emit('openCloud')
-  const act = ROW_ACTIONS[key.value]
-  if (act) {
-    if (disabled.value) return
-    try {
-      const done = await act()
-      if (done) toasts.notify(t(done.key, done.params ?? {}))
-    } catch (e) {
-      failWith(e)
-    }
-    return
-  }
-  const pick = FILE_PICKERS[key.value]
-  if (!pick) return emit('choose')
-  if (disabled.value) return
-  try {
-    await pick()
-  } catch (e) {
-    failWith(e)
-  }
-}
+/** A file or action row's button (useRowChoose): here, or the page's. */
+const choose = useRowChoose(
+  () => key.value,
+  () => disabled.value,
+  { openCloud: () => emit('openCloud'), choose: () => emit('choose') },
+)
 </script>
 
 <template>
@@ -154,7 +134,13 @@ async function choose() {
         </Button>
       </SettingRowText>
 
-      <div class="flex flex-initial flex-wrap items-center justify-end gap-8">
+      <div
+        :class="[
+          'flex flex-initial flex-wrap items-center justify-end gap-8',
+          // A slider takes the row's width on a touch screen (SettingSlider).
+          kind.type === 'slider' && 'touch:basis-full',
+        ]"
+      >
         <SettingToggle
           v-if="kind.type === 'toggle'"
           :label="name"

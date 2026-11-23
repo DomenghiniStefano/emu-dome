@@ -2,11 +2,19 @@
 // scan comes from the ids that were not there when it started.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GameFamily, GameId, LibraryChanged, LibraryGame, LibraryScanEvent } from '@/emu'
-import { applyLibraryChange, folderLabel, library, reloadLibrary, startLibrary } from './library'
+import {
+  applyLibraryChange,
+  chooseFolder,
+  folderLabel,
+  library,
+  reloadLibrary,
+  startLibrary,
+} from './library'
 
 type Listener<T> = (e: T) => void
 const bridge = vi.hoisted(() => ({
   get: vi.fn(),
+  choose: vi.fn(),
   changed: [] as Array<(e: unknown) => void>,
   scan: [] as Array<(e: unknown) => void>,
 }))
@@ -14,6 +22,7 @@ vi.mock('@/emu', () => ({
   emu: {
     library: {
       get: bridge.get,
+      chooseFolder: bridge.choose,
       onChanged: (cb: Listener<unknown>) => {
         bridge.changed.push(cb)
         return Promise.resolve(() => {})
@@ -137,22 +146,83 @@ describe('a scan (L11)', () => {
     expect(library.scanning).toBe(true)
     expect(library.progress).toEqual({ checked: 3, found: 2 })
     bridge.get.mockResolvedValue(answer([game('a'), game('b'), game('c', 'nds'), game('d', 'nds')]))
-    scan({ phase: 'done', added: 3 } as LibraryScanEvent)
+    scan(done(3))
     await flush()
     expect(library.scanning).toBe(false)
     expect(library.progress).toBeNull()
-    expect(library.summary).toEqual({ added: 3, perConsole: { gba: 1, nds: 2 } })
+    expect(library.summary).toEqual({ added: 3, perConsole: { gba: 1, nds: 2 }, skipped: NONE })
   })
 
   it('a scan that added nothing shows no summary', async () => {
     bridge.get.mockResolvedValue(answer([game('a')]))
     await startLibrary()
     scan({ phase: 'started' } as LibraryScanEvent)
-    scan({ phase: 'done', added: 0 } as LibraryScanEvent)
+    scan(done(0))
+    await flush()
+    expect(library.summary).toBeNull()
+  })
+
+  it('counts every scan since the banner was last closed (#127: the first run)', async () => {
+    bridge.get.mockResolvedValue(answer([]))
+    await startLibrary()
+    scan({ phase: 'started' } as LibraryScanEvent)
+    bridge.get.mockResolvedValue(answer([game('a')]))
+    scan(done(1))
+    await flush()
+    scan({ phase: 'started' } as LibraryScanEvent)
+    bridge.get.mockResolvedValue(answer([game('a'), game('b', 'nds')]))
+    scan(done(1))
+    await flush()
+    expect(library.summary).toEqual({ added: 2, perConsole: { gba: 1, nds: 1 }, skipped: NONE })
+    // Closed, the next scan starts a new count.
+    library.summary = null
+    scan({ phase: 'started' } as LibraryScanEvent)
+    bridge.get.mockResolvedValue(answer([game('a'), game('b', 'nds'), game('c', 'nds')]))
+    scan(done(1))
+    await flush()
+    expect(library.summary).toEqual({ added: 1, perConsole: { nds: 1 }, skipped: NONE })
+  })
+
+  it('says the skipped files of a folder the user picked, not of its own scans (#127)', async () => {
+    bridge.get.mockResolvedValue(answer([]))
+    await startLibrary()
+    // A scan EmuDome started by itself: the same skipped files every time, nothing said.
+    scan({ phase: 'started' } as LibraryScanEvent)
+    scan(done(0, 1, 2))
+    await flush()
+    expect(library.summary).toBeNull()
+    // A folder picked whose only game is encrypted: no game added, the reason said.
+    bridge.choose.mockResolvedValue('D:/3ds')
+    expect(await chooseFolder()).toBeNull()
+    scan({ phase: 'started' } as LibraryScanEvent)
+    scan(done(0, 1, 0))
+    await flush()
+    expect(library.summary).toEqual({
+      added: 0,
+      perConsole: {},
+      skipped: { encrypted: 1, unrecognised: 0 },
+    })
+    // A picker closed without a folder: the next scan says nothing more.
+    library.summary = null
+    bridge.choose.mockResolvedValue(null)
+    await chooseFolder()
+    scan({ phase: 'started' } as LibraryScanEvent)
+    scan(done(0, 1, 0))
     await flush()
     expect(library.summary).toBeNull()
   })
 })
+
+const NONE = { encrypted: 0, unrecognised: 0 }
+const done = (added: number, encrypted = 0, unrecognised = 0) =>
+  ({
+    phase: 'done',
+    found: added,
+    added,
+    unreachable: [],
+    skippedEncrypted: encrypted,
+    skippedUnrecognised: unrecognised,
+  }) as LibraryScanEvent
 
 describe('folderLabel', () => {
   const folders = [

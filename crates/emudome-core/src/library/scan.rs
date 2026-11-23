@@ -50,6 +50,30 @@ pub struct ScanOutcome {
     /// The cache to keep: the old one minus the files gone from reachable folders, plus the
     /// files identified now.
     pub cache: HashCache,
+    /// The files with a game's extension that were not taken (#127: said to the user).
+    pub skipped: Skipped,
+}
+
+/// Files with a game's extension a scan did not take, by reason. Not cached: every scan counts
+/// them again.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Skipped {
+    /// Encrypted 3DS games (E10): EmuDome never adds them.
+    pub encrypted: usize,
+    /// Not recognised as a game of their console (a header that does not match, a file that
+    /// could not be read).
+    pub unrecognised: usize,
+}
+
+impl Skipped {
+    fn count(&mut self, why: &identity::NotAGame) {
+        match why {
+            identity::NotAGame::Encrypted => self.encrypted += 1,
+            identity::NotAGame::Extension
+            | identity::NotAGame::Header(_)
+            | identity::NotAGame::Io(_) => self.unrecognised += 1,
+        }
+    }
 }
 
 /// One child of a folder of a document tree.
@@ -113,6 +137,7 @@ pub fn scan_with_documents(
         old: input.cache,
         cache: HashCache::new(),
         found: Vec::new(),
+        skipped: Skipped::default(),
         checked: 0,
         progress,
         documents,
@@ -156,6 +181,7 @@ pub fn scan_with_documents(
         old,
         mut cache,
         found,
+        skipped,
         ..
     } = walker;
     for (path, entry) in old {
@@ -177,6 +203,7 @@ pub fn scan_with_documents(
             .collect(),
         unreachable,
         cache,
+        skipped,
     }
 }
 
@@ -253,6 +280,7 @@ struct Walker<'a> {
     old: HashCache,
     cache: HashCache,
     found: Vec<Found>,
+    skipped: Skipped,
     checked: usize,
     progress: &'a mut dyn FnMut(usize, usize),
     documents: &'a dyn Documents,
@@ -378,7 +406,10 @@ impl Walker<'_> {
                     identity,
                 });
             }
-            Err(e) => log::info!("library scan: {shown} skipped: {e}"),
+            Err(e) => {
+                log::info!("library scan: {shown} skipped: {e}");
+                self.skipped.count(&e);
+            }
         }
         (self.progress)(self.checked, self.found.len());
     }

@@ -422,6 +422,34 @@ fn an_encrypted_3ds_game_is_not_a_game_and_never_added() {
     let report = run(&mut lib, &[&dir.path("roms")], 1000);
     assert_eq!((report.found, report.added), (1, 1));
     assert_eq!(lib.games().count(), 1);
+    // #127: the scan says what it skipped, by reason.
+    assert_eq!(
+        report.skipped,
+        super::Skipped {
+            encrypted: 3,
+            unrecognised: 0
+        }
+    );
+}
+
+/// #127: a decrypted card image is one whose game NCCH has NoCrypto set, whatever else its flags
+/// say (the crypto method byte 3 and fixed-key bit 0 that some tools leave behind); a synthetic
+/// header, never a real game's bytes.
+#[test]
+fn a_decrypted_card_with_leftover_crypto_flags_is_a_game() {
+    let dir = TestDir::new("lib-3ds-dec");
+    let mut card = ncsd_rom();
+    card[0x200 + 0x18B] = 0x01; // crypto method: 7.x keys, left by the decrypting tool
+    card[0x200 + 0x18F] = 0x04 | 0x01; // NoCrypto, and FixedCryptoKey left set
+    let id = identify(&write(&dir, "roms/Game Decrypted.3ds", &card)).unwrap();
+    assert_eq!(id.console, ConsoleId::N3ds);
+    assert_eq!(id.title, "Tre De Esse");
+    let mut lib = Library::open(&dir.path("db"));
+    let report = run(&mut lib, &[&dir.path("roms")], 1000);
+    assert_eq!(
+        (report.added, report.skipped),
+        (1, super::Skipped::default())
+    );
 }
 
 // ---- Scan and store ----
@@ -456,6 +484,14 @@ fn scan_finds_games_and_skips_the_rest() {
     assert_eq!(report.found, 2);
     assert_eq!(report.added, 2);
     assert!(report.unreachable.is_empty());
+    // The broken ROM is skipped as not recognised; notes.txt is not a ROM file at all.
+    assert_eq!(
+        report.skipped,
+        super::Skipped {
+            encrypted: 0,
+            unrecognised: 1
+        }
+    );
     // Progress after every ROM file (the broken one counts as checked, not found).
     assert_eq!(calls.last(), Some(&(3, 2)));
     let nds = lib.games().find(|g| g.console == ConsoleId::Nds).unwrap();
