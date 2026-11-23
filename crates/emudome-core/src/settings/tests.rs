@@ -1226,10 +1226,12 @@ fn show_if_names_a_choice_of_the_same_page_and_its_options() {
         assert_eq!(other.page(), e.page(), "{}", e.key);
         assert!(!cond.values.is_empty(), "{}", e.key);
         // A switch is named by its value as text: `true` or `false`.
-        let options: &[&str] = match other.kind {
-            Kind::Choice { options, .. } => options,
-            Kind::Toggle => &["true", "false"],
-            _ => panic!("{}: show_if on a {:?}", e.key, other.kind),
+        let options: &[&str] = if let Kind::Choice { options, .. } = other.kind {
+            options
+        } else if matches!(other.kind, Kind::Toggle) {
+            &["true", "false"]
+        } else {
+            panic!("{}: show_if on a {:?}", e.key, other.kind)
         };
         for v in cond.values {
             assert!(
