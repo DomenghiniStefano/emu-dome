@@ -1050,6 +1050,7 @@
     core: scenario.game === "nds" ? "melondsds" : "mgba",
     resumable: false,
     autosaveOnExit: true,
+    quickSlot: 1,
     // Loading states works (Trello #93: none of these games is blocked).
     stateLoadBlock: null,
   };
@@ -1069,6 +1070,7 @@
           core: "mgba",
           resumable: false,
           autosaveOnExit: false,
+          quickSlot: 1,
         }
       : gameInfo,
     // `nativeVideo`: the Accelerated method in use (the screen effects can change).
@@ -1089,6 +1091,7 @@
             core: "mgba",
             resumable: false,
             autosaveOnExit: true,
+            quickSlot: 1,
           },
           stats: {
             running: false,

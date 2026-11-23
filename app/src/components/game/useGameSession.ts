@@ -9,7 +9,6 @@ import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
 import { insetShares, NO_INSET, sameInset, type InsetPx } from './inset'
 import { NORMAL } from '@/lib/speeds'
-import { quickSlotSteps } from '@/components/quick-menu/phoneMenu'
 import { createGameState } from './gameState'
 import { useGameEnding } from './useGameEnding'
 import { useGameEvents } from './useGameEvents'
@@ -62,6 +61,8 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     menuOpen.value = false
     paused.value = false
     undoLoadSlot.value = null
+    // The game's own quick slot (#110), already current in Rust.
+    comboSlot.value = info.quickSlot
     events.reset()
     muted.value = false
     gameStarted()
@@ -94,16 +95,15 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
   /** Salva in the quick menu (the event `stateSaved` follows). */
   const save = (slot: number) => emu.saveState(slot)
 
-  /** The phone quick menu's «Rendi rapido»: `slot` becomes the current slot (the quick slot the
-   * shortcuts and «Salva / Carica rapido» use). Rust has no command that sets it at once, so it
-   * takes the shorter way round with the slot steps (L3 + ← →, F2 / F3); like them, the slot
-   * lives in Rust's memory for the whole run and every game, not saved. */
+  /** The phone quick menu's «Rendi rapido»: `slot` becomes the game's quick slot (the one the
+   * shortcuts and «Salva / Carica rapido» use), recorded for this game by Rust (#110), like the
+   * slot steps (L3 + ← →, F2 / F3). */
   async function setQuickSlot(slot: number) {
     try {
-      let now = await emu.controls.currentSlot()
-      const { forward, count } = quickSlotSteps(now, slot)
-      for (let i = 0; i < count; i++) now = await emu.controls.stepSlot(forward)
-      comboSlot.value = now
+      const playing = game.value?.id
+      const now = await emu.controls.setSlot(slot)
+      // Another game opened meanwhile: its own quick slot stays.
+      if (game.value?.id === playing) comboSlot.value = now
     } catch (e) {
       toasts.failWith(e)
     }

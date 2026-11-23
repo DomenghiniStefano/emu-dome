@@ -50,6 +50,7 @@ describe('crashReport', () => {
     core: 'mgba',
     resumable: false,
     autosaveOnExit: true,
+    quickSlot: 1,
     stateLoadBlock: null,
   }
   const now = new Date(Date.UTC(2026, 10, 18, 12, 0, 0))
