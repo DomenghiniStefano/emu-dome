@@ -17,6 +17,11 @@ resumable: boolean,
  */
 autosaveOnExit: boolean, 
 /**
+ * The game's own quick slot (#110), current from its start: the last one chosen for it,
+ * else the first.
+ */
+quickSlot: number, 
+/**
  * Why loading states is off for this game on the renderer it runs with (Trello #93), else
  * null: the interface shows every load (Carica, the resume question's «Riprendi») disabled
  * with this reason, and the session refuses them, rewind included.

@@ -576,7 +576,7 @@ pub fn run() {
             pads::gamepad_watch,
             pads::gamepad_capture,
             pads::current_slot,
-            pads::step_slot,
+            pads::set_slot,
             pads::controls_bindings,
             library::library_get,
             library::library_choose_folder,
