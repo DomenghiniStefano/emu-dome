@@ -71,9 +71,11 @@ const line = computed(() => {
 
 <template>
   <!-- Thick glass with a panel's corners: the glass's material, edge and shadow, its
-       own corners. Sticks over the rows that scroll under it. -->
+       own corners. Sticks over the rows that scroll under it, except on a phone (#127): there
+       it would cover most of a short window (on its side, half of it), so it scrolls away with
+       the page. -->
   <div
-    class="glass-thick-flat sticky top-0 z-sticky flex flex-col gap-8 rounded-panel border border-line px-12 py-8 shadow-glass"
+    class="glass-thick-flat sticky top-0 z-sticky flex flex-col gap-8 rounded-panel border border-line px-12 py-8 shadow-glass touch:static"
     role="region"
     :aria-label="t('settingsUi.scopeRegion')"
   >
@@ -111,8 +113,9 @@ const line = computed(() => {
           />
           <span class="flex flex-col gap-2">
             <!-- the menu's taller trigger holds the title's one line, so both cards' words
-                 sit on the same lines -->
-            <span v-if="l === 'console' && contextConsole" class="flex h-lh">
+                 sit on the same lines; on a phone the trigger is the touch target's height
+                 and keeps it, so the line under it is not overlapped (#127) -->
+            <span v-if="l === 'console' && contextConsole" class="flex h-lh touch:h-auto">
               <SettingSelect
                 in-title
                 :label="t('settingsUi.scope.consolePick')"
