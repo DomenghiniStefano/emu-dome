@@ -129,7 +129,7 @@ describe('the library store', () => {
   it('a failed load is said, the games already there are kept', async () => {
     bridge.get.mockResolvedValueOnce(answer([game('a')]))
     await reloadLibrary()
-    bridge.get.mockRejectedValueOnce({ code: 'libraryReadFailed' })
+    bridge.get.mockRejectedValueOnce({ code: 'libraryReadFailed', params: { cause: 'other' } })
     await reloadLibrary()
     expect(library.error).not.toBeNull()
     expect(library.games).toHaveLength(1)
