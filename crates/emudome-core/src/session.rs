@@ -489,6 +489,7 @@ impl Session {
             .to_path_buf();
         std::fs::create_dir_all(&game_dir).map_err(|e| StartError::SaveFolderUnavailable {
             folder: game_dir.clone(),
+            cause: crate::error::IoCause::of(&e),
             detail: e.to_string(),
         })?;
 

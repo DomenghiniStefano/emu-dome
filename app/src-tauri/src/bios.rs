@@ -93,8 +93,11 @@ fn choose(app: &AppHandle, key: &str, file: &Path) -> Result<Status, ErrorCode> 
     let (table, spec) = bios::slot_for_setting(key).ok_or_else(|| ErrorCode::SettingUnknown {
         key: key.to_owned(),
     })?;
-    let probe = files::probe(file).map_err(|e| ErrorCode::BiosUnreadable {
-        detail: e.to_string(),
+    let probe = files::probe(file).map_err(|e| {
+        log::warn!("{}: cannot be read: {e}", file.display());
+        ErrorCode::BiosUnreadable {
+            cause: emudome_core::IoCause::of(&e),
+        }
     })?;
     let all = bios::TABLES.iter().flat_map(|t| t.slots.iter());
     let dir = core_dir(app, table.core.name()).ok_or_else(|| ErrorCode::BiosFileFailed {

@@ -6,6 +6,7 @@
   "openFailed",
   "coreIncompatible",
   "romUnreadable",
+  "documentNotLocal",
   "coreRefusedGame",
   "documentNeedsPath",
   "gameUnidentified",
