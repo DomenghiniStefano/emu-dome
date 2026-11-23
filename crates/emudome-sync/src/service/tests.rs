@@ -306,6 +306,8 @@ async fn quick_saves_follow_the_setting() {
     pc.save("slot1.state", b"old");
     pc.save("slot1.png", b"old-png");
     pc.save("auto.state", b"auto");
+    // The game's quick slot (#110) is not a quick save: it travels whatever `cloud.squick` says.
+    pc.save("quick-slot.json", br#"{"$schema":1,"slot":3}"#);
     let s = pc.service(&drive, "PC");
     let none = Prefs {
         quick: QuickSync::None,
@@ -313,6 +315,9 @@ async fn quick_saves_follow_the_setting() {
     };
     s.push_game(&none, &game()).await.unwrap();
     assert!(drive.at(&["EmuDome", "gba", "1a2b", "game.sav"]).is_some());
+    assert!(drive
+        .at(&["EmuDome", "gba", "1a2b", "quick-slot.json"])
+        .is_some());
     assert!(drive
         .at(&["EmuDome", "gba", "1a2b", "slot1.state"])
         .is_none());

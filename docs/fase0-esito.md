@@ -434,3 +434,19 @@ pacing already starts over after the stall without catch-up frames.
 Errors and fixes: none in these runs.
 Proposed next step: the owner hears a 3DS quick save in the app (one short clean gap, no crackle after it); decide
 whether 3DS keeps `saves.autoq` at 5 min (one ~0.25 s hitch each time).
+
+## 2026-11-23 20:15 · Android Galaxy A71 (SM-A715F, Android 13): GBA test ROM and NDS (Pokémon Platino, melonDS DS software), rewind off / on, 3DS open
+| Item | Result | Notes |
+| --- | --- | --- |
+| 1. Native video under the menu | ok | quick menu sheet over the game on both GBA and DS; the DS screens follow the sheet's inset |
+| 2. FPS at 1× | GBA 59.67-59.79; NDS 59.80-59.85 (rewind off), 52.3-59.8 (rewind on) | in app, from the `pacing:` / `video: fps:` log lines every 10 s; NDS max (fast forward 4×) 96-109 fps |
+| 3. Audio | not tested | adb only, nothing heard |
+| 4. Controller | not tested | touch controls only: A, d-pad and slide reach the game |
+| 5. Native vs webview | native only | webview not tried |
+
+NDS detail: intro + title, emulation thread 76-86 % of one core, 0 resets with rewind off. With `speed.rew` on (30 s) the
+`emudome-rewind` thread takes 59 % of a core, RSS +116 MB, and the intro drops to 52-58 fps for ~30 s (up to 16 resets in 10 s).
+3DS: an encrypted dump is skipped by the scan; a decrypted one is listed but does not open (`libazahar_libretro_android.so:
+dlopen failed`: Azahar is not packaged).
+Errors and fixes: none (no code touched).
+Proposed next step: keep `speed.rew` off by default on phones for DS; decide whether 3DS games are listed while no 3DS core is shipped.

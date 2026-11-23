@@ -604,8 +604,9 @@ export const emu = {
     capture: (on: boolean) => invoke<void>('gamepad_capture', { on }),
     /** The current quick save slot (L3 + ← →, F2 / F3 move it; F1 / F4 use it). */
     currentSlot: () => invoke<number>('current_slot'),
-    /** One step of the current slot (`forward`: next); answers the new slot. */
-    stepSlot: (forward: boolean) => invoke<number>('step_slot', { forward }),
+    /** «Rendi rapido»: `slot` becomes the open game's quick slot, recorded for that game; answers
+     * the slot now current (clamped to 1–9). */
+    setSlot: (slot: number) => invoke<number>('set_slot', { slot }),
     /** Remap table and shortcuts of a family at a scope, defaults applied. */
     bindings: (family: PadFamily, scope: SettingsScope) =>
       invoke<ControlsBindings>('controls_bindings', { family, scope }),

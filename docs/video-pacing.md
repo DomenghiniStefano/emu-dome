@@ -15,6 +15,9 @@ frame shown twice: a small judder on a scrolling game); at 120 / 144 Hz the fram
 unevenly. Under Mailbox / Immediate the present no longer blocks on vsync, but there is nothing to present between
 game frames, so the old full-core spin is gone.
 
+The present mode is the `video.vsync` setting: on, `AutoVsync` (FifoRelaxed or Fifo); off, `AutoNoVsync` (Immediate,
+else Mailbox, else Fifo). It changes only how each frame is presented, never the emulation thread's timer.
+
 ## The two ways to make the clocks agree
 
 **Present-driven (video sync):** the display's vsync is the master clock. The core is run once per vsync (at 60 Hz:

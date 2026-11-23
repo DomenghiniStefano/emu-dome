@@ -317,15 +317,18 @@ what the controller hotkey with the same id does.
 | F12 | Screenshot | done (Trello #42) |
 
 The current slot lives in Rust (`Pads::slot`, `app/src-tauri/src/pads.rs`): the controller thread and
-the keyboard's F1–F4 (commands `current_slot`, `step_slot`) use the same one, and the quick menu opens on it.
+the keyboard's F1–F4 use the same one, and the quick menu opens on it (command `current_slot`).
 On the phone it is the quick menu's «slot rapido»: «Salva rapido» / «Carica rapido» use it, and «Altro ›
-Salvataggi › Rendi rapido» moves it to the chosen slot with the same `step_slot` steps (no command sets it at
-once).
+Salvataggi › Rendi rapido» sets it to the chosen slot (command `set_slot`).
+
+It is each game's own (Trello #110): every move (L3 + d-pad left / right, F2 / F3, «Rendi rapido») is
+recorded in the game's saves folder (`quick-slot.json`, `emudome_core::quick_slot`, written by the
+session's I/O worker), so Drive sync carries it with the saves, and a game opens on the slot it was last
+moved to (slot 1 for a game never moved, or when the file cannot be read; such a file is left as it is
+until the slot is moved again).
 
 Known limits of this version:
 
-- The current slot starts at 1 at every launch of the app; it is not remembered per game (so neither is
-  the phone's «Rendi rapido»: it holds for every game until the app quits).
 - Backspace was Select's default key (`KEYBOARD_DEFAULTS`, `bindings.rs`) until rewind took it
   (Trello #42): Select's default is now the right Shift, RetroArch's. A keyboard remap saved
   with Backspace on Select is kept, and then the rewind key wins (it is checked first).

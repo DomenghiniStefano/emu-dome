@@ -32,6 +32,7 @@ use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::{Context, Result};
+use emudome_core::effects::Smoothing;
 use emudome_core::hw_render::vulkan::QueueLock;
 use emudome_core::screens::{Area, Inset, Layout, Placement, Rotation, Split};
 use emudome_core::video_sink::Wake;
@@ -46,27 +47,65 @@ use crate::gpu_interop::{self, VulkanHandles, VulkanInterop};
 use crate::health::{Part, SharedHealth};
 use crate::tuning::{PresentMode, VideoTuning};
 
-/// How the surface presents, from the tuning knobs.
+/// How the surface presents: `video.vsync`, unless a tuning knob forces a present mode.
 #[derive(Debug, Clone, Copy)]
 pub struct SurfaceSettings {
     pub present_mode: wgpu::PresentMode,
+    /// The present mode follows `video.vsync` ([`Renderer::set_vsync`]); false while
+    /// `EMUDOME_PRESENT_MODE` forces one.
+    pub follows_vsync: bool,
     /// `desired_maximum_frame_latency`.
     pub frame_latency: u32,
 }
 
 impl SurfaceSettings {
-    pub fn from_tuning(t: &VideoTuning) -> Self {
+    /// `vsync`: the `video.vsync` setting at startup.
+    pub fn from_tuning(t: &VideoTuning, vsync: bool) -> Self {
         Self {
             present_mode: match t.present_mode {
-                PresentMode::Fifo => wgpu::PresentMode::Fifo,
-                PresentMode::FifoRelaxed => wgpu::PresentMode::FifoRelaxed,
-                PresentMode::Mailbox => wgpu::PresentMode::Mailbox,
-                PresentMode::Immediate => wgpu::PresentMode::Immediate,
-                PresentMode::AutoVsync => wgpu::PresentMode::AutoVsync,
-                PresentMode::AutoNoVsync => wgpu::PresentMode::AutoNoVsync,
+                Some(PresentMode::Fifo) => wgpu::PresentMode::Fifo,
+                Some(PresentMode::FifoRelaxed) => wgpu::PresentMode::FifoRelaxed,
+                Some(PresentMode::Mailbox) => wgpu::PresentMode::Mailbox,
+                Some(PresentMode::Immediate) => wgpu::PresentMode::Immediate,
+                Some(PresentMode::AutoVsync) => wgpu::PresentMode::AutoVsync,
+                Some(PresentMode::AutoNoVsync) => wgpu::PresentMode::AutoNoVsync,
+                None => vsync_mode(vsync),
             },
+            follows_vsync: t.present_mode.is_none(),
             frame_latency: t.frame_latency,
         }
+    }
+}
+
+/// `video.vsync` as a present mode. On: wgpu's `AutoVsync` (FifoRelaxed where the surface has
+/// it, else Fifo). Off: `AutoNoVsync` (Immediate, else Mailbox, else Fifo where the surface has
+/// neither). Only the present changes: the game keeps its own clock (`docs/video-pacing.md`), and
+/// each game frame is still presented once.
+pub fn vsync_mode(on: bool) -> wgpu::PresentMode {
+    if on {
+        wgpu::PresentMode::AutoVsync
+    } else {
+        wgpu::PresentMode::AutoNoVsync
+    }
+}
+
+/// `requested` if the surface can present with it (the Auto modes always resolve), else
+/// `AutoVsync`: an explicit mode the surface lacks would be a validation error (a panic in wgpu).
+fn supported_present_mode(
+    requested: wgpu::PresentMode,
+    supported: &[wgpu::PresentMode],
+) -> wgpu::PresentMode {
+    if matches!(
+        requested,
+        wgpu::PresentMode::AutoVsync | wgpu::PresentMode::AutoNoVsync
+    ) || supported.contains(&requested)
+    {
+        requested
+    } else {
+        log::warn!(
+            "present mode {requested:?} not supported (supported: {supported:?}), using AutoVsync"
+        );
+        wgpu::PresentMode::AutoVsync
     }
 }
 
@@ -150,6 +189,10 @@ enum Msg {
     EffectListener(EffectListener),
     /// How the screens are placed (`crate::screens`).
     Layout(Layout),
+    /// `video.filter`: how the plain image is smoothed.
+    Smoothing(Smoothing),
+    /// `video.vsync`.
+    Vsync(bool),
 }
 
 #[derive(Clone)]
@@ -272,6 +315,18 @@ impl Renderer {
         self.send(Msg::Layout(layout));
     }
 
+    /// How the plain image is smoothed when enlarged (`video.filter`). Kept across games and
+    /// surfaces; a screen effect is mixed over the image as it is smoothed.
+    pub fn set_smoothing(&self, smoothing: Smoothing) {
+        self.send(Msg::Smoothing(smoothing));
+    }
+
+    /// `video.vsync`: the surface presents on the display's refresh or as soon as a frame is
+    /// ready ([`vsync_mode`]), applied at once. Ignored while `EMUDOME_PRESENT_MODE` forces a mode.
+    pub fn set_vsync(&self, on: bool) {
+        self.send(Msg::Vsync(on));
+    }
+
     /// Lets go of the surface; returns once the GPU no longer uses it (Android destroys it right
     /// after). Waits for as long as the video thread takes: a surface destroyed under a present in
     /// flight is a crash, a slow detach only a slow pause. Returns at once if the thread is gone.
@@ -321,6 +376,8 @@ struct Video {
     effect_listener: Option<EffectListener>,
     /// See [`Renderer::set_layout`].
     layout: Layout,
+    /// See [`Renderer::set_smoothing`]; kept across surfaces.
+    smoothing: Smoothing,
     /// Woken by the messages and by the game's new frames.
     wake: Arc<Wake>,
     /// Something changed since the last present (size, surface, game, inset, effect).
@@ -354,6 +411,7 @@ impl Video {
             effect: None,
             effect_listener: None,
             layout: Layout::default(),
+            smoothing: Smoothing::Light,
             wake,
             dirty: true,
             unchanged: 0,
@@ -472,6 +530,17 @@ impl Video {
             Msg::Effect(effect) => self.effect = effect,
             Msg::EffectListener(listener) => self.effect_listener = Some(listener),
             Msg::Layout(layout) => self.layout = layout,
+            Msg::Smoothing(smoothing) => self.smoothing = smoothing,
+            Msg::Vsync(on) => {
+                let mode = vsync_mode(on);
+                if self.settings.follows_vsync && self.settings.present_mode != mode {
+                    self.settings.present_mode = mode;
+                    if let Some(gpu) = &mut self.gpu {
+                        gpu.set_present_mode(&self.service, mode);
+                        self.metrics.lock().gpu = Some(gpu.info.clone());
+                    }
+                }
+            }
         }
     }
 
@@ -489,6 +558,7 @@ impl Video {
             }
         }
         painter.upload_frame(self.source.as_deref());
+        painter.smoothing = self.smoothing;
         gpu.draw(&self.service, painter, self.inset, &self.layout)?;
         self.dirty = false;
         self.presented += 1;
@@ -543,9 +613,17 @@ const BG: wgpu::Color = wgpu::Color {
 const SHADER: &str = r#"
 struct Out { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
 
-// The screen this draw shows: its part of the frame (0..1) and how its picture is turned in the
-// viewport (0 none, 1 left, 2 right, 3 upside down; `screens::Rotation`).
-struct Screen { origin: vec2<f32>, size: vec2<f32>, rotation: u32, p0: u32, p1: u32, p2: u32 };
+// The screen this draw shows: its part of the frame (0..1), how its picture is turned in the
+// viewport (0 none, 1 left, 2 right, 3 upside down; `screens::Rotation`), how it is smoothed
+// (0 none, 1 light, 2 soft; `effects::Smoothing`) and its scale along the frame's axes (viewport
+// pixels per frame pixel).
+struct Screen {
+    origin: vec2<f32>,
+    size: vec2<f32>,
+    rotation: u32,
+    smoothing: u32,
+    scale: vec2<f32>,
+};
 @group(0) @binding(4) var<uniform> screen: Screen;
 
 @vertex
@@ -580,9 +658,35 @@ fn to_surface(c: vec3<f32>) -> vec4<f32> {
     return vec4<f32>(select(hi, lo, c <= vec3<f32>(0.04045)), 1.0);
 }
 
+// Where to sample `tex` (a linear sampler) for the point `uv` of the frame, as `screen.smoothing`
+// asks. none: the nearest texel's centre. light («sharp bilinear»): each texel is enlarged by the
+// largest whole scale that fits, then blended with its neighbour only across the band that is
+// left, so every pixel has the same size at any scale. soft: `uv` as it is (bilinear). Never past
+// the half texel inside the screen's own part of the frame: the other screen does not bleed in.
+fn game_uv(uv: vec2<f32>) -> vec2<f32> {
+    let dims = vec2<f32>(textureDimensions(tex));
+    let texel = uv * dims;
+    var t = texel;
+    switch screen.smoothing {
+        case 0u: {
+            t = floor(texel) + 0.5;
+        }
+        case 1u: {
+            let k = max(floor(screen.scale), vec2<f32>(1.0));
+            let d = fract(texel) - 0.5;
+            let band = 0.5 - 0.5 / k;
+            t = floor(texel) + (d - clamp(d, -band, band)) * k + 0.5;
+        }
+        default: {}
+    }
+    let lo = screen.origin * dims + 0.5;
+    let hi = (screen.origin + screen.size) * dims - 0.5;
+    return clamp(t, lo, max(lo, hi)) / dims;
+}
+
 @fragment
 fn fs_main(in: Out) -> @location(0) vec4<f32> {
-    return to_surface(textureSample(tex, samp, in.uv).rgb);
+    return to_surface(textureSample(tex, samp, game_uv(in.uv)).rgb);
 }
 
 // The effect's output: the whole frame at the largest screen's scale, cut like the plain image
@@ -593,8 +697,11 @@ struct Mix { intensity: f32, brightness: f32, p0: f32, p1: f32 };
 
 @fragment
 fn fs_effect(in: Out) -> @location(0) vec4<f32> {
-    let plain = textureSample(tex, samp, in.uv).rgb;
-    let fx = min(textureSample(fx_tex, samp, in.uv).rgb * mix_.brightness, vec3<f32>(1.0));
+    let plain = textureSample(tex, samp, game_uv(in.uv)).rgb;
+    // The effect's output, already at the screen's scale: its nearest texel, as before.
+    let fx_dims = vec2<f32>(textureDimensions(fx_tex));
+    let fx_uv = (floor(in.uv * fx_dims) + 0.5) / fx_dims;
+    let fx = min(textureSample(fx_tex, samp, fx_uv).rgb * mix_.brightness, vec3<f32>(1.0));
     return to_surface(mix(plain, fx, mix_.intensity));
 }
 "#;
@@ -608,8 +715,13 @@ const SCREEN_SLOTS: usize = 4;
 const SCREEN_SIZE: u64 = 32;
 const SCREEN_STRIDE: u64 = 256;
 
-/// The `Screen` uniform of the shader for `p` in a frame of `frame` size.
-fn screen_uniform(p: &Placement, frame: (u32, u32)) -> [u8; SCREEN_SIZE as usize] {
+/// The `Screen` uniform of the shader for `p` in a frame of `frame` size, smoothed as
+/// `smoothing` says.
+fn screen_uniform(
+    p: &Placement,
+    frame: (u32, u32),
+    smoothing: Smoothing,
+) -> [u8; SCREEN_SIZE as usize] {
     let (fw, fh) = (frame.0.max(1) as f32, frame.1.max(1) as f32);
     let rotation: u32 = match p.rotation {
         Rotation::None => 0,
@@ -617,18 +729,33 @@ fn screen_uniform(p: &Placement, frame: (u32, u32)) -> [u8; SCREEN_SIZE as usize
         Rotation::Right => 2,
         Rotation::Flip => 3,
     };
-    let floats = [
-        p.src.x as f32 / fw,
-        p.src.y as f32 / fh,
-        p.src.w as f32 / fw,
-        p.src.h as f32 / fh,
-    ];
+    let smoothing: u32 = match smoothing {
+        Smoothing::None => 0,
+        Smoothing::Light => 1,
+        Smoothing::Soft => 2,
+    };
+    let (sx, sy) = axis_scale(p);
     let mut out = [0u8; SCREEN_SIZE as usize];
-    for (i, f) in floats.iter().enumerate() {
-        out[i * 4..i * 4 + 4].copy_from_slice(&f.to_ne_bytes());
-    }
-    out[16..20].copy_from_slice(&rotation.to_ne_bytes());
+    let mut put = |at: usize, bytes: [u8; 4]| out[at..at + 4].copy_from_slice(&bytes);
+    put(0, (p.src.x as f32 / fw).to_ne_bytes());
+    put(4, (p.src.y as f32 / fh).to_ne_bytes());
+    put(8, (p.src.w as f32 / fw).to_ne_bytes());
+    put(12, (p.src.h as f32 / fh).to_ne_bytes());
+    put(16, rotation.to_ne_bytes());
+    put(20, smoothing.to_ne_bytes());
+    put(24, sx.to_ne_bytes());
+    put(28, sy.to_ne_bytes());
     out
+}
+
+/// The scale of `p` along the frame's own axes (window pixels per frame pixel): a screen turned
+/// a quarter lies its width along the window's height.
+fn axis_scale(p: &Placement) -> (f32, f32) {
+    let (across, down) = match p.rotation {
+        Rotation::None | Rotation::Flip => (p.dst.w, p.dst.h),
+        Rotation::Left | Rotation::Right => (p.dst.h, p.dst.w),
+    };
+    (across / p.src.w.max(1) as f32, down / p.src.h.max(1) as f32)
 }
 
 /// `dst` as a viewport on a target of `size`: kept inside it (a custom layout may round past
@@ -917,6 +1044,8 @@ struct Gpu {
     surface: wgpu::Surface<'static>,
     config: wgpu::SurfaceConfiguration,
     info: GpuInfo,
+    /// The present modes the surface offers.
+    present_modes: Vec<wgpu::PresentMode>,
     /// The window has no size (minimized): nothing is drawn.
     minimized: bool,
 }
@@ -940,6 +1069,8 @@ struct Painter {
     /// `Screen` of the shader, one per screen drawn ([`SCREEN_STRIDE`] apart).
     screen_uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
+    /// `video.filter`, written into each screen's uniform.
+    smoothing: Smoothing,
     game: Option<GameTexture>,
     /// How the frame in `game` holds its screens.
     split: Split,
@@ -992,22 +1123,7 @@ impl Gpu {
             .first()
             .copied()
             .context("the surface offers no alpha mode to this GPU")?;
-        // The Auto modes always resolve; an explicit one the surface lacks would be a
-        // validation error (a panic in wgpu): fall back to AutoVsync and say so.
-        let requested = settings.present_mode;
-        let present_mode = if matches!(
-            requested,
-            wgpu::PresentMode::AutoVsync | wgpu::PresentMode::AutoNoVsync
-        ) || caps.present_modes.contains(&requested)
-        {
-            requested
-        } else {
-            log::warn!(
-                "present mode {requested:?} not supported (supported: {:?}), using AutoVsync",
-                caps.present_modes
-            );
-            wgpu::PresentMode::AutoVsync
-        };
+        let present_mode = supported_present_mode(settings.present_mode, &caps.present_modes);
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
@@ -1053,8 +1169,26 @@ impl Gpu {
             surface,
             config,
             info,
+            present_modes: caps.present_modes,
             minimized: width == 0 || height == 0,
         })
+    }
+
+    /// Presents with `requested` from now on (`video.vsync` changed): the surface configured
+    /// again with it, or with `AutoVsync` when it cannot present that way. A minimized window
+    /// takes it with its next size.
+    fn set_present_mode(&mut self, service: &GpuService, requested: wgpu::PresentMode) {
+        let mode = supported_present_mode(requested, &self.present_modes);
+        self.info.present_mode_requested = format!("{requested:?}");
+        if mode == self.config.present_mode {
+            return;
+        }
+        self.config.present_mode = mode;
+        self.info.present_mode_used = format!("{mode:?}");
+        log::info!("surface: present mode {mode:?}");
+        if let (false, Some(d)) = (self.minimized, service.device()) {
+            self.surface.configure(&d.device, &self.config);
+        }
     }
 
     /// A new size; 0 in either direction (a minimized window) stops drawing until a real size
@@ -1140,10 +1274,11 @@ impl Painter {
             label: Some("game"),
             source: wgpu::ShaderSource::Wgsl(source.into()),
         });
-        // The screen drawn, read by the vertex stage, one slot per screen (dynamic offset).
+        // The screen drawn, read by both stages (its place in the frame, its turn, its
+        // smoothing), one slot per screen (dynamic offset).
         let screen_entry = wgpu::BindGroupLayoutEntry {
             binding: 4,
-            visibility: wgpu::ShaderStages::VERTEX,
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: true,
@@ -1280,11 +1415,12 @@ impl Painter {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
-        // Sharp pixels: the "smooth" filter and the shaders come with librashader.
+        // Linear: the shader picks the points it samples (`game_uv`), the nearest texel's
+        // centre for sharp pixels, so one sampler serves every `video.filter` option.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("nearest"),
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
+            label: Some("game"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
 
@@ -1300,6 +1436,7 @@ impl Painter {
             effect_uniform,
             screen_uniform,
             sampler,
+            smoothing: Smoothing::Light,
             game: None,
             split: Split::Whole,
             last_seq: u64::MAX,
@@ -1441,7 +1578,7 @@ impl Painter {
             self.queue.write_buffer(
                 &self.screen_uniform,
                 i as u64 * SCREEN_STRIDE,
-                &screen_uniform(p, (game.width, game.height)),
+                &screen_uniform(p, (game.width, game.height), self.smoothing),
             );
         }
         placements
@@ -1677,7 +1814,8 @@ impl Painter {
 
 #[cfg(test)]
 mod tests {
-    use super::{largest_scale, screen_uniform, screen_viewport, GraphicsApi};
+    use super::{axis_scale, largest_scale, screen_uniform, screen_viewport, GraphicsApi};
+    use emudome_core::effects::Smoothing;
 
     #[test]
     fn the_graphics_api_options_map_to_wgpu_backends() {
@@ -1694,7 +1832,7 @@ mod tests {
         assert_eq!(GraphicsApi::from_id("metal"), GraphicsApi::Auto);
     }
     use emudome_core::screens::{
-        compose, Area, Arrangement, Inset, Layout, Rect, Rotation, ScreenId, Split,
+        compose, Area, Arrangement, Inset, Layout, Rect, Rotation, Scale, ScreenId, Split,
     };
 
     fn ds(layout: &Layout) -> Vec<emudome_core::screens::Placement> {
@@ -1720,9 +1858,77 @@ mod tests {
             screen_viewport(p[0].dst, (1440, 900)),
             Some([120.0, 50.0, 1200.0, 800.0])
         );
-        let u = screen_uniform(&p[0], (240, 160));
+        let u = screen_uniform(&p[0], (240, 160), Smoothing::Light);
         let f = |i: usize| f32::from_ne_bytes([u[i], u[i + 1], u[i + 2], u[i + 3]]);
+        let n = |i: usize| u32::from_ne_bytes([u[i], u[i + 1], u[i + 2], u[i + 3]]);
         assert_eq!((f(0), f(4), f(8), f(12)), (0.0, 0.0, 1.0, 1.0));
+        // Not turned, light smoothing, 5x along both axes.
+        assert_eq!((n(16), n(20), f(24), f(28)), (0, 1, 5.0, 5.0));
+    }
+
+    #[test]
+    fn vsync_picks_the_present_mode_and_a_missing_mode_falls_back() {
+        use super::{supported_present_mode, vsync_mode, SurfaceSettings};
+        use crate::tuning::{PresentMode, VideoTuning};
+        use wgpu::PresentMode as P;
+        assert_eq!(vsync_mode(true), P::AutoVsync);
+        assert_eq!(vsync_mode(false), P::AutoNoVsync);
+        // The Auto modes resolve on any surface; an explicit one only where offered.
+        assert_eq!(
+            supported_present_mode(P::AutoNoVsync, &[P::Fifo]),
+            P::AutoNoVsync
+        );
+        assert_eq!(supported_present_mode(P::Mailbox, &[P::Fifo]), P::AutoVsync);
+        assert_eq!(
+            supported_present_mode(P::Mailbox, &[P::Fifo, P::Mailbox]),
+            P::Mailbox
+        );
+        let tuning = |present_mode| VideoTuning {
+            path: None,
+            present_mode,
+            frame_latency: 1,
+            wgpu_backend: None,
+            dx12_presentation: None,
+        };
+        let s = SurfaceSettings::from_tuning(&tuning(None), false);
+        assert_eq!((s.present_mode, s.follows_vsync), (P::AutoNoVsync, true));
+        // A forced mode wins over the setting, and keeps winning.
+        let s = SurfaceSettings::from_tuning(&tuning(Some(PresentMode::Fifo)), false);
+        assert_eq!((s.present_mode, s.follows_vsync), (P::Fifo, false));
+    }
+
+    #[test]
+    fn the_smoothing_and_the_scale_along_the_frame_reach_the_shader() {
+        // GBA 1.5x across a 360 px wide phone (`Scale::Fit`).
+        let area = Area {
+            width: 360.0,
+            height: 640.0,
+            inset: Inset::NONE,
+        };
+        let fit = Layout {
+            scale: Scale::Fit,
+            ..Layout::default()
+        };
+        let p = compose(&fit, &Split::Whole.screens(240, 160), area);
+        for (smoothing, id) in [
+            (Smoothing::None, 0),
+            (Smoothing::Light, 1),
+            (Smoothing::Soft, 2),
+        ] {
+            let u = screen_uniform(&p[0], (240, 160), smoothing);
+            assert_eq!(u32::from_ne_bytes([u[20], u[21], u[22], u[23]]), id);
+        }
+        assert_eq!(axis_scale(&p[0]), (1.5, 1.5));
+        // A DS stacked and turned left: the frame's width lies along the window's height.
+        let turned = ds(&Layout {
+            rotation: Rotation::Left,
+            ..Layout::default()
+        });
+        let (sx, sy) = axis_scale(&turned[0]);
+        assert!(
+            (sx - sy).abs() < 1e-4 && (sx - 4.0).abs() < 1e-4,
+            "{sx} {sy}"
+        );
     }
 
     #[test]
@@ -1733,7 +1939,7 @@ mod tests {
             ..Layout::default()
         });
         let bottom = p.iter().find(|p| p.id == ScreenId::Bottom).unwrap();
-        let u = screen_uniform(bottom, (256, 384));
+        let u = screen_uniform(bottom, (256, 384), Smoothing::None);
         let f = |i: usize| f32::from_ne_bytes([u[i], u[i + 1], u[i + 2], u[i + 3]]);
         assert_eq!((f(0), f(4), f(8), f(12)), (0.0, 0.5, 1.0, 0.5));
         assert_eq!(u32::from_ne_bytes([u[16], u[17], u[18], u[19]]), 2);
@@ -1774,8 +1980,8 @@ mod tests {
 #[cfg(test)]
 mod gpu_tests {
     use super::{EffectSpec, Painter};
-    use emudome_core::effects::BUILTIN;
-    use emudome_core::screens::{Arrangement, Inset, Layout, Rotation, Split};
+    use emudome_core::effects::{Smoothing, BUILTIN};
+    use emudome_core::screens::{Arrangement, Inset, Layout, Rotation, Scale, Split};
     use emudome_core::Frame;
 
     const GAME: (u32, u32) = (240, 160);
@@ -1975,6 +2181,98 @@ mod gpu_tests {
         assert!(painter.effect_error.is_none(), "not tried again");
 
         let _ = std::fs::remove_dir_all(&base);
+    }
+
+    /// `video.filter`: at a whole scale «light» is exactly the sharp pixels and «soft» blends
+    /// them; at another scale the three differ, «light» nearer the sharp pixels than «soft».
+    #[test]
+    #[ignore = "needs a GPU: cargo test -p emudome --lib gpu_tests -- --ignored"]
+    fn the_smoothing_options_draw_as_they_say() {
+        let mut painter = painter();
+        let draw = |painter: &mut Painter, smoothing, layout: &Layout| {
+            painter.smoothing = smoothing;
+            paint_with(painter, layout)
+        };
+        // 240 × 160 on 960 × 640: 4x.
+        painter.upload(GAME.0, GAME.1, &picture());
+        let whole = Layout::default();
+        let none = draw(&mut painter, Smoothing::None, &whole);
+        let light = draw(&mut painter, Smoothing::Light, &whole);
+        assert_eq!(light, none, "light at a whole scale is the sharp pixels");
+        assert_ne!(draw(&mut painter, Smoothing::Soft, &whole), none);
+
+        // A 256 × 160 checkerboard of 3-pixel squares fitted at 3.75x.
+        let board: Vec<u8> = (0..160u32)
+            .flat_map(|y| {
+                (0..256u32).flat_map(move |x| {
+                    let c = if (x / 3 + y / 3) % 2 == 0 { 255 } else { 0 };
+                    [c, c, c, 255]
+                })
+            })
+            .collect();
+        painter.upload(256, 160, &board);
+        let fit = Layout {
+            scale: Scale::Fit,
+            ..Layout::default()
+        };
+        let none = draw(&mut painter, Smoothing::None, &fit);
+        let light = draw(&mut painter, Smoothing::Light, &fit);
+        let soft = draw(&mut painter, Smoothing::Soft, &fit);
+        dump("smoothing_none", none.clone());
+        dump("smoothing_light", light.clone());
+        dump("smoothing_soft", soft.clone());
+        let distance = |a: &[u8], b: &[u8]| {
+            a.iter()
+                .zip(b)
+                .map(|(x, y)| u64::from(x.abs_diff(*y)))
+                .sum::<u64>()
+        };
+        assert!(
+            distance(&light, &none) > 0,
+            "light smooths the uneven edges"
+        );
+        assert!(
+            distance(&light, &none) < distance(&soft, &none),
+            "light stays nearer the sharp pixels than soft"
+        );
+    }
+
+    /// Smoothed, a DS screen never takes the other screen's colour at their shared edge: a
+    /// 256 × 384 frame, top red, bottom green, fitted at 1.67x.
+    #[test]
+    #[ignore = "needs a GPU: cargo test -p emudome --lib gpu_tests -- --ignored"]
+    fn a_smoothed_screen_does_not_bleed_into_the_other() {
+        let mut frame = Vec::new();
+        for y in 0..384u32 {
+            for _ in 0..256u32 {
+                frame.extend_from_slice(if y < 192 {
+                    &[255, 0, 0, 255]
+                } else {
+                    &[0, 255, 0, 255]
+                });
+            }
+        }
+        let mut painter = painter();
+        painter.upload(256, 384, &frame);
+        painter.split = Split::DsStacked { gap: 0 };
+        let fit = Layout {
+            scale: Scale::Fit,
+            ..Layout::default()
+        };
+        for smoothing in [Smoothing::Light, Smoothing::Soft] {
+            painter.smoothing = smoothing;
+            let out = paint_with(&mut painter, &fit);
+            // Stacked 640 px high: the top screen on rows 0..320, the bottom one on 320..640.
+            for y in 0..TARGET.1 {
+                let i = ((y * TARGET.0 + TARGET.0 / 2) * 4) as usize;
+                let (r, g) = (out[i], out[i + 1]);
+                if y < 320 {
+                    assert_eq!((r, g), (255, 0), "{smoothing:?} row {y}");
+                } else {
+                    assert_eq!((r, g), (0, 255), "{smoothing:?} row {y}");
+                }
+            }
+        }
     }
 
     /// The two DS screens drawn where `compose` puts them, swapped and turned, with and without

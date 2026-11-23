@@ -27,6 +27,7 @@ describe('gameSettingsFrom', () => {
       ffSpeed: FF_DEFAULT,
       undoAllowed: true,
       colourBlind: 'none',
+      smoothing: 'light',
     })
   })
   it('reads the rows', () => {
@@ -34,10 +35,12 @@ describe('gameSettingsFrom', () => {
       { key: 'speed.ffval', value: 'max' },
       { key: 'saves.undo', value: false },
       { key: 'a11y.cblind', value: 'deutan' },
+      { key: 'video.filter', value: 'soft' },
     ])
     expect(s.ffSpeed).toEqual({ kind: 'max' })
     expect(s.undoAllowed).toBe(false)
     expect(s.colourBlind).toBe('deutan')
+    expect(s.smoothing).toBe('soft')
   })
 })
 
@@ -50,7 +53,9 @@ describe('crashReport', () => {
     core: 'mgba',
     resumable: false,
     autosaveOnExit: true,
+    quickSlot: 1,
     stateLoadBlock: null,
+    speed: { kind: 'factor', value: 1 },
   }
   const now = new Date(Date.UTC(2026, 10, 18, 12, 0, 0))
   it('names the game, the frames and the time', () => {

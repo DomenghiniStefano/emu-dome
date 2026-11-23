@@ -4,7 +4,7 @@
 //! - synced root (`<app data>/settings`, the one Drive sync will carry):
 //!   `global.json`, `console/<console>.json`, `game/<console>-<hex>.json` (the game's key,
 //!   [`GameKey::file_stem`]);
-//! - device file (`<app local data>/settings/device.json`, never synced): the values of the
+//! - device file (`<app local data>/local-settings/device.json`, never synced): the values of the
 //!   per-device entries, at every level: `{ "global": {..}, "console": { "gba": {..} },
 //!   "game": { "<console>-<hex>": {..} } }`.
 //!

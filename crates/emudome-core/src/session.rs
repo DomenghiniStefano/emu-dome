@@ -66,6 +66,9 @@ pub enum Command {
     UndoLoad,
     /// «Salvato nello slot N · Annulla»: the slot of the last save gets back what it held.
     UndoSave,
+    /// The user moved the game's quick slot (shortcuts, «Rendi rapido»): recorded in its
+    /// folder by the I/O worker, clamped to the quick slots ([`crate::quick_slot`]).
+    SetQuickSlot(u8),
     /// Changes a core option (`GET_VARIABLE` key and value) while the game runs.
     SetCoreOption {
         key: String,

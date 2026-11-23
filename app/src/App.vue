@@ -125,6 +125,7 @@ onMounted(async () => {
       v-if="videoMode === 'webview'"
       :inset="videoInset"
       :colour-blind="settings.colourBlind"
+      :smoothing="settings.smoothing"
       surround
     />
     <GameHud

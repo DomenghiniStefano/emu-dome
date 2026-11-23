@@ -225,6 +225,8 @@ impl Runner {
             }
             Hotkey::NextSlot | Hotkey::PreviousSlot => {
                 let slot = self.pads.step_slot(hotkey == Hotkey::NextSlot);
+                // Recorded for the open game (#110); nothing to record without one.
+                self.send(Command::SetQuickSlot(slot));
                 self.emit(events::HOTKEY, HotkeyEvent::Slot { slot });
             }
             Hotkey::FastForwardHold => {
