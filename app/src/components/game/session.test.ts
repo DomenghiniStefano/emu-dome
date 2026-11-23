@@ -67,6 +67,7 @@ describe('crashReport', () => {
       paused: false,
       frames: 1200,
       autoSavedAt: 1000,
+      unsaved: true,
     }
     expect(crashReport(game, stats, now)).toEqual({
       console: 'gba',

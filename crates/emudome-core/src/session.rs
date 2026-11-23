@@ -145,6 +145,12 @@ pub struct Stats {
     /// States the rewind buffer holds, and their bytes.
     pub rewind_states: usize,
     pub rewind_bytes: usize,
+    /// The game moved since the user's last quick save or quick load (any slot), or since it
+    /// opened if none: a frame ran (rewinding included), the game was reset, or a save or load
+    /// was undone. The auto quick save the app writes by itself does not clear it, and a quick
+    /// save whose write failed sets it again. The quick menu's «Chiudi il gioco» asks first
+    /// while it is set.
+    pub unsaved: bool,
 }
 
 /// State shared by emulation, renderer, audio and interface.

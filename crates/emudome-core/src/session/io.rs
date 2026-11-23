@@ -201,6 +201,10 @@ impl Worker {
             }
             Err(e) => {
                 log::warn!("quick save: slot {slot} not written: {e:#}");
+                if !auto {
+                    // The user's save did not land: what the game holds is still unsaved.
+                    self.shared.stats.lock().unsaved = true;
+                }
                 self.send(Event::Error {
                     error: ErrorCode::StateSaveFailed {
                         slot,

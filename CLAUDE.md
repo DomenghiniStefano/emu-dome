@@ -762,6 +762,17 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   on a blocking thread of the async runtime (`blocking()` in `lib.rs`), never on the event loop.
   Interface: `components/closing/` (`closing.ts` the view, `useClosing.ts`; `ClosingStrip.vue` the bottom strip
   while saving / saved, `ClosingAsk.vue` the timeout / failure question, `ClosingOverlay.vue` places them).
+- «Chiudere senza salvare?»: the quick menu's «Chiudi il gioco» (the desktop's and TV's footer, the phone's strip
+  «Chiudi») and the search's other game ask first when the game moved since the user's last quick save or quick
+  load (any slot), or since it opened if none: `Stats::unsaved` (the `stats` command's `unsaved`), set by every
+  frame run (rewinding too), a reset and an undone save or load, cleared by the user's quick save or load; the auto
+  quick save the app writes does not clear it, a quick save whose write failed sets it again (`session/io.rs`).
+  The text says the latest progress stays only in the auto quick save (`saves.autoexit` on) or is lost (off).
+  «Salva e chiudi» quick-saves into the game's quick slot, waits for `stateSaved` (at most 10 s) and then runs the
+  close flow; a failed save keeps the game open with its error. «Chiudi senza salvare» is the close flow as it was;
+  «Annulla» (and B) keeps the game. The in-game save is written by the close flow either way. Interface:
+  `components/game/closeAsk.ts` (the decision, pure), `useGameEnding.ts` (`requestClose`), `CloseUnsavedDialog.vue`.
+  The window's X, a quit, Android going to the background and the Drive «in use» answer close without asking.
 
 ## Lessons already learned (do not repeat)
 

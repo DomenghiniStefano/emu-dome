@@ -1,15 +1,17 @@
 <script setup lang="ts">
 // What the game flow shows over the game or the shell (boards «Stati» and «Errori»):
 // G01 starting (with G03, the saves coming down from Google Drive), G02 cannot start, G06 the
-// quick-menu hint, G14 closing, the resume question, E04 the in-game save cannot be read, E11 the
-// emulator stopped, E12 slower than normal.
+// quick-menu hint, «Chiudere senza salvare?» (closeAsk.ts), G14 closing, the resume question, E04
+// the in-game save cannot be read, E11 the emulator stopped, E12 slower than normal.
 // State in gameFlow.ts; App.vue reacts to the emitted choices.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CloudPull from '@/components/cloud/CloudPull.vue'
+import type { CloseAnswer } from './closeAsk'
 import { progressOf, transferShare } from '@/components/cloud/cloud'
 import { cloud } from '@/components/cloud/cloudState'
 import { flow } from './gameFlow'
+import CloseUnsavedDialog from './CloseUnsavedDialog.vue'
 import CrashDialog from './CrashDialog.vue'
 import GameScene from './GameScene.vue'
 import QuickMenuHint from './QuickMenuHint.vue'
@@ -33,6 +35,7 @@ const emit = defineEmits<{
   brokenUse: []
   brokenPlay: []
   brokenClose: []
+  closeAnswer: [CloseAnswer]
 }>()
 
 const { t } = useI18n()
@@ -50,6 +53,14 @@ const pull = computed(() => progressOf(cloud.progress, 'pulling', null))
     <CloudPull v-if="pull" :progress="pull" />
     <div v-else class="text-ink-muted">{{ t('flow.starting') }}</div>
   </GameScene>
+
+  <!-- Over the quick menu; gone when the game closes some other way or stops (E11). -->
+  <CloseUnsavedDialog
+    v-if="flow.closeAsk && !flow.ending && !flow.crashed"
+    :autosave="flow.closeAsk.autosave"
+    :saving="flow.closeAsk.saving"
+    @answer="a => emit('closeAnswer', a)"
+  />
 
   <GameScene v-if="flow.closing" :title="t('flow.closing', { title: flow.closing.title })">
     <ul class="m-0 list-none p-0 text-center text-ink-muted">

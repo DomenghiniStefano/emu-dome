@@ -11,6 +11,7 @@ const stats = (frames: number, over: Partial<Stats> = {}): Stats => ({
   paused: false,
   frames,
   autoSavedAt: null,
+  unsaved: true,
   ...over,
 })
 const slow = (frames: number) => stats(frames, { emuFps: 40 })

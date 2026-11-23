@@ -3,7 +3,7 @@
 // useGameEnding's; this file puts them together as one session. Opening a game is
 // useGameLaunch's.
 import { watch } from 'vue'
-import { AUTO_SLOT, emu, type GameInfo, type LibraryGame, type Speed } from '@/emu'
+import { AUTO_SLOT, emu, type EmuEvent, type GameInfo, type LibraryGame, type Speed } from '@/emu'
 import { flow, gameStarted } from './gameFlow'
 import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
@@ -193,6 +193,8 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     begin,
     end: ending.end,
     close: ending.close,
+    requestClose: ending.requestClose,
+    answerClose: ending.answerClose,
     crashed: ending.crashed,
     setMenu,
     toggleMenu,
@@ -209,7 +211,11 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     toggleFps,
     onHotkey: events.onHotkey,
     screenshot,
-    onEmuEvent: events.onEmuEvent,
+    onEmuEvent: (ev: EmuEvent) => {
+      events.onEmuEvent(ev)
+      // «Salva e chiudi» waits for its quick save (useGameEnding).
+      ending.onSaveEvent(ev)
+    },
     watchStats: ending.watchStats,
   }
 }

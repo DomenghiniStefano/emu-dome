@@ -10,8 +10,9 @@
 //   shortcuts and the pause carry a reason instead (searchContext.ts);
 // - a setting opens the menu's page that shows it «in prova» (G09 Schermi e immagine, G10
 //   Controlli, G16 Imposta le velocità); the others say to open them from the library;
-// - another game closes this one (G14, the close flow #86 with its «Wait» / «Close anyway») and
-//   opens; the game being played carries a reason.
+// - another game closes this one («Chiudere senza salvare?» first with progress not in a quick
+//   save, then G14, the close flow #86 with its «Wait» / «Close anyway») and opens; the game being
+//   played carries a reason.
 import type { Ref } from 'vue'
 import type { LibraryGame, SettingKey, Speed } from '@/emu'
 import type { KeyAction } from '@/lib/keyboard'

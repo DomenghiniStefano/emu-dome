@@ -1111,7 +1111,8 @@
         : "gba",
     core: scenario.game === "nds" ? "melondsds" : "mgba",
     resumable: false,
-    autosaveOnExit: true,
+    // `noAutoExit`: `saves.autoexit` off («Chiudere senza salvare?» says the progress is lost).
+    autosaveOnExit: !scenario.noAutoExit,
     quickSlot: 1,
     // Loading states works (Trello #93: none of these games is blocked).
     stateLoadBlock: null,
@@ -1169,6 +1170,7 @@
             paused: false,
             frames: 600,
             autoSavedAt: null,
+            unsaved: false,
           },
         }
       : {}),
@@ -1609,15 +1611,18 @@
       if (cmd === "screens_preview") return placements(args.area).placements;
       // A game open (`game`): its stats (#124: a null answer read as a stats object threw in
       // gameFlow.ts). Not `running`, so the frame count that never moves is no hang (E11).
+      // `unsaved: true`: running with progress not in a quick save, so «Chiudi il gioco» asks
+      // «Chiudere senza salvare?» (no hang either while the quick menu is open).
       if (cmd === "stats" && !("stats" in answers))
         return {
-          running: false,
+          running: !!scenario.unsaved,
           emuFps: 59.7,
           targetFps: 59.7,
           speed: { kind: "factor", value: 1 },
           paused: false,
           frames: 600,
           autoSavedAt: null,
+          unsaved: !!scenario.unsaved,
         };
       if (cmd === "set_video_inset") window.__videoInset = args;
       // The touch controls (#29): a console's controls as `ControlId::of`, no layout saved

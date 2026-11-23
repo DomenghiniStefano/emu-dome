@@ -152,6 +152,58 @@ quickMenuScenarios["qm-s23-gba-home-en-p780"] = {
   width: 360,
   height: 780,
 };
+// «Chiudere senza salvare?» (`unsaved`: the game ran since the last quick save): the phone strip's
+// «Chiudi» on the S23 upright and on its side, the desktop footer's «Chiudi il gioco» at
+// 1280 × 800, and TV; `-lost` with `saves.autoexit` off. In Italian, dark.
+const closeStrip = click("^(Close|Chiudi)$");
+const closeFooter = click("(Close game|Chiudi il gioco)$");
+for (const [name, extra] of [
+  ["", {}],
+  ["-lost", { noAutoExit: true }],
+]) {
+  for (const [size, [width, height]] of Object.entries(S23))
+    quickMenuScenarios[`qm-unsaved${name}-${size}`] = {
+      mock: { game: "gba", phone: true, frame: true, lang: "it", unsaved: true, ...extra, theme: "dark" },
+      steps: [escape, closeStrip],
+      touch: true,
+      width,
+      height,
+    };
+  quickMenuScenarios[`qm-unsaved${name}-desk`] = {
+    mock: { game: "gba", lang: "it", unsaved: true, ...extra, theme: "dark" },
+    steps: [escape, closeFooter],
+    width: 1280,
+    height: 800,
+  };
+}
+quickMenuScenarios["qm-unsaved-tv"] = {
+  mock: { game: "gba", lang: "it", unsaved: true, ui: "tv", pads: true, theme: "dark" },
+  steps: [controllerMenu, closeFooter],
+  width: 1920,
+  height: 1080,
+};
+// The controller's way through it: the focus starts on «Salva e chiudi», B (`emu://nav` back)
+// answers «Annulla» and the quick menu is still there. A step answering false prints `step failed`.
+quickMenuScenarios["qm-unsaved-nav-desk"] = {
+  mock: { game: "gba", lang: "it", unsaved: true, theme: "dark" },
+  steps: [
+    controllerMenu,
+    closeFooter,
+    `/Salva e chiudi/.test(document.activeElement?.textContent ?? '')`,
+    `window.__emit('emu://nav', { action: 'back' })`,
+    `!/Chiudere senza salvare/.test(document.body.textContent) && /Chiudi il gioco/.test(document.body.textContent)`,
+  ],
+  focus: true,
+  width: 1280,
+  height: 800,
+};
+// Nothing unsaved: «Chiudi» closes straight away (G14 «Chiusura»), no question.
+quickMenuScenarios["qm-unsaved-none-desk"] = {
+  mock: { game: "gba", lang: "it", theme: "dark" },
+  steps: [escape, closeFooter],
+  width: 1280,
+  height: 800,
+};
 // The desktop quick menu at 1280 × 800, which the phone's changes leave as it was.
 for (const state of ["home", "slots", "controls"])
   quickMenuScenarios[`qm-desk-${state}`] = {

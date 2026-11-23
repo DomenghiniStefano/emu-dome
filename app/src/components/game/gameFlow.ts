@@ -26,6 +26,9 @@ export const flow = reactive({
   resumeAsk: false,
   /** G14: closing (auto quick save, in-game save). */
   closing: null as null | { title: string; autosave: boolean },
+  /** «Chiudere senza salvare?» (closeAsk.ts): `autosave` = `saves.autoexit`, which the text names;
+   * `saving` while «Salva e chiudi» waits for its quick save. */
+  closeAsk: null as null | { autosave: boolean; saving: boolean },
   /** The close flow runs (#86, `emu://closing`: the window, the app or the game closing). */
   ending: false,
   /** E11: the emulator stopped. `at` = Unix ms of the last auto quick save, if any. */

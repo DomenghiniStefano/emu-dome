@@ -59,7 +59,10 @@ without opening the app.
 - In-game scenarios set `game` in the mock: the game opens at startup (`true` for the shell's
   screens, `"gba"` / `"nds"` for the quick menu's). The phone's quick menu (#108): `qm-phone-*` at
   390 × 844 (`phone: true`), `qm-s23-<gba|nds>-*` on the S23 sizes with a game picture, and
-  `qm-desk-*` at 1280 × 800 for the desktop menu.
+  `qm-desk-*` at 1280 × 800 for the desktop menu. `unsaved: true` answers `stats` with progress not
+  in a quick save, so «Chiudi il gioco» asks «Chiudere senza salvare?» (`noAutoExit`: `saves.autoexit`
+  off): `qm-unsaved-<p780|l780|desk|tv>`, `qm-unsaved-lost-*`, `qm-unsaved-nav-desk` (the focus on
+  «Salva e chiudi», B answers «Annulla») and `qm-unsaved-none-desk` (nothing unsaved: no question).
 - TV mode (#30, the `tv-*` scenarios at 1280 × 720, 1920 × 1080 and 3840 × 2160): `ui: "tv"` fixes it
   (with `pads` the Xbox glyphs, without the Nintendo letters); `pads` alone (Automatica) shows the TV
   question at startup (`tv-ask-*`); `richSettings` + `wiredSettings` give Settings every row kind,
