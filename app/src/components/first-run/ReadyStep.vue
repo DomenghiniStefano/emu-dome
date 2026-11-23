@@ -1,10 +1,8 @@
 <script setup lang="ts">
-// S06 Ready: the game count, up to 3 covers, the optional imports (DeSmuME, Google Drive not
-// built yet, another folder or emulator), and how to open the quick menu.
+// S06 Ready: the game count, up to 3 covers, the optional imports (DeSmuME, the Google Drive
+// sign-in, another folder or emulator), and how to open the quick menu.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { LogIn } from '@lucide/vue'
-import { Button, ButtonFade } from '@/design-system/components/button'
 import { Card, CardVariant } from '@/design-system/components/card'
 import type { FolderImport } from '@/emu'
 import type { ImportState } from './imports'
@@ -13,7 +11,7 @@ import { library } from '@/lib/library'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverSize } from '@/components/cover/variants'
 import ImportRow from './ImportRow.vue'
-import ReadyRow from './ReadyRow.vue'
+import DriveRow from './DriveRow.vue'
 import StepLayout from './StepLayout.vue'
 import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
@@ -50,18 +48,7 @@ const count = computed(() => library.games.length)
         @pick="emit('pick', 'desmume')"
         @import="emit('import', 'desmume')"
       />
-      <ReadyRow :name="t('firstRun.ready.drive')">
-        <div class="text-caption text-ink-muted wrap-anywhere">
-          {{ t('firstRun.ready.driveDesc') }}
-        </div>
-        <!-- Muted like the line above, not faint (design: faint for «not yet»?). -->
-        <div class="text-caption text-ink-muted wrap-anywhere">{{ t('settingsUi.notYet') }}</div>
-        <template #action>
-          <Button :fade="ButtonFade.Dim" :icon="LogIn" disabled :title="t('settingsUi.notYet')">
-            {{ t('firstRun.ready.driveSignIn') }}
-          </Button>
-        </template>
-      </ReadyRow>
+      <DriveRow />
       <ImportRow
         :name="t('firstRun.ready.other')"
         :hint="t('firstRun.ready.otherDesc')"
