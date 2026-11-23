@@ -9,4 +9,9 @@ frames: number,
 /**
  * Unix ms of the last auto quick save in this session.
  */
-autoSavedAt: number | null, };
+autoSavedAt: number | null, 
+/**
+ * The game moved since the user's last quick save or load (`Stats::unsaved`): the quick
+ * menu's «Chiudi il gioco» asks first.
+ */
+unsaved: boolean, };

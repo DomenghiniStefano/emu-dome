@@ -266,7 +266,10 @@ impl<C: Core> EmuLoop<C> {
                 .io
                 .send(io::Job::QuickSlot(crate::quick_slot::clamp(slot))),
             Command::SetCoreOption { key, value } => self.core.set_core_option(key, value),
-            Command::Reset => self.core.reset(),
+            Command::Reset => {
+                self.core.reset();
+                self.set_unsaved(true);
+            }
             Command::Rewind(on) => self.set_rewinding(on),
             Command::SetRewindLength(seconds) => self.set_rewind_length(seconds),
             Command::SetFastAudio(policy) => self.set_fast_audio(policy),
@@ -312,7 +315,15 @@ impl<C: Core> EmuLoop<C> {
     fn save_state(&mut self, slot: u8) {
         if self.save_async(slot) {
             self.undo = Some(Undo::Save);
+            // The user's save holds the game as it is (the worker sets it again if the write
+            // fails).
+            self.set_unsaved(false);
         }
+    }
+
+    /// [`super::Stats::unsaved`].
+    fn set_unsaved(&self, unsaved: bool) {
+        self.shared.stats.lock().unsaved = unsaved;
     }
 
     /// Serializes into `slot` and hands the write to the worker; false (and an error event) when
@@ -353,6 +364,8 @@ impl<C: Core> EmuLoop<C> {
         let loaded = self.load_undoable(slot);
         if loaded.is_ok() {
             self.io.send(io::Job::ForgetUndo);
+            // The game is what the slot holds.
+            self.set_unsaved(false);
         }
         self.send(match loaded {
             Ok(()) => Event::StateLoaded { slot },
@@ -374,7 +387,11 @@ impl<C: Core> EmuLoop<C> {
         }
         let event = match self.undo.take() {
             Some(Undo::Load(data)) => match self.core.unserialize(&data) {
-                Ok(()) => Event::LoadUndone,
+                Ok(()) => {
+                    // Back to the state from before the load: neither saved nor loaded.
+                    self.set_unsaved(true);
+                    Event::LoadUndone
+                }
                 Err(e) => {
                     log::warn!("undo load: the core refused the state from before: {e:#}");
                     Event::Error {
@@ -395,7 +412,11 @@ impl<C: Core> EmuLoop<C> {
     fn undo_save(&mut self) {
         match self.undo.take() {
             // The worker puts the slot back and says `saveUndone` (or why not).
-            Some(Undo::Save) => self.io.send(io::Job::UndoSave),
+            Some(Undo::Save) => {
+                self.io.send(io::Job::UndoSave);
+                // The slot gets back an older state than the game's.
+                self.set_unsaved(true);
+            }
             kept @ (Some(Undo::Load(_)) | None) => {
                 self.undo = kept;
                 self.send(Event::Error {
@@ -479,6 +500,8 @@ impl<C: Core> EmuLoop<C> {
             let (states, bytes) = self.rewind.usage();
             let mut stats = self.shared.stats.lock();
             stats.frames += 1;
+            // A frame forward or a step back: the game is no longer what was saved or loaded.
+            stats.unsaved = true;
             (stats.rewind_states, stats.rewind_bytes) = (states, bytes);
         }
 
@@ -1227,6 +1250,91 @@ mod tests {
         r.cmd(Command::SetQuickSlot(3));
         r.events();
         assert_eq!(crate::quick_slot::restore(&r.files), 3);
+    }
+
+    fn unsaved(r: &Rig) -> bool {
+        r.lp.shared.stats.lock().unsaved
+    }
+
+    /// «Chiudere senza salvare?»: the game moved since the user's last quick save or load.
+    #[test]
+    fn unsaved_follows_the_frames_and_the_users_saves_and_loads() {
+        let mut r = rig_with("loop-unsaved", |opts, _| {
+            opts.autosave_every = Some(Duration::from_secs(60));
+            opts.rewind_seconds = Some(10);
+        });
+        assert!(!unsaved(&r), "nothing ran yet");
+        // Paused, nothing runs: still nothing to save.
+        r.cmd(Command::SetPaused(true));
+        r.frames(3);
+        assert!(!unsaved(&r));
+        r.cmd(Command::SetPaused(false));
+        r.frames(1);
+        assert!(unsaved(&r), "a frame ran");
+
+        r.cmd(Command::SaveState(2));
+        assert!(!unsaved(&r), "the user saved");
+        r.events();
+        assert!(!unsaved(&r), "the write landed");
+        r.frames(1);
+        assert!(unsaved(&r));
+
+        // The auto quick save the app writes does not count.
+        r.lp.step(r.at(61));
+        r.lp.io.sync();
+        assert!(r.files.slot(AUTO_SLOT).exists());
+        assert!(unsaved(&r));
+
+        r.cmd(Command::LoadState(2));
+        assert!(!unsaved(&r), "the user loaded");
+        r.cmd(Command::UndoLoad);
+        assert!(unsaved(&r), "the load was undone");
+
+        r.cmd(Command::SaveState(3));
+        assert!(!unsaved(&r));
+        r.cmd(Command::UndoSave);
+        assert!(unsaved(&r), "the save was undone");
+
+        // Nothing to undo leaves it as it is.
+        r.cmd(Command::SaveState(3));
+        r.cmd(Command::UndoLoad);
+        assert!(!unsaved(&r));
+
+        // Rewinding changes the game too.
+        for _ in 0..5 {
+            r.frames(1);
+            r.lp.rewind.sync();
+        }
+        r.cmd(Command::SaveState(3));
+        r.cmd(Command::Rewind(true));
+        r.frames(1);
+        assert!(unsaved(&r), "rewound");
+        r.cmd(Command::Rewind(false));
+
+        r.cmd(Command::SaveState(3));
+        r.cmd(Command::Reset);
+        assert!(unsaved(&r), "reset");
+    }
+
+    #[test]
+    fn a_quick_save_that_fails_leaves_the_game_unsaved() {
+        let mut r = rig("loop-unsaved-failed");
+        r.frames(2);
+        // A folder where the slot's file goes: the write cannot land.
+        std::fs::create_dir_all(r.files.slot(4)).unwrap();
+        r.cmd(Command::SaveState(4));
+        let events = r.events();
+        assert!(events.iter().any(|e| matches!(
+            e,
+            Event::Error {
+                error: ErrorCode::StateSaveFailed { slot: 4, .. }
+            }
+        )));
+        assert!(unsaved(&r));
+        // A core that cannot serialize never cleared it.
+        r.lp.core.no_states = true;
+        r.cmd(Command::SaveState(5));
+        assert!(unsaved(&r));
     }
 
     #[test]

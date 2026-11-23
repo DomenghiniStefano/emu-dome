@@ -38,6 +38,9 @@ pub(crate) struct StatsDto {
     frames: u64,
     /// Unix ms of the last auto quick save in this session.
     auto_saved_at: Option<u64>,
+    /// The game moved since the user's last quick save or load (`Stats::unsaved`): the quick
+    /// menu's «Chiudi il gioco» asks first.
+    unsaved: bool,
 }
 
 pub(crate) fn unix_ms(t: std::time::SystemTime) -> Option<u64> {
@@ -297,6 +300,7 @@ pub(crate) fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
                 paused: s.paused,
                 frames: s.frames,
                 auto_saved_at: s.auto_saved_at.and_then(unix_ms),
+                unsaved: s.unsaved,
             }
         }
         None => StatsDto {
@@ -307,6 +311,7 @@ pub(crate) fn stats(state: tauri::State<'_, AppState>) -> StatsDto {
             paused: false,
             frames: 0,
             auto_saved_at: None,
+            unsaved: false,
         },
     }
 }
