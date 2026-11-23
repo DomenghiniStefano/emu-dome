@@ -18,6 +18,9 @@ import { cn } from '@/design-system/lib/cn'
 import SelectNavScope from './SelectNavScope.vue'
 import { zoomedBoundary, zoomedReference } from './zoomedReference'
 
+// Attributes (an `aria-label`) go to the list, not to the portal around it.
+defineOptions({ inheritAttrs: false })
+
 const props = withDefaults(
   defineProps<
     SelectContentProps & { anchor?: HTMLElement | null; class?: HTMLAttributes['class'] }
@@ -51,7 +54,7 @@ const ink = computed(() => {
   <SelectPortal>
     <SelectContent
       data-slot="select-content"
-      v-bind="forwarded"
+      v-bind="{ ...forwarded, ...$attrs }"
       :collision-boundary="boundary"
       :reference="reference"
       :style="{ color: ink }"
