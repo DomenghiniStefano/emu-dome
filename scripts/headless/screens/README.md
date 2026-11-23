@@ -81,4 +81,9 @@ without opening the app.
   set on the `safe-*` tokens); a `{ resize: [w, h] }` step turns the phone. `PROBE=<js>`
   in the environment evaluates an expression on every page after its screenshot and prints it (the mock keeps the
   last `set_video_inset` in `window.__videoInset` and the last placements' area in `window.__lastArea`).
+- The layout editors without a game (#111, the `layout-*` scenarios from `layout-editors.mjs`, in Italian, at
+  360 × 780, 780 × 360 and 1280 × 800): `layoutRows` gives the schema the `screens.custom` and `touch.tedit` rows on
+  their pages, `frameConsole` the console whose screens the mock's `screens_preview` places for C06; the rows,
+  the console chooser, C06 / C09 over their placeholders, and the phone quick menu's «Altro › Modifica la
+  disposizione».
 - Screenshots stay outside the repository. Stop the dev server and Chrome by PID when done.
