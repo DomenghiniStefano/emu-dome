@@ -41,6 +41,9 @@ body,
   height: 100%;
   background: transparent;
   overflow: hidden;
+  /* An app, not a page: no double-tap zoom (pinch is off in index.html's viewport). Taps and
+     scrolling are unchanged; the touch controls narrow it further with `touch-none`. */
+  touch-action: manipulation;
 }
 * {
   box-sizing: border-box;
