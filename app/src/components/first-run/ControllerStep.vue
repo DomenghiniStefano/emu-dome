@@ -2,12 +2,12 @@
 // S04 Controller (only while one is connected): the A/B layout (`pad.ab`) as two cards, and a
 // press test that says what each button does in the game. The only step with «Salta».
 import { useI18n } from 'vue-i18n'
-import { Card, CardPad, CardVariant } from '@/components/ui/card'
+import { Card, CardPad, CardVariant } from '@/design-system/components/card'
 import type { PadInfo } from '@/emu'
 import { gamepadName } from '@/i18n/labels'
 import { AB_LAYOUTS, type AbLayout } from '@/lib/controls'
 import StepLayout from './StepLayout.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 defineProps<{
   pad: PadInfo

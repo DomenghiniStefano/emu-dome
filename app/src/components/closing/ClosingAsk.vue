@@ -6,7 +6,7 @@
 import { ref, useId } from 'vue'
 import { Hourglass, TriangleAlert, X } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { errorText } from '@/i18n/labels'
 import { useNavScope, useNavSection } from '@/nav'
 import type { ClosingAsk } from './closing'

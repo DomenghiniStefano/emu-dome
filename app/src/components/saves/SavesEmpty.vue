@@ -3,8 +3,8 @@
 // save shortcut), «Apri la libreria», «Importa salvataggi…» and the formats an import reads.
 import { useI18n } from 'vue-i18n'
 import { Import, Library, Save } from '@lucide/vue'
-import { Button, ButtonSize } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
+import { Button, ButtonSize } from '@/design-system/components/button'
+import { EmptyState } from '@/design-system/components/empty-state'
 
 defineProps<{ text: string }>()
 const emit = defineEmits<{ openLibrary: []; import: [] }>()

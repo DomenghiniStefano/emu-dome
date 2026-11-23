@@ -7,7 +7,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { HardDrive } from '@lucide/vue'
-import { Button, ButtonFade } from '@/components/ui/button'
+import { Button, ButtonFade } from '@/design-system/components/button'
 import { useToasts } from '@/composables/useToasts'
 import { sizeLabel } from '@/i18n/labels'
 import { useStorageStatus } from './useStorageStatus'

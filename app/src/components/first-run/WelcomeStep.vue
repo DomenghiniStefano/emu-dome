@@ -3,10 +3,10 @@
 // «Tutti i giochi»). No «Indietro».
 import { Folder, Gamepad, Save, Smartphone } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
-import mark from '@/assets/brand/emudome-mark.svg'
+import mark from '@/design-system/brand/emudome-mark.svg'
 import SettingSelect from '@/components/settings/SettingSelect.vue'
 import StepLayout from './StepLayout.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 defineProps<{ lang: string; langOptions: { id: string; text: string }[] }>()
 const emit = defineEmits<{ lang: [id: string] }>()

@@ -2,7 +2,7 @@
 // The head of a quick menu page: back one level (B / Esc), then the page's title. On the phone
 // (owner, 2026-11-22) «‹ Indietro» with the title at the other end of the row.
 import BackButton from './BackButton.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 defineProps<{
   title: string

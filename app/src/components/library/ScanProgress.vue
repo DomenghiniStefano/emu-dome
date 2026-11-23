@@ -2,7 +2,7 @@
 // A scan in progress (S03's bar, indeterminate: the total is not known up front), with the games
 // found so far.
 import { useI18n } from 'vue-i18n'
-import { Progress } from '@/components/ui/progress'
+import { Progress } from '@/design-system/components/progress'
 import LibraryBanner from './LibraryBanner.vue'
 
 defineProps<{ progress: { found: number } | null }>()

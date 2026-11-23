@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogTitle,
   DialogTone,
-} from '@/components/ui/dialog'
+} from '@/design-system/components/dialog'
 
 const props = withDefaults(
   defineProps<{ title: string; tone?: DialogTone; escapeCloses?: boolean }>(),

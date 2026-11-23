@@ -14,7 +14,7 @@ import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { coverColours, type CoverColours } from '@/lib/ambient'
 import { settingsUnder, useSettingsChanged } from '@/composables/useSettingsChanged'
 import { reducedMotion, uiZoom } from '@/lib/appearance'
-import { shiftLightness } from '@/lib/colour'
+import { shiftLightness } from '@/design-system/lib/colour'
 import { latest } from '@/lib/latest'
 import { insetShares, type InsetPx } from './inset'
 import {

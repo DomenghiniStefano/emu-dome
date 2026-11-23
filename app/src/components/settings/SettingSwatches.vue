@@ -2,7 +2,7 @@
 // A colour among a few (`colour`, `general.accent`): round swatches, the chosen one ringed.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { swatchKey } from './settingRowModel'
 
 const props = defineProps<{

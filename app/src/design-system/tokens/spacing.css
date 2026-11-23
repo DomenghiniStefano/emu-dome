@@ -1,0 +1,310 @@
+/* Spacing and size tokens, in px.
+
+   Tailwind's 4px multiplier (`--spacing`) is switched off with the rest of the namespace: here
+   `p-12` is 12px, named after the design system's `space-12`, and a step that is not declared
+   (`p-13`) generates nothing. The default multiplier was rem-based, and a rem is 13px in this
+   document (typography.css), so `p-4` would have been 13px.
+
+   Two kinds of name:
+   - numbers: the design system's grid (README «Spazio»: `space-2` … `space-48`), plus the off-grid
+     steps the screens use today (10, 14, 18), marked, until a design decision says whether they stay;
+   - words: sizes that mean something (a control's height, a dialog's width). */
+@theme {
+  --spacing: initial;
+  --spacing-*: initial;
+
+  /* The grid */
+  --spacing-0: 0px;
+  --spacing-2: 2px;
+  --spacing-4: 4px;
+  --spacing-6: 6px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+  --spacing-48: 48px;
+  /* Off the grid, in use today (padding of chips, segments and select fields: 10; card gaps:
+     14; the main button's side padding: 18). */
+  --spacing-10: 10px;
+  --spacing-14: 14px;
+  --spacing-18: 18px;
+  /* Pending design, off the grid too: 52, the tall rows and actions of the focus moments (the
+     quick menu's speeds, the rail's sections, the phone's main action, a cover's actions row). */
+  --spacing-52: 52px;
+
+  /* Controls (tokens.json `size`) */
+  /* Owner, 2026-11-22 («pulsanti giganti, tutto più compatto»): one step lower each. */
+  --spacing-control-sm: 24px;
+  --spacing-control: 28px;
+  --spacing-control-lg: 32px;
+  /* Pending design (spec Decision 5: fold into 32 or 40, or a fourth step): 36, a dialog's and a
+     page's pair of actions, a cover's actions, the quick menu's compact actions, the phone's tabs. */
+  --spacing-control-md: 30px;
+  /* The top bar's height (tokens.json `titlebar`). */
+  --spacing-titlebar: 32px;
+  /* The least a cover of the library grid shrinks to (tokens.json `capsule-medium`). */
+  --spacing-capsule-medium: 156px;
+  /* Pending (owner): the same on the phone, the compact grid (touch density, #29, mockup of
+     2026-11-22). Upright, 96 with the grid's 8 px gaps gives three columns in a content 304 to
+     407 px wide (a 360 px phone and a 412 px S23 at 100%); on its side, 112 gives five or six
+     beside the side column (892 × 412: six), a row shorter than the window. A wider touch screen
+     (a tablet) just gets more columns. */
+  --spacing-capsule-touch: 96px;
+  --spacing-capsule-touch-side: 112px;
+  /* The phone's touch minimum (README: 44px): its buttons and fields (board «Tel-Dettagli»). */
+  --spacing-touch: 44px;
+  /* A tab of a section (Controls: 40) and of the game details (44). */
+  --spacing-tab: 32px;
+  --spacing-tab-lg: 36px;
+  /* A switch's track: 36 x 20, its knob 16. */
+  --spacing-switch: 36px;
+  /* A setting's field: select trigger, slider, text field. */
+  --spacing-field: 200px;
+  /* Most a menu grows before it scrolls. */
+  --spacing-menu: 320px;
+  /* A dialog's width (FlowDialog). */
+  --spacing-dialog: 520px;
+  /* The card a closing game's strip grows into when saving is slow or fails (#86). */
+  --spacing-closing-card: 400px;
+  /* A slider's value beside it. */
+  --spacing-value: 64px;
+
+  /* Settings (#62, the values of the screen as it is; not in the design system yet: design). */
+  /* A section's side column of pages (the settings categories). */
+  --spacing-sidebar: 248px;
+  /* The widest a page's content grows (a settings page). */
+  --spacing-page: 920px;
+  /* A card's preview (the choice cards of a setting), and a list row that opens a page. */
+  --spacing-thumb: 56px;
+  --spacing-link-row: 40px;
+  /* The narrowest card of a grid of choice cards. */
+  --spacing-card-min: 150px;
+  /* The narrowest a setting's name and description get before its control goes under them. */
+  --spacing-setting-text: 300px;
+  /* A level card of the settings scope bar. */
+  --spacing-level: 60px;
+}
+
+/* Roles: what a step is for, so «every card's padding» is one edit. Each points at a step of the
+   grid above (or a pending one), never at a number of its own. */
+@theme {
+  /* Inside a card: the standard one; a snug one (a stat, a message with its action, a save's
+     side); a tight one (a raised choice card, a slot tile, a «Continua a giocare» card); the
+     phone's details card. */
+  --spacing-card-pad: var(--spacing-10);
+  --spacing-card-pad-md: var(--spacing-8);
+  --spacing-card-pad-sm: var(--spacing-6);
+  --spacing-card-pad-touch: var(--spacing-12);
+  /* Inside a control: a button's and a field's side padding. */
+  --spacing-control-pad: var(--spacing-8);
+  --spacing-field-pad: var(--spacing-6);
+  /* Inside a dialog, and between its parts. */
+  --spacing-dialog-pad: var(--spacing-16);
+  /* The room a panel keeps from the window's edges (the quick menu). */
+  --spacing-window-margin: var(--spacing-16);
+  /* A section's page (ui/section-page: Settings, Controls, Saves, a game's details): the room on
+     its sides, above and below its content, and between its blocks; on the phone one step all
+     round and between. */
+  --spacing-section-x: var(--spacing-16);
+  --spacing-section-top: var(--spacing-12);
+  --spacing-section-bottom: var(--spacing-24);
+  --spacing-section-gap: var(--spacing-12);
+  --spacing-section-touch: var(--spacing-12);
+  /* Between a block's label and the block (ui/labelled-block). */
+  --spacing-block-gap: var(--spacing-6);
+}
+
+/* Pending design (spec Decision 5, «Handed back to design»): every other size the screens use
+   today, off the design system's scales, named once here by what it is for. A change of look is an
+   edit here, never in a screen. Steps first, then sizes by area. */
+@theme {
+  /* Off-grid steps: a hairline nudge (3: the rail's icon over its name, a phone slot's lines, a
+     title choice pulled up to its line); a key hint's side padding (5); the game details' header
+     (28). */
+  --spacing-3: 3px;
+  --spacing-5: 5px;
+  --spacing-28: 28px;
+
+  /* Covers (GameCover sizes): a list's thumbnail, a row's, the small row of the first run (80 on
+     the phone), the game details' (96 on the phone), the library's «Continua a giocare» picture.
+     Pending (owner, mockup of 2026-11-22): a row of the library's list (#29), 44 × 66. */
+  --spacing-cover-thumb: 28px;
+  --spacing-cover-row: 48px;
+  --spacing-cover-list: 44px;
+  --spacing-cover-small: 96px;
+  --spacing-cover-small-touch: 80px;
+  --spacing-cover-hero: 168px;
+  --spacing-cover-hero-touch: 96px;
+  --spacing-continue-thumb: 96px;
+
+  /* The shell: the rail's width and one of its sections' width. */
+  --spacing-rail: 76px;
+  --spacing-rail-item: 64px;
+  /* The phone's shell (Trello #29, the owner's mockup «EmuDome sul telefono»). The system's
+     bars and the camera's notch, as the webview reports them (`viewport-fit=cover` in
+     index.html; 0 where nothing is reported): the status bar above, the navigation bar below
+     the tab bar (at least 4 when there is none), each side's inset with the phone on its side.
+     The rail's side column keeps at least 28 from the camera's edge (the mockup's room for the
+     notch), more if the system says so. */
+  --spacing-safe-top: env(safe-area-inset-top, 0px);
+  --spacing-tabbar-bottom: max(var(--spacing-4), env(safe-area-inset-bottom, 0px));
+  --spacing-safe-left: env(safe-area-inset-left, 0px);
+  --spacing-safe-right: env(safe-area-inset-right, 0px);
+  --spacing-camera-left: max(var(--spacing-28), env(safe-area-inset-left, 0px));
+  --spacing-camera-right: max(var(--spacing-28), env(safe-area-inset-right, 0px));
+
+  /* Page widths: the game details' and Controls' content, a step of the first run, an empty
+     state (its text, and the library's framed one), a lead paragraph, the scan's bar, the button tester. */
+  --spacing-page-md: 1040px;
+  --spacing-page-wide: 1180px;
+  --spacing-step: 560px;
+  --spacing-empty: 460px;
+  --spacing-lead: 520px;
+  --spacing-scan: 320px;
+  --spacing-tester: 280px;
+  /* The game details' text beside the cover, the narrowest before it wraps under it. */
+  --spacing-hero-text: 420px;
+  /* Saves: the list of games beside the chosen one. */
+  --spacing-game-list: 360px;
+  /* The narrowest tile of an auto-filled grid: a «Continua a giocare» card, a controller card; a
+     console's count after a scan. */
+  --spacing-tile-min: 260px;
+  --spacing-stat-min: 160px;
+
+  /* Menus and messages: a cover's menu at its narrowest, a toast at its widest. */
+  --spacing-menu-min: 220px;
+  --spacing-toast: 420px;
+
+  /* The quick menu: the desktop panel, the G09 bar, where the G09 sheet starts under the game
+     (beyond its 3:2 picture), a tool tile's height. */
+  --spacing-panel: 640px;
+  --spacing-bar: 1040px;
+  --spacing-sheet-screens: 112px;
+  /* Pending (owner, 2026-11-22, the phone quick menu's mockup): a tile of the first level's row
+     of three, and the least of the game the sheet leaves above it when a page grows (Altro ›
+     Salvataggi: about 150 on a 780 tall phone). */
+  --spacing-quick-tile: 72px;
+  /* The frame just saved, on the line «Salvato nello slot N · Annulla». */
+  --spacing-thumb-sm: 40px;
+  --spacing-sheet-game-min: 144px;
+  /* The phone on its side (#29): the side panel's width (owner, 2026-11-22: 300, was the card's
+     440; the game keeps 480 × 360 of a 780 × 360 phone), and its room above (the status bar, at
+     least 12) and at its right edge (the camera when turned that way, at least 16). */
+  --spacing-side-panel: 300px;
+  --spacing-side-panel-top: max(var(--spacing-12), env(safe-area-inset-top, 0px));
+  --spacing-side-panel-end: max(var(--spacing-16), env(safe-area-inset-right, 0px));
+  --spacing-tool: 56px;
+  /* Its main action's width on the desktop. */
+  --spacing-menu-main: 260px;
+
+  /* Search and notifications (Trello #32, the owner's mockup of 2026-11-21): the top bar's search
+     field, how far below the window's top the search opens, the notifications panel. */
+  --spacing-topbar-search: 360px;
+  --spacing-palette-top: 96px;
+  --spacing-notifications: 380px;
+
+  /* DS / 3DS screens (Trello #28, the owner's mockup of 2026-11-21): the C09 editor's side panel,
+     the G15 «Coperchio chiuso» card. */
+  --spacing-editor-panel: 320px;
+  --spacing-lid-card: 400px;
+
+  /* Controls: a remap row's capture field, a shortcut's key column, a shortcut chip at its
+     narrowest, a shortcut row's action column. */
+  --spacing-capture: 30px;
+  --spacing-shortcut-key: 150px;
+  --spacing-key-chip: 96px;
+  --spacing-shortcut-col: 72px;
+
+  /* A choice inside a title (the settings scope bar's «Giochi <console> ▾»). */
+  --spacing-in-title: 26px;
+
+  /* EmuDome's mark (design-system/brand/, Trello #101): its width on the first run's welcome, and the
+     small one's height before the top bar's wordmark. */
+  --spacing-mark: 148px;
+  --spacing-mark-small: 18px;
+
+  /* The first run: the step dots' band (88 on the phone), the footer, the controller test's box. */
+  --spacing-dots: 72px;
+  --spacing-dots-touch: 88px;
+  --spacing-footer: 96px;
+  --spacing-press: 70px;
+
+  /* A scene's progress bar (a game starting or closing). */
+  --spacing-progress: 200px;
+
+  /* Pending (owner, 2026-11-22): the on-screen gamepad's boxes, compact so that two DS screens
+     stay edge to edge on a 360 px phone (components/touch/touchLayout.ts holds the same numbers
+     for its defaults; its tests measure them). Each box is what takes the touch; the shape drawn
+     inside may be smaller (PadShape.vue):
+     - dpad: the cross, one area (every point of it a direction, diagonals included);
+     - pad-face: A B X Y, round, the circle drawn at the box;
+     - pad-shoulder × pad-strip: L and R (the shape 26 tall inside), and the strip between a DS's
+       two screens upright that holds them; the menu is a pad-strip square;
+     - pad-system × pad-system-h: Select and Start (the pill 20 tall inside). */
+  --spacing-dpad: 116px;
+  --spacing-pad-face: 48px;
+  --spacing-pad-shoulder: 84px;
+  --spacing-pad-strip: 36px;
+  --spacing-pad-system: 60px;
+  --spacing-pad-system-h: 32px;
+  /* The 3DS Circle Pad drawn on screen (Trello #29): its round box (pending; the knob, 44
+     across, is drawn inside it by TouchStick.vue). */
+  --spacing-pad-stick: 104px;
+  /* The C06 touch controls editor (Trello #29): the snapping grid's step (the owner's 8 px). */
+  --spacing-touch-grid: 8px;
+}
+
+/* TV (Trello #30, the owner's mockup of 2026-11-21, drawn at 1920 × 1080): the sizes of the TV
+   layout's own parts (components/shell/Tv*, components/library/tv/), and after `tv:` on the
+   shared ones; times `--tv-scale` (typography.css) on a screen larger than the mockup's. */
+@theme {
+  /* The band of the section tabs at the top, a tab's pill, the button bar at the bottom. */
+  --spacing-tv-tabs: calc(96px * var(--tv-scale));
+  --spacing-tv-tab: calc(52px * var(--tv-scale));
+  --spacing-tv-bar: calc(72px * var(--tv-scale));
+  /* What floats at the bottom of the shell (X06's update card) sits this far up: over the bar,
+     with the bar's gap between hints (32) clear of it. */
+  --spacing-tv-over-bar: calc(var(--spacing-tv-bar) + var(--spacing-tv-hint-gap));
+  /* A controller button drawn as a key (the bar's glyphs, the hero's actions). */
+  --spacing-tv-glyph: calc(30px * var(--tv-scale));
+  /* The hero's actions: «Riprendi» / «Gioca» and «Dettagli del gioco». */
+  --spacing-tv-action: calc(64px * var(--tv-scale));
+  /* The focused game on top: the band's height and its cover's width. */
+  --spacing-tv-hero: calc(400px * var(--tv-scale));
+  --spacing-tv-hero-cover: calc(240px * var(--tv-scale));
+  /* A shelf's cover, and the focused one, grown (168 -> 200). */
+  --spacing-tv-cover: calc(168px * var(--tv-scale));
+  --spacing-tv-cover-focus: calc(200px * var(--tv-scale));
+  /* The room from the screen's edge: the hero and the shelves (128), the tabs and the bar (64);
+     between the hero's text and its cover (64). */
+  --spacing-tv-gutter: calc(128px * var(--tv-scale));
+  --spacing-tv-edge: calc(64px * var(--tv-scale));
+  --spacing-tv-hero-gap: calc(64px * var(--tv-scale));
+  /* Roles: between two shelves, between two covers of a shelf, between the bar's hints. */
+  --spacing-tv-shelf-gap: calc(var(--spacing-32) * var(--tv-scale));
+  --spacing-tv-cover-gap: calc(var(--spacing-24) * var(--tv-scale));
+  --spacing-tv-hint-gap: calc(var(--spacing-32) * var(--tv-scale));
+  /* Settings in TV (components/settings/tv/): the column of the pages on the left, a row's least
+     height, its side padding (also between its words and its value) and its top and bottom
+     padding, the gap between two rows, the full-screen choice sheet's column. */
+  --spacing-tv-sidebar: calc(420px * var(--tv-scale));
+  --spacing-tv-row: calc(80px * var(--tv-scale));
+  --spacing-tv-row-x: calc(var(--spacing-32) * var(--tv-scale));
+  --spacing-tv-row-y: calc(var(--spacing-16) * var(--tv-scale));
+  --spacing-tv-row-gap: calc(var(--spacing-8) * var(--tv-scale));
+  --spacing-tv-sheet: calc(1040px * var(--tv-scale));
+}
+
+/* Tailwind's container sizes (max-w-md…) and breakpoints (`md:`, `max-lg:`…) are not ours either:
+   a window width where a layout changes is a token here, used as `max-<name>:` (below it). */
+@theme {
+  --container-*: initial;
+  --breakpoint-*: initial;
+  /* Pending design: below this window width the Controls overview stacks its two columns. */
+  --breakpoint-controls-stack: 900px;
+  /* Pending (owner): below this window width (a phone upright, 320-430) the Settings scope bar
+     stacks its level cards, so a level's name stays on its line above its description. */
+  --breakpoint-scope-stack: 600px;
+}

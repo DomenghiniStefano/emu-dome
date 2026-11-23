@@ -16,7 +16,7 @@
 // The class rules read the whole file, not only class attributes: a comment in app/src that quotes
 // a forbidden class fires too, so a comment names the rule instead of writing the class.
 //   literal-colour    a colour written into a class: `bg-[#fff]`, `text-[rgb(…)]`, `[color-mix(…)]`.
-//                     Colours are tokens (src/assets/theme/colors.css). Cannot see a colour put
+//                     Colours are tokens (src/design-system/tokens/colors.css). Cannot see a colour put
 //                     together at run time, one in a `style` binding, or a named one (`bg-[red]`).
 //   alpha-modifier    a colour utility with an opacity: `bg-ink/50`. The alpha lives in a token
 //                     (`scrim`, `accent-soft`), never in a class.
@@ -26,11 +26,11 @@
 //                     variants are the `as const` constants of the primitive's variants.ts
 //                     (`:variant="ButtonVariant.Primary"`). Cannot see a string passed through a
 //                     variable, or other props (`orientation`, `side`) that take closed sets.
-//   raw-control       a raw <button> or <input> outside src/components/ui: use the primitive.
+//   raw-control       a raw <button> or <input> outside src/design-system/components: use the primitive.
 //                     Cannot see one rendered by a render function or `<component :is="'button'">`.
 //   style-block       a <style> block in any .vue file, the primitives' and the Kit page's too:
 //                     styling is utilities over the tokens, compound looks are named utilities
-//                     (src/assets/utilities.css).
+//                     (src/design-system/styles/utilities.css).
 //   arbitrary-length  a length in px / rem / em inside a class's brackets: `w-[13px]`,
 //                     `text-[0.9rem]`, `shadow-[0_1px_2px_…]`, `top-[calc(100%+4px)]`, an arbitrary
 //                     variant `[@media(max-width:900px)]:…`. Sizes are tokens (spacing.css,
@@ -56,7 +56,7 @@
 //                     `aspect-3/2`, `line-clamp-2`, `order-1`, `rotate-90`. The rest of Tailwind's
 //                     default palette and scales (`text-red-500`, `p-13`, `rounded-lg`,
 //                     `shadow-md`, `text-sm`, `md:`) is reset in the theme (`--…-*: initial` in
-//                     src/assets/theme/*.css) and generates no class at all: no rule needed.
+//                     src/design-system/tokens/*.css) and generates no class at all: no rule needed.
 //   important         a `!` override in a class: `w-48!` (Tailwind 4) or `!w-48` (Tailwind 3), with
 //                     or without variants. A missing look is a variant; the few unlayered rules a
 //                     look must beat are named utilities with `!important` inside (utilities.css).
@@ -69,7 +69,7 @@
 //                     read in <script> (a computed that only returns classes counts as a real
 //                     use), one passed down to a child that uses it only for looks, a prop of
 //                     another name, or props declared without the `defineProps<{ … }>` form.
-//   hand-role         a widget role written by hand outside src/components/ui: `role="dialog"`,
+//   hand-role         a widget role written by hand outside src/design-system/components: `role="dialog"`,
 //                     `alertdialog`, `radio`, `radiogroup`, `checkbox`, `menu`, `menuitem`,
 //                     `listbox`, `option`, `switch`, `tab`, `tablist`, static or in a `:role`
 //                     binding. Those widgets are Reka primitives (Dialog, RadioGroup, Checkbox,
@@ -78,7 +78,7 @@
 //                     are in HAND_ROLES_PENDING with the reason, until they move (Trello #82).
 //                     Cannot see a role set from a script (`setAttribute`), one in a render
 //                     function, or a `:role` built from a variable.
-//   button-name       a <Button> outside src/components/ui named twice, with an `aria-label` and a
+//   button-name       a <Button> outside src/design-system/components named twice, with an `aria-label` and a
 //                     `title` (static or bound): an icon alone takes Button's `label` (Trello #104),
 //                     which is its accessible name and the app's tooltip (shown on the controller's
 //                     and the keyboard's focus too, which `title` never is). A `title` beside
@@ -141,15 +141,15 @@ const HAND_ROLES_PENDING = new Map([
     "a setting's colour swatches as a radio group: next to move onto RadioGroup",
   ],
   [
-    "kit/sections/ButtonSection.vue",
+    "design-system/kit/sections/ButtonSection.vue",
     "the Kit page shows the accent swatches as written today",
   ],
   [
-    "kit/sections/CardSection.vue",
+    "design-system/kit/sections/CardSection.vue",
     "the Kit page shows the choice cards as the screens above write them today",
   ],
   [
-    "kit/sections/ChipSection.vue",
+    "design-system/kit/sections/ChipSection.vue",
     "the Kit page shows the chips as SettingChips writes them today",
   ],
 ]);
@@ -375,7 +375,7 @@ function scanRepo() {
     const source = readFileSync(join(SRC, file), "utf8");
     const kind = file.endsWith(".vue") ? "vue" : "ts";
     const found = scanSource(source, kind, {
-      insideUi: file.startsWith("components/ui/"),
+      insideUi: file.startsWith("design-system/components/"),
       handRolesAllowed: HAND_ROLES_PENDING.has(file),
     });
     findings.push(
@@ -388,7 +388,7 @@ function scanRepo() {
   }
   console.log(findings.join("\n"));
   console.log(
-    "Write it with the design system: tokens, the primitives of app/src/components/ui and their " +
+    "Write it with the design system: tokens, the primitives of app/src/design-system/components and their " +
       "variant constants (docs/frontend-conventions.md).",
   );
   return 1;

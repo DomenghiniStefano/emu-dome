@@ -2,8 +2,8 @@
 // The head of C02–C04: «‹ Controlli» back to C01, above the device's name and state.
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 defineProps<{ name: string; detail: string }>()
 const emit = defineEmits<{ back: [] }>()

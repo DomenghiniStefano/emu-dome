@@ -6,7 +6,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Rows2 } from '@lucide/vue'
-import { Button, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonVariant } from '@/design-system/components/button'
 import { bottomInset, NO_INSET, type InsetPx } from '@/components/game/inset'
 import BackButton from './BackButton.vue'
 import ScreenCardView from './ScreenCard.vue'

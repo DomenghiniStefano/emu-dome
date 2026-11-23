@@ -3,8 +3,8 @@
 // the next save or load.
 import { useI18n } from 'vue-i18n'
 import { RotateCcw } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Card, CardPad } from '@/components/ui/card'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Card, CardPad } from '@/design-system/components/card'
 
 defineProps<{
   /** What was loaded («Caricato dallo slot 2»). */

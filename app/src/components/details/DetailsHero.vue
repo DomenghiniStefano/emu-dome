@@ -10,12 +10,12 @@ import { ChevronLeft, Heart } from '@lucide/vue'
 import type { LibraryGame } from '@/emu'
 import type { ResumePoint } from '@/lib/gameDetails'
 import { playTimeLabel, saveWhenLabel } from '@/i18n/labels'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverSize } from '@/components/cover/variants'
 import GameMoreButton from './GameMoreButton.vue'
 import ResumeButton from './ResumeButton.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{ game: LibraryGame; phone: boolean; resume: ResumePoint | null }>()
 const emit = defineEmits<{

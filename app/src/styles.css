@@ -1,6 +1,6 @@
 /* The document's base: its font and line, the reduced transparency and motion switches, the
    transparent page over the native game, and the focus ring. The design tokens and their values
-   per theme live in src/assets/theme/ (docs/specs/2026-11-18-design-system-foundations.md). */
+   per theme live in src/design-system/tokens/ (docs/specs/2026-11-18-design-system-foundations.md). */
 :root {
   font-family: 'Geist', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
@@ -13,7 +13,7 @@
 }
 
 /* «Riduci la trasparenza» (a11y.transp, appearance.ts): glass becomes solid surface and the haze
-   goes off (src/assets/theme/colors.css, opacity.css); nothing is blurred behind a panel. */
+   goes off (src/design-system/tokens/colors.css, opacity.css); nothing is blurred behind a panel. */
 :root[data-transp='reduce'] *,
 :root[data-transp='reduce'] *::before,
 :root[data-transp='reduce'] *::after {
@@ -45,7 +45,7 @@ body,
 * {
   box-sizing: border-box;
 }
-/* In the base layer (declared in src/assets/main.css), so a primitive's utilities (`text-label`,
+/* In the base layer (declared in src/design-system/index.css), so a primitive's utilities (`text-label`,
    `text-on-accent`) win over it: an unlayered rule beats every layered one, whatever its
    specificity. For the screens nothing changes: their scoped rules are unlayered and more specific
    anyway, and the browser's own button style is still overridden. */
@@ -65,7 +65,7 @@ body,
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
 /* TV mode (#30, data-layout on <html>): the ring seen from the sofa, 4px at a 4px gap
-   (theme/border.css, «TV»). */
+   (tokens/border.css, «TV»). */
 :root[data-layout='tv'][data-nav] :focus,
 :root[data-layout='tv'][data-nav] [data-nav-focus] {
   outline-width: var(--outline-width-tv-ring);

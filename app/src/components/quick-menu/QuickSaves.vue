@@ -8,13 +8,13 @@ import { useI18n } from 'vue-i18n'
 import { ArchiveRestore, RotateCcw, Save, Undo2 } from '@lucide/vue'
 import type { SlotInfo, StateLoadBlock } from '@/emu'
 import { stateLoadBlockText } from '@/i18n/labels'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import PageRow from './PageRow.vue'
 import QuickSlotTile from './QuickSlotTile.vue'
 import { loadLabel } from './slots'
 import { useSay } from '@/i18n/message'
 import { FocusMark, QuickMenuView, openerMark } from './view'
-import { LabelledBlock } from '@/components/ui/labelled-block'
+import { LabelledBlock } from '@/design-system/components/labelled-block'
 
 const props = defineProps<{
   slots: SlotInfo[]

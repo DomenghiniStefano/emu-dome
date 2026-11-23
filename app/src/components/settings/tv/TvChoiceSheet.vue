@@ -8,7 +8,7 @@
 import { Check, Square, SquareCheck } from '@lucide/vue'
 import TvButtonBar from '@/components/shell/TvButtonBar.vue'
 import type { TvHint } from '@/components/shell/tvHints'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
   DialogSize,
   DialogTitle,
   DialogTitleSize,
-} from '@/components/ui/dialog'
+} from '@/design-system/components/dialog'
 
 /** One option of the sheet. */
 export interface SheetOption {

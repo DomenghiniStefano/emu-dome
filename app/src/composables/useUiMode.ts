@@ -1,6 +1,6 @@
 // TV mode (Trello #30): `data-layout="tv"` on <html> while the interface is laid out for the sofa,
 // so the screens and the primitives style their TV look with Tailwind's `tv:` variant
-// (src/assets/main.css), and the few screens whose structure changes (the shell's tabs, the
+// (src/design-system/index.css), and the few screens whose structure changes (the shell's tabs, the
 // library's shelves, Settings) read `uiMode.tv`. TV is a layout of the same screens and logic,
 // like the touch density (useDensity.ts), not a second app.
 //

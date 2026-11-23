@@ -7,8 +7,8 @@
 // the notch free; it moves to the other edge when the phone is turned the other way.
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { cn } from '@/lib/cn'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { cn } from '@/design-system/lib/cn'
 import type { CameraSide } from '@/lib/phoneLayout'
 import { SECTION_ICONS, SECTIONS, type Section } from './sections'
 

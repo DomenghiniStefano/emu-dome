@@ -54,11 +54,11 @@ import { listShown, pageShown, settingsPane, SettingsPane } from './settingsPane
 import { useSettingsScope } from './useSettingsScope'
 import { useSettingsValues } from './useSettingsValues'
 import TvSettings from '@/components/settings/tv/TvSettings.vue'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
-import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
-import { Card, CardPad } from '@/components/ui/card'
-import { SectionPage, SectionWidth } from '@/components/ui/section-page'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
+import { EmptyState, EmptyStateVariant } from '@/design-system/components/empty-state'
+import { Card, CardPad } from '@/design-system/components/card'
+import { SectionPage, SectionWidth } from '@/design-system/components/section-page'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 
 const props = defineProps<{
   /** L06 «Apri tutte le impostazioni di questo gioco»: the game this section opened for (the

@@ -2,7 +2,7 @@
 // C04's live stick: the dashed circle is the dead zone, the dot the stick's position now.
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Card } from '@/components/ui/card'
+import { Card } from '@/design-system/components/card'
 import { deadZoneDiameter, stickDot } from './stick'
 
 const props = defineProps<{

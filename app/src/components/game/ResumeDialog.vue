@@ -4,7 +4,7 @@
 import { useI18n } from 'vue-i18n'
 import { Play, RotateCcw } from '@lucide/vue'
 import type { StateLoadBlock } from '@/emu'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { stateLoadBlockText } from '@/i18n/labels'
 import FlowDialog from './FlowDialog.vue'
 

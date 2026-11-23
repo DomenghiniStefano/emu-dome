@@ -4,8 +4,8 @@
 // on hover. Its icon is the row's kind's (rowActionIcon.ts, #104).
 import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonFade, ButtonVariant } from '@/components/ui/button'
-import { Badge, BadgeSize, BadgeVariant } from '@/components/ui/badge'
+import { Button, ButtonFade, ButtonVariant } from '@/design-system/components/button'
+import { Badge, BadgeSize, BadgeVariant } from '@/design-system/components/badge'
 
 defineProps<{
   text: string

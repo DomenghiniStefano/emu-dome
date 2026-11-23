@@ -4,8 +4,8 @@
 // On a touch screen nothing can be dragged onto the window: the lead does not offer it (#29).
 import { useI18n } from 'vue-i18n'
 import { File as FileIcon, FolderOpen, Library } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { EmptyState, EmptyStateVariant } from '@/components/ui/empty-state'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { EmptyState, EmptyStateVariant } from '@/design-system/components/empty-state'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 
 defineProps<{ error: string | null }>()

@@ -7,6 +7,8 @@ import prettier from 'eslint-config-prettier/flat'
 import globals from 'globals'
 
 const OTHER_FOLDER = 'Import from another folder through `@/`; `./name` is for the same folder.'
+const DESIGN_SYSTEM_BOUNDARY =
+  'The design system imports only @/design-system/…, @/nav and @/generated/… (src/design-system/README.md).'
 // A relative path that leaves the file's folder (`../x`, `./sub/x`), as an esquery attribute
 // (`\x2F` is `/`: esquery ends a regex at a bare slash).
 const RELATIVE_ELSEWHERE = '[value=/^\\.\\.\\x2F|^\\.\\x2F[^?]*\\x2F/]'
@@ -71,10 +73,31 @@ export default withVueTs(
     },
   },
   {
+    // The design system's boundary (src/design-system/README.md): it imports nothing of the app but
+    // nav.ts (the primitives' controller keys) and src/generated (the Rust contract's types and
+    // the settings catalogue), so it can be read, and one day moved, on its own. The Kit is the
+    // declared exception: it shows the feature components too. Repeats the import-style pattern
+    // above (a later block replaces a rule's options). Seen failing on its fixture in
+    // src/design-system/boundary.lint.test.ts. Blind spot: `import()` and `vi.mock` paths.
+    files: ['src/design-system/**/*.{ts,vue}'],
+    ignores: ['src/design-system/kit/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            { regex: '^\\.\\./|^\\./[^?]*/', message: OTHER_FOLDER },
+            { regex: '^@/(?!design-system/|nav$|generated/)', message: DESIGN_SYSTEM_BOUNDARY },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // The design system's primitives are one word each (Button.vue, Card.vue), as shadcn-vue names
     // them. The rule exists to avoid clashing with HTML elements; a folder of primitives imported
-    // by name (`import { Button } from '@/components/ui/button'`) is where single words belong.
-    files: ['src/components/ui/**/*.vue'],
+    // by name (`import { Button } from '@/design-system/components/button'`) is where single words belong.
+    files: ['src/design-system/components/**/*.vue'],
     rules: { 'vue/multi-word-component-names': 'off' },
   },
   prettier,

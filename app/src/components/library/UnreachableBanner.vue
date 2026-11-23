@@ -3,7 +3,7 @@
 // cartella» replaces it. In a narrow window the button goes under the text, on the right.
 import { useI18n } from 'vue-i18n'
 import { FolderOpen, FolderX } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/design-system/components/button'
 import LibraryBanner from './LibraryBanner.vue'
 import type { UnreachableFolder } from './libraryView'
 

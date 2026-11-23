@@ -3,7 +3,7 @@
 // (and focused first), «Annulla». Controller / keyboard: FlowDialog's own nav scope.
 import { useI18n } from 'vue-i18n'
 import type { LibraryGame } from '@/emu'
-import { Button, ButtonSize } from '@/components/ui/button'
+import { Button, ButtonSize } from '@/design-system/components/button'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import SavesGameRow from './SavesGameRow.vue'
 

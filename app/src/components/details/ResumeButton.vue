@@ -4,7 +4,7 @@
 // a press still says why (GameDetails `play`). The page's first focus.
 import { useI18n } from 'vue-i18n'
 import { Play } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 
 defineProps<{
   /** The game file is where the library expects it. */

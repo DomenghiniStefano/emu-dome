@@ -5,8 +5,8 @@
 import { useI18n } from 'vue-i18n'
 import { Check, Undo2 } from '@lucide/vue'
 import SaveThumb from '@/components/saves/SaveThumb.vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Card, CardPad } from '@/components/ui/card'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Card, CardPad } from '@/design-system/components/card'
 
 defineProps<{
   /** The slot saved to. */

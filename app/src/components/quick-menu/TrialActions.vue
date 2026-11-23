@@ -2,7 +2,7 @@
 // The two answers to the changes «in prova»: undo them, or save them for this game.
 import { useI18n } from 'vue-i18n'
 import { Save, Undo2 } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 
 defineEmits<{ discard: []; commitGame: [] }>()
 

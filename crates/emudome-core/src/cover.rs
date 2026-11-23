@@ -35,7 +35,7 @@ pub const MAX_SIDE: u32 = 8192;
 /// JPEG quality of the written cover.
 pub const JPEG_QUALITY: u8 = 90;
 /// The backdrop's brightness, 1 = unchanged: the preview's `game-scrim` veil (black at 60%,
-/// app/src/assets/theme/colors.css) over the blurred image leaves 40%.
+/// app/src/design-system/tokens/colors.css) over the blurred image leaves 40%.
 const BACKDROP_BRIGHTNESS: f32 = 0.4;
 /// The backdrop is blurred at this size, then enlarged.
 const BACKDROP_SMALL: (u32, u32) = (60, 90);

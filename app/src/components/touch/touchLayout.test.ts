@@ -29,7 +29,7 @@ import {
 } from './touchLayout'
 import type { InsetPx } from '@/components/game/inset'
 
-// The controls' own boxes at 100%, as the design system draws them (assets/theme/spacing.css:
+// The controls' own boxes at 100%, as the design system draws them (design-system/tokens/spacing.css:
 // `size-dpad`, `size-pad-stick`, `size-pad-face`, the shoulders `w-pad-shoulder` × `h-pad-strip`,
 // Select / Start `w-pad-system` × `h-pad-system-h`, the menu `size-pad-strip`).
 const BOX: Record<TouchControlId, Box> = {

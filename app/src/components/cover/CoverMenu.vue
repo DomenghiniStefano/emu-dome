@@ -11,8 +11,12 @@
 // click outside close it.
 import { useI18n } from 'vue-i18n'
 import { EyeOff, Eye, ImageIcon, Star, StarOff } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/design-system/components/dropdown-menu'
 import type { LibraryGame } from '@/emu'
 
 const props = defineProps<{

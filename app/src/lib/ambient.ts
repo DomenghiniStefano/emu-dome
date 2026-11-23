@@ -7,7 +7,7 @@
 // `emu://cover` responses allow it: Access-Control-Allow-Origin); a generated cover is one colour,
 // so its three spots are that colour at three lightness steps.
 import { ref } from 'vue'
-import { capLightness, hexToOklch, oklchToHex, toHex } from './colour'
+import { capLightness, hexToOklch, oklchToHex, toHex } from '@/design-system/lib/colour'
 import type { LibraryGame } from '@/emu'
 
 /** The design system's cap on cover colours. */

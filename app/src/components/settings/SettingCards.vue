@@ -3,7 +3,7 @@
 // apply a bundle and are never selected (`apply`). An option shown but not available yet is
 // faded and says so.
 import { useI18n } from 'vue-i18n'
-import { Card, CardDescription, CardVariant } from '@/components/ui/card'
+import { Card, CardDescription, CardVariant } from '@/design-system/components/card'
 import { cardPreview } from './settingRowModel'
 import type { RowOption } from './useSettingRow'
 

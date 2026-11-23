@@ -490,12 +490,15 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          the words, pure, tested), about (`about.lic`'s licences page, a functional
                          placeholder), updates (X06, the update card in the shell; the shared status in
                          composables/useUpdates.ts);
-                         components/ui/ (the primitives),
+                         design-system/ (the whole design system, its map in design-system/README.md:
+                         index.css the entry, tokens/ one file per family, styles/utilities.css the named
+                         looks, components/ the primitives, lib/ cn / themeKeys / colour / accent /
+                         useDensity, brand/ EmuDome's mark, kit/ the Kit page, development only; it
+                         imports nothing of the app but nav.ts and generated/, kit/ excepted),
                          composables/ and lib/ (shared by 2+ features: lib/theme.ts data-theme on <html>,
-                         lib/settingsModel.ts, lib/cn.ts, lib/design/…),
-                         i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text),
-                         assets/theme/ (design tokens, one file per family), kit/ (Kit page, development only),
-                         assets/brand/ (EmuDome's mark); the startup splash (#101) is plain HTML/CSS in
+                         lib/settingsModel.ts),
+                         i18n/ (index.ts vue-i18n setup and locale choice, en.json, it.json, labels.ts codes → text);
+                         the startup splash (#101) is plain HTML/CSS in
                          app/index.html (the mark on graphite from the first paint, the bar after 2 s;
                          its few values mirror the tokens), faded out by lib/splash.ts once App.vue has
                          decided and rendered the first run or the shell; the window's own background is
@@ -661,7 +664,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   (`#[derive(TS)]`, MIT) into `app/src/generated/` (core types; the shell's DTOs in `generated/app/`), with
   `SettingKey` (the catalogue's keys), `HotkeyId` and `Button` from Rust lists, and the fixtures
   `error-codes.json` / `settings-catalog.json` (its `colours`: a colour entry's swatches and default, read by
-  `lib/accent.ts`) / `keyboard-shortcuts.json` (read by `lib/keyboard.ts`). `emu.ts` only re-exports them. The files are committed; the contract
+  `design-system/lib/accent.ts`) / `keyboard-shortcuts.json` (read by `lib/keyboard.ts`). `emu.ts` only re-exports them. The files are committed; the contract
   test of each crate (`cargo test -p emudome-core contract`, `cargo test -p emudome contract`) fails when they are
   stale, and `EMUDOME_BLESS=1` writes them again. `app/src/i18n/parity.test.ts` holds the fixtures against the
   message files. `session::Speed` / `Event` are typed through shadow types in `contract.rs` (session.rs untouched),
@@ -835,8 +838,8 @@ the workspace `Cargo.toml` version equal in `app/package.json` and `tauri.conf.j
 (`scripts/scan-conventions.mjs`, blocking in every file: no literal colour, alpha modifier or `dark:` in classes, no
 px / rem / em length or bracketed opacity, z-index, duration or curve in a class, no bare-number opacity / z-index /
 duration / edge width / outline offset, no `!` override, no string variant, no raw `<button>` / `<input>` outside
-`components/ui`, no `<style>`, no `phone` / `touch` prop used only in `:class`, no hand-written widget role (`dialog`,
-`radio`, `menu`…) outside `components/ui` except the shrinking list `HAND_ROLES_PENDING`, no `<Button>` named with both
+`design-system/components`, no `<style>`, no `phone` / `touch` prop used only in `:class`, no hand-written widget role (`dialog`,
+`radio`, `menu`…) outside `design-system/components` except the shrinking list `HAND_ROLES_PENDING`, no `<Button>` named with both
 `aria-label` and `title` (an icon alone takes `label`, #104); the rows and what each cannot see are in
 `docs/frontend-conventions.md`), and the gates: no merge conflict marker,
 no OS or form-factor code outside `crates/emudome-platform` (`cfg` naming `target_os` / `target_family` / `windows` /
@@ -872,7 +875,7 @@ key of the wrong kind.
   it cannot see a reader that is missing.
 - Every menu is fully usable with the controller: a new screen registers `useNavScope` (`app/src/nav.ts`)
   and marks its first element; the routing itself is unit-tested (`hotkeys.rs`), the scope tree and the primitives'
-  keys too (`nav.test.ts`, `components/ui/nav.test.ts`), the screens are not.
+  keys too (`nav.test.ts`, `design-system/components/nav.test.ts`), the screens are not.
 - Texts: address the user directly, verb first on buttons, no exclamation marks; errors say what to do.
 - The design system's tokens and look (graphite, accent only on the main action, glass, Lucide icons).
 - Which form a button takes (#104, docs/frontend-conventions.md «Icons on buttons»): main actions and the actions of
@@ -894,12 +897,12 @@ review-only list above. A rule in neither place is the thing this section exists
 ## Interface and tone
 
 - Design system: **EmuDome Design System** (a copy of GameDome's that evolves on its own),
-  https://claude.ai/artifact/TEz4yQgd1w27HRQLt4beAy. Its tokens live in `app/src/assets/theme/` (see below).
+  https://claude.ai/artifact/TEz4yQgd1w27HRQLt4beAy. Its tokens live in `app/src/design-system/tokens/` (see below).
 - Modern console style, dark theme:
   - neutral graphite, the colour comes from the covers;
   - amber (`accent`, the app icon's #faa40f, dark text on it; `general.accent` offers four other
     swatches) only on the main action. For these colours the repo's tokens (`colors.css`,
-    `lib/accent.ts`) are the reference, not the design system artifact;
+    `design-system/lib/accent.ts`) are the reference, not the design system artifact;
   - glass for panels and menus;
   - Lucide icons, no emoji.
 - In game **no interface**: everything goes through the quick menu (Esc / Home button).
@@ -916,16 +919,16 @@ Migration done: Trello #61 (foundations) → #62 (every screen moved) → #65 (o
 role tokens, shared components, feature folders) → #63 (rules blocking everywhere). New screens and graphic work
 are written only in this structure; `docs/frontend-conventions.md` is the full reference.
 
-- **Tokens** in `app/src/assets/theme/`, one file per family: `colors.css`, `typography.css`, `spacing.css`,
-  `radius.css`, `shadow.css`, `opacity.css`, `motion.css`, `layers.css`; imported by `assets/main.css`.
+- **Tokens** in `app/src/design-system/tokens/`, one file per family: `colors.css`, `typography.css`, `spacing.css`,
+  `radius.css`, `shadow.css`, `opacity.css`, `motion.css`, `layers.css`; imported by `design-system/index.css`.
   - Tailwind v4 reads them in `@theme`, with its default scales **reset**: a colour, size, radius, shadow or
     duration that is not a token generates no class at all. Preflight is off.
   - Names come from the design system (`title`, `heading`, `body`, `space-*`, `control`, `radius-*`, `glow-*`…).
     One value per step: a new value is a design-system change (decided with the owner), never a literal in a screen.
-  - Themes (Scuro / Nero / Chiaro) and the runtime accent (`lib/appearance.ts`, `lib/accent.ts`) are CSS variables on
+  - Themes (Scuro / Nero / Chiaro) and the runtime accent (`lib/appearance.ts`, `design-system/lib/accent.ts`) are CSS variables on
     `:root` / `[data-theme]`; Tailwind points at them (`@theme inline`), so a theme or accent change needs no class.
-  - Glass, glow and other compound looks are named utilities (`assets/utilities.css`), not long class strings.
-- **Primitives** in `app/src/components/ui/<name>/`, all on **Reka UI** (one standard, no hand-made ones):
+  - Glass, glow and other compound looks are named utilities (`design-system/styles/utilities.css`), not long class strings.
+- **Primitives** in `app/src/design-system/components/<name>/`, all on **Reka UI** (one standard, no hand-made ones):
   `index.ts` re-exports, `variants.ts` holds the variants as `as const` constants (`ButtonVariant.Primary`, never
   `variant="primary"`), the parts are `.vue` files. Today: Button, Card, Chip, Tabs, Segmented, Slider, Select,
   Switch, Dialog, Popover, DropdownMenu, RadioGroup, Checkbox, Input, Heading, Badge, Kbd, Progress, EmptyState,
@@ -934,11 +937,11 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   Buttons (#104): a Lucide icon through Button's `icon` prop (sized by the button, one step larger on the phone),
   never drawn in the slot; an icon alone takes `label` (the existing text: accessible name and Tooltip, which opens
   on the mouse's rest and on the controller's / keyboard's focus).
-- **Every visual value is a token**: colours, borders (width and colour, `theme/border.css`), margins, paddings, gaps,
+- **Every visual value is a token**: colours, borders (width and colour, `tokens/border.css`), margins, paddings, gaps,
   radius, shadows, opacity. Where a value has a role it has a role name (`radius-control`, `spacing-card-pad`,
   `spacing-section-x`…), so changing it everywhere is one edit. Values not decided yet are tokens under a
   «pending» comment (decided with the owner), never literals in a screen. Internal design variables only, not user settings.
-- **Touch look**: one `data-density="touch"` on `<html>` (`composables/useDensity.ts`) and the `touch:` variant;
+- **Touch look**: one `data-density="touch"` on `<html>` (`design-system/lib/useDensity.ts`) and the `touch:` variant;
   components never take a `phone` / `touch` prop just to change their look. It is on for the phone upright and
   on its side (#29). The phone's shell keeps clear of the system's bars and the notch with the `safe-*` /
   `camera-*` spacing tokens (`env(safe-area-inset-*)`, `viewport-fit=cover` in `index.html`).
@@ -956,13 +959,13 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
   change a short choice / switch / slider / colour in place, A opens long choices in a full-screen sheet, X resets,
   a kind it does not draw keeps the desk's row; `tvSettingRow.ts` decides, pure); the quick menu and the other
   sections keep the desk's layout scaled up (`zoom-tv`).
-- **`cn()`** (`app/src/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`lib/design/`).
+- **`cn()`** (`app/src/design-system/lib/cn.ts`) merges classes and learns the token names from the theme CSS (`design-system/lib/themeKeys.ts`).
 - **Controller**: one generic rule in `nav.ts`. An element that owns its keys (by the attributes Reka renders, never
   by component name) takes the arrows along its axis and Enter; a controller step is sent to it as that key; at its
   ends nav.ts moves spatially. Select, Dialog, Popover and DropdownMenu take B while open; a menu item owns Enter
   (its arrows stay nav.ts's, inside the menu's scope); entering a radio group lands on its chosen radio. Tested in Vitest
-  (`components/ui/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
-- **Kit page** (`app/src/kit/`, `#kit`, development only, not in the build): every primitive and the main feature
+  (`design-system/components/nav.test.ts`) and in a real browser (`scripts/headless/kit-nav.mjs`).
+- **Kit page** (`app/src/design-system/kit/`, `#kit`, development only, not in the build): every primitive and the main feature
   components (`kit/features/`) in every state, the three themes, the five accents. A new primitive or variant is
   added there first. It is also the review board: under each section `KitIssue`s (problem, «Ora» /
   «Proposta» rendered with the real components, solution; status open / proposed / decided) and an index with the
@@ -971,19 +974,21 @@ are written only in this structure; `docs/frontend-conventions.md` is the full r
 - **The look**: compact and near-square, no empty band, sober motion. Radius roles 2 / 2 / 3 / 4
   (`badge` / `control` / `card` / `panel`), buttons a little rounder (`radius-button` 4); controls 24 / 28 / 30 / 32;
   role paddings tight (`card-pad` 10, `dialog-pad` 16, `section-x` 16); appearing things fade with 4 px of rise or a
-  3% pop, a pressed button gives 2% (`theme/motion.css`, keyed by the primitives' `data-slot`); the shell's sections
+  3% pop, a pressed button gives 2% (`tokens/motion.css`, keyed by the primitives' `data-slot`); the shell's sections
   enter the same way. The phone's touch target (44) and the TV sizes stay. A new component folder must be listed as
-  an `@source` in `assets/main.css`, or the classes only it uses are never generated (the closing strip once lost
+  an `@source` in `design-system/index.css`, or the classes only it uses are never generated (the closing strip once lost
   its padding that way).
 - **Where a file goes** (`app/src/`), by what owns it:
-  - `components/ui/<name>/`: the primitives.
+  - `design-system/`: the design system, all of it (tokens, named looks, primitives in `components/<name>/`, their
+    helpers, the mark, the Kit); `design-system/README.md` is its map. It imports nothing of the app but `nav.ts`
+    and `generated/` (ESLint, `app/eslint.config.js`; `kit/` excepted: it shows the feature components too).
   - `components/<feature>/`: everything one feature is: its screen root (`LibraryView.vue`, `QuickMenu.vue`…), its
     parts, its composables (`useX.ts`), its pure modules (`x.ts`) and their tests. A component another feature reuses
     stays with the feature it belongs to and is imported from there (`settings/SettingRow.vue`, `cover/GameCover.vue`).
   - `composables/` (`useX`) and `lib/` (plain modules and helpers) only for what 2+ features, or the root for the
     whole app, use. A module only one feature uses moves into that feature's folder.
   - The root holds the app's wiring only: `main.ts`, `App.vue`, `emu.ts`, `nav.ts`, `styles.css`, `i18n/`,
-    `assets/`, `kit/`.
+    `design-system/`.
 - **Imports**: `./name` for a file in the same folder, `@/path` for anything else (never `../`, never `./sub/x`),
   so a path reads the same in every file and a move changes only the moved file's importers. `vi.mock` names the
   module as it is imported. Checked by ESLint (`no-restricted-imports` and `no-restricted-syntax`,

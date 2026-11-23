@@ -6,7 +6,7 @@
 // when the section has no first control of its own.
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import { SECTION_ICONS, SECTIONS, type Section } from './sections'
 
 const props = defineProps<{

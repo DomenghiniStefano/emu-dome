@@ -6,7 +6,7 @@ import { nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Ellipsis, EllipsisVertical } from '@lucide/vue'
 import type { LibraryGame } from '@/emu'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import CoverMenu from '@/components/cover/CoverMenu.vue'
 
 defineProps<{

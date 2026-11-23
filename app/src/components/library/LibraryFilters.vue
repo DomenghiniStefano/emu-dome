@@ -6,11 +6,11 @@
 // Controller / keyboard: the popover's own nav scope while open, the order chosen focused first;
 // B / Esc / a click outside close it.
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Checkbox } from '@/design-system/components/checkbox'
+import { RadioGroup, RadioGroupItem } from '@/design-system/components/radio-group'
 import { SHOW_KEYS, SORTS, type ShowKey, type Sort } from './librarySort'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 defineProps<{ sort: Sort; show: Record<ShowKey, boolean> }>()
 const emit = defineEmits<{ sort: [Sort]; toggle: [ShowKey] }>()

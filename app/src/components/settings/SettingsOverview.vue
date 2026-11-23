@@ -18,8 +18,8 @@ import { isShown, msg } from '@/lib/settingsModel'
 import SettingRowView from './SettingRow.vue'
 import SettingsSection from './SettingsSection.vue'
 import type { PageValues } from './settingsPage'
-import { Heading } from '@/components/ui/heading'
-import { LinkRow } from '@/components/ui/link-row'
+import { Heading } from '@/design-system/components/heading'
+import { LinkRow } from '@/design-system/components/link-row'
 
 const props = defineProps<{
   schema: SettingsSchema

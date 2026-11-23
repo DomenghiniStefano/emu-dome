@@ -28,7 +28,7 @@ Conventions:
 | Audio | cpal, linear resampling, ±0.5 % queue correction, `audio.lat` latency, `audio.out` device; off 1× `audio.ff` mutes, resamples or time-stretches | `app/src-tauri/src/audio.rs`, `crates/emudome-core/src/speed_audio.rs` |
 | Core options | Core options v2 accepted; `GET_VARIABLE` answered from the settings through one table per core (`Live` or `Restart`); pointer (touch) supported; no rumble, no sensors | `crates/emudome-core/src/settings/core_values/`, `crates/emudome-core/src/callbacks.rs` |
 | Saves | Per game, keyed by its content id (`saves/<console>/<hex>/`); `.sav` flushed periodically, on exit and when Android goes to the background; 3 / 5 / 10 slots (`saves.slots`), auto quick save, resume, undo, backups; the user's own BIOS / firmware per core | `crates/emudome-core/src/game_key.rs`, `crates/emudome-core/src/session/`, `crates/emudome-core/src/bios/` |
-| Interface | vue-i18n (en, it), language from the OS; design tokens in `app/src/assets/theme/`, primitives on Reka UI; three themes and five accents; desktop, phone and TV layouts | `app/src/i18n/`, `app/src/assets/theme/`, `app/src/components/ui/` |
+| Interface | vue-i18n (en, it), language from the OS; design tokens in `app/src/design-system/tokens/`, primitives on Reka UI; three themes and five accents; desktop, phone and TV layouts | `app/src/i18n/`, `app/src/design-system/tokens/`, `app/src/design-system/components/` |
 | Settings | The settings engine: one schema of 166 entries, levels Default → Global → Console → Game → Session plus the per-device axis, files per level, the interface generated from the schema | `crates/emudome-core/src/settings/` |
 
 What this study planned that is still missing: imported touch skins and skin packs, more than one control of

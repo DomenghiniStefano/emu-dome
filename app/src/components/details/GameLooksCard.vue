@@ -6,14 +6,14 @@ import { useI18n } from 'vue-i18n'
 import { Image as ImageIcon } from '@lucide/vue'
 import { emu, type LibraryGame } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
-import { Input, InputVariant } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
+import { Input, InputVariant } from '@/design-system/components/input'
+import { Switch } from '@/design-system/components/switch'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverSize } from '@/components/cover/variants'
 import DetailsAction from './DetailsAction.vue'
 import DetailsCard from './DetailsCard.vue'
 import { coverDescription } from './gameFiles'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{ game: LibraryGame }>()
 const emit = defineEmits<{

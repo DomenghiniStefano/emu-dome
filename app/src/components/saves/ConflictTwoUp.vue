@@ -11,7 +11,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Copy } from '@lucide/vue'
-import { Button, ButtonSize } from '@/components/ui/button'
+import { Button, ButtonSize } from '@/design-system/components/button'
 import FlowDialog from '@/components/game/FlowDialog.vue'
 import ConflictSide from './ConflictSide.vue'
 import type { ConflictVersion } from './conflict'

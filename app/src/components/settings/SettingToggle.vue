@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // An on / off setting (`toggle`).
-import { Switch } from '@/components/ui/switch'
+import { Switch } from '@/design-system/components/switch'
 
 defineProps<{ label: string; on: boolean; disabled: boolean }>()
 const emit = defineEmits<{ set: [boolean] }>()

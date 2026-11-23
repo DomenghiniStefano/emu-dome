@@ -2,7 +2,7 @@
 // The changes «in prova» (G16, G10 and the phone's G09): what they are, that closing the game
 // drops them, and the three answers (undo, save for this game, save for the whole console).
 import { useI18n } from 'vue-i18n'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import TrialActions from './TrialActions.vue'
 
 defineProps<{

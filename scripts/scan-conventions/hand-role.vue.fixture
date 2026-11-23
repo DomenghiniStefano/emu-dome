@@ -1,4 +1,4 @@
-<!-- Fixture of scripts/scan-conventions.mjs: widget roles written by hand outside components/ui. -->
+<!-- Fixture of scripts/scan-conventions.mjs: widget roles written by hand outside design-system/components. -->
 <template>
   <div role="dialog" aria-modal="true">
     <div role="radiogroup">

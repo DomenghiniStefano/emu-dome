@@ -8,14 +8,14 @@ import { useI18n } from 'vue-i18n'
 import { type PadState, type SettingEntry, type SettingRow, type SettingsSchema } from '@/emu'
 import { isShown } from '@/lib/settingsModel'
 import type { CaptureDevice } from '@/lib/controls'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import RowColumns from '@/components/settings/RowColumns.vue'
 import SettingRowView from '@/components/settings/SettingRow.vue'
 import LiveStick from './LiveStick.vue'
 import { axisUnit } from './stick'
 import { useErrorSink } from '@/composables/useToasts'
 import { useGlobalSettings } from './useGlobalSettings'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{
   device: CaptureDevice

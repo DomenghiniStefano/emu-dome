@@ -5,7 +5,7 @@
 import { useI18n } from 'vue-i18n'
 import { ChevronRight } from '@lucide/vue'
 import type { Pos, SettingEntry, SettingKey, SettingRow, SettingsSchema, SettingValue } from '@/emu'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import { posName } from '@/lib/controls'
 import MenuList from './MenuList.vue'
 import SessionSettingRows from './SessionSettingRows.vue'

@@ -4,7 +4,7 @@
 // pinch (as the C09 editor's pill).
 import { useI18n } from 'vue-i18n'
 import { Save, SlidersHorizontal } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 
 defineProps<{
   /** The picked control's name (or «Tocca un comando»). */

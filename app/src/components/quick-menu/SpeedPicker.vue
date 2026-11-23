@@ -4,11 +4,11 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { SettingValue, Speed } from '@/emu'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Segmented, SegmentedItem, SegmentedVariant } from '@/components/ui/segmented'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Segmented, SegmentedItem, SegmentedVariant } from '@/design-system/components/segmented'
 import { msg } from '@/lib/settingsModel'
 import { SpeedChoiceId, chosenSpeed, type SpeedChoice } from './speedChoices'
-import { LabelledBlock } from '@/components/ui/labelled-block'
+import { LabelledBlock } from '@/design-system/components/labelled-block'
 import { QuickMenuView, openerMark } from './view'
 
 const props = defineProps<{

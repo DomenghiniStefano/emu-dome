@@ -2,7 +2,7 @@
 // A card of the game details' tabs: the Surface card, rounder and a little tighter on the phone
 // (board «Tel-Dettagli», CardVariant.Detail). The gap between its parts is the caller's.
 import type { HTMLAttributes } from 'vue'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 
 const props = defineProps<{
   /** The element it renders (`aside` for a side card). */

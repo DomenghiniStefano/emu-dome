@@ -13,7 +13,7 @@
 // `opacity-missing` and edged in dashes, the look of a game whose folder is not reachable.
 import { computed, ref, watch, type HTMLAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { cn } from '@/lib/cn'
+import { cn } from '@/design-system/lib/cn'
 import type { LibraryGame } from '@/emu'
 import {
   CoverSize,

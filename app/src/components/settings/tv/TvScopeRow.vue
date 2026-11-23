@@ -7,7 +7,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
-import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonFade, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type { ConsoleId, SettingLevel } from '@/emu'
 import type { GameFocus } from '@/lib/gameDetails'
 import type { EditLevel } from '@/components/settings/settingsPage'

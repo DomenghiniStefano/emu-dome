@@ -2,8 +2,8 @@
 // G02: the game could not start, and why.
 import { useI18n } from 'vue-i18n'
 import { Check } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { DialogTone } from '@/components/ui/dialog'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { DialogTone } from '@/design-system/components/dialog'
 import FlowDialog from './FlowDialog.vue'
 
 defineProps<{ title: string; reason: string }>()

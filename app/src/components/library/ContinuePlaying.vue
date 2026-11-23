@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { LibraryGame } from '@/emu'
 import type { ResumePoint } from '@/lib/gameDetails'
 import ContinueCard from './ContinueCard.vue'
-import { Heading } from '@/components/ui/heading'
+import { Heading } from '@/design-system/components/heading'
 
 defineProps<{ games: LibraryGame[]; resume: Record<string, ResumePoint> }>()
 const emit = defineEmits<{

@@ -7,7 +7,7 @@
 import { useI18n } from 'vue-i18n'
 import { Gamepad2, Hand } from '@lucide/vue'
 import FlowDialog from '@/components/game/FlowDialog.vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 
 const emit = defineEmits<{ wait: []; touch: [] }>()
 const { t } = useI18n()

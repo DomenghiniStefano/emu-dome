@@ -4,7 +4,7 @@
 import type { Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Gamepad2, Rows2 } from '@lucide/vue'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Card, CardVariant } from '@/design-system/components/card'
 import type { Tool } from './tools'
 import { QuickMenuView, openerMark } from './view'
 

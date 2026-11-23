@@ -6,8 +6,8 @@
 import { computed, nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronDown, RotateCcw } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Popover, PopoverContent } from '@/components/ui/popover'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Popover, PopoverContent } from '@/design-system/components/popover'
 import type { ShowKey, Sort } from './librarySort'
 import LibraryFilters from './LibraryFilters.vue'
 

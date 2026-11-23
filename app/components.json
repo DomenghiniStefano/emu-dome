@@ -4,7 +4,7 @@
   "typescript": true,
   "tailwind": {
     "config": "",
-    "css": "src/assets/main.css",
+    "css": "src/design-system/index.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
@@ -14,8 +14,8 @@
   "pointer": false,
   "aliases": {
     "components": "@/components",
-    "utils": "@/lib/cn",
-    "ui": "@/components/ui",
+    "utils": "@/design-system/lib/cn",
+    "ui": "@/design-system/components",
     "lib": "@/lib",
     "composables": "@/composables"
   },

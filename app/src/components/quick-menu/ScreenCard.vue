@@ -4,7 +4,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import type { ScreenCard } from './screenCards'
 import { useSay } from '@/i18n/message'
 import { FocusMark } from './view'

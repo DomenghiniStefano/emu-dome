@@ -5,8 +5,8 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LogOut } from '@lucide/vue'
 import type { CloudAccount } from '@/emu'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Heading } from '@/components/ui/heading'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Heading } from '@/design-system/components/heading'
 
 const props = defineProps<{ account: CloudAccount | null }>()
 const emit = defineEmits<{ signOut: [] }>()

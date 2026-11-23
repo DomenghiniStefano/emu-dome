@@ -35,7 +35,7 @@
 // (Ctrl + Enter starts it), and of the actions only fullscreen runs (the others need a game).
 import { computed, nextTick, ref, watch } from 'vue'
 import { uiMode } from '@/composables/useUiMode'
-import { cn } from '@/lib/cn'
+import { cn } from '@/design-system/lib/cn'
 import { ignore, report } from '@/lib/errors'
 import { useNavScope } from '@/nav'
 import { emu, type LibraryGame, type SettingKey } from '@/emu'

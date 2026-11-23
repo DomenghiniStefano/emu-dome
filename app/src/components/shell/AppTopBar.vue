@@ -7,9 +7,9 @@
 // bar reaches under the status bar: its glass behind it, its content below (`pt-safe-top`).
 import { useI18n } from 'vue-i18n'
 import { Search } from '@lucide/vue'
-import markSmall from '@/assets/brand/emudome-mark-small.svg'
-import { Button, ButtonSize, ButtonVariant } from '@/components/ui/button'
-import { Kbd } from '@/components/ui/kbd'
+import markSmall from '@/design-system/brand/emudome-mark-small.svg'
+import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
+import { Kbd } from '@/design-system/components/kbd'
 import NotificationBell from '@/components/notifications/NotificationBell.vue'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 

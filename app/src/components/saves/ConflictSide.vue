@@ -5,11 +5,11 @@
 import { useI18n } from 'vue-i18n'
 import { Check } from '@lucide/vue'
 import { playTimeLabel, saveWhenLabel, sizeLabel } from '@/i18n/labels'
-import { Button } from '@/components/ui/button'
-import { Card, CardPad } from '@/components/ui/card'
+import { Button } from '@/design-system/components/button'
+import { Card, CardPad } from '@/design-system/components/card'
 import type { ConflictVersion } from './conflict'
 import SaveThumb from './SaveThumb.vue'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from '@/design-system/components/badge'
 
 defineProps<{ version: ConflictVersion; newest: boolean }>()
 const emit = defineEmits<{ keep: [] }>()

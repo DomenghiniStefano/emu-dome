@@ -23,8 +23,8 @@ import {
   useCapture,
   type CaptureDevice,
 } from '@/lib/controls'
-import { Button, ButtonFade } from '@/components/ui/button'
-import { Card, CardVariant } from '@/components/ui/card'
+import { Button, ButtonFade } from '@/design-system/components/button'
+import { Card, CardVariant } from '@/design-system/components/card'
 import ConflictBanner from './ConflictBanner.vue'
 import RemapTableRow from './RemapTableRow.vue'
 import TesterCard from './TesterCard.vue'
@@ -35,7 +35,7 @@ import { useBindingConflict } from './useBindingConflict'
 import { useButtonTester } from './useButtonTester'
 import { useGlobalSettings } from './useGlobalSettings'
 import { useRemapLevel } from './useRemapLevel'
-import { Heading, HeadingVariant } from '@/components/ui/heading'
+import { Heading, HeadingVariant } from '@/design-system/components/heading'
 
 const props = defineProps<{
   family: PadFamily
