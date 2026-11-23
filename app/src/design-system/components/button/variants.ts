@@ -99,6 +99,9 @@ export const ButtonVariant = {
   // strong edge, in ink. Never the accent: the sheet's only amber is «Riprendi». With
   // ButtonSize.Strip.
   Strip: 'strip',
+  // The strip's «Chiudi il gioco» (Trello #121): Strip with its icon and words in danger ink.
+  // With ButtonSize.Strip.
+  StripDanger: 'stripDanger',
 } as const
 export type ButtonVariant = (typeof ButtonVariant)[keyof typeof ButtonVariant]
 
@@ -319,6 +322,7 @@ export const buttonVariants = cva(
           'w-full justify-start border-0 bg-transparent text-left font-regular whitespace-normal text-ink hover:bg-surface-hover focus:bg-accent-soft disabled:hover:bg-transparent',
         [ButtonVariant.Strip]:
           'bg-transparent text-ink-muted hover:bg-surface-hover aria-pressed:border-line-strong aria-pressed:bg-surface-hover aria-pressed:text-ink [&_svg]:text-ink',
+        [ButtonVariant.StripDanger]: 'bg-transparent text-danger hover:bg-surface-hover',
       },
       size: {
         [ButtonSize.Small]: 'h-control-sm gap-4 px-6 touch:text-label-lead',

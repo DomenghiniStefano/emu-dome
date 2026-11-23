@@ -2342,7 +2342,8 @@
       "rewind": "Riavvolgi",
       "ff": "Accelera",
       "mute": "Silenzia",
-      "unmute": "Riattiva"
+      "unmute": "Riattiva",
+      "close": "Chiudi"
     },
     "back": "Indietro",
     "savesPage": "Salvataggi",

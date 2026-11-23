@@ -28,6 +28,8 @@ export const StripId = {
   FastForward: 'ff',
   /** Sound off / on for this game. */
   Mute: 'mute',
+  /** «Chiudi il gioco» (Trello #121): the close flow, as the desktop's foot. */
+  Close: 'close',
   /** The second level. */
   More: 'more',
 } as const
@@ -40,6 +42,11 @@ export interface StripButton {
   label: string
   /** On now (fast forward running, sound off): lit, `aria-pressed`. Undefined: not a toggle. */
   pressed?: boolean
+  /** Message key of its accessible name when the short label says less («Chiudi» for «Chiudi
+   * il gioco»). */
+  name?: string
+  /** «Chiudi il gioco»: in danger ink. */
+  danger?: boolean
 }
 
 export interface StripContext {
@@ -50,7 +57,8 @@ export interface StripContext {
   muted: boolean
 }
 
-/** The strip under the three tiles: «Riavvolgi» first when rewind is on for the game. */
+/** The strip under the three tiles: «Riavvolgi» first when rewind is on for the game, then
+ * «Accelera», «Silenzia», «Chiudi il gioco» (one tap, Trello #121), «Altro» last. */
 export function stripButtons(c: StripContext): StripButton[] {
   const list: StripButton[] = []
   if (c.rewind) list.push({ id: StripId.Rewind, icon: Rewind, label: 'qm.verb.rewind' })
@@ -64,9 +72,18 @@ export function stripButtons(c: StripContext): StripButton[] {
     c.muted
       ? { id: StripId.Mute, icon: Volume2, label: 'qm.verb.unmute', pressed: true }
       : { id: StripId.Mute, icon: VolumeX, label: 'qm.verb.mute', pressed: false },
+    { id: StripId.Close, icon: Power, label: 'qm.verb.close', name: 'qm.close', danger: true },
     { id: StripId.More, icon: Ellipsis, label: 'qm.moreLabel' },
   )
   return list
+}
+
+/** On its side the panel is 300 px wide: its strip holds four buttons in one row, and five
+ * («Riavvolgi» on) would cut «Riavvolgi» and «Accelera», so they go in two rows, three above and
+ * two below (Trello #121). Upright one row always fits. */
+export const SIDE_STRIP_ONE_ROW = 4
+export function stripTwoRows(side: boolean, count: number): boolean {
+  return side && count > SIDE_STRIP_ONE_ROW
 }
 
 export const MoreId = {
@@ -81,7 +98,6 @@ export const MoreId = {
   SwapScreens: 'swap',
   CloseLid: 'lid',
   Restart: 'restart',
-  Close: 'close',
 } as const
 export type MoreId = (typeof MoreId)[keyof typeof MoreId]
 
@@ -94,8 +110,6 @@ export interface MoreRow {
   page?: QuickMenuView
   /** A row that stays on (swap, the lid): whether it is on now. */
   pressed?: boolean
-  /** «Chiudi il gioco»: last, apart, in danger ink. */
-  danger?: boolean
 }
 
 export interface MoreContext {
@@ -105,7 +119,8 @@ export interface MoreContext {
   screens: ScreenStatus | null
 }
 
-/** The rows of «Altro», top to bottom; «Chiudi il gioco» is always the last. */
+/** The rows of «Altro», top to bottom; «Riavvia il gioco» last. «Chiudi il gioco» is in the
+ * strip (Trello #121), one tap from the first level. */
 export function moreRows(c: MoreContext): MoreRow[] {
   const list: MoreRow[] = [
     { id: MoreId.Saves, icon: SaveAll, label: 'qm.savesPage', page: QuickMenuView.Slots },
@@ -146,10 +161,7 @@ export function moreRows(c: MoreContext): MoreRow[] {
         pressed: c.screens?.lidClosed ?? false,
       })
   }
-  list.push(
-    { id: MoreId.Restart, icon: RefreshCw, label: 'qm.reset' },
-    { id: MoreId.Close, icon: Power, label: 'qm.close', danger: true },
-  )
+  list.push({ id: MoreId.Restart, icon: RefreshCw, label: 'qm.reset' })
   return list
 }
 
