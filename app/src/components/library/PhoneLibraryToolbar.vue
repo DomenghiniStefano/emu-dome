@@ -4,6 +4,9 @@
 // content's edge, the order (L03, its name alone, as wide as the row leaves it), the Lista /
 // Griglia switch (`library.view`, this device's) and «Aggiungi giochi» as a square «+». On its
 // side, one row for both. No heading: the tab bar or the side column already says Libreria.
+// The L03 switches that are on lead the chips' row (ActiveShowChips, #132): a tap turns one off,
+// and the focus goes back to «Tutti».
+import { nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus } from '@lucide/vue'
 import { Button, ButtonSize } from '@/design-system/components/button'
@@ -11,6 +14,7 @@ import { Segmented, SegmentedItem, SegmentedVariant } from '@/design-system/comp
 import type { ConsoleId } from '@/emu'
 import { GAMES_VIEWS, isGamesView, type ConsoleChip, type GamesView } from './libraryView'
 import type { ShowKey, Sort } from './librarySort'
+import ActiveShowChips from './ActiveShowChips.vue'
 import ConsoleChips from './ConsoleChips.vue'
 import SortFilterButton from './SortFilterButton.vue'
 
@@ -29,12 +33,27 @@ const { t } = useI18n()
 function pick(v: string) {
   if (isGamesView(v)) view.value = v
 }
+
+const chipsRow = ref<HTMLElement | null>(null)
+/** A switch turned off from its chip: its chip goes, the focus to «Tutti». */
+async function turnOff(k: ShowKey) {
+  emit('toggle', k)
+  await nextTick()
+  chipsRow.value?.querySelector<HTMLElement>('[data-nav-initial]')?.focus()
+}
 </script>
 
 <template>
   <!-- On its side the window is short and wide: the chips and the tools share one row. -->
   <div class="flex flex-col gap-8 landscape:flex-row landscape:items-center">
-    <ConsoleChips v-model="consoleFilter" class="landscape:flex-1" :chips="chips" initial short />
+    <!-- One row that scrolls sideways: the switches on, then the consoles. -->
+    <div
+      ref="chipsRow"
+      class="flex min-w-0 gap-8 overflow-x-auto [scrollbar-width:none] landscape:flex-1"
+    >
+      <ActiveShowChips :show="show" @toggle="turnOff" />
+      <ConsoleChips v-model="consoleFilter" class="shrink-0" :chips="chips" initial short />
+    </div>
     <div class="flex items-center gap-8">
       <SortFilterButton
         class="flex-1"
