@@ -220,13 +220,18 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
   `ACTION_OPEN_DOCUMENT_TREE` and «Apri un file» `ACTION_OPEN_DOCUMENT` (every file offered: ROMs have no MIME type;
   Rust checks the extension, `unsupportedFormat`), both from `SystemBridge.kt` through an activity result, the read
   permission persisted. A folder is stored in `library.folders` as its tree URI (never a path; the desktop's paths
-  unchanged), shown by its display name (`LibraryFolder.name`), walked by the scan one `listTree` call per folder
+  unchanged), shown by its display name (`LibraryFolder.name`: the provider's, else the one kept in library.json's
+  `folderNames` from an earlier read, else the last folder of the tree's document id, `document_tree_label`, #141),
+  walked by the scan one `listTree` call per folder
   (`emudome_core::library::scan_with_documents`, games keyed by document URI + size + mtime), unreachable (E01) when
   it cannot be listed (permission given back, folder gone; `LibraryFolder.access`: `permissionLost` when the app no
   longer holds the tree's persisted permission, `SystemBridge.treePermitted`, as after an uninstall that kept the data,
-  #138: E01 then says to pick it again, and picking the same folder keeps its entry and games), its persisted
+  #138: E01 then says to pick it again, its picker opening on that folder (`library_choose_folder`'s `start`, the
+  picker's `EXTRA_INITIAL_URI`), and picking the same folder keeps its entry and games), its persisted
   permission given back when removed; not
-  watched (rescan at start / on demand). Every document is read through its descriptor (`ContentFile::reader`):
+  watched (rescan at start / on demand). A document that does not open says why (`SystemBridge.openDocument`'s
+  negative codes: not found, permission denied, other; `ContentError::Unreadable`'s `kind`, the `IoCause` of
+  `romUnreadable`). Every document is read through its descriptor (`ContentFile::reader`):
   Android 17 refuses `/proc/self/fd/<fd>` for some providers (Downloads, «Permission denied»), so identification,
   hashing, icons and the bytes a core gets come from the descriptor; a `need_fullpath` core (Azahar) gets the link's
   path only when it opens, else the open is refused (`documentNeedsPath`). A file outside the library is titled by
@@ -318,7 +323,8 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          the ROM files it skipped counted by reason (`Skipped`: encrypted 3DS,
                          unrecognised; on `library://scan` done, said by L11 only after a folder the user
                          picked, `lib/library.ts`);
-                         store.rs library.json, games never deleted, the user's version pins;
+                         store.rs library.json, games never deleted, the user's version pins, the
+                         picked Android folders' names (`folderNames`);
                          group.rs the regional versions of one game as a family (GBA / NDS code
                          and 3DS product code without the region letter; never homebrew, GB / GBC
                          or hidden games), the version shown: the user's pin, else the one

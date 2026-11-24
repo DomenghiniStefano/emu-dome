@@ -18,6 +18,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import java.io.FileNotFoundException
 
 /**
  * What the system asks of EmuDome outside the page, and the games it hands over as documents.
@@ -118,8 +119,15 @@ object SystemBridge {
         return if (intent.action == Intent.ACTION_VIEW) intent.data?.toString() else null
     }
 
+    /** [openDocument]'s answers when it fails (Rust's `content::open_failure` reads them). */
+    private const val OPEN_FAILED = -1
+    private const val OPEN_NOT_FOUND = -2
+    private const val OPEN_PERMISSION_DENIED = -3
+
     /**
-     * Opens [uri] for reading: a file descriptor the caller owns and closes, or -1 (logged).
+     * Opens [uri] for reading: a file descriptor the caller owns and closes, or a negative code
+     * (logged) saying why not: [OPEN_NOT_FOUND] the document is gone, [OPEN_PERMISSION_DENIED]
+     * the system refused it (the permission was taken back), [OPEN_FAILED] anything else.
      * Takes the persistable permission first when one was granted, so the game opens again after
      * a restart.
      */
@@ -128,10 +136,16 @@ object SystemBridge {
         return try {
             val parsed = Uri.parse(uri)
             keepPermission(context, parsed)
-            context.contentResolver.openFileDescriptor(parsed, "r")?.detachFd() ?: -1
+            context.contentResolver.openFileDescriptor(parsed, "r")?.detachFd() ?: OPEN_FAILED
+        } catch (e: FileNotFoundException) {
+            Log.w(TAG, "document not opened: $uri: $e")
+            OPEN_NOT_FOUND
+        } catch (e: SecurityException) {
+            Log.w(TAG, "document not opened: $uri: $e")
+            OPEN_PERMISSION_DENIED
         } catch (e: Exception) {
             Log.w(TAG, "document not opened: $uri: $e")
-            -1
+            OPEN_FAILED
         }
     }
 
@@ -177,11 +191,14 @@ object SystemBridge {
      * Shows the system's folder picker (`ACTION_OPEN_DOCUMENT_TREE`). The folder picked keeps its
      * read permission across restarts (persisted); its tree URI and display name reach Rust
      * through [nativeDocumentPicked], from a background thread (the name is a provider query).
-     * Any thread.
+     * [start], a tree picked before (null: where the system chooses), is where the picker opens
+     * (`EXTRA_INITIAL_URI`, set by the contract), so the same folder is picked again with one
+     * tap (Trello #141). Any thread.
      */
     @JvmStatic
-    fun pickTree(activity: Activity) {
-        showPicker(activity, ActivityResultContracts.OpenDocumentTree(), null) { uri ->
+    fun pickTree(activity: Activity, start: String?) {
+        val initial = start?.let { treeRoot(it) }
+        showPicker(activity, ActivityResultContracts.OpenDocumentTree(), initial) { uri ->
             persistRead(activity, uri)
             uri.toString() to treeName(activity, uri.toString())
         }
@@ -246,6 +263,24 @@ object SystemBridge {
             context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (e: SecurityException) {
             Log.w(TAG, "read permission not persisted for $uri (lost at the next start): $e")
+        }
+    }
+
+    /**
+     * The root folder of the tree [tree] as a document URI, the form the picker's
+     * `EXTRA_INITIAL_URI` takes; null (the picker opens where the system chooses) when [tree] is
+     * not a tree URI.
+     */
+    private fun treeRoot(tree: String): Uri? {
+        return try {
+            val treeUri = Uri.parse(tree)
+            DocumentsContract.buildDocumentUri(
+                treeUri.authority,
+                DocumentsContract.getTreeDocumentId(treeUri),
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "picker not opened on $tree: $e")
+            null
         }
     }
 

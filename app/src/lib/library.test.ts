@@ -256,8 +256,16 @@ describe('replaceFolder (E01)', () => {
 
   it('keeps the folder when the same one is picked again (#138: its permission back)', async () => {
     bridge.choose.mockResolvedValue(TREE)
-    expect(await replaceFolder(TREE)).toBeNull()
+    expect(await replaceFolder(TREE, true)).toBeNull()
     expect(bridge.remove).not.toHaveBeenCalled()
+  })
+
+  it('opens the picker on the old folder only to choose it again (#141)', async () => {
+    bridge.choose.mockResolvedValue(null)
+    await replaceFolder(TREE, true)
+    expect(bridge.choose).toHaveBeenLastCalledWith(TREE)
+    await replaceFolder(TREE)
+    expect(bridge.choose).toHaveBeenLastCalledWith(undefined)
   })
 
   it('removes the old folder when another one is picked', async () => {

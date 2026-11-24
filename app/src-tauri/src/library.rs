@@ -492,9 +492,13 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
     let (paths, trees): (Vec<String>, Vec<String>) = folders(app)
         .into_iter()
         .partition(|f| !emudome_platform::is_content_uri(f));
-    // The trees' names, read again (renamed, or the first scan of this run).
+    // The trees' names, read again (renamed, or the first scan of this run), and kept in the
+    // library for when they cannot be read (the permission taken back, #141).
     for tree in &trees {
         let name = emudome_platform::document_tree_name(tree);
+        if let Some(name) = &name {
+            remember_tree_name(state, tree, name);
+        }
         state.trees.lock().entry(tree.clone()).or_default().name = name;
     }
     let input = {
@@ -1140,31 +1144,53 @@ pub fn library_get(app: AppHandle, state: State<'_, LibraryState>) -> LibraryDto
 
 fn library_dto(app: &AppHandle, state: &LibraryState) -> LibraryDto {
     let grouped = grouped(app);
-    let (games, families) = {
+    let folder_list = folders(app);
+    let (games, families, remembered) = {
         let lib = state.lib.lock();
         let games: Vec<GameDto> = lib.games().map(GameDto::new).collect();
-        (games, families(grouped, &lib))
+        let remembered: HashMap<String, String> = folder_list
+            .iter()
+            .filter_map(|f| Some((f.clone(), lib.folder_name(f)?.to_owned())))
+            .collect();
+        (games, families(grouped, &lib), remembered)
     };
     let trees = state.trees.lock().clone();
     LibraryDto {
         games,
         families,
-        folders: folders(app)
+        folders: folder_list
             .into_iter()
-            .map(|path| folder_dto(path, &trees))
+            .map(|path| folder_dto(path, &trees, &remembered))
             .collect(),
         scanning: state.scanning.load(Ordering::SeqCst),
     }
 }
 
+/// Keeps a picked tree's display name in the library (logged when it cannot be written: the
+/// name read now is shown anyway).
+fn remember_tree_name(state: &LibraryState, tree: &str, name: &str) {
+    if let Err(e) = state.lib.lock().remember_folder_name(tree, name) {
+        log::warn!("library: the name of {tree} not kept: {e:?}");
+    }
+}
+
 /// A folder of `library.folders` for the interface. A picked document tree (Android) shows its
 /// display name and is reachable as the last scan found it (until a scan, as picked; never
-/// looked at here: this runs on the event loop).
-fn folder_dto(path: String, trees: &HashMap<String, TreeSeen>) -> FolderDto {
+/// looked at here: this runs on the event loop). Its name: the provider's as last read this
+/// run, else the one `remembered` from an earlier run, else the last folder its URI names
+/// (the provider cannot tell it once the permission was taken back, #141).
+fn folder_dto(
+    path: String,
+    trees: &HashMap<String, TreeSeen>,
+    remembered: &HashMap<String, String>,
+) -> FolderDto {
     if emudome_platform::is_content_uri(&path) {
         let seen = trees.get(&path);
         return FolderDto {
-            name: seen.and_then(|t| t.name.clone()),
+            name: seen
+                .and_then(|t| t.name.clone())
+                .or_else(|| remembered.get(&path).cloned())
+                .or_else(|| emudome_platform::document_tree_label(&path)),
             access: seen.map(|t| t.access).unwrap_or_default(),
             path,
         };
@@ -1182,15 +1208,19 @@ fn folder_dto(path: String, trees: &HashMap<String, TreeSeen>) -> FolderDto {
 
 /// Native folder picker: the folder joins `library.folders` and is scanned. `None` = cancelled.
 /// Android: the system's folder picker, the folder kept as its tree URI with its read permission
-/// persisted. Off the event loop: it waits for the user.
+/// persisted; `start`, a picked folder to choose again (E01 «Scegli di nuovo la cartella», #141),
+/// is where it opens (the desktop's dialog ignores it). Off the event loop: it waits for the user.
 #[tauri::command]
-pub async fn library_choose_folder(app: AppHandle) -> Result<Option<String>, ErrorCode> {
-    crate::blocking(app, choose_folder).await?
+pub async fn library_choose_folder(
+    app: AppHandle,
+    start: Option<String>,
+) -> Result<Option<String>, ErrorCode> {
+    crate::blocking(app, move |app| choose_folder(app, start.as_deref())).await?
 }
 
-fn choose_folder(app: &AppHandle) -> Result<Option<String>, ErrorCode> {
+fn choose_folder(app: &AppHandle, start: Option<&str>) -> Result<Option<String>, ErrorCode> {
     let folder = if emudome_platform::DOCUMENT_PICKERS {
-        let picked = emudome_platform::pick_document_tree().unwrap_or_else(|e| {
+        let picked = emudome_platform::pick_document_tree(start).unwrap_or_else(|e| {
             log::warn!("folder picker: {e:?}");
             None
         });
@@ -1198,6 +1228,9 @@ fn choose_folder(app: &AppHandle) -> Result<Option<String>, ErrorCode> {
             return Ok(None);
         };
         if let Some(state) = app.try_state::<LibraryState>() {
+            if let Some(name) = &picked.name {
+                remember_tree_name(&state, &picked.uri, name);
+            }
             state.trees.lock().insert(
                 picked.uri.clone(),
                 TreeSeen {
@@ -1504,8 +1537,50 @@ pub fn library_set_name(
 
 #[cfg(test)]
 mod tests {
-    use super::{screenshot_file, user_cover_file, FolderAccess};
+    use super::{folder_dto, screenshot_file, user_cover_file, FolderAccess, TreeSeen};
+    use std::collections::HashMap;
     use std::path::Path;
+
+    /// A picked folder is named by the provider, else by the name kept from an earlier run,
+    /// else by its URI; never all alike when the permission is gone (#141).
+    #[test]
+    fn a_picked_folder_is_named_even_without_its_permission() {
+        let tree = |id: &str| format!("content://com.android.externalstorage.documents/tree/{id}");
+        let (read, kept, bare, root) = (
+            tree("primary%3AA"),
+            tree("primary%3AB"),
+            tree("primary%3ADownload%2FEmuDomeTest"),
+            tree("primary%3A"),
+        );
+        let trees: HashMap<String, TreeSeen> = [&read, &kept, &bare, &root]
+            .into_iter()
+            .map(|t| {
+                let name = (*t == read).then(|| "From the provider".to_owned());
+                (
+                    t.clone(),
+                    TreeSeen {
+                        name,
+                        access: FolderAccess::PermissionLost,
+                    },
+                )
+            })
+            .collect();
+        let remembered: HashMap<String, String> = [
+            (read.clone(), "Older".to_owned()),
+            (kept.clone(), "Kept".to_owned()),
+        ]
+        .into_iter()
+        .collect();
+        let name = |path: &String| folder_dto(path.clone(), &trees, &remembered).name;
+        assert_eq!(name(&read).as_deref(), Some("From the provider"));
+        assert_eq!(name(&kept).as_deref(), Some("Kept"));
+        assert_eq!(name(&bare).as_deref(), Some("EmuDomeTest"));
+        assert_eq!(name(&root), None);
+        // Not seen by a scan yet: the same order.
+        let unseen = folder_dto(bare.clone(), &HashMap::new(), &HashMap::new());
+        assert_eq!(unseen.name.as_deref(), Some("EmuDomeTest"));
+        assert_eq!(unseen.access, FolderAccess::Reachable);
+    }
 
     #[test]
     fn a_tree_without_its_permission_says_so_and_only_then() {

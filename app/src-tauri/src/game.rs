@@ -392,7 +392,7 @@ fn document_label(uri: &str, name: Option<&str>) -> String {
 /// is `Kirby.gba`); the URI itself when nothing is left.
 fn uri_file_name(uri: &str) -> String {
     let last = uri.trim_end_matches('/').rsplit('/').next().unwrap_or(uri);
-    let decoded = percent_decode(last);
+    let decoded = emudome_platform::percent_decode(last);
     let name = decoded.rsplit([':', '/']).next().unwrap_or_default();
     if name.is_empty() {
         uri.to_owned()
@@ -401,35 +401,14 @@ fn uri_file_name(uri: &str) -> String {
     }
 }
 
-/// `%XX` escapes decoded (UTF-8, lossy); a malformed escape is kept as it is.
-fn percent_decode(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        let hex = bytes
-            .get(i + 1..i + 3)
-            .and_then(|h| std::str::from_utf8(h).ok())
-            .and_then(|h| u8::from_str_radix(h, 16).ok());
-        if let (b'%', Some(b)) = (bytes[i], hex) {
-            out.push(b);
-            i += 3;
-        } else {
-            out.push(bytes[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8_lossy(&out).into_owned()
-}
-
 /// A document that could not be opened, for the interface: the file and why, as values; the
 /// provider's own text goes to the log.
 fn content_error(uri: &str, e: emudome_platform::ContentError) -> ErrorCode {
     use emudome_platform::ContentError;
     match e {
-        ContentError::Unreadable(detail) => {
-            log::warn!("{uri}: the document cannot be opened: {detail}");
-            document_unreadable(uri, None, IoCause::Other)
+        ContentError::Unreadable { kind, detail } => {
+            log::warn!("{uri}: the document cannot be opened ({kind:?}): {detail}");
+            document_unreadable(uri, None, IoCause::from(kind))
         }
         ContentError::NotLocal => ErrorCode::DocumentNotLocal {
             file: document_label(uri, None),
@@ -702,7 +681,43 @@ pub(crate) fn abandon_game(state: tauri::State<'_, AppState>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{file_title, uri_file_name};
+    use super::{content_error, file_title, uri_file_name};
+    use emudome_core::{ErrorCode, IoCause};
+    use emudome_platform::ContentError;
+
+    /// A document the provider did not open keeps the kind of failure as the cause the user is
+    /// told: gone, refused, or another failure (Trello #146).
+    #[test]
+    fn a_document_not_opened_says_why() {
+        let uri = "content://com.android.externalstorage.documents/tree/primary%3AGames/document/\
+                   primary%3AGames%2FKirby.gba";
+        let opened = |kind| {
+            content_error(
+                uri,
+                ContentError::Unreadable {
+                    kind,
+                    detail: "test".into(),
+                },
+            )
+        };
+        let unreadable = |cause| ErrorCode::RomUnreadable {
+            file: "Kirby.gba".into(),
+            path: uri.into(),
+            cause,
+        };
+        assert_eq!(
+            opened(std::io::ErrorKind::NotFound),
+            unreadable(IoCause::NotFound)
+        );
+        assert_eq!(
+            opened(std::io::ErrorKind::PermissionDenied),
+            unreadable(IoCause::PermissionDenied)
+        );
+        assert_eq!(
+            opened(std::io::ErrorKind::Other),
+            unreadable(IoCause::Other)
+        );
+    }
 
     /// A document whose display name cannot be read is named by its URI's last part, decoded:
     /// never the whole URI as the file's name (Trello #128).

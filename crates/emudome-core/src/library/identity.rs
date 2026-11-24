@@ -651,8 +651,10 @@ fn code(bytes: &[u8]) -> Option<String> {
 /// UTF-16LE up to the first NUL.
 fn utf16(bytes: &[u8]) -> String {
     let units: Vec<u16> = bytes
-        .chunks_exact(2)
-        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|c| u16::from_le_bytes(*c))
         .take_while(|u| *u != 0)
         .collect();
     String::from_utf16_lossy(&units)

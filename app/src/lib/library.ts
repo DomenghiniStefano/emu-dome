@@ -222,11 +222,14 @@ export async function chooseFolder(): Promise<string | null> {
   }
 }
 
-/** E01 «Scegli un'altra cartella»: a new folder replaces the unreachable one. */
-export async function replaceFolder(old: string): Promise<string | null> {
+/**
+ * E01 «Scegli un'altra cartella»: a new folder replaces the unreachable one. `again` («Scegli di
+ * nuovo la cartella», its permission taken back): the picker opens on the old folder (#141).
+ */
+export async function replaceFolder(old: string, again = false): Promise<string | null> {
   picked = true
   try {
-    const chosen = await emu.library.chooseFolder()
+    const chosen = await emu.library.chooseFolder(again ? old : undefined)
     if (chosen === null) picked = false
     if (chosen !== null && chosen !== old) await emu.library.removeFolder(old)
     return null
