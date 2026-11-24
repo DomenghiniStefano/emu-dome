@@ -130,8 +130,9 @@ Once, by the owner, before the first run:
 
 1. On `develop`, raise the version (`node scripts/versions.mjs bump`); `./scripts/check.ps1` green on that commit
    (the merge rule).
-2. Merge `develop` into `main` (fast-forward) and tag that commit `v<version>` (an annotated tag) on `main`. The tag
-   is the release: every package of it is built from the tagged commit, never from a working copy.
+2. Merge `develop` into `main` (fast-forward) and push it: `main.yml` builds the Android package and, after your
+   approval, tags that commit `v<version>`. The tag is the release: every package of it is built from the tagged
+   commit, never from a working copy.
 3. Build each package **from a clean clone** of the tag (`git clone --branch v<version>`, no leftovers in
    `target/`, `node_modules/` or `cores/`):
    - `./scripts/check.ps1` (Windows) / `sh scripts/check` (Linux) green in that clone;
