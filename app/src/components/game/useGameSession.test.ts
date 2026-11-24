@@ -7,12 +7,14 @@ import type { Toasts } from '@/composables/useToasts'
 const bridge = vi.hoisted(() => ({
   setSlot: vi.fn(),
   setMenuOpen: vi.fn(),
+  setPhone: vi.fn(),
 }))
 vi.mock('@/emu', () => ({
   AUTO_SLOT: 0,
   emu: {
     setMenuOpen: bridge.setMenuOpen,
     controls: { setSlot: bridge.setSlot },
+    screens: { setPhone: bridge.setPhone },
   },
 }))
 vi.mock('@/lib/keymap', () => ({ loadKeymap: () => Promise.resolve() }))
@@ -75,5 +77,26 @@ describe("the game's quick slot (#110)", () => {
     await session.setQuickSlot(2)
     expect(toasts.failWith).toHaveBeenCalledTimes(1)
     expect(session.comboSlot.value).toBe(3)
+  })
+})
+
+describe("the phone's placement of the screens (#134)", () => {
+  const placed = [{ id: 'main' as const, x: 0, y: 0, w: 1, h: 0.5 }]
+  beforeEach(() => {
+    bridge.setPhone.mockReset()
+    bridge.setPhone.mockResolvedValue({})
+    bridge.setMenuOpen.mockResolvedValue(undefined)
+  })
+
+  it("a late one from the old game sends nothing of the old game's to the new one", async () => {
+    const { session } = setup()
+    await session.begin(game('gba:01', 1), null)
+    session.setPlacement('layer', placed)
+    session.setPlacement('editor', placed)
+    expect(bridge.setPhone).toHaveBeenCalledTimes(1)
+    await session.begin(game('gba:02', 1), null)
+    // The old game's editor closing late: the new session holds no placement to fall back to.
+    session.setPlacement('editor', null)
+    expect(bridge.setPhone).toHaveBeenCalledTimes(1)
   })
 })

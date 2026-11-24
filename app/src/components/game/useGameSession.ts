@@ -80,7 +80,10 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
 
   /** The core runs `info`: a fresh session, then the auto quick save or the resume question. */
   async function begin(info: GameInfo, from: LibraryGame | null, resumeAuto = false) {
-    // The new Rust session holds no placement: forget what was sent.
+    // The new Rust session holds no placement: forget what was sent and what it came from, so a
+    // late `setPlacement` of the old game's layer or editor sends nothing of the old game's.
+    layerPlacement = []
+    editorPlacement = null
     sentPlacement = []
     launches.value += 1
     playingGame.value = from
