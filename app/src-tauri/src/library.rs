@@ -1208,15 +1208,19 @@ fn folder_dto(
 
 /// Native folder picker: the folder joins `library.folders` and is scanned. `None` = cancelled.
 /// Android: the system's folder picker, the folder kept as its tree URI with its read permission
-/// persisted. Off the event loop: it waits for the user.
+/// persisted; `start`, a picked folder to choose again (E01 «Scegli di nuovo la cartella», #141),
+/// is where it opens (the desktop's dialog ignores it). Off the event loop: it waits for the user.
 #[tauri::command]
-pub async fn library_choose_folder(app: AppHandle) -> Result<Option<String>, ErrorCode> {
-    crate::blocking(app, choose_folder).await?
+pub async fn library_choose_folder(
+    app: AppHandle,
+    start: Option<String>,
+) -> Result<Option<String>, ErrorCode> {
+    crate::blocking(app, move |app| choose_folder(app, start.as_deref())).await?
 }
 
-fn choose_folder(app: &AppHandle) -> Result<Option<String>, ErrorCode> {
+fn choose_folder(app: &AppHandle, start: Option<&str>) -> Result<Option<String>, ErrorCode> {
     let folder = if emudome_platform::DOCUMENT_PICKERS {
-        let picked = emudome_platform::pick_document_tree().unwrap_or_else(|e| {
+        let picked = emudome_platform::pick_document_tree(start).unwrap_or_else(|e| {
             log::warn!("folder picker: {e:?}");
             None
         });

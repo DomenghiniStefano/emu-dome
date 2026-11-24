@@ -475,10 +475,11 @@ pub const DOCUMENT_PICKERS: bool = imp::DOCUMENT_PICKERS;
 
 /// Shows the system's folder picker (Android: `ACTION_OPEN_DOCUMENT_TREE`, the read permission
 /// persisted across restarts) and waits for the answer: `Ok(None)` when cancelled. Blocks until
-/// the user answers: never call it on the main thread. [`ContentError::Unsupported`] on the
-/// desktop.
-pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
-    imp::pick_document_tree()
+/// the user answers: never call it on the main thread. `start`, a tree picked before (its read
+/// permission taken back, Trello #141), is where the picker opens, so picking it again is one
+/// tap; `None` opens where the system chooses. [`ContentError::Unsupported`] on the desktop.
+pub fn pick_document_tree(start: Option<&str>) -> Result<Option<PickedDocument>, ContentError> {
+    imp::pick_document_tree(start)
 }
 
 /// Shows the system's file picker for one document (Android: `ACTION_OPEN_DOCUMENT`, every file

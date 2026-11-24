@@ -191,11 +191,14 @@ object SystemBridge {
      * Shows the system's folder picker (`ACTION_OPEN_DOCUMENT_TREE`). The folder picked keeps its
      * read permission across restarts (persisted); its tree URI and display name reach Rust
      * through [nativeDocumentPicked], from a background thread (the name is a provider query).
-     * Any thread.
+     * [start], a tree picked before (null: where the system chooses), is where the picker opens
+     * (`EXTRA_INITIAL_URI`, set by the contract), so the same folder is picked again with one
+     * tap (Trello #141). Any thread.
      */
     @JvmStatic
-    fun pickTree(activity: Activity) {
-        showPicker(activity, ActivityResultContracts.OpenDocumentTree(), null) { uri ->
+    fun pickTree(activity: Activity, start: String?) {
+        val initial = start?.let { treeRoot(it) }
+        showPicker(activity, ActivityResultContracts.OpenDocumentTree(), initial) { uri ->
             persistRead(activity, uri)
             uri.toString() to treeName(activity, uri.toString())
         }
@@ -260,6 +263,24 @@ object SystemBridge {
             context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } catch (e: SecurityException) {
             Log.w(TAG, "read permission not persisted for $uri (lost at the next start): $e")
+        }
+    }
+
+    /**
+     * The root folder of the tree [tree] as a document URI, the form the picker's
+     * `EXTRA_INITIAL_URI` takes; null (the picker opens where the system chooses) when [tree] is
+     * not a tree URI.
+     */
+    private fun treeRoot(tree: String): Uri? {
+        return try {
+            val treeUri = Uri.parse(tree)
+            DocumentsContract.buildDocumentUri(
+                treeUri.authority,
+                DocumentsContract.getTreeDocumentId(treeUri),
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "picker not opened on $tree: $e")
+            null
         }
     }
 

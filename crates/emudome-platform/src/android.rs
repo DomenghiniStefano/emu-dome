@@ -521,20 +521,14 @@ extern "system" fn native_document_picked(
     }
 }
 
-/// Shows a picker (`SystemBridge.<method>(Activity)`) and waits for its answer.
-fn pick(what: &str, method: &str) -> Result<Option<PickedDocument>, ContentError> {
+/// Shows a picker (`SystemBridge.<method>`, called by `show`) and waits for its answer.
+fn pick(
+    what: &str,
+    show: impl FnOnce(&mut JNIEnv, &JObject, &JClass) -> jni::errors::Result<()>,
+) -> Result<Option<PickedDocument>, ContentError> {
     let (tx, rx) = std::sync::mpsc::channel();
     *PICKED.lock() = Some(tx);
-    with_java(what, |env, activity, bridge| {
-        env.call_static_method(
-            bridge,
-            method,
-            "(Landroid/app/Activity;)V",
-            &[JValue::Object(activity)],
-        )
-        .map(|_| ())
-    })
-    .map_err(ContentError::unreadable)?;
+    with_java(what, show).map_err(ContentError::unreadable)?;
     match rx.recv_timeout(PICK_TIMEOUT) {
         Ok(picked) => Ok(picked),
         Err(e) => {
@@ -546,8 +540,20 @@ fn pick(what: &str, method: &str) -> Result<Option<PickedDocument>, ContentError
 
 pub const DOCUMENT_PICKERS: bool = true;
 
-pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
-    let picked = pick("folder picker", "pickTree")?;
+pub fn pick_document_tree(start: Option<&str>) -> Result<Option<PickedDocument>, ContentError> {
+    let picked = pick("folder picker", |env, activity, bridge| {
+        let start = match start {
+            Some(tree) => JObject::from(env.new_string(tree)?),
+            None => JObject::null(),
+        };
+        env.call_static_method(
+            bridge,
+            "pickTree",
+            "(Landroid/app/Activity;Ljava/lang/String;)V",
+            &[JValue::Object(activity), JValue::Object(&start)],
+        )
+        .map(|_| ())
+    })?;
     match &picked {
         Some(p) => log::info!("android folder picked: {:?} {}", p.name, p.uri),
         None => log::info!("android folder picker cancelled"),
@@ -556,7 +562,15 @@ pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
 }
 
 pub fn pick_document() -> Result<Option<PickedDocument>, ContentError> {
-    let picked = pick("file picker", "pickDocument")?;
+    let picked = pick("file picker", |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            "pickDocument",
+            "(Landroid/app/Activity;)V",
+            &[JValue::Object(activity)],
+        )
+        .map(|_| ())
+    })?;
     match &picked {
         Some(p) => log::info!("android file picked: {:?} {}", p.name, p.uri),
         None => log::info!("android file picker cancelled"),
