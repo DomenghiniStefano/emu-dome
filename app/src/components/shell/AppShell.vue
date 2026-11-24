@@ -146,6 +146,14 @@ function phoneBack() {
   if (to) route.value = to
   else ignore(emu.leaveToBackground(), 'back at the shell root: the app stays in front')
 }
+/**
+ * A section opened for another's button is done (Settings' C06 for C01's «Controlli touch»,
+ * #144): back to the section left last, along the trail as the phone's back goes.
+ */
+function backToOpener() {
+  const to = backFrom(route.value)
+  if (to) route.value = to
+}
 useNavScope(root, {
   autofocus: true,
   back: () => {
@@ -284,6 +292,7 @@ provideShellJump(j => {
             :edit-row="arrivalFor(route, 'settings')?.edit ?? false"
             @open-controls="go(openSection(route, 'controls'))"
             @open-cloud="go(openSection(route, 'cloud'))"
+            @leave="backToOpener"
           />
           <ControlsView
             v-else-if="section === 'controls'"

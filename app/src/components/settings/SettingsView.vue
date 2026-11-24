@@ -73,7 +73,13 @@ const props = defineProps<{
    * #112), as its button would. */
   editRow?: boolean
 }>()
-const emit = defineEmits<{ openControls: []; openCloud: [] }>()
+const emit = defineEmits<{
+  openControls: []
+  openCloud: []
+  /** The editor or page this section was opened for from another (`editRow`) is closed: the
+   * shell goes back to where it came from (#144: C01's «Controlli touch» back to Controls). */
+  leave: []
+}>()
 const { t } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
@@ -170,6 +176,7 @@ function chooseConsole(console: ConsoleId) {
 function closeEditor() {
   editing.value = null
   choosing.value = null
+  if (leaveOnClose()) return
   void nextTick(() => editOpener?.focus())
 }
 
@@ -191,7 +198,19 @@ function choose(key: SettingKey) {
 }
 function closeAside() {
   aside.value = null
+  if (leaveOnClose()) return
   void nextTick(() => asideOpener?.focus())
+}
+
+// Opened for another section's button (`editRow`: C01's «Controlli touch», E13's «Gestisci lo
+// spazio»), the editor or page goes back there when closed, once (#144); opened from this
+// section's own row it stays here.
+let openedFromElsewhere = false
+function leaveOnClose(): boolean {
+  if (!openedFromElsewhere) return false
+  openedFromElsewhere = false
+  emit('leave')
+  return true
 }
 
 // X01: the row the search opened this section for, lit for `duration-highlight` (its animation
@@ -220,6 +239,7 @@ onMounted(async () => {
   await lightRow()
   // E13's «Gestisci lo spazio» (#29) arrives as `saves.space` with `edit`: its page opens.
   if (litRow && editRow) {
+    openedFromElsewhere = true
     if (ASIDE_ROWS[litRow]) choose(litRow)
     else editScreens(litRow)
   }
