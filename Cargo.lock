@@ -1370,7 +1370,7 @@ checksum = "4ef6b89e5b37196644d8796de5268852ff179b44e96276cf4290264843743bb7"
 
 [[package]]
 name = "emudome"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1397,7 +1397,7 @@ dependencies = [
 
 [[package]]
 name = "emudome-core"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "anyhow",
  "image",
@@ -1416,7 +1416,7 @@ dependencies = [
 
 [[package]]
 name = "emudome-platform"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "android_logger",
  "env_logger",
@@ -1437,7 +1437,7 @@ dependencies = [
 
 [[package]]
 name = "emudome-sync"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "base64 0.23.1",
  "emudome-core",
@@ -3144,7 +3144,7 @@ dependencies = [
 
 [[package]]
 name = "libretro-sys"
-version = "0.0.2"
+version = "0.0.3"
 
 [[package]]
 name = "link-section"
