@@ -24,7 +24,14 @@ vi.mock('@/emu', () => ({
 }))
 
 const vib = (over: Partial<SettingEntry> = {}) =>
-  ({ key: 'touch.tvib', page: 'touch', phase: 1, platform: 'phone', ...over }) as SettingEntry
+  ({
+    key: 'touch.tvib',
+    page: 'touch',
+    phase: 1,
+    platform: 'phone',
+    kind: { type: 'toggle' },
+    ...over,
+  }) as SettingEntry
 const schema = (device: 'phone' | 'desktop', entries: SettingEntry[]) =>
   ({ currentPhase: 1, device, entries }) as unknown as SettingsSchema
 const row = (key: string, value: SettingRow['value']) =>
