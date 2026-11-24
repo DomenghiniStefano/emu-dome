@@ -21,6 +21,7 @@
 // fits: Select and Start in a column between the d-pad and the face buttons.
 import type {
   ConsoleId,
+  CustomScreen,
   TouchControl,
   TouchControlId,
   TouchLayout,
@@ -543,3 +544,13 @@ export function reservedInset(
   const { left, right } = reservedSides(layout, area, boxOf)
   return left > 0 || right > 0 ? { ...NO_INSET, left, right } : NO_INSET
 }
+
+/** The placement of the screens sent to the game: the layout's own while its controls are in use,
+ * none (the game's own layout) while they are hidden. */
+export const playPlacement = (layout: TouchLayout, controlsInUse: boolean): CustomScreen[] =>
+  controlsInUse ? layout.screens : []
+
+/** The edges the controls keep clear of the game: none while hidden, and none while a placement
+ * is in use (Rust composes it over the whole window). */
+export const playInset = (layout: TouchLayout, shown: boolean, reserved: () => InsetPx): InsetPx =>
+  shown && layout.screens.length === 0 ? reserved() : NO_INSET

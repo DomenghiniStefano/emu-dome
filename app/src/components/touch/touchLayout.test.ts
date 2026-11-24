@@ -12,6 +12,8 @@ import {
   nudge,
   orientationOf,
   overlaps,
+  playInset,
+  playPlacement,
   pinchSize,
   rectOf,
   remove,
@@ -27,7 +29,8 @@ import {
   type Box,
   type Rect,
 } from './touchLayout'
-import type { InsetPx } from '@/components/game/inset'
+import { NO_INSET, type InsetPx } from '@/components/game/inset'
+import { touchShown } from './touchVisibility'
 
 // The controls' own boxes at 100%, as the design system draws them (design-system/tokens/spacing.css:
 // `size-dpad`, `size-pad-stick`, `size-pad-face`, the shoulders `w-pad-shoulder` × `h-pad-strip`,
@@ -454,5 +457,48 @@ describe('two screens on a phone', () => {
     const layout = defaultLayout('nds', 'portrait', S23_UP, AVAILABLE.nds)
     const back = add(remove(layout, 'l'), 'l', 'nds', 'portrait', S23_UP)
     expect(back.controls.find(c => c.id === 'l')).toEqual(layout.controls.find(c => c.id === 'l'))
+  })
+})
+
+describe('the placement in use', () => {
+  const menu = {
+    id: 'menu' as const,
+    x: 0.1,
+    y: 0.1,
+    size: 100,
+    opacity: 100,
+    behaviour: 'tap' as const,
+  }
+  const main = { id: 'main', x: 0, y: 0.1, w: 1, h: 0.4 } as const
+  const side = { id: 'main', x: 0.25, y: 0, w: 0.5, h: 0.7 } as const
+  const upright = { width: 360, height: 780 }
+  const sideways = { width: 780, height: 360 }
+
+  it("activeLayout keeps each orientation's own screens", () => {
+    const s = setup('gba', {
+      portrait: { controls: [menu], screens: [main] },
+      landscape: { controls: [menu], screens: [side] },
+    })
+    expect(activeLayout('gba', s, 'portrait', 'custom', upright).screens).toEqual([main])
+    expect(activeLayout('gba', s, 'landscape', 'custom', sideways).screens).toEqual([side])
+    expect(activeLayout('gba', s, 'portrait', 'default', upright).screens).toEqual([])
+    const noControls = setup('gba', { portrait: { controls: [], screens: [main] } })
+    expect(activeLayout('gba', noControls, 'portrait', 'custom', upright).screens).toEqual([])
+  })
+
+  it('playPlacement withdraws only when the controls are out of use', () => {
+    const layout = { controls: [menu], screens: [main] }
+    expect(playPlacement(layout, true)).toEqual([main])
+    expect(playPlacement(layout, false)).toEqual([])
+    const base = { touch: true, inGame: true, menuOpen: false, editing: false, controllers: 1 }
+    expect(touchShown({ ...base, hideWithPad: true })).toBe(false)
+    expect(touchShown({ ...base, hideWithPad: false })).toBe(true)
+  })
+
+  it('playInset keeps no edge while a placement is in use', () => {
+    const band = { ...NO_INSET, bottom: 220, align: 'bottom' as const }
+    expect(playInset({ controls: [menu], screens: [main] }, true, () => band)).toEqual(NO_INSET)
+    expect(playInset({ controls: [menu], screens: [] }, true, () => band)).toEqual(band)
+    expect(playInset({ controls: [menu], screens: [] }, false, () => band)).toEqual(NO_INSET)
   })
 })

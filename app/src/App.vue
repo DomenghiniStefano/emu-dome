@@ -137,9 +137,11 @@ onMounted(async () => {
     />
     <TouchLayer
       v-if="touch"
+      :key="session.launches.value"
       :console="game.consoleId"
       :menu-open="menuOpen"
       @menu="session.setMenu(true)"
+      @placement="s => session.setPlacement('layer', s)"
       @inset="session.setInset"
       @paused="p => (session.paused.value = p)"
     />
