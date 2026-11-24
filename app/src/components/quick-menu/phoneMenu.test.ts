@@ -120,12 +120,14 @@ describe('moreRows', () => {
 })
 
 describe('the quick slot', () => {
-  it('can be made quick only on a numbered slot the shortcuts reach, not the quick one', () => {
+  it('can be made quick on any numbered slot, not the automatic one nor the quick one', () => {
     expect(canMakeQuick(0, 1)).toBe(false)
     expect(canMakeQuick(1, 1)).toBe(false)
     expect(canMakeQuick(2, 1)).toBe(true)
     expect(canMakeQuick(9, 1)).toBe(true)
-    expect(canMakeQuick(10, 1)).toBe(false)
+    // The tenth slot too (#149): the shortcuts cycle through 1–9, «Rendi rapido» reaches it.
+    expect(canMakeQuick(10, 1)).toBe(true)
+    expect(canMakeQuick(10, 10)).toBe(false)
   })
 })
 

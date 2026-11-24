@@ -351,7 +351,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          `{ "$schema": 1, "slot": n }`, synced with the saves (not a quick save for
                          `cloud.squick`); read when the game opens (`restore`: none or unreadable = slot 1,
                          an unreadable file left as it is), written by the session's I/O worker at every
-                         move (`Command::SetQuickSlot`); clamped to 1–9; unit-tested)
+                         move (`Command::SetQuickSlot`); clamped to 1–10 (`LAST`, the largest
+                         `saves.slots`: «Rendi rapido» reaches slot 10, the shortcuts cycle 1–9);
+                         unit-tested)
                          cover.rs (#85: a cover from the user's image or a screenshot: PNG / JPEG / WebP at
                          most 16 MiB and 8192 px a side, EXIF orientation applied, the 2:3 `CoverView` the
                          interface chose, the spare space the image blurred and dimmed, 600 × 900, JPEG 90,

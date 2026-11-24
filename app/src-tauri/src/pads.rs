@@ -73,10 +73,10 @@ pub struct Pads {
 }
 
 impl Pads {
-    /// The current quick save slot.
+    /// The current quick save slot (1 to `quick_slot::LAST`: the tenth too, #149).
     pub fn slot(&self) -> u8 {
         let slot = self.slot.load(Ordering::Relaxed);
-        if (hotkeys::FIRST_SLOT..=hotkeys::LAST_SLOT).contains(&slot) {
+        if (hotkeys::FIRST_SLOT..=emudome_core::quick_slot::LAST).contains(&slot) {
             slot
         } else {
             hotkeys::FIRST_SLOT
