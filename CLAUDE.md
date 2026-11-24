@@ -230,7 +230,9 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
   picker's `EXTRA_INITIAL_URI`), and picking the same folder keeps its entry and games), its persisted
   permission given back when removed; not
   watched (rescan at start / on demand). A document that does not open says why (`SystemBridge.openDocument`'s
-  negative codes: not found, permission denied, other; `ContentError::Unreadable`'s `kind`, the `IoCause` of
+  negative codes: not found, permission denied, other, read from the exception's cause chain and from the
+  `FileNotFoundException` a provider names only in an `IllegalArgumentException`'s message;
+  `ContentError::Unreadable`'s `kind`, the `IoCause` of
   `romUnreadable`). Every document is read through its descriptor (`ContentFile::reader`):
   Android 17 refuses `/proc/self/fd/<fd>` for some providers (Downloads, «Permission denied»), so identification,
   hashing, icons and the bytes a core gets come from the descriptor; a `need_fullpath` core (Azahar) gets the link's
