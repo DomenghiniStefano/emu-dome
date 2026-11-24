@@ -75,6 +75,22 @@ pub(crate) fn fd_path(fd: i32) -> PathBuf {
     PathBuf::from(format!("/proc/self/fd/{fd}"))
 }
 
+/// `SystemBridge.openDocument`'s failure codes (its `OPEN_*` constants): the kind of failure, so
+/// the interface says a file is gone rather than unreadable (Trello #146).
+const OPEN_NOT_FOUND: i32 = -2;
+const OPEN_PERMISSION_DENIED: i32 = -3;
+
+/// The kind of failure `SystemBridge.openDocument` answered with a negative `code`: -2 the
+/// document is not there (`FileNotFoundException`), -3 the system refused it
+/// (`SecurityException`: the permission was taken back), anything else (-1) another failure.
+pub(crate) fn open_failure(code: i32) -> std::io::ErrorKind {
+    match code {
+        OPEN_NOT_FOUND => std::io::ErrorKind::NotFound,
+        OPEN_PERMISSION_DENIED => std::io::ErrorKind::PermissionDenied,
+        _ => std::io::ErrorKind::Other,
+    }
+}
+
 /// Fields per child in `SystemBridge.listTree`'s answer: URI, name, size, mtime, kind.
 const TREE_FIELDS: usize = 5;
 
@@ -95,8 +111,19 @@ pub(crate) fn parse_tree_children(fields: &[String]) -> Vec<crate::TreeEntry> {
 
 #[cfg(test)]
 mod tests {
-    use super::{fd_path, is_content_uri, link_dir, link_name, parse_tree_children};
+    use super::{fd_path, is_content_uri, link_dir, link_name, open_failure, parse_tree_children};
+    use std::io::ErrorKind;
     use std::path::Path;
+
+    #[test]
+    fn an_open_failure_code_gives_its_kind() {
+        assert_eq!(open_failure(-2), ErrorKind::NotFound);
+        assert_eq!(open_failure(-3), ErrorKind::PermissionDenied);
+        assert_eq!(open_failure(-1), ErrorKind::Other);
+        // A code this build does not know (a newer bridge) is another failure.
+        assert_eq!(open_failure(-9), ErrorKind::Other);
+        assert_eq!(open_failure(i32::MIN), ErrorKind::Other);
+    }
 
     #[test]
     fn a_content_uri_is_told_from_a_path() {

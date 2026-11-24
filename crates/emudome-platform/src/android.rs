@@ -26,7 +26,7 @@ use ndk::native_window::NativeWindow;
 use parking_lot::{Condvar, Mutex};
 use raw_window_handle::{DisplayHandle, HandleError};
 
-use crate::content::{fd_path, link_dir, link_name, parse_tree_children, LINKS_DIR};
+use crate::content::{fd_path, link_dir, link_name, open_failure, parse_tree_children, LINKS_DIR};
 use crate::{
     BackListener, ContentError, ContentFile, DataDirs, ExternalSurface, PickedDocument,
     SurfaceEvent, SurfaceListener, TreeEntry, WindowMode, WindowOptions, WindowRoom,
@@ -429,17 +429,19 @@ pub fn open_content(uri: &str, cache_dir: &Path) -> Result<ContentFile, ContentE
             .l()?;
         Ok((fd, optional_string(env, name)?))
     })
-    .map_err(ContentError::Unreadable)?;
+    .map_err(ContentError::unreadable)?;
     if fd < 0 {
-        return Err(ContentError::Unreadable(format!(
-            "the provider did not open {uri} (logcat, tag EmuDome)"
-        )));
+        return Err(ContentError::Unreadable {
+            kind: open_failure(fd),
+            detail: format!("the provider did not open {uri} (code {fd}; logcat, tag EmuDome)"),
+        });
     }
     // SAFETY: `detachFd` handed the descriptor over: nothing else owns or closes it.
     let file = fs::File::from(unsafe { OwnedFd::from_raw_fd(fd) });
-    let meta = file
-        .metadata()
-        .map_err(|e| ContentError::Unreadable(format!("{uri}: {e}")))?;
+    let meta = file.metadata().map_err(|e| ContentError::Unreadable {
+        kind: e.kind(),
+        detail: format!("{uri}: {e}"),
+    })?;
     if !meta.is_file() {
         return Err(ContentError::NotLocal);
     }
@@ -471,7 +473,7 @@ pub fn open_content(uri: &str, cache_dir: &Path) -> Result<ContentFile, ContentE
     let link = dir.join(link_name(name.as_deref()));
     fs::create_dir_all(&dir)
         .and_then(|()| std::os::unix::fs::symlink(&source, &link))
-        .map_err(|e| ContentError::Unreadable(format!("{}: {e}", link.display())))?;
+        .map_err(|e| ContentError::unreadable(format!("{}: {e}", link.display())))?;
     log::info!(
         "document {uri} opened: name {name:?}, {} bytes, fd {fd}, reopenable by path {reopenable}",
         meta.len()
@@ -532,7 +534,7 @@ fn pick(what: &str, method: &str) -> Result<Option<PickedDocument>, ContentError
         )
         .map(|_| ())
     })
-    .map_err(ContentError::Unreadable)?;
+    .map_err(ContentError::unreadable)?;
     match rx.recv_timeout(PICK_TIMEOUT) {
         Ok(picked) => Ok(picked),
         Err(e) => {
@@ -596,10 +598,10 @@ pub fn list_document_tree(tree: &str, dir: Option<&str>) -> Result<Vec<TreeEntry
         }
         Ok(Some(fields))
     })
-    .map_err(ContentError::Unreadable)?;
+    .map_err(ContentError::unreadable)?;
     match fields {
         Some(fields) => Ok(parse_tree_children(&fields)),
-        None => Err(ContentError::Unreadable(format!(
+        None => Err(ContentError::unreadable(format!(
             "{tree}: the folder could not be listed (permission given back, or the folder is \
              gone; logcat, tag EmuDome)"
         ))),

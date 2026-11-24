@@ -427,9 +427,9 @@ fn percent_decode(s: &str) -> String {
 fn content_error(uri: &str, e: emudome_platform::ContentError) -> ErrorCode {
     use emudome_platform::ContentError;
     match e {
-        ContentError::Unreadable(detail) => {
-            log::warn!("{uri}: the document cannot be opened: {detail}");
-            document_unreadable(uri, None, IoCause::Other)
+        ContentError::Unreadable { kind, detail } => {
+            log::warn!("{uri}: the document cannot be opened ({kind:?}): {detail}");
+            document_unreadable(uri, None, IoCause::from(kind))
         }
         ContentError::NotLocal => ErrorCode::DocumentNotLocal {
             file: document_label(uri, None),
@@ -702,7 +702,43 @@ pub(crate) fn abandon_game(state: tauri::State<'_, AppState>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{file_title, uri_file_name};
+    use super::{content_error, file_title, uri_file_name};
+    use emudome_core::{ErrorCode, IoCause};
+    use emudome_platform::ContentError;
+
+    /// A document the provider did not open keeps the kind of failure as the cause the user is
+    /// told: gone, refused, or another failure (Trello #146).
+    #[test]
+    fn a_document_not_opened_says_why() {
+        let uri = "content://com.android.externalstorage.documents/tree/primary%3AGames/document/\
+                   primary%3AGames%2FKirby.gba";
+        let opened = |kind| {
+            content_error(
+                uri,
+                ContentError::Unreadable {
+                    kind,
+                    detail: "test".into(),
+                },
+            )
+        };
+        let unreadable = |cause| ErrorCode::RomUnreadable {
+            file: "Kirby.gba".into(),
+            path: uri.into(),
+            cause,
+        };
+        assert_eq!(
+            opened(std::io::ErrorKind::NotFound),
+            unreadable(IoCause::NotFound)
+        );
+        assert_eq!(
+            opened(std::io::ErrorKind::PermissionDenied),
+            unreadable(IoCause::PermissionDenied)
+        );
+        assert_eq!(
+            opened(std::io::ErrorKind::Other),
+            unreadable(IoCause::Other)
+        );
+    }
 
     /// A document whose display name cannot be read is named by its URI's last part, decoded:
     /// never the whole URI as the file's name (Trello #128).

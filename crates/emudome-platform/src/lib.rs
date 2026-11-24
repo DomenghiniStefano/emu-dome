@@ -527,11 +527,27 @@ pub fn document_name(uri: &str) -> Option<String> {
 pub enum ContentError {
     /// This system has no content documents (the desktop).
     Unsupported,
-    /// The provider refused it (permission gone, document deleted) or it could not be read.
-    Unreadable(String),
+    /// The provider refused it (permission gone, document deleted) or it could not be read:
+    /// `kind` says which, as the interface tells the causes apart (`NotFound`,
+    /// `PermissionDenied`, anything else); `detail` is for the log.
+    Unreadable {
+        kind: std::io::ErrorKind,
+        detail: String,
+    },
     /// Not a file on the device (a stream from a cloud provider): it cannot be read again from
     /// the start, as cores and EmuDome do.
     NotLocal,
+}
+
+impl ContentError {
+    /// [`ContentError::Unreadable`] for a failure that is not the document's own (a JNI call, the
+    /// app's cache): kind `Other`.
+    pub fn unreadable(detail: String) -> Self {
+        Self::Unreadable {
+            kind: std::io::ErrorKind::Other,
+            detail,
+        }
+    }
 }
 
 /// Opens the `content://` document `uri` for reading, without copying it (`content.rs` says how):
