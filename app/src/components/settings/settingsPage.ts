@@ -29,17 +29,54 @@ export const INTROS = new Set(['bios', 'advanced'])
 /** The values of a page at the level edited, by key. */
 export type PageValues = Record<string, SettingRow>
 
-/** The consoles of the scope menu: those with games in the library, plus the ones given. */
-export function scopeConsoles(games: LibraryGame[], also: (ConsoleId | null | undefined)[]) {
-  return CONSOLES.filter(c => also.includes(c) || games.some(g => g.console === c))
+/**
+ * The consoles a page's console level is for: those of its entries set per console (the
+ * catalogue's `consoles`: «Schermi di DS e 3DS» is about the two-screen ones, #176). Every
+ * console on a page with none.
+ */
+export function pageConsoles(entries: SettingEntry[]): ConsoleId[] {
+  const perConsole = entries.filter(e => e.levels.includes('console'))
+  if (perConsole.length === 0) return CONSOLES
+  return CONSOLES.filter(c => perConsole.some(e => e.consoles.includes(c)))
 }
 
-/** The console of the game played last, if any was. */
-export function lastPlayedConsole(games: LibraryGame[]): ConsoleId | null {
-  const last = [...games]
-    .filter(g => g.lastPlayed !== null)
+/**
+ * The consoles of the scope menu: those with games in the library, plus the ones given, among
+ * the ones the page is for (`pageConsoles`).
+ */
+export function scopeConsoles(
+  games: LibraryGame[],
+  also: (ConsoleId | null | undefined)[],
+  offered: readonly ConsoleId[] = CONSOLES,
+) {
+  return CONSOLES.filter(
+    c => offered.includes(c) && (also.includes(c) || games.some(g => g.console === c)),
+  )
+}
+
+/** The console of the game played last, if any was (among `among`). */
+export function lastPlayedConsole(
+  games: LibraryGame[],
+  among: readonly ConsoleId[] = CONSOLES,
+): ConsoleId | null {
+  const last = games
+    .filter(g => g.lastPlayed !== null && among.includes(g.console))
     .sort((a, b) => (b.lastPlayed ?? 0) - (a.lastPlayed ?? 0))[0]
   return last?.console ?? null
+}
+
+/**
+ * The console the scope bar shows on a page: the one chosen when the page offers it, else the
+ * page's console played last, else its first; null when it offers none. The choice itself is
+ * kept: a GBA chosen on «Video» comes back on the next page that has it (#176).
+ */
+export function pageConsole(
+  chosen: ConsoleId | null,
+  offered: readonly ConsoleId[],
+  games: LibraryGame[],
+): ConsoleId | null {
+  if (chosen && offered.includes(chosen)) return chosen
+  return lastPlayedConsole(games, offered) ?? offered[0] ?? null
 }
 
 /** The level `dir` steps away from `current`, round the list (L1 / R1); null with one level. */
@@ -132,7 +169,7 @@ export function pageSections(
           (e): e is SettingEntry =>
             !!e && isShown(e, schema) && rowVisible(e, values[e.page], byKey),
         )
-        .filter(e => !onlyChangedAt || rows[e.key]?.source === onlyChangedAt),
+        .filter(e => !onlyChangedAt || changedAt(e, rows, onlyChangedAt)),
     }))
     .filter(sec => sec.entries.length > 0)
 }
@@ -160,7 +197,29 @@ export function searchSections(
   return out
 }
 
-/** How many shown rows of `page` are set at `level` (the counters of the category list). */
+/** The levels the Settings section edits, weakest first. */
+const EDIT_LEVELS: EditLevel[] = ['global', 'console', 'game']
+
+/**
+ * The level a row is set at while `level` is edited: `level` itself when the row accepts it,
+ * else the strongest level below it that the row accepts («Tutti i giochi» for «Vibrazione»
+ * while a console is edited); null when none does (a game's row at a console).
+ */
+export function rowLevel(entry: SettingEntry, level: EditLevel): EditLevel | null {
+  const below = EDIT_LEVELS.slice(0, EDIT_LEVELS.indexOf(level) + 1).reverse()
+  return below.find(l => entry.levels.includes(l)) ?? null
+}
+
+/**
+ * Whether a row counts as changed while `level` is edited: its value comes from the level it is
+ * set at there (`rowLevel`), per-device values included (#170).
+ */
+export function changedAt(entry: SettingEntry, rows: PageValues, level: EditLevel): boolean {
+  const at = rowLevel(entry, level)
+  return at !== null && rows[entry.key]?.source === at
+}
+
+/** How many shown rows of `page` are changed at `level` (the counters of the category list). */
 export function changedCount(
   schema: SettingsSchema,
   page: string,
@@ -168,5 +227,5 @@ export function changedCount(
   level: EditLevel,
 ): number {
   if (!rows) return 0
-  return shownOn(schema, page).filter(e => rows[e.key]?.source === level).length
+  return shownOn(schema, page).filter(e => changedAt(e, rows, level)).length
 }

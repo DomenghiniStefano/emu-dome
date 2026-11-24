@@ -5,8 +5,9 @@
 //! - TypeScript types of the DTOs, through ts-rs (`#[derive(TS)]`): one file per type.
 //! - `error-codes.json`: every [`crate::ErrorCode`] code, read from its generated type. A Vitest
 //!   test (`app/src/i18n/parity.test.ts`) holds it against `errors.<code>` in both message files.
-//! - `settings-catalog.json`: pages, groups, sections, keys and option ids of the catalogue, which
-//!   the same Vitest test holds against the `settings.*` texts, and the colour entries' swatches
+//! - `settings-catalog.json`: pages, groups, sections, keys, option ids, levels and consoles of
+//!   the catalogue, which the same Vitest test holds against the `settings.*` texts (and the
+//!   settings tests against the scope bar and the lock reasons), and the colour entries' swatches
 //!   and default (`colours`: the default accent of `app/src/lib/accent.ts`, the swatches' names).
 //! - `keyboard-shortcuts.json`: the keyboard's fixed keys ([`crate::keyboard::KEYBOARD_SHORTCUTS`]:
 //!   `code`, `action`, `status`), which the interface lists (C01, C03).
@@ -422,7 +423,16 @@ mod tests {
                     Kind::TouchScreens => ("touchScreens", &[]),
                     Kind::DateTime { .. } => ("dateTime", &[]),
                 };
-                json!({ "key": e.key, "page": e.page(), "kind": kind, "options": options })
+                // The levels and consoles too: the interface's tests hold the scope bar and
+                // the lock reasons against every entry (#168, #176).
+                json!({
+                    "key": e.key,
+                    "page": e.page(),
+                    "kind": kind,
+                    "options": options,
+                    "levels": e.levels.list(),
+                    "consoles": e.applies_to(),
+                })
             })
             .collect();
         // The colour entries' swatches and default (`general.accent`): the interface needs them

@@ -30,6 +30,7 @@ export const entry = (key: SettingKey, over: Partial<SettingEntry> = {}): Settin
   needsNativeVideo: false,
   wired: true,
   unsupportedConsoles: [],
+  consoles: ['gb', 'gbc', 'gba', 'nds', '3ds'],
   ...over,
 })
 

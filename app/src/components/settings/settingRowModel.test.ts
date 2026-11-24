@@ -34,6 +34,7 @@ const entry = (over: Partial<SettingEntry> = {}): SettingEntry => ({
   needsNativeVideo: false,
   wired: true,
   unsupportedConsoles: [],
+  consoles: ['gb', 'gbc', 'gba', 'nds', '3ds'],
   ...over,
 })
 const schema: SettingsSchema = {

@@ -401,9 +401,21 @@ pub struct Entry {
     /// change never does nothing silently (engineering rule 5). The list is held by
     /// `settings::tests::the_entries_not_wired_yet_are_these`.
     pub wired: bool,
+    /// The consoles whose games the entry is about (the DS / 3DS screens: the two-screen ones);
+    /// empty: every console. A page's console level offers only the consoles of its entries.
+    pub consoles: &'static [super::ConsoleId],
 }
 
 impl Entry {
+    /// The consoles the entry is about ([`Entry::consoles`], every one when not restricted).
+    pub fn applies_to(&self) -> Vec<super::ConsoleId> {
+        if self.consoles.is_empty() {
+            super::ConsoleId::ALL.to_vec()
+        } else {
+            self.consoles.to_vec()
+        }
+    }
+
     /// The page the entry is shown on.
     pub fn page(&self) -> &'static str {
         self.page
@@ -637,6 +649,9 @@ pub struct EntryDto {
     /// Consoles whose core has no equivalent: there the interface shows the row disabled with
     /// the reason (`crate::core_profile::unsupported_consoles`).
     pub unsupported_consoles: Vec<super::ConsoleId>,
+    /// The consoles whose games the entry is about, every one unless restricted (the DS / 3DS
+    /// screens): a page's console level offers only the consoles of its entries.
+    pub consoles: Vec<super::ConsoleId>,
     /// Something reads it; otherwise shown disabled with «arrives in a future update».
     pub wired: bool,
     /// The number the row's text shows as `{n}` (plural forms): the options a core declares, on
@@ -687,6 +702,7 @@ pub fn schema(device: Device) -> SchemaDto {
                 show_if: e.show_if,
                 needs_native_video: e.needs_native_video,
                 unsupported_consoles: crate::core_profile::unsupported_consoles(e.key),
+                consoles: e.applies_to(),
                 wired: e.wired,
                 count: crate::core_profile::row_count(e.key),
             })

@@ -2627,3 +2627,27 @@ fn set_many_writes_every_value_or_none() {
         )
         .is_err());
 }
+
+#[test]
+fn the_screens_rows_are_about_the_two_screen_consoles_only() {
+    // #176: a page's console level offers only the consoles of its entries.
+    let two: Vec<ConsoleId> = ConsoleId::ALL
+        .into_iter()
+        .filter(|c| crate::screens::console_screens(*c).len() == 2)
+        .collect();
+    assert_eq!(super::catalog::TWO_SCREENS, two.as_slice());
+    for e in ENTRIES.iter().filter(|e| e.page() == "screens") {
+        let consoles = e.applies_to();
+        assert!(
+            !consoles.is_empty() && consoles.iter().all(|c| two.contains(c)),
+            "{}: {consoles:?}",
+            e.key
+        );
+    }
+    // Unrestricted entries are about every console, in the interface's order.
+    let vol = entry("audio.vol").expect("the volume");
+    assert_eq!(vol.applies_to(), ConsoleId::ALL.to_vec());
+    let dto = super::schema::schema(Device::Desktop);
+    let custom = dto.entries.iter().find(|e| e.key == "screens.custom");
+    assert_eq!(custom.map(|e| e.consoles.clone()), Some(two));
+}

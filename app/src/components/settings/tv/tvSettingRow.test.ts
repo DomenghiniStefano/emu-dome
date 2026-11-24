@@ -29,6 +29,7 @@ const entry = (kind: SettingKind, over: Partial<SettingEntry> = {}): SettingEntr
   needsNativeVideo: false,
   wired: true,
   unsupportedConsoles: [],
+  consoles: ['gb', 'gbc', 'gba', 'nds', '3ds'],
   ...over,
 })
 const choice = (n: number, moreAtRuntime = false): SettingKind => ({

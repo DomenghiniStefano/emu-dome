@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import catalog from '@/generated/settings-catalog.json'
 import { chosenTarget, directTarget, editorOf, EDITOR_CONSOLES } from './layoutEditors'
 
 describe('layoutEditors', () => {
@@ -10,6 +11,12 @@ describe('layoutEditors', () => {
   it('offers two-screen consoles to C09 and every console to C06', () => {
     expect(EDITOR_CONSOLES.screens).toEqual(['nds', '3ds'])
     expect(EDITOR_CONSOLES.touch).toEqual(['gb', 'gbc', 'gba', 'nds', '3ds'])
+  })
+
+  it('offers the consoles the catalogue gives each editor’s row (#176)', () => {
+    const consoles = (key: string) => catalog.entries.find(e => e.key === key)?.consoles
+    expect(EDITOR_CONSOLES.screens).toEqual(consoles('screens.custom'))
+    expect(EDITOR_CONSOLES.touch).toEqual(consoles('touch.tedit'))
   })
 
   it('asks for the console at «Tutti i giochi»', () => {
