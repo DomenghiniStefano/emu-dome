@@ -39,4 +39,9 @@ lidSupported: boolean,
 /**
  * The lid is closed now (the G15 overlay «Coperchio chiuso»).
  */
-lidClosed: boolean, };
+lidClosed: boolean, 
+/**
+ * The phone's own placement of the screens (the touch layout's) is drawn in place of the
+ * layout: the layout cycle waits until it is withdrawn.
+ */
+phonePlacement: boolean, };

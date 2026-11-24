@@ -54,6 +54,7 @@ export const TOOLS_DUAL = quickTools({
     hasCustom: false,
     lidSupported: false,
     lidClosed: false,
+    phonePlacement: false,
   },
 })
 

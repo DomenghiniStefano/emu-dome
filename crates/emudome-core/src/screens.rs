@@ -218,6 +218,12 @@ pub enum Arrangement {
     /// Each screen anywhere: rectangles as fractions (0..1) of the game area, drawn as given
     /// (no fitting, no aspect kept). A screen not listed is not drawn.
     Custom(Vec<(ScreenId, Rect)>),
+    /// The phone's own placement (the C06 touch editor, `touch.tscreens`): rectangles as
+    /// fractions (0..1) of the whole window. With no inset they are drawn as given; an inset (the
+    /// quick menu) shrinks the whole window's picture uniformly into the part left and centres
+    /// it there, so the screens keep their proportions and their places relative to each other.
+    /// Turned and swapped as [`Arrangement::Custom`]. A screen not listed is not drawn.
+    Phone(Vec<(ScreenId, Rect)>),
 }
 
 impl Arrangement {
@@ -623,29 +629,8 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
         order.reverse();
     }
 
-    if let Arrangement::Custom(rects) = &layout.arrangement {
-        let usable = area.inset.usable(area.width, area.height);
-        // The whole picture turns: each rectangle turns inside the game area, its picture with it.
-        return rects
-            .iter()
-            .filter_map(|(id, r)| {
-                // Swapped: each screen takes the other's rectangle.
-                let id = if layout.swap { id.other() } else { *id };
-                let s = screens.iter().find(|s| s.id == id)?;
-                let r = turn(*r, layout.rotation, 1.0, 1.0);
-                Some(Placement {
-                    id: s.id,
-                    src: s.src,
-                    dst: Rect {
-                        x: usable.x + r.x * usable.w,
-                        y: usable.y + r.y * usable.h,
-                        w: r.w * usable.w,
-                        h: r.h * usable.h,
-                    },
-                    rotation: layout.rotation,
-                })
-            })
-            .collect();
+    if let Some((rects, frame)) = given_rects(&layout.arrangement, area) {
+        return place_given(rects, frame, layout, screens);
     }
 
     // The phone's default: down in a window taller than wide, across otherwise.
@@ -657,7 +642,8 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
         | Arrangement::BigSmall
         | Arrangement::FirstOnly
         | Arrangement::SecondOnly
-        | Arrangement::Custom(_)) => given,
+        | Arrangement::Custom(_)
+        | Arrangement::Phone(_)) => given,
     };
 
     // Each screen's rectangle at its own size, in a canvas starting at (0, 0).
@@ -749,7 +735,7 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
                 },
             ));
         }
-        (Arrangement::Custom(_) | Arrangement::Auto, _) => {}
+        (Arrangement::Custom(_) | Arrangement::Phone(_) | Arrangement::Auto, _) => {}
     }
     if placed.is_empty() {
         return Vec::new();
@@ -831,6 +817,67 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
                 },
                 rotation: layout.rotation,
             }
+        })
+        .collect()
+}
+
+/// The rectangles of an arrangement that places each screen where it is told (custom, the
+/// phone's placement) and the window rectangle their fractions are of; `None` for the
+/// arrangements [`compose`] lays out itself.
+fn given_rects(arrangement: &Arrangement, area: Area) -> Option<(&[(ScreenId, Rect)], Rect)> {
+    match arrangement {
+        Arrangement::Custom(rects) => Some((rects, area.inset.usable(area.width, area.height))),
+        Arrangement::Phone(rects) => Some((rects, phone_frame(area))),
+        Arrangement::Stacked
+        | Arrangement::Auto
+        | Arrangement::SideBySide
+        | Arrangement::BigSmall
+        | Arrangement::FirstOnly
+        | Arrangement::SecondOnly => None,
+    }
+}
+
+/// The whole window scaled uniformly into the part the inset leaves, centred there: what the
+/// phone's placement is drawn in (the window itself with no inset).
+fn phone_frame(area: Area) -> Rect {
+    let usable = area.inset.usable(area.width, area.height);
+    let k = (usable.w / area.width).min(usable.h / area.height);
+    let k = if k.is_finite() { k.max(0.0) } else { 0.0 };
+    let (w, h) = (k * area.width, k * area.height);
+    Rect {
+        x: usable.x + (usable.w - w) / 2.0,
+        y: usable.y + (usable.h - h) / 2.0,
+        w,
+        h,
+    }
+}
+
+/// Each of `rects` (fractions of `frame`) drawn in `frame`. The whole picture turns: each
+/// rectangle turns inside the frame, its picture with it; swapped, each screen takes the other's
+/// rectangle.
+fn place_given(
+    rects: &[(ScreenId, Rect)],
+    frame: Rect,
+    layout: &Layout,
+    screens: &[SourceScreen],
+) -> Vec<Placement> {
+    rects
+        .iter()
+        .filter_map(|(id, r)| {
+            let id = if layout.swap { id.other() } else { *id };
+            let s = screens.iter().find(|s| s.id == id)?;
+            let r = turn(*r, layout.rotation, 1.0, 1.0);
+            Some(Placement {
+                id: s.id,
+                src: s.src,
+                dst: Rect {
+                    x: frame.x + r.x * frame.w,
+                    y: frame.y + r.y * frame.h,
+                    w: r.w * frame.w,
+                    h: r.h * frame.h,
+                },
+                rotation: layout.rotation,
+            })
         })
         .collect()
 }
@@ -1004,22 +1051,7 @@ impl CustomLayout {
     }
 
     fn arrangement(&self) -> Arrangement {
-        Arrangement::Custom(
-            self.screens
-                .iter()
-                .map(|s| {
-                    (
-                        s.id,
-                        Rect {
-                            x: s.x,
-                            y: s.y,
-                            w: s.w,
-                            h: s.h,
-                        },
-                    )
-                })
-                .collect(),
-        )
+        Arrangement::Custom(given(&self.screens))
     }
 
     /// Where `layout` puts the screens of `split` in an area of `width` × `height` (the whole
@@ -1053,28 +1085,57 @@ impl CustomLayout {
             height,
             inset: Inset::NONE,
         };
-        // A fraction of the area, kept inside it whatever the rounding.
-        let fraction = |start: f32, size: f32, whole: f32| {
-            let s = (start / whole).clamp(0.0, 1.0);
-            (s, (size / whole).min(1.0 - s))
-        };
-        let screens = compose(&arranged, &split.screens(frame_w, frame_h), area)
+        let placed: Vec<Placement> = compose(&arranged, &split.screens(frame_w, frame_h), area)
             .into_iter()
             .filter(|p| p.id != ScreenId::Main)
-            .map(|p| {
-                let (x, w) = fraction(p.dst.x, p.dst.w, width);
-                let (y, h) = fraction(p.dst.y, p.dst.h, height);
-                CustomScreen {
-                    id: p.id,
-                    x,
-                    y,
-                    w,
-                    h,
-                }
-            })
             .collect();
-        CustomLayout { screens }
+        CustomLayout {
+            screens: fractions(&placed, width, height),
+        }
     }
+}
+
+/// `screens` as the rectangles an arrangement places them in.
+fn given(screens: &[CustomScreen]) -> Vec<(ScreenId, Rect)> {
+    screens
+        .iter()
+        .map(|s| {
+            (
+                s.id,
+                Rect {
+                    x: s.x,
+                    y: s.y,
+                    w: s.w,
+                    h: s.h,
+                },
+            )
+        })
+        .collect()
+}
+
+/// A fraction of `whole` for the span `start`..`start + size`, kept inside 0..1 whatever the
+/// rounding: `(start, size)`.
+fn fraction(start: f32, size: f32, whole: f32) -> (f32, f32) {
+    let s = (start / whole).clamp(0.0, 1.0);
+    (s, (size / whole).min(1.0 - s))
+}
+
+/// `placements` (window pixels) as fractions of a `width` x `height` window.
+fn fractions(placements: &[Placement], width: f32, height: f32) -> Vec<CustomScreen> {
+    placements
+        .iter()
+        .map(|p| {
+            let (x, w) = fraction(p.dst.x, p.dst.w, width);
+            let (y, h) = fraction(p.dst.y, p.dst.h, height);
+            CustomScreen {
+                id: p.id,
+                x,
+                y,
+                w,
+                h,
+            }
+        })
+        .collect()
 }
 
 /// The screens a `console`'s games have, in the order the touch editor lists them.
@@ -1133,6 +1194,34 @@ pub fn preview(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec
     let (width, height) = console_frame(console);
     let layout = settings.layout(settings.first(), false);
     compose(&layout, &split.screens(width, height), area)
+}
+
+/// Where the touch editor starts the screens of a `console` game in `area` (the whole window)
+/// when no placement of the phone's own is saved: where [`preview`] draws them, as fractions of
+/// the window. Not turned: `screens.rot` turns the placement on top, as it does a custom layout.
+/// When the first layout of the cycle leaves a screen out (`top_only`), every screen is placed
+/// as [`Arrangement::Auto`] does, so the start holds all of the console's screens.
+pub fn phone_start(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec<CustomScreen> {
+    let split = CoreId::for_console(console).profile().split;
+    let (width, height) = console_frame(console);
+    let sources = split.screens(width, height);
+    let first = Layout {
+        rotation: Rotation::None,
+        ..settings.layout(settings.first(), false)
+    };
+    let place = |layout: &Layout| compose(layout, &sources, area);
+    let all = |placed: &Vec<Placement>| {
+        console_screens(console)
+            .iter()
+            .all(|id| placed.iter().any(|p| p.id == *id))
+    };
+    let placed = Some(place(&first)).filter(all).unwrap_or_else(|| {
+        place(&Layout {
+            arrangement: Arrangement::Auto,
+            ..first.clone()
+        })
+    });
+    fractions(&placed, area.width, area.height)
 }
 
 /// The `screens.*` settings of the open game (its changes «in prova» included), read once.
@@ -1264,6 +1353,9 @@ pub struct ScreenStatus {
     pub lid_supported: bool,
     /// The lid is closed now (the G15 overlay «Coperchio chiuso»).
     pub lid_closed: bool,
+    /// The phone's own placement of the screens (the touch layout's) is drawn in place of the
+    /// layout: the layout cycle waits until it is withdrawn.
+    pub phone_placement: bool,
 }
 
 impl Default for ScreenStatus {
@@ -1284,6 +1376,9 @@ pub struct ScreenSession {
     current: LayoutId,
     swapped: bool,
     lid_closed: bool,
+    /// The phone's own placement of the screens while the touch controls are in use (empty:
+    /// none, the layout is drawn).
+    phone: Vec<CustomScreen>,
 }
 
 impl ScreenSession {
@@ -1296,6 +1391,7 @@ impl ScreenSession {
             lid_supported: dual_screen && lid_supported,
             swapped: false,
             lid_closed: false,
+            phone: Vec::new(),
         }
     }
 
@@ -1309,18 +1405,37 @@ impl ScreenSession {
         &self.settings
     }
 
-    /// The next layout of the cycle (L3 + R3, the quick menu). False: nothing changed.
+    /// The next layout of the cycle (L3 + R3, the quick menu). False: nothing changed (also
+    /// while the phone's placement is drawn).
     pub fn next_layout(&mut self) -> bool {
-        self.show(self.settings.next(self.current))
+        self.phone.is_empty() && self.show(self.settings.next(self.current))
     }
 
     /// Shows `layout` (the quick menu, the editor's live preview), in the cycle or not. `None`:
-    /// it cannot be shown (a custom layout not saved, a one-screen game).
+    /// it cannot be shown (a custom layout not saved, a one-screen game, the phone's placement
+    /// drawn).
     pub fn set_layout(&mut self, layout: LayoutId) -> Option<bool> {
-        if !self.dual_screen || !self.settings.available(layout) {
+        if !self.dual_screen || !self.settings.available(layout) || !self.phone.is_empty() {
             return None;
         }
         Some(self.show(layout))
+    }
+
+    /// The phone's own placement of the screens (the touch layout in use), drawn in place of the
+    /// layout; empty withdraws it. `None`: it is not a placement of exactly this game's screens
+    /// ([`placement_fits`]); otherwise whether anything changed.
+    pub fn set_phone_placement(&mut self, screens: Vec<CustomScreen>) -> Option<bool> {
+        let ids: &[ScreenId] = if self.dual_screen {
+            &[ScreenId::Top, ScreenId::Bottom]
+        } else {
+            &[ScreenId::Main]
+        };
+        if !placement_fits(&screens, ids) {
+            return None;
+        }
+        let changed = self.phone != screens;
+        self.phone = screens;
+        Some(changed)
     }
 
     fn show(&mut self, layout: LayoutId) -> bool {
@@ -1370,8 +1485,18 @@ impl ScreenSession {
 
     /// The layout to compose now. Its size is `video.scale`'s, whose default is the device's
     /// (as large as fits on a phone, whole scales on a computer).
+    /// The phone's placement, while one is set, in place of the layout's arrangement (turned
+    /// and swapped the same way; `video.aspect` / `video.scale` do not apply to it).
     pub fn layout(&self) -> Layout {
-        self.settings.layout(self.current, self.swapped)
+        let layout = self.settings.layout(self.current, self.swapped);
+        if self.phone.is_empty() {
+            layout
+        } else {
+            Layout {
+                arrangement: Arrangement::Phone(given(&self.phone)),
+                ..layout
+            }
+        }
     }
 
     pub fn status(&self) -> ScreenStatus {
@@ -1384,6 +1509,7 @@ impl ScreenSession {
             has_custom: !self.settings.custom.is_empty(),
             lid_supported: self.lid_supported,
             lid_closed: self.lid_closed,
+            phone_placement: !self.phone.is_empty(),
         }
     }
 }
@@ -1391,10 +1517,10 @@ impl ScreenSession {
 #[cfg(test)]
 mod tests {
     use super::{
-        compose, console_frame, fit, pointer_at, pointer_value, preview, touch_at, Align, Area,
-        Arrangement, Aspect, CustomLayout, CustomScreen, Inset, Layout, LayoutId, Placement,
-        PxRect, Rect, Rotation, Scale, ScreenId, ScreenSession, ScreenSettings, ScreenStatus,
-        Split,
+        compose, console_frame, fit, phone_start, pointer_at, pointer_value, preview, touch_at,
+        Align, Area, Arrangement, Aspect, CustomLayout, CustomScreen, Inset, Layout, LayoutId,
+        Placement, PxRect, Rect, Rotation, Scale, ScreenId, ScreenSession, ScreenSettings,
+        ScreenStatus, Split,
     };
     use crate::settings::Value;
 
@@ -2863,5 +2989,172 @@ mod tests {
         assert!(ds.iter().all(|p| p.dst.y + p.dst.h <= 780.0 * 0.7 + 0.5));
         let three = preview(&phone, ConsoleId::N3ds, a);
         assert_eq!(three.len(), 2);
+    }
+
+    fn cs(id: ScreenId, x: f32, y: f32, w: f32, h: f32) -> CustomScreen {
+        CustomScreen { id, x, y, w, h }
+    }
+
+    #[test]
+    fn a_phone_placement_is_composed_over_the_whole_window() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
+        assert_eq!(
+            s.set_phone_placement(vec![cs(ScreenId::Main, 0.0, 0.1, 1.0, 0.4)]),
+            Some(true)
+        );
+        let p = compose(
+            &s.layout(),
+            &Split::Whole.screens(240, 160),
+            area(360.0, 780.0),
+        );
+        assert_eq!(p[0].dst, rect(0.0, 78.0, 360.0, 312.0));
+        assert!(s.status().phone_placement);
+        assert_eq!(s.set_phone_placement(vec![]), Some(true));
+        assert!(!s.status().phone_placement);
+    }
+
+    #[test]
+    fn a_phone_placement_must_be_the_games_screens() {
+        let mut one = ScreenSession::new(ScreenSettings::default(), false, false);
+        assert_eq!(
+            one.set_phone_placement(vec![
+                cs(ScreenId::Top, 0.0, 0.0, 1.0, 0.5),
+                cs(ScreenId::Bottom, 0.0, 0.5, 1.0, 0.5)
+            ]),
+            None
+        );
+        let mut two = ScreenSession::new(ScreenSettings::default(), true, false);
+        assert_eq!(
+            two.set_phone_placement(vec![cs(ScreenId::Main, 0.0, 0.0, 1.0, 0.5)]),
+            None
+        );
+        assert_eq!(
+            two.set_phone_placement(vec![cs(ScreenId::Top, 0.0, 0.0, 1.0, 0.5)]),
+            None
+        );
+        assert!(!two.status().phone_placement);
+    }
+
+    #[test]
+    fn a_phone_placement_swaps_and_maps_the_touch_screen_from_where_it_is() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), true, false);
+        s.set_phone_placement(vec![
+            cs(ScreenId::Top, 0.0, 0.5, 1.0, 0.25),
+            cs(ScreenId::Bottom, 0.0, 0.0, 1.0, 0.25),
+        ])
+        .unwrap();
+        let bottom = PxRect {
+            x: 0,
+            y: 192,
+            w: 256,
+            h: 192,
+        };
+        let want = Some(pointer_value(bottom, FRAME, 128, 96));
+        assert_eq!(
+            pointer_at(&s.layout(), DS, FRAME, area(360.0, 780.0), 180.0, 97.5),
+            want
+        );
+        assert!(s.toggle_swap());
+        assert_eq!(
+            pointer_at(&s.layout(), DS, FRAME, area(360.0, 780.0), 180.0, 97.5),
+            None
+        );
+        assert_eq!(
+            pointer_at(&s.layout(), DS, FRAME, area(360.0, 780.0), 180.0, 487.5),
+            want
+        );
+    }
+
+    #[test]
+    fn a_phone_placement_makes_room_for_the_quick_menu() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
+        s.set_phone_placement(vec![cs(ScreenId::Main, 0.0, 0.0, 1.0, 0.5)])
+            .unwrap();
+        // 800 × 400 window, the menu on the right half: the placement (800 × 200 at full size)
+        // is scaled by 0.5 into the left 400 × 400 and centred vertically, proportions kept.
+        let menu = Area {
+            width: 800.0,
+            height: 400.0,
+            inset: Inset {
+                right: 0.5,
+                ..Inset::NONE
+            },
+        };
+        assert_eq!(
+            compose(&s.layout(), &Split::Whole.screens(240, 160), menu)[0].dst,
+            rect(0.0, 100.0, 400.0, 100.0)
+        );
+    }
+
+    #[test]
+    fn a_phone_placement_turns_and_swaps_as_a_custom_layout_does() {
+        let placement = vec![
+            cs(ScreenId::Top, 0.1, 0.0, 0.8, 0.4),
+            cs(ScreenId::Bottom, 0.0, 0.5, 0.5, 0.25),
+        ];
+        let turned = settings(&[("screens.rot", Value::Text("left".into()))]);
+        let mut s = ScreenSession::new(turned, true, false);
+        s.set_phone_placement(placement.clone()).unwrap();
+        assert!(s.toggle_swap());
+        let custom = Layout {
+            arrangement: Arrangement::Custom(
+                placement
+                    .iter()
+                    .map(|c| (c.id, rect(c.x, c.y, c.w, c.h)))
+                    .collect(),
+            ),
+            swap: true,
+            rotation: Rotation::Left,
+            ..Layout::default()
+        };
+        assert_eq!(
+            ds(&s.layout(), area(360.0, 780.0)),
+            ds(&custom, area(360.0, 780.0))
+        );
+    }
+
+    #[test]
+    fn the_layout_cycle_waits_while_a_phone_placement_is_in_use() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), true, false);
+        s.set_phone_placement(vec![
+            cs(ScreenId::Top, 0.0, 0.0, 1.0, 0.4),
+            cs(ScreenId::Bottom, 0.0, 0.5, 1.0, 0.4),
+        ])
+        .unwrap();
+        let shown = s.status().layout;
+        assert!(!s.next_layout());
+        assert_eq!(s.set_layout(LayoutId::Side), None);
+        assert_eq!(s.status().layout, shown);
+        s.set_phone_placement(vec![]).unwrap();
+        assert!(s.next_layout());
+    }
+
+    #[test]
+    fn the_phone_start_has_every_screen_of_the_console() {
+        use crate::settings::ConsoleId;
+        let ids = |v: Vec<CustomScreen>| v.iter().map(|s| s.id).collect::<Vec<_>>();
+        let start = phone_start(
+            &ScreenSettings::default(),
+            ConsoleId::Nds,
+            area(360.0, 780.0),
+        );
+        assert_eq!(ids(start.clone()), [ScreenId::Top, ScreenId::Bottom]);
+        assert!(start
+            .iter()
+            .all(|s| s.x >= 0.0 && s.x + s.w <= 1.0 && s.y + s.h <= 1.0));
+        assert!(start[0].y < start[1].y);
+        let top_only = settings(&[("screens.cycle", list(&["top_only"]))]);
+        assert_eq!(
+            ids(phone_start(&top_only, ConsoleId::N3ds, area(360.0, 780.0))),
+            [ScreenId::Top, ScreenId::Bottom]
+        );
+        assert_eq!(
+            ids(phone_start(
+                &ScreenSettings::default(),
+                ConsoleId::Gba,
+                area(360.0, 780.0)
+            )),
+            [ScreenId::Main]
+        );
     }
 }

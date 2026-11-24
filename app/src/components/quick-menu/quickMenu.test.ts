@@ -117,6 +117,7 @@ describe('tools', () => {
     hasCustom: false,
     lidSupported: true,
     lidClosed: false,
+    phonePlacement: false,
     ...over,
   })
   it('gives every game screenshot, mute, full screen and restart on desktop', () => {
@@ -195,6 +196,7 @@ describe('G09 cards', () => {
       hasCustom: false,
       lidSupported: true,
       lidClosed: false,
+      phonePlacement: false,
     } satisfies ScreenStatus
     const card = layoutCard({ status, row: undefined, consoleName: 'Nintendo DS', set })
     expect(card.name).toEqual({ key: 'qm.layout' })
