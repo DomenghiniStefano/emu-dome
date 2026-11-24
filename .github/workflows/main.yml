@@ -1,0 +1,38 @@
+# A release (docs/release.md, «The release flow»): a push to `main` builds the signed Android App Bundle and,
+# once the owner approves the deployment, uploads it to Google Play's production track and tags the commit
+# v<version> (play-release.yml). The version must be new: a version already tagged stops the run.
+# Run by hand (Actions > main > Run workflow), it can go to the closed testing track (`alpha`) instead: the
+# closed test a personal Play account needs before its first production release; that run tags nothing.
+# Environment `play-production`: deployments limited to `main`, the owner as required reviewer; its service
+# account can release to production.
+# Not here yet: the desktop packages (Windows installer, updater manifest, GitHub release), docs/release.md.
+
+name: main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Google Play track
+        type: choice
+        options: [production, alpha]
+        default: production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main
+  cancel-in-progress: false
+
+jobs:
+  play-production:
+    uses: ./.github/workflows/play-release.yml
+    permissions:
+      contents: write
+    with:
+      environment: play-production
+      track: ${{ inputs.track || 'production' }}
+      tag: ${{ (inputs.track || 'production') == 'production' }}
