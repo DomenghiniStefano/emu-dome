@@ -92,6 +92,11 @@ const showHint = `import('/src/components/game/gameFlow.ts').then(m => { m.flow.
 add("hint-touch", { steps: [showHint], stepMs: 200 }, ["p780"]);
 add("hint-pad", { mock: { pads: true }, steps: [showHint], stepMs: 200 }, ["p780"]);
 add("hint-keyboard", { steps: [{ key: "ShiftLeft" }, showHint], stepMs: 200 }, ["p780"]);
+// The quick menu's «Altro › Controlli» (#150): with no controller the card names the touch
+// controls and the controller shortcuts are hidden; with one, its name and the shortcuts.
+const openControls = [escape, click("^(More|Altro)$"), click("^(Controls|Controlli)")];
+add("qm-controls", { steps: openControls }, ["p780", "l780"]);
+add("qm-controls-pad", { mock: { pads: true }, steps: openControls }, ["p780"]);
 add(
   "lost-toast",
   // In game a toast stays 2 s: the picture is taken before it goes.

@@ -2307,6 +2307,7 @@
     "noNative": "The Accelerated method is not available on this system.",
     "controller": "Controller in use",
     "noController": "No controller connected: use the keyboard.",
+    "noControllerTouch": "No controller connected: you are playing with the touch controls.",
     "shortcuts": "Controller shortcuts",
     "shortcutsHint": "Hold {modifier} and press a button",
     "remap": "Remap the buttons for this game",

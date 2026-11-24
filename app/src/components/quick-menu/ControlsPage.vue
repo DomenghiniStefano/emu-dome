@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // G10 «Controlli»: the controller in use, the touch controls' settings «in prova», on a touch
 // screen the row to the C06 touch controls editor (#29), remapping (not yet) and the controller
-// shortcuts.
+// shortcuts. On a touch screen with no controller the card names the touch controls and the
+// shortcuts wait for a controller (#150, controlsPage.ts); the editor's row is then the first.
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ChevronRight } from '@lucide/vue'
 import type { Pos, SettingEntry, SettingKey, SettingRow, SettingsSchema, SettingValue } from '@/emu'
@@ -10,8 +12,9 @@ import { posName } from '@/lib/controls'
 import MenuList from './MenuList.vue'
 import SessionSettingRows from './SessionSettingRows.vue'
 import { FocusMark } from './view'
+import { controlsPageInput } from './controlsPage'
 
-defineProps<{
+const props = defineProps<{
   /** The controller in use, null with none. */
   controller: string | null
   entries: SettingEntry[]
@@ -34,8 +37,12 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const input = computed(() => controlsPageInput(props.touch, props.controller !== null))
 const shortcutsMarks = { [FocusMark.Shortcuts]: '', [FocusMark.SubInitial]: '' }
-const touchEditMarks = { [FocusMark.TouchEdit]: '' }
+const touchEditMarks = computed(() => ({
+  [FocusMark.TouchEdit]: '',
+  ...(input.value.shortcuts ? {} : { [FocusMark.SubInitial]: '' }),
+}))
 </script>
 
 <template>
@@ -44,7 +51,7 @@ const touchEditMarks = { [FocusMark.TouchEdit]: '' }
       <span class="min-w-0 flex-1">
         <span class="block font-medium">{{ t('qm.controller') }}</span>
         <span class="block text-caption text-ink-muted">
-          {{ controller ?? t('qm.noController') }}
+          {{ controller ?? t(input.noController) }}
         </span>
       </span>
     </Card>
@@ -85,6 +92,7 @@ const touchEditMarks = { [FocusMark.TouchEdit]: '' }
       <ChevronRight :size="16" :stroke-width="1.75" class="shrink-0" aria-hidden="true" />
     </Card>
     <Card
+      v-if="input.shortcuts"
       as="button"
       v-bind="shortcutsMarks"
       :variant="CardVariant.ListRow"

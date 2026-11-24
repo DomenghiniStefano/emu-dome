@@ -2307,6 +2307,7 @@
     "noNative": "Su questo sistema il metodo Accelerato non è disponibile.",
     "controller": "Controller in uso",
     "noController": "Nessun controller collegato: usa la tastiera.",
+    "noControllerTouch": "Nessun controller collegato: stai giocando con i controlli touch.",
     "shortcuts": "Scorciatoie del controller",
     "shortcutsHint": "Tieni premuto {modifier} e premi un pulsante",
     "remap": "Rimappa i pulsanti per questo gioco",

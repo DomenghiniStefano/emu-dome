@@ -23,6 +23,7 @@ import { createCoverRequest } from '@/components/cover/useCoverRequest'
 import CoverCropDialog from '@/components/cover/CoverCropDialog.vue'
 import { setErrorSink, settle } from '@/lib/errors'
 import { hideSplash } from '@/lib/splash'
+import { gamepadName } from '@/i18n/labels'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
 import ClosingOverlay from '@/components/closing/ClosingOverlay.vue'
@@ -155,7 +156,7 @@ onMounted(async () => {
       :speed="speed"
       :video-mode="videoMode"
       :native-available="nativeAvailable"
-      :controller="session.controller.value"
+      :controller="uiMode.pad ? gamepadName(uiMode.pad) : null"
       :current-slot="session.comboSlot.value"
       :undo-load-slot="settings.undoAllowed ? session.undoLoadSlot.value : null"
       :muted="session.muted.value"
