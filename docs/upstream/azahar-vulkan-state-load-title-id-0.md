@@ -75,4 +75,4 @@ a slower first frame.
   usual layout of the Citra code base), and search the issue tracker for an existing report.
 - Until Azahar fixes it, EmuDome refuses every state load and rewind for such content on Vulkan
   (`core_profile::state_load_block`, `stateLoadUnsupported`). When a fixed version is pinned, remove the rule and this
-  file's «Known gaps» line in `CLAUDE.md`.
+  line in `docs/known-gaps.md`.
