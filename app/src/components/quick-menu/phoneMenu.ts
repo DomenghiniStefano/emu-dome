@@ -165,10 +165,9 @@ export function moreRows(c: MoreContext): MoreRow[] {
   return list
 }
 
-/** «Rendi rapido» can make this slot the quick one: a numbered slot the shortcuts reach (1–9,
- * `hotkeys::FIRST_SLOT..=LAST_SLOT`), not the one already quick. */
-export const QUICK_SLOT_FIRST = 1
-export const QUICK_SLOT_LAST = 9
+/** «Rendi rapido» can make this slot the quick one: any numbered slot the page offers (1 to
+ * `saves.slots`, the tenth too: the shortcuts cycle through 1–9 only, #149), not the automatic
+ * one (0) nor the one already quick. */
 export function canMakeQuick(slot: number, quick: number): boolean {
-  return slot >= QUICK_SLOT_FIRST && slot <= QUICK_SLOT_LAST && slot !== quick
+  return slot >= 1 && slot !== quick
 }

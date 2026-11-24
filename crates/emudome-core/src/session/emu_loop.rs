@@ -1229,10 +1229,7 @@ mod tests {
         let Rig { lp, files, .. } = r;
         assert_eq!(lp.finish(), Ok(()));
         // The next open reads what the last session wrote.
-        assert_eq!(
-            crate::quick_slot::restore(&files),
-            crate::hotkeys::LAST_SLOT
-        );
+        assert_eq!(crate::quick_slot::restore(&files), crate::quick_slot::LAST);
     }
 
     #[test]

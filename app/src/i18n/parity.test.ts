@@ -194,6 +194,27 @@ describe('the settings catalogue', () => {
     expect(stray).toEqual([])
   })
 
+  // #148: a description names a key only in its `keys.keyboard` / `keys.controller` part, shown
+  // for the input there (useSettingRow). `speed.ffmode` is the Tab key's own setting, offered
+  // only where there is a keyboard. Blind spot: a key named in words this pattern does not list.
+  it('names keys only in a description key part, one per input', () => {
+    const KEY_NAME = /\b(Tab|Backspace|Esc|F\d{1,2}|L3|R3|L2|R2|L1|R1|Ctrl)\b/
+    const OWN_KEY = new Set(['settings.speed.ffmode.desc'])
+    const named: string[] = []
+    const strayParts: string[] = []
+    for (const lang of ['en', 'it'] as const)
+      for (const [key, text] of files[lang]) {
+        if (!key.startsWith('settings.')) continue
+        if (key.endsWith('.desc') && KEY_NAME.test(text) && !OWN_KEY.has(key))
+          named.push(`${lang}: ${key}`)
+        const part = /^settings\.[^.]+\.[^.]+\.keys\.([^.]+)$/.exec(key)
+        if (part && part[1] !== 'keyboard' && part[1] !== 'controller')
+          strayParts.push(`${lang}: ${key}`)
+      }
+    expect(named).toEqual([])
+    expect(strayParts).toEqual([])
+  })
+
   it('options without an entry option are not left behind', () => {
     const stray: string[] = []
     for (const e of catalog.entries) {

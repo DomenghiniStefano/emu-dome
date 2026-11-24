@@ -52,6 +52,8 @@ export const optionKey = (id: string) => id.replace(/\./g, '_')
 export const msg = {
   name: (key: string) => `settings.${key}.name`,
   desc: (key: string) => `settings.${key}.desc`,
+  /** The part of a description that names one input's keys (#148), shown only for that input. */
+  keys: (key: string, input: KeyInput) => `settings.${key}.keys.${input}`,
   button: (key: string) => `settings.${key}.button`,
   option: (key: string, id: string) => `settings.${key}.option.${optionKey(id)}`,
   optionDesc: (key: string, id: string) => `settings.${key}.optionDesc.${optionKey(id)}`,
@@ -59,6 +61,37 @@ export const msg = {
   summary: (page: string) => `settings.pages.${page}.summary`,
   section: (page: string, id: string) => `settings.sections.${page}.${id}`,
   group: (id: string) => `settings.groups.${id}`,
+}
+
+/** An input whose keys a description can name (#148). */
+export type KeyInput = 'keyboard' | 'controller'
+export const KEY_INPUTS: readonly KeyInput[] = ['keyboard', 'controller']
+
+/**
+ * A setting's description with the key parts of the inputs shown (#148, the rule of #118): the
+ * text without keys, then each shown input's part (`settings.<key>.keys.<input>`) its entry has.
+ * `has` / `text` are vue-i18n's `te` / `t`.
+ */
+export function descWithKeys(
+  key: string,
+  base: string,
+  shown: Readonly<Record<KeyInput, boolean>>,
+  has: (k: string) => boolean,
+  text: (k: string) => string,
+): string {
+  const parts = KEY_INPUTS.filter(i => shown[i] && has(msg.keys(key, i))).map(i =>
+    text(msg.keys(key, i)),
+  )
+  return [base, ...parts].filter(p => p !== '').join(' ')
+}
+
+/** Every key part of a setting's description, for the search (a key's name finds its row). */
+export function keyWords(
+  key: string,
+  has: (k: string) => boolean,
+  text: (k: string) => string,
+): string {
+  return descWithKeys(key, '', { keyboard: true, controller: true }, has, text)
 }
 
 /** Shown at all: entries of a later roadmap phase stay hidden until then. */

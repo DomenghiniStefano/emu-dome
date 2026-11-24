@@ -76,3 +76,38 @@ describe('isShown', () => {
     expect(isShown(entry as never, { currentPhase: 1 } as never)).toBe(false)
   })
 })
+
+describe('descWithKeys (#148)', () => {
+  const texts: Record<string, string> = {
+    'settings.video.fps.keys.keyboard': 'On the keyboard: F9.',
+    'settings.video.fps.keys.controller': 'On the controller: L3 + X.',
+    'settings.speed.ffmode.keys.controller': 'On the controller: hold L3 + R2.',
+  }
+  const has = (k: string) => k in texts
+  const text = (k: string) => texts[k] ?? k
+  const base = 'A counter in a corner of the screen.'
+
+  it('adds the part of each input shown, keyboard first', async () => {
+    const { descWithKeys } = await import('./settingsModel')
+    expect(descWithKeys('video.fps', base, { keyboard: true, controller: true }, has, text)).toBe(
+      'A counter in a corner of the screen. On the keyboard: F9. On the controller: L3 + X.',
+    )
+    expect(descWithKeys('video.fps', base, { keyboard: false, controller: true }, has, text)).toBe(
+      'A counter in a corner of the screen. On the controller: L3 + X.',
+    )
+  })
+  it('names no key on a touch-only phone', async () => {
+    const { descWithKeys } = await import('./settingsModel')
+    expect(descWithKeys('video.fps', base, { keyboard: false, controller: false }, has, text)).toBe(
+      base,
+    )
+  })
+  it('skips an input the entry has no part for, and an empty base', async () => {
+    const { descWithKeys, keyWords } = await import('./settingsModel')
+    expect(
+      descWithKeys('speed.ffmode', 'Tab.', { keyboard: true, controller: false }, has, text),
+    ).toBe('Tab.')
+    expect(keyWords('speed.ffmode', has, text)).toBe('On the controller: hold L3 + R2.')
+    expect(keyWords('video.res', has, text)).toBe('')
+  })
+})

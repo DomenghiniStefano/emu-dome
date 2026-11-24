@@ -43,6 +43,13 @@ without opening the app.
   `phone-library-hidden*` / `phone-library-hidden-off*` (`hiddenGame: true` hides «Star Pilot»; Settings'
   «Mostra i giochi nascosti», L03's chip on the phone's toolbar, tapped off), and in `touch.mjs`
   `touch-editor-size-open*` / `touch-editor-size-back*` (Android's back closes C06's tool panel first).
+  The Galaxy A71's sizes are `p915` (412 × 915) and `l915`. `phone-toasts-*` (#142: centred above the
+  tab bar, beside the side column), `phone-controls-touch-cancel*` / `-editor-back*` (#144: leaving C06
+  opened from Controls lands on Controls), `phone-saves-game*` / `-one*` (#147: the quick-save tiles in
+  columns on its side), `phone-settings-keys*` (#148: no key named on a touch-only phone, the
+  controller's with `pads`), `phone-closing-failed-*` (#161: the failure card above a simulated
+  navigation bar, no moving bar behind it), and in `touch.mjs` `touch-qm-controls*` (#150: «Altro ›
+  Controlli» with no controller names the touch controls and hides the shortcuts).
 - `libraryView: "list" | "grid"` fixes `library.view` (#29; otherwise the list on `device: "phone"`,
   the grid elsewhere, and the toolbar's switch writes it). The phone's library: the `phone-library*`
   scenarios of `phone-shell.mjs` (the list, the compact grid, the switch, the regional versions, L03);

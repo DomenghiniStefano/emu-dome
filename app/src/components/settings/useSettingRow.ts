@@ -18,7 +18,8 @@ import { cloud } from '@/components/cloud/cloudState'
 import { useUpdates } from '@/composables/useUpdates'
 import { biosStatus, refreshBiosStatus } from '@/lib/biosStatus'
 import { report } from '@/lib/errors'
-import { FILE_PICKERS, msg, optionNotYet } from '@/lib/settingsModel'
+import { descWithKeys, FILE_PICKERS, KEY_INPUTS, msg, optionNotYet } from '@/lib/settingsModel'
+import { useKeysShown } from '@/composables/useKeysShown'
 import { UPDATE_ROWS, updateLine } from '@/lib/updates'
 import {
   chosenFileName,
@@ -94,6 +95,19 @@ export function useSettingRow(props: SettingRowInput) {
   })
 
   const name = computed(() => t(msg.name(key.value)))
+  // A description that names keys (#148: `speed.rew`, `video.fps`…): the parts of the inputs
+  // there only, so a touch-only phone reads no key. Followed only by the rows that have them.
+  const keysShown = KEY_INPUTS.some(i => te(msg.keys(props.entry.key, i))) ? useKeysShown() : null
+  const plainDesc = (k: string) =>
+    keysShown
+      ? descWithKeys(
+          k,
+          t(msg.desc(k)),
+          keysShown.value,
+          m => te(m),
+          m => t(m),
+        )
+      : t(msg.desc(k))
 
   /** `cloud.acct`: signed in as whom, signed out, or why this build / system cannot sign in. */
   function cloudAccountText(): string {
@@ -141,7 +155,7 @@ export function useSettingRow(props: SettingRowInput) {
       case 'about.ver':
         return t('settings.about.ver.desc', { version: version.value })
       default:
-        return t(msg.desc(k))
+        return plainDesc(k)
     }
   })
   /** The description at this level: why it is locked first, «Arriva…» after when not wired. */

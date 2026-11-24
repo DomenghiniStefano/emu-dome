@@ -2,7 +2,8 @@
 // on its side (both ways round: `orientation` sets `screen.orientation.type`), the quick menu on
 // its side, and E13's warning. Device «phone», a touch screen, in Italian. Named
 // `phone-<screen>-<size>`: `p412` 412 × 892 (Galaxy S23), `p390` 390 × 844, `p360` 360 × 740 and
-// `p780` 360 × 780 (the S23 with its display zoomed, #105) upright, `l892` 892 × 412, `l844`
+// `p780` 360 × 780 (the S23 with its display zoomed, #105), `p915` 412 × 915 (the Galaxy A71)
+// upright, `l892` 892 × 412, `l915` 915 × 412, `l844`
 // 844 × 390, `l780` 780 × 360 and `l740` 740 × 360 on the side, camera left (`-left`) or right (`-right`).
 
 /** The phone's tab bar or side column: the n-th section. */
@@ -18,6 +19,11 @@ const click = (re) =>
 const clickMain = (re) =>
   `(() => { const b = [...document.querySelectorAll('main button')].find(b => /${re}/.test(b.textContent.trim())); b && b.click(); return !!b })()`;
 /** The page's scrolling box to its end. */
+/** Settings › Video's FPS row scrolled into view. */
+const fpsRow = `(() => { const r = document.querySelector('[data-setting-key="video.fps"]'); r && r.scrollIntoView({ block: 'center' }); return !!r })()`;
+/** A toast pushed into the app's list (the one the toast stack injects), kept for 10 minutes. */
+const toast = (text, kind) =>
+  `(() => { const l = document.querySelector('[aria-live=polite]').__vueParentComponent.setupState.toasts.list; l.value = [...l.value, { id: 1e6 + l.value.length, text: ${JSON.stringify(text)}, kind: '${kind}', ms: 600000 }]; return true })()`;
 const scrollEnd = `(() => { for (const el of document.querySelectorAll('main, [data-slot=section-page], *')) if (el.scrollHeight > el.clientHeight + 4 && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight; return true })()`;
 
 const SHELL = {
@@ -59,6 +65,16 @@ const SHELL = {
     focus: true,
   },
   saves: { mock: {}, steps: [section(1)] },
+  // A game's saves (#147): its quick-save tiles in a grid sized for the window, upright and on
+  // its side (three quick saves, then a game with one).
+  "saves-game": {
+    mock: { saves: true },
+    steps: [section(1), clickMain("^Pocket Quest Advance")],
+  },
+  "saves-game-one": {
+    mock: { saves: true },
+    steps: [section(1), clickMain("^Star Pilot")],
+  },
   // Controls with no keyboard (#118): E05 offers the touch controls, a controller's overview has
   // no keyboard card; once a physical key was pressed the keyboard shows again.
   controls: { mock: {}, steps: [section(2)] },
@@ -70,6 +86,21 @@ const SHELL = {
   // With no controller on a touch device (#132): E05 one card over «Controlli touch» (the
   // editor's row, `layoutRows` gives the schema `touch.tedit`).
   "controls-touch": { mock: { layoutRows: true }, steps: [section(2)] },
+  // «Controlli touch» leads to Settings' C06; leaving the console's question (B) or the editor
+  // (B, «Annulla») comes back to Controls, not Settings (#144).
+  "controls-touch-cancel": {
+    mock: { layoutRows: true },
+    steps: [section(2), clickMain("^Controlli touch"), back],
+  },
+  "controls-touch-editor-back": {
+    mock: { layoutRows: true },
+    steps: [
+      section(2),
+      clickMain("^Controlli touch"),
+      click("^Game Boy Advance"),
+      back,
+    ],
+  },
   // Settings › Libreria (#132): «Copertine generate» locked, its list faded with the row; its
   // «Mostra i giochi nascosti» opens the library with the hidden game and L03's chip on; a tap
   // on the chip turns it off.
@@ -102,6 +133,16 @@ const SHELL = {
     steps: [section(4), click("^(Video)")],
   },
   settings: { mock: {}, steps: [section(4)] },
+  // «Mostra i fotogrammi al secondo» names no key on a touch-only phone, the controller's with
+  // one connected (#148).
+  "settings-keys": {
+    mock: { richSettings: true },
+    steps: [section(4), click("^(Video)"), fpsRow],
+  },
+  "settings-keys-pad": {
+    mock: { richSettings: true, pads: true },
+    steps: [section(4), click("^(Video)"), fpsRow],
+  },
   // Upright: a page over the list, and a search's results under the field (#29).
   "settings-page": {
     mock: {},
@@ -115,6 +156,29 @@ const SHELL = {
     ],
   },
   storage: { mock: { storage: "low" }, steps: [] },
+  // A game closing whose saves could not be written (#161): the failure card inside the system's
+  // bars (the step gives the shell a 48 px navigation bar, 24 on each side; headless has none),
+  // the closing scene's bar not moving behind it.
+  "closing-failed": {
+    mock: { game: true },
+    steps: [
+      `(() => { const s = document.documentElement.style; s.setProperty('--spacing-safe-bottom', '48px'); s.setProperty('--spacing-safe-left', '24px'); s.setProperty('--spacing-safe-right', '24px'); return true })()`,
+      `import('/src/components/game/gameFlow.ts').then(m => { m.flow.closing = { title: 'Pocket Quest Advance', autosave: true }; return true })`,
+      `window.__emit('emu://closing', { phase: 'failed', purpose: 'game', error: null }); true`,
+    ],
+  },
+  // The toasts (#142): centred inside the side gutters, above the tab bar upright, beside the
+  // side column on its side; a short one and an error that wraps.
+  toasts: {
+    mock: {},
+    steps: [
+      toast("Controller collegato", "info"),
+      toast(
+        "Non riesco a raggiungere la cartella di questo gioco. Controlla che esista ancora.",
+        "error",
+      ),
+    ],
+  },
   // The status bar's room (#29): headless Chrome has no safe area, so the step gives the shell a
   // 32 px one (the S23's status bar) and the top bar and the side column must reach under it;
   // the empty library on a touch screen offers no dragging.
@@ -151,12 +215,14 @@ const GAME = {
 
 const PORTRAIT = {
   p412: [412, 892],
+  p915: [412, 915],
   p390: [390, 844],
   p360: [360, 740],
   p780: [360, 780],
 };
 const LANDSCAPE = {
   l892: [892, 412],
+  l915: [915, 412],
   l844: [844, 390],
   l780: [780, 360],
   l740: [740, 360],

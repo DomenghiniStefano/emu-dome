@@ -12,8 +12,10 @@ withDefaults(
     /** The cover's colour; none: the surface's. */
     colour?: string | null
     value?: number | null
+    /** The work stopped on a question (closing's failure or slow save, #161): no moving bar. */
+    held?: boolean
   }>(),
-  { colour: null, value: null },
+  { colour: null, value: null, held: false },
 )
 </script>
 
@@ -27,6 +29,6 @@ withDefaults(
       title
     }}</Heading>
     <slot />
-    <Progress class="w-progress" :value="value" :label="title" />
+    <Progress v-if="!held" class="w-progress" :value="value" :label="title" />
   </div>
 </template>

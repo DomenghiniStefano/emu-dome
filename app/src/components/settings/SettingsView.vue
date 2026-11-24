@@ -30,7 +30,7 @@ import type { GameFocus } from '@/lib/gameDetails'
 import { keyboardSeen, showNavKeys } from '@/lib/inputMode'
 import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
-import { loadSchema, lockReason, msg } from '@/lib/settingsModel'
+import { keyWords, loadSchema, lockReason, msg } from '@/lib/settingsModel'
 import LayoutConsoleChooser from './LayoutConsoleChooser.vue'
 import {
   chosenTarget,
@@ -73,8 +73,14 @@ const props = defineProps<{
    * #112), as its button would. */
   editRow?: boolean
 }>()
-const emit = defineEmits<{ openControls: []; openCloud: [] }>()
-const { t } = useI18n()
+const emit = defineEmits<{
+  openControls: []
+  openCloud: []
+  /** The editor or page this section was opened for from another (`editRow`) is closed: the
+   * shell goes back to where it came from (#144: C01's «Controlli touch» back to Controls). */
+  leave: []
+}>()
+const { t, te } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
 const page = ref(OVERVIEW)
@@ -95,7 +101,11 @@ const sections = computed(() => {
   const s = schema.value
   if (!s) return []
   const words = (e: SettingEntry) =>
-    `${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${e.key} ${e.synonyms.join(' ')}`
+    `${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${keyWords(
+      e.key,
+      k => te(k),
+      k => t(k),
+    )} ${e.key} ${e.synonyms.join(' ')}`
   if (searching.value) return searchSections(s, query.value, values, byKey.value, words)
   const onlyAt = onlyChanged.value ? effective.value : null
   return pageSections(s, page.value, values, byKey.value, onlyAt)
@@ -170,6 +180,7 @@ function chooseConsole(console: ConsoleId) {
 function closeEditor() {
   editing.value = null
   choosing.value = null
+  if (leaveOnClose()) return
   void nextTick(() => editOpener?.focus())
 }
 
@@ -191,7 +202,19 @@ function choose(key: SettingKey) {
 }
 function closeAside() {
   aside.value = null
+  if (leaveOnClose()) return
   void nextTick(() => asideOpener?.focus())
+}
+
+// Opened for another section's button (`editRow`: C01's «Controlli touch», E13's «Gestisci lo
+// spazio»), the editor or page goes back there when closed, once (#144); opened from this
+// section's own row it stays here.
+let openedFromElsewhere = false
+function leaveOnClose(): boolean {
+  if (!openedFromElsewhere) return false
+  openedFromElsewhere = false
+  emit('leave')
+  return true
 }
 
 // X01: the row the search opened this section for, lit for `duration-highlight` (its animation
@@ -220,6 +243,7 @@ onMounted(async () => {
   await lightRow()
   // E13's «Gestisci lo spazio» (#29) arrives as `saves.space` with `edit`: its page opens.
   if (litRow && editRow) {
+    openedFromElsewhere = true
     if (ASIDE_ROWS[litRow]) choose(litRow)
     else editScreens(litRow)
   }

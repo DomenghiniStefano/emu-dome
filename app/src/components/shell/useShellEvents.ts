@@ -23,7 +23,7 @@ export function useShellEvents(
   listenDragDrop: () => Promise<() => void>,
 ) {
   const { t } = useI18n()
-  const { game, controller } = session
+  const { game } = session
   const listeners = useListeners()
 
   // The move ends once per start: its problem is told once, whether the event or the first
@@ -107,12 +107,10 @@ export function useShellEvents(
       // The toasts stay quiet when the TV question (TvModeDialog) or, on a phone, E14
       // (components/touch) says it instead: never both.
       emu.onGamepadConnected(p => {
-        controller.value = gamepadName(p)
         if (!tvAsksFor('connected', p))
           toasts.notify(t('toast.gamepadConnected', { name: gamepadName(p) }))
       }),
       emu.onGamepadDisconnected(p => {
-        if (controller.value === gamepadName(p)) controller.value = null
         if (!tvAsksFor('disconnected', p) && !touchSpeaksFor(p))
           toasts.notify(t('toast.gamepadDisconnected', { name: gamepadName(p) }))
       }),

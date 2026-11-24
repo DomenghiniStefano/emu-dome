@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fromPhysicalKeyboard, showKeyboardKeys, showNavKeys } from './inputMode'
+import { fromPhysicalKeyboard, keysShown, showKeyboardKeys, showNavKeys } from './inputMode'
 
 // inputMode.ts reaches the bridge through useDeviceLayout's schema; nothing here calls it.
 vi.mock('@/emu', () => ({ emu: {} }))
@@ -54,5 +54,16 @@ describe('showNavKeys', () => {
     expect(showNavKeys(true, false, false)).toBe(false)
     expect(showNavKeys(true, true, false)).toBe(true)
     expect(showNavKeys(true, false, true)).toBe(true)
+  })
+})
+
+describe('keysShown (#148)', () => {
+  it('names both inputs on a computer', () => {
+    expect(keysShown(false, false, false)).toEqual({ keyboard: true, controller: true })
+  })
+  it('on the phone, each input only once it is there', () => {
+    expect(keysShown(true, false, false)).toEqual({ keyboard: false, controller: false })
+    expect(keysShown(true, true, false)).toEqual({ keyboard: true, controller: false })
+    expect(keysShown(true, false, true)).toEqual({ keyboard: false, controller: true })
   })
 })

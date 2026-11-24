@@ -17,11 +17,13 @@ import { useGameSession } from '@/components/game/useGameSession'
 import { useScreenStatus } from '@/components/game/useScreenStatus'
 import { useScreenTouch } from '@/components/game/useScreenTouch'
 import { useShellEvents } from '@/components/shell/useShellEvents'
+import { provideShellArea } from '@/components/shell/useShellArea'
 import { createToasts, provideToasts } from '@/composables/useToasts'
 import { createCoverRequest } from '@/components/cover/useCoverRequest'
 import CoverCropDialog from '@/components/cover/CoverCropDialog.vue'
 import { setErrorSink, settle } from '@/lib/errors'
 import { hideSplash } from '@/lib/splash'
+import { gamepadName } from '@/i18n/labels'
 import { useVideoMode } from '@/components/game/useVideoMode'
 import AppShell from '@/components/shell/AppShell.vue'
 import ClosingOverlay from '@/components/closing/ClosingOverlay.vue'
@@ -44,6 +46,8 @@ import LidClosedCard from '@/components/game/LidClosedCard.vue'
 const toast = createToasts()
 provideToasts(toast)
 setErrorSink(toast.failWith)
+// The phone's shell reports the room its sections get; the toasts sit in it (#142).
+const shellArea = provideShellArea()
 const { firstRun, decide: decideFirstRun, finish: finishFirstRun } = useFirstRun(toast)
 const { videoMode, nativeAvailable, load: loadVideoMode, setVideoMode } = useVideoMode(toast)
 // «Usa come copertina» on the screenshot toast (#85): kept until the quick menu is open or the
@@ -152,7 +156,7 @@ onMounted(async () => {
       :speed="speed"
       :video-mode="videoMode"
       :native-available="nativeAvailable"
-      :controller="session.controller.value"
+      :controller="uiMode.pad ? gamepadName(uiMode.pad) : null"
       :current-slot="session.comboSlot.value"
       :undo-load-slot="settings.undoAllowed ? session.undoLoadSlot.value : null"
       :muted="session.muted.value"
@@ -198,6 +202,7 @@ onMounted(async () => {
 
   <GameFlowOverlays
     :load-block="game?.stateLoadBlock ?? null"
+    :closing-asks="closing.view.value.ask !== null"
     @start-error-close="flow.startError = null"
     @resume="launch.answerResume"
     @crash-copy="launch.crashCopy"
@@ -229,5 +234,5 @@ onMounted(async () => {
     @close-anyway="closing.closeAnyway"
   />
 
-  <ToastStack :in-game="!!game" />
+  <ToastStack :in-game="!!game" :area="shellArea" />
 </template>

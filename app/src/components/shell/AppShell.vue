@@ -80,6 +80,7 @@ import {
 import type { Section } from './sections'
 import { hasOwnInitialFocus, isFlush, isTvLaidOut, sectionStep } from './shellLayout'
 import { useCoverHaze } from './useCoverHaze'
+import { useShellAreaReport } from './useShellArea'
 import { provideShellJump } from './useShellJump'
 
 const emit = defineEmits<{
@@ -100,6 +101,10 @@ const layout = useDeviceLayout()
 const nav = computed(() => (uiMode.tv ? null : layout.nav.value))
 const rail = ref<InstanceType<typeof AppRail> | null>(null)
 const tabBar = ref<InstanceType<typeof PhoneTabBar> | null>(null)
+// The phone's toasts sit in the sections' room, above the tab bar and beside the side column
+// (#142): the root draws them and reads that room from here.
+const sectionsArea = ref<HTMLElement | null>(null)
+useShellAreaReport(sectionsArea, () => nav.value === ShellNav.Tabs || nav.value === ShellNav.Column)
 /** The phone's room for the system's bars and the notch, around the whole shell. */
 const shellClass = computed(() => {
   switch (nav.value) {
@@ -140,6 +145,14 @@ function phoneBack() {
   const to = backFrom(route.value)
   if (to) route.value = to
   else ignore(emu.leaveToBackground(), 'back at the shell root: the app stays in front')
+}
+/**
+ * A section opened for another's button is done (Settings' C06 for C01's «Controlli touch»,
+ * #144): back to the section left last, along the trail as the phone's back goes.
+ */
+function backToOpener() {
+  const to = backFrom(route.value)
+  if (to) route.value = to
 }
 useNavScope(root, {
   autofocus: true,
@@ -218,7 +231,7 @@ provideShellJump(j => {
         :content-has-initial="hasOwnInitialFocus(section)"
         @pick="pick"
       />
-      <div class="flex min-h-0 flex-1">
+      <div ref="sectionsArea" class="flex min-h-0 flex-1">
         <AppRail
           v-if="nav === ShellNav.Rail"
           ref="rail"
@@ -279,6 +292,7 @@ provideShellJump(j => {
             :edit-row="arrivalFor(route, 'settings')?.edit ?? false"
             @open-controls="go(openSection(route, 'controls'))"
             @open-cloud="go(openSection(route, 'cloud'))"
+            @leave="backToOpener"
           />
           <ControlsView
             v-else-if="section === 'controls'"

@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { ToastKind, toastDuration } from './toasts'
+import { ToastKind, toastAreaStyle, toastDuration } from './toasts'
+
+describe('toastAreaStyle', () => {
+  it('spans the sections room and keeps 12 above its bottom edge (#142)', () => {
+    // Upright: the whole width, above a 60 px tab bar.
+    expect(toastAreaStyle({ left: 0, right: 0, bottom: 60 })).toEqual({
+      left: '0px',
+      right: '0px',
+      bottom: 'calc(60px + var(--spacing-12))',
+    })
+    // On its side, the column on the camera's left: the stack starts past it.
+    expect(toastAreaStyle({ left: 98, right: 24, bottom: 0 }).left).toBe('98px')
+  })
+})
 
 describe('toastDuration', () => {
   it('keeps a notice 2 s, in game or not', () => {
