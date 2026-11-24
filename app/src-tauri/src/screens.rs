@@ -122,12 +122,20 @@ where
     R: Changed,
 {
     let state = app.try_state::<ScreensState>()?;
-    let result = {
-        let mut open = state.0.lock();
-        f(&mut open.as_mut()?.session)
+    let renderer = renderer(app);
+    let (result, status) = {
+        let mut guard = state.0.lock();
+        let open = guard.as_mut()?;
+        let result = f(&mut open.session);
+        // Sent under the lock, so a concurrent change never overtakes this one at the renderer (a
+        // channel send: nothing heavy under the lock).
+        let status = result
+            .changed()
+            .then(|| send_layout(Some(&open.session), renderer.as_ref()));
+        (result, status)
     };
-    if result.changed() {
-        publish(app);
+    if let Some(status) = status {
+        emit_status(app, status);
     }
     Some(result)
 }
@@ -151,15 +159,40 @@ impl Changed for Option<bool> {
 
 /// The layout and status now, sent to the native renderer and on `emu://screens`.
 fn publish(app: &AppHandle) {
-    if let Some(renderer) = app.try_state::<AppState>().and_then(|s| s.renderer.clone()) {
-        renderer.set_layout(current(app).0);
-    }
-    emit_status(app);
+    let renderer = renderer(app);
+    let status = match app.try_state::<ScreensState>() {
+        Some(state) => {
+            let open = state.0.lock();
+            send_layout(open.as_ref().map(|o| &o.session), renderer.as_ref())
+        }
+        None => send_layout(None, renderer.as_ref()),
+    };
+    emit_status(app, status);
 }
 
-/// The status now, on `emu://screens`.
-fn emit_status(app: &AppHandle) {
-    if let Err(e) = app.emit(crate::events::SCREENS, current(app).1) {
+/// The native renderer, when the app draws natively.
+fn renderer(app: &AppHandle) -> Option<crate::video::Renderer> {
+    app.try_state::<AppState>().and_then(|s| s.renderer.clone())
+}
+
+/// Sends `session`'s layout (the defaults with no game) to the renderer and answers its status;
+/// called under the screens' lock, so the renderer gets the layouts in the order they were made.
+fn send_layout(
+    session: Option<&ScreenSession>,
+    renderer: Option<&crate::video::Renderer>,
+) -> ScreenStatus {
+    let (layout, status) = session
+        .map(|s| (s.layout(), s.status()))
+        .unwrap_or_default();
+    if let Some(renderer) = renderer {
+        renderer.set_layout(layout);
+    }
+    status
+}
+
+/// `status` on `emu://screens`.
+fn emit_status(app: &AppHandle, status: ScreenStatus) {
+    if let Err(e) = app.emit(crate::events::SCREENS, status) {
         log::warn!("emu://screens not delivered: {e}");
     }
 }
@@ -422,72 +455,87 @@ fn open_phone_start(app: &AppHandle, console: ConsoleId, area: Area) -> Option<V
     Some(open.session.phone_start(&sources, area))
 }
 
-/// What one `screens_set_phone` call hands the native renderer, in one message: the layout when
-/// the placement changed it, and the inset the placement is fitted in.
+/// What one `screens_set_phone` call does: the layout and status when the placement changed them,
+/// and the inset the placement is fitted in, which applies even when the placement is refused (so
+/// a placement Rust refuses never holds the inset back).
 #[derive(Debug)]
 struct PhoneView {
     layout: Option<Layout>,
+    status: Option<ScreenStatus>,
     inset: Inset,
+    /// The placement was not the game's screens (`settingInvalidValue`): the old one stays.
+    refused: Option<ErrorCode>,
 }
 
-/// The phone's placement set on the open game's screens (`None`: no game), with `inset`. A
-/// placement that is not the game's screens is refused whole: neither it nor its inset applies.
+/// The phone's placement set on the open game's screens (`None`: no game), with `inset`.
 fn place_phone(
     session: Option<&mut ScreenSession>,
     screens: Vec<CustomScreen>,
     inset: Inset,
-) -> Result<PhoneView, ErrorCode> {
-    let Some(session) = session else {
-        return Ok(PhoneView {
-            layout: None,
-            inset,
-        });
-    };
-    let changed =
-        session
-            .set_phone_placement(screens)
-            .ok_or_else(|| ErrorCode::SettingInvalidValue {
-                key: keys::TOUCH_SCREENS.as_str().to_owned(),
-            })?;
-    Ok(PhoneView {
-        layout: changed.then(|| session.layout()),
+) -> PhoneView {
+    let unchanged = |refused| PhoneView {
+        layout: None,
+        status: None,
         inset,
-    })
+        refused,
+    };
+    let Some(session) = session else {
+        return unchanged(None);
+    };
+    match session.set_phone_placement(screens) {
+        None => unchanged(Some(ErrorCode::SettingInvalidValue {
+            key: keys::TOUCH_SCREENS.as_str().to_owned(),
+        })),
+        Some(false) => unchanged(None),
+        Some(true) => PhoneView {
+            layout: Some(session.layout()),
+            status: Some(session.status()),
+            inset,
+            refused: None,
+        },
+    }
 }
 
 /// Sets (or, empty, withdraws) the phone's own placement of the open game's screens, and the
 /// edges kept clear of the game it is fitted in (as `set_video_inset`): the touch layer's saved
-/// one, or the editor's while it is open. The two reach the renderer as one message, so no frame
-/// pairs the new placement with the old inset. No game: the inset only. A placement that is not
-/// the game's screens is refused with `settingInvalidValue`, its inset with it.
+/// one, or the editor's while it is open. The two reach the renderer as one message, sent under
+/// the screens' lock, so no frame pairs the new placement with the old inset and no concurrent
+/// change overtakes it. No game: the inset only. A placement that is not the game's screens is
+/// refused with `settingInvalidValue`; its inset still applies.
 #[tauri::command]
 pub fn screens_set_phone(
     app: AppHandle,
     screens: Vec<CustomScreen>,
     inset: Inset,
 ) -> Result<ScreenStatus, ErrorCode> {
-    let view = match app.try_state::<ScreensState>() {
+    let renderer = renderer(&app);
+    let apply = |view: PhoneView| {
+        if let Some(renderer) = &renderer {
+            match view.layout {
+                Some(layout) => renderer.set_view(layout, view.inset),
+                None => renderer.set_inset(view.inset),
+            }
+        }
+        (view.status, view.refused)
+    };
+    let (status, refused) = match app.try_state::<ScreensState>() {
         Some(state) => {
             let mut open = state.0.lock();
-            place_phone(open.as_mut().map(|o| &mut o.session), screens, inset)?
+            apply(place_phone(
+                open.as_mut().map(|o| &mut o.session),
+                screens,
+                inset,
+            ))
         }
-        None => place_phone(None, screens, inset)?,
+        None => apply(place_phone(None, screens, inset)),
     };
-    let renderer = app.try_state::<AppState>().and_then(|s| s.renderer.clone());
-    match view.layout {
-        Some(layout) => {
-            if let Some(renderer) = renderer {
-                renderer.set_view(layout, view.inset);
-            }
-            emit_status(&app);
-        }
-        None => {
-            if let Some(renderer) = renderer {
-                renderer.set_inset(view.inset);
-            }
-        }
+    if let Some(status) = status {
+        emit_status(&app, status);
     }
-    Ok(current(&app).1)
+    match refused {
+        Some(e) => Err(e),
+        None => Ok(current(&app).1),
+    }
 }
 
 /// Stores the custom layout at `scope`: `console` or `game` to save it, `session` to preview it
@@ -543,45 +591,44 @@ mod tests {
     fn a_new_placement_reaches_the_renderer_with_its_inset() {
         let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
         let view = place_phone(Some(&mut s), main_at(0.1), band(0.3));
-        let Ok(view) = view else {
-            panic!("refused: {view:?}");
-        };
         assert_eq!(view.layout, Some(s.layout()));
+        assert_eq!(view.status, Some(s.status()));
         assert_eq!(view.inset, band(0.3));
+        assert!(view.refused.is_none());
         assert!(s.status().phone_placement);
     }
 
     #[test]
     fn the_same_placement_sends_the_inset_alone() {
         let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
-        assert!(place_phone(Some(&mut s), main_at(0.1), band(0.3)).is_ok());
+        place_phone(Some(&mut s), main_at(0.1), band(0.3));
         let view = place_phone(Some(&mut s), main_at(0.1), band(0.2));
-        let Ok(view) = view else {
-            panic!("refused: {view:?}");
-        };
         assert_eq!(view.layout, None);
+        assert_eq!(view.status, None);
         assert_eq!(view.inset, band(0.2));
+        assert!(view.refused.is_none());
     }
 
     #[test]
     fn with_no_game_only_the_inset_applies() {
         let view = place_phone(None, main_at(0.1), band(0.3));
-        let Ok(view) = view else {
-            panic!("refused: {view:?}");
-        };
         assert_eq!(view.layout, None);
         assert_eq!(view.inset, band(0.3));
+        assert!(view.refused.is_none());
     }
 
     #[test]
-    fn a_placement_of_other_screens_is_refused_whole() {
+    fn a_refused_placement_keeps_the_old_one_and_its_inset_still_applies() {
         let mut s = ScreenSession::new(ScreenSettings::default(), true, false);
+        place_phone(Some(&mut s), two_screens(), band(0.1));
         let view = place_phone(Some(&mut s), main_at(0.1), band(0.3));
         assert!(matches!(
-            view,
-            Err(ErrorCode::SettingInvalidValue { key }) if key == keys::TOUCH_SCREENS.as_str()
+            view.refused,
+            Some(ErrorCode::SettingInvalidValue { ref key }) if key == keys::TOUCH_SCREENS.as_str()
         ));
-        assert!(!s.status().phone_placement);
+        assert_eq!(view.layout, None);
+        assert_eq!(view.inset, band(0.3));
+        assert!(s.status().phone_placement);
     }
 
     fn two_screens() -> Vec<CustomScreen> {

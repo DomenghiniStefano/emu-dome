@@ -15,7 +15,7 @@ import {
 import { flow, gameStarted } from './gameFlow'
 import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
-import { effectivePlacement, phoneSend, type PhoneView } from './placement'
+import { afterRefusal, effectivePlacement, phoneSend, type PhoneView } from './placement'
 import { insetShares, NO_INSET, sameInset, type InsetPx } from './inset'
 import { createGameState } from './gameState'
 import { useGameEnding } from './useGameEnding'
@@ -72,6 +72,8 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
   let editorPlacement: CustomScreen[] | null = null
   let wantedShares = insetShares(NO_INSET, 1, 1)
   let sent: PhoneView = { placement: [], inset: wantedShares }
+  /** The placement Rust refused as invalid last: not sent again (its inset still is). */
+  let refused: CustomScreen[] | null = null
   let queued = false
   function setPlacement(from: 'layer' | 'editor', screens: CustomScreen[] | null) {
     if (from === 'layer') layerPlacement = screens ?? []
@@ -89,7 +91,7 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
       placement: effectivePlacement(layerPlacement, editorPlacement),
       inset: wantedShares,
     }
-    const kind = phoneSend(sent, next)
+    const kind = phoneSend(sent, next, refused)
     if (!kind) return
     const before = sent
     sent = next
@@ -97,11 +99,11 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
       kind === 'pair'
         ? emu.screens.setPhone(next.placement, next.inset)
         : emu.setVideoInset(next.inset)
-    // Refused: Rust holds what it held, so the same request is sent again (unless something newer
-    // was sent meanwhile, or a new game started).
+    // Refused: what Rust holds now (afterRefusal), unless something newer was sent meanwhile or a
+    // new game started.
     report(
       call.catch((e: unknown) => {
-        if (sent === next) sent = before
+        if (sent === next) ({ sent, refused } = afterRefusal(before, next, e))
         throw e
       }),
     )
@@ -114,6 +116,7 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     layerPlacement = []
     editorPlacement = null
     sent = { placement: [], inset: sent.inset }
+    refused = null
     launches.value += 1
     playingGame.value = from
     game.value = info

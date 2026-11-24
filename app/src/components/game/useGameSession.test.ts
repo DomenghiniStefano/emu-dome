@@ -136,10 +136,10 @@ describe("the phone's placement of the screens (#134)", () => {
     expect(bridge.setPhone).not.toHaveBeenCalled()
   })
 
-  it('a refused call is sent again by the next same request', async () => {
+  it('a call refused for another reason is sent again by the next same request', async () => {
     const { session } = setup()
     await session.begin(game('nds:01', 1), null)
-    bridge.setPhone.mockRejectedValueOnce({ code: 'settingInvalidValue', params: {} })
+    bridge.setPhone.mockRejectedValueOnce({ code: 'noGame', params: {} })
     session.setPlacement('editor', placed)
     await sent()
     await sent()
@@ -148,6 +148,21 @@ describe("the phone's placement of the screens (#134)", () => {
     await sent()
     expect(bridge.setPhone).toHaveBeenCalledTimes(2)
     expect(bridge.setPhone).toHaveBeenLastCalledWith(placed, band(0))
+  })
+
+  it('a placement refused as invalid is not sent again; the inset goes on alone', async () => {
+    const { session } = setup()
+    await session.begin(game('nds:01', 1), null)
+    bridge.setPhone.mockRejectedValueOnce({ code: 'settingInvalidValue', params: {} })
+    session.setPlacement('layer', placed)
+    session.setInset(bottomInset(100))
+    await sent()
+    await sent()
+    session.setInset(bottomInset(200))
+    await sent()
+    expect(bridge.setPhone).toHaveBeenCalledTimes(1)
+    expect(bridge.setVideoInset).toHaveBeenCalledTimes(1)
+    expect(bridge.setVideoInset).toHaveBeenCalledWith(band(200))
   })
 
   it("a refusal of the old game's call leaves the new game's memo alone", async () => {

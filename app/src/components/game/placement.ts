@@ -31,8 +31,31 @@ export interface PhoneView {
 
 /** What to send for `next` when Rust holds `sent`: both together when the placement changed (Rust
  * applies them as one, so no frame pairs a new placement with an old inset), the inset alone when
- * only it changed, nothing when neither did. */
-export function phoneSend(sent: PhoneView, next: PhoneView): 'pair' | 'inset' | null {
-  if (!samePlacement(sent.placement, next.placement)) return 'pair'
+ * only it changed, nothing when neither did. A placement Rust `refused` as invalid is not sent
+ * again: only its inset goes (Rust would refuse it the same way, the inset with it held back). */
+export function phoneSend(
+  sent: PhoneView,
+  next: PhoneView,
+  refused: readonly CustomScreen[] | null = null,
+): 'pair' | 'inset' | null {
+  const placementKept =
+    samePlacement(sent.placement, next.placement) ||
+    (refused !== null && samePlacement(refused, next.placement))
+  if (!placementKept) return 'pair'
   return sameInset(sent.inset, next.inset) ? null : 'inset'
+}
+
+/** A call that sent `tried` was refused with `error`, Rust having held `before`. Refused as invalid
+ * (`settingInvalidValue`: not the game's screens), Rust kept its placement and applied the inset,
+ * and that placement is not to be sent again; any other refusal left Rust as it was, so the same
+ * request goes again. */
+export function afterRefusal(
+  before: PhoneView,
+  tried: PhoneView,
+  error: unknown,
+): { sent: PhoneView; refused: CustomScreen[] | null } {
+  const invalid = (error as { code?: unknown } | null)?.code === 'settingInvalidValue'
+  return invalid
+    ? { sent: { placement: before.placement, inset: tried.inset }, refused: tried.placement }
+    : { sent: before, refused: null }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { effectivePlacement, phoneSend, samePlacement } from './placement'
+import { afterRefusal, effectivePlacement, phoneSend, samePlacement } from './placement'
 import { insetShares, NO_INSET } from './inset'
 
 const NONE = insetShares(NO_INSET, 1, 1)
@@ -31,5 +31,37 @@ describe('what Rust is sent of the phone view', () => {
     const sent = { placement: [top], inset: shares(0) }
     expect(phoneSend(sent, { placement: [{ ...top }], inset: shares(0.3) })).toBe('inset')
     expect(phoneSend(sent, { placement: [{ ...top }], inset: shares(0) })).toBeNull()
+  })
+})
+
+describe('a placement Rust refused', () => {
+  const shares = (bottom: number) => ({ ...NONE, bottom })
+  const invalid = { code: 'settingInvalidValue', params: { key: 'touch.tscreens' } }
+
+  it('is not sent again: only its inset keeps flowing', () => {
+    const sent = { placement: [top], inset: shares(0) }
+    expect(phoneSend(sent, { placement: [bottom], inset: shares(0.3) }, [bottom])).toBe('inset')
+    expect(phoneSend(sent, { placement: [bottom], inset: shares(0) }, [bottom])).toBeNull()
+    expect(
+      phoneSend(sent, { placement: [{ ...bottom, x: 0.1 }], inset: shares(0) }, [bottom]),
+    ).toBe('pair')
+  })
+
+  it('as invalid: Rust holds the old placement and the new inset', () => {
+    const before = { placement: [top], inset: shares(0) }
+    const tried = { placement: [bottom], inset: shares(0.3) }
+    expect(afterRefusal(before, tried, invalid)).toEqual({
+      sent: { placement: [top], inset: shares(0.3) },
+      refused: [bottom],
+    })
+  })
+
+  it('for another reason: Rust holds what it held, the same request goes again', () => {
+    const before = { placement: [top], inset: shares(0) }
+    const tried = { placement: [bottom], inset: shares(0.3) }
+    expect(afterRefusal(before, tried, { code: 'noGame', params: {} })).toEqual({
+      sent: before,
+      refused: null,
+    })
   })
 })
