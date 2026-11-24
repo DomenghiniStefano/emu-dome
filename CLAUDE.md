@@ -125,7 +125,9 @@ node scripts/updater-manifest.mjs write ...   # latest.json of a release (check-
                                               # releases (tag on main, clean clone, where published, the update key):
                                               # docs/release.md
 node scripts/third-party-tables.mjs --write   # after a dependency change (and pnpm install): THIRD_PARTY.md's tables
-node scripts/versions.mjs                     # the version agrees in Cargo.toml, app/package.json, tauri.conf.json
+node scripts/versions.mjs [bump|print]       # the version, written only in Cargo.toml's [workspace.package];
+                                              # bump [patch|minor|major] raises it (0.0.x test builds, 1.0.0 the
+                                              # first release), the Android build passes it to Tauri (--config)
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)

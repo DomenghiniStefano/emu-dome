@@ -8,8 +8,9 @@
 # symlinks; installs the frontend dependencies if app/node_modules is missing; fetches the Android
 # cores pinned by cores.lock (sha256-checked, kept when already in place; mGBA is built from its
 # pinned source when missing, with the NDK cores.lock names and git: scripts/core-build.mjs); runs
-# `pnpm tauri android build --ci --apk --split-per-abi --target aarch64` (`--debug` unless
-# -Release), which builds the frontend, the Rust library and the Gradle project in
+# `pnpm tauri android build --ci --apk --split-per-abi --target aarch64 --config <version file>`
+# (`--debug` unless -Release; the version file from `scripts/versions.mjs tauri-config`, the one
+# version being in Cargo.toml), which builds the frontend, the Rust library and the Gradle project in
 # app/src-tauri/gen/android; prints the APK's path and size; -Install runs `adb install -r` with
 # the SDK's adb. -Bundle builds `--aab` instead of `--apk`, always a signed release (Google Play
 # refuses anything else; it implies -Release and cannot go with -Install: adb installs APKs only).
@@ -183,8 +184,13 @@ try {
     if (-not $env:GRADLE_OPTS -or $env:GRADLE_OPTS -notmatch 'org\.gradle\.daemon') {
         $env:GRADLE_OPTS = (@($env:GRADLE_OPTS, '-Dorg.gradle.daemon=false') | Where-Object { $_ }) -join ' '
     }
+    # The version lives only in Cargo.toml; the Tauri CLI takes Android's versionName / versionCode only
+    # from its config, so it gets them through --config (scripts/versions.mjs).
+    $versionConfig = & node (Join-Path $PSScriptRoot 'versions.mjs') 'tauri-config'
+    if ($LASTEXITCODE -ne 0 -or -not $versionConfig) { Stop-Build 'the version could not be read from Cargo.toml.' }
     $format = if ($Bundle) { '--aab' } else { '--apk' }
-    $arguments = @('tauri', 'android', 'build', '--ci', $format, '--split-per-abi', '--target', 'aarch64')
+    $arguments = @('tauri', 'android', 'build', '--ci', $format, '--split-per-abi', '--target', 'aarch64',
+        '--config', "$versionConfig")
     if (-not $Release) { $arguments += '--debug' }
     Invoke-Step $app 'pnpm' $arguments "the build failed (pnpm $($arguments -join ' '))."
 

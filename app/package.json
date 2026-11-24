@@ -1,7 +1,6 @@
 {
   "name": "emudome-ui",
   "private": true,
-  "version": "0.0.1",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "packageManager": "pnpm@12.4.1",

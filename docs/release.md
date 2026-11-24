@@ -7,13 +7,16 @@ to end yet: no release exists.
 
 - **Branches and tags.** `develop` is the integration branch (`CLAUDE.md`, «Current state»). There is no `main`
   branch on the remote and no tag yet. Nobody pushes to `main` until the first release.
-- **Version.** One number, `[workspace.package] version` in the root `Cargo.toml` (today `0.0.1`). Every crate takes
-  it (`version.workspace = true`); `app/package.json` and `app/src-tauri/tauri.conf.json` repeat it, and
-  `scripts/versions.mjs` (a step of `scripts/check`) fails when they differ. `tauri.conf.json` keeps its copy
-  because the Tauri CLI takes the Android `versionName` and `versionCode` only from there (without it Gradle falls
-  back to `1.0` / code 1); the runtime and the Windows file version would fall back to Cargo's. The Android
-  `versionCode` is derived from it as `major * 1000000 + minor * 1000 + patch`, so every release must raise the
-  version: Google Play refuses a code it has already seen.
+- **Version.** One number, written in one place: `[workspace.package] version` in the root `Cargo.toml` (today
+  `0.0.1`). Every crate takes it (`version.workspace = true`); `app/package.json` and `tauri.conf.json` have none
+  (Tauri falls back to Cargo's for the runtime, the bundles and the Windows file version), and
+  `scripts/versions.mjs` (a step of `scripts/check`) fails when one is written anywhere else. The Tauri CLI takes
+  the Android `versionName` and `versionCode` only from its config (without it Gradle falls back to `1.0` / code 1),
+  so `android-build` passes the version with `--config` (`versions.mjs tauri-config`); never upload a bare
+  `pnpm tauri android build`. The `versionCode` is `major * 1000000 + minor * 1000 + patch`, so every upload must
+  raise the version (`node scripts/versions.mjs bump [patch|minor|major]`, which also refreshes `Cargo.lock`): Google
+  Play refuses a code it has already seen. The 0.0.x versions are test builds for Google Play's internal testing
+  track; 1.0.0 is the first release.
 - **Identifier.** `it.domehub.emudome` (`identifier` in `tauri.conf.json`; the Android `applicationId` and
   `namespace` in `app/src-tauri/gen/android/app/build.gradle.kts`, the generated activity's package
   `it.domehub.emudome`, the platform library's `it.domehub.emudome.platform`). It names the data folders on every
@@ -99,8 +102,8 @@ to end yet: no release exists.
 
 ## The release flow
 
-1. On `develop`, raise `[workspace.package] version` in `Cargo.toml` and the same number in `app/package.json` and
-   `tauri.conf.json`; `./scripts/check.ps1` green on that commit (the merge rule).
+1. On `develop`, raise the version (`node scripts/versions.mjs bump`); `./scripts/check.ps1` green on that commit
+   (the merge rule).
 2. Merge `develop` into `main` (fast-forward) and tag that commit `v<version>` (an annotated tag) on `main`. The tag
    is the release: every package of it is built from the tagged commit, never from a working copy.
 3. Build each package **from a clean clone** of the tag (`git clone --branch v<version>`, no leftovers in

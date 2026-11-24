@@ -13,7 +13,7 @@
 //       package the updater installs (the NSIS setup .exe, the .AppImage), its signature (the
 //       `.sig` file Tauri writes beside it) and its download address on the release
 //       (https://github.com/DomenghiniStefano/emu-dome/releases/download/v<V>/<file name>).
-//       Refuses a version that is not the one in app/src-tauri/tauri.conf.json, or a missing
+//       Refuses a version that is not the one in Cargo.toml (scripts/versions.mjs), or a missing
 //       signature.
 //   node scripts/updater-manifest.mjs --self-test
 //       Each rule on a broken input first.
@@ -26,9 +26,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { currentVersion } from './versions.mjs'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
-const TAURI_CONF = path.join(ROOT, 'app', 'src-tauri', 'tauri.conf.json')
 const RELEASES = 'https://github.com/DomenghiniStefano/emu-dome/releases/download'
 const PLATFORMS = ['windows-x86_64', 'linux-x86_64']
 
@@ -85,11 +85,10 @@ function parseWrite(args) {
   return opts
 }
 
-function runWrite(args, confFile = TAURI_CONF) {
+function runWrite(args, version = currentVersion) {
   const opts = parseWrite(args)
-  const conf = JSON.parse(fs.readFileSync(confFile, 'utf8'))
-  if (conf.version !== opts.version)
-    fail(`--version ${opts.version} is not tauri.conf.json's ${conf.version}: build the release first`)
+  const built = version()
+  if (built !== opts.version) fail(`--version ${opts.version} is not Cargo.toml's ${built}: build the release first`)
   const packages = {}
   for (const [platform, file] of Object.entries(opts.packages)) {
     if (!fs.existsSync(file)) fail(`${platform}: ${file} does not exist`)
@@ -141,21 +140,20 @@ function selfTest() {
     // Manifest.
     const exe = path.join(dir, 'EmuDome_0.0.2_x64-setup.exe')
     fs.writeFileSync(exe, 'installer')
-    const conf = path.join(dir, 'tauri.conf.json')
-    fs.writeFileSync(conf, '{"version":"0.0.2"}')
+    const built = () => '0.0.2'
     const out = path.join(dir, 'latest.json')
     expectFail('a missing signature', () =>
-      runWrite(['--version', '0.0.2', '--out', out, `windows-x86_64=${exe}`], conf),
+      runWrite(['--version', '0.0.2', '--out', out, `windows-x86_64=${exe}`], built),
     )
     fs.writeFileSync(`${exe}.sig`, 'SIG\n')
     expectFail('another version', () =>
-      runWrite(['--version', '0.0.3', '--out', out, `windows-x86_64=${exe}`], conf),
+      runWrite(['--version', '0.0.3', '--out', out, `windows-x86_64=${exe}`], built),
     )
     expectFail('an unknown platform', () =>
-      runWrite(['--version', '0.0.2', '--out', out, `darwin-aarch64=${exe}`], conf),
+      runWrite(['--version', '0.0.2', '--out', out, `darwin-aarch64=${exe}`], built),
     )
-    expectFail('no package', () => runWrite(['--version', '0.0.2', '--out', out], conf))
-    runWrite(['--version', '0.0.2', '--out', out, `windows-x86_64=${exe}`], conf)
+    expectFail('no package', () => runWrite(['--version', '0.0.2', '--out', out], built))
+    runWrite(['--version', '0.0.2', '--out', out, `windows-x86_64=${exe}`], built)
     const written = JSON.parse(fs.readFileSync(out, 'utf8'))
     const win = written.platforms['windows-x86_64']
     if (
