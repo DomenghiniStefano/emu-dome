@@ -83,10 +83,12 @@ const inGameLine = computed(() =>
       <!-- Each tile: «Gioca da qui» opens the game on that slot, «…» the other actions (V03).
            The date only: a quick save has no play time of its own (design, #37).
            `outdated`: an older version of its core made it (saves.rs, `is_outdated`).
-           On the phone the tiles share the whole row, however few (no empty half, #131). -->
+           On the phone upright the tiles share the whole row, however few (no empty half,
+           #131); on its side they keep the desktop's columns, several a row, so one tile never
+           takes the whole width and runs past the screen's height (#147). -->
       <div
         v-if="saves.quick.length"
-        class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))] gap-8 touch:grid-cols-[repeat(auto-fit,minmax(var(--spacing-stat-min),1fr))]"
+        class="grid grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))] gap-8 touch:grid-cols-[repeat(auto-fit,minmax(var(--spacing-stat-min),1fr))] touch:landscape:grid-cols-[repeat(auto-fill,minmax(var(--spacing-stat-min),1fr))]"
       >
         <SlotTile
           v-for="q in saves.quick"
