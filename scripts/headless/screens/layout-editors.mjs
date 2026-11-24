@@ -1,12 +1,13 @@
 // The layout editors opened from Settings without a game, and the phone quick menu's «Modifica la
 // disposizione» (Trello #111), in Italian. `layoutRows` gives the schema the two editor rows on
 // their pages; `frameConsole` the console whose screens the C06 editor draws (the mock's
-// `screens_preview`). Named `layout-<screen>-<size>`: the Galaxy S23 as its webview reports itself
-// (`p780` 360 × 780, `l780` 780 × 360) and the desktop (`d1280` 1280 × 800).
+// `screens_phone_start`, #134). Named `layout-<screen>-<size>`: the Galaxy S23 as its webview
+// reports itself (`p780` 360 × 780, `l780` 780 × 360) and the desktop (`d1280` 1280 × 800).
 //
 // - `settings-touch` / `settings-screens`: the page with its row at «Tutti i giochi»;
 // - `touch-chooser` / `screens-chooser`: the row's button there asks for the console;
-// - `touch-<console>`: the console chosen, C06 over the console's screens drawn as placeholders;
+// - `touch-<console>`: the console chosen, C06 with the console's screens as placeholder frames on
+//   the theme's flat ground;
 // - `screens-<console>`: the console chosen, C09 with its placeholder screens;
 // - `touch-console-gba`: the row at the console's scope (Game Boy Advance) opens C06 at once;
 // - `qm-more` / `qm-layout`: the phone quick menu's «Altro» with the new row, and C06 opened by it.

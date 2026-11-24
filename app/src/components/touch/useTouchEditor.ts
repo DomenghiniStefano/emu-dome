@@ -130,13 +130,6 @@ export function useTouchEditor(o: TouchEditorOptions) {
     opacityMax: setup.value?.opacityMax ?? 100,
   }))
   const addable = computed(() => missing(draft.value, setup.value?.available ?? []))
-  /** The edges the layout keeps clear of the game (`reserved`), of the history's present: once a
-   * screen change is committed the layout places the screens itself (fractions of the whole
-   * window) and nothing is kept clear. A drag on its way changes nothing here, the first one
-   * included. */
-  const inset = computed(() =>
-    history.value.present.screens.length > 0 ? NO_INSET : reserved.value,
-  )
   /** Where the layout puts the screens, live while one is dragged (empty: none placed). */
   const placement = computed(() => draft.value.screens)
   /** Over a game, the edges kept clear of it sent with `placement` (Rust fits a held placement
@@ -564,7 +557,6 @@ export function useTouchEditor(o: TouchEditorOptions) {
 
   return {
     area,
-    inset,
     orientation,
     setup,
     prefs,
