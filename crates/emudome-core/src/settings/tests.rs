@@ -2417,3 +2417,46 @@ fn the_entries_not_wired_yet_are_these() {
         ]
     );
 }
+
+#[test]
+fn set_many_writes_every_value_or_none() {
+    let dir = TestDir::new("set-many");
+    let mut s = settings(&dir);
+    let tedit = Value::List(vec!["portrait/menu:0.5,0.5,100,100,tap".to_owned()]);
+    let screens = Value::List(vec!["portrait/main:0,0,1,0.5".to_owned()]);
+    let bad = Value::List(vec!["portrait/main:0,0,2,0.5".to_owned()]);
+    let before = value_of(&mut s, "touch.tedit", &console_scope()).0;
+    assert!(s
+        .set_many(
+            &console_scope(),
+            &[("touch.tedit", tedit.clone()), ("touch.tscreens", bad)]
+        )
+        .is_err());
+    assert_eq!(value_of(&mut s, "touch.tedit", &console_scope()).0, before);
+    s.set_many(
+        &console_scope(),
+        &[
+            ("touch.tedit", tedit.clone()),
+            ("touch.tscreens", screens.clone()),
+            ("touch.tport", Value::Text("custom".into())),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        value_of(&mut s, "touch.tedit", &console_scope()).0,
+        Some(tedit)
+    );
+    assert_eq!(
+        value_of(&mut s, "touch.tscreens", &console_scope()).0,
+        Some(screens)
+    );
+    assert!(s
+        .set_many(
+            &Scope::Global,
+            &[
+                ("touch.tport", Value::Text("custom".into())),
+                ("touch.tedit", Value::List(vec![]))
+            ]
+        )
+        .is_err());
+}
