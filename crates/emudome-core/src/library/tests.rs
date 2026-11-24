@@ -786,6 +786,58 @@ fn a_database_that_cannot_be_read_is_never_written_over() {
 }
 
 #[test]
+fn a_database_made_unreadable_after_it_was_read_is_never_written_over() {
+    // Trello #178: read at start, then `chmod 000` or a lock held by another program.
+    let dir = TestDir::new("lib-unreadable-later");
+    write(&dir, "roms/a.nds", &nds_rom());
+    let mut lib = Library::open(&dir.path("db"));
+    run(&mut lib, &[&dir.path("roms")], 5);
+    let id = lib.games().next().unwrap().id.clone();
+    lib.add_play_time(&id, 90).unwrap();
+    let before = dir.read("db/library.json");
+    {
+        let _denied = crate::atomic::deny_reads(&dir.path("db/library.json"));
+        for _ in 0..2 {
+            assert!(matches!(
+                lib.add_play_time(&id, 10),
+                Err(ErrorCode::LibraryReadFailed {
+                    cause: crate::IoCause::PermissionDenied
+                })
+            ));
+        }
+        assert!(matches!(
+            lib.set_flags(&id, Some(true), None),
+            Err(ErrorCode::LibraryReadFailed { .. })
+        ));
+        assert_eq!(dir.read("db/library.json"), before);
+    }
+    // Readable again: the next change starts from the file, the refused ones are not in it.
+    lib.add_play_time(&id, 10).unwrap();
+    let lib = Library::open(&dir.path("db"));
+    let game = lib.game(&id).unwrap();
+    assert_eq!(game.play_time_secs, 100);
+    assert!(!game.favourite);
+}
+
+#[test]
+fn a_folder_put_in_place_of_the_database_after_it_was_read_is_not_written_over() {
+    // The same without the test seam: a folder fails the check on every OS (Windows: access
+    // denied at the open; Linux and Android: the read).
+    let dir = TestDir::new("lib-folder-later");
+    write(&dir, "roms/a.nds", &nds_rom());
+    let mut lib = Library::open(&dir.path("db"));
+    run(&mut lib, &[&dir.path("roms")], 5);
+    let id = lib.games().next().unwrap().id.clone();
+    fs::remove_file(dir.path("db/library.json")).unwrap();
+    dir.write("db/library.json/inside.txt", "kept");
+    assert!(matches!(
+        lib.add_play_time(&id, 10),
+        Err(ErrorCode::LibraryReadFailed { .. })
+    ));
+    assert_eq!(dir.read("db/library.json/inside.txt"), "kept");
+}
+
+#[test]
 fn library_writes_resume_once_the_database_reads_again() {
     let dir = TestDir::new("lib-read-recovers");
     write(&dir, "roms/a.nds", &nds_rom());
