@@ -202,6 +202,7 @@ onMounted(async () => {
 
   <GameFlowOverlays
     :load-block="game?.stateLoadBlock ?? null"
+    :closing-asks="closing.view.value.ask !== null"
     @start-error-close="flow.startError = null"
     @resume="launch.answerResume"
     @crash-copy="launch.crashCopy"

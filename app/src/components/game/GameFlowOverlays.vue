@@ -24,6 +24,9 @@ import type { StateLoadBlock } from '@/emu'
 defineProps<{
   /** The open game's `stateLoadBlock`: the resume question shows «Riprendi» disabled with it. */
   loadBlock: StateLoadBlock | null
+  /** The close flow asks (ClosingAsk: the saves failed or are slow): the closing scene's bar
+   * stops moving meanwhile (#161). */
+  closingAsks?: boolean
 }>()
 const emit = defineEmits<{
   startErrorClose: []
@@ -62,7 +65,11 @@ const pull = computed(() => progressOf(cloud.progress, 'pulling', null))
     @answer="a => emit('closeAnswer', a)"
   />
 
-  <GameScene v-if="flow.closing" :title="t('flow.closing', { title: flow.closing.title })">
+  <GameScene
+    v-if="flow.closing"
+    :title="t('flow.closing', { title: flow.closing.title })"
+    :held="closingAsks"
+  >
     <ul class="m-0 list-none p-0 text-center text-ink-muted">
       <li v-if="flow.closing.autosave">{{ t('flow.stepAuto') }}</li>
       <li>{{ t('flow.stepInGame') }}</li>

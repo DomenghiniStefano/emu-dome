@@ -13,9 +13,11 @@ const emit = defineEmits<{ wait: []; closeAnyway: [] }>()
 </script>
 
 <template>
+  <!-- Inside the system's bars (#161): Android shows them again once the game ends, the
+       navigation bar at the bottom upright, on a side on its side; 0 where there are none. -->
   <div
     v-if="view.status || view.ask"
-    class="fixed inset-0 z-dialog flex items-end justify-center px-16 pb-16"
+    class="fixed inset-0 z-dialog flex items-end justify-center pt-safe-top pr-[calc(var(--spacing-16)+var(--spacing-safe-right))] pb-[calc(var(--spacing-16)+var(--spacing-safe-bottom))] pl-[calc(var(--spacing-16)+var(--spacing-safe-left))]"
   >
     <!-- Keyed by the question: a new one opens afresh and its main action takes the focus. -->
     <ClosingAsk
