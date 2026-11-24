@@ -15,9 +15,12 @@ vi.mock('@/lib/library', async () => {
   return { library: reactive({ games: [] as LibraryGame[] }) }
 })
 
-const entry = (key: string, levels: SettingEntry['levels']) => ({ key, levels }) as SettingEntry
+const EVERY: SettingEntry['consoles'] = ['gb', 'gbc', 'gba', 'nds', '3ds']
+const entry = (key: string, levels: SettingEntry['levels'], consoles = EVERY) =>
+  ({ key, levels, consoles }) as SettingEntry
 const perConsole = entry('video.fps', ['default', 'global', 'console', 'game'])
 const globalOnly = entry('general.theme', ['default', 'global'])
+const twoScreens = entry('screens.custom', ['default', 'console', 'game'], ['nds', '3ds'])
 const game = (console: ConsoleId, lastPlayed: number | null = null) =>
   ({ console, lastPlayed }) as LibraryGame
 const focus: GameFocus = {
@@ -192,5 +195,29 @@ describe('useSettingsScope', () => {
     scope.level.value = 'console'
     scope.goTo('game', null)
     expect(scope.level.value).toBe('global')
+  })
+
+  it('a page about DS / 3DS offers only their consoles, and keeps the console chosen elsewhere (#176)', async () => {
+    library.games = [game('gb', 5), game('gba', 9), game('nds'), game('3ds', 7)]
+    const { scope, page } = setup()
+    await scope.findContextConsole()
+    scope.pickConsole('gba')
+    page.value = [twoScreens]
+    expect(scope.consoleOptions.value.map(o => o.id)).toEqual(['nds', '3ds'])
+    // The page's console played last stands in for the GBA chosen on another page.
+    expect(scope.contextConsole.value).toBe('3ds')
+    expect(scope.scope.value).toEqual({ level: 'console', console: '3ds' })
+    scope.pickConsole('gb')
+    expect(scope.contextConsole.value).toBe('3ds')
+    page.value = [perConsole]
+    expect(scope.contextConsole.value).toBe('gba')
+  })
+
+  it('a page about DS / 3DS with none of their games has no console level', async () => {
+    library.games = [game('gba', 9)]
+    const { scope } = setup([twoScreens])
+    await scope.findContextConsole()
+    expect(scope.consoleOptions.value).toEqual([])
+    expect(scope.levels.value).toEqual(['global'])
   })
 })

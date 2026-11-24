@@ -2189,6 +2189,8 @@
     },
     "lockedGlobal": "It always applies to all games. To change it, choose “All games” at the top.",
     "lockedScoped": "It is set per console or per game: choose a level at the top.",
+    "lockedForConsole": "It is set per console only: choose the console at the top.",
+    "lockedForGame": "It is set per game only: choose “This game only” at the top, or open the settings from the game’s details.",
     "lockedNote": "Greyed-out items apply to all games: to change them, choose “All games”.",
     "lockedPhone": "Only on this phone.",
     "lockedDesktop": "Only on this computer.",

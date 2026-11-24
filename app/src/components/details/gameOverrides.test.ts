@@ -27,6 +27,7 @@ const entry = (key: SettingKey, kind: SettingKind, phase = 0): SettingEntry => (
   needsNativeVideo: false,
   wired: true,
   unsupportedConsoles: [],
+  consoles: ['gb', 'gbc', 'gba', 'nds', '3ds'],
 })
 
 const filter = entry('video.filter', {

@@ -44,6 +44,11 @@ needsNativeVideo: boolean,
  */
 unsupportedConsoles: Array<ConsoleId>, 
 /**
+ * The consoles whose games the entry is about, every one unless restricted (the DS / 3DS
+ * screens): a page's console level offers only the consoles of its entries.
+ */
+consoles: Array<ConsoleId>, 
+/**
  * Something reads it; otherwise shown disabled with «arrives in a future update».
  */
 wired: boolean, 

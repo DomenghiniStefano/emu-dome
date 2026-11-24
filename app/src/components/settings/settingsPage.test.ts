@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { LibraryGame, SettingEntry, SettingKey, SettingsSchema } from '@/emu'
+import catalog from '@/generated/settings-catalog.json'
 import {
   changedCount,
   effectiveLevel,
   lastPlayedConsole,
   offersGameLevel,
+  pageConsole,
+  pageConsoles,
   pageSections,
   RESULTS,
+  rowLevel,
   scopeAt,
   scopeConsoles,
   scopeLevels,
@@ -33,6 +37,7 @@ const entry = (key: SettingKey, over: Partial<SettingEntry> = {}): SettingEntry 
   needsNativeVideo: false,
   wired: true,
   unsupportedConsoles: [],
+  consoles: ['gb', 'gbc', 'gba', 'nds', '3ds'],
   ...over,
 })
 const surround = entry('video.surround', {
@@ -109,6 +114,51 @@ describe('changedCount', () => {
     expect(changedCount(schema, 'video', values, 'global')).toBe(1)
     expect(changedCount(schema, 'video', undefined, 'global')).toBe(0)
   })
+
+  // #170: «Vibrazione» (per device, «Tutti i giochi» only) off.
+  const vib = entry('touch.tvib', { levels: ['default', 'global'], perDevice: true })
+  const port = entry('touch.tport', { levels: ['default', 'global', 'console', 'game'] })
+  const clock = entry('saves.rtc', { levels: ['default', 'game', 'session'] })
+  const touch: SettingsSchema = {
+    ...schema,
+    pages: ['touch', 'saves'],
+    entries: [vib, port, clock],
+  }
+  const vibOff = rows({ 'touch.tvib': { value: false, source: 'global', changed: true } })
+
+  it('counts a per-device value changed at the level edited (#170)', () => {
+    expect(changedCount(touch, 'touch', vibOff, 'global')).toBe(1)
+  })
+
+  it('counts a row only «Tutti i giochi» sets at a console or a game too (#170)', () => {
+    expect(changedCount(touch, 'touch', vibOff, 'console')).toBe(1)
+    expect(changedCount(touch, 'touch', vibOff, 'game')).toBe(1)
+    // A row the console can set counts only when the console set it.
+    const inherited = rows({ 'touch.tport': { source: 'global' } })
+    expect(changedCount(touch, 'touch', inherited, 'console')).toBe(0)
+    expect(changedCount(touch, 'touch', inherited, 'global')).toBe(1)
+    // A game's row never counts at a console's level.
+    const game = rows({ 'saves.rtc': { source: 'game' } })
+    expect(changedCount(touch, 'saves', game, 'console')).toBe(0)
+    expect(changedCount(touch, 'saves', game, 'game')).toBe(1)
+  })
+
+  it('«Mostra solo le impostazioni modificate» shows what the count counts', () => {
+    const tSchema: SettingsSchema = {
+      ...touch,
+      sections: [{ page: 'touch', id: 'all', keys: ['touch.tvib', 'touch.tport'] }],
+    }
+    const map = new Map(tSchema.entries.map(e => [e.key, e]))
+    const secs = pageSections(tSchema, 'touch', { touch: vibOff }, map, 'console')
+    expect(keys(secs)).toEqual([['touch.tvib']])
+  })
+
+  it('names the level a row is set at', () => {
+    expect(rowLevel(vib, 'console')).toBe('global')
+    expect(rowLevel(port, 'console')).toBe('console')
+    expect(rowLevel(clock, 'console')).toBeNull()
+    expect(rowLevel(clock, 'game')).toBe('game')
+  })
 })
 
 describe('levels and consoles', () => {
@@ -129,6 +179,36 @@ describe('levels and consoles', () => {
   it('finds the console played last', () => {
     expect(lastPlayedConsole([game('gb', 5), game('nds', 9), game('gba', null)])).toBe('nds')
     expect(lastPlayedConsole([game('gba', null)])).toBeNull()
+    expect(lastPlayedConsole([game('gb', 5), game('nds', 9)], ['gb'])).toBe('gb')
+  })
+
+  it('offers only the consoles the page is for (#176)', () => {
+    const games = [game('nds', null), game('gba', 5)]
+    expect(scopeConsoles(games, ['3ds'], ['nds', '3ds'])).toEqual(['nds', '3ds'])
+    expect(pageConsole('gba', ['nds', '3ds'], [game('3ds', 2), game('nds', 1)])).toBe('3ds')
+    expect(pageConsole('gba', ['nds', '3ds'], [])).toBe('nds')
+    expect(pageConsole('nds', ['nds', '3ds'], [game('3ds', 2)])).toBe('nds')
+    expect(pageConsole('gba', [], [])).toBeNull()
+  })
+
+  // The real catalogue (the generated fixture): each page's console level is for the consoles
+  // of its rows set per console, never a list typed here.
+  it('each page of the catalogue offers the consoles its rows are about (#176)', () => {
+    const byPage = new Map<string, SettingEntry[]>()
+    for (const e of catalog.entries) {
+      const real = entry(e.key as SettingKey, {
+        page: e.page,
+        levels: e.levels as SettingEntry['levels'],
+        consoles: e.consoles as SettingEntry['consoles'],
+      })
+      byPage.set(e.page, [...(byPage.get(e.page) ?? []), real])
+    }
+    for (const page of catalog.pages) {
+      const consoles = pageConsoles(byPage.get(page) ?? [])
+      if (page === 'screens') expect(consoles, page).toEqual(['nds', '3ds'])
+      // Every other page has rows for every console (or none per console): all of them.
+      else expect(consoles, page).toEqual(['gb', 'gbc', 'gba', 'nds', '3ds'])
+    }
   })
 })
 

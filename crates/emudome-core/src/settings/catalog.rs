@@ -74,6 +74,7 @@ const fn e(key: &'static str, kind: Kind, default: DefaultValue, levels: Levels)
         show_if: None,
         needs_native_video: false,
         wired: true,
+        consoles: &[],
     }
 }
 
@@ -295,6 +296,11 @@ impl Entry {
         }
     }
 
+    /// About the games of these consoles only: a page's console level offers only them.
+    const fn for_consoles(self, consoles: &'static [ConsoleId]) -> Self {
+        Self { consoles, ..self }
+    }
+
     /// Shown on `page` instead of its key's prefix (the keys never change).
     const fn on_page(self, page: &'static str) -> Self {
         Self { page, ..self }
@@ -370,6 +376,9 @@ const GC: Levels = Levels::GLOBAL_CONSOLE;
 const GG: Levels = Levels::GLOBAL_GAME;
 const CG: Levels = Levels::CONSOLE_GAME;
 const ALL: Levels = Levels::ALL;
+
+/// The consoles with two screens (`screens::console_screens`): the «Schermi di DS e 3DS» rows.
+pub const TWO_SCREENS: &[ConsoleId] = &[ConsoleId::Nds, ConsoleId::N3ds];
 
 /// The «Avanzate» page (T14).
 const ADV: &str = "advanced";
@@ -511,6 +520,7 @@ pub static ENTRIES: &[Entry] = &[
         consoles: &[],
         value: DefaultValue::List(&["auto", "big_small", "top_only"]),
     }])
+    .for_consoles(TWO_SCREENS)
     .phase(2),
     // Per console, not global (owner, 2026-11-21): a DS layout never stretches a 3DS screen.
     // Phase 1, ahead of its page (Trello #111): the C09 editor opens from Settings without a
@@ -520,29 +530,40 @@ pub static ENTRIES: &[Entry] = &[
         Kind::ScreenLayout,
         DefaultValue::List(&[]),
         CG,
-    ),
-    slider("screens.ratio", 70, (50, 90, 5), Unit::Percent, CG).phase(2),
+    )
+    .for_consoles(TWO_SCREENS),
+    slider("screens.ratio", 70, (50, 90, 5), Unit::Percent, CG)
+        .for_consoles(TWO_SCREENS)
+        .phase(2),
     // Its «Come sul DS» button sets 90 px (the real gap at 1×).
-    slider("screens.gap", 0, (0, 120, 1), Unit::Px, CG).phase(2),
+    slider("screens.gap", 0, (0, 120, 1), Unit::Px, CG)
+        .for_consoles(TWO_SCREENS)
+        .phase(2),
     seg(
         "screens.rot",
         &["none", "left", "right", "flip"],
         "none",
         GM,
     )
+    .for_consoles(TWO_SCREENS)
     .phase(2),
-    seg("screens.swap", &["toggle", "hold"], "toggle", G).phase(2),
+    seg("screens.swap", &["toggle", "hold"], "toggle", G)
+        .for_consoles(TWO_SCREENS)
+        .phase(2),
     sw("screens.second", false, G)
         .device()
         .pc()
+        .for_consoles(TWO_SCREENS)
         .phase(5)
         .not_wired(),
+    // Stereoscopic 3D: the 3DS's top screen only.
     sel(
         "screens.stereo",
         &["off", "side", "anaglyph", "interlaced"],
         "off",
         GM,
     )
+    .for_consoles(&[ConsoleId::N3ds])
     .phase(3)
     .not_wired(),
     // ---- Audio (audio) ----
@@ -620,7 +641,9 @@ pub static ENTRIES: &[Entry] = &[
     link("pad.turbo", ALL),
     sel("pad.mod", &["l3", "r3", "select"], "l3", G),
     bindings("pad.combos", BindingTable::Combos, ALL),
-    sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC).phase(2),
+    sel("pad.lid", &["l3_select", "menu_only"], "l3_select", GC)
+        .for_consoles(TWO_SCREENS)
+        .phase(2),
     slider("pad.dead", 15, (0, 50, 1), Unit::Percent, G),
     slider("pad.stickdpad", 50, (20, 90, 5), Unit::Percent, GC),
     slider("pad.trig", 50, (10, 90, 5), Unit::Percent, G),

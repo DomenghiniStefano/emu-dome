@@ -13,8 +13,21 @@
   },
   "entries": [
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.scale",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "fit",
         "integer",
@@ -23,8 +36,21 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.aspect",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "original",
         "4_3",
@@ -33,8 +59,21 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.filter",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "none",
         "light",
@@ -43,8 +82,21 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.surround",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "black",
         "cover",
@@ -55,8 +107,21 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.surroundSet",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "aurora",
         "sunset",
@@ -68,32 +133,88 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.surroundImg",
       "kind": "file",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.surroundDim",
       "kind": "slider",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.surroundAnim",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.fps",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.window",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "windowed",
         "fullscreen",
@@ -102,8 +223,20 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.winsize",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "session"
+      ],
       "options": [
         "1x",
         "2x",
@@ -114,8 +247,21 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.portrait",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "center",
         "top"
@@ -123,8 +269,20 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.orient",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "auto",
         "portrait",
@@ -133,8 +291,18 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.path",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "accelerated",
         "compatible"
@@ -142,14 +310,37 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.vsync",
       "kind": "toggle",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.api",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "auto",
         "vulkan",
@@ -159,8 +350,20 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.res3d",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "1x",
         "2x",
@@ -170,8 +373,20 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "video.texf",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "none",
         "bicubic",
@@ -183,8 +398,21 @@
       "page": "video"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "fx.fxpick",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "none",
         "lcd",
@@ -197,26 +425,71 @@
       "page": "fx"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "fx.fxint",
       "kind": "slider",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "fx"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "fx.fxbright",
       "kind": "slider",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "fx"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "fx.fxfile",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "fx"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "screens.cycle",
       "kind": "multi",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "vertical",
         "auto",
@@ -228,26 +501,61 @@
       "page": "screens"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "screens.custom",
       "kind": "screenLayout",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "screens"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "screens.ratio",
       "kind": "slider",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "screens"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "screens.gap",
       "kind": "slider",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "screens"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "screens.rot",
       "kind": "choice",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [
         "none",
         "left",
@@ -257,8 +565,15 @@
       "page": "screens"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "screens.swap",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "toggle",
         "hold"
@@ -266,14 +581,28 @@
       "page": "screens"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "screens.second",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "screens"
     },
     {
+      "consoles": [
+        "3ds"
+      ],
       "key": "screens.stereo",
       "kind": "choice",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [
         "off",
         "side",
@@ -283,14 +612,38 @@
       "page": "screens"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "audio.vol",
       "kind": "slider",
+      "levels": [
+        "global",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "audio"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "audio.ff",
       "kind": "choice",
+      "levels": [
+        "global",
+        "game",
+        "session"
+      ],
       "options": [
         "mute",
         "pitch_up",
@@ -299,8 +652,20 @@
       "page": "audio"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "audio.mic",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "blow",
         "real",
@@ -309,16 +674,36 @@
       "page": "audio"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "audio.out",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "system"
       ],
       "page": "audio"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "audio.lat",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "low",
         "balanced",
@@ -327,8 +712,20 @@
       "page": "audio"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "speed.spstart",
       "kind": "choice",
+      "levels": [
+        "global",
+        "game",
+        "session"
+      ],
       "options": [
         "0.5",
         "1",
@@ -337,8 +734,18 @@
       "page": "speed"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "speed.ffmode",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "hold",
         "toggle"
@@ -346,8 +753,20 @@
       "page": "speed"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "speed.ffval",
       "kind": "choice",
+      "levels": [
+        "global",
+        "game",
+        "session"
+      ],
       "options": [
         "2",
         "3",
@@ -357,8 +776,18 @@
       "page": "speed"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "speed.slow",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "0.25",
         "0.5",
@@ -367,20 +796,57 @@
       "page": "speed"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "speed.rew",
       "kind": "toggle",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "speed"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "speed.rewlen",
       "kind": "slider",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "speed"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "speed.runahead",
       "kind": "choice",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [
         "off",
         "1",
@@ -390,8 +856,18 @@
       "page": "speed"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.slots",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "3",
         "5",
@@ -400,8 +876,21 @@
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.autoq",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "1min",
         "5min",
@@ -410,14 +899,40 @@
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.autoexit",
       "kind": "toggle",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.resume",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "ask",
         "always",
@@ -426,20 +941,51 @@
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.undo",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.backups",
       "kind": "slider",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.rtc",
       "kind": "choice",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [
         "real",
         "offset",
@@ -448,62 +994,167 @@
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.rtcdays",
       "kind": "slider",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.rtchours",
       "kind": "slider",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.rtcminutes",
       "kind": "slider",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.rtcdate",
       "kind": "dateTime",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.import",
       "kind": "action",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.savedir",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "saves.space",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "saves"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.dev1",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.dev2",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.ab",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "nintendo",
         "printed"
@@ -511,20 +1162,56 @@
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.remap",
       "kind": "bindings",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.turbo",
       "kind": "action",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.mod",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "l3",
         "r3",
@@ -533,14 +1220,36 @@
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.combos",
       "kind": "bindings",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "nds",
+        "3ds"
+      ],
       "key": "pad.lid",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "session"
+      ],
       "options": [
         "l3_select",
         "menu_only"
@@ -548,32 +1257,88 @@
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.dead",
       "kind": "slider",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.stickdpad",
       "kind": "slider",
+      "levels": [
+        "global",
+        "console",
+        "session"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.trig",
       "kind": "slider",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.rumble",
       "kind": "slider",
+      "levels": [
+        "global",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.gyro",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "controller",
         "phone",
@@ -584,8 +1349,20 @@
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.pointer",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "mouse",
         "right_stick",
@@ -594,8 +1371,18 @@
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.confirm",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "right",
         "bottom"
@@ -603,8 +1390,18 @@
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "pad.repeat",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "slow",
         "normal",
@@ -613,20 +1410,55 @@
       "page": "pad"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tedit",
       "kind": "touchLayout",
+      "levels": [
+        "console",
+        "session"
+      ],
       "options": [],
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tscreens",
       "kind": "touchScreens",
+      "levels": [
+        "console",
+        "session"
+      ],
       "options": [],
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tport",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "default",
         "custom"
@@ -634,8 +1466,21 @@
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tland",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "default",
         "custom"
@@ -643,8 +1488,18 @@
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tskin",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "smoke",
         "outline"
@@ -652,26 +1507,69 @@
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.topac",
       "kind": "slider",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tvib",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.thapt",
       "kind": "slider",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.thide",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "never",
         "5s",
@@ -680,14 +1578,34 @@
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tpad",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "touch.tlost",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "pause",
         "touch"
@@ -695,8 +1613,18 @@
       "page": "touch"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.lang",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "system",
         "it",
@@ -705,8 +1633,18 @@
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.theme",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "system",
         "dark",
@@ -716,14 +1654,34 @@
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.accent",
       "kind": "colour",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.ui",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "auto",
         "desktop",
@@ -732,8 +1690,18 @@
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.start",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "library",
         "last_game"
@@ -741,20 +1709,50 @@
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.bgpause",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.confirmdel",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "general.updates",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "auto",
         "ask",
@@ -763,26 +1761,66 @@
       "page": "general"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.folders",
       "kind": "folders",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.scanstart",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.watch",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.sort",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "last_played",
         "name",
@@ -792,8 +1830,18 @@
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.view",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "list",
         "grid"
@@ -801,26 +1849,66 @@
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.group",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.versions",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.hidden",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "library.covers",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "color_title",
         "rom_icon",
@@ -829,26 +1917,68 @@
       "page": "library"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.acct",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.space",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.ssaves",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.squick",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "session"
+      ],
       "options": [
         "all",
         "last",
@@ -857,20 +1987,50 @@
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.ssettings",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.sgames",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.sauto",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "game",
         "manual"
@@ -878,20 +2038,50 @@
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cloud.swifi",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "cloud"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "a11y.textsize",
       "kind": "slider",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "a11y"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "a11y.motion",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "system",
         "on",
@@ -900,8 +2090,18 @@
       "page": "a11y"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "a11y.transp",
       "kind": "choice",
+      "levels": [
+        "global"
+      ],
       "options": [
         "system",
         "on",
@@ -910,14 +2110,36 @@
       "page": "a11y"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "a11y.toggle",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "a11y"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "a11y.cblind",
       "kind": "choice",
+      "levels": [
+        "global",
+        "game",
+        "session"
+      ],
       "options": [
         "none",
         "protan",
@@ -927,8 +2149,18 @@
       "page": "a11y"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "presets.preset",
       "kind": "apply",
+      "levels": [
+        "global"
+      ],
       "options": [
         "faithful",
         "performance",
@@ -938,86 +2170,228 @@
       "page": "presets"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "presets.export",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "presets"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "presets.importset",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "presets"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bgb",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bgbc",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bgba",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bds7",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bds9",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bdsfw",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bdsi7",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bdsi9",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bdsifw",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.bdsi",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "bios.b3ds",
       "kind": "file",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "bios"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.gbmodel",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "auto",
         "gb",
@@ -1027,8 +2401,20 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.gbpal",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "green",
         "pocket",
@@ -1038,14 +2424,38 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.sgb",
       "kind": "toggle",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.gbacc",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "off",
         "gba",
@@ -1054,8 +2464,20 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.gbablend",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "off",
         "auto",
@@ -1064,14 +2486,36 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.solar",
       "kind": "slider",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.dsmode",
       "kind": "choice",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [
         "auto",
         "ds",
@@ -1080,14 +2524,36 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.dsname",
       "kind": "text",
+      "levels": [
+        "console",
+        "session"
+      ],
       "options": [],
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.dslang",
       "kind": "choice",
+      "levels": [
+        "console",
+        "session"
+      ],
       "options": [
         "ja",
         "en",
@@ -1099,8 +2565,19 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.slot2",
       "kind": "choice",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [
         "none",
         "rumble",
@@ -1110,8 +2587,20 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.n3dsmodel",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "o3ds",
         "n3ds"
@@ -1119,8 +2608,20 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "consoles.n3dsreg",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "auto",
         "jpn",
@@ -1133,8 +2634,21 @@
       "page": "consoles"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "perf.frameskip",
       "kind": "choice",
+      "levels": [
+        "global",
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "auto",
         "never",
@@ -1146,56 +2660,162 @@
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "perf.jit",
       "kind": "toggle",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "perf.shcache",
       "kind": "toggle",
+      "levels": [
+        "console",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "perf.cpuclock",
       "kind": "slider",
+      "levels": [
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mgbabios",
       "kind": "toggle",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mgbaskip",
       "kind": "toggle",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mgbalp",
       "kind": "toggle",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mgbaopp",
       "kind": "toggle",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mgbaall",
       "kind": "action",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mdsrender",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "software",
         "opengl"
@@ -1203,8 +2823,20 @@
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mdsboot",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "direct",
         "menu"
@@ -1212,14 +2844,38 @@
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.mdsall",
       "kind": "action",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.azaudio",
       "kind": "choice",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [
         "hle",
         "lle"
@@ -1227,104 +2883,276 @@
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "cores.azall",
       "kind": "action",
+      "levels": [
+        "console",
+        "game",
+        "session"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "adv.advon",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "adv.inputs",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "adv.framecnt",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "adv.movies",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "adv.cheatsearch",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "adv.devtools",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "advanced"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "online.wfc",
       "kind": "text",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "online"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "online.ra",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "online"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "online.discord",
       "kind": "toggle",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "online"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "about.ver",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "about"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "about.upd",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "about"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "about.emgba",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "about"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "about.emds",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "about"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "about.emaz",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "about"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "about.lic",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "about"
     },
     {
+      "consoles": [
+        "gb",
+        "gbc",
+        "gba",
+        "nds",
+        "3ds"
+      ],
       "key": "about.log",
       "kind": "action",
+      "levels": [
+        "global"
+      ],
       "options": [],
       "page": "about"
     }

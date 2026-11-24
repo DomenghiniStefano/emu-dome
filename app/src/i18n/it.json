@@ -2189,6 +2189,8 @@
     },
     "lockedGlobal": "Vale sempre per tutti i giochi. Per cambiarla scegli «Tutti i giochi» in alto.",
     "lockedScoped": "Si imposta per una console o per un gioco: scegli un livello in alto.",
+    "lockedForConsole": "Si imposta solo per una console: scegli la console in alto.",
+    "lockedForGame": "Si imposta solo per un gioco: scegli «Solo questo gioco» in alto, o apri le impostazioni dalla scheda del gioco.",
     "lockedNote": "Le voci in grigio valgono per tutti i giochi: per cambiarle scegli «Tutti i giochi».",
     "lockedPhone": "Solo su questo telefono.",
     "lockedDesktop": "Solo su questo computer.",

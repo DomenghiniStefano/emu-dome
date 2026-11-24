@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import catalog from '@/generated/settings-catalog.json'
 
 const schema = vi.fn()
 vi.mock('@/emu', () => ({ emu: { settings: { schema: () => schema() } } }))
@@ -48,6 +49,7 @@ describe('lockReason of a layout editor row (Trello #111)', () => {
       platform,
       levels,
       unsupportedConsoles: [],
+      consoles: ['gb', 'gbc', 'gba', 'nds', '3ds'],
       needsNativeVideo: false,
     }) as never
   const on = (device: string) => ({ device }) as never
@@ -66,6 +68,67 @@ describe('lockReason of a layout editor row (Trello #111)', () => {
     expect(lockReason(row('touchLayout', 'phone'), on('desktop'), 'global')).toBe(
       'settingsUi.lockedPhone',
     )
+  })
+})
+
+describe('lockReason of a level the row does not accept (#168)', () => {
+  // The levels each reason sends the user to.
+  const SENDS_TO: Record<string, string[]> = {
+    'settingsUi.lockedGlobal': ['global'],
+    'settingsUi.lockedForConsole': ['console'],
+    'settingsUi.lockedForGame': ['game'],
+    'settingsUi.lockedScoped': ['console', 'game'],
+  }
+  const desktop = { device: 'desktop' } as never
+
+  it('names only levels every entry of the catalogue accepts, never the one it is locked at', async () => {
+    const { lockReason } = await import('./settingsModel')
+    let checked = 0
+    for (const e of catalog.entries) {
+      const entry = {
+        key: e.key,
+        kind: { type: e.kind },
+        platform: 'all',
+        levels: e.levels,
+        consoles: e.consoles,
+        unsupportedConsoles: [],
+        needsNativeVideo: false,
+      } as never
+      for (const level of ['global', 'console', 'game'] as const) {
+        if (e.levels.includes(level)) continue
+        // A console the entry is about: the scope bar offers no other (#176).
+        const console = level === 'global' ? null : (e.consoles[0] as never)
+        const reason = lockReason(entry, desktop, level, console)
+        if (reason === null) continue // actions, and a layout editor's row at «Tutti i giochi»
+        const to = SENDS_TO[reason]
+        expect(to, `${e.key} at ${level}: ${reason}`).toBeDefined()
+        for (const l of to ?? []) {
+          expect(e.levels, `${e.key} at ${level}: ${reason}`).toContain(l)
+          expect(l, `${e.key} at ${level}`).not.toBe(level)
+        }
+        checked++
+      }
+    }
+    expect(checked).toBeGreaterThan(0)
+  })
+
+  it('sends the game clock to the game’s level, from «Tutti i giochi» and from a console', async () => {
+    const { lockReason } = await import('./settingsModel')
+    const rtc = catalog.entries.find(e => e.key === 'saves.rtc')
+    expect(rtc?.levels).toEqual(['game', 'session'])
+    const entry = { ...rtc, kind: { type: 'choice' }, platform: 'all', unsupportedConsoles: [] }
+    expect(lockReason(entry as never, desktop, 'global')).toBe('settingsUi.lockedForGame')
+    expect(lockReason(entry as never, desktop, 'console', 'nds')).toBe('settingsUi.lockedForGame')
+  })
+})
+
+describe('levelsReason', () => {
+  it('has one text per set of levels that can lock a row', async () => {
+    const { levelsReason } = await import('./settingsModel')
+    expect(levelsReason(['global', 'game', 'session'])).toBe('settingsUi.lockedGlobal')
+    expect(levelsReason(['console', 'session'])).toBe('settingsUi.lockedForConsole')
+    expect(levelsReason(['game', 'session'])).toBe('settingsUi.lockedForGame')
+    expect(levelsReason(['console', 'game', 'session'])).toBe('settingsUi.lockedScoped')
   })
 })
 

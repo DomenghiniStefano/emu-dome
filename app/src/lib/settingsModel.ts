@@ -163,8 +163,10 @@ export function lockReason(
   // A build without the update key cannot update itself (Trello #44, `emudome_platform::updater`).
   if (UPDATE_ROWS.includes(entry.key) && updateUnavailable.value)
     return 'settingsUi.lockedNoUpdates'
-  // The console's emulator has no equivalent (`CoreProfile::unsupported_settings`).
-  if (console && entry.unsupportedConsoles.includes(console)) return 'settingsUi.lockedConsole'
+  // The console's emulator has no equivalent (`CoreProfile::unsupported_settings`), or the row is
+  // about other consoles' games (the catalogue's `consoles`: the DS / 3DS screens, #176).
+  if (console && (entry.unsupportedConsoles.includes(console) || !entry.consoles.includes(console)))
+    return 'settingsUi.lockedConsole'
   // X05: the screen effects exist only on the Accelerated method.
   if (entry.needsNativeVideo && videoMode.value !== 'native')
     return nativeAvailable.value ? 'settingsUi.lockedNeedsNative' : 'qm.noNative'
@@ -177,9 +179,22 @@ export function lockReason(
     return entry.levels.includes('console') || entry.levels.includes('game')
       ? null
       : 'settingsUi.lockedGlobal'
-  if (!entry.levels.includes(level))
-    return entry.levels.includes('global') ? 'settingsUi.lockedGlobal' : 'settingsUi.lockedScoped'
+  if (!entry.levels.includes(level)) return levelsReason(entry.levels)
   return null
+}
+
+/**
+ * The reason of a row locked at a level it does not accept: it names the levels it does accept
+ * (#168), so it never sends the user to another level that refuses it too. A row «Tutti i giochi»
+ * accepts says that one (the page's note groups those rows); else the console's, the game's, or
+ * either.
+ */
+export function levelsReason(levels: readonly SettingLevel[]): string {
+  if (levels.includes('global')) return 'settingsUi.lockedGlobal'
+  const console = levels.includes('console')
+  const game = levels.includes('game')
+  if (console && game) return 'settingsUi.lockedScoped'
+  return console ? 'settingsUi.lockedForConsole' : 'settingsUi.lockedForGame'
 }
 
 /** The `bios.*` rows with a backend (`emudome_core::bios` tables): their picker checks the file. */

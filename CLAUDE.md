@@ -764,8 +764,14 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform
   (a row of another device is shown disabled with the reason, except `Platform::Keyboard`, left out of the phone's
   schema altogether: `speed.ffmode`), phase, `show_if` on another row's value, `wired`: whether anything
-  reads it, the unwired ones shown disabled with «arrives in a future update»); the interface builds its
-  pages from `settings_schema` and never lists settings by hand. A key the interface names is a `SettingKey`
+  reads it, the unwired ones shown disabled with «arrives in a future update», `consoles`: the consoles whose
+  games it is about, every one unless restricted (`for_consoles`: the DS / 3DS screens' rows and `pad.lid` the
+  two-screen ones, `TWO_SCREENS`)); the interface builds its
+  pages from `settings_schema` and never lists settings by hand. A page's console level offers only the consoles
+  of its per-console rows (`pageConsoles`, `settingsPage.ts`); a row locked at a level names the levels it accepts
+  (`levelsReason`, `lib/settingsModel.ts`); the page list's counters and «Mostra solo le impostazioni modificate»
+  count a row changed at the level it is set at while a level is edited (`rowLevel`: the level itself, else the
+  strongest weaker one it accepts, so a row only «Tutti i giochi» sets counts at a console too). A key the interface names is a `SettingKey`
   (generated union); one the Rust code reads is a typed constant of `settings/keys.rs`, its default the catalogue's. Levels Default → Global → Console → Game →
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
   (`settingLevelRefused`). A value written at a level (or committed from the session) that equals what the weaker
@@ -785,7 +791,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - **The Rust ↔ TypeScript contract** (Trello #73): the bridge's types are generated from the Rust types by ts-rs
   (`#[derive(TS)]`, MIT) into `app/src/generated/` (core types; the shell's DTOs in `generated/app/`), with
   `SettingKey` (the catalogue's keys), `HotkeyId` and `Button` from Rust lists, and the fixtures
-  `error-codes.json` / `settings-catalog.json` (its `colours`: a colour entry's swatches and default, read by
+  `error-codes.json` / `settings-catalog.json` (each entry's levels and consoles, which the settings tests hold
+  the scope bar and the lock reasons against; its `colours`: a colour entry's swatches and default, read by
   `design-system/lib/accent.ts`) / `keyboard-shortcuts.json` (read by `lib/keyboard.ts`). `emu.ts` only re-exports them. The files are committed; the contract
   test of each crate (`cargo test -p emudome-core contract`, `cargo test -p emudome contract`) fails when they are
   stale, and `EMUDOME_BLESS=1` writes them again. `app/src/i18n/parity.test.ts` holds the fixtures against the
