@@ -91,10 +91,16 @@ export function useScreenGesture(o: ScreenGestureOptions) {
     o.gesturing.value = false
   }
 
+  /** Drops the gesture on its way without a step (the phone turned under it). */
+  function cancel() {
+    gesture = null
+  }
+
   return {
     press,
     move,
     end,
+    cancel,
     /** A screen is under a finger: the pointer's moves and release are the gesture's. */
     active: () => gesture !== null,
   }

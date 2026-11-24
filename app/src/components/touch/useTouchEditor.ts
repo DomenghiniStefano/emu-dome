@@ -190,6 +190,8 @@ export function useTouchEditor(o: TouchEditorOptions) {
    * left, or starts. */
   function turned(now: TouchOrientation, before: TouchOrientation) {
     if (!setup.value) return
+    // A drag or pinch on its way holds the old orientation's layout: it ends here, with no step.
+    endGestures()
     drafts.value = withDraft(drafts.value, before, onScreen())
     const kept = draftOf(drafts.value, now)
     if (!kept) return start()
@@ -344,6 +346,15 @@ export function useTouchEditor(o: TouchEditorOptions) {
     },
     apply,
   })
+
+  /** Every finger let go of without a step: the layout shown goes back to the history's present. */
+  function endGestures() {
+    screenGesture.cancel()
+    pointers.clear()
+    gesture = null
+    gesturing.value = false
+    draft.value = history.value.present
+  }
 
   const spread = () => {
     const [a, b] = [...pointers.values()]

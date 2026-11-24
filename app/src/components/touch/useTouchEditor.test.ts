@@ -258,6 +258,43 @@ describe('both orientations in one session', () => {
     expect(close).toHaveBeenCalledOnce()
   })
 
+  it('a turn in the middle of a drag ends it: neither orientation gets the old layout', async () => {
+    const { editor } = await setup()
+    editor.pressScreen('top', pointer('pointerdown', 200, 100), false)
+    window.dispatchEvent(pointer('pointermove', 217, 109))
+    await turn(HEIGHT, WIDTH)
+    window.dispatchEvent(pointer('pointermove', 240, 140))
+    window.dispatchEvent(pointer('pointerup', 240, 140))
+    expect(editor.placement.value).toEqual([])
+    expect(editor.canUndo.value).toBe(false)
+    expect(editor.gesturing.value).toBe(false)
+    await turn(WIDTH, HEIGHT)
+    expect(editor.placement.value).toEqual([])
+    expect(editor.canUndo.value).toBe(false)
+  })
+
+  it('a turn in the middle of a control drag ends it too', async () => {
+    const { editor, wrapper } = await setup()
+    const id = editor.draft.value.controls[0]?.id
+    const before = editor.draft.value.controls
+    const target = document.createElement('div')
+    target.dataset.touchControl = id
+    wrapper.element.appendChild(target)
+    const down = pointer('pointerdown', 100, 100)
+    Object.defineProperty(down, 'target', { value: target })
+    editor.pointerDown(down)
+    window.dispatchEvent(pointer('pointermove', 140, 100))
+    await turn(HEIGHT, WIDTH)
+    const portrait = editor.draft.value
+    window.dispatchEvent(pointer('pointermove', 180, 100))
+    window.dispatchEvent(pointer('pointerup', 180, 100))
+    expect(editor.draft.value).toEqual(portrait)
+    expect(editor.canUndo.value).toBe(false)
+    await turn(WIDTH, HEIGHT)
+    expect(editor.draft.value.controls).toEqual(before)
+    expect(editor.canUndo.value).toBe(false)
+  })
+
   it('suggests turning the phone until the other orientation was shown', async () => {
     const { editor } = await setup()
     expect(editor.turnHint.value).toBe('portrait')
