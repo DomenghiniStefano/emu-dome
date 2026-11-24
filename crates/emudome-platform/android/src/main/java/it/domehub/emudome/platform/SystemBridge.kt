@@ -309,6 +309,17 @@ object SystemBridge {
         }
     }
 
+    /**
+     * Whether the app still holds the persisted read permission of the picked tree [tree].
+     * Android takes it back when the app is uninstalled, even with its data kept: the library
+     * still has the tree URI, but listing it fails. Not on the UI thread.
+     */
+    @JvmStatic
+    fun treePermitted(context: Context, tree: String): Boolean {
+        val uri = Uri.parse(tree)
+        return context.contentResolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission }
+    }
+
     /** Gives back the persisted read permission of a folder that left the library. */
     @JvmStatic
     fun releaseTree(context: Context, tree: String) {

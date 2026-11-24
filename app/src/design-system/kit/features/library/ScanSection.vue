@@ -59,7 +59,7 @@ const NONE = { encrypted: 0, unrecognised: 0 }
         <ScanProgress :progress="{ found: 1284 }" />
         <ScanSummary :summary="{ added: 1284, perConsole: EVERY, skipped: NONE }" @close="noop" />
         <UnreachableBanner
-          :folder="{ path: 'E:/Giochi', name: 'E:/Giochi', count: 1 }"
+          :folder="{ path: 'E:/Giochi', name: 'E:/Giochi', count: 1, access: 'unreachable' }"
           @replace="noop"
         />
       </div>

@@ -30,6 +30,7 @@
   "settingsWriteFailed",
   "settingsReadFailed",
   "libraryFolderUnreachable",
+  "libraryFolderPermissionLost",
   "libraryGameUnknown",
   "libraryGameUnavailable",
   "libraryWriteFailed",

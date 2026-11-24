@@ -634,6 +634,20 @@ pub fn document_name(uri: &str) -> Option<String> {
     query_string("document name", "displayName", uri)
 }
 
+pub fn document_tree_permitted(tree: &str) -> Option<bool> {
+    let result = with_java("folder permission", |env, activity, bridge| {
+        let jtree = env.new_string(tree)?;
+        env.call_static_method(
+            bridge,
+            "treePermitted",
+            "(Landroid/content/Context;Ljava/lang/String;)Z",
+            &[JValue::Object(activity), JValue::Object(&jtree)],
+        )?
+        .z()
+    });
+    result.map_err(|e| log::warn!("{e}")).ok()
+}
+
 pub fn release_document_tree(tree: &str) {
     let result = with_java("folder permission", |env, activity, bridge| {
         let jtree = env.new_string(tree)?;

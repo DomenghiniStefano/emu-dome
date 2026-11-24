@@ -4,6 +4,7 @@ import {
   AUTO_SLOT,
   type ConsoleId,
   type CoverKind,
+  type FolderAccess,
   type GameId,
   type LibraryFolder,
   type LibraryGame,
@@ -74,20 +75,31 @@ export interface UnreachableFolder {
   /** What to show; null while a picked folder's name is not known. */
   name: string | null
   count: number
+  /** Why: gone or disconnected, or (a picked Android folder) its read permission taken back. */
+  access: Exclude<FolderAccess, 'reachable'>
 }
 
 export function unreachableFolders(
   folders: LibraryFolder[],
   games: LibraryGame[],
 ): UnreachableFolder[] {
-  return folders
-    .filter(f => !f.reachable)
-    .map(f => ({
-      path: f.path,
-      name: f.name,
-      count: games.filter(g => g.folder === f.path).length,
-    }))
+  return folders.flatMap(f =>
+    f.access === 'reachable'
+      ? []
+      : [
+          {
+            path: f.path,
+            name: f.name,
+            count: games.filter(g => g.folder === f.path).length,
+            access: f.access,
+          },
+        ],
+  )
 }
+
+/** «Ricollega il disco…» only when a folder may be on a drive: not for a lost permission. */
+export const showReconnectHint = (folders: UnreachableFolder[]): boolean =>
+  folders.some(f => f.access === 'unreachable')
 
 /** L11: one card of «N giochi aggiunti», an i18n key and a count. */
 /** Where «Riprendi» picks up; null when there is nothing. */

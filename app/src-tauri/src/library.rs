@@ -61,8 +61,8 @@ pub struct LibraryState {
     playing: Mutex<Option<(GameKey, Instant)>>,
     watcher: Mutex<Option<notify::RecommendedWatcher>>,
     /// The picked document trees of `library.folders` (Android) as last seen: their display
-    /// name and whether the last scan could list them. In memory: filled by the picker and by
-    /// every scan.
+    /// name and whether the last scan could list them, and why not. In memory: filled by the
+    /// picker and by every scan.
     trees: Mutex<HashMap<String, TreeSeen>>,
 }
 
@@ -70,7 +70,35 @@ pub struct LibraryState {
 #[derive(Clone, Debug, Default)]
 struct TreeSeen {
     name: Option<String>,
-    reachable: bool,
+    access: FolderAccess,
+}
+
+/// Whether a library folder can be read now (E01), and why not.
+/// TypeScript: `FolderAccess` (generated).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = "app/")]
+pub(crate) enum FolderAccess {
+    #[default]
+    Reachable,
+    /// Missing, on a disconnected drive, or unreadable for a reason EmuDome cannot tell.
+    Unreachable,
+    /// A picked Android folder whose read permission the app no longer holds (Android takes
+    /// it back when the app is uninstalled, even with its data kept): picking it again is
+    /// enough, its games and saves are keyed by their content.
+    PermissionLost,
+}
+
+impl FolderAccess {
+    /// A picked tree after a scan: `listed` whether it could be listed, `permitted` whether
+    /// the app still holds its read permission (`None` when the system cannot tell).
+    fn of_tree(listed: bool, permitted: Option<bool>) -> Self {
+        match (listed, permitted) {
+            (true, _) => Self::Reachable,
+            (false, Some(false)) => Self::PermissionLost,
+            (false, Some(true) | None) => Self::Unreachable,
+        }
+    }
 }
 
 /// Opens the library database and the covers folder.
@@ -203,7 +231,7 @@ pub(crate) struct FolderDto {
     path: String,
     /// What to show: the path, or the tree's display name (null while it is not known).
     name: Option<String>,
-    reachable: bool,
+    access: FolderAccess,
 }
 
 /// TypeScript: `Library` (generated).
@@ -490,10 +518,27 @@ fn run_scan(app: &AppHandle, state: &LibraryState) {
             emit_scan(app, ScanEvent::Progress { checked, found });
         }
     });
+    // Asked of the system before the lock (the interface reads it on the event loop), and only
+    // of a tree that could not be listed: the one case the answer changes what is shown.
+    let accesses: Vec<(&String, FolderAccess)> = trees
+        .iter()
+        .map(|tree| {
+            let listed = !outcome.unreachable.contains(tree);
+            let permitted = if listed {
+                None
+            } else {
+                emudome_platform::document_tree_permitted(tree)
+            };
+            (tree, FolderAccess::of_tree(listed, permitted))
+        })
+        .collect();
     {
         let mut seen = state.trees.lock();
-        for tree in &trees {
-            seen.entry(tree.clone()).or_default().reachable = !outcome.unreachable.contains(tree);
+        for (tree, access) in accesses {
+            if access == FolderAccess::PermissionLost {
+                log::warn!("library scan: tree {tree}: read permission no longer held");
+            }
+            seen.entry(tree.clone()).or_default().access = access;
         }
     }
     let report = state.lib.lock().apply_scan(outcome, now_ms());
@@ -1120,13 +1165,17 @@ fn folder_dto(path: String, trees: &HashMap<String, TreeSeen>) -> FolderDto {
         let seen = trees.get(&path);
         return FolderDto {
             name: seen.and_then(|t| t.name.clone()),
-            reachable: seen.is_none_or(|t| t.reachable),
+            access: seen.map(|t| t.access).unwrap_or_default(),
             path,
         };
     }
     FolderDto {
         name: Some(path.clone()),
-        reachable: Path::new(&path).is_dir(),
+        access: if Path::new(&path).is_dir() {
+            FolderAccess::Reachable
+        } else {
+            FolderAccess::Unreachable
+        },
         path,
     }
 }
@@ -1153,7 +1202,7 @@ fn choose_folder(app: &AppHandle) -> Result<Option<String>, ErrorCode> {
                 picked.uri.clone(),
                 TreeSeen {
                     name: picked.name,
-                    reachable: true,
+                    access: FolderAccess::Reachable,
                 },
             );
         }
@@ -1455,8 +1504,32 @@ pub fn library_set_name(
 
 #[cfg(test)]
 mod tests {
-    use super::{screenshot_file, user_cover_file};
+    use super::{screenshot_file, user_cover_file, FolderAccess};
     use std::path::Path;
+
+    #[test]
+    fn a_tree_without_its_permission_says_so_and_only_then() {
+        // Listed: reachable whatever the permission says.
+        for permitted in [Some(true), Some(false), None] {
+            assert_eq!(
+                FolderAccess::of_tree(true, permitted),
+                FolderAccess::Reachable
+            );
+        }
+        // Not listed: the permission given back is told apart; anything else is unreachable.
+        assert_eq!(
+            FolderAccess::of_tree(false, Some(false)),
+            FolderAccess::PermissionLost
+        );
+        assert_eq!(
+            FolderAccess::of_tree(false, Some(true)),
+            FolderAccess::Unreachable
+        );
+        assert_eq!(
+            FolderAccess::of_tree(false, None),
+            FolderAccess::Unreachable
+        );
+    }
 
     #[test]
     fn a_screenshot_url_reaches_only_a_screenshot_of_that_game() {

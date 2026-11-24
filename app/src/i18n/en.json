@@ -117,6 +117,10 @@
       "choose": "Choose another folder",
       "hint": "Reconnect the drive and the library updates by itself."
     },
+    "permissionLost": {
+      "text": "EmuDome no longer has permission to read the folder {path}. Choose it again: your games and saves stay as they are.",
+      "choose": "Choose the folder again"
+    },
     "cover": {
       "choose": "Choose the cover for {title}",
       "title": "Choose the cover for {title}",
@@ -557,6 +561,7 @@
     "settingsWriteFailed": "Couldn’t save the settings. {cause}",
     "settingsReadFailed": "Couldn’t read the settings file, so the change wasn’t saved and the file was left as it is. {cause}",
     "libraryFolderUnreachable": "The folder {path} can’t be reached: the drive may be disconnected. Reconnect it or choose another folder.",
+    "libraryFolderPermissionLost": "EmuDome no longer has permission to read the folder {path}, so this game won’t start. Choose the folder again from the library: your games and saves stay as they are.",
     "libraryGameUnknown": "This game is no longer in the library. Search for games again from the library.",
     "libraryGameUnavailable": "The game file can’t be found any more. Reconnect the drive or add its folder again.",
     "libraryWriteFailed": "Couldn’t save the library. {cause}",

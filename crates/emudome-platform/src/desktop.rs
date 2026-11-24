@@ -161,6 +161,10 @@ pub fn document_tree_name(_tree: &str) -> Option<String> {
     None
 }
 
+pub fn document_tree_permitted(_tree: &str) -> Option<bool> {
+    None
+}
+
 pub fn release_document_tree(_tree: &str) {}
 
 pub fn document_name(_uri: &str) -> Option<String> {

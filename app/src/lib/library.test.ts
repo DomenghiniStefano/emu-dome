@@ -1,20 +1,30 @@
 // The library store: loads, the newest of several reloads wins, and L11's per-console count of a
 // scan comes from the ids that were not there when it started.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { GameFamily, GameId, LibraryChanged, LibraryGame, LibraryScanEvent } from '@/emu'
+import type {
+  GameFamily,
+  GameId,
+  LibraryChanged,
+  LibraryFolder,
+  LibraryGame,
+  LibraryScanEvent,
+} from '@/emu'
 import {
   applyLibraryChange,
   chooseFolder,
   folderLabel,
   library,
   reloadLibrary,
+  replaceFolder,
   startLibrary,
+  unavailableError,
 } from './library'
 
 type Listener<T> = (e: T) => void
 const bridge = vi.hoisted(() => ({
   get: vi.fn(),
   choose: vi.fn(),
+  remove: vi.fn(),
   changed: [] as Array<(e: unknown) => void>,
   scan: [] as Array<(e: unknown) => void>,
 }))
@@ -23,6 +33,7 @@ vi.mock('@/emu', () => ({
     library: {
       get: bridge.get,
       chooseFolder: bridge.choose,
+      removeFolder: bridge.remove,
       onChanged: (cb: Listener<unknown>) => {
         bridge.changed.push(cb)
         return Promise.resolve(() => {})
@@ -225,10 +236,10 @@ const done = (added: number, encrypted = 0, unrecognised = 0) =>
   }) as LibraryScanEvent
 
 describe('folderLabel', () => {
-  const folders = [
-    { path: 'C:/Games', name: 'C:/Games', reachable: true },
-    { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', reachable: true },
-    { path: 'content://x/tree/primary%3AGone', name: null, reachable: false },
+  const folders: LibraryFolder[] = [
+    { path: 'C:/Games', name: 'C:/Games', access: 'reachable' },
+    { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', access: 'reachable' },
+    { path: 'content://x/tree/primary%3AGone', name: null, access: 'unreachable' },
   ]
   it('shows the name Rust sends, never a stored URI', () => {
     expect(folderLabel(folders, 'C:/Games', 'Chosen folder')).toBe('C:/Games')
@@ -237,5 +248,52 @@ describe('folderLabel', () => {
       'Chosen folder',
     )
     expect(folderLabel(folders, 'content://x/tree/new', 'Chosen folder')).toBe('Chosen folder')
+  })
+})
+
+describe('replaceFolder (E01)', () => {
+  const TREE = 'content://x/tree/primary%3AROMs'
+
+  it('keeps the folder when the same one is picked again (#138: its permission back)', async () => {
+    bridge.choose.mockResolvedValue(TREE)
+    expect(await replaceFolder(TREE)).toBeNull()
+    expect(bridge.remove).not.toHaveBeenCalled()
+  })
+
+  it('removes the old folder when another one is picked', async () => {
+    bridge.choose.mockResolvedValue('content://x/tree/primary%3ANew')
+    expect(await replaceFolder(TREE)).toBeNull()
+    expect(bridge.remove).toHaveBeenCalledWith(TREE)
+  })
+
+  it('keeps the old folder when the picker is closed', async () => {
+    bridge.choose.mockResolvedValue(null)
+    expect(await replaceFolder(TREE)).toBeNull()
+    expect(bridge.remove).not.toHaveBeenCalled()
+  })
+})
+
+describe('unavailableError', () => {
+  const folders: LibraryFolder[] = [
+    { path: 'D:/Old', name: 'D:/Old', access: 'unreachable' },
+    { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', access: 'permissionLost' },
+    { path: 'content://x/tree/primary%3ANoName', name: null, access: 'permissionLost' },
+  ]
+  const at = (folder: string | null) => ({ id: 'gba:0a1b' as GameId, folder })
+
+  it('says the permission was taken back, with the folder as shown (#138)', () => {
+    expect(
+      unavailableError(at('content://x/tree/primary%3AROMs'), folders, 'Chosen folder'),
+    ).toEqual({ code: 'libraryFolderPermissionLost', params: { path: 'ROMs' } })
+    expect(
+      unavailableError(at('content://x/tree/primary%3ANoName'), folders, 'Chosen folder'),
+    ).toEqual({ code: 'libraryFolderPermissionLost', params: { path: 'Chosen folder' } })
+  })
+
+  it('says the file is not found otherwise', () => {
+    const notFound = { code: 'libraryGameUnavailable', params: { id: 'gba:0a1b' } }
+    expect(unavailableError(at('D:/Old'), folders, 'Chosen folder')).toEqual(notFound)
+    // A single file, outside any folder.
+    expect(unavailableError(at(null), folders, 'Chosen folder')).toEqual(notFound)
   })
 })
