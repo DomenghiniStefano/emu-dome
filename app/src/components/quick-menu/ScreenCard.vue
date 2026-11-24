@@ -27,7 +27,7 @@ const firstMark = computed(() => (props.first ? { [FocusMark.SubInitial]: '' } :
 
 <template>
   <div
-    class="flex min-w-0 flex-col gap-4 rounded-card border px-8 py-6"
+    class="flex min-w-0 flex-col gap-4 rounded-card border px-8 py-6 touch:justify-between"
     :class="card.trial ? 'border-accent-text bg-violet-tint' : 'border-line bg-surface'"
   >
     <span class="truncate text-caption-inline text-ink-muted">{{ name }}</span>
@@ -41,7 +41,10 @@ const firstMark = computed(() => (props.first ? { [FocusMark.SubInitial]: '' } :
         :label="t('qm.prev', { name })"
         @click="card.prev?.()"
       />
-      <span class="min-w-0 flex-1 truncate text-center font-semibold">
+      <!-- On the phone a long value wraps, two lines at most (#167). -->
+      <span
+        class="min-w-0 flex-1 truncate text-center font-semibold touch:line-clamp-2 touch:whitespace-normal"
+      >
         {{ card.value ? say(card.value) : '' }}
       </span>
       <Button

@@ -393,6 +393,7 @@ const cards = computed<ScreenCard[]>(() => {
         value: settingValue(e.key),
         reason: lockReason(e, s, 'session'),
         unavailable: unavailableOptions(e.key, settingValue),
+        phonePlacement: !!screens?.phonePlacement,
         consoleName: consoleName.value,
         set: id => void setSession(e.key, id),
       }),
@@ -645,11 +646,12 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
             @set="setSession"
           />
 
-          <!-- Phone G09: the picks and the cards in the sheet, the game at full brightness above. -->
+          <!-- Phone G09: the picks and the cards in the sheet, the game at full brightness above.
+               One card a row, so a value reads whole (#167); the cards share the room left. -->
           <template v-else-if="view === QuickMenuView.Screens">
             <ScreenPicks :picks="picks" @pick="applyPick" />
-            <div class="grid grid-cols-[1fr_1fr] gap-8">
-              <ScreenCardView v-for="c in cards" :key="c.key" :card="c" />
+            <div class="flex flex-1 flex-col gap-8">
+              <ScreenCardView v-for="c in cards" :key="c.key" class="flex-1" :card="c" />
             </div>
           </template>
 

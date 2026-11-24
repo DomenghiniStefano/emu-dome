@@ -205,6 +205,33 @@ describe('G09 cards', () => {
     expect(card.next).toBe(null)
   })
 
+  it('holds «Dimensione dell’immagine» while the touch layout places the screens (#140)', () => {
+    const base = {
+      entry: entry('video.scale', ['fit', 'integer', 'fill']),
+      row: undefined,
+      value: 'integer',
+      reason: null,
+      consoleName: 'DS',
+      set: vi.fn(),
+    }
+    const held = settingCard({ ...base, phonePlacement: true })
+    expect(held.name).toEqual({ key: 'settings.video.scale.name' })
+    expect(held.value).toEqual({ key: 'qm.layoutPhone.value' })
+    expect(held.sub).toEqual({ key: 'qm.layoutPhone.why' })
+    expect(held.prev).toBe(null)
+    expect(held.next).toBe(null)
+    // Without the placement, or another setting: as before.
+    expect(settingCard(base).next).not.toBe(null)
+    const filter = settingCard({
+      ...base,
+      entry: entry('video.filter', ['none', 'light', 'soft']),
+      value: 'none',
+      phonePlacement: true,
+    })
+    expect(filter.value).toEqual({ key: 'settings.video.filter.option.none' })
+    expect(filter.next).not.toBe(null)
+  })
+
   it('steps the layout card through the cycle, from the layout shown', () => {
     const set = vi.fn()
     const status = {
