@@ -255,6 +255,24 @@ for (const [screen, s] of Object.entries(SHELL)) {
 for (const [screen, s] of Object.entries(GAME))
   for (const [size, wh] of Object.entries(LANDSCAPE))
     add(`phone-${screen}-${size}`, s, wh, SIDES.left);
+// The toasts after a turn from one side to the other (#142's A71 retest): Android's navigation
+// bar moves from the right edge to the left one and no size changes. The shell is measured with
+// the bar's 48 px on the right, then the bar goes to the left and only the screen's orientation
+// event says so: the stack must be centred in the sections' room again.
+const inset = (left, right) =>
+  `(() => { const s = document.documentElement.style; s.setProperty('--spacing-safe-left', '${left}px'); s.setProperty('--spacing-safe-right', '${right}px'); return true })()`;
+const flipped = {
+  mock: {},
+  steps: [
+    inset(0, 48),
+    `window.dispatchEvent(new Event('resize')); true`,
+    toast("Controller collegato", "info"),
+    inset(48, 0),
+    `screen.orientation.dispatchEvent(new Event('change')); true`,
+  ],
+};
+for (const size of ["l915", "l780"])
+  add(`phone-toasts-flipped-${size}`, flipped, LANDSCAPE[size], SIDES.right);
 
 // «Sfondo ai lati del gioco» under the native video (#105): a built-in background with one hole
 // per screen where Rust places it (the mock's `screens_placements`), the room between two screens

@@ -32,7 +32,10 @@ export function areaOf(rect: DOMRect, width: number, height: number): ShellArea 
 
 /**
  * The shell: reports the room `el` takes while `active` (the phone's layouts), following its
- * size and the window's (a turn of the phone moves the bars); nothing otherwise.
+ * size and the window's (a turn of the phone moves the bars); nothing otherwise. A turn from one
+ * side to the other (Android's navigation bar from the right to the left) changes neither size,
+ * only where the room is: the screen's orientation change measures it again, once the layout
+ * has followed (#142).
  */
 export function useShellAreaReport(el: Ref<HTMLElement | null>, active: () => boolean) {
   const area = inject(KEY, null)
@@ -44,6 +47,18 @@ export function useShellAreaReport(el: Ref<HTMLElement | null>, active: () => bo
         ? areaOf(node.getBoundingClientRect(), window.innerWidth, window.innerHeight)
         : null
   }
+  /** The insets move after the orientation event: measured now and on the next two frames. */
+  let frame = 0
+  const turned = () => {
+    measure()
+    window.cancelAnimationFrame(frame)
+    frame = window.requestAnimationFrame(() => {
+      measure()
+      frame = window.requestAnimationFrame(measure)
+    })
+  }
+  const orientation = typeof screen !== 'undefined' ? screen.orientation : undefined
+  orientation?.addEventListener('change', turned)
   const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
   watch(
     [el, active],
@@ -58,6 +73,8 @@ export function useShellAreaReport(el: Ref<HTMLElement | null>, active: () => bo
   onScopeDispose(() => {
     observer?.disconnect()
     window.removeEventListener('resize', measure)
+    orientation?.removeEventListener('change', turned)
+    window.cancelAnimationFrame(frame)
     area.value = null
   })
 }
