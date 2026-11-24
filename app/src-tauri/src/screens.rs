@@ -20,7 +20,8 @@ use std::sync::Arc;
 use emudome_core::core_profile::{CoreId, Lid, LID_PRESS};
 use emudome_core::input::Source;
 use emudome_core::screens::{
-    CustomLayout, Layout, LayoutId, Placement, ScreenSession, ScreenSettings, ScreenStatus, Split,
+    CustomLayout, CustomScreen, Layout, LayoutId, Placement, ScreenSession, ScreenSettings,
+    ScreenStatus, Split,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, Shared};
@@ -340,7 +341,7 @@ pub fn screens_preset_custom(
 /// Where a `console` game's screens would be drawn in `area` (CSS pixels of the window, the touch
 /// controls' inset) if it opened now with the settings `scope` resolves: the C06 touch editor
 /// opened from Settings draws them as placeholders, with no game (Trello #111). Composed by
-/// `emudome_core::screens` like the game itself.
+/// `emudome_core::screens` like the game itself. Removed with the editor's own preview.
 #[tauri::command]
 pub fn screens_preview(
     app: AppHandle,
@@ -350,6 +351,36 @@ pub fn screens_preview(
 ) -> Vec<Placement> {
     let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
     emudome_core::screens::preview(&settings, console, area.area())
+}
+
+/// Where the touch editor starts the screens of a `console` game in `area` when no placement of
+/// the phone's own is saved, with the settings `scope` resolves (`emudome_core::screens::phone_start`).
+#[tauri::command]
+pub fn screens_phone_start(
+    app: AppHandle,
+    scope: Scope,
+    console: ConsoleId,
+    area: PointerArea,
+) -> Vec<CustomScreen> {
+    let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
+    emudome_core::screens::phone_start(&settings, console, area.area())
+}
+
+/// Sets (or, empty, withdraws) the phone's own placement of the open game's screens: the touch
+/// layer's saved one, or the editor's while it is open. No game: nothing to place. A placement
+/// that is not the game's screens is refused with `settingInvalidValue`.
+#[tauri::command]
+pub fn screens_set_phone(
+    app: AppHandle,
+    screens: Vec<CustomScreen>,
+) -> Result<ScreenStatus, ErrorCode> {
+    let Some(result) = change(&app, |s| s.set_phone_placement(screens)) else {
+        return Ok(ScreenStatus::default());
+    };
+    result.ok_or_else(|| ErrorCode::SettingInvalidValue {
+        key: keys::TOUCH_SCREENS.as_str().to_owned(),
+    })?;
+    Ok(current(&app).1)
 }
 
 /// Stores the custom layout at `scope`: `console` or `game` to save it, `session` to preview it

@@ -1198,10 +1198,13 @@ pub fn preview(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec
 
 /// Where the touch editor starts the screens of a `console` game in `area` (the whole window)
 /// when no placement of the phone's own is saved: where [`preview`] draws them, as fractions of
-/// the window. Not turned: `screens.rot` turns the placement on top, as it does a custom layout.
+/// the window (empty for an empty area). Not turned: `screens.rot` turns the placement on top, as it does a custom layout.
 /// When the first layout of the cycle leaves a screen out (`top_only`), every screen is placed
 /// as [`Arrangement::Auto`] does, so the start holds all of the console's screens.
 pub fn phone_start(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec<CustomScreen> {
+    if !(area.width > 0.0 && area.height > 0.0) {
+        return Vec::new();
+    }
     let split = CoreId::for_console(console).profile().split;
     let (width, height) = console_frame(console);
     let sources = split.screens(width, height);
@@ -3156,5 +3159,13 @@ mod tests {
             )),
             [ScreenId::Main]
         );
+    }
+
+    #[test]
+    fn the_phone_start_is_empty_for_an_empty_area() {
+        use crate::settings::ConsoleId;
+        for a in [area(0.0, 780.0), area(360.0, 0.0)] {
+            assert!(phone_start(&ScreenSettings::default(), ConsoleId::Nds, a).is_empty());
+        }
     }
 }
