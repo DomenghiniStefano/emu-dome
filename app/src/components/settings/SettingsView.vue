@@ -30,7 +30,7 @@ import type { GameFocus } from '@/lib/gameDetails'
 import { keyboardSeen, showNavKeys } from '@/lib/inputMode'
 import { useNavSection } from '@/nav'
 import { useErrorSink } from '@/composables/useToasts'
-import { loadSchema, lockReason, msg } from '@/lib/settingsModel'
+import { keyWords, loadSchema, lockReason, msg } from '@/lib/settingsModel'
 import LayoutConsoleChooser from './LayoutConsoleChooser.vue'
 import {
   chosenTarget,
@@ -80,7 +80,7 @@ const emit = defineEmits<{
    * shell goes back to where it came from (#144: C01's «Controlli touch» back to Controls). */
   leave: []
 }>()
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const schema = ref<SettingsSchema | null>(null)
 const page = ref(OVERVIEW)
@@ -101,7 +101,11 @@ const sections = computed(() => {
   const s = schema.value
   if (!s) return []
   const words = (e: SettingEntry) =>
-    `${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${e.key} ${e.synonyms.join(' ')}`
+    `${t(msg.name(e.key))} ${t(msg.desc(e.key))} ${keyWords(
+      e.key,
+      k => te(k),
+      k => t(k),
+    )} ${e.key} ${e.synonyms.join(' ')}`
   if (searching.value) return searchSections(s, query.value, values, byKey.value, words)
   const onlyAt = onlyChanged.value ? effective.value : null
   return pageSections(s, page.value, values, byKey.value, onlyAt)

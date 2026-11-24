@@ -922,7 +922,11 @@
       },
       "fps": {
         "name": "Mostra i fotogrammi al secondo (FPS)",
-        "desc": "Un contatore in un angolo dello schermo. Scorciatoie: F9 sulla tastiera, L3 + X sul controller."
+        "desc": "Un contatore in un angolo dello schermo.",
+        "keys": {
+          "keyboard": "Sulla tastiera: F9.",
+          "controller": "Sul controller: L3 + X."
+        }
       },
       "window": {
         "name": "Modalità finestra",
@@ -1162,7 +1166,10 @@
       },
       "ffmode": {
         "name": "Avanti veloce con la tastiera",
-        "desc": "Come funziona il tasto Tab. Sul controller: tieni premuto L3 + R2, oppure L3 + su per attivarlo e disattivarlo.",
+        "desc": "Come funziona il tasto Tab.",
+        "keys": {
+          "controller": "Sul controller: tieni premuto L3 + R2, oppure L3 + su per attivarlo e disattivarlo."
+        },
         "option": {
           "hold": "Tieni premuto",
           "toggle": "Attiva e disattiva"
@@ -1189,7 +1196,11 @@
       },
       "rew": {
         "name": "Riavvolgi tenendo premuto",
-        "desc": "Backspace sulla tastiera, L3 + L2 tenuti premuti sul controller. Sul Nintendo 3DS è sperimentale."
+        "desc": "Sul Nintendo 3DS è sperimentale.",
+        "keys": {
+          "keyboard": "Sulla tastiera: Backspace.",
+          "controller": "Sul controller: tieni premuto L3 + L2."
+        }
       },
       "rewlen": {
         "name": "Quanto si può riavvolgere",

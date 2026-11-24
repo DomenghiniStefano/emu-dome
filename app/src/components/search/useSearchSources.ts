@@ -32,7 +32,7 @@ import { comboText, hotkeyName, keyName } from '@/lib/controls'
 import type { KeyAction } from '@/lib/keyboard'
 import { KEYBOARD_SHORTCUTS } from '@/lib/keyboard'
 import { library } from '@/lib/library'
-import { GLOBAL, loadSchema, msg } from '@/lib/settingsModel'
+import { GLOBAL, keyWords, loadSchema, msg } from '@/lib/settingsModel'
 import { search, type Candidate, type Results } from './search'
 import { actionReason, gameReason, settingReason, type SearchContext } from './searchContext'
 
@@ -178,7 +178,11 @@ export function useSearchSources(context: () => SearchContext) {
 
   const settingCandidate = (s: SettingItem): Candidate => ({
     name: s.name,
-    words: `${s.where} ${t(msg.desc(s.entry.key))} ${s.entry.key}`,
+    words: `${s.where} ${t(msg.desc(s.entry.key))} ${keyWords(
+      s.entry.key,
+      k => te(k),
+      k => t(k),
+    )} ${s.entry.key}`,
     synonyms: s.entry.synonyms,
   })
 

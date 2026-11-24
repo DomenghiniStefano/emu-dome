@@ -58,6 +58,19 @@ export function showNavKeys(phone: boolean, keyboardSeen: boolean, controller: b
   return showKeyboardKeys(phone, keyboardSeen) || controller
 }
 
+/**
+ * Which inputs' keys a text may name (a setting's description, #148): on a computer both, as
+ * before; on the phone the keyboard's once one has been used, the controller's while one is
+ * connected. A touch-only phone names no key.
+ */
+export function keysShown(
+  phone: boolean,
+  keyboardSeen: boolean,
+  controller: boolean,
+): { keyboard: boolean; controller: boolean } {
+  return { keyboard: showKeyboardKeys(phone, keyboardSeen), controller: !phone || controller }
+}
+
 let watching = false
 /** Keys and the mouse mean keyboard; a finger means touch. Call once at startup. */
 export function watchInput() {

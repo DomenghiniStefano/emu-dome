@@ -922,7 +922,11 @@
       },
       "fps": {
         "name": "Show frames per second (FPS)",
-        "desc": "A counter in a corner of the screen. Shortcuts: F9 on the keyboard, L3 + X on the controller."
+        "desc": "A counter in a corner of the screen.",
+        "keys": {
+          "keyboard": "On the keyboard: F9.",
+          "controller": "On the controller: L3 + X."
+        }
       },
       "window": {
         "name": "Window mode",
@@ -1162,7 +1166,10 @@
       },
       "ffmode": {
         "name": "Fast forward on the keyboard",
-        "desc": "How the Tab key works. On the controller: hold L3 + R2, or L3 + up to turn it on and off.",
+        "desc": "How the Tab key works.",
+        "keys": {
+          "controller": "On the controller: hold L3 + R2, or L3 + up to turn it on and off."
+        },
         "option": {
           "hold": "Hold",
           "toggle": "Toggle"
@@ -1189,7 +1196,11 @@
       },
       "rew": {
         "name": "Rewind while held",
-        "desc": "Backspace on the keyboard, hold L3 + L2 on the controller. Experimental on the Nintendo 3DS."
+        "desc": "Experimental on the Nintendo 3DS.",
+        "keys": {
+          "keyboard": "On the keyboard: Backspace.",
+          "controller": "On the controller: hold L3 + L2."
+        }
       },
       "rewlen": {
         "name": "How far you can rewind",

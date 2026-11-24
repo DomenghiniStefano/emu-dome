@@ -19,6 +19,8 @@ const click = (re) =>
 const clickMain = (re) =>
   `(() => { const b = [...document.querySelectorAll('main button')].find(b => /${re}/.test(b.textContent.trim())); b && b.click(); return !!b })()`;
 /** The page's scrolling box to its end. */
+/** Settings › Video's FPS row scrolled into view. */
+const fpsRow = `(() => { const r = document.querySelector('[data-setting-key="video.fps"]'); r && r.scrollIntoView({ block: 'center' }); return !!r })()`;
 /** A toast pushed into the app's list (the one the toast stack injects), kept for 10 minutes. */
 const toast = (text, kind) =>
   `(() => { const l = document.querySelector('[aria-live=polite]').__vueParentComponent.setupState.toasts.list; l.value = [...l.value, { id: 1e6 + l.value.length, text: ${JSON.stringify(text)}, kind: '${kind}', ms: 600000 }]; return true })()`;
@@ -131,14 +133,15 @@ const SHELL = {
     steps: [section(4), click("^(Video)")],
   },
   settings: { mock: {}, steps: [section(4)] },
-  // Velocità's descriptions name no key on a touch-only phone, the controller's with one (#148).
-  "settings-speed": {
-    mock: {},
-    steps: [section(4), click("^(Speed|Velocità)")],
+  // «Mostra i fotogrammi al secondo» names no key on a touch-only phone, the controller's with
+  // one connected (#148).
+  "settings-keys": {
+    mock: { richSettings: true },
+    steps: [section(4), click("^(Video)"), fpsRow],
   },
-  "settings-speed-pad": {
-    mock: { pads: true },
-    steps: [section(4), click("^(Speed|Velocità)")],
+  "settings-keys-pad": {
+    mock: { richSettings: true, pads: true },
+    steps: [section(4), click("^(Video)"), fpsRow],
   },
   // Upright: a page over the list, and a search's results under the field (#29).
   "settings-page": {
@@ -153,6 +156,17 @@ const SHELL = {
     ],
   },
   storage: { mock: { storage: "low" }, steps: [] },
+  // A game closing whose saves could not be written (#161): the failure card inside the system's
+  // bars (the step gives the shell a 48 px navigation bar, 24 on each side; headless has none),
+  // the closing scene's bar not moving behind it.
+  "closing-failed": {
+    mock: { game: true },
+    steps: [
+      `(() => { const s = document.documentElement.style; s.setProperty('--spacing-safe-bottom', '48px'); s.setProperty('--spacing-safe-left', '24px'); s.setProperty('--spacing-safe-right', '24px'); return true })()`,
+      `import('/src/components/game/gameFlow.ts').then(m => { m.flow.closing = { title: 'Pocket Quest Advance', autosave: true }; return true })`,
+      `window.__emit('emu://closing', { phase: 'failed', purpose: 'game', error: null }); true`,
+    ],
+  },
   // The toasts (#142): centred inside the side gutters, above the tab bar upright, beside the
   // side column on its side; a short one and an error that wraps.
   toasts: {
