@@ -12,7 +12,9 @@
 //! moved aside (`index.json.unreadable`) and the index starts empty, which is safe: with no base,
 //! two sides that differ are a conflict the user is asked about, never an overwrite. A file that
 //! is there but cannot be read (permission, I/O error) is never written over: every change is
-//! refused with [`SyncError::IndexReadFailed`], each one first trying to read it again.
+//! refused with [`SyncError::IndexReadFailed`], each one first trying to read it again. The index
+//! is read once and written from memory, so each write first checks that the file can still be
+//! read (`emudome_core::check_readable`) and is refused the same way when it cannot.
 //!
 //! The device id (random, made once) lives here too: the index is this device's own and is
 //! never uploaded.
@@ -180,7 +182,20 @@ impl SyncIndex {
             .inspect_err(|_| self.data.changes_token = before)
     }
 
+    /// Writes what is in memory, once the file is seen to be still readable
+    /// (`emudome_core::check_readable`): one made unreadable since it was read (a permission
+    /// taken away, a lock held elsewhere) is refused as a failed read, and read again first at
+    /// the next change.
     fn save(&mut self) -> Result<(), SyncError> {
+        if let Err(e) = emudome_core::check_readable(&self.file) {
+            log::warn!(
+                "cloudIndexReadFailed: {}: {e}; not written, sync refused until it reads",
+                self.file.display()
+            );
+            let failed = (IoCause::of(&e), e.to_string());
+            self.read_failed = Some(failed.clone());
+            return Err(SyncError::IndexReadFailed(failed.0, failed.1));
+        }
         self.data.schema = self.data.schema.max(SCHEMA_VERSION);
         let mut text = serde_json::to_vec_pretty(&self.data)
             .map_err(|e| SyncError::local_other(format!("sync index: {e}")))?;
@@ -312,6 +327,32 @@ mod tests {
         fs::remove_dir_all(dir.path("sync/index.json")).unwrap();
         index.set("x", entry("aa")).unwrap();
         assert_eq!(on_disk(&dir)["files"]["x"]["md5"], json!("aa"));
+    }
+
+    #[test]
+    fn an_index_made_unreadable_after_it_was_read_is_never_written_over() {
+        // Trello #178: read at start, then made unreadable (a permission taken away, a lock held
+        // elsewhere; here a folder in its place, which fails on every OS).
+        let dir = TestDir::new("index-unreadable-later");
+        let mut index = SyncIndex::open(&dir.path("sync"));
+        index.set("a", entry("aa")).unwrap();
+        let before = fs::read(dir.path("sync/index.json")).unwrap();
+        fs::rename(dir.path("sync/index.json"), dir.path("sync/away.json")).unwrap();
+        fs::create_dir_all(dir.path("sync/index.json/inside")).unwrap();
+        assert!(matches!(
+            index.set("b", entry("bb")),
+            Err(SyncError::IndexReadFailed(..))
+        ));
+        assert!(dir.path("sync/index.json/inside").is_dir(), "untouched");
+        // The file is back: the next change reads it first and keeps what it holds.
+        fs::remove_dir_all(dir.path("sync/index.json")).unwrap();
+        fs::rename(dir.path("sync/away.json"), dir.path("sync/index.json")).unwrap();
+        assert_eq!(fs::read(dir.path("sync/index.json")).unwrap(), before);
+        index.set("c", entry("cc")).unwrap();
+        let disk = on_disk(&dir);
+        assert_eq!(disk["files"]["a"]["md5"], json!("aa"));
+        assert_eq!(disk["files"]["b"], Json::Null);
+        assert_eq!(disk["files"]["c"]["md5"], json!("cc"));
     }
 
     #[test]
