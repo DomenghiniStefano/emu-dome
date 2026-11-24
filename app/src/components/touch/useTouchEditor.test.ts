@@ -235,6 +235,76 @@ describe("the editor's game screens", () => {
   })
 })
 
+describe('a game showing its screens swapped (#140)', () => {
+  it('keeps each screen by what it is: stored as the screen, sent as Rust reads it', async () => {
+    bridge.status.mockResolvedValue({ swapped: true })
+    const { editor } = await setup()
+    // Rust starts by rectangle: swapped, the rectangle `top` (on the left) shows the bottom
+    // screen. The editor's frame there is the bottom screen.
+    expect(screen(editor.shownScreens.value, 'bottom')).toEqual({ ...START[0], id: 'bottom' })
+    expect(screen(editor.shownScreens.value, 'top')).toEqual({ ...START[1], id: 'top' })
+    // The top screen moved: stored as `top`, sent as the rectangle Rust draws it in swapped.
+    drag(editor, 'top', 17, 9)
+    const moved = { ...START[1], id: 'top', x: 0.52, y: 0.12 }
+    expect(screen(editor.draft.value.screens, 'top')).toEqual(moved)
+    expect(screen(editor.placement.value, 'bottom')).toEqual({ ...moved, id: 'bottom' })
+    await editor.save()
+    const [, , saved] = bridge.setLayouts.mock.calls[0] ?? []
+    expect(screen(saved.screens, 'top')).toEqual(moved)
+    expect(screen(saved.screens, 'bottom')).toEqual({ ...START[0], id: 'bottom' })
+  })
+
+  it('not swapped, the rectangles pass as they are', async () => {
+    const { editor } = await setup()
+    drag(editor, 'top', 17, 9)
+    expect(editor.placement.value).toEqual(editor.draft.value.screens)
+  })
+})
+
+describe('nothing picked (#140)', () => {
+  it('starts with nothing picked, and the element steps change nothing', async () => {
+    const { editor } = await setup()
+    const before = editor.draft.value
+    expect(editor.selected.value).toBeNull()
+    editor.own('more')
+    editor.own('stickUp')
+    editor.removeSelected()
+    editor.setSize(150, true)
+    editor.setScreenSize(80, true)
+    expect(editor.draft.value).toEqual(before)
+    expect(editor.canUndo.value).toBe(false)
+  })
+
+  it('a removal leaves nothing picked, and closes the removed control’s panel', async () => {
+    const { editor } = await setup()
+    editor.select('a')
+    expect(editor.selected.value).toBe('a')
+    editor.panel.value = 'size'
+    editor.removeSelected()
+    await flush()
+    expect(editor.selected.value).toBeNull()
+    expect(editor.panel.value).toBeNull()
+    expect(editor.draft.value.controls.some(c => c.id === 'a')).toBe(false)
+  })
+
+  it('a tap on the ground picks nothing; on the toolbar it keeps the pick', async () => {
+    const { editor, wrapper } = await setup()
+    editor.select('top')
+    const inner = document.createElement('div')
+    wrapper.element.appendChild(inner)
+    const onToolbar = pointer('pointerdown', 10, 10)
+    Object.defineProperty(onToolbar, 'target', { value: inner })
+    Object.defineProperty(onToolbar, 'currentTarget', { value: wrapper.element })
+    editor.pointerDown(onToolbar)
+    expect(editor.selected.value).toBe('top')
+    const onGround = pointer('pointerdown', 10, 10)
+    Object.defineProperty(onGround, 'target', { value: wrapper.element })
+    Object.defineProperty(onGround, 'currentTarget', { value: wrapper.element })
+    editor.pointerDown(onGround)
+    expect(editor.selected.value).toBeNull()
+  })
+})
+
 describe('both orientations in one session', () => {
   it('turning and back keeps the edit of the orientation left, and its undo', async () => {
     const { editor } = await setup()
@@ -299,6 +369,50 @@ describe('both orientations in one session', () => {
     expect(editor.canUndo.value).toBe(false)
     await turn(WIDTH, HEIGHT)
     expect(editor.draft.value.controls).toEqual(before)
+    expect(editor.canUndo.value).toBe(false)
+  })
+
+  it('Android cancelling the finger as the phone turns drops the drag (#140)', async () => {
+    const { editor } = await setup()
+    editor.pressScreen('top', pointer('pointerdown', 200, 100), false)
+    window.dispatchEvent(pointer('pointermove', 200, 60))
+    expect(editor.gesturing.value).toBe(true)
+    // The system cancels the touch first, then the window turns.
+    window.dispatchEvent(pointer('pointercancel', 200, 60))
+    expect(editor.placement.value).toEqual([])
+    expect(editor.gesturing.value).toBe(false)
+    expect(editor.canUndo.value).toBe(false)
+    await turn(HEIGHT, WIDTH)
+    expect(editor.canUndo.value).toBe(false)
+    await turn(WIDTH, HEIGHT)
+    expect(editor.placement.value).toEqual([])
+    expect(editor.canUndo.value).toBe(false)
+  })
+
+  it('a cancelled control drag makes no step either', async () => {
+    const { editor, wrapper } = await setup()
+    const id = editor.draft.value.controls[0]?.id
+    const before = editor.draft.value
+    const target = document.createElement('div')
+    target.dataset.touchControl = id
+    wrapper.element.appendChild(target)
+    const down = pointer('pointerdown', 100, 100)
+    Object.defineProperty(down, 'target', { value: target })
+    editor.pointerDown(down)
+    window.dispatchEvent(pointer('pointermove', 140, 100))
+    window.dispatchEvent(pointer('pointercancel', 140, 100))
+    expect(editor.draft.value).toEqual(before)
+    expect(editor.canUndo.value).toBe(false)
+  })
+
+  it('a drag let go of in a window of another size makes no step', async () => {
+    const { editor } = await setup()
+    editor.pressScreen('top', pointer('pointerdown', 200, 100), false)
+    window.dispatchEvent(pointer('pointermove', 217, 109))
+    // Still on its side (no turn), but the window changed under the finger.
+    await turn(WIDTH + 40, HEIGHT)
+    window.dispatchEvent(pointer('pointerup', 217, 109))
+    expect(editor.placement.value).toEqual([])
     expect(editor.canUndo.value).toBe(false)
   })
 

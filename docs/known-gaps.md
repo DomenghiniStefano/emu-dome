@@ -59,7 +59,10 @@ before working on any area listed here, and update it in the same commit as a ch
   with `touch.tedit` in one write) of every orientation changed in the editor (else the one the phone is in), for
   that console, on this device only (never synced, by design: a phone's placement does not
   belong on other devices). In game the placement is placed over the whole window (the controls may overlap it)
-  while the touch controls are in use, not in what they leave; the quick menu's inset scales it uniformly. Not
+  while the touch controls are in use, not in what they leave; with the quick menu open its screens, taken
+  together, are fitted into the room left (never past their size). Each stored rectangle is the console's screen
+  it names; a placement saved by an earlier build while the game showed its screens swapped holds them
+  exchanged until it is saved again. Not
   yet: guides only to the window's centre lines (not to other elements' edges); the safe edge (camera, bars) is a
   dashed line, a screen may still go past it; the placement ignores `video.aspect` / `video.scale`; the reset of
   the `touch.tedit` row leaves `touch.tscreens` stored (used only with saved controls) until the editor's

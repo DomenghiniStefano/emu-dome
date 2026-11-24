@@ -1220,7 +1220,10 @@
     "saves": {
       "slots": {
         "name": "Numero di slot per i salvataggi rapidi",
-        "desc": "Le scorciatoie del controller arrivano allo slot 9.",
+        "desc": "Ognuno può diventare lo slot rapido con «Rendi rapido».",
+        "keys": {
+          "controller": "Le scorciatoie del controller arrivano allo slot 9."
+        },
         "option": {
           "3": "3",
           "5": "5",

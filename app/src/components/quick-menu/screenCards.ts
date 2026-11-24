@@ -76,8 +76,28 @@ export interface SettingCardInput {
   reason: string | null
   /** Options not offered right now (`unavailableOptions`). */
   unavailable?: string[]
+  /** A touch placement saved in C06 places the screens now (`ScreenStatus.phonePlacement`). */
+  phonePlacement?: boolean
   consoleName: string
   set: (id: string) => void
+}
+
+/** The settings a touch placement makes moot: the screens go where it puts them, at their size
+ * (`ScreenSession::layout`: `video.aspect` / `video.scale` do not apply to it). */
+const PLACED_BY_PHONE: readonly SettingKey[] = ['video.scale', 'video.aspect']
+
+/** The card of a setting the touch placement holds (#140): what is in force and why, as the
+ * layout card says it (X05), no ‹ ›. */
+function heldByPhone(key: string, name: Message): ScreenCard {
+  return {
+    key,
+    name,
+    value: { key: 'qm.layoutPhone.value' },
+    sub: { key: 'qm.layoutPhone.why' },
+    trial: false,
+    prev: null,
+    next: null,
+  }
 }
 
 /**
@@ -93,6 +113,8 @@ export function unavailableOptions(
 
 /** The card of a choice setting. */
 export function settingCard(c: SettingCardInput): ScreenCard {
+  if (c.phonePlacement && PLACED_BY_PHONE.includes(c.entry.key))
+    return heldByPhone(c.entry.key, { key: msg.name(c.entry.key) })
   const kind = c.entry.kind
   const skip = [...c.entry.hiddenOptions, ...(c.unavailable ?? [])]
   const ids = kind.type === 'choice' ? kind.options.filter(id => !skip.includes(id)) : []
@@ -122,17 +144,7 @@ export interface LayoutCardInput {
 export function layoutCard(c: LayoutCardInput): ScreenCard {
   const { layout, cycle } = c.status
   // The touch layout places the screens: Rust refuses a layout change, so nothing is offered (X05).
-  if (c.status.phonePlacement) {
-    return {
-      key: 'screens.layout',
-      name: { key: 'qm.layout' },
-      value: { key: 'qm.layoutPhone.value' },
-      sub: { key: 'qm.layoutPhone.why' },
-      trial: false,
-      prev: null,
-      next: null,
-    }
-  }
+  if (c.status.phonePlacement) return heldByPhone('screens.layout', { key: 'qm.layout' })
   const ids = cycle.includes(layout) ? cycle : [layout, ...cycle]
   return {
     key: 'screens.layout',

@@ -76,14 +76,6 @@
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--violet) 60%, transparent));
 }
 
-/* The C09 screens editor's snapping grid (Trello #28): hairlines in the line colour, the area cut
-   in 32 steps each way, the count `GRID` of components/screen-editor/screenEditor.ts. */
-@utility bg-editor-grid {
-  background:
-    linear-gradient(90deg, var(--line) 1px, transparent 0) 0 0 / calc(100% / 32) calc(100% / 32),
-    linear-gradient(var(--line) 1px, transparent 0) 0 0 / calc(100% / 32) calc(100% / 32);
-}
-
 /* Pixel art scaled up crisp: ROM icons, quick save thumbnails. */
 @utility pixelated {
   image-rendering: pixelated;

@@ -298,8 +298,11 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          (fractions of the whole window, every screen of the console, `main` for GB / GBC / GBA,
                          checked by `placement_fits` against `console_screens`) as `Arrangement::Phone`,
                          placed as given (no `video.aspect` / `video.scale`; `screens.rot` and the swap as a
-                         custom layout), scaled uniformly into the room an `Inset` leaves (the quick menu
-                         open) and never stretched, the layout cycle refused meanwhile; `phone_start` where
+                         custom layout: each id is the console's screen whose rectangle it is, swapped each
+                         screen is drawn in the other's), with an `Inset` (the quick menu open) the screens
+                         together scaled uniformly into the room it leaves, never past their size nor
+                         stretched, centred across and placed down as the inset aligns a game, the layout
+                         cycle refused meanwhile; `phone_start` where
                          the editor starts them with no game: the cycle's first layout, not swapped, as
                          fractions; `ScreenSession::phone_start` over the open game: the layout shown now;
                          `Inset` the window's edges kept clear
@@ -545,7 +548,9 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          «Altro › Modifica la disposizione» and the `touch.tedit` row; the game
                          screens are its elements too, #134: C09's ScreenFrame, placeholders on the
                          theme's flat ground with no game, the game itself placed live over one
-                         (`placement` + `inset`); editorScreens.ts their geometry, useStartScreens
+                         (`placement` + `inset`), each frame the console's screen it names, swapped
+                         or not (`asShown`); nothing picked at first, «Altro» the layout's tools in
+                         fixed places and then the picked element's; editorScreens.ts their geometry, useStartScreens
                          where they start (`screens_phone_start`); useTouchEditor the state (a finger on a screen useScreenGesture),
                          editorHistory.ts undo / redo, orientationDrafts.ts one draft per orientation
                          (kept across a turn, both saved by one «Salva», the hint to turn the phone),
@@ -556,8 +561,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          screen-editor (C09, Trello #28: ScreenEditor over the game at its real size, from
                          G09 and from the `screens.custom` row; a row with no console it has layouts
                          for asks for one first, settings/LayoutConsoleChooser + layoutEditors.ts, #111,
-                         for C06 too; useScreenEditor the state, the live preview
-                         at the Session level and the steps; screenEditor.ts the geometry, pure, tested),
+                         for C06 too; from Settings the theme's flat ground as C06, the snapping grid
+                         not drawn; the panel keeps the side it opened on unless the selected screen
+                         would be wholly under it, never moved by «Parti da»; useScreenEditor the state,
+                         the live preview at the Session level and the steps; screenEditor.ts the
+                         geometry, pure, tested),
                          first-run (FirstRun, 4 steps, once per device: marker `<app local data>/first-run/done`,
                          src-tauri/src/first_run.rs), cover (GameCover; L12 CoverPicker: CoverChoices,
                          ScreenshotGrid and «Adatta la copertina» CoverCrop, its geometry coverCrop.ts,
@@ -653,8 +661,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     hidden (`touch.tpad`; `touch.thide` only fades them); `useGameSession` sends a placement and the inset of the
     same change as one call (`screens_set_phone` with the inset, `Renderer::set_view`), so no frame pairs the new
     placement with the old inset; an inset alone stays `set_video_inset`. It is placed over the whole window, not in what the
-    controls leave (they may overlap it); the quick menu's inset scales it uniformly to make room and it comes
-    back at its size when the menu closes; G09 says «Dalla disposizione touch» and offers no cycle, and L3 + R3
+    controls leave (they may overlap it); the quick menu's inset fits its screens, taken together, into the room
+    left (scaled uniformly, never past their size, centred across, against the phone's sheet upright) and it comes
+    back at its place when the menu closes; G09 says «Dalla disposizione touch» on the layout card and on
+    «Dimensione dell'immagine» (`video.scale` does not apply to it) and offers no cycle, and L3 + R3
     shows G09's reason as a toast (`emu://hotkey` `layoutHeld`).
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the

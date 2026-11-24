@@ -145,6 +145,23 @@ for (const game of ["gba", "nds"])
         width,
         height,
       };
+// G09 on the phone (#140, #167): the cards' values readable at 360 and 412 px, upright and on
+// its side, and `video.scale` held by a touch placement (`phoneHeld`).
+const G09_SIZES = { ...S23, p915: [412, 915], l915: [915, 412] };
+const openG09 = [escape, more, click("^(Screens and picture|Schermi e immagine)$")];
+for (const game of ["gba", "nds"])
+  for (const [name, extra] of [
+    ["", {}],
+    ["-held", { phoneHeld: true }],
+  ])
+    for (const [size, [width, height]] of Object.entries(G09_SIZES))
+      quickMenuScenarios[`qm-g09-${game}${name}-${size}`] = {
+        mock: { game, phone: true, frame: true, lang: "it", theme: "dark", ...extra },
+        steps: openG09,
+        touch: true,
+        width,
+        height,
+      };
 quickMenuScenarios["qm-s23-gba-home-en-p780"] = {
   mock: { game: "gba", phone: true, frame: true, lang: "en", slots: "some", rewind: true },
   steps: [escape],

@@ -1220,7 +1220,10 @@
     "saves": {
       "slots": {
         "name": "Number of quick save slots",
-        "desc": "Controller shortcuts reach slot 9.",
+        "desc": "Any of them can become the quick slot with “Make quick”.",
+        "keys": {
+          "controller": "Controller shortcuts reach slot 9."
+        },
         "option": {
           "3": "3",
           "5": "5",

@@ -26,7 +26,7 @@ import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useImmersive } from '@/composables/useImmersive'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavScope } from '@/nav'
-import { centreGuides, otherScreen } from './editorScreens'
+import { centreGuides } from './editorScreens'
 import TouchControl from './TouchControl.vue'
 import TouchEditorCaption from './TouchEditorCaption.vue'
 import TouchEditorPill from './TouchEditorPill.vue'
@@ -118,11 +118,8 @@ useNavScope(root, {
   escape: !props.live,
 })
 
-/** The picture a frame holds: the other screen's while the game shows them swapped. */
-function pictureOf(id: ScreenId): ScreenId {
-  return editor.swapped.value ? otherScreen(id) : id
-}
-const screenName = (id: ScreenId) => t(`touch.editor.screen.${pictureOf(id)}`)
+/** A frame is the screen it names, swapped or not (#140): its picture is that screen's. */
+const screenName = (id: ScreenId) => t(`touch.editor.screen.${id}`)
 const name = computed(() => {
   if (currentScreen.value) return screenName(currentScreen.value.id)
   return current.value ? t(`touch.editor.control.${current.value.id}`) : t('touch.editor.none')

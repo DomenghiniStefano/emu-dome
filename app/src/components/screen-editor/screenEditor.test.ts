@@ -9,6 +9,7 @@ import {
   front,
   grow,
   heightFor,
+  keepPanelSide,
   moveTo,
   panelSide,
   percent,
@@ -112,5 +113,18 @@ describe('the screens editor', () => {
     expect(panelSide(screen({ x: 0.6 }))).toBe('left')
     expect(panelSide(screen({ x: 0.05 }))).toBe('right')
     expect(panelSide(undefined)).toBe('right')
+  })
+
+  it('keeps the panel on its side unless the screen would be wholly under it (#156)', () => {
+    // The phone's panel: most of the top half, 80% across.
+    const panel = { w: 0.8, h: 0.5 }
+    // A screen half under the panel, its centre left: the panel stays right.
+    expect(keepPanelSide('right', screen({ x: 0.05, y: 0.1, w: 0.9, h: 0.3 }), panel)).toBe('right')
+    // Wholly under it on the right, free on the left: it goes left.
+    expect(keepPanelSide('right', screen({ x: 0.7, y: 0.1, w: 0.25, h: 0.2 }), panel)).toBe('left')
+    // Wholly under it on either side: it stays.
+    expect(keepPanelSide('left', screen({ x: 0.3, y: 0.1, w: 0.4, h: 0.2 }), panel)).toBe('left')
+    // Below the panel: it stays.
+    expect(keepPanelSide('left', screen({ x: 0, y: 0.6, w: 0.3, h: 0.3 }), panel)).toBe('left')
   })
 })

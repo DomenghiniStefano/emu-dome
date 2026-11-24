@@ -40,6 +40,9 @@ const SIZES = {
   // The Galaxy S23 as its webview reports itself (#29, the owner's phone, 2026-11-22).
   p780: [360, 780],
   l780: [780, 360],
+  // The Galaxy A71 (#140).
+  p915: [412, 915],
+  l915: [915, 412],
 };
 /** The card's four sizes, the defaults of `add`. */
 const CARD = ["p390", "p360", "l844", "l740"];
@@ -85,6 +88,23 @@ const sizeTool = [
 add("editor-size-open", { steps: sizeTool }, ["p780", "l780"]);
 add("editor-size-back", { steps: [...sizeTool, systemBack] }, ["p780", "l780"]);
 add("editor-folded", { steps: [...openEditor, click("Riduci$")] }, ["p390", "l740"]);
+// The A71's findings (#140): nothing picked as C06 opens, «Altro» with nothing picked (the
+// layout's items only), with a screen picked (its size after them), and a DS game swapped (each
+// frame named by the screen it holds).
+const openMore = `(() => { const b = document.querySelector('[aria-label="Altro"]'); b && b.click(); return !!b })()`;
+const pickScreen = (n) =>
+  `(() => { const f = document.querySelectorAll('[data-editor-screen]')[${n}]; if (!f) return false; const r = f.getBoundingClientRect(); const o = { pointerId: 7, pointerType: 'touch', bubbles: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 }; f.dispatchEvent(new PointerEvent('pointerdown', o)); window.dispatchEvent(new PointerEvent('pointerup', o)); return true })()`;
+const A71 = ["p915", "l915", "p780", "l780"];
+add("editor-none-more", { mock: { game: "nds", frame: true }, steps: [...openEditor, openMore] }, A71);
+add(
+  "editor-screen-more",
+  { mock: { game: "nds", frame: true }, steps: [...openEditor, pickScreen(0), openMore] },
+  A71,
+);
+add("editor-swapped", { mock: { game: "nds", frame: true, swapped: true }, steps: openEditor }, [
+  "p915",
+  "l915",
+]);
 add("lost-ask", { mock: { pads: true }, steps: [disconnect] }, ["p390", "l844"]);
 // G06 on the phone (#118): no hint with only the touch controls, Home with a controller, Esc
 // once a physical key was pressed (a `{ key }` step).

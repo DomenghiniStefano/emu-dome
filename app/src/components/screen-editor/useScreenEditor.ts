@@ -68,6 +68,8 @@ export function useScreenEditor(o: ScreenEditorOptions) {
   const collapsed = ref(false)
   /** A screen is being dragged: the panel fades out. */
   const dragging = ref(false)
+  /** How many «Parti da» layouts were applied: the panel does not move for them (#156). */
+  const presets = ref(0)
   const target = ref<SaveTarget>('console')
   const loaded = ref(false)
   const busy = ref(false)
@@ -106,7 +108,10 @@ export function useScreenEditor(o: ScreenEditorOptions) {
     try {
       const { width, height } = area.value
       const next = await emu.screens.presetCustom(readScope(), o.console, id, width, height)
-      if (fresh() && next.screens.length > 0) apply(next)
+      if (fresh() && next.screens.length > 0) {
+        apply(next)
+        presets.value++
+      }
     } catch (e) {
       if (fresh()) o.onError(e)
     }
@@ -372,6 +377,7 @@ export function useScreenEditor(o: ScreenEditorOptions) {
     snap,
     collapsed,
     dragging,
+    presets,
     target,
     loaded,
     busy,

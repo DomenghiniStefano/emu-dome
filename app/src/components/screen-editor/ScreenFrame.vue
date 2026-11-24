@@ -29,6 +29,13 @@ const box = computed(() => ({
   height: pct(props.screen.h),
 }))
 const mark = computed(() => ({ [SCREEN_ATTR]: props.screen.id }))
+/** The resize corner kept inside the window (#140): a frame past the window's right or bottom
+ * edge (the editors' frames are fractions of the window) moves it in by what is past. */
+const corner = computed(() => {
+  const { x, y, w, h } = props.screen
+  const past = (end: number, size: number) => (size > 0 ? pct(Math.max(0, end - 1) / size) : '0%')
+  return { right: past(x + w, w), bottom: past(y + h, h) }
+})
 </script>
 
 <template>
@@ -53,15 +60,17 @@ const mark = computed(() => ({ [SCREEN_ATTR]: props.screen.id }))
     >
       {{ label }}
     </span>
+    <!-- At the bottom: the editors' captions and panels stand at the top of the window (#140). -->
     <span
       v-else
-      class="absolute top-6 left-8 rounded-badge border border-line bg-glass-thick px-6 text-caption font-semibold"
+      class="absolute bottom-6 left-8 rounded-badge border border-line bg-glass-thick px-6 text-caption font-semibold"
     >
       {{ label }}
     </span>
     <span
       v-if="selected"
-      class="absolute right-0 bottom-0 size-24 cursor-nwse-resize rounded-tl-control bg-accent"
+      class="absolute size-24 cursor-nwse-resize rounded-tl-control bg-accent"
+      :style="corner"
       aria-hidden="true"
       @pointerdown.stop="e => emit('press', e, true)"
     ></span>

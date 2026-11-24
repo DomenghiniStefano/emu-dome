@@ -10,8 +10,8 @@ export const EDITOR_SCREENS: EditorScreen[] = ['top', 'bottom']
 
 /**
  * The snapping grid: the area cut in this many steps each way. The d-pad moves by one step, a
- * drag snaps to it when «Aggancia alla griglia» is on. The grid drawn behind the screens
- * (`bg-editor-grid`, design-system/styles/utilities.css) uses the same count.
+ * drag snaps to it when «Aggancia alla griglia» is on. It is not drawn: the ground is the theme's
+ * flat one, as in the C06 editor (#156).
  */
 export const GRID = 32
 /** The smallest a screen gets, as a share of the area's width. */
@@ -150,10 +150,35 @@ export function pick(layout: CustomLayout, id: EditorScreen, dir: -1 | 1): Edito
   return ids[(i + dir + ids.length) % ids.length] ?? id
 }
 
-/** The panel stands on the side away from the selected screen: left when the screen's centre is
- * right of the middle (a little past it). */
-export function panelSide(s: CustomScreen | undefined): 'left' | 'right' {
+/** A side of the window the panel stands on. */
+export type PanelSide = 'left' | 'right'
+
+/** Where the panel first stands: on the side away from the selected screen, left when the
+ * screen's centre is right of the middle (a little past it). */
+export function panelSide(s: CustomScreen | undefined): PanelSide {
   return s && s.x + s.w / 2 > 0.55 ? 'left' : 'right'
+}
+
+/** How much of the window the panel takes from its corner, fractions of the window: its far edge
+ * across (margin included) and its bottom. */
+export interface PanelExtent {
+  w: number
+  h: number
+}
+
+/** `s` lies wholly under the panel standing on `side`. */
+function hidden(side: PanelSide, s: CustomScreen, p: PanelExtent): boolean {
+  const across = side === 'left' ? s.x + s.w <= p.w : s.x >= 1 - p.w
+  return across && s.y + s.h <= p.h
+}
+
+/** Where the panel stands while the user works (#156): it keeps its side, so «Salva» never moves
+ * under the finger, and goes to the other one only when the selected screen would be wholly under
+ * it there and not on the other side. A preset tap never moves it (the editor does not ask). */
+export function keepPanelSide(side: PanelSide, s: CustomScreen, p: PanelExtent): PanelSide {
+  if (!hidden(side, s, p)) return side
+  const away: PanelSide = side === 'left' ? 'right' : 'left'
+  return hidden(away, s, p) ? side : away
 }
 
 /** A fraction as the panel's field shows it: per cent, one decimal. */

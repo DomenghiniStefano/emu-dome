@@ -62,14 +62,22 @@ export function withScreen(
 export const otherScreen = (id: ScreenId): ScreenId =>
   id === 'top' ? 'bottom' : id === 'bottom' ? 'top' : id
 
-/** Width over height of the picture the frame `id` shows: the other screen's when swapped. */
-export function ratioOf(
-  shapes: readonly TouchScreenShape[],
-  id: ScreenId,
-  swapped: boolean,
-): number {
-  const shown = swapped ? otherScreen(id) : id
-  const shape = shapes.find(s => s.id === shown) ?? shapes.find(s => s.id === id)
+/**
+ * The editor keeps each screen by what it is, the console's top or bottom screen (#140), as it is
+ * stored in `touch.tscreens`: the rectangle `top` is where the top screen goes. Rust reads a
+ * placement the same way and, while the game shows its screens swapped (`screens.swap`), draws
+ * each screen in the other one's rectangle. Over a swapped game the editor shows each screen in
+ * its own rectangle (so the frame «Schermo superiore» holds the top screen's picture), so what it
+ * sends and what Rust starts it from go through this exchange; with no swap they pass unchanged.
+ * Its own inverse.
+ */
+export function asShown(screens: readonly CustomScreen[], swapped: boolean): CustomScreen[] {
+  return swapped ? screens.map(s => ({ ...s, id: otherScreen(s.id) })) : [...screens]
+}
+
+/** Width over height of the screen `id`'s picture. */
+export function ratioOf(shapes: readonly TouchScreenShape[], id: ScreenId): number {
+  const shape = shapes.find(s => s.id === id)
   return shape && shape.height > 0 ? shape.width / shape.height : 1
 }
 

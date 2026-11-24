@@ -20,7 +20,8 @@ function readSafeEdges(probe: HTMLElement | null): SafeEdges {
 
 /** The window, in CSS pixels, and its safe edges, following resizes and rotations, and the safe
  * edges changing with no resize: Android hides its system bars once a game is open (#131) in a
- * window that keeps its size, so the probe's own box (its paddings) is watched too. */
+ * window that keeps its size, so the probe's own box (its paddings) is watched too, and a turn
+ * to the other side through the screen's orientation event (#171). */
 export function useArea(): Ref<Area> {
   let probe: HTMLElement | null = null
   let observer: ResizeObserver | null = null
@@ -41,7 +42,21 @@ export function useArea(): Ref<Area> {
       next.safe?.left === now.safe?.left
     if (!same) area.value = next
   }
+  // A turn from one side to the other (#171) changes neither the window's size nor the probe's
+  // (the left and right insets swap): the screen's orientation change reads the edges again, at
+  // once and on the next two frames (the insets follow after the event).
+  let frame = 0
+  const turned = () => {
+    resize()
+    window.cancelAnimationFrame(frame)
+    frame = window.requestAnimationFrame(() => {
+      resize()
+      frame = window.requestAnimationFrame(resize)
+    })
+  }
+  const orientation = typeof screen !== 'undefined' ? screen.orientation : undefined
   onMounted(() => {
+    orientation?.addEventListener('change', turned)
     probe = document.createElement('div')
     probe.className = 'pointer-events-none invisible fixed pt-safe-top pr-safe-right pl-safe-left'
     probe.setAttribute('aria-hidden', 'true')
@@ -55,6 +70,8 @@ export function useArea(): Ref<Area> {
   })
   onBeforeUnmount(() => {
     window.removeEventListener('resize', resize)
+    orientation?.removeEventListener('change', turned)
+    window.cancelAnimationFrame(frame)
     observer?.disconnect()
     observer = null
     probe?.remove()

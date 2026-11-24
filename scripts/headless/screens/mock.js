@@ -1242,7 +1242,8 @@
       lidSupported: !scenario.lidless,
       lidClosed: !!scenario.lid,
       // #134: the phone's own placement of the screens (the touch layout's, or C06's while open).
-      phonePlacement: false,
+      // `phoneHeld` (#140): a touch placement saved in C06 is in use (G09 says so).
+      phonePlacement: !!scenario.phoneHeld,
     },
     screens_custom: { screens: [] },
     screens_preset_custom: {
@@ -1625,6 +1626,15 @@
           h: dst.h / height,
         }));
       }
+      // C09's «Parti da» «Affiancati» (#156): the two screens side by side in the middle band;
+      // the other layouts one above the other (the static answer).
+      if (cmd === "screens_preset_custom" && args.layout === "side")
+        return {
+          screens: [
+            { id: "top", x: 0, y: 0.3, w: 0.5, h: 0.4 },
+            { id: "bottom", x: 0.5, y: 0.3, w: 0.5, h: 0.4 },
+          ],
+        };
       // The phone's own placement sent (the touch layer's, or C06's while open) with the inset it
       // is fitted in: the status says it is in use while it holds screens.
       if (cmd === "screens_set_phone") {
