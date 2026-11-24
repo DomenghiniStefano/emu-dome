@@ -147,16 +147,40 @@ object SystemBridge {
             val parsed = Uri.parse(uri)
             if (keep) keepPermission(context, parsed)
             context.contentResolver.openFileDescriptor(parsed, "r")?.detachFd() ?: OPEN_FAILED
-        } catch (e: FileNotFoundException) {
-            Log.w(TAG, "document not opened: $uri: $e")
-            OPEN_NOT_FOUND
-        } catch (e: SecurityException) {
-            Log.w(TAG, "document not opened: $uri: $e")
-            OPEN_PERMISSION_DENIED
         } catch (e: Exception) {
             Log.w(TAG, "document not opened: $uri: $e")
-            OPEN_FAILED
+            openFailure(e)
         }
+    }
+
+    /** How deep [openFailure] follows an exception's causes. */
+    private const val CAUSE_DEPTH = 8
+
+    /**
+     * The [openRead] failure code for [e]: [OPEN_NOT_FOUND] or [OPEN_PERMISSION_DENIED] when a
+     * `FileNotFoundException` or a `SecurityException` is [e] itself or one of its causes (the
+     * first one found wins), [OPEN_FAILED] otherwise. Providers wrap the real failure: the
+     * ExternalStorageProvider answers a document of a picked tree whose file is gone with
+     * `IllegalArgumentException: Failed to determine if primary:… is child of primary:…:
+     * java.io.FileNotFoundException: Missing file for primary:… at /storage/emulated/0/…`, the
+     * `FileNotFoundException` only in the message, no cause set; such a message counts as not
+     * found too. At most [CAUSE_DEPTH] levels, a cause seen before ends the walk.
+     */
+    private fun openFailure(e: Throwable): Int {
+        val seen = HashSet<Throwable>()
+        var current: Throwable? = e
+        var depth = 0
+        while (current != null && depth < CAUSE_DEPTH && seen.add(current)) {
+            when {
+                current is FileNotFoundException -> return OPEN_NOT_FOUND
+                current is SecurityException -> return OPEN_PERMISSION_DENIED
+                current is IllegalArgumentException &&
+                    current.message?.contains("FileNotFoundException") == true -> return OPEN_NOT_FOUND
+            }
+            current = current.cause
+            depth++
+        }
+        return OPEN_FAILED
     }
 
     /** The document's file name as its provider tells it, or null. */

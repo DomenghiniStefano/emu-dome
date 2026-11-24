@@ -128,6 +128,7 @@ const OPEN_PERMISSION_DENIED: i32 = -3;
 /// The kind of failure `SystemBridge.openDocument` answered with a negative `code`: -2 the
 /// document is not there (`FileNotFoundException`), -3 the system refused it
 /// (`SecurityException`: the permission was taken back), anything else (-1) another failure.
+/// The exception may be wrapped: the bridge looks through its causes (`SystemBridge.openFailure`).
 pub(crate) fn open_failure(code: i32) -> std::io::ErrorKind {
     match code {
         OPEN_NOT_FOUND => std::io::ErrorKind::NotFound,
