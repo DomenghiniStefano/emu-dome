@@ -503,10 +503,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          tap / hold / turbo
                          (touchPress.ts), `touch.topac` / `thapt` / `thide` / `tpad`
                          (touchVisibility.ts); TouchEditor C06 over the game (from G10, the phone's
-                         «Altro › Modifica la disposizione» and the `touch.tedit` row; with no game
-                         TouchPreviewScreens draws the console's screens where Rust would place them,
-                         useScreenPreview / `screens_preview`; useTouchEditor the state, editorHistory.ts
-                         undo / redo, editorToolbar.ts what fits and what goes into «Altro»); E14
+                         «Altro › Modifica la disposizione» and the `touch.tedit` row; the game
+                         screens are its elements too, #134: C09's ScreenFrame, placeholders on the
+                         theme's flat ground with no game, the game itself placed live over one
+                         (`placement` + `inset`); editorScreens.ts their geometry, useStartScreens
+                         where they start (`screens_phone_start`); useTouchEditor the state,
+                         editorHistory.ts undo / redo, editorToolbar.ts what fits and what goes into
+                         «Altro» and which tools a screen has); E14
                          ControllerLostDialog / useControllerLoss (controllerLoss.ts the rule); all the
                          pure modules tested),
                          screen-editor (C09, Trello #28: ScreenEditor over the game at its real size, from

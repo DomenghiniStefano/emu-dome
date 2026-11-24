@@ -172,6 +172,7 @@ onMounted(async () => {
       @fullscreen="session.toggleFullscreen"
       @screenshot="session.screenshot"
       @inset="session.setInset"
+      @placement="s => session.setPlacement('editor', s)"
       @swap-screens="screens.swap"
       @toggle-lid="screens.toggleLid"
       @layout="screens.setLayout"

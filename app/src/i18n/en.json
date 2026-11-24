@@ -473,6 +473,12 @@
         "menu": "Menu"
       },
       "none": "Tap a control",
+      "screen": {
+        "main": "Screen",
+        "top": "Top screen",
+        "bottom": "Bottom screen"
+      },
+      "screenOnly": "A screen can only be moved and resized.",
       "undo": "Undo",
       "redo": "Redo",
       "add": "Add",

@@ -26,7 +26,15 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { GameInfo, LibraryGame, ScreenLayoutId, ScreenStatus, Speed, VideoMode } from '@/emu'
+import type {
+  CustomScreen,
+  GameInfo,
+  LibraryGame,
+  ScreenLayoutId,
+  ScreenStatus,
+  Speed,
+  VideoMode,
+} from '@/emu'
 import ScreenEditor from '@/components/screen-editor/ScreenEditor.vue'
 import TouchEditor from '@/components/touch/TouchEditor.vue'
 import { NO_INSET, type InsetPx } from '@/components/game/inset'
@@ -122,6 +130,9 @@ const emit = defineEmits<{
   /** The edges the menu keeps clear of the game, CSS px: G09's bar on desktop, the phone's sheet
    * or side panel (none: the whole window); the game is fitted in the rest. */
   inset: [InsetPx]
+  /** C06 over the game: where the layout being edited puts the screens (`null`: the editor
+   * closed, the touch layer's placement back). */
+  placement: [CustomScreen[] | null]
   /** NDS / 3DS: «Scambia gli schermi», «Chiudi il coperchio», G09's layout card. */
   swapScreens: []
   toggleLid: []
@@ -504,7 +515,13 @@ onBeforeUnmount(() => emit('inset', NO_INSET))
 
     <!-- C06 over the game, the same way. -->
     <div v-else-if="touchEditorShown" ref="root" class="contents">
-      <TouchEditor :console="game.consoleId" live @close="back" @inset="px => emit('inset', px)" />
+      <TouchEditor
+        :console="game.consoleId"
+        live
+        @close="back"
+        @inset="px => emit('inset', px)"
+        @placement="s => emit('placement', s)"
+      />
     </div>
 
     <section

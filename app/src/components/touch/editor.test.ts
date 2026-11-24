@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canRedo, canUndo, commit, historyOf, redo, undo } from './editorHistory'
-import { fitToolbar, TOOLS, type ToolbarWidths } from './editorToolbar'
+import { fitToolbar, toolDisabled, TOOLS, type ToolbarWidths } from './editorToolbar'
 
 describe("the editor's history", () => {
   it('undoes and redoes, and a new change forgets the steps forward', () => {
@@ -84,5 +84,24 @@ describe("the editor's toolbar on a phone", () => {
       more: ['remove', 'reset', 'discard'],
     })
     expect(fitToolbar(5000, widths)).toEqual({ shown: [...TOOLS], more: [] })
+  })
+})
+
+describe("the editor's tools on a screen", () => {
+  const base = {
+    canUndo: true,
+    canRedo: false,
+    picked: true,
+    screenPicked: true,
+    canRemove: false,
+    canAdd: true,
+  }
+  it('keeps the size and disables what a screen cannot have', () => {
+    expect(toolDisabled('size', base)).toBe(false)
+    expect(toolDisabled('opacity', base)).toBe(true)
+    expect(toolDisabled('behaviour', base)).toBe(true)
+    expect(toolDisabled('remove', base)).toBe(true)
+    expect(toolDisabled('opacity', { ...base, screenPicked: false })).toBe(false)
+    expect(toolDisabled('redo', base)).toBe(true)
   })
 })

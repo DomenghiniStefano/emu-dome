@@ -27,14 +27,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/design-system/components/dropdown-menu'
-import { fitToolbar, TOOLS, type Tool, type ToolbarFit } from './editorToolbar'
+import { fitToolbar, toolDisabled, TOOLS, type Tool, type ToolbarFit } from './editorToolbar'
 import type { ToolPanel } from './useTouchEditor'
 
 const props = defineProps<{
   canUndo: boolean
   canRedo: boolean
-  /** A control is picked (size, opacity, behaviour act on it). */
+  /** A control or a screen is picked (size, opacity, behaviour act on it). */
   picked: boolean
+  /** The picked element is a game screen: only its size can be changed here. */
+  screenPicked: boolean
   /** The picked control can be removed (not the menu). */
   canRemove: boolean
   /** Some of the console's controls are not on screen. */
@@ -74,24 +76,10 @@ const ICONS: Record<Tool, Component> = {
   discard: X,
 }
 
+/** editorToolbar.ts decides; «Ripristina» and «Esci» also wait while a save is on its way. */
 function disabled(tool: Tool): boolean {
-  switch (tool) {
-    case 'undo':
-      return !props.canUndo
-    case 'redo':
-      return !props.canRedo
-    case 'add':
-      return !props.canAdd
-    case 'size':
-    case 'opacity':
-    case 'behaviour':
-      return !props.picked
-    case 'remove':
-      return !props.canRemove
-    case 'reset':
-    case 'discard':
-      return props.busy
-  }
+  const waiting = props.busy && (tool === 'reset' || tool === 'discard')
+  return waiting || toolDisabled(tool, props)
 }
 
 function run(tool: Tool) {

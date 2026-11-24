@@ -1186,9 +1186,8 @@ pub fn console_frame(console: ConsoleId) -> (u32, u32) {
 }
 
 /// Where a `console` game's screens would be drawn in `area` when it opens with `settings`: the
-/// first layout of the cycle, not swapped, its frame at 1× ([`console_frame`]). The C06 touch
-/// editor draws these as placeholders with no game open, so the controls are laid out around
-/// the picture the game will have.
+/// first layout of the cycle, not swapped, its frame at 1× ([`console_frame`]). The picture
+/// [`phone_start`] starts the touch editor's screens from.
 pub fn preview(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec<Placement> {
     let split = CoreId::for_console(console).profile().split;
     let (width, height) = console_frame(console);

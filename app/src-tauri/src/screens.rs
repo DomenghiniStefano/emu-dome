@@ -338,21 +338,6 @@ pub fn screens_preset_custom(
     CustomLayout::preset(&settings, layout, split, width, height)
 }
 
-/// Where a `console` game's screens would be drawn in `area` (CSS pixels of the window, the touch
-/// controls' inset) if it opened now with the settings `scope` resolves: the C06 touch editor
-/// opened from Settings draws them as placeholders, with no game (Trello #111). Composed by
-/// `emudome_core::screens` like the game itself. Removed with the editor's own preview.
-#[tauri::command]
-pub fn screens_preview(
-    app: AppHandle,
-    scope: Scope,
-    console: ConsoleId,
-    area: PointerArea,
-) -> Vec<Placement> {
-    let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
-    emudome_core::screens::preview(&settings, console, area.area())
-}
-
 /// Where the touch editor starts the screens of a `console` game in `area` when no placement of
 /// the phone's own is saved, with the settings `scope` resolves (`emudome_core::screens::phone_start`).
 #[tauri::command]

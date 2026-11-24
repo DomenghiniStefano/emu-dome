@@ -473,6 +473,12 @@
         "menu": "Menu"
       },
       "none": "Tocca un comando",
+      "screen": {
+        "main": "Schermo",
+        "top": "Schermo superiore",
+        "bottom": "Schermo inferiore"
+      },
+      "screenOnly": "Uno schermo si può solo spostare e ridimensionare.",
       "undo": "Annulla",
       "redo": "Ripeti",
       "add": "Aggiungi",

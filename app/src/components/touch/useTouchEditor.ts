@@ -139,6 +139,13 @@ export function useTouchEditor(o: TouchEditorOptions) {
   )
   /** Where the layout puts the screens, live while one is dragged (empty: none placed). */
   const placement = computed(() => draft.value.screens)
+  /** Over a game, the edges kept clear of it sent with `placement` (Rust fits a held placement
+   * into the inset it has, so the two go as a pair): of the draft, so the first drag of a screen
+   * already places the game over the whole window. The start frames are the game's composition
+   * in `reserved`, so the switch shows no jump. */
+  const placementInset = computed(() =>
+    draft.value.screens.length > 0 ? NO_INSET : reserved.value,
+  )
 
   // ---- Loading (rule 7: the newest answer only) ----
   const loads = latest()
@@ -567,6 +574,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     currentScreen,
     shownScreens,
     placement,
+    placementInset,
     keep,
     swapped,
     collapsed,

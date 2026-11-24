@@ -59,7 +59,6 @@ import type { PadInfo } from '@/generated/app/PadInfo'
 import type { PadState } from '@/generated/app/PadState'
 import type { PointerArea } from '@/generated/app/PointerArea'
 import type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
-import type { ScreenPlacement } from '@/generated/ScreenPlacement'
 import type { CustomLayout } from '@/generated/CustomLayout'
 import type { CustomScreen } from '@/generated/CustomScreen'
 import type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
@@ -372,10 +371,6 @@ export const emu = {
       width: number,
       height: number,
     ) => invoke<CustomLayout>('screens_preset_custom', { scope, console, layout, width, height }),
-    /** No game open (the C06 editor from Settings): where a `console` game's screens would go in
-     * `area` if it opened now with the settings of `scope`, composed by Rust. */
-    preview: (scope: SettingsScope, console: ConsoleId, area: PointerArea) =>
-      invoke<ScreenPlacement[]>('screens_preview', { scope, console, area }),
     /** Where the touch editor starts a `console` game's screens in `area` (fractions of it), with
      * the settings of `scope`, composed by Rust. */
     phoneStart: (scope: SettingsScope, console: ConsoleId, area: PointerArea) =>
