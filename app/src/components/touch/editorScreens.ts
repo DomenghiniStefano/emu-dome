@@ -58,7 +58,8 @@ export function withScreen(
   return { ...layout, screens: screensShown(layout, start).map(x => (x.id === s.id ? s : x)) }
 }
 
-const otherScreen = (id: ScreenId): ScreenId =>
+/** The other screen of two (a one-screen game's stays itself), as Rust's `ScreenId::other`. */
+export const otherScreen = (id: ScreenId): ScreenId =>
   id === 'top' ? 'bottom' : id === 'bottom' ? 'top' : id
 
 /** Width over height of the picture the frame `id` shows: the other screen's when swapped. */
