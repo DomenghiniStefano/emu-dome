@@ -479,6 +479,10 @@
         "bottom": "Schermo inferiore"
       },
       "screenOnly": "Uno schermo si può solo spostare e ridimensionare.",
+      "turnHint": {
+        "portrait": "Gira il telefono per sistemare anche la disposizione in verticale.",
+        "landscape": "Gira il telefono per sistemare anche la disposizione in orizzontale."
+      },
       "undo": "Annulla",
       "redo": "Ripeti",
       "add": "Aggiungi",

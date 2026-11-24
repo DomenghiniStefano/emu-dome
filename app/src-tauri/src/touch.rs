@@ -44,48 +44,84 @@ pub(crate) fn touch_layouts(app: AppHandle, console: ConsoleId) -> Result<Setup,
     ))
 }
 
-/// C06's «Salva»: `layout` (controls and screens) becomes `console`'s layout for `orientation`
-/// (the other orientation kept), and that orientation's choice (`touch.tport` / `touch.tland`)
-/// turns to `custom` for the console, so the game shows it at once; all in one write. An empty
-/// `screens` clears that orientation's placement. A layout with a control or screen the console's
-/// games do not have, or otherwise invalid, is refused with `settingInvalidValue`.
+/// The choice key of `orientation` (`touch.tport` / `touch.tland`).
+fn choice_key(orientation: Orientation) -> &'static str {
+    match orientation {
+        Orientation::Portrait => keys::TOUCH_PORTRAIT.as_str(),
+        Orientation::Landscape => keys::TOUCH_LANDSCAPE.as_str(),
+    }
+}
+
+/// What one «Salva» stores: `stored` with each layout given in its orientation's place (one not
+/// given stays as stored), and the choice keys of the orientations given. A layout with no
+/// controls, or not `console`'s, refuses the whole save with `settingInvalidValue`.
+fn saved_layouts(
+    stored: Layouts,
+    console: ConsoleId,
+    portrait: Option<Layout>,
+    landscape: Option<Layout>,
+) -> Result<(Layouts, Vec<&'static str>), ErrorCode> {
+    let given: Vec<(Orientation, Layout)> = [
+        (Orientation::Portrait, portrait),
+        (Orientation::Landscape, landscape),
+    ]
+    .into_iter()
+    .filter_map(|(orientation, layout)| layout.map(|l| (orientation, l)))
+    .collect();
+    if given
+        .iter()
+        .any(|(_, l)| l.controls.is_empty() || !l.fits(console))
+    {
+        return Err(ErrorCode::SettingInvalidValue {
+            key: keys::TOUCH_LAYOUTS.as_str().to_owned(),
+        });
+    }
+    let choices = given.iter().map(|(o, _)| choice_key(*o)).collect();
+    let saved = given
+        .into_iter()
+        .fold(stored, |layouts, (o, l)| layouts.with(o, l));
+    Ok((saved, choices))
+}
+
+/// C06's «Salva»: each layout given (controls and screens) becomes `console`'s layout for its
+/// orientation (an orientation not given is kept as stored), and each given orientation's choice
+/// (`touch.tport` / `touch.tland`) turns to `custom` for the console, so the game shows it at
+/// once; all in one write. An empty `screens` clears that orientation's placement. One layout with
+/// a control or screen the console's games do not have, or otherwise invalid, refuses the whole
+/// save with `settingInvalidValue`.
 #[tauri::command]
-pub(crate) fn touch_set_layout(
+pub(crate) fn touch_set_layouts(
     app: AppHandle,
     console: ConsoleId,
-    orientation: Orientation,
-    layout: Layout,
+    portrait: Option<Layout>,
+    landscape: Option<Layout>,
 ) -> Result<(), ErrorCode> {
     let tedit = keys::TOUCH_LAYOUTS.as_str();
     let tscreens = keys::TOUCH_SCREENS.as_str();
-    if layout.controls.is_empty() || !layout.fits(console) {
-        return Err(ErrorCode::SettingInvalidValue {
-            key: tedit.to_owned(),
-        });
-    }
-    let choice = match orientation {
-        Orientation::Portrait => keys::TOUCH_PORTRAIT.as_str(),
-        Orientation::Landscape => keys::TOUCH_LANDSCAPE.as_str(),
-    };
     let scope = Scope::Console { console };
     let state = app.try_state::<SettingsState>().ok_or(ErrorCode::NoGame)?;
-    let level = {
+    let (level, choices) = {
         let mut settings = state.0.lock();
         let stored = Layouts::read(
             &stored_items(&mut settings, tedit, &scope)?,
             &stored_items(&mut settings, tscreens, &scope)?,
         );
-        let saved = stored.with(orientation, layout);
-        settings.set_many(
-            &scope,
-            &[
-                (tedit, Value::List(saved.to_items())),
-                (tscreens, Value::List(saved.screen_items())),
-                (choice, Value::Text("custom".to_owned())),
-            ],
-        )?
+        let (saved, choices) = saved_layouts(stored, console, portrait, landscape)?;
+        let values: Vec<(&str, Value)> = [
+            (tedit, Value::List(saved.to_items())),
+            (tscreens, Value::List(saved.screen_items())),
+        ]
+        .into_iter()
+        .chain(
+            choices
+                .iter()
+                .map(|key| (*key, Value::Text("custom".to_owned()))),
+        )
+        .collect();
+        (settings.set_many(&scope, &values)?, choices)
     };
-    crate::settings::emit_changed(&app, &[tedit, tscreens, choice], level);
+    let written: Vec<&str> = [tedit, tscreens].into_iter().chain(choices).collect();
+    crate::settings::emit_changed(&app, &written, level);
     Ok(())
 }
 
@@ -111,5 +147,77 @@ pub(crate) fn touch_stick(state: tauri::State<'_, AppState>, x: f32, y: f32) {
 pub(crate) fn haptic(strength: u8) {
     if strength > 0 {
         emudome_platform::haptic(strength.min(100));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use emudome_core::touch::{Behaviour, Control, ControlId};
+
+    use super::*;
+
+    fn layout(x: f32) -> Layout {
+        let control = |id, x| Control {
+            id,
+            x,
+            y: 0.5,
+            size: 100,
+            opacity: 100,
+            behaviour: Behaviour::Tap,
+        };
+        Layout {
+            controls: vec![control(ControlId::Dpad, x), control(ControlId::Menu, 0.5)],
+            screens: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn both_orientations_are_saved_and_made_custom() {
+        let stored = Layouts::default().with(Orientation::Portrait, layout(0.1));
+        let Ok((saved, choices)) =
+            saved_layouts(stored, ConsoleId::Gba, Some(layout(0.2)), Some(layout(0.3)))
+        else {
+            panic!("refused");
+        };
+        assert_eq!(saved.portrait, layout(0.2));
+        assert_eq!(saved.landscape, layout(0.3));
+        assert_eq!(
+            choices,
+            [
+                keys::TOUCH_PORTRAIT.as_str(),
+                keys::TOUCH_LANDSCAPE.as_str()
+            ]
+        );
+    }
+
+    #[test]
+    fn saving_one_leaves_the_other_and_its_choice_alone() {
+        let stored = Layouts::default().with(Orientation::Portrait, layout(0.1));
+        let Ok((saved, choices)) = saved_layouts(stored, ConsoleId::Gba, None, Some(layout(0.3)))
+        else {
+            panic!("refused");
+        };
+        assert_eq!(saved.portrait, layout(0.1));
+        assert_eq!(saved.landscape, layout(0.3));
+        assert_eq!(choices, [keys::TOUCH_LANDSCAPE.as_str()]);
+    }
+
+    #[test]
+    fn an_invalid_layout_refuses_the_whole_save() {
+        // The 3DS Circle Pad is not a GBA control; an empty layout is not a save either.
+        let mut foreign = layout(0.2);
+        foreign.controls[0].id = ControlId::CirclePad;
+        for bad in [foreign, Layout::default()] {
+            let refused = saved_layouts(
+                Layouts::default(),
+                ConsoleId::Gba,
+                Some(layout(0.2)),
+                Some(bad),
+            );
+            assert!(matches!(
+                refused,
+                Err(ErrorCode::SettingInvalidValue { key }) if key == keys::TOUCH_LAYOUTS.as_str()
+            ));
+        }
     }
 }

@@ -2,9 +2,11 @@
 // mockup): the layout of this console for the way the phone is held now, edited over the game.
 // Tap a control to pick it, drag it to move it (its centre on the 8 px grid), pinch to resize the
 // picked one; the toolbar's tools act on it; every change is a step of undo / redo, a gesture one
-// step. «Salva» stores it on this device for the console and makes it the one shown
-// (`emu.touch.setLayout`); leaving without saving changes nothing. The geometry is touchLayout.ts's.
-// Turning the phone switches to that orientation's layout (unsaved changes are dropped).
+// step. Turning the phone switches to that orientation's draft and back again keeps everything
+// (orientationDrafts.ts: one draft, history and pick per orientation). «Salva» stores every
+// orientation changed in this session (else the one on screen) on this device for the console, in
+// one write, and makes them the ones shown (`emu.touch.setLayouts`); leaving without saving changes
+// nothing. The geometry is touchLayout.ts's.
 // The game screens are elements too (Trello #134, editorScreens.ts): picked, dragged (snapped to
 // the grid), resized by their corner or the size slider, keeping their proportions while `keep`;
 // the layout holds every screen or none, and starts from Rust's placement (`useStartScreens`)
@@ -21,6 +23,7 @@ import {
   type TouchControl,
   type TouchControlId,
   type TouchLayout,
+  type TouchOrientation,
   type TouchSetup,
 } from '@/emu'
 import type { ErrorSink } from '@/i18n/labels'
@@ -39,6 +42,7 @@ import {
   withScreen,
   type ElementId,
 } from './editorScreens'
+import { draftOf, layoutsToSave, turnHint, withDraft, type Drafts } from './orientationDrafts'
 import { prefsFrom } from './touchControls'
 import {
   activeLayout,
@@ -138,12 +142,19 @@ export function useTouchEditor(o: TouchEditorOptions) {
     draft.value.screens.length > 0 ? NO_INSET : reserved.value,
   )
 
+  /** The orientations left in this session, as they were left (the one on screen is live). */
+  const drafts = ref<Drafts>({})
+  /** The orientations shown in this session: the hint asks to turn to the other one. */
+  const shown = ref<TouchOrientation[]>([])
+
   // ---- Loading (rule 7: the newest answer only) ----
   const loads = latest()
 
+  /** The orientation on screen starts from its saved layout (or the default). */
   function start() {
     const s = setup.value
     if (!s) return
+    if (!shown.value.includes(orientation.value)) shown.value = [...shown.value, orientation.value]
     const layout = activeLayout(
       o.console,
       s,
@@ -173,7 +184,20 @@ export function useTouchEditor(o: TouchEditorOptions) {
       if (fresh()) o.onError(e)
     }
   }
-  watch(orientation, start)
+  /** The orientation on screen as a draft. */
+  const onScreen = () => ({ history: history.value, selected: selected.value })
+  /** The phone turned: the orientation left is kept as it is, the other one comes back as it was
+   * left, or starts. */
+  function turned(now: TouchOrientation, before: TouchOrientation) {
+    if (!setup.value) return
+    drafts.value = withDraft(drafts.value, before, onScreen())
+    const kept = draftOf(drafts.value, now)
+    if (!kept) return start()
+    history.value = kept.history
+    draft.value = kept.history.present
+    selected.value = kept.selected
+  }
+  watch(orientation, turned)
 
   /** Over a game: whether it shows its screens swapped, read once (the frames' proportions). */
   const swaps = latest()
@@ -279,7 +303,9 @@ export function useTouchEditor(o: TouchEditorOptions) {
     if (busy.value || !loaded.value || draft.value.controls.length === 0) return
     busy.value = true
     try {
-      await emu.touch.setLayout(o.console, orientation.value, draft.value)
+      const all = withDraft(drafts.value, orientation.value, onScreen())
+      const { portrait, landscape } = layoutsToSave(all, orientation.value)
+      await emu.touch.setLayouts(o.console, portrait, landscape)
       o.close()
     } catch (e) {
       o.onError(e)
@@ -547,6 +573,8 @@ export function useTouchEditor(o: TouchEditorOptions) {
     canUndo: computed(() => canUndo(history.value)),
     canRedo: computed(() => canRedo(history.value)),
     canSave: computed(() => loaded.value && draft.value.controls.length > 0),
+    /** The orientation to turn the phone to, while it was not shown in this session. */
+    turnHint: computed(() => (loaded.value ? turnHint(shown.value, orientation.value) : null)),
     undo: doUndo,
     redo: doRedo,
     select,

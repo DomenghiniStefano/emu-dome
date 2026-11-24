@@ -11,14 +11,14 @@ import { useTouchEditor } from './useTouchEditor'
 
 const bridge = vi.hoisted(() => ({
   layouts: vi.fn(),
-  setLayout: vi.fn(),
+  setLayouts: vi.fn(),
   page: vi.fn(),
   status: vi.fn(),
   phoneStart: vi.fn(),
 }))
 vi.mock('@/emu', () => ({
   emu: {
-    touch: { layouts: bridge.layouts, setLayout: bridge.setLayout },
+    touch: { layouts: bridge.layouts, setLayouts: bridge.setLayouts },
     settings: { page: bridge.page },
     screens: { status: bridge.status, phoneStart: bridge.phoneStart },
   },
@@ -86,6 +86,14 @@ function drag(
 
 const screen = (screens: CustomScreen[], id: string) => screens.find(s => s.id === id)
 
+/** The phone turned: the window `width` × `height`. */
+async function turn(width: number, height: number) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: height })
+  window.dispatchEvent(new Event('resize'))
+  await flush()
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: WIDTH })
@@ -94,7 +102,7 @@ beforeEach(() => {
   bridge.page.mockResolvedValue([])
   bridge.status.mockResolvedValue({ swapped: false })
   bridge.phoneStart.mockResolvedValue(START)
-  bridge.setLayout.mockResolvedValue(undefined)
+  bridge.setLayouts.mockResolvedValue(undefined)
 })
 afterEach(() => {
   document.body.innerHTML = ''
@@ -193,9 +201,9 @@ describe("the editor's game screens", () => {
   it('saves no screens while none was changed', async () => {
     const { editor, close } = await setup()
     await editor.save()
-    expect(bridge.setLayout).toHaveBeenCalledWith(
+    expect(bridge.setLayouts).toHaveBeenCalledWith(
       'nds',
-      'landscape',
+      null,
       expect.objectContaining({ screens: [] }),
     )
     expect(close).toHaveBeenCalledOnce()
@@ -205,7 +213,9 @@ describe("the editor's game screens", () => {
     const { editor } = await setup()
     drag(editor, 'bottom', 17, 9)
     await editor.save()
-    const [, , saved] = bridge.setLayout.mock.calls[0] ?? []
+    const [, portrait, saved] = bridge.setLayouts.mock.calls[0] ?? []
+    // The portrait layout was never touched: not written.
+    expect(portrait).toBeNull()
     expect(saved.screens).toEqual([START[0], { ...START[1], x: 0.52, y: 0.12 }])
   })
 
@@ -215,5 +225,45 @@ describe("the editor's game screens", () => {
     editor.resetLayout()
     expect(editor.placement.value).toEqual([])
     expect(editor.shownScreens.value).toEqual(START)
+  })
+})
+
+describe('both orientations in one session', () => {
+  it('turning and back keeps the edit of the orientation left, and its undo', async () => {
+    const { editor } = await setup()
+    drag(editor, 'top', 17, 9)
+    const edited = editor.placement.value
+    await turn(HEIGHT, WIDTH)
+    expect(editor.orientation.value).toBe('portrait')
+    expect(editor.placement.value).toEqual([])
+    expect(editor.canUndo.value).toBe(false)
+    await turn(WIDTH, HEIGHT)
+    expect(editor.placement.value).toEqual(edited)
+    expect(editor.selected.value).toBe('top')
+    editor.undo()
+    expect(editor.placement.value).toEqual([])
+  })
+
+  it('«Salva» writes both orientations changed, in one call', async () => {
+    const { editor, close } = await setup()
+    drag(editor, 'top', 17, 9)
+    const landscape = editor.draft.value
+    await turn(HEIGHT, WIDTH)
+    editor.select('bottom')
+    editor.own('stickRight')
+    const portrait = editor.draft.value
+    await editor.save()
+    expect(bridge.setLayouts).toHaveBeenCalledOnce()
+    expect(bridge.setLayouts).toHaveBeenCalledWith('nds', portrait, landscape)
+    expect(close).toHaveBeenCalledOnce()
+  })
+
+  it('suggests turning the phone until the other orientation was shown', async () => {
+    const { editor } = await setup()
+    expect(editor.turnHint.value).toBe('portrait')
+    await turn(HEIGHT, WIDTH)
+    expect(editor.turnHint.value).toBeNull()
+    await turn(WIDTH, HEIGHT)
+    expect(editor.turnHint.value).toBeNull()
   })
 })

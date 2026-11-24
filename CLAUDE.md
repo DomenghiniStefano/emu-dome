@@ -492,12 +492,14 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          `covers/<console>-<hex>.user-<rev>.jpg`: the picked image kept in memory on
                          emu://picked/<token>, a game's screenshots listed and served on
                          emu://screenshot/<console>-<hex>/<name>, #85)
-                         touch.rs (#29: touch_layouts / touch_set_layout (C06's «Salva»: the layout of one
-                         orientation into `touch.tedit` and its screens into `touch.tscreens` (#134: its own
+                         touch.rs (#29: touch_layouts / touch_set_layouts (C06's «Salva»: the layout of each
+                         orientation given (portrait, landscape, or both; one not given kept as stored)
+                         into `touch.tedit` and its screens into `touch.tscreens` (#134: its own
                          key beside it, console level, per device, never synced, so older builds read
                          `touch.tedit` untouched; `Layouts::read` joins the two) at the console's level,
-                         that orientation's `touch.tport` / `touch.tland` to `custom`, the three in one
-                         `Settings::set_many` write), touch_stick (the Circle Pad), haptic)
+                         each given orientation's `touch.tport` / `touch.tland` to `custom`, all in one
+                         `Settings::set_many` write; one invalid layout refuses the whole save),
+                         touch_stick (the Circle Pad), haptic)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
                          emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
@@ -527,8 +529,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          theme's flat ground with no game, the game itself placed live over one
                          (`placement` + `inset`); editorScreens.ts their geometry, useStartScreens
                          where they start (`screens_phone_start`); useTouchEditor the state (a finger on a screen useScreenGesture),
-                         editorHistory.ts undo / redo, editorToolbar.ts what fits and what goes into
-                         «Altro» and which tools a screen has); E14
+                         editorHistory.ts undo / redo, orientationDrafts.ts one draft per orientation
+                         (kept across a turn, both saved by one «Salva», the hint to turn the phone),
+                         editorToolbar.ts what fits and what goes into «Altro» and which tools a screen
+                         has); E14
                          ControllerLostDialog / useControllerLoss (controllerLoss.ts the rule); all the
                          pure modules tested),
                          screen-editor (C09, Trello #28: ScreenEditor over the game at its real size, from

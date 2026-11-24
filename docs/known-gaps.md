@@ -53,9 +53,11 @@ before working on any area listed here, and update it in the same commit as a ch
   them for the layout the game opens with (`screens_phone_start`: the cycle's first layout, not swapped, at 1×);
   with a game open the frames start where the game shows its screens now (the layout cycled to, swapped, the
   frame at its real size, `video.scale` applied; a layout showing one screen of two starts both as «auto» places
-  them) and the game itself moves under the frame. «Salva» stores the layout and the screens' placement
-  (`touch.tscreens`, fractions of the whole window, saved with `touch.tedit` in one write) of the orientation
-  the phone is in, for that console, on this device only (never synced, by design: a phone's placement does not
+  them) and the game itself moves under the frame. C06 keeps one draft per orientation (turning the phone
+  and back keeps the edits and their undo; a line suggests turning it until the other orientation was shown).
+  «Salva» stores the layout and the screens' placement (`touch.tscreens`, fractions of the whole window, saved
+  with `touch.tedit` in one write) of every orientation changed in the editor (else the one the phone is in), for
+  that console, on this device only (never synced, by design: a phone's placement does not
   belong on other devices). In game the placement is placed over the whole window (the controls may overlap it)
   while the touch controls are in use, not in what they leave; the quick menu's inset scales it uniformly. Not
   yet: guides only to the window's centre lines (not to other elements' edges); the safe edge (camera, bars) is a
@@ -71,8 +73,7 @@ before working on any area listed here, and update it in the same commit as a ch
   without a key layout file of their own. The battery is read once, at connection (no `emu://gamepad-changed` on
   Android yet); no rumble, no gamepad motion sensors; a keyboard or a TV remote that has arrow keys only
   (`SOURCE_DPAD`) is not a controller and stays the system's.
-  Turning the phone while C06 is open switches to that orientation's layout, dropping the unsaved changes. Not
-  run on a device yet (vibration, the Circle Pad on Azahar). The game is fitted in what the controls leave
+  Not run on a device yet (vibration, the Circle Pad on Azahar). The game is fitted in what the controls leave
   (`reservedInset`, the video inset of `screens::Inset`): upright against the band at the bottom, the whole width
   by default (`video.scale` «fit» on a phone, #105: a GBA 1.5× on a 360 px phone; what the window has left over
   is one band at its top; «Pixel interi» chosen by the user floors the scale again), on the side between the two

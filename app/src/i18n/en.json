@@ -479,6 +479,10 @@
         "bottom": "Bottom screen"
       },
       "screenOnly": "A screen can only be moved and resized.",
+      "turnHint": {
+        "portrait": "Turn the phone to set up the portrait layout too.",
+        "landscape": "Turn the phone to set up the landscape layout too."
+      },
       "undo": "Undo",
       "redo": "Redo",
       "add": "Add",
