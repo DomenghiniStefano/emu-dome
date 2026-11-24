@@ -164,11 +164,9 @@ pub(crate) type Range = Option<(f32, f32)>;
 /// The ranges Kotlin sends: min and max per axis of [`AXES`], NaN for an axis the device lacks.
 pub(crate) fn ranges(flat: &[f32]) -> [Range; AXES.len()] {
     let mut out = [None; AXES.len()];
-    for (slot, pair) in out.iter_mut().zip(flat.chunks_exact(2)) {
-        if let [min, max] = *pair {
-            if min.is_finite() && max.is_finite() && max > min {
-                *slot = Some((min, max));
-            }
+    for (slot, &[min, max]) in out.iter_mut().zip(flat.as_chunks::<2>().0) {
+        if min.is_finite() && max.is_finite() && max > min {
+            *slot = Some((min, max));
         }
     }
     out

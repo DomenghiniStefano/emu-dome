@@ -82,8 +82,13 @@ pub(crate) fn convert_cpu(src: &CpuFrame<'_>, out: &mut Vec<u8>) -> bool {
         let out = &mut rgba[y * w * 4..(y + 1) * w * 4];
         match src.format {
             RETRO_PIXEL_FORMAT_XRGB8888 => {
-                for (px, o) in row.chunks_exact(4).zip(out.chunks_exact_mut(4)) {
-                    let px = u32::from_ne_bytes([px[0], px[1], px[2], px[3]]);
+                for (px, o) in row
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .zip(out.as_chunks_mut::<4>().0)
+                {
+                    let px = u32::from_ne_bytes(*px);
                     o[0] = (px >> 16) as u8;
                     o[1] = (px >> 8) as u8;
                     o[2] = px as u8;
@@ -91,8 +96,13 @@ pub(crate) fn convert_cpu(src: &CpuFrame<'_>, out: &mut Vec<u8>) -> bool {
                 }
             }
             RETRO_PIXEL_FORMAT_RGB565 => {
-                for (px, o) in row.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
-                    let px = u16::from_ne_bytes([px[0], px[1]]);
+                for (px, o) in row
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .zip(out.as_chunks_mut::<4>().0)
+                {
+                    let px = u16::from_ne_bytes(*px);
                     let r = (px >> 11) & 0x1f;
                     let g = (px >> 5) & 0x3f;
                     let b = px & 0x1f;
@@ -104,8 +114,13 @@ pub(crate) fn convert_cpu(src: &CpuFrame<'_>, out: &mut Vec<u8>) -> bool {
             }
             _ => {
                 // 0RGB1555, libretro's default format.
-                for (px, o) in row.chunks_exact(2).zip(out.chunks_exact_mut(4)) {
-                    let px = u16::from_ne_bytes([px[0], px[1]]);
+                for (px, o) in row
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .zip(out.as_chunks_mut::<4>().0)
+                {
+                    let px = u16::from_ne_bytes(*px);
                     let r = (px >> 10) & 0x1f;
                     let g = (px >> 5) & 0x1f;
                     let b = px & 0x1f;

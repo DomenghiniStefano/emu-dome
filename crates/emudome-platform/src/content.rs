@@ -143,13 +143,15 @@ const TREE_FIELDS: usize = 5;
 /// gives 0 (unknown); a trailing incomplete child is dropped.
 pub(crate) fn parse_tree_children(fields: &[String]) -> Vec<crate::TreeEntry> {
     fields
-        .chunks_exact(TREE_FIELDS)
-        .map(|f| crate::TreeEntry {
-            uri: f[0].clone(),
-            name: f[1].clone(),
-            size: f[2].parse().unwrap_or_default(),
-            mtime: f[3].parse().unwrap_or_default(),
-            dir: f[4] == "d",
+        .as_chunks::<TREE_FIELDS>()
+        .0
+        .iter()
+        .map(|[uri, name, size, mtime, kind]| crate::TreeEntry {
+            uri: uri.clone(),
+            name: name.clone(),
+            size: size.parse().unwrap_or_default(),
+            mtime: mtime.parse().unwrap_or_default(),
+            dir: kind == "d",
         })
         .collect()
 }
