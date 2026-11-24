@@ -5,15 +5,19 @@ to end yet: no release exists.
 
 ## Today, as the code is
 
-- **Branches and tags.** `develop` is the integration branch (`CLAUDE.md`, «Current state»). There is no `main`
-  branch on the remote and no tag yet. Nobody pushes to `main` until the first release.
-- **Version.** One number, `[workspace.package] version` in the root `Cargo.toml` (today `0.0.1`). Every crate takes
-  it (`version.workspace = true`); `app/package.json` and `app/src-tauri/tauri.conf.json` repeat it, and
-  `scripts/versions.mjs` (a step of `scripts/check`) fails when they differ. `tauri.conf.json` keeps its copy
-  because the Tauri CLI takes the Android `versionName` and `versionCode` only from there (without it Gradle falls
-  back to `1.0` / code 1); the runtime and the Windows file version would fall back to Cargo's. The Android
-  `versionCode` is derived from it as `major * 1000000 + minor * 1000 + patch`, so every release must raise the
-  version: Google Play refuses a code it has already seen.
+- **Branches and tags.** `develop` is the integration branch (`CLAUDE.md`, «Current state»); `stage` the test
+  builds (below). There is no `main` branch on the remote and no tag yet. Nobody pushes to `main` until the first
+  release, 1.0.0.
+- **Version.** One number, written in one place: `[workspace.package] version` in the root `Cargo.toml` (today
+  `0.0.1`). Every crate takes it (`version.workspace = true`); `app/package.json` and `tauri.conf.json` have none
+  (Tauri falls back to Cargo's for the runtime, the bundles and the Windows file version), and
+  `scripts/versions.mjs` (a step of `scripts/check`) fails when one is written anywhere else. The Tauri CLI takes
+  the Android `versionName` and `versionCode` only from its config (without it Gradle falls back to `1.0` / code 1),
+  so `android-build` passes the version with `--config` (`versions.mjs tauri-config`); never upload a bare
+  `pnpm tauri android build`. The `versionCode` is `major * 1000000 + minor * 1000 + patch`, so every upload must
+  raise the version (`node scripts/versions.mjs bump [patch|minor|major]`, which also refreshes `Cargo.lock`): Google
+  Play refuses a code it has already seen. The 0.0.x versions are test builds for Google Play's internal testing
+  track; 1.0.0 is the first release.
 - **Identifier.** `it.domehub.emudome` (`identifier` in `tauri.conf.json`; the Android `applicationId` and
   `namespace` in `app/src-tauri/gen/android/app/build.gradle.kts`, the generated activity's package
   `it.domehub.emudome`, the platform library's `it.domehub.emudome.platform`). It names the data folders on every
@@ -89,6 +93,30 @@ to end yet: no release exists.
   - `latest.json` is written by `node scripts/updater-manifest.mjs write` from the built packages and their
     `.sig` files, and uploaded to the release with them.
 
+## Test builds (Google Play's internal testing)
+
+The 0.0.x versions go to testers through Google Play's internal testing track (no review, up to 100 testers
+added by their Google account's address). `.github/workflows/stage.yml` does it on every push to `stage`:
+`sh scripts/android-build.sh --bundle` on an Ubuntu runner, then the AAB uploaded to the `internal` track
+(r0adkll/upload-google-play, MIT, pinned to a commit), the AAB also kept 14 days as the run's artifact.
+
+1. On `develop`, `node scripts/versions.mjs bump` (the patch; Play refuses a versionCode it has seen) and
+   commit `chore: <version>`; `./scripts/check.ps1` green on it (the merge rule).
+2. Merge `develop` into `stage` and push `stage`: the run builds and uploads. A failed run uploads nothing.
+
+Once, by the owner, before the first run:
+- Play Console (the DomeHub account): create the app `it.domehub.emudome`, turn on Play App Signing, and upload the
+  first AAB by hand (Play takes uploads through its API only for an app that has one): `./scripts/android-build.ps1
+  -Bundle` with the upload keystore.
+- The upload keystore lives outside the repository (licence rule 6). Its SHA-1 also goes to the Android OAuth
+  client (Drive sync, #49), with Play App Signing's own certificate.
+- A Google Cloud service account with access to the Play Developer API, invited in Play Console (Users and
+  permissions) with the release rights on the app.
+- GitHub: an environment `play-internal`, its deployments limited to `stage`, with the secrets the workflow's
+  header lists (the keystore as base64). Secrets never reach a workflow run from a fork's pull request.
+- The testers' addresses in the internal testing track's list (and in the OAuth consent screen's test users while
+  it is in «Testing», for Drive).
+
 ## The update key (once)
 
 1. Outside the repository: `pnpm tauri signer generate -w <a folder outside the repo>/emudome-updater.key` (from
@@ -99,8 +127,8 @@ to end yet: no release exists.
 
 ## The release flow
 
-1. On `develop`, raise `[workspace.package] version` in `Cargo.toml` and the same number in `app/package.json` and
-   `tauri.conf.json`; `./scripts/check.ps1` green on that commit (the merge rule).
+1. On `develop`, raise the version (`node scripts/versions.mjs bump`); `./scripts/check.ps1` green on that commit
+   (the merge rule).
 2. Merge `develop` into `main` (fast-forward) and tag that commit `v<version>` (an annotated tag) on `main`. The tag
    is the release: every package of it is built from the tagged commit, never from a working copy.
 3. Build each package **from a clean clone** of the tag (`git clone --branch v<version>`, no leftovers in

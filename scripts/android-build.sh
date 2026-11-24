@@ -114,8 +114,12 @@ if [ "$release" -eq 1 ]; then
 fi
 format=--apk
 [ "$bundle" -eq 1 ] && format=--aab
+# The version lives only in Cargo.toml; the Tauri CLI takes Android's versionName / versionCode only
+# from its config, so it gets them through --config (scripts/versions.mjs).
+version_config=$(node "$root/scripts/versions.mjs" tauri-config) && [ -n "$version_config" ] ||
+  stop 'the version could not be read from Cargo.toml.'
 # shellcheck disable=SC2086 # $debug_flag is one word or none
-step "$app" pnpm tauri android build --ci $format --split-per-abi --target aarch64 $debug_flag ||
+step "$app" pnpm tauri android build --ci $format --split-per-abi --target aarch64 --config "$version_config" $debug_flag ||
   stop 'the build failed.'
 
 outputs="$app/src-tauri/gen/android/app/build/outputs"

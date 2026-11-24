@@ -1,25 +1,39 @@
-// Fails when EmuDome's version is not the same everywhere it is written (Trello #83). The one source
-// is `[workspace.package] version` in the root Cargo.toml; two files repeat it and must agree:
-// - app/package.json `version`: the frontend package (pnpm, the licence scripts);
-// - app/src-tauri/tauri.conf.json `version`: kept although Tauri falls back to Cargo's version for
-//   the runtime (`PackageInfo`) and the Windows resource, because the Tauri CLI writes the Android
-//   versionName / versionCode only from this field (tauri-cli `generate_tauri_properties`; without it
-//   Gradle falls back to "1.0" and code 1, app/src-tauri/gen/android/app/build.gradle.kts).
-// It also asks every workspace member to take the version from the workspace (`version.workspace =
-// true`), so the binaries carry that one number.
+// EmuDome's version, written in one place only: `[workspace.package] version` in the root Cargo.toml.
+// Every reader takes it from there:
+// - the crates: `version.workspace = true` in each member, so every binary carries that number;
+// - Tauri on the desktop (`PackageInfo`, the bundles, the Windows resource): with no `version` in
+//   tauri.conf.json the Tauri CLI and tauri-build fall back to the Cargo package's version;
+// - Android: the Tauri CLI writes versionName / versionCode only from the config's `version`
+//   (tauri-cli `generate_tauri_properties`; without it Gradle falls back to "1.0" and code 1), so the
+//   build scripts pass it with `--config <file>`, the file written by `tauri-config` below. A bare
+//   `pnpm tauri android build` gets "1.0" / code 1: never upload that one.
+// Cargo.lock repeats it for the workspace crates; cargo writes it, `bump` refreshes it.
 //
-// Usage: node scripts/versions.mjs [--self-test]   (--self-test first feeds the rules broken inputs)
+// Usage:
+//   node scripts/versions.mjs [--self-test]   the check (a step of scripts/check): the version is a plain
+//                                             x.y.z in Cargo.toml and written nowhere else
+//   node scripts/versions.mjs print           the version
+//   node scripts/versions.mjs bump [patch|minor|major]
+//                                             raises it in Cargo.toml (and Cargo.lock), prints the new one
+//   node scripts/versions.mjs tauri-config    writes target/emudome-version.tauri.json ({ "version" }) and
+//                                             prints its path, for `pnpm tauri ... --config <path>`
+//
+// Google Play's versionCode is major * 1000000 + minor * 1000 + patch (tauri-cli), hence minor and
+// patch stay under 1000. 0.0.x are test builds (Play's internal track), 1.0.0 the first release.
 //
 // Cannot see: a version written somewhere else (an installer script, a doc), the spike in
 // crates/hw-render-spike (its own workspace, never shipped), or a TOML layout it does not parse
 // (it reads `version = "..."` lines inside the `[workspace.package]` table, and the `[package]`
 // table of each member, written as plain lines).
 
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const read = (path) => readFileSync(root + path, 'utf8')
+
+const PLAIN = /^(\d+)\.(\d+)\.(\d+)$/
 
 // The lines of one `[table]` of a TOML file, up to the next table header.
 function tableLines(text, name) {
@@ -31,10 +45,34 @@ function tableLines(text, name) {
   return end === -1 ? rest : rest.slice(0, end)
 }
 
+const VERSION_LINE = /^(\s*version\s*=\s*")([^"]+)(".*)$/
+
 function workspaceVersion(cargoToml) {
   const lines = tableLines(cargoToml, 'workspace.package') ?? []
-  const m = lines.map((l) => /^\s*version\s*=\s*"([^"]+)"/.exec(l)).find(Boolean)
-  return m ? m[1] : null
+  const m = lines.map((l) => VERSION_LINE.exec(l)).find(Boolean)
+  return m ? m[2] : null
+}
+
+// Cargo.toml with the workspace version replaced; every other line as it was.
+function withWorkspaceVersion(cargoToml, version) {
+  const lines = cargoToml.split('\n')
+  const start = lines.findIndex((l) => l.trim() === '[workspace.package]')
+  const at = lines.findIndex((l, i) => i > start && VERSION_LINE.test(l))
+  const header = lines.findIndex((l, i) => i > start && /^\s*\[/.test(l))
+  if (start === -1 || at === -1 || (header !== -1 && header < at)) {
+    throw new Error('Cargo.toml: no version in [workspace.package]')
+  }
+  return lines.map((l, i) => (i === at ? l.replace(VERSION_LINE, `$1${version}$3`) : l)).join('\n')
+}
+
+function bumped(version, part) {
+  const m = PLAIN.exec(version)
+  if (!m) throw new Error(`the version ${version} is not a plain x.y.z`)
+  const [major, minor, patch] = m.slice(1).map(Number)
+  if (part === 'major') return `${major + 1}.0.0`
+  if (part === 'minor') return `${major}.${minor + 1}.0`
+  if (part === 'patch') return `${major}.${minor}.${patch + 1}`
+  throw new Error(`unknown part ${part} (patch, minor, major)`)
 }
 
 function workspaceMembers(cargoToml) {
@@ -47,7 +85,7 @@ function inheritsVersion(memberToml) {
   return lines.some((l) => /^\s*version\s*\.\s*workspace\s*=\s*true\b/.test(l))
 }
 
-// The problems found, as sentences; empty when everything agrees.
+// The problems found, as sentences; empty when the version is written once.
 function problems({ cargoToml, members, packageJson, tauriConf }) {
   const found = []
   const version = workspaceVersion(cargoToml)
@@ -55,13 +93,17 @@ function problems({ cargoToml, members, packageJson, tauriConf }) {
     found.push('Cargo.toml: no version in [workspace.package]')
     return found
   }
-  const pkg = JSON.parse(packageJson).version
-  if (pkg !== version) {
-    found.push(`app/package.json version is ${JSON.stringify(pkg)}, the workspace's is "${version}"`)
+  const m = PLAIN.exec(version)
+  if (!m) {
+    found.push(`Cargo.toml: the version ${version} is not a plain x.y.z (Google Play's versionCode is made from it)`)
+  } else if (Number(m[2]) > 999 || Number(m[3]) > 999) {
+    found.push(`Cargo.toml: the version ${version} has a part over 999 (Google Play's versionCode would collide)`)
   }
-  const conf = JSON.parse(tauriConf).version
-  if (conf !== version) {
-    found.push(`app/src-tauri/tauri.conf.json version is ${JSON.stringify(conf)}, the workspace's is "${version}"`)
+  if ('version' in JSON.parse(packageJson)) {
+    found.push('app/package.json has a version: the one version is in Cargo.toml')
+  }
+  if ('version' in JSON.parse(tauriConf)) {
+    found.push('app/src-tauri/tauri.conf.json has a version: the one version is in Cargo.toml')
   }
   for (const [path, text] of Object.entries(members)) {
     if (!inheritsVersion(text)) found.push(`${path}: [package] must say version.workspace = true`)
@@ -70,22 +112,35 @@ function problems({ cargoToml, members, packageJson, tauriConf }) {
 }
 
 function selfTest() {
-  const cargoToml = '[workspace]\nmembers = ["a"]\n\n[workspace.package]\nversion = "1.2.3"\n'
+  const cargoToml = '[workspace]\nmembers = ["a"]\n\n[workspace.package]\nversion = "1.2.3"\nedition = "2024"\n'
   const good = {
     cargoToml,
     members: { 'a/Cargo.toml': '[package]\nname = "a"\nversion.workspace = true\n' },
-    packageJson: '{"version": "1.2.3"}',
-    tauriConf: '{"version": "1.2.3"}',
+    packageJson: '{"name": "ui"}',
+    tauriConf: '{"identifier": "x"}',
   }
   const cases = [
-    ['all equal', good, 0],
-    ['package.json differs', { ...good, packageJson: '{"version": "1.2.4"}' }, 1],
-    ['tauri.conf.json differs', { ...good, tauriConf: '{"version": "1.2.4"}' }, 1],
-    ['tauri.conf.json without version', { ...good, tauriConf: '{}' }, 1],
+    ['written once', good, 0],
+    ['package.json with a version', { ...good, packageJson: '{"version": "1.2.3"}' }, 1],
+    ['tauri.conf.json with a version', { ...good, tauriConf: '{"version": "1.2.3"}' }, 1],
     ['member with its own version', { ...good, members: { 'a/Cargo.toml': '[package]\nversion = "1.2.3"\n' } }, 1],
     ['no workspace version', { ...good, cargoToml: '[workspace]\nmembers = []\n' }, 1],
+    ['pre-release version', { ...good, cargoToml: cargoToml.replace('1.2.3', '1.2.3-beta') }, 1],
+    ['patch over 999', { ...good, cargoToml: cargoToml.replace('1.2.3', '1.2.1000') }, 1],
   ]
   const wrong = cases.filter(([, input, expected]) => problems(input).length !== expected).map(([name]) => name)
+  const bumps = [
+    ['patch', '1.2.4'],
+    ['minor', '1.3.0'],
+    ['major', '2.0.0'],
+  ]
+  for (const [part, expected] of bumps) {
+    if (bumped('1.2.3', part) !== expected) wrong.push(`bump ${part}`)
+  }
+  const rewritten = withWorkspaceVersion(cargoToml, '1.2.4')
+  if (workspaceVersion(rewritten) !== '1.2.4' || rewritten.replace('1.2.4', '1.2.3') !== cargoToml) {
+    wrong.push('rewrite keeps the other lines')
+  }
   if (wrong.length > 0) {
     console.error(`versions self-test failed: ${wrong.join(', ')}`)
     return false
@@ -93,8 +148,7 @@ function selfTest() {
   return true
 }
 
-function main() {
-  if (process.argv.includes('--self-test') && !selfTest()) return 1
+function check() {
   const cargoToml = read('Cargo.toml')
   const members = Object.fromEntries(
     workspaceMembers(cargoToml).map((m) => [`${m}/Cargo.toml`, read(`${m}/Cargo.toml`)]),
@@ -107,11 +161,50 @@ function main() {
   })
   if (found.length > 0) {
     for (const p of found) console.error(p)
-    console.error('Write the version once in [workspace.package] of Cargo.toml and copy it into the files above.')
+    console.error('Write the version once, in [workspace.package] of Cargo.toml (node scripts/versions.mjs bump).')
     return 1
   }
-  console.log(`version ${workspaceVersion(cargoToml)} everywhere (${Object.keys(members).length} crates)`)
+  console.log(`version ${workspaceVersion(cargoToml)}, written once (${Object.keys(members).length} crates inherit it)`)
   return 0
 }
 
-process.exitCode = main()
+// The version for other scripts (the updater manifest, the build scripts).
+export function currentVersion() {
+  const version = workspaceVersion(read('Cargo.toml'))
+  if (!version) throw new Error('Cargo.toml: no version in [workspace.package]')
+  return version
+}
+
+function bump(part) {
+  const next = bumped(currentVersion(), part)
+  writeFileSync(root + 'Cargo.toml', withWorkspaceVersion(read('Cargo.toml'), next))
+  // Cargo.lock lists the workspace crates with their version: refresh only those, without the network.
+  execFileSync('cargo', ['update', '--workspace', '--offline'], { cwd: root, stdio: 'inherit' })
+  console.log(next)
+  return 0
+}
+
+function tauriConfig() {
+  const dir = root + 'target'
+  mkdirSync(dir, { recursive: true })
+  const file = `${dir}/emudome-version.tauri.json`
+  writeFileSync(file, `${JSON.stringify({ version: currentVersion() })}\n`)
+  console.log(file)
+  return 0
+}
+
+function main() {
+  const [command, arg] = process.argv.slice(2)
+  if (command === 'print') {
+    console.log(currentVersion())
+    return 0
+  }
+  if (command === 'bump') return bump(arg ?? 'patch')
+  if (command === 'tauri-config') return tauriConfig()
+  if (command === '--self-test' && !selfTest()) return 1
+  if (command === undefined || command === '--self-test') return check()
+  console.error('usage: versions.mjs [--self-test] | print | bump [patch|minor|major] | tauri-config')
+  return 1
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main()
