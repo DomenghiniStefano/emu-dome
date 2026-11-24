@@ -31,7 +31,8 @@ import java.io.FileNotFoundException
  * - Games as `content://` documents: «Open with» at start ([startupGame]) and [openDocument],
  *   which gives Rust a file descriptor (no copy: a 3DS game is GBs).
  * - The system's pickers (Trello #47): a folder of games ([pickTree], `ACTION_OPEN_DOCUMENT_TREE`)
- *   or one game file ([pickDocument], `ACTION_OPEN_DOCUMENT`), answered through
+ *   or one game file ([pickDocument], `ACTION_OPEN_DOCUMENT`), or one image ([pickImage]: a
+ *   cover or a background), answered through
  *   [nativeDocumentPicked]; a picked folder's documents listed one folder per call ([listTree]).
  */
 object SystemBridge {
@@ -132,10 +133,19 @@ object SystemBridge {
      * a restart.
      */
     @JvmStatic
-    fun openDocument(context: Context, uri: String): Int {
+    fun openDocument(context: Context, uri: String): Int = openRead(context, uri, keep = true)
+
+    /**
+     * Opens [uri] for reading once, as [openDocument] but without keeping its permission: a picked
+     * image (a cover, a background), read right away and never opened again.
+     */
+    @JvmStatic
+    fun openOnce(context: Context, uri: String): Int = openRead(context, uri, keep = false)
+
+    private fun openRead(context: Context, uri: String, keep: Boolean): Int {
         return try {
             val parsed = Uri.parse(uri)
-            keepPermission(context, parsed)
+            if (keep) keepPermission(context, parsed)
             context.contentResolver.openFileDescriptor(parsed, "r")?.detachFd() ?: OPEN_FAILED
         } catch (e: FileNotFoundException) {
             Log.w(TAG, "document not opened: $uri: $e")
@@ -214,6 +224,22 @@ object SystemBridge {
     fun pickDocument(activity: Activity) {
         showPicker(activity, ActivityResultContracts.OpenDocument(), arrayOf("*/*")) { uri ->
             persistRead(activity, uri)
+            uri.toString() to displayName(activity, uri.toString())
+        }
+    }
+
+    /**
+     * Shows the system's file picker (`ACTION_OPEN_DOCUMENT`) for one image: PNG, JPEG or WebP, the
+     * formats a cover is made from (Rust checks the bytes). Read once, right after the pick, so its
+     * permission is not persisted. Any thread.
+     */
+    @JvmStatic
+    fun pickImage(activity: Activity) {
+        showPicker(
+            activity,
+            ActivityResultContracts.OpenDocument(),
+            arrayOf("image/png", "image/jpeg", "image/webp"),
+        ) { uri ->
             uri.toString() to displayName(activity, uri.toString())
         }
     }

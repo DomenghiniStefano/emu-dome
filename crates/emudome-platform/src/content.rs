@@ -136,6 +136,30 @@ pub(crate) fn open_failure(code: i32) -> std::io::ErrorKind {
     }
 }
 
+/// Reads `reader` to its end, at most `limit` bytes: one byte more is
+/// [`crate::PickImageError::TooLarge`] (what was read is dropped), so a file larger than said, or
+/// whose size the provider does not tell, is never read whole into memory.
+pub(crate) fn read_at_most(
+    reader: impl std::io::Read,
+    limit: u64,
+) -> Result<Vec<u8>, crate::PickImageError> {
+    use std::io::Read;
+    let mut bytes = Vec::new();
+    reader
+        .take(limit.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(|e| crate::PickImageError::Unreadable {
+            kind: e.kind(),
+            detail: e.to_string(),
+        })?;
+    if bytes.len() as u64 > limit {
+        return Err(crate::PickImageError::TooLarge {
+            size: bytes.len() as u64,
+        });
+    }
+    Ok(bytes)
+}
+
 /// Fields per child in `SystemBridge.listTree`'s answer: URI, name, size, mtime, kind.
 const TREE_FIELDS: usize = 5;
 
@@ -160,10 +184,27 @@ pub(crate) fn parse_tree_children(fields: &[String]) -> Vec<crate::TreeEntry> {
 mod tests {
     use super::{
         document_tree_label, fd_path, is_content_uri, link_dir, link_name, open_failure,
-        parse_tree_children, percent_decode,
+        parse_tree_children, percent_decode, read_at_most,
     };
+    use crate::PickImageError;
     use std::io::ErrorKind;
     use std::path::Path;
+
+    #[test]
+    fn a_picked_image_is_read_up_to_its_limit_and_no_further() {
+        let data = vec![7u8; 100];
+        assert_eq!(read_at_most(&data[..], 100), Ok(data.clone()));
+        assert_eq!(read_at_most(&data[..], 1000), Ok(data.clone()));
+        // One byte over: refused, after reading only the limit and one more.
+        assert_eq!(
+            read_at_most(&data[..], 99),
+            Err(PickImageError::TooLarge { size: 100 })
+        );
+        assert_eq!(
+            read_at_most(std::io::repeat(1), 16),
+            Err(PickImageError::TooLarge { size: 17 })
+        );
+    }
 
     #[test]
     fn a_tree_is_named_by_the_last_folder_of_its_id() {

@@ -26,10 +26,13 @@ use ndk::native_window::NativeWindow;
 use parking_lot::{Condvar, Mutex};
 use raw_window_handle::{DisplayHandle, HandleError};
 
-use crate::content::{fd_path, link_dir, link_name, open_failure, parse_tree_children, LINKS_DIR};
+use crate::content::{
+    fd_path, link_dir, link_name, open_failure, parse_tree_children, read_at_most, LINKS_DIR,
+};
 use crate::{
-    BackListener, ContentError, ContentFile, DataDirs, ExternalSurface, PickedDocument,
-    SurfaceEvent, SurfaceListener, TreeEntry, WindowMode, WindowOptions, WindowRoom,
+    BackListener, ContentError, ContentFile, DataDirs, ExternalSurface, PickImageError,
+    PickedDocument, PickedImage, SurfaceEvent, SurfaceListener, TreeEntry, WindowMode,
+    WindowOptions, WindowRoom,
 };
 
 pub const OS_NAME: &str = "Android";
@@ -576,6 +579,72 @@ pub fn pick_document() -> Result<Option<PickedDocument>, ContentError> {
         None => log::info!("android file picker cancelled"),
     }
     Ok(picked)
+}
+
+pub fn pick_image(
+    _app: &tauri::AppHandle,
+    limit: u64,
+) -> Result<Option<PickedImage>, PickImageError> {
+    let unreadable = |detail: String| PickImageError::Unreadable {
+        kind: std::io::ErrorKind::Other,
+        detail,
+    };
+    let picked = pick("image picker", |env, activity, bridge| {
+        env.call_static_method(
+            bridge,
+            "pickImage",
+            "(Landroid/app/Activity;)V",
+            &[JValue::Object(activity)],
+        )
+        .map(|_| ())
+    })
+    .map_err(|e| unreadable(format!("{e:?}")))?;
+    let Some(picked) = picked else {
+        log::info!("android image picker cancelled");
+        return Ok(None);
+    };
+    let uri = picked.uri;
+    // Opened once, its permission not kept: the bytes are all EmuDome keeps of it.
+    let fd = with_java("image", |env, activity, bridge| {
+        let juri = env.new_string(&uri)?;
+        env.call_static_method(
+            bridge,
+            "openOnce",
+            "(Landroid/content/Context;Ljava/lang/String;)I",
+            &[JValue::Object(activity), JValue::Object(&juri)],
+        )?
+        .i()
+    })
+    .map_err(unreadable)?;
+    if fd < 0 {
+        return Err(PickImageError::Unreadable {
+            kind: open_failure(fd),
+            detail: format!("the provider did not open {uri} (code {fd}; logcat, tag EmuDome)"),
+        });
+    }
+    // SAFETY: `detachFd` handed the descriptor over: nothing else owns or closes it.
+    let file = fs::File::from(unsafe { OwnedFd::from_raw_fd(fd) });
+    // A size the descriptor tells is checked first; a stream (size 0) is bounded by the read.
+    let size = file.metadata().map(|m| m.len()).unwrap_or(0);
+    if size > limit {
+        return Err(PickImageError::TooLarge { size });
+    }
+    let bytes = read_at_most(file, limit).map_err(|e| match e {
+        PickImageError::Unreadable { kind, detail } => PickImageError::Unreadable {
+            kind,
+            detail: format!("{uri}: {detail}"),
+        },
+        too_large @ PickImageError::TooLarge { .. } => too_large,
+    })?;
+    log::info!(
+        "android image picked: {:?} {uri} ({} bytes)",
+        picked.name,
+        bytes.len()
+    );
+    Ok(Some(PickedImage {
+        bytes,
+        name: picked.name,
+    }))
 }
 
 pub fn list_document_tree(tree: &str, dir: Option<&str>) -> Result<Vec<TreeEntry>, ContentError> {

@@ -489,6 +489,40 @@ pub fn pick_document() -> Result<Option<PickedDocument>, ContentError> {
     imp::pick_document()
 }
 
+/// An image the user picked ([`pick_image`]): its bytes, read once, and its file name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PickedImage {
+    pub bytes: Vec<u8>,
+    /// The file name (the provider's display name on Android), for the log.
+    pub name: Option<String>,
+}
+
+/// Why a picked image could not be read ([`pick_image`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PickImageError {
+    /// Larger than the limit asked for: never read whole. `size` is what was known of it (the
+    /// file's size, or more than the limit when the provider does not say).
+    TooLarge { size: u64 },
+    /// The file could not be opened or read: `kind` from the system, `detail` for the log.
+    Unreadable {
+        kind: std::io::ErrorKind,
+        detail: String,
+    },
+}
+
+/// Lets the user pick one image (PNG, JPEG or WebP: a cover, a background) and reads it, at most
+/// `limit` bytes: a larger file is [`PickImageError::TooLarge`] and is never read into memory
+/// whole. `Ok(None)` when the user cancels. The desktop: the file dialog, the file read by path.
+/// Android: the system's picker (`ACTION_OPEN_DOCUMENT` with the image types), the document read
+/// once through its descriptor, its read permission not kept. Blocks until the user answers:
+/// never call it on the main thread. The caller checks the bytes are an image.
+pub fn pick_image(
+    app: &tauri::AppHandle,
+    limit: u64,
+) -> Result<Option<PickedImage>, PickImageError> {
+    imp::pick_image(app, limit)
+}
+
 /// The children of one folder of the picked tree `tree`: its root when `dir` is `None`, else the
 /// folder whose document URI (a [`TreeEntry::uri`]) is `dir`. One call into the system per
 /// folder. [`ContentError::Unreadable`] when it cannot be listed (permission revoked, folder
