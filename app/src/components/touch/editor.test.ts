@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { canRedo, canUndo, commit, historyOf, redo, undo } from './editorHistory'
-import { fitToolbar, toolDisabled, TOOLS, type ToolbarWidths } from './editorToolbar'
+import {
+  fitToolbar,
+  menuTools,
+  toolDisabled,
+  TOOLS,
+  type Tool,
+  type ToolbarWidths,
+} from './editorToolbar'
 
 describe("the editor's history", () => {
   it('undoes and redoes, and a new change forgets the steps forward', () => {
@@ -103,5 +110,45 @@ describe("the editor's tools on a screen", () => {
     expect(toolDisabled('remove', base)).toBe(true)
     expect(toolDisabled('opacity', { ...base, screenPicked: false })).toBe(false)
     expect(toolDisabled('redo', base)).toBe(true)
+  })
+})
+
+describe("the editor's tools with nothing picked (#140)", () => {
+  const none = {
+    canUndo: false,
+    canRedo: false,
+    picked: false,
+    screenPicked: false,
+    canRemove: false,
+    canAdd: true,
+  }
+  const control = { ...none, picked: true, canRemove: true }
+  const screen = { ...none, picked: true, screenPicked: true }
+  const phoneMore: Tool[] = ['add', 'size', 'opacity', 'behaviour', 'remove', 'reset', 'discard']
+
+  it('acts on no element', () => {
+    for (const tool of ['size', 'opacity', 'behaviour', 'remove'] as const)
+      expect(toolDisabled(tool, { ...none, canRemove: true })).toBe(true)
+    expect(toolDisabled('add', none)).toBe(false)
+    expect(toolDisabled('reset', none)).toBe(false)
+  })
+
+  it("keeps «Altro»'s layout items in the same places whatever is picked", () => {
+    expect(menuTools(phoneMore, none)).toEqual(['add', 'reset', 'discard'])
+    expect(menuTools(phoneMore, screen)).toEqual(['add', 'reset', 'discard', 'size'])
+    expect(menuTools(phoneMore, control)).toEqual([
+      'add',
+      'reset',
+      'discard',
+      'size',
+      'opacity',
+      'behaviour',
+      'remove',
+    ])
+  })
+
+  it('keeps a disabled layout item in its place', () => {
+    const more: Tool[] = ['redo', ...phoneMore]
+    expect(menuTools(more, none)).toEqual(['redo', 'add', 'reset', 'discard'])
   })
 })

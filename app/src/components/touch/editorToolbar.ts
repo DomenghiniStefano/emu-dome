@@ -81,8 +81,22 @@ export interface ToolState {
   canAdd: boolean
 }
 
-/** Whether a tool is disabled: a game screen can only be moved and resized («Ripristina» and
- * «Esci» wait for a save on its way, which the toolbar adds). */
+/** The tools that act on the whole layout, whatever is picked. */
+const LAYOUT_TOOLS: readonly Tool[] = ['undo', 'redo', 'add', 'reset', 'discard']
+
+/** «Altro»'s items, in places that never move (#140): the layout's tools first, in a fixed order
+ * (a disabled one keeps its place), then the picked element's, only those it can use (none while
+ * nothing is picked), the removal last. So a tap meant for «Torna alla disposizione predefinita»
+ * never lands on another item when the pick changes. */
+export function menuTools(more: readonly Tool[], s: ToolState): Tool[] {
+  const layout = LAYOUT_TOOLS.filter(t => more.includes(t))
+  const element = TOOLS.filter(t => more.includes(t) && !LAYOUT_TOOLS.includes(t))
+  return [...layout, ...element.filter(t => !toolDisabled(t, s))]
+}
+
+/** Whether a tool is disabled: a game screen can only be moved and resized; with nothing picked
+ * only the layout's tools act («Ripristina» and «Esci» wait for a save on its way, which the
+ * toolbar adds). */
 export function toolDisabled(tool: Tool, s: ToolState): boolean {
   switch (tool) {
     case 'undo':
@@ -97,7 +111,7 @@ export function toolDisabled(tool: Tool, s: ToolState): boolean {
     case 'behaviour':
       return !s.picked || s.screenPicked
     case 'remove':
-      return !s.canRemove || s.screenPicked
+      return !s.picked || !s.canRemove || s.screenPicked
     case 'reset':
     case 'discard':
       return false

@@ -4,7 +4,8 @@
 // «Riduci» (folds it into the pill) and the main action «Salva». On a narrow phone it never
 // overflows (owner): the tools that do not fit go into «Altro» (editorToolbar.ts decides from
 // each button's width, measured on a hidden copy of the row). The tools are their icons alone
-// (#104), their words the name and tooltip; in «Altro» icon and words.
+// (#104), their words the name and tooltip; in «Altro» icon and words, the layout's tools first
+// in fixed places and the picked element's after them, only those it can use (#140).
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
@@ -27,7 +28,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/design-system/components/dropdown-menu'
-import { fitToolbar, toolDisabled, TOOLS, type Tool, type ToolbarFit } from './editorToolbar'
+import {
+  fitToolbar,
+  menuTools,
+  toolDisabled,
+  TOOLS,
+  type Tool,
+  type ToolbarFit,
+} from './editorToolbar'
 import type { ToolPanel } from './useTouchEditor'
 
 const props = defineProps<{
@@ -142,6 +150,8 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect())
 watch(locale, () => void nextTick(refit))
 
+/** «Altro»'s items: the layout's in fixed places, then the picked element's (editorToolbar.ts). */
+const menu = computed(() => menuTools(fit.value.more, props))
 const moreOpen = ref(false)
 const moreButton = ref<{ $el: HTMLElement } | null>(null)
 const moreAnchor = computed(() => moreButton.value?.$el ?? null)
@@ -240,7 +250,7 @@ const label = (tool: Tool) => t(`touch.editor.${tool}`)
     <DropdownMenu v-if="moreOpen" :open="true" @update:open="o => o || (moreOpen = false)">
       <DropdownMenuContent :anchor="moreAnchor" :aria-label="t('touch.editor.more')">
         <DropdownMenuItem
-          v-for="(tool, i) in fit.more"
+          v-for="(tool, i) in menu"
           :key="tool"
           :disabled="disabled(tool)"
           @select.prevent="fromMenu(tool)"

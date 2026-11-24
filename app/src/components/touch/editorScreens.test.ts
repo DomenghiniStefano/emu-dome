@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { commit, historyOf, undo } from './editorHistory'
 import {
+  asShown,
   centreGuides,
   elementIds,
   moveScreen,
@@ -55,13 +56,24 @@ describe("the editor's screens", () => {
     expect(resizeScreen(main, 10, 10, false, 1.5, area).w).toBe(0.08)
   })
 
-  it('takes the ratio of the picture the frame shows', () => {
+  it('takes the ratio of the screen’s own picture', () => {
     const shapes = [
       { id: 'top', width: 400, height: 240 },
       { id: 'bottom', width: 320, height: 240 },
     ] as const
-    expect(ratioOf(shapes, 'top', false)).toBeCloseTo(400 / 240)
-    expect(ratioOf(shapes, 'top', true)).toBeCloseTo(320 / 240)
+    expect(ratioOf(shapes, 'top')).toBeCloseTo(400 / 240)
+    expect(ratioOf(shapes, 'bottom')).toBeCloseTo(320 / 240)
+  })
+
+  it('exchanges the rectangles of a swapped game, and back (#140)', () => {
+    expect(asShown([top, bottom], false)).toEqual([top, bottom])
+    expect(asShown([top, bottom], true)).toEqual([
+      { ...top, id: 'bottom' },
+      { ...bottom, id: 'top' },
+    ])
+    expect(asShown(asShown([top, bottom], true), true)).toEqual([top, bottom])
+    const main = { id: 'main', x: 0, y: 0, w: 1, h: 0.5 } as const
+    expect(asShown([main], true)).toEqual([main])
   })
 
   it('starts the screens inside the edges the controls keep clear, as the game is placed', () => {
