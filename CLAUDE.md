@@ -526,7 +526,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          screens are its elements too, #134: C09's ScreenFrame, placeholders on the
                          theme's flat ground with no game, the game itself placed live over one
                          (`placement` + `inset`); editorScreens.ts their geometry, useStartScreens
-                         where they start (`screens_phone_start`); useTouchEditor the state,
+                         where they start (`screens_phone_start`); useTouchEditor the state (a finger on a screen useScreenGesture),
                          editorHistory.ts undo / redo, editorToolbar.ts what fits and what goes into
                          «Altro» and which tools a screen has); E14
                          ControllerLostDialog / useControllerLoss (controllerLoss.ts the rule); all the

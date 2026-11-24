@@ -8,7 +8,7 @@
 // The game screens are elements too (Trello #134, editorScreens.ts): picked, dragged (snapped to
 // the grid), resized by their corner or the size slider, keeping their proportions while `keep`;
 // the layout holds every screen or none, and starts from Rust's placement (`useStartScreens`)
-// until the user changes a screen.
+// until the user changes a screen; a finger on a screen is useScreenGesture's.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import {
   emu,
@@ -31,7 +31,6 @@ import { canRedo, canUndo, commit, historyOf, redo, undo, type History } from '.
 import {
   elementIds,
   isScreen,
-  moveScreen,
   nextElement,
   nudgeScreen,
   ratioOf,
@@ -61,6 +60,7 @@ import {
   withOpacity,
   type Box,
 } from './touchLayout'
+import { DRAG_START, useScreenGesture } from './useScreenGesture'
 import { useStartScreens } from './useStartScreens'
 import { useArea, useControlBoxes } from './useTouchView'
 
@@ -77,8 +77,6 @@ export interface TouchEditorOptions {
   close: () => void
 }
 
-/** How far a finger travels before a press on a control becomes a drag (CSS px). */
-const DRAG_START = 4
 /** An opacity step from the controller (per cent). */
 const OPACITY_STEP = 10
 
@@ -303,55 +301,23 @@ export function useTouchEditor(o: TouchEditorOptions) {
     y: number
     spread: number | null
   } | null = null
-  /** A screen being dragged by one finger (`corner`: resized by its corner). */
-  let screenGesture: {
-    pointer: number
-    layout: TouchLayout
-    screen: CustomScreen
-    x: number
-    y: number
-    corner: boolean
-  } | null = null
-
-  /** A press on a screen's frame (`corner`: on its resize corner; ScreenFrame's `press`). */
-  function pressScreen(id: ScreenId, e: PointerEvent, corner: boolean) {
-    if (!loaded.value || pointers.size > 0 || (e.pointerType === 'mouse' && e.button !== 0)) return
-    const s = shownScreens.value.find(x => x.id === id)
-    if (!s) return
-    e.preventDefault()
-    selected.value = id
-    panel.value = panel.value === 'add' ? null : panel.value
-    screenGesture = {
-      pointer: e.pointerId,
-      layout: draft.value,
-      screen: s,
-      x: e.clientX,
-      y: e.clientY,
-      corner,
-    }
-  }
-
-  function moveScreenGesture(e: PointerEvent) {
-    const g = screenGesture
-    if (!g || g.pointer !== e.pointerId) return
-    const dx = e.clientX - g.x
-    const dy = e.clientY - g.y
-    if (!gesturing.value && Math.hypot(dx, dy) < DRAG_START) return
-    gesturing.value = true
-    const { width, height } = area.value
-    const s = g.screen
-    const next = g.corner
-      ? resizeScreen(s, s.w * width + dx, s.h * height + dy, keep.value, ratio(s.id), area.value)
-      : moveScreen(s, s.x * width + dx, s.y * height + dy, area.value, true)
-    draft.value = withScreen(g.layout, startScreens.value, next)
-  }
-
-  function endScreenGesture(e: PointerEvent) {
-    if (screenGesture?.pointer !== e.pointerId) return
-    screenGesture = null
-    if (gesturing.value) apply(draft.value)
-    gesturing.value = false
-  }
+  /** A screen's frame under one finger (useScreenGesture). */
+  const screenGesture = useScreenGesture({
+    loaded,
+    area,
+    keep,
+    ratio,
+    draft,
+    startScreens,
+    shownScreens,
+    gesturing,
+    fingersDown: () => pointers.size > 0,
+    pick: id => {
+      selected.value = id
+      panel.value = panel.value === 'add' ? null : panel.value
+    },
+    apply,
+  })
 
   const spread = () => {
     const [a, b] = [...pointers.values()]
@@ -362,7 +328,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     if (!loaded.value || (e.pointerType === 'mouse' && e.button !== 0)) return
     // A screen's frame takes its own presses (`pressScreen`); a screen being dragged takes no
     // second finger.
-    if (screenGesture || (e.target as HTMLElement).closest(`[${SCREEN_ATTR}]`)) return
+    if (screenGesture.active() || (e.target as HTMLElement).closest(`[${SCREEN_ATTR}]`)) return
     const target = (e.target as HTMLElement).closest<HTMLElement>('[data-touch-control]')
     const id = target?.dataset.touchControl as TouchControlId | undefined
     if (pointers.size === 0 && !id) return
@@ -384,7 +350,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
 
   function pointerMove(e: PointerEvent) {
-    if (screenGesture) return moveScreenGesture(e)
+    if (screenGesture.active()) return screenGesture.move(e)
     const p = pointers.get(e.pointerId)
     if (!p || !gesture) return
     p.x = e.clientX
@@ -409,7 +375,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
 
   function pointerUp(e: PointerEvent) {
-    if (screenGesture) return endScreenGesture(e)
+    if (screenGesture.active()) return screenGesture.end(e)
     if (!pointers.delete(e.pointerId)) return
     if (pointers.size > 0) {
       // A pinch lost a finger: the other one goes on dragging from where the control is now.
@@ -596,7 +562,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     save,
     discard,
     pointerDown,
-    pressScreen,
+    pressScreen: screenGesture.press,
     pickNext,
     toggleCollapsed,
     own,
