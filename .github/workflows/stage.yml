@@ -20,6 +20,8 @@ concurrency:
 jobs:
   play-internal:
     uses: ./.github/workflows/play-release.yml
+    # The called job reads its environment's secrets only when the caller hands them over.
+    secrets: inherit
     with:
       environment: play-internal
       track: internal
