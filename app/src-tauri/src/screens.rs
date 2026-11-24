@@ -20,8 +20,8 @@ use std::sync::Arc;
 use emudome_core::core_profile::{CoreId, Lid, LID_PRESS};
 use emudome_core::input::Source;
 use emudome_core::screens::{
-    Area, CustomLayout, CustomScreen, Layout, LayoutId, Placement, ScreenSession, ScreenSettings,
-    ScreenStatus, Split,
+    Area, CustomLayout, CustomScreen, Inset, Layout, LayoutId, Placement, ScreenSession,
+    ScreenSettings, ScreenStatus, Split,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, Shared};
@@ -151,11 +151,15 @@ impl Changed for Option<bool> {
 
 /// The layout and status now, sent to the native renderer and on `emu://screens`.
 fn publish(app: &AppHandle) {
-    let (layout, status) = current(app);
     if let Some(renderer) = app.try_state::<AppState>().and_then(|s| s.renderer.clone()) {
-        renderer.set_layout(layout);
+        renderer.set_layout(current(app).0);
     }
-    if let Err(e) = app.emit(crate::events::SCREENS, status) {
+    emit_status(app);
+}
+
+/// The status now, on `emu://screens`.
+fn emit_status(app: &AppHandle) {
+    if let Err(e) = app.emit(crate::events::SCREENS, current(app).1) {
         log::warn!("emu://screens not delivered: {e}");
     }
 }
@@ -387,20 +391,71 @@ fn open_phone_start(app: &AppHandle, console: ConsoleId, area: Area) -> Option<V
     Some(open.session.phone_start(&sources, area))
 }
 
-/// Sets (or, empty, withdraws) the phone's own placement of the open game's screens: the touch
-/// layer's saved one, or the editor's while it is open. No game: nothing to place. A placement
-/// that is not the game's screens is refused with `settingInvalidValue`.
+/// What one `screens_set_phone` call hands the native renderer, in one message: the layout when
+/// the placement changed it, and the inset the placement is fitted in.
+#[derive(Debug)]
+struct PhoneView {
+    layout: Option<Layout>,
+    inset: Inset,
+}
+
+/// The phone's placement set on the open game's screens (`None`: no game), with `inset`. A
+/// placement that is not the game's screens is refused whole: neither it nor its inset applies.
+fn place_phone(
+    session: Option<&mut ScreenSession>,
+    screens: Vec<CustomScreen>,
+    inset: Inset,
+) -> Result<PhoneView, ErrorCode> {
+    let Some(session) = session else {
+        return Ok(PhoneView {
+            layout: None,
+            inset,
+        });
+    };
+    let changed =
+        session
+            .set_phone_placement(screens)
+            .ok_or_else(|| ErrorCode::SettingInvalidValue {
+                key: keys::TOUCH_SCREENS.as_str().to_owned(),
+            })?;
+    Ok(PhoneView {
+        layout: changed.then(|| session.layout()),
+        inset,
+    })
+}
+
+/// Sets (or, empty, withdraws) the phone's own placement of the open game's screens, and the
+/// edges kept clear of the game it is fitted in (as `set_video_inset`): the touch layer's saved
+/// one, or the editor's while it is open. The two reach the renderer as one message, so no frame
+/// pairs the new placement with the old inset. No game: the inset only. A placement that is not
+/// the game's screens is refused with `settingInvalidValue`, its inset with it.
 #[tauri::command]
 pub fn screens_set_phone(
     app: AppHandle,
     screens: Vec<CustomScreen>,
+    inset: Inset,
 ) -> Result<ScreenStatus, ErrorCode> {
-    let Some(result) = change(&app, |s| s.set_phone_placement(screens)) else {
-        return Ok(ScreenStatus::default());
+    let view = match app.try_state::<ScreensState>() {
+        Some(state) => {
+            let mut open = state.0.lock();
+            place_phone(open.as_mut().map(|o| &mut o.session), screens, inset)?
+        }
+        None => place_phone(None, screens, inset)?,
     };
-    result.ok_or_else(|| ErrorCode::SettingInvalidValue {
-        key: keys::TOUCH_SCREENS.as_str().to_owned(),
-    })?;
+    let renderer = app.try_state::<AppState>().and_then(|s| s.renderer.clone());
+    match view.layout {
+        Some(layout) => {
+            if let Some(renderer) = renderer {
+                renderer.set_view(layout, view.inset);
+            }
+            emit_status(&app);
+        }
+        None => {
+            if let Some(renderer) = renderer {
+                renderer.set_inset(view.inset);
+            }
+        }
+    }
     Ok(current(&app).1)
 }
 
@@ -427,4 +482,74 @@ pub fn screens_set_custom(
         .set(key, &scope, Value::List(layout.to_items()))?;
     crate::settings::emit_changed(&app, &[key], level);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use emudome_core::screens::{Align, ScreenId};
+
+    use super::*;
+
+    fn main_at(y: f32) -> Vec<CustomScreen> {
+        vec![CustomScreen {
+            id: ScreenId::Main,
+            x: 0.0,
+            y,
+            w: 1.0,
+            h: 0.4,
+        }]
+    }
+
+    fn band(bottom: f32) -> Inset {
+        Inset {
+            bottom,
+            align: Align::Bottom,
+            ..Inset::NONE
+        }
+    }
+
+    #[test]
+    fn a_new_placement_reaches_the_renderer_with_its_inset() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
+        let view = place_phone(Some(&mut s), main_at(0.1), band(0.3));
+        let Ok(view) = view else {
+            panic!("refused: {view:?}");
+        };
+        assert_eq!(view.layout, Some(s.layout()));
+        assert_eq!(view.inset, band(0.3));
+        assert!(s.status().phone_placement);
+    }
+
+    #[test]
+    fn the_same_placement_sends_the_inset_alone() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
+        assert!(place_phone(Some(&mut s), main_at(0.1), band(0.3)).is_ok());
+        let view = place_phone(Some(&mut s), main_at(0.1), band(0.2));
+        let Ok(view) = view else {
+            panic!("refused: {view:?}");
+        };
+        assert_eq!(view.layout, None);
+        assert_eq!(view.inset, band(0.2));
+    }
+
+    #[test]
+    fn with_no_game_only_the_inset_applies() {
+        let view = place_phone(None, main_at(0.1), band(0.3));
+        let Ok(view) = view else {
+            panic!("refused: {view:?}");
+        };
+        assert_eq!(view.layout, None);
+        assert_eq!(view.inset, band(0.3));
+    }
+
+    #[test]
+    fn a_placement_of_other_screens_is_refused_whole() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), true, false);
+        let view = place_phone(Some(&mut s), main_at(0.1), band(0.3));
+        assert!(matches!(
+            view,
+            Err(ErrorCode::SettingInvalidValue { key }) if key == keys::TOUCH_SCREENS.as_str()
+        ));
+        assert!(!s.status().phone_placement);
+    }
 }

@@ -15,7 +15,7 @@ import {
 import { flow, gameStarted } from './gameFlow'
 import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
-import { effectivePlacement, samePlacement } from './placement'
+import { effectivePlacement, phoneSend, type PhoneView } from './placement'
 import { insetShares, NO_INSET, sameInset, type InsetPx } from './inset'
 import { createGameState } from './gameState'
 import { useGameEnding } from './useGameEnding'
@@ -65,17 +65,46 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
   const launches = ref(0)
 
   /** The phone's placement of the screens (Trello #134): the touch layer's saved one and the
-   * editor's while it is open; the editor's wins. What Rust holds is sent only when it changes. */
+   * editor's while it is open; the editor's wins. It goes to Rust with the inset it is fitted in
+   * (`setInset`): what one change sets (TouchLayer and TouchEditor send the placement, then its
+   * inset) is sent once that change is done, as one call, and only what Rust does not hold yet. */
   let layerPlacement: CustomScreen[] = []
   let editorPlacement: CustomScreen[] | null = null
-  let sentPlacement: CustomScreen[] = []
+  let wantedShares = insetShares(NO_INSET, 1, 1)
+  let sent: PhoneView = { placement: [], inset: wantedShares }
+  let queued = false
   function setPlacement(from: 'layer' | 'editor', screens: CustomScreen[] | null) {
     if (from === 'layer') layerPlacement = screens ?? []
     else editorPlacement = screens
-    const next = effectivePlacement(layerPlacement, editorPlacement)
-    if (samePlacement(next, sentPlacement)) return
-    sentPlacement = next
-    report(emu.screens.setPhone(next))
+    queueView()
+  }
+  function queueView() {
+    if (queued) return
+    queued = true
+    queueMicrotask(sendView)
+  }
+  function sendView() {
+    queued = false
+    const next: PhoneView = {
+      placement: effectivePlacement(layerPlacement, editorPlacement),
+      inset: wantedShares,
+    }
+    const kind = phoneSend(sent, next)
+    if (!kind) return
+    const before = sent
+    sent = next
+    const call =
+      kind === 'pair'
+        ? emu.screens.setPhone(next.placement, next.inset)
+        : emu.setVideoInset(next.inset)
+    // Refused: Rust holds what it held, so the same request is sent again (unless something newer
+    // was sent meanwhile, or a new game started).
+    report(
+      call.catch((e: unknown) => {
+        if (sent === next) sent = before
+        throw e
+      }),
+    )
   }
 
   /** The core runs `info`: a fresh session, then the auto quick save or the resume question. */
@@ -84,7 +113,7 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     // late `setPlacement` of the old game's layer or editor sends nothing of the old game's.
     layerPlacement = []
     editorPlacement = null
-    sentPlacement = []
+    sent = { placement: [], inset: sent.inset }
     launches.value += 1
     playingGame.value = from
     game.value = info
@@ -191,14 +220,12 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
 
   /** The quick menu or the touch controls keep `px` clear of the game: the canvas keeps clear
    * of it by itself, the native video is told the shares of the window (again on every change:
-   * a turned phone sends its new edges, measured in the new window). */
-  let sentShares = insetShares(NO_INSET, 1, 1)
+   * a turned phone sends its new edges, measured in the new window), with the phone's placement
+   * when that changed too. */
   function setInset(px: InsetPx) {
     if (!sameInset(px, videoInset.value)) videoInset.value = px
-    const shares = insetShares(px, window.innerWidth, window.innerHeight)
-    if (sameInset(shares, sentShares)) return
-    sentShares = shares
-    report(emu.setVideoInset(shares))
+    wantedShares = insetShares(px, window.innerWidth, window.innerHeight)
+    queueView()
   }
 
   /** The FPS counter shown or hidden: F9 and L3 + X do it in Rust (`emu://hotkey` `fps`), the

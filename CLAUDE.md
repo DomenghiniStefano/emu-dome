@@ -435,7 +435,7 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          one hold shared by both), screens.rs (the open game's `ScreenSession` carried out:
                          the renderer's layout, `emu://screens`, the lid chord pressed on the core, the
                          `screens_*` commands, `screens_set_phone` (the phone's placement of the open game,
-                         empty withdraws it) and `screens_phone_start` (where the editor starts it, which
+                         empty withdraws it, with the inset it is fitted in: one renderer message) and `screens_phone_start` (where the editor starts it, which
                          replaced `screens_preview`); the webview canvas gets its placements from
                          `screens_placements`), tuning.rs (developer / bench knobs from the environment),
                          window.rs (the app's names for emudome_platform::create_window, and
@@ -627,8 +627,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     a 360 px phone; the touch controls' inset carries the rest (`Inset::between`, `Align::Apart`
     upright, `Align::Top` on the side), so both renderers and `pointer` get the same placements.
     A phone placement saved in C06 (#134, `touch.tscreens`) replaces the chosen layout while the touch controls are
-    in use: `TouchLayer` sends it (`screens_set_phone`, before the inset) and withdraws it when the controls are
-    hidden (`touch.tpad`; `touch.thide` only fades them). It is placed over the whole window, not in what the
+    in use: `TouchLayer` sends it and withdraws it when the controls are
+    hidden (`touch.tpad`; `touch.thide` only fades them); `useGameSession` sends a placement and the inset of the
+    same change as one call (`screens_set_phone` with the inset, `Renderer::set_view`), so no frame pairs the new
+    placement with the old inset; an inset alone stays `set_video_inset`. It is placed over the whole window, not in what the
     controls leave (they may overlap it); the quick menu's inset scales it uniformly to make room and it comes
     back at its size when the menu closes; G09 says «Dalla disposizione touch» and offers no cycle.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.

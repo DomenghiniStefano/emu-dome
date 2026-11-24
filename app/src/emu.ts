@@ -376,8 +376,10 @@ export const emu = {
      * layout cycled to, swapped: each keyed by its frame); otherwise with the settings of `scope`. */
     phoneStart: (scope: SettingsScope, console: ConsoleId, area: PointerArea) =>
       invoke<CustomScreen[]>('screens_phone_start', { scope, console, area }),
-    /** The phone's own placement of the open game's screens (empty: withdrawn). */
-    setPhone: (screens: CustomScreen[]) => invoke<ScreenStatus>('screens_set_phone', { screens }),
+    /** The phone's own placement of the open game's screens (empty: withdrawn) and the edges kept
+     * clear of the game it is fitted in (as `setVideoInset`), applied together. */
+    setPhone: (screens: CustomScreen[], inset: VideoInset) =>
+      invoke<ScreenStatus>('screens_set_phone', { screens, inset }),
     onChanged: (cb: (e: ScreenStatus) => void): Promise<UnlistenFn> =>
       listen<ScreenStatus>('emu://screens', e => cb(e.payload)),
   },
