@@ -2426,6 +2426,7 @@ fn set_many_writes_every_value_or_none() {
     let screens = Value::List(vec!["portrait/main:0,0,1,0.5".to_owned()]);
     let bad = Value::List(vec!["portrait/main:0,0,2,0.5".to_owned()]);
     let before = value_of(&mut s, "touch.tedit", &console_scope()).0;
+    let screens_before = value_of(&mut s, "touch.tscreens", &console_scope()).0;
     assert!(s
         .set_many(
             &console_scope(),
@@ -2433,6 +2434,10 @@ fn set_many_writes_every_value_or_none() {
         )
         .is_err());
     assert_eq!(value_of(&mut s, "touch.tedit", &console_scope()).0, before);
+    assert_eq!(
+        value_of(&mut s, "touch.tscreens", &console_scope()).0,
+        screens_before
+    );
     s.set_many(
         &console_scope(),
         &[
@@ -2446,6 +2451,21 @@ fn set_many_writes_every_value_or_none() {
         value_of(&mut s, "touch.tedit", &console_scope()).0,
         Some(tedit)
     );
+    assert_eq!(
+        value_of(&mut s, "touch.tscreens", &console_scope()).0,
+        Some(screens.clone())
+    );
+    // A valid placement with a refused value beside it is not written either.
+    let moved = Value::List(vec!["portrait/main:0,0.5,1,0.5".to_owned()]);
+    assert!(s
+        .set_many(
+            &console_scope(),
+            &[
+                ("touch.tscreens", moved),
+                ("touch.tport", Value::Text("nonsense".into())),
+            ]
+        )
+        .is_err());
     assert_eq!(
         value_of(&mut s, "touch.tscreens", &console_scope()).0,
         Some(screens)
