@@ -629,7 +629,7 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
         order.reverse();
     }
 
-    if let Some((rects, frame)) = given_rects(&layout.arrangement, area) {
+    if let Some((rects, frame)) = given_rects(&layout.arrangement, layout.rotation, area) {
         return place_given(rects, frame, layout, screens);
     }
 
@@ -824,10 +824,14 @@ pub fn compose(layout: &Layout, screens: &[SourceScreen], area: Area) -> Vec<Pla
 /// The rectangles of an arrangement that places each screen where it is told (custom, the
 /// phone's placement) and the window rectangle their fractions are of; `None` for the
 /// arrangements [`compose`] lays out itself.
-fn given_rects(arrangement: &Arrangement, area: Area) -> Option<(&[(ScreenId, Rect)], Rect)> {
+fn given_rects(
+    arrangement: &Arrangement,
+    rotation: Rotation,
+    area: Area,
+) -> Option<(&[(ScreenId, Rect)], Rect)> {
     match arrangement {
         Arrangement::Custom(rects) => Some((rects, area.inset.usable(area.width, area.height))),
-        Arrangement::Phone(rects) => Some((rects, phone_frame(area))),
+        Arrangement::Phone(rects) => Some((rects, phone_frame(rects, rotation, area))),
         Arrangement::Stacked
         | Arrangement::Auto
         | Arrangement::SideBySide
@@ -837,18 +841,55 @@ fn given_rects(arrangement: &Arrangement, area: Area) -> Option<(&[(ScreenId, Re
     }
 }
 
-/// The whole window scaled uniformly into the part the inset leaves, centred there: what the
-/// phone's placement is drawn in (the window itself with no inset).
-fn phone_frame(area: Area) -> Rect {
+/// The window rectangle the phone's placement `rects` (fractions of the window, turned by
+/// `rotation`) are drawn in: the window itself with no inset. With one (the quick menu open) the
+/// screens, taken together, are scaled uniformly (never past their own size, never stretched)
+/// into the part the inset leaves, as large as it holds them, and placed in it as the inset aligns
+/// a game (centred across; down: against the sheet with [`Align::Bottom`] / [`Align::Apart`], at
+/// the top with [`Align::Top`], else centred), so the game is not left on one side with an empty
+/// band before the menu (#140; the whole window scaled kept the placement's own empty parts).
+fn phone_frame(rects: &[(ScreenId, Rect)], rotation: Rotation, area: Area) -> Rect {
+    let window = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: area.width,
+        h: area.height,
+    };
     let usable = area.inset.usable(area.width, area.height);
-    let k = (usable.w / area.width).min(usable.h / area.height);
+    // The screens' bounds once turned, in window pixels.
+    let turned = rects.iter().map(|(_, r)| turn(*r, rotation, 1.0, 1.0));
+    let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+    for r in turned {
+        x0 = x0.min(r.x * area.width);
+        y0 = y0.min(r.y * area.height);
+        x1 = x1.max((r.x + r.w) * area.width);
+        y1 = y1.max((r.y + r.h) * area.height);
+    }
+    let (bw, bh) = (x1 - x0, y1 - y0);
+    if !(bw > 0.0 && bh > 0.0) {
+        return window;
+    }
+    let whole = usable.x <= PIXEL_SLACK
+        && usable.y <= PIXEL_SLACK
+        && usable.w >= area.width - PIXEL_SLACK
+        && usable.h >= area.height - PIXEL_SLACK;
+    if whole {
+        return window;
+    }
+    let k = (usable.w / bw).min(usable.h / bh).min(1.0);
     let k = if k.is_finite() { k.max(0.0) } else { 0.0 };
-    let (w, h) = (k * area.width, k * area.height);
+    let (w, h) = (bw * k, bh * k);
+    let x = usable.x + (usable.w - w) / 2.0;
+    let y = match area.inset.align {
+        Align::Centre => usable.y + (usable.h - h) / 2.0,
+        Align::Bottom | Align::Apart => usable.y + usable.h - h,
+        Align::Top => usable.y,
+    };
     Rect {
-        x: usable.x + (usable.w - w) / 2.0,
-        y: usable.y + (usable.h - h) / 2.0,
-        w,
-        h,
+        x: x - x0 * k,
+        y: y - y0 * k,
+        w: area.width * k,
+        h: area.height * k,
     }
 }
 
@@ -3102,7 +3143,7 @@ mod tests {
         s.set_phone_placement(vec![cs(ScreenId::Main, 0.0, 0.0, 1.0, 0.5)])
             .unwrap();
         // 800 × 400 window, the menu on the right half: the placement (800 × 200 at full size)
-        // is scaled by 0.5 into the left 400 × 400 and centred vertically, proportions kept.
+        // is scaled by 0.5 into the left 400 × 400 and centred there, proportions kept.
         let menu = Area {
             width: 800.0,
             height: 400.0,
@@ -3113,7 +3154,72 @@ mod tests {
         };
         assert_eq!(
             compose(&s.layout(), &Split::Whole.screens(240, 160), menu)[0].dst,
-            rect(0.0, 100.0, 400.0, 100.0)
+            rect(0.0, 150.0, 400.0, 100.0)
+        );
+    }
+
+    #[test]
+    fn a_phone_placement_on_one_side_fills_the_room_beside_the_menu() {
+        // #140: on its side (915 × 412), a GBA placed on the left, 412 px wide and full height;
+        // the quick menu takes the right 320 px. The game goes in the middle of the 595 px left,
+        // at its own size: no empty band between it and the menu.
+        let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
+        s.set_phone_placement(vec![cs(ScreenId::Main, 0.0, 0.0, 412.0 / 915.0, 1.0)])
+            .unwrap();
+        let menu = Area {
+            width: 915.0,
+            height: 412.0,
+            inset: Inset {
+                right: 320.0 / 915.0,
+                ..Inset::NONE
+            },
+        };
+        assert_near(
+            compose(&s.layout(), &Split::Whole.screens(240, 160), menu)[0].dst,
+            rect(91.5, 0.0, 412.0, 412.0),
+        );
+        // Closed: back where it was placed.
+        assert_near(
+            compose(
+                &s.layout(),
+                &Split::Whole.screens(240, 160),
+                area(915.0, 412.0),
+            )[0]
+            .dst,
+            rect(0.0, 0.0, 412.0, 412.0),
+        );
+    }
+
+    #[test]
+    fn a_phone_placement_sits_against_the_sheet_upright() {
+        // Two DS screens apart (top and bottom of a 360 × 780 window, 270 px each); the phone's
+        // sheet keeps the bottom 60%: both are scaled together into the 312 px above it, against
+        // the sheet, centred across.
+        let mut s = ScreenSession::new(ScreenSettings::default(), true, false);
+        s.set_phone_placement(vec![
+            cs(ScreenId::Top, 0.0, 0.0, 1.0, 270.0 / 780.0),
+            cs(ScreenId::Bottom, 0.0, 510.0 / 780.0, 1.0, 270.0 / 780.0),
+        ])
+        .unwrap();
+        let sheet = Area {
+            width: 360.0,
+            height: 780.0,
+            inset: Inset {
+                bottom: 0.6,
+                align: Align::Bottom,
+                ..Inset::NONE
+            },
+        };
+        let p = ds(&s.layout(), sheet);
+        let k = 312.0 / 780.0;
+        let left = (360.0 - 360.0 * k) / 2.0;
+        assert_near(
+            dst(&p, ScreenId::Top),
+            rect(left, 0.0, 360.0 * k, 270.0 * k),
+        );
+        assert_near(
+            dst(&p, ScreenId::Bottom),
+            rect(left, 510.0 * k, 360.0 * k, 270.0 * k),
         );
     }
 
