@@ -125,8 +125,10 @@ impl SpeedAudio {
 
 fn frames(input: &[i16]) -> impl Iterator<Item = [f32; 2]> + '_ {
     input
-        .chunks_exact(2)
-        .map(|f| [f32::from(f[0]), f32::from(f[1])])
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|&[l, r]| [f32::from(l), f32::from(r)])
 }
 
 fn push_frame(out: &mut Vec<i16>, f: [f32; 2]) {

@@ -145,7 +145,7 @@ pub fn open_content(_uri: &str, _cache_dir: &Path) -> Result<ContentFile, Conten
 /// Folders and game files come from the file dialog as paths.
 pub const DOCUMENT_PICKERS: bool = false;
 
-pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
+pub fn pick_document_tree(_start: Option<&str>) -> Result<Option<PickedDocument>, ContentError> {
     Err(ContentError::Unsupported)
 }
 

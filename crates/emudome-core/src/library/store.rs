@@ -1,7 +1,8 @@
 //! The library database: one JSON file, `library.json`, in a folder the shell chooses.
 //!
 //! `{ "games": { "<id>": GameRecord }, "hashCache": { "<path>": CacheEntry }, "versionPins":
-//! ["<id>"] }` (the pins only when there are some), plus any key a newer version wrote (kept). Games are never deleted: a game whose file or folder is gone is
+//! ["<id>"], "folderNames": { "<tree URI>": "<name>" } }` (the pins and the picked Android
+//! folders' names only when there are some), plus any key a newer version wrote (kept). Games are never deleted: a game whose file or folder is gone is
 //! kept with `available: false`; one whose folder left `library.folders` is kept with
 //! `listed: false` (hidden from the interface), so its play time, flags and cover come back with
 //! it. Written atomically (`crate::write_atomic`). A file that cannot be parsed is moved aside
@@ -112,6 +113,11 @@ struct Db {
     /// whole file aside.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     version_pins: BTreeSet<String>,
+    /// The display names of the picked Android folders of `library.folders` (tree URI → name),
+    /// as last read from the provider: shown when it cannot be asked any more (the read
+    /// permission taken back, Trello #141). Optional: an older file has none.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    folder_names: BTreeMap<String, String>,
     /// Anything else a newer version wrote.
     #[serde(flatten)]
     other: Map<String, Json>,
@@ -308,7 +314,8 @@ impl Library {
         Ok(report)
     }
 
-    /// A folder left `library.folders`: its games leave the library (kept, unlisted).
+    /// A folder left `library.folders`: its games leave the library (kept, unlisted), its
+    /// remembered name is forgotten.
     pub fn unlist_folder(&mut self, folder: &str) -> Result<(), ErrorCode> {
         self.ensure_readable()?;
         for game in self.db.games.values_mut() {
@@ -316,6 +323,25 @@ impl Library {
                 game.listed = false;
             }
         }
+        self.db.folder_names.remove(folder);
+        self.save()
+    }
+
+    /// The display name last read for the picked folder `tree` ([`Self::remember_folder_name`]).
+    pub fn folder_name(&self, tree: &str) -> Option<&str> {
+        self.db.folder_names.get(tree).map(String::as_str)
+    }
+
+    /// Keeps `name`, read from the provider, as the picked folder `tree`'s name for when it
+    /// cannot be read any more. Written only when it changed.
+    pub fn remember_folder_name(&mut self, tree: &str, name: &str) -> Result<(), ErrorCode> {
+        if self.folder_name(tree) == Some(name) {
+            return Ok(());
+        }
+        self.ensure_readable()?;
+        self.db
+            .folder_names
+            .insert(tree.to_owned(), name.to_owned());
         self.save()
     }
 

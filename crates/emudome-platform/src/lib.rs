@@ -21,7 +21,7 @@ mod paths;
 mod storage;
 pub mod updater;
 
-pub use content::is_content_uri;
+pub use content::{document_tree_label, is_content_uri, percent_decode};
 pub use cores::{shipped_cores, CoreLookupError, ShippedCore};
 pub use paths::{long_paths_enabled, long_paths_policy, path_limits, PathLimits};
 pub use storage::{disk_space, DiskSpace};
@@ -475,10 +475,11 @@ pub const DOCUMENT_PICKERS: bool = imp::DOCUMENT_PICKERS;
 
 /// Shows the system's folder picker (Android: `ACTION_OPEN_DOCUMENT_TREE`, the read permission
 /// persisted across restarts) and waits for the answer: `Ok(None)` when cancelled. Blocks until
-/// the user answers: never call it on the main thread. [`ContentError::Unsupported`] on the
-/// desktop.
-pub fn pick_document_tree() -> Result<Option<PickedDocument>, ContentError> {
-    imp::pick_document_tree()
+/// the user answers: never call it on the main thread. `start`, a tree picked before (its read
+/// permission taken back, Trello #141), is where the picker opens, so picking it again is one
+/// tap; `None` opens where the system chooses. [`ContentError::Unsupported`] on the desktop.
+pub fn pick_document_tree(start: Option<&str>) -> Result<Option<PickedDocument>, ContentError> {
+    imp::pick_document_tree(start)
 }
 
 /// Shows the system's file picker for one document (Android: `ACTION_OPEN_DOCUMENT`, every file
@@ -527,11 +528,27 @@ pub fn document_name(uri: &str) -> Option<String> {
 pub enum ContentError {
     /// This system has no content documents (the desktop).
     Unsupported,
-    /// The provider refused it (permission gone, document deleted) or it could not be read.
-    Unreadable(String),
+    /// The provider refused it (permission gone, document deleted) or it could not be read:
+    /// `kind` says which, as the interface tells the causes apart (`NotFound`,
+    /// `PermissionDenied`, anything else); `detail` is for the log.
+    Unreadable {
+        kind: std::io::ErrorKind,
+        detail: String,
+    },
     /// Not a file on the device (a stream from a cloud provider): it cannot be read again from
     /// the start, as cores and EmuDome do.
     NotLocal,
+}
+
+impl ContentError {
+    /// [`ContentError::Unreadable`] for a failure that is not the document's own (a JNI call, the
+    /// app's cache): kind `Other`.
+    pub fn unreadable(detail: String) -> Self {
+        Self::Unreadable {
+            kind: std::io::ErrorKind::Other,
+            detail,
+        }
+    }
 }
 
 /// Opens the `content://` document `uri` for reading, without copying it (`content.rs` says how):

@@ -38,7 +38,13 @@ import CoverGrid from './CoverGrid.vue'
 import GameList from './GameList.vue'
 import LibraryToolbar from './LibraryToolbar.vue'
 import PhoneLibraryToolbar from './PhoneLibraryToolbar.vue'
-import { recentlyPlayed, resumeTarget, showReconnectHint, unreachableFolders } from './libraryView'
+import {
+  recentlyPlayed,
+  resumeTarget,
+  showReconnectHint,
+  unreachableFolders,
+  type UnreachableFolder,
+} from './libraryView'
 import ScanProgress from './ScanProgress.vue'
 import ScanSummary from './ScanSummary.vue'
 import UnreachableBanner from './UnreachableBanner.vue'
@@ -117,8 +123,8 @@ async function addFolder() {
   const failed = await chooseFolder()
   if (failed) toasts.fail(failed)
 }
-async function replace(path: string) {
-  const failed = await replaceFolder(path)
+async function replace(folder: UnreachableFolder) {
+  const failed = await replaceFolder(folder.path, folder.access === 'permissionLost')
   if (failed) toasts.fail(failed)
 }
 const unreachable = computed(() => unreachableFolders(library.folders, library.games))
@@ -143,12 +149,7 @@ const shelves = computed(
   <!-- In TV mode the shell leaves the library flush (its shelves reach the edge): the desk's
        view keeps its own room. -->
   <div v-else ref="root" class="flex flex-1 flex-col gap-16 tv:p-32">
-    <UnreachableBanner
-      v-for="f in unreachable"
-      :key="f.path"
-      :folder="f"
-      @replace="replace(f.path)"
-    />
+    <UnreachableBanner v-for="f in unreachable" :key="f.path" :folder="f" @replace="replace(f)" />
     <ScanProgress v-if="library.scanning" :progress="library.progress" />
     <ScanSummary
       v-if="library.summary"

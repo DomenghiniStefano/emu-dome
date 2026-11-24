@@ -425,8 +425,10 @@ export const emu = {
   appVersion: () => getVersion(),
   library: {
     get: () => invoke<Library>('library_get'),
-    /** Native folder picker; the folder joins `library.folders` and is scanned. null = cancelled. */
-    chooseFolder: () => invoke<string | null>('library_choose_folder'),
+    /** Native folder picker; the folder joins `library.folders` and is scanned. null = cancelled.
+     * `start`: a picked Android folder to choose again, where the picker opens (#141). */
+    chooseFolder: (start?: string) =>
+      invoke<string | null>('library_choose_folder', { start: start ?? null }),
     removeFolder: (path: string) => invoke<void>('library_remove_folder', { path }),
     /** Drag and drop: folders join `library.folders`, files are added one by one. Then a scan. */
     addPaths: (paths: string[]) => invoke<void>('library_add_paths', { paths }),
