@@ -21,7 +21,7 @@ mod paths;
 mod storage;
 pub mod updater;
 
-pub use content::is_content_uri;
+pub use content::{document_tree_label, is_content_uri, percent_decode};
 pub use cores::{shipped_cores, CoreLookupError, ShippedCore};
 pub use paths::{long_paths_enabled, long_paths_policy, path_limits, PathLimits};
 pub use storage::{disk_space, DiskSpace};

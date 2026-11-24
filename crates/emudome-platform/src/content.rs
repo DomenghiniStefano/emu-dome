@@ -37,6 +37,51 @@ pub fn is_content_uri(given: &str) -> bool {
 
 const CONTENT_SCHEME: &str = "content://";
 
+/// `%XX` escapes decoded (UTF-8, lossy); a malformed escape is kept as it is.
+pub fn percent_decode(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = bytes
+            .get(i + 1..i + 3)
+            .and_then(|h| std::str::from_utf8(h).ok())
+            .and_then(|h| u8::from_str_radix(h, 16).ok());
+        if let (b'%', Some(b)) = (bytes[i], hex) {
+            out.push(b);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// The name of a picked folder as its tree URI spells it, for when the provider cannot be asked
+/// (the read permission was taken back, Trello #141): the last folder of the tree's document id
+/// (`content://…/tree/primary%3ADownload%2FEmuDomeTest` is `EmuDomeTest`; an SD card's
+/// `1234-5678:Games` is `Games`). `None` for a volume's root (`primary:`), and for an id that is
+/// not `<volume>:<path>` (a provider whose ids are opaque, such as a cloud drive's): no name is
+/// better than a made-up one.
+pub fn document_tree_label(tree: &str) -> Option<String> {
+    let (_, after) = tree.split_once("/tree/")?;
+    let id = percent_decode(after.split('/').next().unwrap_or_default());
+    let (volume, path) = id.split_once(':')?;
+    let plain_volume = !volume.is_empty()
+        && volume
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    if !plain_volume {
+        return None;
+    }
+    path.split('/')
+        .rev()
+        .map(str::trim)
+        .find(|segment| !segment.is_empty())
+        .map(str::to_owned)
+}
+
 /// The folder of the app's cache holding the links (removed whole at the first open of a
 /// process: what a killed process left behind).
 pub(crate) const LINKS_DIR: &str = "content";
@@ -111,9 +156,69 @@ pub(crate) fn parse_tree_children(fields: &[String]) -> Vec<crate::TreeEntry> {
 
 #[cfg(test)]
 mod tests {
-    use super::{fd_path, is_content_uri, link_dir, link_name, open_failure, parse_tree_children};
+    use super::{
+        document_tree_label, fd_path, is_content_uri, link_dir, link_name, open_failure,
+        parse_tree_children, percent_decode,
+    };
     use std::io::ErrorKind;
     use std::path::Path;
+
+    #[test]
+    fn a_tree_is_named_by_the_last_folder_of_its_id() {
+        let ext = "content://com.android.externalstorage.documents/tree/";
+        let label = |id: &str| document_tree_label(&format!("{ext}{id}"));
+        assert_eq!(
+            label("primary%3ADownload%2FEmuDomeTest").as_deref(),
+            Some("EmuDomeTest")
+        );
+        assert_eq!(label("primary%3AROMs").as_deref(), Some("ROMs"));
+        // Nested, with a trailing slash and spaces / non-ASCII letters escaped.
+        assert_eq!(
+            label("primary%3AGames%2FNintendo%20DS%2FGiochi%20%C3%A0%2F").as_deref(),
+            Some("Giochi à")
+        );
+        // An SD card's volume id.
+        assert_eq!(label("1234-5678%3AGames").as_deref(), Some("Games"));
+        // A colon left unescaped reads the same (a slash cannot be: it ends the id).
+        assert_eq!(label("primary:Roms").as_deref(), Some("Roms"));
+        // A tree URI that names a document inside it: the tree's id counts.
+        assert_eq!(
+            label("primary%3AROMs/document/primary%3AROMs%2Fsub").as_deref(),
+            Some("ROMs")
+        );
+        // The Downloads provider's raw paths.
+        assert_eq!(
+            document_tree_label(
+                "content://com.android.providers.downloads.documents/tree/\
+                 raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2FGBA"
+            )
+            .as_deref(),
+            Some("GBA")
+        );
+        // A volume's root, an empty id, an opaque id, no tree at all: no name.
+        assert_eq!(label("primary%3A"), None);
+        assert_eq!(label("primary%3A%2F"), None);
+        assert_eq!(label(""), None);
+        assert_eq!(label("downloads"), None);
+        assert_eq!(label("acc%3D1%3Bdoc%3Dencoded%3Dabc%3Adef"), None);
+        assert_eq!(label("%3AGames"), None);
+        assert_eq!(
+            document_tree_label("content://x/document/primary%3AA"),
+            None
+        );
+        assert_eq!(document_tree_label(""), None);
+    }
+
+    #[test]
+    fn percent_escapes_are_decoded() {
+        assert_eq!(percent_decode("a%20b%2Fc"), "a b/c");
+        assert_eq!(percent_decode("%C3%A8"), "è");
+        // A malformed escape is kept as it is.
+        assert_eq!(percent_decode("50%"), "50%");
+        assert_eq!(percent_decode("a%2"), "a%2");
+        assert_eq!(percent_decode("%zz"), "%zz");
+        assert_eq!(percent_decode(""), "");
+    }
 
     #[test]
     fn an_open_failure_code_gives_its_kind() {

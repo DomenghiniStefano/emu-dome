@@ -590,6 +590,38 @@ fn a_deleted_file_is_kept_unavailable() {
     assert!(lib.cache().is_empty());
 }
 
+/// A picked folder's name survives in the file, for when the provider cannot tell it any more
+/// (Trello #141); an older file without names reads, and a removed folder forgets its name.
+#[test]
+fn a_picked_folder_keeps_its_name_until_it_leaves() {
+    let dir = TestDir::new("lib-folder-names");
+    let tree = "content://com.android.externalstorage.documents/tree/primary%3ARoms";
+    fs::create_dir_all(dir.path("db")).unwrap();
+    fs::write(
+        dir.path("db/library.json"),
+        r#"{ "games": {}, "hashCache": {}, "fromNewer": 1 }"#,
+    )
+    .unwrap();
+    let mut lib = Library::open(&dir.path("db"));
+    assert_eq!(lib.folder_name(tree), None);
+
+    lib.remember_folder_name(tree, "Roms").unwrap();
+    let lib = Library::open(&dir.path("db"));
+    assert_eq!(lib.folder_name(tree), Some("Roms"));
+    let text = fs::read_to_string(dir.path("db/library.json")).unwrap();
+    assert!(text.contains("\"folderNames\""), "{text}");
+    assert!(text.contains("\"fromNewer\""), "unknown keys kept: {text}");
+
+    let mut lib = lib;
+    lib.remember_folder_name(tree, "Giochi").unwrap();
+    assert_eq!(lib.folder_name(tree), Some("Giochi"));
+    lib.unlist_folder(tree).unwrap();
+    let lib = Library::open(&dir.path("db"));
+    assert_eq!(lib.folder_name(tree), None);
+    let text = fs::read_to_string(dir.path("db/library.json")).unwrap();
+    assert!(!text.contains("folderNames"), "{text}");
+}
+
 #[test]
 fn a_removed_folder_leaves_the_library_and_comes_back_with_its_data() {
     let dir = TestDir::new("lib-removed");

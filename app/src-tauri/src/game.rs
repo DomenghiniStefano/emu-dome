@@ -392,34 +392,13 @@ fn document_label(uri: &str, name: Option<&str>) -> String {
 /// is `Kirby.gba`); the URI itself when nothing is left.
 fn uri_file_name(uri: &str) -> String {
     let last = uri.trim_end_matches('/').rsplit('/').next().unwrap_or(uri);
-    let decoded = percent_decode(last);
+    let decoded = emudome_platform::percent_decode(last);
     let name = decoded.rsplit([':', '/']).next().unwrap_or_default();
     if name.is_empty() {
         uri.to_owned()
     } else {
         name.to_owned()
     }
-}
-
-/// `%XX` escapes decoded (UTF-8, lossy); a malformed escape is kept as it is.
-fn percent_decode(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        let hex = bytes
-            .get(i + 1..i + 3)
-            .and_then(|h| std::str::from_utf8(h).ok())
-            .and_then(|h| u8::from_str_radix(h, 16).ok());
-        if let (b'%', Some(b)) = (bytes[i], hex) {
-            out.push(b);
-            i += 3;
-        } else {
-            out.push(bytes[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8_lossy(&out).into_owned()
 }
 
 /// A document that could not be opened, for the interface: the file and why, as values; the
