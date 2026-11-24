@@ -1625,10 +1625,11 @@
           h: dst.h / height,
         }));
       }
-      // The phone's own placement sent (the touch layer's, or C06's while open): the status says
-      // it is in use while it holds screens.
+      // The phone's own placement sent (the touch layer's, or C06's while open) with the inset it
+      // is fitted in: the status says it is in use while it holds screens.
       if (cmd === "screens_set_phone") {
         window.__phonePlacement = args.screens;
+        window.__videoInset = { inset: args.inset };
         return { ...answers.screens_status, phonePlacement: args.screens.length > 0 };
       }
       // A game open (`game`): its stats (#124: a null answer read as a stats object threw in

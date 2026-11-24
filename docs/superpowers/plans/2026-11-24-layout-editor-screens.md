@@ -149,6 +149,8 @@ fn the_setup_names_each_screen_with_its_size() {
 
 ---
 
+> Note: `touch_set_layout` later became `touch_set_layouts` (both orientations in one write, follow-up branch `fix/layout-editor-polish`).
+
 ### Task 2: `touch_set_layout` writes `tedit` + `tscreens` + `tport` / `tland` in one write; `touch_layouts` returns the screens
 
 **Files:**

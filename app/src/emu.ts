@@ -65,7 +65,6 @@ import type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
 import type { VideoInset } from '@/generated/VideoInset'
 import type { ScreenStatus } from '@/generated/ScreenStatus'
 import type { TouchLayout } from '@/generated/TouchLayout'
-import type { TouchOrientation } from '@/generated/TouchOrientation'
 import type { TouchSetup } from '@/generated/TouchSetup'
 import type { SaveExport } from '@/generated/app/SaveExport'
 import type { SaveMatch } from '@/generated/app/SaveMatch'
@@ -321,9 +320,10 @@ export const emu = {
     /** The layouts saved on this device for `console`, its controls and the size / opacity
      * limits. */
     layouts: (console: ConsoleId) => invoke<TouchSetup>('touch_layouts', { console }),
-    /** Saves `layout` for `console` held `orientation`, and makes it the one shown there. */
-    setLayout: (console: ConsoleId, orientation: TouchOrientation, layout: TouchLayout) =>
-      invoke<void>('touch_set_layout', { console, orientation, layout }),
+    /** Saves each layout given for `console` (`null`: that orientation stays as stored) in one
+     * write, and makes them the ones shown there. */
+    setLayouts: (console: ConsoleId, portrait: TouchLayout | null, landscape: TouchLayout | null) =>
+      invoke<void>('touch_set_layouts', { console, portrait, landscape }),
     /** The Circle Pad at (x, y), each -1..1, y downwards; (0, 0) let go. */
     stick: (x: number, y: number) => invoke<void>('touch_stick', { x, y }),
     /** A press's vibration, `strength` 1–100 (`touch.thapt`); nothing on the desktop. */
@@ -376,8 +376,10 @@ export const emu = {
      * layout cycled to, swapped: each keyed by its frame); otherwise with the settings of `scope`. */
     phoneStart: (scope: SettingsScope, console: ConsoleId, area: PointerArea) =>
       invoke<CustomScreen[]>('screens_phone_start', { scope, console, area }),
-    /** The phone's own placement of the open game's screens (empty: withdrawn). */
-    setPhone: (screens: CustomScreen[]) => invoke<ScreenStatus>('screens_set_phone', { screens }),
+    /** The phone's own placement of the open game's screens (empty: withdrawn) and the edges kept
+     * clear of the game it is fitted in (as `setVideoInset`), applied together. */
+    setPhone: (screens: CustomScreen[], inset: VideoInset) =>
+      invoke<ScreenStatus>('screens_set_phone', { screens, inset }),
     onChanged: (cb: (e: ScreenStatus) => void): Promise<UnlistenFn> =>
       listen<ScreenStatus>('emu://screens', e => cb(e.payload)),
   },

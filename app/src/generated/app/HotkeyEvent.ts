@@ -5,4 +5,4 @@ import type { Speed } from "../Speed";
  * Payload of `emu://hotkey`: what a shortcut changed, for the interface to show. Codes and
  * values only; the interface turns them into text. TypeScript: `HotkeyEvent` (generated).
  */
-export type HotkeyEvent = { "kind": "fps" } | { "kind": "slot", slot: number, } | { "kind": "speed", speed: Speed, } | { "kind": "turbo", held: boolean, } | { "kind": "paused", paused: boolean, };
+export type HotkeyEvent = { "kind": "fps" } | { "kind": "slot", slot: number, } | { "kind": "speed", speed: Speed, } | { "kind": "turbo", held: boolean, } | { "kind": "paused", paused: boolean, } | { "kind": "layoutHeld" };

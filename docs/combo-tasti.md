@@ -291,7 +291,7 @@ the G12 overlay will read it the same way.
 | L3 + B | Screenshot: PNG at the core's resolution in `saves/screenshots/<console>/<hex>/`, toast G13 | done (Trello #42, #85) |
 | L3 + X | FPS indicator on/off | done |
 | L3 + Y | Swap screens (NDS/3DS): toggled, or swapped while held with `screens.swap` = hold | done (Trello #28; `dualScreen`: DS and 3DS games only) |
-| L3 + R3 | Next screen layout of `screens.cycle` (NDS/3DS); not in C01's list, only in C03 | done (Trello #28; `dualScreen`) |
+| L3 + R3 | Next screen layout of `screens.cycle` (NDS/3DS); not in C01's list, only in C03. Under the touch layout's placement (#134) the layout stays and a toast says why (`emu://hotkey` `layoutHeld`) | done (Trello #28; `dualScreen`) |
 | L3 + Select | Close/open the lid (NDS/3DS), also from the quick menu; no combo with `pad.lid` = quick menu only | done on NDS (Trello #28: melonDS DS's L2 + Y chord); the 3DS core has none (`pad.lid` unsupported on 3DS) |
 | (none) | Fullscreen on/off: keyboard F11 and the quick menu only, no controller combo | done |
 

@@ -549,7 +549,7 @@ pub fn run() {
             commands::key,
             commands::pointer,
             touch::touch_layouts,
-            touch::touch_set_layout,
+            touch::touch_set_layouts,
             touch::touch_stick,
             touch::haptic,
             screens::screens_status,

@@ -2,13 +2,15 @@
 // mockup): the layout of this console for the way the phone is held now, edited over the game.
 // Tap a control to pick it, drag it to move it (its centre on the 8 px grid), pinch to resize the
 // picked one; the toolbar's tools act on it; every change is a step of undo / redo, a gesture one
-// step. «Salva» stores it on this device for the console and makes it the one shown
-// (`emu.touch.setLayout`); leaving without saving changes nothing. The geometry is touchLayout.ts's.
-// Turning the phone switches to that orientation's layout (unsaved changes are dropped).
+// step. Turning the phone switches to that orientation's draft and back again keeps everything
+// (orientationDrafts.ts: one draft, history and pick per orientation). «Salva» stores every
+// orientation changed in this session (else the one on screen) on this device for the console, in
+// one write, and makes them the ones shown (`emu.touch.setLayouts`); leaving without saving changes
+// nothing. The geometry is touchLayout.ts's.
 // The game screens are elements too (Trello #134, editorScreens.ts): picked, dragged (snapped to
 // the grid), resized by their corner or the size slider, keeping their proportions while `keep`;
 // the layout holds every screen or none, and starts from Rust's placement (`useStartScreens`)
-// until the user changes a screen.
+// until the user changes a screen; a finger on a screen is useScreenGesture's.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import {
   emu,
@@ -21,6 +23,7 @@ import {
   type TouchControl,
   type TouchControlId,
   type TouchLayout,
+  type TouchOrientation,
   type TouchSetup,
 } from '@/emu'
 import type { ErrorSink } from '@/i18n/labels'
@@ -31,7 +34,6 @@ import { canRedo, canUndo, commit, historyOf, redo, undo, type History } from '.
 import {
   elementIds,
   isScreen,
-  moveScreen,
   nextElement,
   nudgeScreen,
   ratioOf,
@@ -40,6 +42,7 @@ import {
   withScreen,
   type ElementId,
 } from './editorScreens'
+import { draftOf, layoutsToSave, turnHint, withDraft, type Drafts } from './orientationDrafts'
 import { prefsFrom } from './touchControls'
 import {
   activeLayout,
@@ -61,6 +64,7 @@ import {
   withOpacity,
   type Box,
 } from './touchLayout'
+import { DRAG_START, useScreenGesture } from './useScreenGesture'
 import { useStartScreens } from './useStartScreens'
 import { useArea, useControlBoxes } from './useTouchView'
 
@@ -75,10 +79,10 @@ export interface TouchEditorOptions {
   onError: ErrorSink
   /** The editor is done (saved or left). */
   close: () => void
+  /** On a phone: turning it switches orientation, so the hint suggests it. */
+  phone: () => boolean
 }
 
-/** How far a finger travels before a press on a control becomes a drag (CSS px). */
-const DRAG_START = 4
 /** An opacity step from the controller (per cent). */
 const OPACITY_STEP = 10
 
@@ -140,12 +144,19 @@ export function useTouchEditor(o: TouchEditorOptions) {
     draft.value.screens.length > 0 ? NO_INSET : reserved.value,
   )
 
+  /** The orientations left in this session, as they were left (the one on screen is live). */
+  const drafts = ref<Drafts>({})
+  /** The orientations shown in this session: the hint asks to turn to the other one. */
+  const shown = ref<TouchOrientation[]>([])
+
   // ---- Loading (rule 7: the newest answer only) ----
   const loads = latest()
 
+  /** The orientation on screen starts from its saved layout (or the default). */
   function start() {
     const s = setup.value
     if (!s) return
+    if (!shown.value.includes(orientation.value)) shown.value = [...shown.value, orientation.value]
     const layout = activeLayout(
       o.console,
       s,
@@ -175,7 +186,22 @@ export function useTouchEditor(o: TouchEditorOptions) {
       if (fresh()) o.onError(e)
     }
   }
-  watch(orientation, start)
+  /** The orientation on screen as a draft. */
+  const onScreen = () => ({ history: history.value, selected: selected.value })
+  /** The phone turned: the orientation left is kept as it is, the other one comes back as it was
+   * left, or starts. */
+  function turned(now: TouchOrientation, before: TouchOrientation) {
+    if (!setup.value) return
+    // A drag or pinch on its way holds the old orientation's layout: it ends here, with no step.
+    endGestures()
+    drafts.value = withDraft(drafts.value, before, onScreen())
+    const kept = draftOf(drafts.value, now)
+    if (!kept) return start()
+    history.value = kept.history
+    draft.value = kept.history.present
+    selected.value = kept.selected
+  }
+  watch(orientation, turned)
 
   /** Over a game: whether it shows its screens swapped, read once (the frames' proportions). */
   const swaps = latest()
@@ -281,7 +307,9 @@ export function useTouchEditor(o: TouchEditorOptions) {
     if (busy.value || !loaded.value || draft.value.controls.length === 0) return
     busy.value = true
     try {
-      await emu.touch.setLayout(o.console, orientation.value, draft.value)
+      const all = withDraft(drafts.value, orientation.value, onScreen())
+      const { portrait, landscape } = layoutsToSave(all, orientation.value)
+      await emu.touch.setLayouts(o.console, portrait, landscape)
       o.close()
     } catch (e) {
       o.onError(e)
@@ -303,54 +331,31 @@ export function useTouchEditor(o: TouchEditorOptions) {
     y: number
     spread: number | null
   } | null = null
-  /** A screen being dragged by one finger (`corner`: resized by its corner). */
-  let screenGesture: {
-    pointer: number
-    layout: TouchLayout
-    screen: CustomScreen
-    x: number
-    y: number
-    corner: boolean
-  } | null = null
+  /** A screen's frame under one finger (useScreenGesture). */
+  const screenGesture = useScreenGesture({
+    loaded,
+    area,
+    keep,
+    ratio,
+    draft,
+    startScreens,
+    shownScreens,
+    gesturing,
+    fingersDown: () => pointers.size > 0,
+    pick: id => {
+      selected.value = id
+      panel.value = panel.value === 'add' ? null : panel.value
+    },
+    apply,
+  })
 
-  /** A press on a screen's frame (`corner`: on its resize corner; ScreenFrame's `press`). */
-  function pressScreen(id: ScreenId, e: PointerEvent, corner: boolean) {
-    if (!loaded.value || pointers.size > 0 || (e.pointerType === 'mouse' && e.button !== 0)) return
-    const s = shownScreens.value.find(x => x.id === id)
-    if (!s) return
-    e.preventDefault()
-    selected.value = id
-    panel.value = panel.value === 'add' ? null : panel.value
-    screenGesture = {
-      pointer: e.pointerId,
-      layout: draft.value,
-      screen: s,
-      x: e.clientX,
-      y: e.clientY,
-      corner,
-    }
-  }
-
-  function moveScreenGesture(e: PointerEvent) {
-    const g = screenGesture
-    if (!g || g.pointer !== e.pointerId) return
-    const dx = e.clientX - g.x
-    const dy = e.clientY - g.y
-    if (!gesturing.value && Math.hypot(dx, dy) < DRAG_START) return
-    gesturing.value = true
-    const { width, height } = area.value
-    const s = g.screen
-    const next = g.corner
-      ? resizeScreen(s, s.w * width + dx, s.h * height + dy, keep.value, ratio(s.id), area.value)
-      : moveScreen(s, s.x * width + dx, s.y * height + dy, area.value, true)
-    draft.value = withScreen(g.layout, startScreens.value, next)
-  }
-
-  function endScreenGesture(e: PointerEvent) {
-    if (screenGesture?.pointer !== e.pointerId) return
-    screenGesture = null
-    if (gesturing.value) apply(draft.value)
+  /** Every finger let go of without a step: the layout shown goes back to the history's present. */
+  function endGestures() {
+    screenGesture.cancel()
+    pointers.clear()
+    gesture = null
     gesturing.value = false
+    draft.value = history.value.present
   }
 
   const spread = () => {
@@ -362,7 +367,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     if (!loaded.value || (e.pointerType === 'mouse' && e.button !== 0)) return
     // A screen's frame takes its own presses (`pressScreen`); a screen being dragged takes no
     // second finger.
-    if (screenGesture || (e.target as HTMLElement).closest(`[${SCREEN_ATTR}]`)) return
+    if (screenGesture.active() || (e.target as HTMLElement).closest(`[${SCREEN_ATTR}]`)) return
     const target = (e.target as HTMLElement).closest<HTMLElement>('[data-touch-control]')
     const id = target?.dataset.touchControl as TouchControlId | undefined
     if (pointers.size === 0 && !id) return
@@ -384,7 +389,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
 
   function pointerMove(e: PointerEvent) {
-    if (screenGesture) return moveScreenGesture(e)
+    if (screenGesture.active()) return screenGesture.move(e)
     const p = pointers.get(e.pointerId)
     if (!p || !gesture) return
     p.x = e.clientX
@@ -409,7 +414,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
 
   function pointerUp(e: PointerEvent) {
-    if (screenGesture) return endScreenGesture(e)
+    if (screenGesture.active()) return screenGesture.end(e)
     if (!pointers.delete(e.pointerId)) return
     if (pointers.size > 0) {
       // A pinch lost a finger: the other one goes on dragging from where the control is now.
@@ -581,6 +586,10 @@ export function useTouchEditor(o: TouchEditorOptions) {
     canUndo: computed(() => canUndo(history.value)),
     canRedo: computed(() => canRedo(history.value)),
     canSave: computed(() => loaded.value && draft.value.controls.length > 0),
+    /** The orientation to turn the phone to, while it was not shown in this session. */
+    turnHint: computed(() =>
+      loaded.value ? turnHint(shown.value, orientation.value, o.phone()) : null,
+    ),
     undo: doUndo,
     redo: doRedo,
     select,
@@ -596,7 +605,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     save,
     discard,
     pointerDown,
-    pressScreen,
+    pressScreen: screenGesture.press,
     pickNext,
     toggleCollapsed,
     own,

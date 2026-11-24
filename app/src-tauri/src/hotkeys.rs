@@ -62,6 +62,9 @@ pub enum HotkeyEvent {
     Turbo { held: bool },
     /// Paused or resumed without the menu.
     Paused { paused: bool },
+    /// The next screen layout (L3 + R3) did nothing: the phone's placement of the touch layout
+    /// holds the screens.
+    LayoutHeld,
 }
 
 /// Where a shortcut came from: a hold lasts while any of them holds it.
@@ -276,7 +279,11 @@ impl Runner {
             }
             // Two-screen games only (`Hotkey::status`): nothing with a one-screen game.
             Hotkey::SwapScreens => crate::screens::swap_hotkey(&self.app, true),
-            Hotkey::NextLayout => crate::screens::next_layout_hotkey(&self.app),
+            Hotkey::NextLayout => {
+                if crate::screens::next_layout_hotkey(&self.app) {
+                    self.emit(events::HOTKEY, HotkeyEvent::LayoutHeld);
+                }
+            }
             Hotkey::Lid => crate::screens::lid_hotkey(&self.app),
         }
     }

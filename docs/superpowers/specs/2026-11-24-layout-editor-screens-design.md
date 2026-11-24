@@ -71,6 +71,8 @@ background** (dark in Scuro / Nero, light in Chiaro) and the **dot grid goes awa
   console level, `.device()`, `.phone()`, never synced. It is still one save for the user:
   `touch_set_layout` writes `touch.tedit`, `touch.tscreens` and `touch.tport` / `tland` under the
   same settings lock, as it already writes `tedit` + `tport` today. Reset writes both.
+  (Follow-up branch `fix/layout-editor-polish`: the command became `touch_set_layouts`, which saves
+  both orientations the editor changed in one write.)
 - Value: one item per screen, `"<orientation>/<screen id>:<x>,<y>,<w>,<h>"` (fractions 0..1 of
   the whole window, 4 decimals), back to front; none for an orientation = no placement of the
   user's (the screens go where the chosen screen layout puts them, as today).

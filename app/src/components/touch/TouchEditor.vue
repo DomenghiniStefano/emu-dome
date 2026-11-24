@@ -22,11 +22,13 @@ import type { ConsoleId, CustomScreen, ScreenId } from '@/emu'
 import type { InsetPx } from '@/components/game/inset'
 import EditorHints from '@/components/screen-editor/EditorHints.vue'
 import ScreenFrame from '@/components/screen-editor/ScreenFrame.vue'
+import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useImmersive } from '@/composables/useImmersive'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavScope } from '@/nav'
 import { centreGuides, otherScreen } from './editorScreens'
 import TouchControl from './TouchControl.vue'
+import TouchEditorCaption from './TouchEditorCaption.vue'
 import TouchEditorPill from './TouchEditorPill.vue'
 import TouchToolPanel from './TouchToolPanel.vue'
 import TouchToolbar from './TouchToolbar.vue'
@@ -49,12 +51,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const root = ref<HTMLElement | null>(null)
+/** A phone, upright or on its side: the hint to turn it shows only there. */
+const { touchDensity } = useDeviceLayout()
 const editor = useTouchEditor({
   console: props.console,
   live: props.live,
   root,
   onError: useErrorSink(),
   close: () => emit('close'),
+  phone: () => touchDensity.value,
 })
 const {
   draft,
@@ -196,9 +201,11 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
       :class="fade"
     >
       <template v-if="!collapsed">
-        <span class="rounded-full border border-line px-12 py-4 text-caption glass-thick-flat">
-          {{ where }}
-        </span>
+        <TouchEditorCaption>{{ where }}</TouchEditorCaption>
+        <!-- Until the other orientation was shown: its layout is saved with this one. -->
+        <TouchEditorCaption v-if="editor.turnHint.value">
+          {{ t(`touch.editor.turnHint.${editor.turnHint.value}`) }}
+        </TouchEditorCaption>
         <TouchToolbar
           ref="toolbar"
           class="w-full"
@@ -241,12 +248,9 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
           @keep="editor.setKeep"
         />
         <!-- Why opacity, behaviour and remove are off for a screen (X05). -->
-        <span
-          v-else-if="currentScreen"
-          class="rounded-full border border-line px-12 py-4 text-caption glass-thick-flat"
-        >
+        <TouchEditorCaption v-else-if="currentScreen">
           {{ t('touch.editor.screenOnly') }}
-        </span>
+        </TouchEditorCaption>
       </template>
       <TouchEditorPill
         v-else

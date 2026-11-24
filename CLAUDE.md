@@ -438,7 +438,7 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          one hold shared by both), screens.rs (the open game's `ScreenSession` carried out:
                          the renderer's layout, `emu://screens`, the lid chord pressed on the core, the
                          `screens_*` commands, `screens_set_phone` (the phone's placement of the open game,
-                         empty withdraws it) and `screens_phone_start` (where the editor starts it, which
+                         empty withdraws it, with the inset it is fitted in: one renderer message) and `screens_phone_start` (where the editor starts it, which
                          replaced `screens_preview`); the webview canvas gets its placements from
                          `screens_placements`), tuning.rs (developer / bench knobs from the environment),
                          window.rs (the app's names for emudome_platform::create_window, and
@@ -495,12 +495,14 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          `covers/<console>-<hex>.user-<rev>.jpg`: the picked image kept in memory on
                          emu://picked/<token>, a game's screenshots listed and served on
                          emu://screenshot/<console>-<hex>/<name>, #85)
-                         touch.rs (#29: touch_layouts / touch_set_layout (C06's «Salva»: the layout of one
-                         orientation into `touch.tedit` and its screens into `touch.tscreens` (#134: its own
+                         touch.rs (#29: touch_layouts / touch_set_layouts (C06's «Salva»: the layout of each
+                         orientation given (portrait, landscape, or both; one not given kept as stored)
+                         into `touch.tedit` and its screens into `touch.tscreens` (#134: its own
                          key beside it, console level, per device, never synced, so older builds read
                          `touch.tedit` untouched; `Layouts::read` joins the two) at the console's level,
-                         that orientation's `touch.tport` / `touch.tland` to `custom`, the three in one
-                         `Settings::set_many` write), touch_stick (the Circle Pad), haptic)
+                         each given orientation's `touch.tport` / `touch.tland` to `custom`, all in one
+                         `Settings::set_many` write; one invalid layout refuses the whole save),
+                         touch_stick (the Circle Pad), haptic)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
                          emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
@@ -529,9 +531,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          screens are its elements too, #134: C09's ScreenFrame, placeholders on the
                          theme's flat ground with no game, the game itself placed live over one
                          (`placement` + `inset`); editorScreens.ts their geometry, useStartScreens
-                         where they start (`screens_phone_start`); useTouchEditor the state,
-                         editorHistory.ts undo / redo, editorToolbar.ts what fits and what goes into
-                         «Altro» and which tools a screen has); E14
+                         where they start (`screens_phone_start`); useTouchEditor the state (a finger on a screen useScreenGesture),
+                         editorHistory.ts undo / redo, orientationDrafts.ts one draft per orientation
+                         (kept across a turn, both saved by one «Salva», the hint to turn the phone),
+                         editorToolbar.ts what fits and what goes into «Altro» and which tools a screen
+                         has); E14
                          ControllerLostDialog / useControllerLoss (controllerLoss.ts the rule); all the
                          pure modules tested),
                          screen-editor (C09, Trello #28: ScreenEditor over the game at its real size, from
@@ -630,10 +634,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     a 360 px phone; the touch controls' inset carries the rest (`Inset::between`, `Align::Apart`
     upright, `Align::Top` on the side), so both renderers and `pointer` get the same placements.
     A phone placement saved in C06 (#134, `touch.tscreens`) replaces the chosen layout while the touch controls are
-    in use: `TouchLayer` sends it (`screens_set_phone`, before the inset) and withdraws it when the controls are
-    hidden (`touch.tpad`; `touch.thide` only fades them). It is placed over the whole window, not in what the
+    in use: `TouchLayer` sends it and withdraws it when the controls are
+    hidden (`touch.tpad`; `touch.thide` only fades them); `useGameSession` sends a placement and the inset of the
+    same change as one call (`screens_set_phone` with the inset, `Renderer::set_view`), so no frame pairs the new
+    placement with the old inset; an inset alone stays `set_video_inset`. It is placed over the whole window, not in what the
     controls leave (they may overlap it); the quick menu's inset scales it uniformly to make room and it comes
-    back at its size when the menu closes; G09 says «Dalla disposizione touch» and offers no cycle.
+    back at its size when the menu closes; G09 says «Dalla disposizione touch» and offers no cycle, and L3 + R3
+    shows G09's reason as a toast (`emu://hotkey` `layoutHeld`).
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
     lock and swaps it in; readers (texture upload, the webview's copy, PNG thumbnails and screenshots) clone the
@@ -759,7 +766,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Events, every name a constant of `app/src-tauri/src/events.rs` (`<domain>://<event>`; `emu://` the emulator,
   `library://`, `settings://`, `saves://` theirs): `emu://session` (the session's `Event`s), `emu://gamepad-connected`,
   `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`
-  (`{ system }`), `emu://nav` (`{ action, system }`; `system`: Android's back button), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
+  (`{ system }`), `emu://nav` (`{ action, system }`; `system`: Android's back button), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused, layoutHeld: L3 + R3 under
+  the touch layout's placement),
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
   `library://changed` (`LibraryChanged`: the rows that changed, the families of regional versions, or the
   whole library), `library://scan`,

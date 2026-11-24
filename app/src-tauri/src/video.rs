@@ -189,6 +189,8 @@ enum Msg {
     EffectListener(EffectListener),
     /// How the screens are placed (`crate::screens`).
     Layout(Layout),
+    /// A layout and the inset it is fitted in, applied together (the phone's placement).
+    View(Layout, Inset),
     /// `video.filter`: how the plain image is smoothed.
     Smoothing(Smoothing),
     /// `video.vsync`.
@@ -313,6 +315,12 @@ impl Renderer {
     /// `emudome_core::screens::compose` puts it. Kept across games and surfaces.
     pub fn set_layout(&self, layout: Layout) {
         self.send(Msg::Layout(layout));
+    }
+
+    /// [`Self::set_layout`] and [`Self::set_inset`] in one message, so no frame is drawn with
+    /// one of them new and the other old (the phone's placement and the edges it is fitted in).
+    pub fn set_view(&self, layout: Layout, inset: Inset) {
+        self.send(Msg::View(layout, inset));
     }
 
     /// How the plain image is smoothed when enlarged (`video.filter`). Kept across games and
@@ -527,6 +535,10 @@ impl Video {
             Msg::Effect(effect) => self.effect = effect,
             Msg::EffectListener(listener) => self.effect_listener = Some(listener),
             Msg::Layout(layout) => self.layout = layout,
+            Msg::View(layout, inset) => {
+                self.layout = layout;
+                self.inset = inset;
+            }
             Msg::Smoothing(smoothing) => self.smoothing = smoothing,
             Msg::Vsync(on) => {
                 let mode = vsync_mode(on);
