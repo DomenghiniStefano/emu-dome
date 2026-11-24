@@ -105,6 +105,12 @@ and `main.yml` share):
    commit `chore: <version>`; `./scripts/check.ps1` green on it (the merge rule).
 2. Merge `develop` into `stage` and push `stage`: the run builds and uploads. A failed run uploads nothing.
 
+A build from Google Play and a debug build (`android-build`, adb) are signed with different keys: Android cannot
+install one over the other, and the switch means uninstalling, which deletes the app's private folder (every save,
+state, setting and the library). The manifest's `hasFragileUserData` makes the uninstall ask whether to keep that
+data, but data kept that way is only taken back by a build with the same signature. Copy what matters out first
+(each game's «Esporta…» in the saves) before going from one to the other.
+
 Once, by the owner, before the first run:
 - Play Console (the DomeHub account): create the app `it.domehub.emudome`, turn on Play App Signing, and upload the
   first AAB by hand (Play takes uploads through its API only for an app that has one): `./scripts/android-build.ps1
