@@ -52,7 +52,7 @@ const flush = () => new Promise(r => setTimeout(r, 0))
 const pointer = (type: string, x: number, y: number, id = 1) =>
   new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, pointerType: 'touch' })
 
-async function setup() {
+async function setup(phone = true) {
   const close = vi.fn()
   const onError = vi.fn()
   let editor!: ReturnType<typeof useTouchEditor>
@@ -60,7 +60,14 @@ async function setup() {
     defineComponent({
       setup() {
         const root = ref<HTMLElement | null>(null)
-        editor = useTouchEditor({ console: 'nds', live: true, root, onError, close })
+        editor = useTouchEditor({
+          console: 'nds',
+          live: true,
+          root,
+          onError,
+          close,
+          phone: () => phone,
+        })
         return () => h('div', { ref: root })
       },
     }),
@@ -301,6 +308,11 @@ describe('both orientations in one session', () => {
     await turn(HEIGHT, WIDTH)
     expect(editor.turnHint.value).toBeNull()
     await turn(WIDTH, HEIGHT)
+    expect(editor.turnHint.value).toBeNull()
+  })
+
+  it('says nothing about turning away from a phone', async () => {
+    const { editor } = await setup(false)
     expect(editor.turnHint.value).toBeNull()
   })
 })

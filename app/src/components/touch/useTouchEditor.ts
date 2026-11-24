@@ -79,6 +79,8 @@ export interface TouchEditorOptions {
   onError: ErrorSink
   /** The editor is done (saved or left). */
   close: () => void
+  /** On a phone: turning it switches orientation, so the hint suggests it. */
+  phone: () => boolean
 }
 
 /** An opacity step from the controller (per cent). */
@@ -585,7 +587,9 @@ export function useTouchEditor(o: TouchEditorOptions) {
     canRedo: computed(() => canRedo(history.value)),
     canSave: computed(() => loaded.value && draft.value.controls.length > 0),
     /** The orientation to turn the phone to, while it was not shown in this session. */
-    turnHint: computed(() => (loaded.value ? turnHint(shown.value, orientation.value) : null)),
+    turnHint: computed(() =>
+      loaded.value ? turnHint(shown.value, orientation.value, o.phone()) : null,
+    ),
     undo: doUndo,
     redo: doRedo,
     select,

@@ -22,6 +22,7 @@ import type { ConsoleId, CustomScreen, ScreenId } from '@/emu'
 import type { InsetPx } from '@/components/game/inset'
 import EditorHints from '@/components/screen-editor/EditorHints.vue'
 import ScreenFrame from '@/components/screen-editor/ScreenFrame.vue'
+import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import { useImmersive } from '@/composables/useImmersive'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavScope } from '@/nav'
@@ -50,12 +51,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const root = ref<HTMLElement | null>(null)
+/** A phone, upright or on its side: the hint to turn it shows only there. */
+const { touchDensity } = useDeviceLayout()
 const editor = useTouchEditor({
   console: props.console,
   live: props.live,
   root,
   onError: useErrorSink(),
   close: () => emit('close'),
+  phone: () => touchDensity.value,
 })
 const {
   draft,

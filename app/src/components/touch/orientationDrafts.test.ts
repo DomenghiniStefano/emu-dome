@@ -53,8 +53,11 @@ describe('what «Salva» writes', () => {
 
 describe('the hint to turn the phone', () => {
   it('names the orientation not shown yet, and goes once both were', () => {
-    expect(turnHint(['portrait'], 'portrait')).toBe('landscape')
-    expect(turnHint(['landscape'], 'landscape')).toBe('portrait')
-    expect(turnHint(['portrait', 'landscape'], 'landscape')).toBeNull()
+    expect(turnHint(['portrait'], 'portrait', true)).toBe('landscape')
+    expect(turnHint(['landscape'], 'landscape', true)).toBe('portrait')
+    expect(turnHint(['portrait', 'landscape'], 'landscape', true)).toBeNull()
+  })
+  it('only on a phone: elsewhere there is nothing to turn', () => {
+    expect(turnHint(['portrait'], 'portrait', false)).toBeNull()
   })
 })

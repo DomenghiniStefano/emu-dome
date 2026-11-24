@@ -46,11 +46,12 @@ export function layoutsToSave(
 }
 
 /** The orientation to suggest turning the phone to: the other one while it was not shown in this
- * session; `null` once both were. */
+ * session; `null` once both were, and away from a phone (`phone` false: nothing to turn). */
 export function turnHint(
   shown: readonly TouchOrientation[],
   current: TouchOrientation,
+  phone: boolean,
 ): TouchOrientation | null {
   const other: TouchOrientation = current === 'portrait' ? 'landscape' : 'portrait'
-  return shown.includes(other) ? null : other
+  return !phone || shown.includes(other) ? null : other
 }
