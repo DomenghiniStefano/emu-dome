@@ -1,14 +1,7 @@
 # A test build for Google Play's internal testing track (docs/release.md, «Test builds»): every push to
-# `stage` builds the signed Android App Bundle with scripts/android-build.sh and uploads it there.
-# The version is Cargo.toml's (scripts/versions.mjs); it must be higher than the last upload's, or Play
-# refuses the upload (raise it with `node scripts/versions.mjs bump` on develop before merging into stage).
-#
-# Secrets, in the GitHub environment `play-internal` (Settings > Environments, deployments limited to the
-# `stage` branch), never in the repository:
-#   EMUDOME_KEYSTORE_BASE64     the upload keystore, base64 (Play App Signing holds the app's own key)
-#   EMUDOME_KEYSTORE_PASSWORD, EMUDOME_KEY_ALIAS, EMUDOME_KEY_PASSWORD
-#   PLAY_SERVICE_ACCOUNT_JSON   the Google Play service account's JSON key (release manager on the app)
-# Every action is pinned to a commit (the tag it was in the comment).
+# `stage` builds the signed Android App Bundle and uploads it there (play-release.yml).
+# Environment `play-internal`: deployments limited to the `stage` branch; its service account can release to
+# the testing tracks only.
 
 name: stage
 
@@ -26,74 +19,7 @@ concurrency:
 
 jobs:
   play-internal:
-    runs-on: ubuntu-24.04
-    environment: play-internal
-    timeout-minutes: 120
-    env:
-      NDK_VERSION: 27.1.12297006
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-        with:
-          package_json_file: app/package.json
-
-      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
-
-      # compileSdk 37 is the package android-37.0 (platforms carry a minor number since Android 16).
-      - name: Android platform and NDK
-        run: sdkmanager "platforms;android-37.0" "ndk;$NDK_VERSION"
-
-      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
-        with:
-          targets: aarch64-linux-android
-
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-
-      - name: Version
-        run: echo "EmuDome $(node scripts/versions.mjs print)" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload keystore (outside the repository)
-        env:
-          KEYSTORE_BASE64: ${{ secrets.EMUDOME_KEYSTORE_BASE64 }}
-        run: |
-          [ -n "$KEYSTORE_BASE64" ] || { echo 'EMUDOME_KEYSTORE_BASE64 is not set'; exit 1; }
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
-
-      - name: Signed App Bundle
-        env:
-          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
-          EMUDOME_KEYSTORE: ${{ runner.temp }}/upload.jks
-          EMUDOME_KEYSTORE_PASSWORD: ${{ secrets.EMUDOME_KEYSTORE_PASSWORD }}
-          EMUDOME_KEY_ALIAS: ${{ secrets.EMUDOME_KEY_ALIAS }}
-          EMUDOME_KEY_PASSWORD: ${{ secrets.EMUDOME_KEY_PASSWORD }}
-        run: sh scripts/android-build.sh --bundle
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: emudome-aab
-          path: app/src-tauri/gen/android/app/build/outputs/bundle/arm64Release/app-arm64-release.aab
-          retention-days: 14
-
-      - uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: it.domehub.emudome
-          releaseFiles: app/src-tauri/gen/android/app/build/outputs/bundle/arm64Release/app-arm64-release.aab
-          track: internal
-          status: completed
-
-      - name: Forget the keystore
-        if: always()
-        run: rm -f "$RUNNER_TEMP/upload.jks"
+    uses: ./.github/workflows/play-release.yml
+    with:
+      environment: play-internal
+      track: internal

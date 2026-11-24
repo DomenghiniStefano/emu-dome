@@ -96,7 +96,8 @@ to end yet: no release exists.
 ## Test builds (Google Play's internal testing)
 
 The 0.0.x versions go to testers through Google Play's internal testing track (no review, up to 100 testers
-added by their Google account's address). `.github/workflows/stage.yml` does it on every push to `stage`:
+added by their Google account's address). `.github/workflows/stage.yml` does it on every push to `stage`, through `play-release.yml` (the job `stage.yml`
+and `main.yml` share):
 `sh scripts/android-build.sh --bundle` on an Ubuntu runner, then the AAB uploaded to the `internal` track
 (r0adkll/upload-google-play, MIT, pinned to a commit), the AAB also kept 14 days as the run's artifact.
 
@@ -129,8 +130,9 @@ Once, by the owner, before the first run:
 
 1. On `develop`, raise the version (`node scripts/versions.mjs bump`); `./scripts/check.ps1` green on that commit
    (the merge rule).
-2. Merge `develop` into `main` (fast-forward) and tag that commit `v<version>` (an annotated tag) on `main`. The tag
-   is the release: every package of it is built from the tagged commit, never from a working copy.
+2. Merge `develop` into `main` (fast-forward) and push it: `main.yml` builds the Android package and, after your
+   approval, tags that commit `v<version>`. The tag is the release: every package of it is built from the tagged
+   commit, never from a working copy.
 3. Build each package **from a clean clone** of the tag (`git clone --branch v<version>`, no leftovers in
    `target/`, `node_modules/` or `cores/`):
    - `./scripts/check.ps1` (Windows) / `sh scripts/check` (Linux) green in that clone;
@@ -152,7 +154,14 @@ Once, by the owner, before the first run:
      the APK, `cores/SOURCES.md` and the licences next to them (the source offer for the cores,
      `THIRD_PARTY.md`). Upload `latest.json` last: from then on every installed app sees the new version;
    - **domehub.it**, the same files;
-   - **Google Play**, under the DomeHub developer account: the AAB of `-Bundle`.
+   - **Google Play**, under the DomeHub developer account: `.github/workflows/main.yml` on the push to `main`
+     builds the AAB and, once the owner approves the deployment (the environment `play-production`: `main` only,
+     the owner as required reviewer, its own service account with the production rights), uploads it to the
+     production track and tags the commit `v<version>` (a lightweight tag, made by the run; a version already
+     tagged stops it before the build). Run by hand (Actions > main > Run workflow) it can go to the closed
+     testing track `alpha` instead, tagging nothing: a personal Play account needs a closed test with at least
+     12 testers for 14 days before its first production release. The desktop packages are not in the workflow
+     yet (the steps above).
 5. Merge `main` back into `develop` if anything was committed on the way.
 
 ## A new pin of a core EmuDome builds (today mGBA, and melonDS DS for Android)
