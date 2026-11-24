@@ -10,7 +10,9 @@ import {
   recentlyPlayed,
   resumeSource,
   resumeTarget,
+  showReconnectHint,
   unreachableFolders,
+  type UnreachableFolder,
 } from './libraryView'
 
 // emu.ts reaches for the Tauri bridge when it loads; these functions need only its constant.
@@ -79,16 +81,30 @@ describe('recentlyPlayed', () => {
 describe('unreachableFolders', () => {
   it('lists the folders that are gone with how many games they hold', () => {
     const folders: LibraryFolder[] = [
-      { path: 'C:/Games', name: 'C:/Games', reachable: true },
-      { path: 'D:/Old', name: 'D:/Old', reachable: false },
-      { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', reachable: false },
+      { path: 'C:/Games', name: 'C:/Games', access: 'reachable' },
+      { path: 'D:/Old', name: 'D:/Old', access: 'unreachable' },
+      { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', access: 'permissionLost' },
     ]
     const games = [game('a', { folder: 'D:/Old' }), game('b'), game('c', { folder: 'D:/Old' })]
     expect(unreachableFolders(folders, games)).toEqual([
-      { path: 'D:/Old', name: 'D:/Old', count: 2 },
-      // A picked Android folder: shown by its name, its games found by its URI.
-      { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', count: 0 },
+      { path: 'D:/Old', name: 'D:/Old', count: 2, access: 'unreachable' },
+      // A picked Android folder: shown by its name, its games found by its URI, and why (#138).
+      { path: 'content://x/tree/primary%3AROMs', name: 'ROMs', count: 0, access: 'permissionLost' },
     ])
+  })
+})
+
+describe('showReconnectHint', () => {
+  const folder = (access: UnreachableFolder['access']): UnreachableFolder => ({
+    path: 'p',
+    name: 'p',
+    count: 1,
+    access,
+  })
+  it('asks to reconnect a drive only when a folder may be on one (#138)', () => {
+    expect(showReconnectHint([])).toBe(false)
+    expect(showReconnectHint([folder('permissionLost')])).toBe(false)
+    expect(showReconnectHint([folder('permissionLost'), folder('unreachable')])).toBe(true)
   })
 })
 

@@ -214,6 +214,10 @@ pub enum ErrorCode {
     SettingsReadFailed { cause: IoCause },
     /// A library folder cannot be read now (missing, disconnected drive, no permission).
     LibraryFolderUnreachable { path: String },
+    /// A picked Android folder whose read permission the app no longer holds (taken back by
+    /// Android when the app was uninstalled with its data kept): picking it again is enough.
+    /// `path` is what the interface shows (the folder's name).
+    LibraryFolderPermissionLost { path: String },
     /// No game in the library has this id.
     LibraryGameUnknown { id: String },
     /// The game is in the library but its file cannot be reached now.

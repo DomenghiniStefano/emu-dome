@@ -13,7 +13,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { emu, type GameId, type LibraryGame } from '@/emu'
 import { useErrorSink } from '@/composables/useToasts'
-import { library } from '@/lib/library'
+import { library, unavailableError } from '@/lib/library'
 import { Tabs, TabsList, TabsSize, TabsTrigger } from '@/design-system/components/tabs'
 import CoverPicker from '@/components/cover/CoverPicker.vue'
 import DetailsControls from './DetailsControls.vue'
@@ -63,7 +63,7 @@ function play() {
   const g = game.value
   if (!g) return
   if (!g.available) {
-    failWith({ code: 'libraryGameUnavailable', params: { id: g.id } })
+    failWith(unavailableError(g, library.folders, t('library.folderUnnamed')))
     return
   }
   emit('play', g, resume.value?.slot ?? undefined)
@@ -72,7 +72,7 @@ function play() {
 /** «Versioni» › «Gioca questa» (#102): that version, or why it cannot start. */
 function playVersion(g: LibraryGame) {
   if (!g.available) {
-    failWith({ code: 'libraryGameUnavailable', params: { id: g.id } })
+    failWith(unavailableError(g, library.folders, t('library.folderUnnamed')))
     return
   }
   emit('play', g)

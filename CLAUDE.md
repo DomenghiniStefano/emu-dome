@@ -222,7 +222,10 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
   permission persisted. A folder is stored in `library.folders` as its tree URI (never a path; the desktop's paths
   unchanged), shown by its display name (`LibraryFolder.name`), walked by the scan one `listTree` call per folder
   (`emudome_core::library::scan_with_documents`, games keyed by document URI + size + mtime), unreachable (E01) when
-  it cannot be listed (permission given back, folder gone), its persisted permission given back when removed; not
+  it cannot be listed (permission given back, folder gone; `LibraryFolder.access`: `permissionLost` when the app no
+  longer holds the tree's persisted permission, `SystemBridge.treePermitted`, as after an uninstall that kept the data,
+  #138: E01 then says to pick it again, and picking the same folder keeps its entry and games), its persisted
+  permission given back when removed; not
   watched (rescan at start / on demand). Every document is read through its descriptor (`ContentFile::reader`):
   Android 17 refuses `/proc/self/fd/<fd>` for some providers (Downloads, «Permission denied»), so identification,
   hashing, icons and the bytes a core gets come from the descriptor; a `need_fullpath` core (Azahar) gets the link's

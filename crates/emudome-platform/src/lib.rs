@@ -502,6 +502,14 @@ pub fn document_tree_name(tree: &str) -> Option<String> {
     imp::document_tree_name(tree)
 }
 
+/// Whether the app still holds the persisted read permission of the picked tree `tree`:
+/// `Some(false)` when it is known to be gone (Android takes it back when the app is
+/// uninstalled, even with its data kept), `None` when it cannot be told (and on the desktop,
+/// which has no trees). Blocks on the system.
+pub fn document_tree_permitted(tree: &str) -> Option<bool> {
+    imp::document_tree_permitted(tree)
+}
+
 /// Gives back the persisted read permission of the tree `tree` (a folder removed from the
 /// library). Nothing on the desktop.
 pub fn release_document_tree(tree: &str) {

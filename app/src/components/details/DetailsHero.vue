@@ -9,7 +9,8 @@ import { useI18n } from 'vue-i18n'
 import { ChevronLeft, Heart } from '@lucide/vue'
 import type { LibraryGame } from '@/emu'
 import type { ResumePoint } from '@/lib/gameDetails'
-import { playTimeLabel, saveWhenLabel } from '@/i18n/labels'
+import { errorText, playTimeLabel, saveWhenLabel } from '@/i18n/labels'
+import { library, unavailableError } from '@/lib/library'
 import { Button, ButtonSize, ButtonVariant } from '@/design-system/components/button'
 import GameCover from '@/components/cover/GameCover.vue'
 import { CoverSize } from '@/components/cover/variants'
@@ -36,6 +37,11 @@ const meta = computed(() => {
     when: saveWhenLabel(g.lastPlayed),
   })
 })
+
+/** Why the game does not start (#138: a folder whose permission Android took back says so). */
+const unavailable = computed(() =>
+  errorText(unavailableError(props.game, library.folders, t('library.folderUnnamed'))),
+)
 
 const more = ref<InstanceType<typeof GameMoreButton> | null>(null)
 defineExpose({
@@ -117,7 +123,7 @@ defineExpose({
           />
         </div>
         <p v-if="!game.available" class="m-0 text-caption text-warning">
-          {{ t('errors.libraryGameUnavailable') }}
+          {{ unavailable }}
         </p>
       </div>
     </div>

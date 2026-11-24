@@ -32,13 +32,13 @@ import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import { uiMode } from '@/composables/useUiMode'
 import { useErrorSink, useToasts } from '@/composables/useToasts'
 import type { GameId, LibraryGame } from '@/emu'
-import { chooseFolder, library, replaceFolder } from '@/lib/library'
+import { chooseFolder, library, replaceFolder, unavailableError } from '@/lib/library'
 import ContinuePlaying from './ContinuePlaying.vue'
 import CoverGrid from './CoverGrid.vue'
 import GameList from './GameList.vue'
 import LibraryToolbar from './LibraryToolbar.vue'
 import PhoneLibraryToolbar from './PhoneLibraryToolbar.vue'
-import { recentlyPlayed, resumeTarget, unreachableFolders } from './libraryView'
+import { recentlyPlayed, resumeTarget, showReconnectHint, unreachableFolders } from './libraryView'
 import ScanProgress from './ScanProgress.vue'
 import ScanSummary from './ScanSummary.vue'
 import UnreachableBanner from './UnreachableBanner.vue'
@@ -103,7 +103,7 @@ useLibraryFocus(root, anchor, () => view.value !== null)
 /** Opens a game, or says why not when its folder is not reachable. */
 function open(g: LibraryGame, slot?: number) {
   if (!g.available) {
-    failWith({ code: 'libraryGameUnavailable', params: { id: g.id } })
+    failWith(unavailableError(g, library.folders, t('library.folderUnnamed')))
     return
   }
   emit('open', g, slot)
@@ -231,7 +231,7 @@ const shelves = computed(
           {{ t('library.clearFilters') }}
         </Button>
       </div>
-      <p v-if="unreachable.length" class="m-0 text-ink-muted">
+      <p v-if="showReconnectHint(unreachable)" class="m-0 text-ink-muted">
         <TriangleAlert
           class="flex-none align-icon text-warning"
           :size="14"

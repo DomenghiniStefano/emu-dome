@@ -10,6 +10,7 @@ import { computed, markRaw, reactive } from 'vue'
 import {
   emu,
   type ConsoleId,
+  type ErrorCode,
   type GameFamily,
   type GameId,
   type Library,
@@ -68,6 +69,26 @@ export const libraryFamilies = computed(() => familyIndex(library.families))
  */
 export function folderLabel(folders: LibraryFolder[], path: string, unnamed: string): string {
   return folders.find(f => f.path === path)?.name ?? unnamed
+}
+
+/**
+ * Why a game that is not available does not start: a folder whose read permission Android took
+ * back says so (#138: picking the folder again is enough), anything else is the file not found.
+ * `unnamed` as in `folderLabel`.
+ */
+export function unavailableError(
+  game: Pick<LibraryGame, 'id' | 'folder'>,
+  folders: LibraryFolder[],
+  unnamed: string,
+): ErrorCode {
+  const folder = folders.find(f => f.path === game.folder)
+  if (folder?.access === 'permissionLost') {
+    return {
+      code: 'libraryFolderPermissionLost',
+      params: { path: folderLabel(folders, folder.path, unnamed) },
+    }
+  }
+  return { code: 'libraryGameUnavailable', params: { id: game.id } }
 }
 
 let before: Set<GameId> | null = null

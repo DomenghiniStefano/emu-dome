@@ -117,6 +117,10 @@
       "choose": "Scegli un’altra cartella",
       "hint": "Ricollega il disco e la libreria si aggiorna da sola."
     },
+    "permissionLost": {
+      "text": "EmuDome non ha più il permesso di leggere la cartella {path}. Sceglila di nuovo: giochi e salvataggi restano come sono.",
+      "choose": "Scegli di nuovo la cartella"
+    },
     "cover": {
       "choose": "Scegli la copertina di {title}",
       "title": "Scegli la copertina di {title}",
@@ -557,6 +561,7 @@
     "settingsWriteFailed": "Non riesco a salvare le impostazioni. {cause}",
     "settingsReadFailed": "Non riesco a leggere il file delle impostazioni, quindi la modifica non è stata salvata e il file è rimasto com’era. {cause}",
     "libraryFolderUnreachable": "La cartella {path} non è raggiungibile: forse il disco è scollegato. Ricollegalo o scegli un’altra cartella.",
+    "libraryFolderPermissionLost": "EmuDome non ha più il permesso di leggere la cartella {path}, quindi questo gioco non si avvia. Sceglila di nuovo dalla libreria: giochi e salvataggi restano come sono.",
     "libraryGameUnknown": "Questo gioco non è più nella libreria. Cerca di nuovo i giochi dalla libreria.",
     "libraryGameUnavailable": "Il file del gioco non si trova più. Ricollega il disco o aggiungi di nuovo la sua cartella.",
     "libraryWriteFailed": "Non riesco a salvare la libreria. {cause}",
