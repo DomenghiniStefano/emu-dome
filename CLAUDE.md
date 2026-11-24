@@ -982,7 +982,9 @@ Prettier on the staged frontend files).
 **Checked by the Rust ↔ TypeScript contract** (Trello #73, in `cargo test` and Vitest; see the section below): the
 bridge's types and the `SettingKey` union are generated and not stale; every `ErrorCode` has `errors.<code>` in both
 message files; en.json and it.json have the same keys, placeholders and plural cases; every catalogue key, option,
-page, section and group has its texts and no text is left for a key the catalogue lost; the keys the Rust code reads
+page, section and group has its texts and no text is left for a key the catalogue lost; a setting's description
+names a key (F9, L3 + X…) only in its `keys.keyboard` / `keys.controller` part, which the row shows only for an input
+that is there (#148, `descWithKeys`; `speed.ffmode`, the Tab key's own setting, excepted); the keys the Rust code reads
 exist with the kind it reads (at compile time, `settings/keys.rs`); the catalogue entries nothing reads are an exact
 list in a test and shown disabled. Seen failing once on a new `ErrorCode` variant, a renamed key, a missing key and a
 key of the wrong kind.
