@@ -13,8 +13,9 @@
 //   node scripts/versions.mjs [--self-test]   the check (a step of scripts/check): the version is a plain
 //                                             x.y.z in Cargo.toml and written nowhere else
 //   node scripts/versions.mjs print           the version
-//   node scripts/versions.mjs bump [patch|minor|major]
+//   node scripts/versions.mjs bump [patch|minor|major|x.y.z]
 //                                             raises it in Cargo.toml (and Cargo.lock), prints the new one
+//                                             (a release goes through scripts/release.mjs, which calls it)
 //   node scripts/versions.mjs tauri-config    writes target/emudome-version.tauri.json ({ "version" }) and
 //                                             prints its path, for `pnpm tauri ... --config <path>`
 //
@@ -65,14 +66,27 @@ function withWorkspaceVersion(cargoToml, version) {
   return lines.map((l, i) => (i === at ? l.replace(VERSION_LINE, `$1${version}$3`) : l)).join('\n')
 }
 
+const parts = (version) => PLAIN.exec(version).slice(1).map(Number)
+
+// Whether a is a higher version than b (both plain x.y.z).
+const higher = (a, b) => {
+  const [x, y] = [parts(a), parts(b)]
+  const at = x.findIndex((n, i) => n !== y[i])
+  return at !== -1 && x[at] > y[at]
+}
+
+// The version after `version`: a part raised (patch, minor, major) or a plain x.y.z above it.
 function bumped(version, part) {
-  const m = PLAIN.exec(version)
-  if (!m) throw new Error(`the version ${version} is not a plain x.y.z`)
-  const [major, minor, patch] = m.slice(1).map(Number)
+  if (!PLAIN.test(version)) throw new Error(`the version ${version} is not a plain x.y.z`)
+  if (PLAIN.test(part)) {
+    if (!higher(part, version)) throw new Error(`${part} is not higher than ${version}`)
+    return part
+  }
+  const [major, minor, patch] = parts(version)
   if (part === 'major') return `${major + 1}.0.0`
   if (part === 'minor') return `${major}.${minor + 1}.0`
   if (part === 'patch') return `${major}.${minor}.${patch + 1}`
-  throw new Error(`unknown part ${part} (patch, minor, major)`)
+  throw new Error(`unknown version ${part} (patch, minor, major or a plain x.y.z)`)
 }
 
 function workspaceMembers(cargoToml) {
@@ -133,10 +147,20 @@ function selfTest() {
     ['patch', '1.2.4'],
     ['minor', '1.3.0'],
     ['major', '2.0.0'],
+    ['1.10.0', '1.10.0'],
   ]
   for (const [part, expected] of bumps) {
     if (bumped('1.2.3', part) !== expected) wrong.push(`bump ${part}`)
   }
+  const refuses = (part) => {
+    try {
+      bumped('1.2.3', part)
+      return false
+    } catch {
+      return true
+    }
+  }
+  wrong.push(...['1.2.3', '1.2.2', '0.9.9', 'next'].filter((p) => !refuses(p)).map((p) => `bump to ${p} refused`))
   const rewritten = withWorkspaceVersion(cargoToml, '1.2.4')
   if (workspaceVersion(rewritten) !== '1.2.4' || rewritten.replace('1.2.4', '1.2.3') !== cargoToml) {
     wrong.push('rewrite keeps the other lines')
@@ -175,12 +199,20 @@ export function currentVersion() {
   return version
 }
 
-function bump(part) {
-  const next = bumped(currentVersion(), part)
+// The version `raiseVersion(part)` would write (scripts/release.mjs's dry run).
+export const nextVersion = (part) => bumped(currentVersion(), part)
+
+// Raises the version in Cargo.toml (and Cargo.lock) and returns the new one.
+export function raiseVersion(part) {
+  const next = nextVersion(part)
   writeFileSync(root + 'Cargo.toml', withWorkspaceVersion(read('Cargo.toml'), next))
   // Cargo.lock lists the workspace crates with their version: refresh only those, without the network.
   execFileSync('cargo', ['update', '--workspace', '--offline'], { cwd: root, stdio: 'inherit' })
-  console.log(next)
+  return next
+}
+
+function bump(part) {
+  console.log(raiseVersion(part))
   return 0
 }
 
@@ -203,8 +235,8 @@ function main() {
   if (command === 'tauri-config') return tauriConfig()
   if (command === '--self-test' && !selfTest()) return 1
   if (command === undefined || command === '--self-test') return check()
-  console.error('usage: versions.mjs [--self-test] | print | bump [patch|minor|major] | tauri-config')
+  console.error('usage: versions.mjs [--self-test] | print | bump [patch|minor|major|x.y.z] | tauri-config')
   return 1
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main()

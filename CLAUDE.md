@@ -128,9 +128,12 @@ node scripts/updater-manifest.mjs write ...   # latest.json of a release (check-
                                               # releases (tag on main, clean clone, where published, the update key):
                                               # docs/release.md
 node scripts/third-party-tables.mjs --write   # after a dependency change (and pnpm install): THIRD_PARTY.md's tables
+node scripts/release.mjs internal|production [--version patch|minor|major|x.y.z] [--dry-run]
+                                              # a release from develop: version raised and committed, full check,
+                                              # develop pushed, then to stage (Play internal test) or main (Play
+                                              # production after approval); 0.0.x test builds, 1.0.0 the first
 node scripts/versions.mjs [bump|print]       # the version, written only in Cargo.toml's [workspace.package];
-                                              # bump [patch|minor|major] raises it (0.0.x test builds, 1.0.0 the
-                                              # first release), the Android build passes it to Tauri (--config)
+                                              # the Android build passes it to Tauri (--config)
 git config core.hooksPath scripts/git-hooks   # once per clone: pre-commit runs the fast checks
 ./scripts/check.ps1                           # EVERY check (scripts/check): run before declaring work done
                                               # same list: `sh scripts/check` (Git Bash, Linux), `pnpm check` (from app/)
@@ -851,6 +854,17 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   checks use 360 × 780 and 780 × 360 first. Debug builds go on with `adb install -r`, which keeps the app's data.
 - A fix tried on a phone from a test worktree is not on `develop` until it is merged: check
   `git merge-base --is-ancestor <branch> develop` before calling it done.
+- A debug build and the Play build are signed with different keys: Android refuses one over the other, and the
+  uninstall in between deleted every save on the phone (2026-11-24). Export the saves first; no `.debug` package
+  (owner's choice). `hasFragileUserData` only keeps data for a build with the same signature.
+- Android SDK packages carry a minor number since Android 16: `compileSdk = 37` is `platforms;android-37.0`
+  (`platforms;android-37` does not exist and sdkmanager fails).
+- A reusable workflow (`play-release.yml`) gets its environment's secrets only when the caller says
+  `secrets: inherit`; without it they are empty strings, not an error. Its permissions cannot exceed the caller's.
+- The Tauri CLI writes Android's versionName / versionCode only from its config's `version`; with it gone from
+  `tauri.conf.json` (the version lives in Cargo.toml), the build passes it with `--config` (`versions.mjs
+  tauri-config`). A bare `pnpm tauri android build` is versionCode 1: never upload it.
+- Google Play's API refuses the first upload of a new app: the first AAB goes in by hand in Play Console.
 
 ## Project rules
 
