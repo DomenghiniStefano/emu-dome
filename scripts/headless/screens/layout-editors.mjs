@@ -56,6 +56,11 @@ const SCREENS = {
     mock: {},
     steps: [...screensPage, openScreens, choose("Nintendo 3DS")],
   },
+  // #156: «Affiancati» tapped; the panel keeps its side («Salva» does not move).
+  "screens-3ds-side": {
+    mock: {},
+    steps: [...screensPage, openScreens, choose("Nintendo 3DS"), click("^Affiancati$")],
+  },
 };
 const PHONE_GAME = {
   "qm-more": { mock: { game: "gba", slots: "full" }, steps: [escape, click("^Altro$")] },
@@ -65,7 +70,8 @@ const PHONE_GAME = {
   },
 };
 
-const PHONE = { p780: [360, 780], l780: [780, 360] };
+// The Galaxy A71 too (`p915` 412 × 915, `l915`; #140, #156).
+const PHONE = { p780: [360, 780], l780: [780, 360], p915: [412, 915], l915: [915, 412] };
 const DESK = { d1280: [1280, 800] };
 
 export const layoutEditorScenarios = {};

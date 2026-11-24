@@ -2,16 +2,16 @@
 // C09 «Disposizione degli schermi» (Trello #28, option A of the owner's mockup, 2026-11-21): the
 // two screens over the game at their real size, in the whole window. Drag a screen to move it,
 // its accent corner to resize it; the side panel (EditorPanel) has the numbers and the choices
-// and folds into a pill (EditorPill) to leave the window free; it fades while a screen is dragged
-// and stands on the side away from the selected screen. The keys are in the pill at the bottom
-// (EditorHints).
+// and folds into a pill (EditorPill) to leave the window free; it fades while a screen is dragged,
+// opens on the side away from the selected screen and keeps that side while the user works (#156).
+// The keys are in the pill at the bottom (EditorHints).
 // Opened from the quick menu's G09 (a game open: every change shows on the game at once, «in
-// prova») and from Settings › Schermi di DS e 3DS (no game: the screens are placeholders, saved
-// to the page's scope).
+// prova») and from Settings › Schermi di DS e 3DS (no game: the screens are placeholders on the
+// theme's flat ground, as in C06; saved to the page's scope).
 // Controller: L1 / R1 pick a screen, the d-pad moves it, the right stick resizes it, Select folds
 // the panel, A saves, B cancels. Keyboard: PageUp / PageDown or [ ], the arrows, Shift + arrows,
 // Enter, Esc. The state and the steps are useScreenEditor's, the geometry screenEditor.ts's.
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { ConsoleId, ScreenStatus, SettingsScope } from '@/emu'
 import { useImmersive } from '@/composables/useImmersive'
@@ -21,7 +21,16 @@ import EditorHints from './EditorHints.vue'
 import EditorPanel from './EditorPanel.vue'
 import EditorPill from './EditorPill.vue'
 import ScreenFrame from './ScreenFrame.vue'
-import { front, other, panelSide, percent, type EditorScreen } from './screenEditor'
+import {
+  front,
+  keepPanelSide,
+  other,
+  panelSide,
+  percent,
+  type EditorScreen,
+  type PanelExtent,
+  type PanelSide,
+} from './screenEditor'
 import { useScreenEditor } from './useScreenEditor'
 
 const props = defineProps<{
@@ -75,7 +84,32 @@ const names = computed<Record<EditorScreen, string>>(() => ({
 }))
 const screenName = computed(() => t(`screenEditor.screen.${holds(selected.value)}`))
 const frontScreen = computed(() => front(layout.value))
-const side = computed(() => panelSide(current.value))
+/** The panel's side: away from the selected screen when it opens, then kept while the user works
+ * (#156): it moves only when the selected screen would be wholly under it, never for a «Parti
+ * da» layout. */
+const side = ref<PanelSide>('right')
+const panelBox = ref<HTMLElement | null>(null)
+let placed = false
+let presetsSeen = 0
+/** The room the panel takes from its corner, fractions of the window (null while folded). */
+function panelExtent(): PanelExtent | null {
+  const el = panelBox.value
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  const { innerWidth: w, innerHeight: h } = window
+  return { w: (side.value === 'left' ? r.right : w - r.left) / w, h: r.bottom / h }
+}
+watch([current, editor.presets], ([s, presets]) => {
+  if (!s) return
+  if (!placed || presets !== presetsSeen) {
+    if (!placed) side.value = panelSide(s)
+    placed = true
+    presetsSeen = presets
+    return
+  }
+  const extent = panelExtent()
+  if (extent) side.value = keepPanelSide(side.value, s, extent)
+})
 const consoleScope = computed(() =>
   t('settingsUi.scope.console', { console: t(`console.${props.console}`) }),
 )
@@ -95,15 +129,9 @@ const fade = computed(() => (dragging.value ? 'pointer-events-none opacity-0' : 
   <section
     ref="root"
     class="fixed inset-0 z-dialog overflow-hidden"
-    :class="live ? '' : 'bg-letterbox'"
+    :class="live ? '' : 'bg-bg'"
     :aria-label="t('screenEditor.title')"
   >
-    <div
-      v-if="snap"
-      class="pointer-events-none absolute inset-0 bg-editor-grid"
-      aria-hidden="true"
-    ></div>
-
     <ScreenFrame
       v-for="s in layout.screens"
       :key="s.id"
@@ -117,6 +145,7 @@ const fade = computed(() => (dragging.value ? 'pointer-events-none opacity-0' : 
 
     <div
       v-if="!collapsed"
+      ref="panelBox"
       class="absolute top-12 transition-opacity duration-fast"
       :class="[side === 'left' ? 'left-12' : 'right-12', fade]"
     >
