@@ -281,7 +281,8 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          placed as given (no `video.aspect` / `video.scale`; `screens.rot` and the swap as a
                          custom layout), scaled uniformly into the room an `Inset` leaves (the quick menu
                          open) and never stretched, the layout cycle refused meanwhile; `phone_start` where
-                         the editor starts them: the cycle's first layout, not swapped, as fractions;
+                         the editor starts them with no game: the cycle's first layout, not swapped, as
+                         fractions; `ScreenSession::phone_start` over the open game: the layout shown now;
                          `Inset` the window's edges kept clear
                          of the game (quick menu, touch controls), its `between` the room kept between
                          two screens (the phone's strip), and `fit` the game in the rest, centred,

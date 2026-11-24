@@ -1196,34 +1196,49 @@ pub fn preview(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec
 }
 
 /// Where the touch editor starts the screens of a `console` game in `area` (the whole window)
-/// when no placement of the phone's own is saved: where [`preview`] draws them, as fractions of
-/// the window (empty for an empty area). Not turned: `screens.rot` turns the placement on top, as it does a custom layout.
-/// When the first layout of the cycle leaves a screen out (`top_only`), every screen is placed
-/// as [`Arrangement::Auto`] does, so the start holds all of the console's screens.
+/// when no placement of the phone's own is saved and no game is open: where [`preview`] draws
+/// them, as fractions of the window (empty for an empty area). Over an open game the start is
+/// [`ScreenSession::phone_start`].
 pub fn phone_start(settings: &ScreenSettings, console: ConsoleId, area: Area) -> Vec<CustomScreen> {
+    let split = CoreId::for_console(console).profile().split;
+    let (width, height) = console_frame(console);
+    start_placement(
+        settings.layout(settings.first(), false),
+        &split.screens(width, height),
+        area,
+    )
+}
+
+/// `layout`'s screens composed in `area` as the touch editor's start: fractions of the whole
+/// window, each keyed by the frame (rectangle) it is, as [`place_given`] reads a placement (the
+/// other screen's picture when `layout` is swapped). Not turned: `screens.rot` turns the
+/// placement on top, as it does a custom layout. When `layout` leaves a screen out (`top_only`,
+/// `bottom_only`) every screen is placed as [`Arrangement::Auto`] does, swapped the same way, so
+/// the start holds all of the game's screens. Empty for an empty area.
+fn start_placement(layout: Layout, sources: &[SourceScreen], area: Area) -> Vec<CustomScreen> {
     if !(area.width > 0.0 && area.height > 0.0) {
         return Vec::new();
     }
-    let split = CoreId::for_console(console).profile().split;
-    let (width, height) = console_frame(console);
-    let sources = split.screens(width, height);
-    let first = Layout {
+    let layout = Layout {
         rotation: Rotation::None,
-        ..settings.layout(settings.first(), false)
+        ..layout
     };
-    let place = |layout: &Layout| compose(layout, &sources, area);
-    let all = |placed: &Vec<Placement>| {
-        console_screens(console)
-            .iter()
-            .all(|id| placed.iter().any(|p| p.id == *id))
-    };
-    let placed = Some(place(&first)).filter(all).unwrap_or_else(|| {
+    let place = |layout: &Layout| compose(layout, sources, area);
+    let all = |placed: &Vec<Placement>| sources.iter().all(|s| placed.iter().any(|p| p.id == s.id));
+    let placed = Some(place(&layout)).filter(all).unwrap_or_else(|| {
         place(&Layout {
             arrangement: Arrangement::Auto,
-            ..first.clone()
+            ..layout.clone()
         })
     });
-    fractions(&placed, area.width, area.height)
+    let frames: Vec<Placement> = placed
+        .into_iter()
+        .map(|p| Placement {
+            id: if layout.swap { p.id.other() } else { p.id },
+            ..p
+        })
+        .collect();
+    fractions(&frames, area.width, area.height)
 }
 
 /// The `screens.*` settings of the open game (its changes «in prova» included), read once.
@@ -1501,6 +1516,20 @@ impl ScreenSession {
         }
     }
 
+    /// Where the touch editor starts this game's screens in `area` (the whole window, the edges
+    /// the controls keep clear as its inset) when no placement of the phone's own is saved: where
+    /// the layout shown now puts them (cycled, swapped, at the frame's real size, `video.scale`
+    /// applied), as fractions of the window, so the game does not move at the first drag. A
+    /// layout showing one screen of two starts every screen as [`Arrangement::Auto`] places them.
+    /// `sources`: the open frame's screens.
+    pub fn phone_start(&self, sources: &[SourceScreen], area: Area) -> Vec<CustomScreen> {
+        start_placement(
+            self.settings.layout(self.current, self.swapped),
+            sources,
+            area,
+        )
+    }
+
     pub fn status(&self) -> ScreenStatus {
         ScreenStatus {
             dual_screen: self.dual_screen,
@@ -1522,7 +1551,7 @@ mod tests {
         compose, console_frame, fit, phone_start, pointer_at, pointer_value, preview, touch_at,
         Align, Area, Arrangement, Aspect, CustomLayout, CustomScreen, Inset, Layout, LayoutId,
         Placement, PxRect, Rect, Rotation, Scale, ScreenId, ScreenSession, ScreenSettings,
-        ScreenStatus, Split,
+        ScreenStatus, SourceScreen, Split,
     };
     use crate::settings::Value;
 
@@ -3158,6 +3187,104 @@ mod tests {
             )),
             [ScreenId::Main]
         );
+    }
+
+    /// A 3DS game upscaled 2× in a 1280 × 720 window with whole scales, the bottom fifth kept
+    /// clear for the controls: the open game's sources and area for the live start.
+    fn live_3ds() -> (Vec<SourceScreen>, Area) {
+        let a = Area {
+            width: 1280.0,
+            height: 720.0,
+            inset: Inset {
+                bottom: 0.2,
+                align: Align::Bottom,
+                ..Inset::NONE
+            },
+        };
+        (Split::N3dsStacked.screens(800, 960), a)
+    }
+
+    fn live_settings() -> ScreenSettings {
+        settings(&[("video.scale", Value::Text("integer".into()))])
+    }
+
+    /// `placements` as fractions of `a`'s window, the frame ids mapped when `swapped`.
+    fn as_start(placements: &[Placement], a: Area, swapped: bool) -> Vec<CustomScreen> {
+        placements
+            .iter()
+            .map(|p| {
+                cs(
+                    if swapped { p.id.other() } else { p.id },
+                    p.dst.x / a.width,
+                    p.dst.y / a.height,
+                    p.dst.w / a.width,
+                    p.dst.h / a.height,
+                )
+            })
+            .collect()
+    }
+
+    fn assert_same_screens(got: &[CustomScreen], want: &[CustomScreen]) {
+        assert_eq!(got.len(), want.len(), "{got:?} vs {want:?}");
+        for w in want {
+            let g = got.iter().find(|g| g.id == w.id).unwrap();
+            for (a, b) in [(g.x, w.x), (g.y, w.y), (g.w, w.w), (g.h, w.h)] {
+                assert!((a - b).abs() < 1e-4, "{got:?} vs {want:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_live_phone_start_is_where_the_open_game_shows_its_screens() {
+        let (sources, a) = live_3ds();
+        let mut s = ScreenSession::new(live_settings(), true, false);
+        assert!(s.next_layout());
+        assert!(s.next_layout());
+        assert_eq!(s.status().layout, LayoutId::BigSmall);
+        let shown = compose(&s.layout(), &sources, a);
+        assert_same_screens(&s.phone_start(&sources, a), &as_start(&shown, a, false));
+    }
+
+    #[test]
+    fn the_live_phone_start_of_a_swapped_game_keeps_each_picture_where_it_is() {
+        let (sources, a) = live_3ds();
+        let mut s = ScreenSession::new(live_settings(), true, false);
+        assert!(s.next_layout());
+        assert!(s.next_layout());
+        assert!(s.toggle_swap());
+        let shown = compose(&s.layout(), &sources, a);
+        let start = s.phone_start(&sources, a);
+        assert_same_screens(&start, &as_start(&shown, a, true));
+        // Placed as it starts (over the whole window, as the editor sends it), nothing moves.
+        s.set_phone_placement(start).unwrap();
+        let whole = Area {
+            inset: Inset::NONE,
+            ..a
+        };
+        let placed = compose(&s.layout(), &sources, whole);
+        for p in &shown {
+            let q = placed.iter().find(|q| q.id == p.id).unwrap();
+            for (x, y) in [
+                (p.dst.x, q.dst.x),
+                (p.dst.y, q.dst.y),
+                (p.dst.w, q.dst.w),
+                (p.dst.h, q.dst.h),
+            ] {
+                assert!((x - y).abs() < 0.05, "{shown:?} vs {placed:?}");
+            }
+            assert_eq!(p.src, q.src);
+        }
+    }
+
+    #[test]
+    fn the_live_phone_start_of_one_screen_shown_holds_both() {
+        let (sources, a) = live_3ds();
+        let mut s = ScreenSession::new(live_settings(), true, false);
+        assert_eq!(s.set_layout(LayoutId::TopOnly), Some(true));
+        let start = s.phone_start(&sources, a);
+        let ids: Vec<_> = start.iter().map(|c| c.id).collect();
+        assert_eq!(ids, [ScreenId::Top, ScreenId::Bottom]);
+        assert!(s.phone_start(&sources, area(0.0, 720.0)).is_empty());
     }
 
     #[test]

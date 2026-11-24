@@ -1,6 +1,6 @@
 // Where the C06 editor starts the game screens (Trello #134) when the layout has no placement of
-// its own: every screen of the console where Rust puts them now (`emu.screens.phoneStart`, the
-// settings of `scope`), inside the edges the layout keeps clear of the game, as the game (or the
+// its own: every screen of the console where Rust puts them now (`emu.screens.phoneStart`: over a
+// game where it shows them, else the settings of `scope`), inside the edges the layout keeps clear of the game, as the game (or the
 // Settings preview) is drawn; given back as fractions of the whole window. Asked again when the
 // window or those edges change; only the newest answer is applied (rule 7), errors go to the
 // sink (rule 6).

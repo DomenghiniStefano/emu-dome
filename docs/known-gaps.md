@@ -51,7 +51,9 @@ before working on any area listed here, and update it in the same commit as a ch
   never removed, opacity and behaviour disabled. From Settings there is no game: the elements are laid on the
   theme's flat ground (no dot grid, no screenshot), the screens as named frames starting where Rust would place
   them for the layout the game opens with (`screens_phone_start`: the cycle's first layout, not swapped, at 1×);
-  with a game open the game itself moves under the frame. «Salva» stores the layout and the screens' placement
+  with a game open the frames start where the game shows its screens now (the layout cycled to, swapped, the
+  frame at its real size, `video.scale` applied; a layout showing one screen of two starts both as «auto» places
+  them) and the game itself moves under the frame. «Salva» stores the layout and the screens' placement
   (`touch.tscreens`, fractions of the whole window, saved with `touch.tedit` in one write) of the orientation
   the phone is in, for that console, on this device only (never synced, by design: a phone's placement does not
   belong on other devices). In game the placement is placed over the whole window (the controls may overlap it)
@@ -59,7 +61,9 @@ before working on any area listed here, and update it in the same commit as a ch
   yet: guides only to the window's centre lines (not to other elements' edges); the safe edge (camera, bars) is a
   dashed line, a screen may still go past it; the placement ignores `video.aspect` / `video.scale`; the reset of
   the `touch.tedit` row leaves `touch.tscreens` stored (used only with saved controls) until the editor's
-  «Torna alla disposizione predefinita» + «Salva» writes it empty.
+  «Torna alla disposizione predefinita» + «Salva» writes it empty. Under `screens.rot` (phase 2, its row hidden
+  today) a phone placement is turned as a custom layout is, each rectangle turned inside the window, while the
+  editor draws it unturned: the editor and the game then differ. To be decided before phase 2 shows the row.
 - Android controllers (Trello #47): built from Android's input events (`pads/android.rs`, `GamepadInput.kt`) but
   not run on a device yet. To verify there: which physical button a Nintendo-layout pad (Switch Pro, an 8BitDo in
   Switch mode) reports as `KEYCODE_BUTTON_A` (the table reads it as the bottom one, as SDL does); whether Guide /

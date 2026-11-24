@@ -1609,9 +1609,11 @@
         return scenario.frame
           ? placements(args.area)
           : { frameWidth: 0, frameHeight: 0, placements: [] };
-      // C06 (#134): where the editor starts the screens, as Rust's `screens::phone_start`: where
-      // the game's (or `frameConsole`'s) screens go in the area with its inset, as fractions of
-      // the whole window.
+      // C06 (#134): where the editor starts the screens, as Rust's `screens_phone_start`: where
+      // the open game shows its screens (its layout now, `ScreenSession::phone_start`), else where
+      // `frameConsole`'s would go, in the area with its inset, as fractions of the whole window.
+      // The mock's game is never cycled and its pictures never move when `swapped`, so both are
+      // its placements.
       if (cmd === "screens_phone_start") {
         const { width, height } = args.area;
         if (!(width > 0 && height > 0)) return [];

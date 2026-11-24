@@ -20,7 +20,7 @@ use std::sync::Arc;
 use emudome_core::core_profile::{CoreId, Lid, LID_PRESS};
 use emudome_core::input::Source;
 use emudome_core::screens::{
-    CustomLayout, CustomScreen, Layout, LayoutId, Placement, ScreenSession, ScreenSettings,
+    Area, CustomLayout, CustomScreen, Layout, LayoutId, Placement, ScreenSession, ScreenSettings,
     ScreenStatus, Split,
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
@@ -40,6 +40,7 @@ pub struct ScreensState(Mutex<Option<Open>>);
 
 struct Open {
     core: CoreId,
+    console: ConsoleId,
     session: ScreenSession,
 }
 
@@ -84,7 +85,11 @@ pub fn started(app: &AppHandle, core: CoreId, console: ConsoleId) {
     log::debug!("screens: {console:?} on {core}, two screens: {dual}");
     let session = ScreenSession::new(read_settings(app), dual, profile.lid.supported());
     if let Some(state) = app.try_state::<ScreensState>() {
-        *state.0.lock() = Some(Open { core, session });
+        *state.0.lock() = Some(Open {
+            core,
+            console,
+            session,
+        });
     }
     publish(app);
 }
@@ -339,7 +344,10 @@ pub fn screens_preset_custom(
 }
 
 /// Where the touch editor starts the screens of a `console` game in `area` when no placement of
-/// the phone's own is saved, with the settings `scope` resolves (`emudome_core::screens::phone_start`).
+/// the phone's own is saved. Over the open game (`scope` the session, the game of that console):
+/// where it shows them now (`ScreenSession::phone_start`: the layout cycled to, swapped, the frame
+/// at its real size). Otherwise with the settings `scope` resolves, as a game would open
+/// (`emudome_core::screens::phone_start`).
 #[tauri::command]
 pub fn screens_phone_start(
     app: AppHandle,
@@ -347,8 +355,36 @@ pub fn screens_phone_start(
     console: ConsoleId,
     area: PointerArea,
 ) -> Vec<CustomScreen> {
+    if matches!(scope, Scope::Session) {
+        if let Some(start) = open_phone_start(&app, console, area.area()) {
+            return start;
+        }
+    }
     let settings = ScreenSettings::from_settings(crate::settings::resolver(&app, &scope));
     emudome_core::screens::phone_start(&settings, console, area.area())
+}
+
+/// The open game's start for the touch editor; `None` with no game of `console` open. The frame's
+/// screens as the core hands them over, the console's 1× frame before the first one.
+fn open_phone_start(app: &AppHandle, console: ConsoleId, area: Area) -> Option<Vec<CustomScreen>> {
+    // The frame read first, never under the screens' lock.
+    let frame = shared(app)
+        .map(|s| {
+            let f = s.frame.lock();
+            (f.width, f.height, f.split)
+        })
+        .filter(|(w, h, _)| *w > 0 && *h > 0);
+    let state = app.try_state::<ScreensState>()?;
+    let open = state.0.lock();
+    let open = open.as_ref().filter(|o| o.console == console)?;
+    let sources = match frame {
+        Some((width, height, split)) => split.screens(width, height),
+        None => {
+            let (width, height) = emudome_core::screens::console_frame(console);
+            open.core.profile().split.screens(width, height)
+        }
+    };
+    Some(open.session.phone_start(&sources, area))
 }
 
 /// Sets (or, empty, withdraws) the phone's own placement of the open game's screens: the touch

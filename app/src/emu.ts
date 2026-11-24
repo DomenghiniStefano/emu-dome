@@ -371,8 +371,9 @@ export const emu = {
       width: number,
       height: number,
     ) => invoke<CustomLayout>('screens_preset_custom', { scope, console, layout, width, height }),
-    /** Where the touch editor starts a `console` game's screens in `area` (fractions of it), with
-     * the settings of `scope`, composed by Rust. */
+    /** Where the touch editor starts a `console` game's screens in `area` (fractions of it),
+     * composed by Rust: at the session scope over the open game, where it shows them now (the
+     * layout cycled to, swapped: each keyed by its frame); otherwise with the settings of `scope`. */
     phoneStart: (scope: SettingsScope, console: ConsoleId, area: PointerArea) =>
       invoke<CustomScreen[]>('screens_phone_start', { scope, console, area }),
     /** The phone's own placement of the open game's screens (empty: withdrawn). */
