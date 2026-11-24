@@ -236,9 +236,40 @@ pub fn swap_hotkey(app: &AppHandle, pressed: bool) {
     });
 }
 
-/// L3 + R3.
-pub fn next_layout_hotkey(app: &AppHandle) {
-    change(app, ScreenSession::next_layout);
+/// What L3 + R3 did to a two-screen game's layout.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Cycled {
+    /// The next layout of the cycle is shown.
+    Moved,
+    /// Nothing changed, nothing to say (a one-screen game, a cycle of one).
+    Same,
+    /// The phone's placement holds the screens: the cycle waits, and the interface says why.
+    Held,
+}
+
+impl Changed for Cycled {
+    fn changed(&self) -> bool {
+        *self == Cycled::Moved
+    }
+}
+
+/// L3 + R3 on `s`: the next layout of the cycle, unless the phone's placement holds the screens.
+fn cycle(s: &mut ScreenSession) -> Cycled {
+    let status = s.status();
+    if status.dual_screen && status.phone_placement {
+        return Cycled::Held;
+    }
+    if s.next_layout() {
+        Cycled::Moved
+    } else {
+        Cycled::Same
+    }
+}
+
+/// L3 + R3. True: the phone's placement holds the screens, so the cycle did nothing and the
+/// interface is told why (`emu://hotkey` `layoutHeld`).
+pub fn next_layout_hotkey(app: &AppHandle) -> bool {
+    change(app, cycle) == Some(Cycled::Held)
 }
 
 /// L3 + Select. A core without a lid: logged, the interface already shows the lid disabled.
@@ -551,5 +582,42 @@ mod tests {
             Err(ErrorCode::SettingInvalidValue { key }) if key == keys::TOUCH_SCREENS.as_str()
         ));
         assert!(!s.status().phone_placement);
+    }
+
+    fn two_screens() -> Vec<CustomScreen> {
+        [(ScreenId::Top, 0.0), (ScreenId::Bottom, 0.5)]
+            .into_iter()
+            .map(|(id, y)| CustomScreen {
+                id,
+                x: 0.0,
+                y,
+                w: 1.0,
+                h: 0.4,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_layout_cycle_moves_on_with_no_placement() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), true, false);
+        let before = s.status().layout;
+        assert_eq!(cycle(&mut s), Cycled::Moved);
+        assert_ne!(s.status().layout, before);
+    }
+
+    #[test]
+    fn the_layout_cycle_says_it_waits_under_the_phones_placement() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), true, false);
+        assert_eq!(s.set_phone_placement(two_screens()), Some(true));
+        let before = s.status().layout;
+        assert_eq!(cycle(&mut s), Cycled::Held);
+        assert_eq!(s.status().layout, before);
+    }
+
+    #[test]
+    fn the_layout_cycle_says_nothing_for_a_one_screen_game() {
+        let mut s = ScreenSession::new(ScreenSettings::default(), false, false);
+        assert_eq!(s.set_phone_placement(main_at(0.1)), Some(true));
+        assert_eq!(cycle(&mut s), Cycled::Same);
     }
 }

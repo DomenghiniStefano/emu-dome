@@ -113,6 +113,12 @@ describe('useGameEvents', () => {
     expect(state.paused.value).toBe(true)
   })
 
+  it('L3 + R3 under the touch layout says why the layout stays', () => {
+    const { toasts, events } = setup()
+    events.onHotkey({ kind: 'layoutHeld' })
+    expect(toasts.notify).toHaveBeenCalledWith('The screens are where you put them in Edit layout.')
+  })
+
   it('the core started gives the frame size; stopped is passed on', () => {
     const { state, stopped, events } = setup()
     events.onEmuEvent({ type: 'started', width: 240, height: 160 } as never)

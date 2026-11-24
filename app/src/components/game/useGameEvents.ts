@@ -96,6 +96,10 @@ export function useGameEvents(
         return
       case 'paused':
         paused.value = h.paused
+        return
+      case 'layoutHeld':
+        // L3 + R3 did nothing: the touch layout's placement holds the screens (G09's words).
+        toasts.notify(t('qm.layoutPhone.why'))
     }
   }
 

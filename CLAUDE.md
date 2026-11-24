@@ -632,7 +632,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     same change as one call (`screens_set_phone` with the inset, `Renderer::set_view`), so no frame pairs the new
     placement with the old inset; an inset alone stays `set_video_inset`. It is placed over the whole window, not in what the
     controls leave (they may overlap it); the quick menu's inset scales it uniformly to make room and it comes
-    back at its size when the menu closes; G09 says «Dalla disposizione touch» and offers no cycle.
+    back at its size when the menu closes; G09 says «Dalla disposizione touch» and offers no cycle, and L3 + R3
+    shows G09's reason as a toast (`emu://hotkey` `layoutHeld`).
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
     lock and swaps it in; readers (texture upload, the webview's copy, PNG thumbnails and screenshots) clone the
@@ -758,7 +759,8 @@ app/src                  Vue interface, placed as «Interface structure» says: 
 - Events, every name a constant of `app/src-tauri/src/events.rs` (`<domain>://<event>`; `emu://` the emulator,
   `library://`, `settings://`, `saves://` theirs): `emu://session` (the session's `Event`s), `emu://gamepad-connected`,
   `emu://gamepad-disconnected`, `emu://gamepad-changed` (a `PadInfo`), `emu://gamepad-state` (while watched), `emu://menu`
-  (`{ system }`), `emu://nav` (`{ action, system }`; `system`: Android's back button), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused),
+  (`{ system }`), `emu://nav` (`{ action, system }`; `system`: Android's back button), `emu://hotkey` (`{ kind, ... }`: fps, slot, speed, turbo, paused, layoutHeld: L3 + R3 under
+  the touch layout's placement),
   `emu://screens` (a `ScreenStatus`: the layout shown, the cycle, swapped, the lid supported / closed),
   `library://changed` (`LibraryChanged`: the rows that changed, the families of regional versions, or the
   whole library), `library://scan`,
