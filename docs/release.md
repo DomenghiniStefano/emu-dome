@@ -101,9 +101,10 @@ and `main.yml` share):
 `sh scripts/android-build.sh --bundle` on an Ubuntu runner, then the AAB uploaded to the `internal` track
 (r0adkll/upload-google-play, MIT, pinned to a commit), the AAB also kept 14 days as the run's artifact.
 
-1. On `develop`, `node scripts/versions.mjs bump` (the patch; Play refuses a versionCode it has seen) and
-   commit `chore: <version>`; `./scripts/check.ps1` green on it (the merge rule).
-2. Merge `develop` into `stage` and push `stage`: the run builds and uploads. A failed run uploads nothing.
+`node scripts/release.mjs internal [--version patch|minor|major|x.y.z] [--dry-run]`, from `develop` in the main
+worktree: it raises the version (the patch by default; Play refuses a versionCode it has seen), commits
+`chore: <version>`, runs the full check on that commit (the merge rule), pushes `develop` and then `develop` to
+`stage`: the run builds and uploads. A failed check pushes nothing; a failed run uploads nothing.
 
 A build from Google Play and a debug build (`android-build`, adb) are signed with different keys: Android cannot
 install one over the other, and the switch means uninstalling, which deletes the app's private folder (every save,
@@ -134,10 +135,10 @@ Once, by the owner, before the first run:
 
 ## The release flow
 
-1. On `develop`, raise the version (`node scripts/versions.mjs bump`); `./scripts/check.ps1` green on that commit
-   (the merge rule).
-2. Merge `develop` into `main` (fast-forward) and push it: `main.yml` builds the Android package and, after your
-   approval, tags that commit `v<version>`. The tag is the release: every package of it is built from the tagged
+1. `node scripts/release.mjs production [--version …]` from `develop` (1.0.0 or later; `--version 1.0.0` the
+   first time): the version raised and committed, the full check on that commit, `develop` pushed and then pushed
+   to `main` (a fast-forward).
+2. `main.yml` builds the Android package and, after your approval, tags that commit `v<version>`. The tag is the release: every package of it is built from the tagged
    commit, never from a working copy.
 3. Build each package **from a clean clone** of the tag (`git clone --branch v<version>`, no leftovers in
    `target/`, `node_modules/` or `cores/`):
