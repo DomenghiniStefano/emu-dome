@@ -83,10 +83,11 @@ fn each_level_overrides_the_weaker_ones() {
         (default, Level::Default)
     );
 
-    s.set(key, &Scope::Global, option(key, 1)).unwrap();
+    // Option 0, not 1: option 1 is the default, which the Global level does not store.
+    s.set(key, &Scope::Global, option(key, 0)).unwrap();
     assert_eq!(
         value_of(&mut s, key, &Scope::Session),
-        (Some(option(key, 1)), Level::Global)
+        (Some(option(key, 0)), Level::Global)
     );
 
     s.set(key, &console_scope(), option(key, 2)).unwrap();
@@ -118,7 +119,7 @@ fn each_level_overrides_the_weaker_ones() {
     );
     assert_eq!(
         value_of(&mut s, key, &Scope::Global),
-        (Some(option(key, 1)), Level::Global)
+        (Some(option(key, 0)), Level::Global)
     );
     // Another console does not see GBA's value.
     let gb = Scope::Console {
@@ -126,7 +127,7 @@ fn each_level_overrides_the_weaker_ones() {
     };
     assert_eq!(
         value_of(&mut s, key, &gb),
-        (Some(option(key, 1)), Level::Global)
+        (Some(option(key, 0)), Level::Global)
     );
 }
 
@@ -135,12 +136,13 @@ fn reset_lets_the_weaker_level_show_through() {
     let dir = TestDir::new("reset");
     let mut s = settings(&dir);
     let key = "video.scale";
-    s.set(key, &Scope::Global, option(key, 1)).unwrap();
+    // Option 0, not 1: option 1 is the default, which the Global level does not store.
+    s.set(key, &Scope::Global, option(key, 0)).unwrap();
     s.set(key, &game_scope(), option(key, 2)).unwrap();
     assert_eq!(s.reset(key, &game_scope()), Ok(Level::Game));
     assert_eq!(
         value_of(&mut s, key, &game_scope()),
-        (Some(option(key, 1)), Level::Global)
+        (Some(option(key, 0)), Level::Global)
     );
 }
 
@@ -173,6 +175,149 @@ fn an_invalid_stored_value_falls_back_to_the_weaker_levels() {
     assert_eq!(
         value_of(&mut s, key, &console_scope()),
         (Some(option(key, 2)), Level::Global)
+    );
+}
+
+// ---- A value equal to the weaker levels is not stored (Trello #151) ----
+
+/// An option of `key` other than `not`.
+fn other_option(key: &str, not: &Value) -> Value {
+    (0..).map(|i| option(key, i)).find(|v| v != not).unwrap()
+}
+
+fn stored_json(dir: &TestDir, rel: &str) -> serde_json::Value {
+    serde_json::from_str(&dir.read(rel)).unwrap()
+}
+
+#[test]
+fn a_per_device_switch_set_back_to_its_default_leaves_the_level() {
+    let dir = TestDir::new("eq-below-device");
+    let mut s = Settings::open(
+        dir.path("synced"),
+        dir.path("local/device.json"),
+        Device::Phone,
+    );
+    s.set("touch.thapt", &Scope::Global, Value::Int(60))
+        .unwrap();
+    s.set("touch.tvib", &Scope::Global, Value::Bool(false))
+        .unwrap();
+    assert_eq!(
+        value_of(&mut s, "touch.tvib", &Scope::Global),
+        (Some(Value::Bool(false)), Level::Global)
+    );
+    s.set("touch.tvib", &Scope::Global, Value::Bool(true))
+        .unwrap();
+    assert_eq!(
+        value_of(&mut s, "touch.tvib", &Scope::Global),
+        (Some(Value::Bool(true)), Level::Default)
+    );
+    let file = stored_json(&dir, "local/device.json");
+    assert!(file["global"].get("touch.tvib").is_none(), "{file}");
+    assert_eq!(file["global"]["touch.thapt"], json!(60), "{file}");
+    // A settings page shows the row as not changed here.
+    let row = s
+        .page(entry("touch.tvib").unwrap().page, &Scope::Global)
+        .unwrap()
+        .into_iter()
+        .find(|r| r.key == "touch.tvib")
+        .unwrap();
+    assert_eq!((row.source, row.changed), (Level::Default, false));
+}
+
+#[test]
+fn a_synced_value_set_back_to_its_default_leaves_the_file_with_the_others() {
+    let dir = TestDir::new("eq-below-synced");
+    let mut s = settings(&dir);
+    let key = "video.scale";
+    let default = entry(key)
+        .unwrap()
+        .default_for(Device::Desktop, None)
+        .unwrap();
+    s.set(key, &Scope::Global, other_option(key, &default))
+        .unwrap();
+    s.set("video.fps", &Scope::Global, Value::Bool(true))
+        .unwrap();
+    s.set(key, &Scope::Global, default.clone()).unwrap();
+    assert_eq!(
+        value_of(&mut s, key, &Scope::Global),
+        (Some(default), Level::Default)
+    );
+    let file = stored_json(&dir, "synced/global.json");
+    assert!(file.get(key).is_none(), "{file}");
+    assert_eq!(file.get("video.fps"), Some(&json!(true)));
+}
+
+#[test]
+fn a_game_back_to_the_default_over_another_global_value_is_kept() {
+    let dir = TestDir::new("eq-below-game");
+    let mut s = settings(&dir);
+    let key = "video.scale";
+    let default = entry(key)
+        .unwrap()
+        .default_for(Device::Desktop, Some(ConsoleId::Gba))
+        .unwrap();
+    let other = other_option(key, &default);
+    s.set(key, &Scope::Global, other.clone()).unwrap();
+    // The default differs from what Global gives the game: the Game level keeps it.
+    s.set(key, &game_scope(), default.clone()).unwrap();
+    assert_eq!(
+        value_of(&mut s, key, &game_scope()),
+        (Some(default.clone()), Level::Game)
+    );
+    // The Global value written at the console: nothing of the console's own.
+    s.set(key, &console_scope(), other.clone()).unwrap();
+    assert_eq!(
+        value_of(&mut s, key, &console_scope()),
+        (Some(other.clone()), Level::Global)
+    );
+    // The game set to what its console gives: its key goes.
+    s.set(key, &game_scope(), other.clone()).unwrap();
+    assert_eq!(
+        value_of(&mut s, key, &game_scope()),
+        (Some(other), Level::Global)
+    );
+    let file = stored_json(&dir, &format!("synced/game/{}.json", game().file_stem()));
+    assert!(file.get(key).is_none(), "{file}");
+}
+
+#[test]
+fn a_console_value_equal_to_its_console_default_rule_is_not_stored() {
+    let dir = TestDir::new("eq-below-rule");
+    let mut s = settings(&dir);
+    let n3ds = Scope::Console {
+        console: ConsoleId::N3ds,
+    };
+    // Rewind is on by default on a computer, off for 3DS by its rule.
+    s.set("speed.rew", &n3ds, Value::Bool(false)).unwrap();
+    assert_eq!(
+        value_of(&mut s, "speed.rew", &n3ds),
+        (Some(Value::Bool(false)), Level::Default)
+    );
+    // On for 3DS is a real difference from its rule: stored.
+    s.set("speed.rew", &n3ds, Value::Bool(true)).unwrap();
+    assert_eq!(
+        value_of(&mut s, "speed.rew", &n3ds),
+        (Some(Value::Bool(true)), Level::Console)
+    );
+}
+
+#[test]
+fn a_committed_session_value_equal_to_the_console_is_not_stored_for_the_game() {
+    let dir = TestDir::new("eq-below-commit");
+    let mut s = settings(&dir);
+    let key = "video.scale";
+    let default = entry(key)
+        .unwrap()
+        .default_for(Device::Desktop, Some(ConsoleId::Gba))
+        .unwrap();
+    s.set(key, &game_scope(), other_option(key, &default))
+        .unwrap();
+    s.begin_session(ConsoleId::Gba, game());
+    s.set(key, &Scope::Session, default.clone()).unwrap();
+    s.commit_session(CommitTarget::Game).unwrap();
+    assert_eq!(
+        value_of(&mut s, key, &game_scope()),
+        (Some(default), Level::Default)
     );
 }
 
@@ -375,11 +520,13 @@ fn sync_rule_portable_values_are_in_the_synced_files_at_every_level_and_never_in
     let dir = TestDir::new("sync-portable");
     assert!(!entry(PORTABLE).unwrap().per_device);
     let mut s = settings(&dir);
-    s.set(PORTABLE, &Scope::Global, option(PORTABLE, 1))
+    // Each value differs from the level below it (option 1 is the default): an equal one is not
+    // stored.
+    s.set(PORTABLE, &Scope::Global, option(PORTABLE, 0))
         .unwrap();
     s.set(PORTABLE, &console_scope(), option(PORTABLE, 2))
         .unwrap();
-    s.set(PORTABLE, &game_scope(), option(PORTABLE, 0)).unwrap();
+    s.set(PORTABLE, &game_scope(), option(PORTABLE, 1)).unwrap();
     // A per-device value too, so device.json exists.
     s.set(PER_DEVICE, &Scope::Global, Value::Bool(false))
         .unwrap();
@@ -390,7 +537,7 @@ fn sync_rule_portable_values_are_in_the_synced_files_at_every_level_and_never_in
     let game_file: serde_json::Value =
         serde_json::from_str(&dir.read(&format!("synced/game/{}.json", game().file_stem())))
             .unwrap();
-    for (file, i) in [(&global, 1), (&console, 2), (&game_file, 0)] {
+    for (file, i) in [(&global, 0), (&console, 2), (&game_file, 1)] {
         assert_eq!(
             serde_json::to_value(option(PORTABLE, i)).unwrap(),
             file[PORTABLE]

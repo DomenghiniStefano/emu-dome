@@ -238,7 +238,7 @@ before working on any area listed here, and update it in the same commit as a ch
   and touch; in game the controller has no way to press it (the cover is still reachable from L12 «Da uno
   screenshot»). A pressed one opens «Adatta la copertina» with the quick menu or once the game has closed. Zoom on
   the controller is L1 / R1 (LT / RT reach the interface as no step); no pinch zoom on touch (the slider). The
-  picked image is kept in memory until used (one at a time); Android has no image picker yet. Covers are not synced
+  picked image is kept in memory until used (one at a time). Covers are not synced
   (#31). The old screenshots the move could not give to one game stay in `saves/screenshots/` (listed in
   `migration-85/report.json`, not shown in the interface).
 - Core host (#78, #46): hardware rendering is Vulkan only, for Azahar (`Renderer::Vulkan` when the app's device
@@ -302,9 +302,9 @@ before working on any area listed here, and update it in the same commit as a ch
 - Android folders and files (Trello #47): not run on a device by the checks (the owner's UAT on the S23). A 3DS game
   (Azahar, `need_fullpath`) from a document whose descriptor cannot be opened again by path is refused
   (`documentNeedsPath`): the fix is serving it through libretro's VFS interface (the host has none yet), not a copy
-  of GBs. `save_file` (exports) and the path pickers of screen effect presets, BIOS files, cover images and the
-  saves import folder have no Android picker yet (`ACTION_CREATE_DOCUMENT` would write through a descriptor, not
-  `write_atomic`'s rename). A tree game's details (L10) show its document URI as the path, and the saves import pairs
+  of GBs. `save_file` (exports) and the path pickers of screen effect presets, BIOS files and the saves import
+  folder have no Android picker yet (`ACTION_CREATE_DOCUMENT` would write through a descriptor, not
+  `write_atomic`'s rename); an image for a cover or the background has one (`emudome_platform::pick_image`). A tree game's details (L10) show its document URI as the path, and the saves import pairs
   saves with ROMs by file stem, which a URI does not have. Single files picked with «Apri un file» keep their
   persisted permission for good (Android caps an app's persisted grants). Providers that load their listing
   asynchronously (cloud folders, `EXTRA_LOADING`) are listed as they first answer.

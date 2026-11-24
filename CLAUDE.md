@@ -235,8 +235,11 @@ cargo run -p emudome-sync --example drive_probe -- status|sign-in [--print-url]|
   Android 17 refuses `/proc/self/fd/<fd>` for some providers (Downloads, «Permission denied»), so identification,
   hashing, icons and the bytes a core gets come from the descriptor; a `need_fullpath` core (Azahar) gets the link's
   path only when it opens, else the open is refused (`documentNeedsPath`). A file outside the library is titled by
-  the document's display name (`game_file_title`), never its URI. Logcat: `android folder picked:`, `android file
-  picked:`, `library scan: tree …`, `document … opened: … reopenable by path …`.
+  the document's display name (`game_file_title`), never its URI. An image (L12 «Immagine tua», the background
+  image) is `ACTION_OPEN_DOCUMENT` with the PNG / JPEG / WebP types (`SystemBridge.pickImage`), opened once
+  (`openOnce`, its permission not persisted) and read through its descriptor, at most 16 MiB
+  (`emudome_platform::pick_image`, the desktop's file dialog behind the same call). Logcat: `android folder picked:`,
+  `android file picked:`, `android image picked:`, `library scan: tree …`, `document … opened: … reopenable by path …`.
 - Android's back button (Trello #14, `SystemBridge.kt` → `hotkeys::back_button`): in game with the quick menu
   closed it is the controller's menu button (`emu://menu`), anywhere else its B (`emu://nav` back). At the shell's
   root on the phone (#29) B goes to the section left last (the route's `trail`), then the Library, then leaves to the
@@ -375,7 +378,8 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          the core's system folder via write_atomic; pure, unit-tested)
 crates/emudome-platform  EVERYTHING that depends on the operating system or the form factor, one module per OS
                          (desktop.rs shared by the desktops): the main window (create_window), the file
-                         picker (pick_file), logs, core paths, the external surface, the old identifier's
+                         picker (pick_file), the image picker (pick_image: read at most a limit, on every
+                         system), logs, core paths, the external surface, the old identifier's
                          data folders (old_data_dirs: beside the new ones on desktop, none on Android),
                          paths.rs (how long a path this process can create: `path_limits`, Windows long
                          paths for the process and the `LongPathsEnabled` policy, read only);
@@ -387,7 +391,7 @@ crates/emudome-platform  EVERYTHING that depends on the operating system or the 
                          a game is open, `SystemBridge.setImmersive`; nothing on the desktop);
                          android/ is the Gradle library (Kotlin NativeSurface: SurfaceView under the WebView;
                          SystemBridge: the back button, the launch intent's game, `content://` documents,
-                         the folder / file pickers and the tree listing (#47);
+                         the folder / file / image pickers and the tree listing (#47);
                          GamepadInput: the controllers' key / motion events and device list;
                          jniLibs: only the cores.lock files from cores/android/<abi>/, sha256-checked);
                          pads/ (the controllers, #47: `PadSource` (open / poll / read), `PadEvent`,
@@ -752,7 +756,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   pages from `settings_schema` and never lists settings by hand. A key the interface names is a `SettingKey`
   (generated union); one the Rust code reads is a typed constant of `settings/keys.rs`, its default the catalogue's. Levels Default → Global → Console → Game →
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
-  (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<console>-<hex>}.json` (synced later),
+  (`settingLevelRefused`). A value written at a level (or committed from the session) that equals what the weaker
+  levels give there, the Default with its `default_rules` included, removes the key at that level instead of
+  storing it, so a row set back to its default is no longer «Modificato»; one that differs (a game back to the
+  default while its console has another value) is stored. Files: `<app data>/settings/{global,console/<id>,game/<console>-<hex>}.json` (synced later),
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log; a file that is there but cannot be read is never
   written over (writes to it refused with `settingsReadFailed` until it reads again; the library does the same

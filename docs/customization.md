@@ -476,8 +476,8 @@ RetroArch core options with categories and per-game/per-content-directory overri
 - **Folders**: one tree per console and game (`saves/<console>/<game-id>/`), or user-chosen roots (e.g. a synced
   folder).
 - **Import/export**: per-game zip (in-game save + states + metadata), raw `.sav` import from other emulators.
-- **Backups/versioning**: rotating copies of the in-game save (`.sav.1`, `.sav.2`…) on every launch and before
-  every import; states kept per version of the core.
+- **Backups/versioning**: rotating copies of the in-game save (`backups/<unix ms>.<reason>.sav`) on every launch and
+  before every import, when the save differs from the newest copy; states kept per version of the core.
 - **Sync between devices**: see below.
 - **BIOS/firmware**: user-provided only.
 

@@ -345,14 +345,15 @@ fn background_name(bytes: &[u8], ext: &str) -> String {
     format!("{hex}.{ext}")
 }
 
-/// «Scegli un’immagine…»: opens an image picker, copies the image into the backgrounds folder and
+/// «Scegli un’immagine…»: opens the system's image picker (`library::pick_image`), copies the image into the backgrounds folder and
 /// stores its name in `video.surroundImg` at `scope`. `false` if the picker was cancelled.
 #[tauri::command]
 pub async fn settings_choose_background(app: AppHandle, scope: Scope) -> Result<bool, ErrorCode> {
-    let Some(source) = crate::library::pick_image(&app) else {
+    // Off the event loop's workers: the picker waits for the user.
+    let picked = crate::blocking(app.clone(), crate::library::pick_image).await??;
+    let Some((bytes, ext)) = picked else {
         return Ok(false);
     };
-    let (bytes, ext) = crate::library::read_image(&source)?;
     let name = background_name(&bytes, ext);
     let dir = backgrounds_dir(&app).ok_or_else(|| {
         log::warn!("background: no app data folder");

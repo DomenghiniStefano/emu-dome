@@ -27,6 +27,7 @@ use emudome_core::library::{
 };
 use emudome_core::settings::{keys, ConsoleId, Scope, Value};
 use emudome_core::{ErrorCode, GameKey, ImageProblem, IoCause};
+use emudome_platform::PickImageError;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -758,10 +759,40 @@ fn image_ext(bytes: &[u8]) -> Option<&'static str> {
     }
 }
 
-/// The bytes of an image file the user picked (a cover's source, a background), at most
-/// [`MAX_COVER_BYTES`], PNG / JPEG / WebP by its signature, with its extension. Refused with
-/// `coverInvalid` and the reason; the file's own error in the log.
-pub(crate) fn read_image(source: &Path) -> Result<(Vec<u8>, &'static str), ErrorCode> {
+/// The image the user picks (a cover's source, a background) through the system's picker
+/// (`emudome_platform::pick_image`: the desktop's file dialog, Android's document picker), at
+/// most [`MAX_COVER_BYTES`] read, PNG / JPEG / WebP by its signature, with its extension. `None`
+/// when cancelled. Refused with `coverInvalid` and the reason; the file's own error in the log.
+pub(crate) fn pick_image(app: &AppHandle) -> Result<Option<(Vec<u8>, &'static str)>, ErrorCode> {
+    let picked = match emudome_platform::pick_image(app, MAX_COVER_BYTES) {
+        Ok(Some(picked)) => picked,
+        Ok(None) => return Ok(None),
+        Err(PickImageError::TooLarge { size }) => {
+            return Err(cover::invalid(
+                ImageProblem::TooLarge,
+                format!("picked image: {size} bytes or more, limit {MAX_COVER_BYTES}"),
+            ))
+        }
+        Err(PickImageError::Unreadable { kind, detail }) => {
+            return Err(cover::invalid(
+                ImageProblem::Missing,
+                format!("picked image not read ({kind:?}): {detail}"),
+            ))
+        }
+    };
+    let ext = image_ext(&picked.bytes).ok_or_else(|| {
+        cover::invalid(
+            ImageProblem::Format,
+            format!("{:?}: not a PNG, JPEG or WebP image", picked.name),
+        )
+    })?;
+    Ok(Some((picked.bytes, ext)))
+}
+
+/// The bytes of an image file on disk (a screenshot made a cover), at most [`MAX_COVER_BYTES`],
+/// PNG / JPEG / WebP by its signature, with its extension. Refused with `coverInvalid` and the
+/// reason; the file's own error in the log.
+fn read_image(source: &Path) -> Result<(Vec<u8>, &'static str), ErrorCode> {
     let unreadable = |e: std::io::Error| {
         cover::invalid(ImageProblem::Missing, format!("{}: {e}", source.display()))
     };
@@ -881,20 +912,6 @@ pub(crate) fn pick_folder(app: &AppHandle) -> Option<PathBuf> {
         .ok()
 }
 
-#[cfg(desktop)]
-pub(crate) fn pick_image(app: &AppHandle) -> Option<PathBuf> {
-    use tauri_plugin_dialog::DialogExt;
-    let picked = app
-        .dialog()
-        .file()
-        .add_filter("Image", &["png", "jpg", "jpeg", "webp"])
-        .blocking_pick_file()?;
-    picked
-        .into_path()
-        .inspect_err(|e| log::warn!("picked image: {e}"))
-        .ok()
-}
-
 /// Any file (a BIOS dump has no fixed extension).
 #[cfg(desktop)]
 pub(crate) fn pick_any_file(app: &AppHandle) -> Option<PathBuf> {
@@ -916,12 +933,6 @@ pub(crate) fn pick_any_file(_app: &AppHandle) -> Option<PathBuf> {
 #[cfg(mobile)]
 pub(crate) fn pick_folder(_app: &AppHandle) -> Option<PathBuf> {
     log::warn!("folder picker not available on this platform yet");
-    None
-}
-
-#[cfg(mobile)]
-pub(crate) fn pick_image(_app: &AppHandle) -> Option<PathBuf> {
-    log::warn!("image picker not available on this platform yet");
     None
 }
 
@@ -1389,19 +1400,20 @@ pub fn library_screenshots(
         .collect())
 }
 
-/// Native image picker for a new user cover (L12 «Immagine tua»): the image is checked (at most
-/// [`MAX_COVER_BYTES`], PNG / JPEG / WebP, at most `cover::MAX_SIDE` a side) and kept in memory
-/// for «Adatta la copertina». `None` = cancelled. Off the event loop (it decodes the image).
+/// The system's image picker for a new user cover (L12 «Immagine tua»; the file dialog on the
+/// desktop, the document picker on Android): the image is checked (at most [`MAX_COVER_BYTES`],
+/// PNG / JPEG / WebP, at most `cover::MAX_SIDE` a side) and kept in memory for «Adatta la
+/// copertina». `None` = cancelled. Off the event loop (it waits for the picker, decodes the image).
 #[tauri::command]
 pub async fn library_pick_cover_image(app: AppHandle) -> Result<Option<PickedDto>, ErrorCode> {
     crate::blocking(app, pick_cover_image).await?
 }
 
 fn pick_cover_image(app: &AppHandle) -> Result<Option<PickedDto>, ErrorCode> {
-    let Some(source) = pick_image(app) else {
+    let Some((bytes, ext)) = pick_image(app)? else {
         return Ok(None);
     };
-    let (bytes, mime) = read_source(&source)?;
+    let mime = ext_type(ext);
     let (width, height) = cover::dimensions(&bytes)?;
     let state = app.state::<LibraryState>();
     let token = state

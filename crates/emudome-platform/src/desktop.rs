@@ -5,9 +5,11 @@ use std::path::{Path, PathBuf};
 
 use raw_window_handle::{DisplayHandle, HandleError, HasWindowHandle, WindowHandle};
 
+use crate::content::read_at_most;
 use crate::{
-    BackListener, ContentError, ContentFile, DataDirs, PickedDocument, SurfaceListener, TreeEntry,
-    WindowMode, WindowOptions, WindowRoom, OLD_IDENTIFIER, WINDOW_MIN_SIZE, WINDOW_SIZE,
+    BackListener, ContentError, ContentFile, DataDirs, PickImageError, PickedDocument, PickedImage,
+    SurfaceListener, TreeEntry, WindowMode, WindowOptions, WindowRoom, OLD_IDENTIFIER,
+    WINDOW_MIN_SIZE, WINDOW_SIZE,
 };
 
 /// The system's data folders are `<base>/<identifier>` (`%APPDATA%` and `%LOCALAPPDATA%` on
@@ -116,6 +118,31 @@ pub fn pick_file(app: &tauri::AppHandle, filter: &str, extensions: &[&str]) -> O
         .into_path()
         .inspect_err(|e| log::warn!("picked file: {e}"))
         .ok()
+}
+
+/// The file dialog for one image; the file read by path, its size checked first.
+pub fn pick_image(
+    app: &tauri::AppHandle,
+    limit: u64,
+) -> Result<Option<PickedImage>, PickImageError> {
+    let Some(path) = pick_file(app, "Image", &["png", "jpg", "jpeg", "webp"]) else {
+        return Ok(None);
+    };
+    let unreadable = |e: std::io::Error| PickImageError::Unreadable {
+        kind: e.kind(),
+        detail: format!("{}: {e}", path.display()),
+    };
+    let file = std::fs::File::open(&path).map_err(unreadable)?;
+    let size = file.metadata().map_err(unreadable)?.len();
+    if size > limit {
+        return Err(PickImageError::TooLarge { size });
+    }
+    let bytes = read_at_most(file, limit)?;
+    log::info!("image picked: {} ({} bytes)", path.display(), bytes.len());
+    Ok(Some(PickedImage {
+        bytes,
+        name: path.file_name().map(|n| n.to_string_lossy().into_owned()),
+    }))
 }
 
 pub fn save_file(
