@@ -80,8 +80,9 @@ function setup(console: ConsoleId, saved: Partial<Record<TouchOrientation, Touch
   return {
     available: AVAILABLE[console],
     buttons: AVAILABLE[console].filter(id => id !== 'dpad' && id !== 'circlePad' && id !== 'menu'),
-    portrait: saved.portrait ?? { controls: [] },
-    landscape: saved.landscape ?? { controls: [] },
+    portrait: saved.portrait ?? { controls: [], screens: [] },
+    landscape: saved.landscape ?? { controls: [], screens: [] },
+    screenShapes: [],
     ...LIMITS,
   } satisfies TouchSetup
 }
@@ -129,6 +130,7 @@ describe('default layouts', () => {
       controls: [
         { id: 'menu' as const, x: 0.1, y: 0.1, size: 100, opacity: 50, behaviour: 'tap' as const },
       ],
+      screens: [],
     }
     const s = setup('gba', { landscape: saved })
     expect(activeLayout('gba', s, 'landscape', 'custom', area)).toEqual(saved)
@@ -205,7 +207,7 @@ describe('the band a portrait layout keeps', () => {
     // L / R at 194 px from the bottom, 18 px half height, a grid step of air.
     expect(reservedBottom(layout, area, boxOf)).toBe(194 + 18 + 8)
     expect(reservedBottom(layout, { width: 844, height: 390 }, boxOf)).toBe(0)
-    expect(reservedBottom({ controls: [] }, area, boxOf)).toBe(0)
+    expect(reservedBottom({ controls: [], screens: [] }, area, boxOf)).toBe(0)
   })
 })
 
@@ -271,11 +273,11 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
       behaviour: 'tap' as const,
     }
     const a = { ...menu, id: 'a' as const, x: 0.9, y: 0.5 }
-    expect(reservedSides({ controls: [menu, a] }, area, boxOf)).toEqual({
+    expect(reservedSides({ controls: [menu, a], screens: [] }, area, boxOf)).toEqual({
       left: 0,
       right: Math.round(844 - (0.9 * 844 - 24) + 8),
     })
-    expect(reservedInset({ controls: [] }, area, boxOf)).toEqual({
+    expect(reservedInset({ controls: [], screens: [] }, area, boxOf)).toEqual({
       left: 0,
       top: 0,
       right: 0,
@@ -283,7 +285,9 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
       align: 'centre',
       between: 0,
     })
-    expect(reservedInset({ controls: [] }, { width: 390, height: 844 }, boxOf).bottom).toBe(0)
+    expect(
+      reservedInset({ controls: [], screens: [] }, { width: 390, height: 844 }, boxOf).bottom,
+    ).toBe(0)
   })
 })
 

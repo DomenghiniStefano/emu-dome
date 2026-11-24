@@ -419,6 +419,7 @@ mod tests {
                     Kind::Bindings { .. } => ("bindings", &[]),
                     Kind::ScreenLayout => ("screenLayout", &[]),
                     Kind::TouchLayout => ("touchLayout", &[]),
+                    Kind::TouchScreens => ("touchScreens", &[]),
                     Kind::DateTime { .. } => ("dateTime", &[]),
                 };
                 json!({ "key": e.key, "page": e.page(), "kind": kind, "options": options })
@@ -450,6 +451,7 @@ mod tests {
                 | Kind::Bindings { .. }
                 | Kind::ScreenLayout
                 | Kind::TouchLayout
+                | Kind::TouchScreens
                 | Kind::DateTime { .. } => None,
             })
             .collect();

@@ -65,9 +65,9 @@ export function useTouchEditor(o: TouchEditorOptions) {
   const orientation = computed(() => orientationOf(area.value))
   const setup = ref<TouchSetup | null>(null)
   const prefs = ref(prefsFrom([]))
-  const history = ref<History<TouchLayout>>(historyOf({ controls: [] }))
+  const history = ref<History<TouchLayout>>(historyOf({ controls: [], screens: [] }))
   /** The layout shown: the history's present, or a gesture's on its way. */
-  const draft = ref<TouchLayout>({ controls: [] })
+  const draft = ref<TouchLayout>({ controls: [], screens: [] })
   const selected = ref<TouchControlId | null>(null)
   const collapsed = ref(false)
   const panel = ref<ToolPanel | null>(null)

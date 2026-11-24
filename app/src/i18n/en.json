@@ -1386,6 +1386,10 @@
       }
     },
     "touch": {
+      "tscreens": {
+        "name": "Screen positions",
+        "desc": "Where the game screens go, set in the touch layout editor."
+      },
       "tedit": {
         "name": "Customise touch controls",
         "desc": "Move and resize the buttons for the way you hold the phone.",

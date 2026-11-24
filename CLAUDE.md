@@ -253,7 +253,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 168 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 169 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
                          compiled, and `Reader` (a value or the catalogue's default),
@@ -694,7 +694,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 168 entries on 18 pages: key
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 169 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
   (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
   the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform

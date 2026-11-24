@@ -288,6 +288,7 @@ export function defaultLayout(
 ): TouchLayout {
   return {
     controls: available.flatMap(id => defaultPlace(console, orientation, id, area) ?? []),
+    screens: [],
   }
 }
 
@@ -312,7 +313,8 @@ export function activeLayout(
   area: Area,
 ): TouchLayout {
   const saved = setup[orientation].controls.filter(c => setup.available.includes(c.id))
-  if (choice === 'custom' && saved.length > 0) return { controls: saved }
+  if (choice === 'custom' && saved.length > 0)
+    return { controls: saved, screens: setup[orientation].screens }
   return defaultLayout(console, orientation, area, setup.available)
 }
 
@@ -422,13 +424,13 @@ export function withOpacity(
 
 /** `layout` with `c` in place of the control of the same id. */
 export function replace(layout: TouchLayout, c: TouchControl): TouchLayout {
-  return { controls: layout.controls.map(x => (x.id === c.id ? c : x)) }
+  return { ...layout, controls: layout.controls.map(x => (x.id === c.id ? c : x)) }
 }
 
 /** `layout` without `id` (the menu stays: every layout keeps it). */
 export function remove(layout: TouchLayout, id: TouchControlId): TouchLayout {
   if (id === 'menu') return layout
-  return { controls: layout.controls.filter(c => c.id !== id) }
+  return { ...layout, controls: layout.controls.filter(c => c.id !== id) }
 }
 
 /** The controls of the console that `layout` does not show, in the console's order. */
@@ -447,7 +449,7 @@ export function add(
   const c =
     defaultPlace(console, orientation, id, area) ??
     placed(id, area.width / 2, area.height / 2, area)
-  return { controls: [...layout.controls, c] }
+  return { ...layout, controls: [...layout.controls, c] }
 }
 
 /** Upright, the controls whose centre is below this share of the height are the bottom band's;

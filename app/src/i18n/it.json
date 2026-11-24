@@ -1386,6 +1386,10 @@
       }
     },
     "touch": {
+      "tscreens": {
+        "name": "Posizione degli schermi",
+        "desc": "Dove stanno gli schermi del gioco, scelto nell’editor della disposizione."
+      },
       "tedit": {
         "name": "Personalizza i controlli touch",
         "desc": "Sposta e ridimensiona i pulsanti nel verso in cui tieni il telefono.",

@@ -47,7 +47,7 @@ impl ScreenId {
         }
     }
 
-    fn from_id(id: &str) -> Option<ScreenId> {
+    pub(crate) fn from_id(id: &str) -> Option<ScreenId> {
         match id {
             "top" => Some(ScreenId::Top),
             "bottom" => Some(ScreenId::Bottom),
@@ -56,7 +56,7 @@ impl ScreenId {
         }
     }
 
-    fn id(self) -> &'static str {
+    pub(crate) fn id(self) -> &'static str {
         match self {
             ScreenId::Main => "main",
             ScreenId::Top => "top",
@@ -1075,6 +1075,39 @@ impl CustomLayout {
             .collect();
         CustomLayout { screens }
     }
+}
+
+/// The screens a `console`'s games have, in the order the touch editor lists them.
+pub fn console_screens(console: ConsoleId) -> &'static [ScreenId] {
+    match console {
+        ConsoleId::Gb | ConsoleId::Gbc | ConsoleId::Gba => &[ScreenId::Main],
+        ConsoleId::Nds | ConsoleId::N3ds => &[ScreenId::Top, ScreenId::Bottom],
+    }
+}
+
+/// The smallest screen the touch editor lets a layout hold, as fractions of the game area
+/// (`screenEditor.ts`: `MIN_SIZE`, `MIN_SIZE / 2`).
+const PLACEMENT_MIN_W: f32 = 0.08;
+const PLACEMENT_MIN_H: f32 = 0.04;
+
+/// Whether `screens` is a placement of exactly the screens `ids`, each once, inside the area and
+/// not smaller than the editor's minimum. Empty (none saved) is valid.
+pub fn placement_fits(screens: &[CustomScreen], ids: &[ScreenId]) -> bool {
+    let inside = |start: f32, size: f32, min: f32| {
+        start.is_finite()
+            && size.is_finite()
+            && start >= 0.0
+            && size >= min
+            && start + size <= 1.0 + EDGE_SLACK
+    };
+    screens.is_empty()
+        || (screens.len() == ids.len()
+            && ids
+                .iter()
+                .all(|id| screens.iter().filter(|s| s.id == *id).count() == 1)
+            && screens
+                .iter()
+                .all(|s| inside(s.x, s.w, PLACEMENT_MIN_W) && inside(s.y, s.h, PLACEMENT_MIN_H)))
 }
 
 /// The frame a `console` game hands over at its own resolution (1×): what the editors draw in

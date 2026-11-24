@@ -654,6 +654,17 @@ pub static ENTRIES: &[Entry] = &[
     e("touch.tedit", Kind::TouchLayout, DefaultValue::List(&[]), C)
         .device()
         .phone(),
+    // The screens' placement of those layouts (Trello #134), a key of its own: a build that does
+    // not know the screens drops a `touch.tedit` holding items it cannot read, the controls too.
+    // Edited with the controls in C06, so it has no row.
+    e(
+        "touch.tscreens",
+        Kind::TouchScreens,
+        DefaultValue::List(&[]),
+        C,
+    )
+    .device()
+    .phone(),
     // Per orientation: the default layout or the user's own (`touch.tedit`, the default while
     // none is saved). C06's «Salva» picks `custom` for the console.
     sel("touch.tport", &["default", "custom"], "default", ALL)
@@ -1122,7 +1133,13 @@ pub static SECTIONS: &[Section] = &[
     Section {
         page: "touch",
         id: "layout",
-        keys: &["touch.tedit", "touch.tport", "touch.tland", "touch.tskin"],
+        keys: &[
+            "touch.tedit",
+            "touch.tscreens",
+            "touch.tport",
+            "touch.tland",
+            "touch.tskin",
+        ],
     },
     Section {
         page: "touch",
@@ -1341,7 +1358,7 @@ mod tests {
         // The design's 155, plus five BIOS rows (Trello #89) and four game clock rows (#102);
         // `library.versions` took the place of `library.region` (#102), plus E14's
         // `touch.tlost` (#29), plus `library.view` and `saves.space` (#29).
-        assert_eq!(ENTRIES.len(), 168);
+        assert_eq!(ENTRIES.len(), 169);
         for (i, entry) in ENTRIES.iter().enumerate() {
             assert!(
                 ENTRIES[..i].iter().all(|other| other.key != entry.key),

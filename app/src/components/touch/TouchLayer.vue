@@ -50,7 +50,7 @@ const layout = computed(() =>
         prefs.value[orientation.value],
         area.value,
       )
-    : { controls: [] },
+    : { controls: [], screens: [] },
 )
 const { boxes, boxOf } = useControlBoxes(root, () => layout.value)
 
