@@ -17,6 +17,7 @@ import { useGameSession } from '@/components/game/useGameSession'
 import { useScreenStatus } from '@/components/game/useScreenStatus'
 import { useScreenTouch } from '@/components/game/useScreenTouch'
 import { useShellEvents } from '@/components/shell/useShellEvents'
+import { provideShellArea } from '@/components/shell/useShellArea'
 import { createToasts, provideToasts } from '@/composables/useToasts'
 import { createCoverRequest } from '@/components/cover/useCoverRequest'
 import CoverCropDialog from '@/components/cover/CoverCropDialog.vue'
@@ -44,6 +45,8 @@ import LidClosedCard from '@/components/game/LidClosedCard.vue'
 const toast = createToasts()
 provideToasts(toast)
 setErrorSink(toast.failWith)
+// The phone's shell reports the room its sections get; the toasts sit in it (#142).
+const shellArea = provideShellArea()
 const { firstRun, decide: decideFirstRun, finish: finishFirstRun } = useFirstRun(toast)
 const { videoMode, nativeAvailable, load: loadVideoMode, setVideoMode } = useVideoMode(toast)
 // «Usa come copertina» on the screenshot toast (#85): kept until the quick menu is open or the
@@ -229,5 +232,5 @@ onMounted(async () => {
     @close-anyway="closing.closeAnyway"
   />
 
-  <ToastStack :in-game="!!game" />
+  <ToastStack :in-game="!!game" :area="shellArea" />
 </template>
