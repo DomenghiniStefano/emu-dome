@@ -77,7 +77,9 @@ before any new feature.
 
 Git: `develop` is the integration branch, checked out in the main worktree; work happens on branches in
 `C:\Projects\emu-dome.wt\<name>` and is merged into `develop` from the main worktree. Pushing `develop` is allowed.
-No push to `main`. **Merge rule**: `./scripts/check.ps1` green on the merge commit itself
+`stage` takes `develop` (merged, version raised) for a test build on Google Play's internal track, pushed only when
+the owner asks for one (its CI uploads it, `.github/workflows/stage.yml`, `docs/release.md` «Test builds»).
+No push to `main` (from 1.0.0, the release). **Merge rule**: `./scripts/check.ps1` green on the merge commit itself
 (not only on the branch) before `git push` of `develop`; `wip` commits are squashed before merging, never merged as
 they are. **Checks on work branches**: only targeted ones while working (the
 touched crates' tests and clippy, typecheck, lint, the touched Vitest files), `./scripts/check.ps1 --fast` once at the
@@ -892,7 +894,8 @@ escapes. Until then the others hold by review (listed below).
 ## What is checked, and what holds only because it is read
 
 `./scripts/check.ps1` (`scripts/check`) is **the** list: the README, the pre-commit hook and this file point to it
-instead of repeating commands. No CI, by choice. It runs everything and summarizes what failed, and what was
+instead of repeating commands. No CI for the checks, by choice (GitHub Actions only builds and uploads `stage`'s
+test builds). It runs everything and summarizes what failed, and what was
 skipped because this machine lacks a tool ("green, except the skipped steps above"). It first checks the Node
 version (`scripts/node-version.mjs`, against `engines.node` in `app/package.json`) and stops there on a wrong one.
 

@@ -5,8 +5,9 @@ to end yet: no release exists.
 
 ## Today, as the code is
 
-- **Branches and tags.** `develop` is the integration branch (`CLAUDE.md`, «Current state»). There is no `main`
-  branch on the remote and no tag yet. Nobody pushes to `main` until the first release.
+- **Branches and tags.** `develop` is the integration branch (`CLAUDE.md`, «Current state»); `stage` the test
+  builds (below). There is no `main` branch on the remote and no tag yet. Nobody pushes to `main` until the first
+  release, 1.0.0.
 - **Version.** One number, written in one place: `[workspace.package] version` in the root `Cargo.toml` (today
   `0.0.1`). Every crate takes it (`version.workspace = true`); `app/package.json` and `tauri.conf.json` have none
   (Tauri falls back to Cargo's for the runtime, the bundles and the Windows file version), and
@@ -91,6 +92,30 @@ to end yet: no release exists.
     again (a new key needs a manual reinstall): keep it backed up, outside the repository.
   - `latest.json` is written by `node scripts/updater-manifest.mjs write` from the built packages and their
     `.sig` files, and uploaded to the release with them.
+
+## Test builds (Google Play's internal testing)
+
+The 0.0.x versions go to testers through Google Play's internal testing track (no review, up to 100 testers
+added by their Google account's address). `.github/workflows/stage.yml` does it on every push to `stage`:
+`sh scripts/android-build.sh --bundle` on an Ubuntu runner, then the AAB uploaded to the `internal` track
+(r0adkll/upload-google-play, MIT, pinned to a commit), the AAB also kept 14 days as the run's artifact.
+
+1. On `develop`, `node scripts/versions.mjs bump` (the patch; Play refuses a versionCode it has seen) and
+   commit `chore: <version>`; `./scripts/check.ps1` green on it (the merge rule).
+2. Merge `develop` into `stage` and push `stage`: the run builds and uploads. A failed run uploads nothing.
+
+Once, by the owner, before the first run:
+- Play Console (the DomeHub account): create the app `it.domehub.emudome`, turn on Play App Signing, and upload the
+  first AAB by hand (Play takes uploads through its API only for an app that has one): `./scripts/android-build.ps1
+  -Bundle` with the upload keystore.
+- The upload keystore lives outside the repository (licence rule 6). Its SHA-1 also goes to the Android OAuth
+  client (Drive sync, #49), with Play App Signing's own certificate.
+- A Google Cloud service account with access to the Play Developer API, invited in Play Console (Users and
+  permissions) with the release rights on the app.
+- GitHub: an environment `play-internal`, its deployments limited to `stage`, with the secrets the workflow's
+  header lists (the keystore as base64). Secrets never reach a workflow run from a fork's pull request.
+- The testers' addresses in the internal testing track's list (and in the OAuth consent screen's test users while
+  it is in «Testing», for Drive).
 
 ## The update key (once)
 
