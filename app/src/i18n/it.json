@@ -2629,7 +2629,7 @@
       "import": "Prima dell’importazione",
       "restore": "Prima di un ripristino"
     },
-    "backupNote": "Un backup viene fatto a ogni avvio del gioco e prima di ogni importazione. Ripristinare crea a sua volta un backup.",
+    "backupNote": "Un backup viene fatto a ogni avvio del gioco e prima di ogni importazione, se il salvataggio è cambiato dall’ultimo backup. Ripristinare crea a sua volta un backup.",
     "brokenNote": "Il salvataggio del gioco non si leggeva ed è stato messo da parte ({file}). Ripristina un backup qui sotto.",
     "exported": "Salvataggio esportato",
     "restored": "Backup ripristinato",

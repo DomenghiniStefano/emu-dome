@@ -2629,7 +2629,7 @@
       "import": "Before an import",
       "restore": "Before a restore"
     },
-    "backupNote": "A backup is made every time the game starts and before every import. Restoring makes a backup too.",
+    "backupNote": "A backup is made every time the game starts and before every import, if the save changed since the last backup. Restoring makes a backup too.",
     "brokenNote": "The in-game save couldn’t be read and was set aside ({file}). Restore a backup below.",
     "exported": "Save exported",
     "restored": "Backup restored",
