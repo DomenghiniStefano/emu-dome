@@ -5,11 +5,17 @@
 // step. «Salva» stores it on this device for the console and makes it the one shown
 // (`emu.touch.setLayout`); leaving without saving changes nothing. The geometry is touchLayout.ts's.
 // Turning the phone switches to that orientation's layout (unsaved changes are dropped).
+// The game screens are elements too (Trello #134, editorScreens.ts): picked, dragged (snapped to
+// the grid), resized by their corner or the size slider, keeping their proportions while `keep`;
+// the layout holds every screen or none, and starts from Rust's placement (`useStartScreens`)
+// until the user changes a screen.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import {
   emu,
   type ConsoleId,
+  type CustomScreen,
   type NavAction,
+  type ScreenId,
   type SettingsScope,
   type TouchBehaviour,
   type TouchControl,
@@ -18,13 +24,28 @@ import {
   type TouchSetup,
 } from '@/emu'
 import type { ErrorSink } from '@/i18n/labels'
+import { NO_INSET } from '@/components/game/inset'
+import { SCREEN_ATTR } from '@/components/screen-editor/screenEditor'
 import { latest } from '@/lib/latest'
 import { canRedo, canUndo, commit, historyOf, redo, undo, type History } from './editorHistory'
+import {
+  elementIds,
+  isScreen,
+  moveScreen,
+  nextElement,
+  nudgeScreen,
+  ratioOf,
+  resizeScreen,
+  screensShown,
+  withScreen,
+  type ElementId,
+} from './editorScreens'
 import { prefsFrom } from './touchControls'
 import {
   activeLayout,
   add,
   defaultLayout,
+  GRID_PX,
   isDualScreen,
   minSize,
   missing,
@@ -40,6 +61,7 @@ import {
   withOpacity,
   type Box,
 } from './touchLayout'
+import { useStartScreens } from './useStartScreens'
 import { useArea, useControlBoxes } from './useTouchView'
 
 /** The tool panel under the toolbar. */
@@ -65,10 +87,11 @@ export function useTouchEditor(o: TouchEditorOptions) {
   const orientation = computed(() => orientationOf(area.value))
   const setup = ref<TouchSetup | null>(null)
   const prefs = ref(prefsFrom([]))
-  const history = ref<History<TouchLayout>>(historyOf({ controls: [] }))
+  const history = ref<History<TouchLayout>>(historyOf({ controls: [], screens: [] }))
   /** The layout shown: the history's present, or a gesture's on its way. */
-  const draft = ref<TouchLayout>({ controls: [] })
-  const selected = ref<TouchControlId | null>(null)
+  const draft = ref<TouchLayout>({ controls: [], screens: [] })
+  /** The element picked: a control or a game screen. */
+  const selected = ref<ElementId | null>(null)
   const collapsed = ref(false)
   const panel = ref<ToolPanel | null>(null)
   /** A control is being dragged or pinched: the toolbar fades out. */
@@ -76,8 +99,29 @@ export function useTouchEditor(o: TouchEditorOptions) {
   const busy = ref(false)
   const loaded = ref(false)
   const { boxOf } = useControlBoxes(o.root, () => draft.value)
+  const scope = (): SettingsScope =>
+    o.live ? { level: 'session' } : { level: 'console', console: o.console }
+  /** The edges the controls keep clear of the game, as in game (TouchLayer): with no game open
+   * the editor draws where the screens would be in the rest (Trello #111). Of the history's
+   * present, so a drag on its way asks for nothing. */
+  const reserved = computed(() =>
+    reservedInset(history.value.present, area.value, boxOf, isDualScreen(o.console)),
+  )
+  /** Where the screens start while the layout has no placement of its own: where Rust puts them
+   * now, inside the edges the controls keep clear. */
+  const startScreens = useStartScreens(o.console, scope(), area, reserved, o.onError)
+  /** The screens drawn: the layout's placement, else where they start. */
+  const shownScreens = computed(() => screensShown(draft.value, startScreens.value))
+  /** «Mantieni le proporzioni»: a screen's height follows its width. */
+  const keep = ref(true)
+  /** The open game shows its screens swapped: a frame holds the other screen's picture. */
+  const swapped = ref(false)
 
+  /** The picked control (none while a screen is picked). */
   const current = computed(() => draft.value.controls.find(c => c.id === selected.value))
+  /** The picked screen (none while a control is picked). */
+  const currentScreen = computed(() => shownScreens.value.find(s => s.id === selected.value))
+  const ratio = (id: ScreenId) => ratioOf(setup.value?.screenShapes ?? [], id, swapped.value)
   const isButton = (id: TouchControlId) => setup.value?.buttons.includes(id) ?? false
   const limits = computed(() => ({
     sizeMin: setup.value?.sizeMin ?? 50,
@@ -86,17 +130,18 @@ export function useTouchEditor(o: TouchEditorOptions) {
     opacityMax: setup.value?.opacityMax ?? 100,
   }))
   const addable = computed(() => missing(draft.value, setup.value?.available ?? []))
-  /** The edges the layout keeps clear of the game, as in game (TouchLayer): with no game open
-   * the editor draws where the screens would be in the rest (Trello #111). Of the history's
-   * present, so a drag on its way asks for nothing. */
-  const inset = computed(() =>
-    reservedInset(history.value.present, area.value, boxOf, isDualScreen(o.console)),
+  /** Where the layout puts the screens, live while one is dragged (empty: none placed). */
+  const placement = computed(() => draft.value.screens)
+  /** Over a game, the edges kept clear of it sent with `placement` (Rust fits a held placement
+   * into the inset it has, so the two go as a pair): of the draft, so the first drag of a screen
+   * already places the game over the whole window. The start frames are the game's composition
+   * in `reserved`, so the switch shows no jump. */
+  const placementInset = computed(() =>
+    draft.value.screens.length > 0 ? NO_INSET : reserved.value,
   )
 
   // ---- Loading (rule 7: the newest answer only) ----
   const loads = latest()
-  const scope = (): SettingsScope =>
-    o.live ? { level: 'session' } : { level: 'console', console: o.console }
 
   function start() {
     const s = setup.value
@@ -132,6 +177,19 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
   watch(orientation, start)
 
+  /** Over a game: whether it shows its screens swapped, read once (the frames' proportions). */
+  const swaps = latest()
+  async function loadSwapped() {
+    if (!o.live) return
+    const fresh = swaps.next()
+    try {
+      const status = await emu.screens.status()
+      if (fresh()) swapped.value = status.swapped
+    } catch (e) {
+      if (fresh()) o.onError(e)
+    }
+  }
+
   // ---- Changes: each one a step of the history ----
   function apply(next: TouchLayout) {
     history.value = commit(history.value, next)
@@ -141,8 +199,16 @@ export function useTouchEditor(o: TouchEditorOptions) {
     const c = current.value
     if (c) apply(replace(draft.value, edit(c, boxOf(c.id))))
   }
-  function select(id: TouchControlId) {
-    if (draft.value.controls.some(c => c.id === id)) selected.value = id
+  function changeScreen(edit: (s: CustomScreen) => CustomScreen) {
+    const s = currentScreen.value
+    if (s) apply(withScreen(draft.value, startScreens.value, edit(s)))
+  }
+  const exists = (id: ElementId) =>
+    isScreen(id)
+      ? shownScreens.value.some(s => s.id === id)
+      : draft.value.controls.some(c => c.id === id)
+  function select(id: ElementId) {
+    if (exists(id)) selected.value = id
   }
   const doUndo = () => {
     history.value = undo(history.value)
@@ -160,6 +226,27 @@ export function useTouchEditor(o: TouchEditorOptions) {
     const next = replace(draft.value, resizeTo(c, size, area.value, boxOf(c.id), limits.value))
     if (final) apply(next)
     else draft.value = next
+  }
+  /** The screen size slider (per cent of the window's width): live while held, one step when
+   * let go. */
+  function setScreenSize(pct: number, final: boolean) {
+    const s = currentScreen.value
+    if (!s) return
+    const { width, height } = area.value
+    const resized = resizeScreen(
+      s,
+      (pct / 100) * width,
+      s.h * height,
+      keep.value,
+      ratio(s.id),
+      area.value,
+    )
+    const next = withScreen(draft.value, startScreens.value, resized)
+    if (final) apply(next)
+    else draft.value = next
+  }
+  function setKeep(on: boolean) {
+    keep.value = on
   }
   function setOpacity(opacity: number, final: boolean) {
     const c = current.value
@@ -179,14 +266,14 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
   function removeSelected() {
     const id = selected.value
-    if (!id || id === 'menu') return
+    if (!id || id === 'menu' || isScreen(id)) return
     apply(remove(draft.value, id))
     selected.value = draft.value.controls[0]?.id ?? null
   }
   function resetLayout() {
     const s = setup.value
     if (!s) return
-    apply(defaultLayout(o.console, orientation.value, area.value, s.available))
+    apply({ ...defaultLayout(o.console, orientation.value, area.value, s.available), screens: [] })
   }
 
   // ---- Saving and leaving ----
@@ -206,7 +293,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     if (!busy.value) o.close()
   }
 
-  // ---- The fingers: drag a control, pinch to resize the picked one ----
+  // ---- The fingers: drag a control, pinch to resize the picked one; drag a screen or its corner ----
   const pointers = new Map<number, { x: number; y: number }>()
   let gesture: {
     layout: TouchLayout
@@ -216,6 +303,55 @@ export function useTouchEditor(o: TouchEditorOptions) {
     y: number
     spread: number | null
   } | null = null
+  /** A screen being dragged by one finger (`corner`: resized by its corner). */
+  let screenGesture: {
+    pointer: number
+    layout: TouchLayout
+    screen: CustomScreen
+    x: number
+    y: number
+    corner: boolean
+  } | null = null
+
+  /** A press on a screen's frame (`corner`: on its resize corner; ScreenFrame's `press`). */
+  function pressScreen(id: ScreenId, e: PointerEvent, corner: boolean) {
+    if (!loaded.value || pointers.size > 0 || (e.pointerType === 'mouse' && e.button !== 0)) return
+    const s = shownScreens.value.find(x => x.id === id)
+    if (!s) return
+    e.preventDefault()
+    selected.value = id
+    panel.value = panel.value === 'add' ? null : panel.value
+    screenGesture = {
+      pointer: e.pointerId,
+      layout: draft.value,
+      screen: s,
+      x: e.clientX,
+      y: e.clientY,
+      corner,
+    }
+  }
+
+  function moveScreenGesture(e: PointerEvent) {
+    const g = screenGesture
+    if (!g || g.pointer !== e.pointerId) return
+    const dx = e.clientX - g.x
+    const dy = e.clientY - g.y
+    if (!gesturing.value && Math.hypot(dx, dy) < DRAG_START) return
+    gesturing.value = true
+    const { width, height } = area.value
+    const s = g.screen
+    const next = g.corner
+      ? resizeScreen(s, s.w * width + dx, s.h * height + dy, keep.value, ratio(s.id), area.value)
+      : moveScreen(s, s.x * width + dx, s.y * height + dy, area.value, true)
+    draft.value = withScreen(g.layout, startScreens.value, next)
+  }
+
+  function endScreenGesture(e: PointerEvent) {
+    if (screenGesture?.pointer !== e.pointerId) return
+    screenGesture = null
+    if (gesturing.value) apply(draft.value)
+    gesturing.value = false
+  }
 
   const spread = () => {
     const [a, b] = [...pointers.values()]
@@ -224,6 +360,9 @@ export function useTouchEditor(o: TouchEditorOptions) {
 
   function pointerDown(e: PointerEvent) {
     if (!loaded.value || (e.pointerType === 'mouse' && e.button !== 0)) return
+    // A screen's frame takes its own presses (`pressScreen`); a screen being dragged takes no
+    // second finger.
+    if (screenGesture || (e.target as HTMLElement).closest(`[${SCREEN_ATTR}]`)) return
     const target = (e.target as HTMLElement).closest<HTMLElement>('[data-touch-control]')
     const id = target?.dataset.touchControl as TouchControlId | undefined
     if (pointers.size === 0 && !id) return
@@ -245,6 +384,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
 
   function pointerMove(e: PointerEvent) {
+    if (screenGesture) return moveScreenGesture(e)
     const p = pointers.get(e.pointerId)
     if (!p || !gesture) return
     p.x = e.clientX
@@ -269,6 +409,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
   }
 
   function pointerUp(e: PointerEvent) {
+    if (screenGesture) return endScreenGesture(e)
     if (!pointers.delete(e.pointerId)) return
     if (pointers.size > 0) {
       // A pinch lost a finger: the other one goes on dragging from where the control is now.
@@ -285,20 +426,21 @@ export function useTouchEditor(o: TouchEditorOptions) {
 
   // ---- The controller and the keyboard (every menu works with them) ----
   const ATTR = 'data-touch-control'
-  const onControl = () => document.activeElement?.closest(`[${ATTR}]`) !== null
+  const ELEMENTS = `[${ATTR}], [${SCREEN_ATTR}]`
+  const onElement = () => document.activeElement?.closest(ELEMENTS) !== null
   function focusSelected() {
+    const id = selected.value
     void nextTick(() =>
       o.root.value
-        ?.querySelector<HTMLElement>(`[${ATTR}="${selected.value}"]`)
+        ?.querySelector<HTMLElement>(`[${ATTR}="${id}"], [${SCREEN_ATTR}="${id}"]`)
         ?.focus({ preventScroll: true }),
     )
   }
-  /** L1 / R1, PageUp / PageDown: the control before or after the picked one. */
+  /** L1 / R1, PageUp / PageDown: the element before or after the picked one, the screens first. */
   function pickNext(dir: -1 | 1) {
-    const ids = draft.value.controls.map(c => c.id)
+    const ids = elementIds(draft.value, startScreens.value)
     if (ids.length === 0) return
-    const i = selected.value ? ids.indexOf(selected.value) : -1
-    selected.value = ids[(i + dir + ids.length) % ids.length] ?? null
+    selected.value = nextElement(ids, selected.value, dir)
     focusSelected()
   }
   function toggleCollapsed() {
@@ -312,17 +454,37 @@ export function useTouchEditor(o: TouchEditorOptions) {
     left: [-1, 0],
     right: [1, 0],
   }
-  const nudgeBy = ([dx, dy]: [-1 | 0 | 1, -1 | 0 | 1]) =>
-    change((c, box) => nudge(c, dx, dy, area.value, box))
-  /** The right stick: up / right grow the picked control, down / left shrink it. */
+  function nudgeBy([dx, dy]: [-1 | 0 | 1, -1 | 0 | 1]) {
+    if (currentScreen.value) changeScreen(s => nudgeScreen(s, dx, dy, area.value))
+    else change((c, box) => nudge(c, dx, dy, area.value, box))
+  }
+  const grows = (action: NavAction) => action === 'stickUp' || action === 'stickRight'
+  /** The right stick on a screen: one grid step wider / narrower (keeping the proportions the
+   * height follows); without them left / right change the width, up / down the height. */
+  function stretchScreen(s: CustomScreen, action: NavAction): CustomScreen {
+    const by = grows(action) ? GRID_PX : -GRID_PX
+    const across = keep.value || action === 'stickLeft' || action === 'stickRight'
+    const { width, height } = area.value
+    return resizeScreen(
+      s,
+      s.w * width + (across ? by : 0),
+      s.h * height + (across ? 0 : by),
+      keep.value,
+      ratio(s.id),
+      area.value,
+    )
+  }
+  /** The right stick: up / right grow the picked element, down / left shrink it. */
   function stretch(action: NavAction) {
-    const by = action === 'stickUp' || action === 'stickRight' ? SIZE_STEP : -SIZE_STEP
+    if (currentScreen.value) return changeScreen(s => stretchScreen(s, action))
+    const by = grows(action) ? SIZE_STEP : -SIZE_STEP
     change((c, box) => resizeTo(c, c.size + by, area.value, box, limits.value))
   }
 
   /**
    * The editor's own steps (nav.ts `own`): Select folds the toolbar, the right stick resizes the
-   * picked control, X steps its opacity; on a control (or folded) the d-pad moves it and A saves.
+   * picked element, X steps a control's opacity (nothing on a screen); on an element (or folded)
+   * the d-pad moves it and A saves.
    * Anything else is nav.ts's (the toolbar's buttons, B = `back`).
    */
   function own(action: NavAction): boolean {
@@ -334,13 +496,14 @@ export function useTouchEditor(o: TouchEditorOptions) {
       stretch(action)
       return true
     }
-    if (!collapsed.value && !onControl()) return false
+    if (!collapsed.value && !onElement()) return false
     const arrow = ARROWS[action]
     if (arrow) {
       nudgeBy(arrow)
       return true
     }
     if (action === 'more') {
+      // On a screen (no control picked) X has nothing to step.
       const c = current.value
       if (c) {
         const next = c.opacity - OPACITY_STEP
@@ -383,6 +546,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     window.addEventListener('pointerup', pointerUp)
     window.addEventListener('pointercancel', pointerUp)
     void load()
+    void loadSwapped()
   })
   onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKey, { capture: true })
@@ -393,13 +557,18 @@ export function useTouchEditor(o: TouchEditorOptions) {
 
   return {
     area,
-    inset,
     orientation,
     setup,
     prefs,
     draft,
     selected,
     current,
+    currentScreen,
+    shownScreens,
+    placement,
+    placementInset,
+    keep,
+    swapped,
     collapsed,
     panel,
     gesturing,
@@ -416,6 +585,9 @@ export function useTouchEditor(o: TouchEditorOptions) {
     redo: doRedo,
     select,
     setSize,
+    setScreenSize,
+    setKeep,
+    ratioOf: ratio,
     setOpacity,
     setBehaviour,
     addControl,
@@ -424,6 +596,7 @@ export function useTouchEditor(o: TouchEditorOptions) {
     save,
     discard,
     pointerDown,
+    pressScreen,
     pickNext,
     toggleCollapsed,
     own,

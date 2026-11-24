@@ -340,6 +340,26 @@ fn touch_layouts_stay_on_this_device_per_console_and_survive_a_restart() {
     );
 }
 
+#[test]
+fn touch_screens_stay_on_this_device_at_the_console_level() {
+    // Trello #134: the screens' placement goes beside the touch layout, on this device only.
+    let dir = TestDir::new("touch-screens");
+    let mut s = settings(&dir);
+    let key = "touch.tscreens";
+    let e = entry(key).unwrap();
+    assert!(e.per_device);
+    assert!(matches!(e.kind, Kind::TouchScreens));
+    let placed = Value::List(vec!["portrait/main:0,0,1,0.5".to_owned()]);
+    assert!(s.set(key, &Scope::Global, placed.clone()).is_err());
+    assert!(s.set(key, &game_scope(), placed.clone()).is_err());
+    s.set(key, &console_scope(), placed).unwrap();
+    let outside = Value::List(vec!["portrait/main:0,0,2,0.5".to_owned()]);
+    assert!(s.set(key, &console_scope(), outside).is_err());
+    s.set("video.scale", &Scope::Global, option("video.scale", 1))
+        .unwrap();
+    assert!(!synced_text(&dir).contains(key));
+}
+
 // ---- Sync rules (before Drive sync, #20 / #31) ----
 //
 // What the synced files carry and who wins, as the engine does it today. Rules not decided yet
@@ -912,7 +932,7 @@ fn the_catalogue_has_the_entries_of_the_design_and_the_bios_rows() {
     // `library.region` (owner, 2026-11-22, #102), plus «Se il controller si scollega»
     // (`touch.tlost`, E14, owner 2026-11-22, #29), plus the library's Lista / Griglia
     // (`library.view`, owner 2026-11-22, #29), plus «Gestisci lo spazio» (`saves.space`, #29).
-    assert_eq!(ENTRIES.len(), 168);
+    assert_eq!(ENTRIES.len(), 169);
 }
 
 #[test]
@@ -987,6 +1007,7 @@ fn choices_have_unique_well_formed_options() {
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
             | Kind::TouchLayout
+            | Kind::TouchScreens
             | Kind::DateTime { .. } => continue,
             Kind::Apply { options } => options,
         };
@@ -2395,4 +2416,67 @@ fn the_entries_not_wired_yet_are_these() {
             "about.log"
         ]
     );
+}
+
+#[test]
+fn set_many_writes_every_value_or_none() {
+    let dir = TestDir::new("set-many");
+    let mut s = settings(&dir);
+    let tedit = Value::List(vec!["portrait/menu:0.5,0.5,100,100,tap".to_owned()]);
+    let screens = Value::List(vec!["portrait/main:0,0,1,0.5".to_owned()]);
+    let bad = Value::List(vec!["portrait/main:0,0,2,0.5".to_owned()]);
+    let before = value_of(&mut s, "touch.tedit", &console_scope()).0;
+    let screens_before = value_of(&mut s, "touch.tscreens", &console_scope()).0;
+    assert!(s
+        .set_many(
+            &console_scope(),
+            &[("touch.tedit", tedit.clone()), ("touch.tscreens", bad)]
+        )
+        .is_err());
+    assert_eq!(value_of(&mut s, "touch.tedit", &console_scope()).0, before);
+    assert_eq!(
+        value_of(&mut s, "touch.tscreens", &console_scope()).0,
+        screens_before
+    );
+    s.set_many(
+        &console_scope(),
+        &[
+            ("touch.tedit", tedit.clone()),
+            ("touch.tscreens", screens.clone()),
+            ("touch.tport", Value::Text("custom".into())),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        value_of(&mut s, "touch.tedit", &console_scope()).0,
+        Some(tedit)
+    );
+    assert_eq!(
+        value_of(&mut s, "touch.tscreens", &console_scope()).0,
+        Some(screens.clone())
+    );
+    // A valid placement with a refused value beside it is not written either.
+    let moved = Value::List(vec!["portrait/main:0,0.5,1,0.5".to_owned()]);
+    assert!(s
+        .set_many(
+            &console_scope(),
+            &[
+                ("touch.tscreens", moved),
+                ("touch.tport", Value::Text("nonsense".into())),
+            ]
+        )
+        .is_err());
+    assert_eq!(
+        value_of(&mut s, "touch.tscreens", &console_scope()).0,
+        Some(screens)
+    );
+    assert!(s
+        .set_many(
+            &Scope::Global,
+            &[
+                ("touch.tport", Value::Text("custom".into())),
+                ("touch.tedit", Value::List(vec![]))
+            ]
+        )
+        .is_err());
 }

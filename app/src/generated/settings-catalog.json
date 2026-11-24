@@ -619,6 +619,12 @@
       "page": "touch"
     },
     {
+      "key": "touch.tscreens",
+      "kind": "touchScreens",
+      "options": [],
+      "page": "touch"
+    },
+    {
       "key": "touch.tport",
       "kind": "choice",
       "options": [

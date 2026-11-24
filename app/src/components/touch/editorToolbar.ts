@@ -66,3 +66,40 @@ export function fitToolbar(available: number, w: ToolbarWidths): ToolbarFit {
   }
   return { shown, more: TOOLS.filter(t => !shown.includes(t)) }
 }
+
+/** What the toolbar's tools act on, for whether each one can be used. */
+export interface ToolState {
+  canUndo: boolean
+  canRedo: boolean
+  /** A control or a screen is picked. */
+  picked: boolean
+  /** The picked element is a game screen: it can only be moved and resized. */
+  screenPicked: boolean
+  /** The picked control can be removed (not the menu). */
+  canRemove: boolean
+  /** Some of the console's controls are not on screen. */
+  canAdd: boolean
+}
+
+/** Whether a tool is disabled: a game screen can only be moved and resized («Ripristina» and
+ * «Esci» wait for a save on its way, which the toolbar adds). */
+export function toolDisabled(tool: Tool, s: ToolState): boolean {
+  switch (tool) {
+    case 'undo':
+      return !s.canUndo
+    case 'redo':
+      return !s.canRedo
+    case 'add':
+      return !s.canAdd
+    case 'size':
+      return !s.picked
+    case 'opacity':
+    case 'behaviour':
+      return !s.picked || s.screenPicked
+    case 'remove':
+      return !s.canRemove || s.screenPicked
+    case 'reset':
+    case 'discard':
+      return false
+  }
+}

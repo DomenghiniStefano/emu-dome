@@ -117,6 +117,7 @@ describe('tools', () => {
     hasCustom: false,
     lidSupported: true,
     lidClosed: false,
+    phonePlacement: false,
     ...over,
   })
   it('gives every game screenshot, mute, full screen and restart on desktop', () => {
@@ -184,6 +185,26 @@ describe('changes «in prova»', () => {
 })
 
 describe('G09 cards', () => {
+  it('shows the layout card disabled with its reason while the touch layout places the screens', () => {
+    const status = {
+      dualScreen: true,
+      layout: 'side',
+      cycle: ['vertical', 'side'],
+      swapped: false,
+      swapHold: false,
+      hasCustom: false,
+      lidSupported: true,
+      lidClosed: false,
+      phonePlacement: true,
+    } satisfies ScreenStatus
+    const card = layoutCard({ status, row: undefined, consoleName: 'DS', set: vi.fn() })
+    expect(card.value).toEqual({ key: 'qm.layoutPhone.value' })
+    expect(card.sub).toEqual({ key: 'qm.layoutPhone.why' })
+    expect(card.trial).toBe(false)
+    expect(card.prev).toBe(null)
+    expect(card.next).toBe(null)
+  })
+
   it('steps the layout card through the cycle, from the layout shown', () => {
     const set = vi.fn()
     const status = {
@@ -195,6 +216,7 @@ describe('G09 cards', () => {
       hasCustom: false,
       lidSupported: true,
       lidClosed: false,
+      phonePlacement: false,
     } satisfies ScreenStatus
     const card = layoutCard({ status, row: undefined, consoleName: 'Nintendo DS', set })
     expect(card.name).toEqual({ key: 'qm.layout' })

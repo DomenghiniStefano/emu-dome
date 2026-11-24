@@ -59,8 +59,8 @@ import type { PadInfo } from '@/generated/app/PadInfo'
 import type { PadState } from '@/generated/app/PadState'
 import type { PointerArea } from '@/generated/app/PointerArea'
 import type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
-import type { ScreenPlacement } from '@/generated/ScreenPlacement'
 import type { CustomLayout } from '@/generated/CustomLayout'
+import type { CustomScreen } from '@/generated/CustomScreen'
 import type { ScreenLayoutId } from '@/generated/ScreenLayoutId'
 import type { VideoInset } from '@/generated/VideoInset'
 import type { ScreenStatus } from '@/generated/ScreenStatus'
@@ -175,6 +175,7 @@ export type { TouchBehaviour } from '@/generated/TouchBehaviour'
 export type { TouchControl } from '@/generated/TouchControl'
 export type { TouchControlId } from '@/generated/TouchControlId'
 export type { TouchLayout } from '@/generated/TouchLayout'
+export type { TouchScreenShape } from '@/generated/TouchScreenShape'
 export type { TouchOrientation } from '@/generated/TouchOrientation'
 export type { TouchSetup } from '@/generated/TouchSetup'
 export type { ScreenPlacements } from '@/generated/app/ScreenPlacements'
@@ -370,10 +371,13 @@ export const emu = {
       width: number,
       height: number,
     ) => invoke<CustomLayout>('screens_preset_custom', { scope, console, layout, width, height }),
-    /** No game open (the C06 editor from Settings): where a `console` game's screens would go in
-     * `area` if it opened now with the settings of `scope`, composed by Rust. */
-    preview: (scope: SettingsScope, console: ConsoleId, area: PointerArea) =>
-      invoke<ScreenPlacement[]>('screens_preview', { scope, console, area }),
+    /** Where the touch editor starts a `console` game's screens in `area` (fractions of it),
+     * composed by Rust: at the session scope over the open game, where it shows them now (the
+     * layout cycled to, swapped: each keyed by its frame); otherwise with the settings of `scope`. */
+    phoneStart: (scope: SettingsScope, console: ConsoleId, area: PointerArea) =>
+      invoke<CustomScreen[]>('screens_phone_start', { scope, console, area }),
+    /** The phone's own placement of the open game's screens (empty: withdrawn). */
+    setPhone: (screens: CustomScreen[]) => invoke<ScreenStatus>('screens_set_phone', { screens }),
     onChanged: (cb: (e: ScreenStatus) => void): Promise<UnlistenFn> =>
       listen<ScreenStatus>('emu://screens', e => cb(e.payload)),
   },

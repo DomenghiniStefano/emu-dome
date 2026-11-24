@@ -473,6 +473,12 @@
         "menu": "Menu"
       },
       "none": "Tap a control",
+      "screen": {
+        "main": "Screen",
+        "top": "Top screen",
+        "bottom": "Bottom screen"
+      },
+      "screenOnly": "A screen can only be moved and resized.",
       "undo": "Undo",
       "redo": "Redo",
       "add": "Add",
@@ -1386,6 +1392,10 @@
       }
     },
     "touch": {
+      "tscreens": {
+        "name": "Screen positions",
+        "desc": "Where the game screens go, set in the touch layout editor."
+      },
       "tedit": {
         "name": "Customise touch controls",
         "desc": "Move and resize the buttons for the way you hold the phone.",
@@ -2333,6 +2343,10 @@
     "closeLid": "Close the lid",
     "lidUnsupported": "This game’s emulator can’t close the lid.",
     "layout": "Screen layout",
+    "layoutPhone": {
+      "value": "From the touch layout",
+      "why": "The screens are where you put them in Edit layout."
+    },
     "restartTitle": "Restart the game?",
     "restartText": "The game starts over. Your saves stay, progress since your last save is lost.",
     "restartConfirm": "Restart",

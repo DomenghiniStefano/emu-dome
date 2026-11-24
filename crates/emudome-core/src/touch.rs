@@ -11,6 +11,8 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::core_profile::CoreId;
+use crate::screens::{console_frame, console_screens, placement_fits, CustomScreen, ScreenId};
 use crate::ConsoleId;
 
 /// One control of the on-screen pad. TypeScript: `TouchControlId` (generated).
@@ -189,12 +191,30 @@ impl Control {
 #[ts(rename = "TouchLayout")]
 pub struct Layout {
     pub controls: Vec<Control>,
+    /// Where the game's screens go, back to front (`touch.tscreens`). Empty: the game's own
+    /// layout decides.
+    pub screens: Vec<CustomScreen>,
 }
 
 impl Layout {
     /// Each control once, valid, and the menu kept (the only way to the quick menu on a phone
     /// without a back button); empty is valid (none saved).
     pub fn is_valid(&self) -> bool {
+        self.controls_valid() && self.screens_valid()
+    }
+
+    /// The screens are none, the one of a one-screen console, or both of a two-screen one.
+    fn screens_valid(&self) -> bool {
+        [
+            &[][..],
+            &[ScreenId::Main],
+            &[ScreenId::Top, ScreenId::Bottom],
+        ]
+        .iter()
+        .any(|ids| placement_fits(&self.screens, ids))
+    }
+
+    fn controls_valid(&self) -> bool {
         self.controls.is_empty()
             || (self.controls.iter().any(|c| c.id == ControlId::Menu)
                 && self
@@ -211,6 +231,7 @@ impl Layout {
                 .controls
                 .iter()
                 .all(|c| ControlId::of(console).contains(&c.id))
+            && placement_fits(&self.screens, console_screens(console))
     }
 }
 
@@ -234,6 +255,84 @@ impl Layouts {
         match orientation {
             Orientation::Portrait => self.portrait = layout,
             Orientation::Landscape => self.landscape = layout,
+        }
+        self
+    }
+
+    /// The layouts the two stored lists hold (`touch.tedit`, `touch.tscreens`), each on its own:
+    /// a list that does not read leaves its part empty and the other one alone.
+    pub fn read(tedit: &[String], tscreens: &[String]) -> Layouts {
+        let mut layouts = Layouts::from_items(tedit).unwrap_or_default();
+        if let Some(screens) = Self::screens_from_items(tscreens) {
+            layouts.portrait.screens = screens.portrait.screens;
+            layouts.landscape.screens = screens.landscape.screens;
+        }
+        layouts
+    }
+
+    /// The screens of each orientation a `touch.tscreens` list holds, as a `Layouts` with no
+    /// controls; `None` when an item is malformed or a placement invalid.
+    ///
+    /// One item per screen, back to front:
+    /// `"<portrait|landscape>/<main|top|bottom>:<x>,<y>,<w>,<h>"`.
+    fn screens_from_items(items: &[String]) -> Option<Layouts> {
+        let mut layouts = Layouts::default();
+        for item in items {
+            let (place, rest) = item.split_once(':')?;
+            let (orientation, id) = place.split_once('/')?;
+            let mut v = rest.split(',').map(str::trim);
+            let screen = CustomScreen {
+                id: ScreenId::from_id(id.trim())?,
+                x: v.next()?.parse().ok()?,
+                y: v.next()?.parse().ok()?,
+                w: v.next()?.parse().ok()?,
+                h: v.next()?.parse().ok()?,
+            };
+            if v.next().is_some() {
+                return None;
+            }
+            match Orientation::from_id(orientation.trim())? {
+                Orientation::Portrait => layouts.portrait.screens.push(screen),
+                Orientation::Landscape => layouts.landscape.screens.push(screen),
+            }
+        }
+        (layouts.portrait.screens_valid() && layouts.landscape.screens_valid()).then_some(layouts)
+    }
+
+    /// The stored `touch.tscreens` list, portrait first, each orientation back to front,
+    /// numbers rounded to 4 decimals.
+    pub fn screen_items(&self) -> Vec<String> {
+        let n = |v: f32| (v * 10_000.0).round() / 10_000.0;
+        [Orientation::Portrait, Orientation::Landscape]
+            .into_iter()
+            .flat_map(|o| {
+                self.get(o).screens.iter().map(move |s| {
+                    format!(
+                        "{}/{}:{},{},{},{}",
+                        o.id(),
+                        s.id.id(),
+                        n(s.x),
+                        n(s.y),
+                        n(s.w),
+                        n(s.h)
+                    )
+                })
+            })
+            .collect()
+    }
+
+    /// Whether a `touch.tscreens` value is valid (the schema's check, `Kind::TouchScreens`).
+    pub fn valid_screen_items(items: &[String]) -> bool {
+        Self::screens_from_items(items).is_some()
+    }
+
+    /// `self` with an orientation's screens dropped where they do not fit `console`'s.
+    pub fn fitting(mut self, console: ConsoleId) -> Layouts {
+        let ids = console_screens(console);
+        for layout in [&mut self.portrait, &mut self.landscape] {
+            if !placement_fits(&layout.screens, ids) {
+                layout.screens.clear();
+            }
         }
         self
     }
@@ -265,7 +364,7 @@ impl Layouts {
                 Orientation::Landscape => layouts.landscape.controls.push(control),
             }
         }
-        (layouts.portrait.is_valid() && layouts.landscape.is_valid()).then_some(layouts)
+        (layouts.portrait.controls_valid() && layouts.landscape.controls_valid()).then_some(layouts)
     }
 
     /// The stored list (see [`Layouts::from_items`]), portrait first, fractions rounded to 4
@@ -297,6 +396,16 @@ impl Layouts {
     }
 }
 
+/// One screen of a console and its size in the core's frame at 1×. TypeScript:
+/// `TouchScreenShape` (generated).
+#[derive(Debug, Clone, PartialEq, Serialize, TS)]
+#[ts(rename = "TouchScreenShape")]
+pub struct ScreenShape {
+    pub id: ScreenId,
+    pub width: u32,
+    pub height: u32,
+}
+
 /// What the interface needs to draw and edit one console's touch controls. TypeScript:
 /// `TouchSetup` (generated).
 #[derive(Debug, Clone, PartialEq, Serialize, TS)]
@@ -307,6 +416,8 @@ pub struct Setup {
     pub available: Vec<ControlId>,
     /// Those that are one game button, so they can be held or repeated ([`ControlId::is_button`]).
     pub buttons: Vec<ControlId>,
+    /// The console's screens with their size in the core's frame at 1×.
+    pub screen_shapes: Vec<ScreenShape>,
     /// The user's layouts (empty: none saved for that orientation).
     pub portrait: Layout,
     pub landscape: Layout,
@@ -326,6 +437,7 @@ impl Setup {
                 .copied()
                 .filter(|c| c.is_button())
                 .collect(),
+            screen_shapes: screen_shapes(console),
             portrait: layouts.portrait,
             landscape: layouts.landscape,
             size_min: SIZE_MIN,
@@ -336,9 +448,25 @@ impl Setup {
     }
 }
 
+fn screen_shapes(console: ConsoleId) -> Vec<ScreenShape> {
+    let (width, height) = console_frame(console);
+    CoreId::for_console(console)
+        .profile()
+        .split
+        .screens(width, height)
+        .into_iter()
+        .map(|s| ScreenShape {
+            id: s.id,
+            width: s.src.w,
+            height: s.src.h,
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Behaviour, Control, ControlId, Layout, Layouts, Orientation};
+    use super::{Behaviour, Control, ControlId, Layout, Layouts, Orientation, ScreenShape, Setup};
+    use crate::screens::{CustomScreen, ScreenId};
     use crate::ConsoleId;
 
     fn control(id: ControlId, x: f32) -> Control {
@@ -360,9 +488,11 @@ mod tests {
     fn saving_one_orientation_keeps_the_other() {
         let portrait = Layout {
             controls: vec![control(ControlId::Menu, 0.5)],
+            ..Layout::default()
         };
         let landscape = Layout {
             controls: vec![control(ControlId::Dpad, 0.1), control(ControlId::Menu, 0.5)],
+            ..Layout::default()
         };
         let saved = Layouts::default().with(Orientation::Portrait, portrait.clone());
         let both = saved.with(Orientation::Landscape, landscape.clone());
@@ -388,12 +518,14 @@ mod tests {
                         },
                         control(ControlId::Menu, 0.5),
                     ],
+                    ..Layout::default()
                 },
             )
             .with(
                 Orientation::Portrait,
                 Layout {
                     controls: vec![control(ControlId::Dpad, 0.2), control(ControlId::Menu, 0.5)],
+                    ..Layout::default()
                 },
             );
         let stored = layouts.to_items();
@@ -440,6 +572,7 @@ mod tests {
     fn a_layout_fits_only_the_consoles_whose_games_have_its_controls() {
         let with_l = Layout {
             controls: vec![control(ControlId::L, 0.1), control(ControlId::Menu, 0.5)],
+            ..Layout::default()
         };
         assert!(!with_l.fits(ConsoleId::Gb));
         assert!(with_l.fits(ConsoleId::Gba));
@@ -448,6 +581,7 @@ mod tests {
                 control(ControlId::CirclePad, 0.1),
                 control(ControlId::Menu, 0.5),
             ],
+            ..Layout::default()
         };
         assert!(!stick.fits(ConsoleId::Nds));
         assert!(stick.fits(ConsoleId::N3ds));
@@ -473,5 +607,129 @@ mod tests {
             assert_eq!(Orientation::from_id(o.id()), Some(o));
             assert_eq!(serde_json::to_value(o).unwrap(), o.id());
         }
+    }
+
+    fn scr(id: ScreenId, x: f32, y: f32, w: f32, h: f32) -> CustomScreen {
+        CustomScreen { id, x, y, w, h }
+    }
+
+    #[test]
+    fn screens_are_stored_beside_the_controls_and_read_back() {
+        let layouts = Layouts::default().with(
+            Orientation::Portrait,
+            Layout {
+                controls: vec![control(ControlId::Menu, 0.5)],
+                screens: vec![
+                    scr(ScreenId::Top, 0.0, 0.05, 1.0, 0.35),
+                    scr(ScreenId::Bottom, 0.0, 0.45, 1.0, 0.35),
+                ],
+            },
+        );
+        assert_eq!(layouts.to_items(), ["portrait/menu:0.5,0.5,100,100,tap"]);
+        assert_eq!(
+            layouts.screen_items(),
+            [
+                "portrait/top:0,0.05,1,0.35",
+                "portrait/bottom:0,0.45,1,0.35"
+            ]
+        );
+        assert_eq!(
+            Layouts::read(&layouts.to_items(), &layouts.screen_items()),
+            layouts
+        );
+    }
+
+    #[test]
+    fn an_old_layout_with_no_screens_reads_as_before() {
+        let read = Layouts::read(&items(&["landscape/menu:0.5,0.5,100,100,tap"]), &[]);
+        assert_eq!(read.landscape.controls.len(), 1);
+        assert!(read.landscape.screens.is_empty() && read.portrait.screens.is_empty());
+    }
+
+    #[test]
+    fn a_bad_screen_list_drops_only_the_screens() {
+        let read = Layouts::read(
+            &items(&["portrait/menu:0.5,0.5,100,100,tap"]),
+            &items(&["portrait/top:0,0,1,0.5"]),
+        );
+        assert_eq!(read.portrait.controls.len(), 1);
+        assert!(read.portrait.screens.is_empty());
+        let only_screens = Layouts::read(&[], &items(&["portrait/main:0,0,1,0.6"]));
+        assert_eq!(
+            only_screens.portrait.screens,
+            [scr(ScreenId::Main, 0.0, 0.0, 1.0, 0.6)]
+        );
+    }
+
+    #[test]
+    fn bad_screen_lists_are_refused() {
+        for good in [
+            &[][..],
+            &["landscape/main:0.25,0,0.5,1"],
+            &["portrait/top:0,0,1,0.4", "portrait/bottom:0,0.5,1,0.4"],
+        ] {
+            assert!(Layouts::valid_screen_items(&items(good)), "{good:?}");
+        }
+        for bad in [
+            &["portrait/main:0,0,1,0.5", "portrait/main:0,0.5,1,0.5"][..],
+            &["portrait/main:0,0,1,0.5", "portrait/top:0,0.5,1,0.4"],
+            &["portrait/top:0,0,1,0.5"],
+            &["portrait/main:0.5,0,0.6,0.5"],
+            &["portrait/main:0,0,0.05,0.5"],
+            &["portrait/main:0,0,0.5,0.03"],
+            &["sideways/main:0,0,1,1"],
+            &["portrait/left:0,0,1,1"],
+            &["portrait/main:0,0,1"],
+            &["portrait/main:0,0,1,1,1"],
+            &["portrait/main:NaN,0,1,1"],
+        ] {
+            assert!(!Layouts::valid_screen_items(&items(bad)), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn screens_fit_only_their_console() {
+        let main = Layout {
+            controls: vec![control(ControlId::Menu, 0.5)],
+            screens: vec![scr(ScreenId::Main, 0.0, 0.0, 1.0, 0.5)],
+        };
+        assert!(main.fits(ConsoleId::Gba) && main.fits(ConsoleId::Gb));
+        assert!(!main.fits(ConsoleId::Nds));
+        let two = Layout {
+            screens: vec![
+                scr(ScreenId::Top, 0.0, 0.0, 1.0, 0.4),
+                scr(ScreenId::Bottom, 0.0, 0.5, 1.0, 0.4),
+            ],
+            ..main.clone()
+        };
+        assert!(two.fits(ConsoleId::Nds) && two.fits(ConsoleId::N3ds) && !two.fits(ConsoleId::Gbc));
+        let stored = Layouts::default()
+            .with(Orientation::Portrait, two)
+            .fitting(ConsoleId::Gba);
+        assert!(stored.portrait.screens.is_empty());
+        assert_eq!(stored.portrait.controls.len(), 1);
+    }
+
+    #[test]
+    fn the_setup_names_each_screen_with_its_size() {
+        let shape = |id, width, height| ScreenShape { id, width, height };
+        assert_eq!(
+            Setup::new(ConsoleId::Gba, Layouts::default()).screen_shapes,
+            [shape(ScreenId::Main, 240, 160)]
+        );
+        assert_eq!(
+            Setup::new(ConsoleId::Nds, Layouts::default()).screen_shapes,
+            [
+                shape(ScreenId::Top, 256, 192),
+                shape(ScreenId::Bottom, 256, 192)
+            ]
+        );
+        assert_eq!(
+            Setup::new(ConsoleId::N3ds, Layouts::default()).screen_shapes,
+            [
+                shape(ScreenId::Top, 400, 240),
+                shape(ScreenId::Bottom, 320, 240)
+            ]
+        );
     }
 }

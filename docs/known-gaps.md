@@ -39,18 +39,31 @@ before working on any area listed here, and update it in the same commit as a ch
   / Start small pills, the menu a small square), E14. A button's box is what takes the touch; L / R (84 × 36),
   Select / Start (60 × 32) and the menu (36) are under the 44 touch minimum by design and never shrink below their
   own size in C06 (`minSize`); the face buttons (48) and the d-pad (116, the whole box) are not. Not yet: imported skins (our pack format, `.deltaskin`, RetroArch overlays: Phase 5,
-  `docs/decisions.md`), more than one control of the same kind (a second, turbo A), a layout per game, the C06
-  editor's controls drawn over the real screen layout of a DS game (they are placed over the window, not the
-  screens), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4 except the style
+  `docs/decisions.md`), more than one control of the same kind (a second, turbo A), a layout per game (#135; the
+  touch layout and the screens' placement are per console), the right stick of the 3DS (C-stick) and ZL / ZR. The `touch.*` rows are phase 4 except the style
   (`touch.tskin`), the vibration (`touch.tvib`, `touch.thapt`) and the editor (`touch.tedit`, #111), phase 1, so
   Settings › Controlli touch shows those rows while `CURRENT_PHASE` is 1 (on the phone; on the desktop disabled
   with «Solo su questo telefono.»), and the other rows keep their defaults (E14 «Pausa e domanda», 100 %). C06
   opens from the quick menu's «Controlli» and, on the phone, «Altro › Modifica la disposizione» (the open game's
   console), and from the `touch.tedit` row (at «Tutti i giochi» a dialog asks for the console first: GB, GBC,
-  GBA, DS, 3DS). From Settings there is no game: the controls are laid over a dark ground with the console's
-  screens drawn as named placeholders where Rust would place them for the layout the game opens with
-  (`screens::preview`, the frame at 1×, the controls' inset as in game); no screenshot is used as the
-  background, and «Salva» stores the layout of the orientation the phone is in, for that console.
+  GBA, DS, 3DS). The game screens are elements of C06 like the controls (#134): editable frames (C09's
+  `ScreenFrame`) moved, resized (size slider, «Mantieni le proporzioni» on by default) and undone like a control,
+  never removed, opacity and behaviour disabled. From Settings there is no game: the elements are laid on the
+  theme's flat ground (no dot grid, no screenshot), the screens as named frames starting where Rust would place
+  them for the layout the game opens with (`screens_phone_start`: the cycle's first layout, not swapped, at 1×);
+  with a game open the frames start where the game shows its screens now (the layout cycled to, swapped, the
+  frame at its real size, `video.scale` applied; a layout showing one screen of two starts both as «auto» places
+  them) and the game itself moves under the frame. «Salva» stores the layout and the screens' placement
+  (`touch.tscreens`, fractions of the whole window, saved with `touch.tedit` in one write) of the orientation
+  the phone is in, for that console, on this device only (never synced, by design: a phone's placement does not
+  belong on other devices). In game the placement is placed over the whole window (the controls may overlap it)
+  while the touch controls are in use, not in what they leave; the quick menu's inset scales it uniformly. Not
+  yet: guides only to the window's centre lines (not to other elements' edges); the safe edge (camera, bars) is a
+  dashed line, a screen may still go past it; the placement ignores `video.aspect` / `video.scale`; the reset of
+  the `touch.tedit` row leaves `touch.tscreens` stored (used only with saved controls) until the editor's
+  «Torna alla disposizione predefinita» + «Salva» writes it empty. Under `screens.rot` (phase 2, its row hidden
+  today) a phone placement is turned as a custom layout is, each rectangle turned inside the window, while the
+  editor draws it unturned: the editor and the game then differ. To be decided before phase 2 shows the row.
 - Android controllers (Trello #47): built from Android's input events (`pads/android.rs`, `GamepadInput.kt`) but
   not run on a device yet. To verify there: which physical button a Nintendo-layout pad (Switch Pro, an 8BitDo in
   Switch mode) reports as `KEYCODE_BUTTON_A` (the table reads it as the bottom one, as SDL does); whether Guide /

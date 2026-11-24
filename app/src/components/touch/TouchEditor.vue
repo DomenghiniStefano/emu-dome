@@ -1,38 +1,40 @@
 <script setup lang="ts">
 // C06 «Comandi touch» (Trello #29, option A of the owner's mockup, 2026-11-22): the touch
-// controls over the game at their real place, in the whole window, as the C09 screens editor.
-// Tap a control to pick it (accent ring), drag it to move it (8 px grid), pinch to resize it; the
-// glass toolbar at the top (TouchToolbar) has undo / redo, add, size, opacity, behaviour and the
-// rest, «Riduci» folds it into a pill (TouchEditorPill) and «Salva» stores the layout on this
-// device for the console and the way the phone is held. It fades while a control is dragged.
-// Opened from the quick menu's «Controlli» (the game paused behind it, `live`, placed for the
-// layout being edited as TouchLayer places it in game: `inset`) and from Settings
-// › Controlli touch (no game: a dark ground with the console's screens drawn where the game would
-// show them, TouchPreviewScreens, Trello #111).
-// Controller: L1 / R1 pick a control, the d-pad moves it, the right stick resizes it, X steps its
-// opacity, Select folds the toolbar, A saves, B closes the open tool panel first (size, opacity,
-// behaviour, add; #132), then leaves without saving. Keyboard: PageUp /
-// PageDown or [ ], the arrows, Shift + arrows, Ctrl + Z / Ctrl + Y, Enter, Esc. The state and the
-// steps are useTouchEditor's, the geometry touchLayout.ts's.
-import { computed, nextTick, ref, watch } from 'vue'
+// controls and the game screens (#134) over the game at their real place, in the whole window,
+// as the C09 screens editor. Tap a control or a screen to pick it (accent ring), drag it to move
+// it (8 px snap, not drawn; while a screen moves, accent guides show the window's centre lines it
+// meets), pinch a control or pull a screen's accent corner to resize it; the glass toolbar at
+// the top (TouchToolbar) has undo / redo, add, size, opacity, behaviour and the rest (a screen:
+// size and «Mantieni le proporzioni» only), «Riduci» folds it into a pill (TouchEditorPill) and
+// «Salva» stores the layout on this device for the console and the way the phone is held. It
+// fades while something is dragged. A dashed line marks the system's safe edges (camera, bars).
+// Opened from the quick menu's «Controlli» (the game paused behind it, `live`: the game is placed
+// as the layout being edited places it, `placement` and `inset` sent as a pair at each step) and
+// from Settings › Controlli touch (no game: the theme's flat ground, the screens as placeholders).
+// Controller: L1 / R1 pick a screen or a control, the d-pad moves it, the right stick resizes
+// it, X steps a control's opacity, Select folds the toolbar, A saves, B closes the open tool
+// panel first (size, opacity, behaviour, add; #132), then leaves without saving. Keyboard: PageUp
+// / PageDown or [ ], the arrows, Shift + arrows, Ctrl + Z / Ctrl + Y, Enter, Esc. The state and
+// the steps are useTouchEditor's, the geometry touchLayout.ts's and editorScreens.ts's.
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ConsoleId, ScreenPlacement } from '@/emu'
+import type { ConsoleId, CustomScreen, ScreenId } from '@/emu'
 import type { InsetPx } from '@/components/game/inset'
 import EditorHints from '@/components/screen-editor/EditorHints.vue'
+import ScreenFrame from '@/components/screen-editor/ScreenFrame.vue'
 import { useImmersive } from '@/composables/useImmersive'
 import { useErrorSink } from '@/composables/useToasts'
 import { useNavScope } from '@/nav'
+import { centreGuides, otherScreen } from './editorScreens'
 import TouchControl from './TouchControl.vue'
 import TouchEditorPill from './TouchEditorPill.vue'
-import TouchPreviewScreens from './TouchPreviewScreens.vue'
 import TouchToolPanel from './TouchToolPanel.vue'
 import TouchToolbar from './TouchToolbar.vue'
-import { useScreenPreview } from './useScreenPreview'
 import { useTouchEditor, type ToolPanel } from './useTouchEditor'
 
 const props = defineProps<{
   console: ConsoleId
-  /** A game is open behind (the quick menu); else Settings, over a dark ground. */
+  /** A game is open behind (the quick menu); else Settings, over the theme's flat ground. */
   live: boolean
 }>()
 const emit = defineEmits<{
@@ -40,6 +42,9 @@ const emit = defineEmits<{
   /** Over a game (`live`): the edges the layout being edited keeps clear of it, as TouchLayer
    * keeps them in game, so the game is placed where it plays (#131); each step sends it again. */
   inset: [InsetPx]
+  /** Over a game (`live`): where the layout being edited puts the screens (empty: none of its
+   * own), sent before `inset` at each step; `null` once the editor closes. */
+  placement: [CustomScreen[] | null]
 }>()
 
 const { t } = useI18n()
@@ -51,20 +56,33 @@ const editor = useTouchEditor({
   onError: useErrorSink(),
   close: () => emit('close'),
 })
-const { draft, selected, current, collapsed, panel, gesturing, busy, prefs, limits } = editor
-/** No game behind (Settings): the console's screens where the game would show them. */
-const previewScreens = props.live
-  ? ref<ScreenPlacement[]>([])
-  : useScreenPreview(props.console, editor.area, editor.inset, useErrorSink())
+const {
+  draft,
+  selected,
+  current,
+  currentScreen,
+  collapsed,
+  panel,
+  gesturing,
+  busy,
+  prefs,
+  limits,
+} = editor
 // Over a game: the game itself laid out for the layout being edited (once it is loaded, so the
-// game never jumps to the whole window first).
+// game never jumps to the whole window first): the placement, then the inset it is fitted in.
 watch(
-  [editor.inset, editor.loaded],
-  ([inset, loaded]) => {
-    if (props.live && loaded) emit('inset', inset)
+  [editor.placement, editor.placementInset, editor.loaded],
+  ([placement, inset, loaded]) => {
+    if (!props.live || !loaded) return
+    emit('placement', placement)
+    emit('inset', inset)
   },
   { immediate: true },
 )
+// Closed: the touch layer's placement comes back.
+onBeforeUnmount(() => {
+  if (props.live) emit('placement', null)
+})
 // From Settings: the whole screen, as a game has it (Android's bars hidden, #131), so the
 // controls and the screens are where they will be in game.
 useImmersive(!props.live)
@@ -95,18 +113,30 @@ useNavScope(root, {
   escape: !props.live,
 })
 
-const name = computed(() =>
-  current.value ? t(`touch.editor.control.${current.value.id}`) : t('touch.editor.none'),
-)
+/** The picture a frame holds: the other screen's while the game shows them swapped. */
+function pictureOf(id: ScreenId): ScreenId {
+  return editor.swapped.value ? otherScreen(id) : id
+}
+const screenName = (id: ScreenId) => t(`touch.editor.screen.${pictureOf(id)}`)
+const name = computed(() => {
+  if (currentScreen.value) return screenName(currentScreen.value.id)
+  return current.value ? t(`touch.editor.control.${current.value.id}`) : t('touch.editor.none')
+})
 const where = computed(() =>
   t(`touch.editor.where.${editor.orientation.value}`, {
     console: t(`console.${props.console}`),
   }),
 )
+/** The window's centre lines the screen being dragged meets. */
+const guides = computed(() =>
+  gesturing.value && currentScreen.value
+    ? centreGuides(currentScreen.value, editor.area.value)
+    : { across: false, down: false },
+)
 function togglePanel(p: ToolPanel) {
   panel.value = panel.value === p ? null : p
 }
-/** Out of the way while a control is dragged or pinched. */
+/** Out of the way while a control or a screen is dragged or pinched. */
 const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' : ''))
 </script>
 
@@ -114,12 +144,26 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
   <section
     ref="root"
     class="fixed inset-0 z-dialog touch-none overflow-hidden select-none"
-    :class="live ? '' : 'bg-letterbox'"
+    :class="live ? '' : 'bg-bg'"
     :aria-label="t('touch.editor.title')"
     @pointerdown="editor.pointerDown"
   >
-    <TouchPreviewScreens v-if="!live" :console="props.console" :placements="previewScreens" />
-    <div class="pointer-events-none absolute inset-0 bg-touch-grid" aria-hidden="true"></div>
+    <!-- The system's safe edges (camera, bars): a screen may go past them, the line says where. -->
+    <div
+      class="pointer-events-none absolute top-safe-top right-safe-right bottom-safe-bottom left-safe-left border border-dashed border-line-strong"
+      aria-hidden="true"
+    ></div>
+
+    <ScreenFrame
+      v-for="s in editor.shownScreens.value"
+      :key="s.id"
+      :screen="s"
+      :label="screenName(s.id)"
+      :selected="s.id === selected"
+      :placeholder="!live"
+      @press="(e, corner) => editor.pressScreen(s.id, e, corner)"
+      @focus="editor.select(s.id)"
+    />
 
     <TouchControl
       v-for="c in draft.controls"
@@ -137,6 +181,17 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
     />
 
     <div
+      v-if="guides.across"
+      class="pointer-events-none absolute inset-y-0 left-1/2 border-l border-accent"
+      aria-hidden="true"
+    ></div>
+    <div
+      v-if="guides.down"
+      class="pointer-events-none absolute inset-x-0 top-1/2 border-t border-accent"
+      aria-hidden="true"
+    ></div>
+
+    <div
       class="absolute inset-x-16 top-16 flex flex-col items-center gap-8 transition-opacity duration-fast"
       :class="fade"
     >
@@ -149,7 +204,8 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
           class="w-full"
           :can-undo="editor.canUndo.value"
           :can-redo="editor.canRedo.value"
-          :picked="!!current"
+          :picked="!!current || !!currentScreen"
+          :screen-picked="!!currentScreen"
           :can-remove="!!current && current.id !== 'menu'"
           :can-add="editor.addable.value.length > 0"
           :panel="panel"
@@ -174,11 +230,23 @@ const fade = computed(() => (gesturing.value ? 'pointer-events-none opacity-0' :
           :size-max="limits.sizeMax"
           :opacity-min="limits.opacityMin"
           :opacity-max="limits.opacityMax"
+          :screen="currentScreen"
+          :screen-name="currentScreen ? screenName(currentScreen.id) : undefined"
+          :keep="editor.keep.value"
           @add="editor.addControl"
           @size="editor.setSize"
           @opacity="editor.setOpacity"
           @behaviour="editor.setBehaviour"
+          @screen-size="editor.setScreenSize"
+          @keep="editor.setKeep"
         />
+        <!-- Why opacity, behaviour and remove are off for a screen (X05). -->
+        <span
+          v-else-if="currentScreen"
+          class="rounded-full border border-line px-12 py-4 text-caption glass-thick-flat"
+        >
+          {{ t('touch.editor.screenOnly') }}
+        </span>
       </template>
       <TouchEditorPill
         v-else

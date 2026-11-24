@@ -137,9 +137,11 @@ onMounted(async () => {
     />
     <TouchLayer
       v-if="touch"
+      :key="session.launches.value"
       :console="game.consoleId"
       :menu-open="menuOpen"
       @menu="session.setMenu(true)"
+      @placement="s => session.setPlacement('layer', s)"
       @inset="session.setInset"
       @paused="p => (session.paused.value = p)"
     />
@@ -170,6 +172,7 @@ onMounted(async () => {
       @fullscreen="session.toggleFullscreen"
       @screenshot="session.screenshot"
       @inset="session.setInset"
+      @placement="s => session.setPlacement('editor', s)"
       @swap-screens="screens.swap"
       @toggle-lid="screens.toggleLid"
       @layout="screens.setLayout"

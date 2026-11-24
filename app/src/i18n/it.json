@@ -473,6 +473,12 @@
         "menu": "Menu"
       },
       "none": "Tocca un comando",
+      "screen": {
+        "main": "Schermo",
+        "top": "Schermo superiore",
+        "bottom": "Schermo inferiore"
+      },
+      "screenOnly": "Uno schermo si può solo spostare e ridimensionare.",
       "undo": "Annulla",
       "redo": "Ripeti",
       "add": "Aggiungi",
@@ -1386,6 +1392,10 @@
       }
     },
     "touch": {
+      "tscreens": {
+        "name": "Posizione degli schermi",
+        "desc": "Dove stanno gli schermi del gioco, scelto nell’editor della disposizione."
+      },
       "tedit": {
         "name": "Personalizza i controlli touch",
         "desc": "Sposta e ridimensiona i pulsanti nel verso in cui tieni il telefono.",
@@ -2333,6 +2343,10 @@
     "closeLid": "Chiudi il coperchio",
     "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio.",
     "layout": "Disposizione degli schermi",
+    "layoutPhone": {
+      "value": "Dalla disposizione touch",
+      "why": "Gli schermi sono dove li hai messi in Modifica la disposizione."
+    },
     "restartTitle": "Riavviare il gioco?",
     "restartText": "Il gioco riparte dall’inizio. I salvataggi restano, i progressi dall’ultimo salvataggio si perdono.",
     "restartConfirm": "Riavvia",

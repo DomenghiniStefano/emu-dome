@@ -219,6 +219,10 @@ pub enum Kind {
     /// `crate::touch::Layouts` (empty: none); read and written as typed layouts by the `touch_*`
     /// commands.
     TouchLayout,
+    /// Where the game screens go in the user's touch layouts, per orientation, edited with the
+    /// controls in C06 (`touch.tscreens`; no row of its own). Value: list, shape in
+    /// `crate::touch::Layouts::screen_items` (empty: none).
+    TouchScreens,
     /// A local date and time to the minute, `YYYY-MM-DDTHH:MM` with the year in
     /// `min_year..=max_year` (`saves.rtcdate`). Value: text, read with [`DateTime::parse`].
     DateTime { min_year: u16, max_year: u16 },
@@ -432,6 +436,7 @@ impl Entry {
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
             | Kind::TouchLayout
+            | Kind::TouchScreens
             | Kind::DateTime { .. } => true,
         }
     }
@@ -456,6 +461,7 @@ impl Entry {
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
             | Kind::TouchLayout
+            | Kind::TouchScreens
             | Kind::DateTime { .. } => Vec::new(),
         }
     }
@@ -516,6 +522,9 @@ impl Entry {
                 crate::screens::CustomLayout::valid_items(items)
             }
             (Kind::TouchLayout, Value::List(items)) => crate::touch::Layouts::valid_items(items),
+            (Kind::TouchScreens, Value::List(items)) => {
+                crate::touch::Layouts::valid_screen_items(items)
+            }
             (Kind::DateTime { min_year, max_year }, Value::Text(t)) => {
                 DateTime::parse(t).is_some_and(|d| (min_year..=max_year).contains(&d.year))
             }
@@ -533,6 +542,7 @@ impl Entry {
                 | Kind::Bindings { .. }
                 | Kind::ScreenLayout
                 | Kind::TouchLayout
+                | Kind::TouchScreens
                 | Kind::DateTime { .. },
                 Value::Bool(_) | Value::Int(_) | Value::Text(_) | Value::List(_),
             ) => false,

@@ -27,7 +27,7 @@ function pending() {
 }
 
 const entry = (key: string, page: string, phase = 1) =>
-  ({ key, page, phase }) as unknown as SettingEntry
+  ({ key, page, phase, kind: { type: 'toggle' } }) as unknown as SettingEntry
 
 function setup() {
   const schema = ref({ pages: ['video'], currentPhase: 1 } as unknown as SettingsSchema)

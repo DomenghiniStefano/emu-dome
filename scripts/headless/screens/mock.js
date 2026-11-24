@@ -1241,6 +1241,8 @@
       hasCustom: false,
       lidSupported: !scenario.lidless,
       lidClosed: !!scenario.lid,
+      // #134: the phone's own placement of the screens (the touch layout's, or C06's while open).
+      phonePlacement: false,
     },
     screens_custom: { screens: [] },
     screens_preset_custom: {
@@ -1397,8 +1399,8 @@
   // screen teal, each with a lighter border, placed as `screens::compose` places them on a phone
   // (the `auto` layout filling its room: stacked upright with the inset's `between` and
   // `apart`, side by side on its side; crates/emudome-core/src/screens.rs, its phone tests).
-  // `frameConsole` (Trello #111): the console whose screens `screens_preview` places with no game
-  // open (the C06 editor from Settings); a game open places its own.
+  // `frameConsole` (Trello #111): the console whose screens `screens_phone_start` places with no
+  // game open (the C06 editor from Settings, #134); a game open places its own.
   const framed = scenario.game ?? scenario.frameConsole;
   const dual = framed === "nds" || framed === "3ds";
   const n3ds = framed === "3ds";
@@ -1607,8 +1609,28 @@
         return scenario.frame
           ? placements(args.area)
           : { frameWidth: 0, frameHeight: 0, placements: [] };
-      // C06 from Settings (Trello #111): where `frameConsole`'s screens would go in the area.
-      if (cmd === "screens_preview") return placements(args.area).placements;
+      // C06 (#134): where the editor starts the screens, as Rust's `screens_phone_start`: where
+      // the open game shows its screens (its layout now, `ScreenSession::phone_start`), else where
+      // `frameConsole`'s would go, in the area with its inset, as fractions of the whole window.
+      // The mock's game is never cycled and its pictures never move when `swapped`, so both are
+      // its placements.
+      if (cmd === "screens_phone_start") {
+        const { width, height } = args.area;
+        if (!(width > 0 && height > 0)) return [];
+        return placements(args.area).placements.map(({ id, dst }) => ({
+          id,
+          x: dst.x / width,
+          y: dst.y / height,
+          w: dst.w / width,
+          h: dst.h / height,
+        }));
+      }
+      // The phone's own placement sent (the touch layer's, or C06's while open): the status says
+      // it is in use while it holds screens.
+      if (cmd === "screens_set_phone") {
+        window.__phonePlacement = args.screens;
+        return { ...answers.screens_status, phonePlacement: args.screens.length > 0 };
+      }
       // A game open (`game`): its stats (#124: a null answer read as a stats object threw in
       // gameFlow.ts). Not `running`, so the frame count that never moves is no hang (E11).
       // `unsaved: true`: running with progress not in a quick save, so «Chiudi il gioco» asks

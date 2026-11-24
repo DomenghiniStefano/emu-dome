@@ -13,14 +13,21 @@
 // App.vue mounts it on a touch screen while a game is open.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { ConsoleId, TouchControl as Control } from '@/emu'
+import type { ConsoleId, CustomScreen, TouchControl as Control } from '@/emu'
 import { flow } from '@/components/game/gameFlow'
 import { NO_INSET, type InsetPx } from '@/components/game/inset'
 import { useDeviceLayout } from '@/composables/useDeviceLayout'
 import ControllerLostDialog from './ControllerLostDialog.vue'
 import TouchControl from './TouchControl.vue'
 import { gameButton } from './touchControls'
-import { activeLayout, isDualScreen, orientationOf, reservedInset } from './touchLayout'
+import {
+  activeLayout,
+  isDualScreen,
+  orientationOf,
+  playInset,
+  playPlacement,
+  reservedInset,
+} from './touchLayout'
 import { hideAfterMs, touchShown } from './touchVisibility'
 import { useControllerLoss } from './useControllerLoss'
 import { useTouchPlay } from './useTouchPlay'
@@ -32,6 +39,8 @@ const emit = defineEmits<{
   menu: []
   /** The edges the controls keep clear of the game, CSS px (none while hidden). */
   inset: [InsetPx]
+  /** Where the layout in use puts the game's screens (none: the game's own layout). */
+  placement: [CustomScreen[]]
   /** E14 paused the game, or let it go on. */
   paused: [boolean]
 }>()
@@ -50,7 +59,7 @@ const layout = computed(() =>
         prefs.value[orientation.value],
         area.value,
       )
-    : { controls: [] },
+    : { controls: [], screens: [] },
 )
 const { boxes, boxOf } = useControlBoxes(root, () => layout.value)
 
@@ -72,16 +81,18 @@ const loss = useControllerLoss({
 })
 onMounted(() => void loss.listen())
 
-const shown = computed(() =>
-  touchShown({
-    touch: true,
-    inGame: true,
-    menuOpen: props.menuOpen,
-    editing: false,
-    hideWithPad: prefs.value.hideWithPad,
-    controllers: loss.pads.value.length,
-  }),
-)
+const visibility = () => ({
+  touch: true,
+  inGame: true,
+  menuOpen: props.menuOpen,
+  editing: false,
+  hideWithPad: prefs.value.hideWithPad,
+  controllers: loss.pads.value.length,
+})
+const shown = computed(() => touchShown(visibility()))
+// The quick menu only covers the controls and `touch.thide` only fades them: the placement stays.
+// A controller with `touch.tpad` withdraws them, and the placement with them.
+const controlsInUse = computed(() => touchShown({ ...visibility(), menuOpen: false }))
 const faded = useIdleFade(() => hideAfterMs(prefs.value.hide))
 const play = useTouchPlay(() => prefs.value.haptics)
 
@@ -94,6 +105,12 @@ const latched = (c: Control) => {
 // Nothing stays pressed when the controls go away (the menu, a controller, the game closing).
 watch(shown, on => on || play.releaseAll())
 
+// The placement goes before the inset of the same change; the menu does not hold it back.
+watch(
+  [layout, controlsInUse],
+  () => emit('placement', playPlacement(layout.value, controlsInUse.value)),
+  { flush: 'post', immediate: true },
+)
 // The controls keep their part of the window; the quick menu keeps its own while open.
 watch(
   [shown, () => props.menuOpen, layout, area, boxes],
@@ -101,15 +118,16 @@ watch(
     if (props.menuOpen) return
     emit(
       'inset',
-      shown.value
-        ? reservedInset(layout.value, area.value, boxOf, isDualScreen(props.console))
-        : NO_INSET,
+      playInset(layout.value, shown.value, () =>
+        reservedInset(layout.value, area.value, boxOf, isDualScreen(props.console)),
+      ),
     )
   },
   { flush: 'post', immediate: true },
 )
 onBeforeUnmount(() => {
   play.releaseAll()
+  emit('placement', [])
   emit('inset', NO_INSET)
 })
 </script>

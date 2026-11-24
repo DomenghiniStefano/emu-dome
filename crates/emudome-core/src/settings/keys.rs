@@ -56,7 +56,8 @@ const fn stored(kind: &Kind) -> Stored {
         | Kind::Folders
         | Kind::Bindings { .. }
         | Kind::ScreenLayout
-        | Kind::TouchLayout => Stored::List,
+        | Kind::TouchLayout
+        | Kind::TouchScreens => Stored::List,
         Kind::Action { .. } | Kind::Apply { .. } => Stored::Nothing,
     }
 }
@@ -145,6 +146,7 @@ pub const FX_FILE: TextKey = TextKey::new("fx.fxfile");
 pub const SCREENS_CYCLE: ListKey = ListKey::new("screens.cycle");
 pub const SCREENS_CUSTOM: ListKey = ListKey::new("screens.custom");
 pub const TOUCH_LAYOUTS: ListKey = ListKey::new("touch.tedit");
+pub const TOUCH_SCREENS: ListKey = ListKey::new("touch.tscreens");
 pub const TOUCH_PORTRAIT: TextKey = TextKey::new("touch.tport");
 pub const TOUCH_LANDSCAPE: TextKey = TextKey::new("touch.tland");
 pub const SCREENS_RATIO: IntKey = IntKey::new("screens.ratio");
@@ -272,6 +274,7 @@ impl<F: Fn(&str) -> Option<Value>> Reader<F> {
             | Kind::Bindings { .. }
             | Kind::ScreenLayout
             | Kind::TouchLayout
+            | Kind::TouchScreens
             | Kind::DateTime { .. } => v,
         }
     }

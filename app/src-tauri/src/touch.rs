@@ -11,30 +11,44 @@ use tauri::{AppHandle, Manager};
 use crate::settings::SettingsState;
 use crate::AppState;
 
-/// The layouts saved for `console` on this device (`touch.tedit`, per device at the console's
-/// level), with the controls its games have. A stored value that no longer reads (another
-/// version's) counts as none: the default layouts are drawn, nothing is written.
+/// The stored list under `key` at `scope`, none when there is no value.
+fn stored_items(
+    settings: &mut emudome_core::settings::Settings,
+    key: &str,
+    scope: &Scope,
+) -> Result<Vec<String>, ErrorCode> {
+    Ok(match settings.resolve(key, scope)?.value {
+        Some(Value::List(items)) => items,
+        Some(Value::Bool(_) | Value::Int(_) | Value::Text(_)) | None => Vec::new(),
+    })
+}
+
+/// The layouts saved for `console` on this device (`touch.tedit` and `touch.tscreens`, per device
+/// at the console's level), with the controls and screens its games have. A stored value that no
+/// longer reads (another version's) counts as none: the default layouts are drawn, nothing is
+/// written.
 #[tauri::command]
 pub(crate) fn touch_layouts(app: AppHandle, console: ConsoleId) -> Result<Setup, ErrorCode> {
     let state = app.try_state::<SettingsState>().ok_or(ErrorCode::NoGame)?;
-    let resolved = state
-        .0
-        .lock()
-        .resolve(keys::TOUCH_LAYOUTS.as_str(), &Scope::Console { console })?;
-    let items = match resolved.value {
-        Some(Value::List(items)) => items,
-        Some(Value::Bool(_) | Value::Int(_) | Value::Text(_)) | None => Vec::new(),
+    let scope = Scope::Console { console };
+    let (tedit, tscreens) = {
+        let mut settings = state.0.lock();
+        (
+            stored_items(&mut settings, keys::TOUCH_LAYOUTS.as_str(), &scope)?,
+            stored_items(&mut settings, keys::TOUCH_SCREENS.as_str(), &scope)?,
+        )
     };
     Ok(Setup::new(
         console,
-        Layouts::from_items(&items).unwrap_or_default(),
+        Layouts::read(&tedit, &tscreens).fitting(console),
     ))
 }
 
-/// C06's «Salva»: `layout` becomes `console`'s layout for `orientation` (the other orientation
-/// kept), and that orientation's choice (`touch.tport` / `touch.tland`) turns to `custom` for the
-/// console, so the game shows it at once. A layout with a control the console's games do not
-/// have, or otherwise invalid, is refused with `settingInvalidValue`.
+/// C06's «Salva»: `layout` (controls and screens) becomes `console`'s layout for `orientation`
+/// (the other orientation kept), and that orientation's choice (`touch.tport` / `touch.tland`)
+/// turns to `custom` for the console, so the game shows it at once; all in one write. An empty
+/// `screens` clears that orientation's placement. A layout with a control or screen the console's
+/// games do not have, or otherwise invalid, is refused with `settingInvalidValue`.
 #[tauri::command]
 pub(crate) fn touch_set_layout(
     app: AppHandle,
@@ -42,10 +56,11 @@ pub(crate) fn touch_set_layout(
     orientation: Orientation,
     layout: Layout,
 ) -> Result<(), ErrorCode> {
-    let key = keys::TOUCH_LAYOUTS.as_str();
+    let tedit = keys::TOUCH_LAYOUTS.as_str();
+    let tscreens = keys::TOUCH_SCREENS.as_str();
     if layout.controls.is_empty() || !layout.fits(console) {
         return Err(ErrorCode::SettingInvalidValue {
-            key: key.to_owned(),
+            key: tedit.to_owned(),
         });
     }
     let choice = match orientation {
@@ -56,16 +71,21 @@ pub(crate) fn touch_set_layout(
     let state = app.try_state::<SettingsState>().ok_or(ErrorCode::NoGame)?;
     let level = {
         let mut settings = state.0.lock();
-        let stored = match settings.resolve(key, &scope)?.value {
-            Some(Value::List(items)) => Layouts::from_items(&items).unwrap_or_default(),
-            Some(Value::Bool(_) | Value::Int(_) | Value::Text(_)) | None => Layouts::default(),
-        };
-        let items = stored.with(orientation, layout).to_items();
-        let level = settings.set(key, &scope, Value::List(items))?;
-        settings.set(choice, &scope, Value::Text("custom".to_owned()))?;
-        level
+        let stored = Layouts::read(
+            &stored_items(&mut settings, tedit, &scope)?,
+            &stored_items(&mut settings, tscreens, &scope)?,
+        );
+        let saved = stored.with(orientation, layout);
+        settings.set_many(
+            &scope,
+            &[
+                (tedit, Value::List(saved.to_items())),
+                (tscreens, Value::List(saved.screen_items())),
+                (choice, Value::Text("custom".to_owned())),
+            ],
+        )?
     };
-    crate::settings::emit_changed(&app, &[key, choice], level);
+    crate::settings::emit_changed(&app, &[tedit, tscreens, choice], level);
     Ok(())
 }
 

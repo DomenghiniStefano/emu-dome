@@ -63,7 +63,8 @@ export const msg = {
 
 /** Shown at all: entries of a later roadmap phase stay hidden until then. */
 export function isShown(entry: SettingEntry, schema: SettingsSchema): boolean {
-  return entry.phase <= schema.currentPhase
+  // `touch.tscreens` has no row: it is edited with the `touch.tedit` row's layouts.
+  return entry.phase <= schema.currentPhase && entry.kind.type !== 'touchScreens'
 }
 
 /**
@@ -226,6 +227,7 @@ export function notYetWired(entry: SettingEntry): boolean {
     case 'bindings':
     case 'screenLayout':
     case 'touchLayout':
+    case 'touchScreens':
       // A screen layout: edited in the C09 screens editor (components/screen-editor, #28); the
       // touch controls in the C06 editor (components/touch, #29).
       return false

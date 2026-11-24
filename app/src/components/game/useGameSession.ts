@@ -2,11 +2,20 @@
 // The controller combos and the core's events are useGameEvents', how a game ends (G14, E11)
 // useGameEnding's; this file puts them together as one session. Opening a game is
 // useGameLaunch's.
-import { watch } from 'vue'
-import { AUTO_SLOT, emu, type EmuEvent, type GameInfo, type LibraryGame, type Speed } from '@/emu'
+import { ref, watch } from 'vue'
+import {
+  AUTO_SLOT,
+  emu,
+  type CustomScreen,
+  type EmuEvent,
+  type GameInfo,
+  type LibraryGame,
+  type Speed,
+} from '@/emu'
 import { flow, gameStarted } from './gameFlow'
 import { report } from '@/lib/errors'
 import { loadKeymap } from '@/lib/keymap'
+import { effectivePlacement, samePlacement } from './placement'
 import { insetShares, NO_INSET, sameInset, type InsetPx } from './inset'
 import { createGameState } from './gameState'
 import { useGameEnding } from './useGameEnding'
@@ -52,8 +61,31 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     comboSlot.value = await emu.controls.currentSlot()
   }
 
+  /** Goes up at every launch (`begin`): a consumer that has sent something per game sends it again. */
+  const launches = ref(0)
+
+  /** The phone's placement of the screens (Trello #134): the touch layer's saved one and the
+   * editor's while it is open; the editor's wins. What Rust holds is sent only when it changes. */
+  let layerPlacement: CustomScreen[] = []
+  let editorPlacement: CustomScreen[] | null = null
+  let sentPlacement: CustomScreen[] = []
+  function setPlacement(from: 'layer' | 'editor', screens: CustomScreen[] | null) {
+    if (from === 'layer') layerPlacement = screens ?? []
+    else editorPlacement = screens
+    const next = effectivePlacement(layerPlacement, editorPlacement)
+    if (samePlacement(next, sentPlacement)) return
+    sentPlacement = next
+    report(emu.screens.setPhone(next))
+  }
+
   /** The core runs `info`: a fresh session, then the auto quick save or the resume question. */
   async function begin(info: GameInfo, from: LibraryGame | null, resumeAuto = false) {
+    // The new Rust session holds no placement: forget what was sent and what it came from, so a
+    // late `setPlacement` of the old game's layer or editor sends nothing of the old game's.
+    layerPlacement = []
+    editorPlacement = null
+    sentPlacement = []
+    launches.value += 1
     playingGame.value = from
     game.value = info
     // `speed.spstart`: Rust started the game at it.
@@ -208,6 +240,8 @@ export function useGameSession(toasts: Toasts, useAsCover?: (r: CoverRequest) =>
     setMuted,
     toggleFullscreen,
     setInset,
+    setPlacement,
+    launches,
     toggleFps,
     onHotkey: events.onHotkey,
     screenshot,

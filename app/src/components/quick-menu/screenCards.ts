@@ -121,6 +121,18 @@ export interface LayoutCardInput {
  */
 export function layoutCard(c: LayoutCardInput): ScreenCard {
   const { layout, cycle } = c.status
+  // The touch layout places the screens: Rust refuses a layout change, so nothing is offered (X05).
+  if (c.status.phonePlacement) {
+    return {
+      key: 'screens.layout',
+      name: { key: 'qm.layout' },
+      value: { key: 'qm.layoutPhone.value' },
+      sub: { key: 'qm.layoutPhone.why' },
+      trial: false,
+      prev: null,
+      next: null,
+    }
+  }
   const ids = cycle.includes(layout) ? cycle : [layout, ...cycle]
   return {
     key: 'screens.layout',

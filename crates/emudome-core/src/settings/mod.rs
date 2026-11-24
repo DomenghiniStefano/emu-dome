@@ -198,27 +198,55 @@ impl Settings {
     /// Stores `value` for `key` at `scope`'s level (in memory only for the session).
     /// Returns the level written, for the `settings://changed` event.
     pub fn set(&mut self, key: &str, scope: &Scope, value: Value) -> Result<Level, ErrorCode> {
-        let entry = known(key)?;
-        let level = accepted_level(entry, scope)?;
-        if !entry.has_value() || !entry.accepts_value_on(&value, self.device) {
-            return Err(ErrorCode::SettingInvalidValue { key: key.into() });
-        }
+        self.set_many(scope, &[(key, value)])
+    }
+
+    /// Stores several values at `scope`'s level in one write (in memory only for the session).
+    /// All or nothing: every key and value is checked first, and the file is written once, so a
+    /// refusal or a failed write leaves every key as it was.
+    pub fn set_many(
+        &mut self,
+        scope: &Scope,
+        values: &[(&str, Value)],
+    ) -> Result<Level, ErrorCode> {
+        let checked = values
+            .iter()
+            .map(|(key, value)| {
+                let entry = known(key)?;
+                let level = accepted_level(entry, scope)?;
+                if !entry.has_value() || !entry.accepts_value_on(value, self.device) {
+                    return Err(ErrorCode::SettingInvalidValue { key: (*key).into() });
+                }
+                Ok((entry, level, value))
+            })
+            .collect::<Result<Vec<_>, ErrorCode>>()?;
+        let level = checked
+            .first()
+            .map(|(_, level, _)| *level)
+            .ok_or(ErrorCode::NoGame)?;
         match file_of(scope) {
             Some(file) => {
-                let json = serde_json::to_value(&value)
-                    .map_err(|e| store::write_failed(crate::IoCause::Other, &e))?;
-                self.store.apply(
-                    &file,
-                    &[Change {
-                        key: entry.key,
-                        per_device: entry.per_device,
-                        value: Some(json),
-                        at: Some((self.clock)()),
-                    }],
-                )?;
+                let at = (self.clock)();
+                let changes = checked
+                    .iter()
+                    .map(|(entry, _, value)| {
+                        let json = serde_json::to_value(value)
+                            .map_err(|e| store::write_failed(crate::IoCause::Other, &e))?;
+                        Ok(Change {
+                            key: entry.key,
+                            per_device: entry.per_device,
+                            value: Some(json),
+                            at: Some(at),
+                        })
+                    })
+                    .collect::<Result<Vec<_>, ErrorCode>>()?;
+                self.store.apply(&file, &changes)?;
             }
             None => {
-                self.session_mut()?.values.insert(entry.key, value);
+                let session = self.session_mut()?;
+                checked.iter().for_each(|(entry, _, value)| {
+                    session.values.insert(entry.key, (*value).clone());
+                });
             }
         }
         Ok(level)

@@ -84,13 +84,6 @@
     linear-gradient(var(--line) 1px, transparent 0) 0 0 / calc(100% / 32) calc(100% / 32);
 }
 
-/* The C06 touch controls editor's snapping grid (Trello #29): a dot in the strong line colour
-   every 8 px each way, the step `GRID_PX` of components/touch/touchLayout.ts. */
-@utility bg-touch-grid {
-  background: radial-gradient(var(--line-strong) 1px, transparent 1px) 0 0 /
-    var(--spacing-touch-grid) var(--spacing-touch-grid);
-}
-
 /* Pixel art scaled up crisp: ROM icons, quick save thumbnails. */
 @utility pixelated {
   image-rendering: pixelated;

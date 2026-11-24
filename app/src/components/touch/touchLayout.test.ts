@@ -12,6 +12,8 @@ import {
   nudge,
   orientationOf,
   overlaps,
+  playInset,
+  playPlacement,
   pinchSize,
   rectOf,
   remove,
@@ -27,7 +29,8 @@ import {
   type Box,
   type Rect,
 } from './touchLayout'
-import type { InsetPx } from '@/components/game/inset'
+import { NO_INSET, type InsetPx } from '@/components/game/inset'
+import { touchShown } from './touchVisibility'
 
 // The controls' own boxes at 100%, as the design system draws them (design-system/tokens/spacing.css:
 // `size-dpad`, `size-pad-stick`, `size-pad-face`, the shoulders `w-pad-shoulder` × `h-pad-strip`,
@@ -80,8 +83,9 @@ function setup(console: ConsoleId, saved: Partial<Record<TouchOrientation, Touch
   return {
     available: AVAILABLE[console],
     buttons: AVAILABLE[console].filter(id => id !== 'dpad' && id !== 'circlePad' && id !== 'menu'),
-    portrait: saved.portrait ?? { controls: [] },
-    landscape: saved.landscape ?? { controls: [] },
+    portrait: saved.portrait ?? { controls: [], screens: [] },
+    landscape: saved.landscape ?? { controls: [], screens: [] },
+    screenShapes: [],
     ...LIMITS,
   } satisfies TouchSetup
 }
@@ -129,6 +133,7 @@ describe('default layouts', () => {
       controls: [
         { id: 'menu' as const, x: 0.1, y: 0.1, size: 100, opacity: 50, behaviour: 'tap' as const },
       ],
+      screens: [],
     }
     const s = setup('gba', { landscape: saved })
     expect(activeLayout('gba', s, 'landscape', 'custom', area)).toEqual(saved)
@@ -205,7 +210,7 @@ describe('the band a portrait layout keeps', () => {
     // L / R at 194 px from the bottom, 18 px half height, a grid step of air.
     expect(reservedBottom(layout, area, boxOf)).toBe(194 + 18 + 8)
     expect(reservedBottom(layout, { width: 844, height: 390 }, boxOf)).toBe(0)
-    expect(reservedBottom({ controls: [] }, area, boxOf)).toBe(0)
+    expect(reservedBottom({ controls: [], screens: [] }, area, boxOf)).toBe(0)
   })
 })
 
@@ -271,11 +276,11 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
       behaviour: 'tap' as const,
     }
     const a = { ...menu, id: 'a' as const, x: 0.9, y: 0.5 }
-    expect(reservedSides({ controls: [menu, a] }, area, boxOf)).toEqual({
+    expect(reservedSides({ controls: [menu, a], screens: [] }, area, boxOf)).toEqual({
       left: 0,
       right: Math.round(844 - (0.9 * 844 - 24) + 8),
     })
-    expect(reservedInset({ controls: [] }, area, boxOf)).toEqual({
+    expect(reservedInset({ controls: [], screens: [] }, area, boxOf)).toEqual({
       left: 0,
       top: 0,
       right: 0,
@@ -283,7 +288,9 @@ describe('the edges a layout keeps clear of the game (#29)', () => {
       align: 'centre',
       between: 0,
     })
-    expect(reservedInset({ controls: [] }, { width: 390, height: 844 }, boxOf).bottom).toBe(0)
+    expect(
+      reservedInset({ controls: [], screens: [] }, { width: 390, height: 844 }, boxOf).bottom,
+    ).toBe(0)
   })
 })
 
@@ -450,5 +457,48 @@ describe('two screens on a phone', () => {
     const layout = defaultLayout('nds', 'portrait', S23_UP, AVAILABLE.nds)
     const back = add(remove(layout, 'l'), 'l', 'nds', 'portrait', S23_UP)
     expect(back.controls.find(c => c.id === 'l')).toEqual(layout.controls.find(c => c.id === 'l'))
+  })
+})
+
+describe('the placement in use', () => {
+  const menu = {
+    id: 'menu' as const,
+    x: 0.1,
+    y: 0.1,
+    size: 100,
+    opacity: 100,
+    behaviour: 'tap' as const,
+  }
+  const main = { id: 'main', x: 0, y: 0.1, w: 1, h: 0.4 } as const
+  const side = { id: 'main', x: 0.25, y: 0, w: 0.5, h: 0.7 } as const
+  const upright = { width: 360, height: 780 }
+  const sideways = { width: 780, height: 360 }
+
+  it("activeLayout keeps each orientation's own screens", () => {
+    const s = setup('gba', {
+      portrait: { controls: [menu], screens: [main] },
+      landscape: { controls: [menu], screens: [side] },
+    })
+    expect(activeLayout('gba', s, 'portrait', 'custom', upright).screens).toEqual([main])
+    expect(activeLayout('gba', s, 'landscape', 'custom', sideways).screens).toEqual([side])
+    expect(activeLayout('gba', s, 'portrait', 'default', upright).screens).toEqual([])
+    const noControls = setup('gba', { portrait: { controls: [], screens: [main] } })
+    expect(activeLayout('gba', noControls, 'portrait', 'custom', upright).screens).toEqual([])
+  })
+
+  it('playPlacement withdraws only when the controls are out of use', () => {
+    const layout = { controls: [menu], screens: [main] }
+    expect(playPlacement(layout, true)).toEqual([main])
+    expect(playPlacement(layout, false)).toEqual([])
+    const base = { touch: true, inGame: true, menuOpen: false, editing: false, controllers: 1 }
+    expect(touchShown({ ...base, hideWithPad: true })).toBe(false)
+    expect(touchShown({ ...base, hideWithPad: false })).toBe(true)
+  })
+
+  it('playInset keeps no edge while a placement is in use', () => {
+    const band = { ...NO_INSET, bottom: 220, align: 'bottom' as const }
+    expect(playInset({ controls: [menu], screens: [main] }, true, () => band)).toEqual(NO_INSET)
+    expect(playInset({ controls: [menu], screens: [] }, true, () => band)).toEqual(band)
+    expect(playInset({ controls: [menu], screens: [] }, false, () => band)).toEqual(NO_INSET)
   })
 })

@@ -258,7 +258,7 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
-                         settings/ (settings engine: schema.rs types, catalog.rs the 168 entries,
+                         settings/ (settings engine: schema.rs types, catalog.rs the 169 entries,
                          mod.rs levels / resolve / session, store.rs files,
                          keys.rs the keys the Rust code reads, typed and checked against the catalogue when
                          compiled, and `Reader` (a value or the catalogue's default),
@@ -279,7 +279,16 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          `compose` places each screen, `touch_at` / `pointer_value` map a touch back;
                          `ScreenSettings` the `screens.*` values, `CustomLayout` the editor's
                          `screens.custom`, `ScreenSession` the layout shown, the swap and the lid,
-                         `ScreenStatus` what the interface shows; `Inset` the window's edges kept clear
+                         `ScreenStatus` what the interface shows (`phone_placement`: the phone's own placement
+                         is in use); `ScreenSession::set_phone_placement`, #134: the touch layout's rectangles
+                         (fractions of the whole window, every screen of the console, `main` for GB / GBC / GBA,
+                         checked by `placement_fits` against `console_screens`) as `Arrangement::Phone`,
+                         placed as given (no `video.aspect` / `video.scale`; `screens.rot` and the swap as a
+                         custom layout), scaled uniformly into the room an `Inset` leaves (the quick menu
+                         open) and never stretched, the layout cycle refused meanwhile; `phone_start` where
+                         the editor starts them with no game: the cycle's first layout, not swapped, as
+                         fractions; `ScreenSession::phone_start` over the open game: the layout shown now;
+                         `Inset` the window's edges kept clear
                          of the game (quick menu, touch controls), its `between` the room kept between
                          two screens (the phone's strip), and `fit` the game in the rest, centred,
                          against the bottom or the top, or two screens `apart` against both ends;
@@ -425,7 +434,9 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          hotkeys.rs (`HotkeyRunner`: the shortcuts of the pads and of the keyboard carried out,
                          one hold shared by both), screens.rs (the open game's `ScreenSession` carried out:
                          the renderer's layout, `emu://screens`, the lid chord pressed on the core, the
-                         `screens_*` commands; the webview canvas gets its placements from
+                         `screens_*` commands, `screens_set_phone` (the phone's placement of the open game,
+                         empty withdraws it) and `screens_phone_start` (where the editor starts it, which
+                         replaced `screens_preview`); the webview canvas gets its placements from
                          `screens_placements`), tuning.rs (developer / bench knobs from the environment),
                          window.rs (the app's names for emudome_platform::create_window, and
                          `video.window` / `video.winsize` carried out: the mode at startup and on change,
@@ -482,8 +493,11 @@ app/src-tauri            Tauri shell: lib.rs (wiring only: modules, `AppState`, 
                          emu://picked/<token>, a game's screenshots listed and served on
                          emu://screenshot/<console>-<hex>/<name>, #85)
                          touch.rs (#29: touch_layouts / touch_set_layout (C06's «Salva»: the layout of one
-                         orientation into `touch.tedit` at the console's level, that orientation's
-                         `touch.tport` / `touch.tland` to `custom`), touch_stick (the Circle Pad), haptic)
+                         orientation into `touch.tedit` and its screens into `touch.tscreens` (#134: its own
+                         key beside it, console level, per device, never synced, so older builds read
+                         `touch.tedit` untouched; `Layouts::read` joins the two) at the console's level,
+                         that orientation's `touch.tport` / `touch.tland` to `custom`, the three in one
+                         `Settings::set_many` write), touch_stick (the Circle Pad), haptic)
                          contract.rs (test only: the shell's DTOs generated into app/src/generated/app/)
 app/src                  Vue interface, placed as «Interface structure» says: main.ts, App.vue (the root),
                          emu.ts (typed bridge, its types from generated/), generated/ (written by the Rust
@@ -508,10 +522,13 @@ app/src                  Vue interface, placed as «Interface structure» says: 
                          tap / hold / turbo
                          (touchPress.ts), `touch.topac` / `thapt` / `thide` / `tpad`
                          (touchVisibility.ts); TouchEditor C06 over the game (from G10, the phone's
-                         «Altro › Modifica la disposizione» and the `touch.tedit` row; with no game
-                         TouchPreviewScreens draws the console's screens where Rust would place them,
-                         useScreenPreview / `screens_preview`; useTouchEditor the state, editorHistory.ts
-                         undo / redo, editorToolbar.ts what fits and what goes into «Altro»); E14
+                         «Altro › Modifica la disposizione» and the `touch.tedit` row; the game
+                         screens are its elements too, #134: C09's ScreenFrame, placeholders on the
+                         theme's flat ground with no game, the game itself placed live over one
+                         (`placement` + `inset`); editorScreens.ts their geometry, useStartScreens
+                         where they start (`screens_phone_start`); useTouchEditor the state,
+                         editorHistory.ts undo / redo, editorToolbar.ts what fits and what goes into
+                         «Altro» and which tools a screen has); E14
                          ControllerLostDialog / useControllerLoss (controllerLoss.ts the rule); all the
                          pure modules tested),
                          screen-editor (C09, Trello #28: ScreenEditor over the game at its real size, from
@@ -609,6 +626,11 @@ app/src                  Vue interface, placed as «Interface structure» says: 
     phone default is «fit» (a `default_rules` entry; «integer» on a computer), so a GBA upright is 360 px wide on
     a 360 px phone; the touch controls' inset carries the rest (`Inset::between`, `Align::Apart`
     upright, `Align::Top` on the side), so both renderers and `pointer` get the same placements.
+    A phone placement saved in C06 (#134, `touch.tscreens`) replaces the chosen layout while the touch controls are
+    in use: `TouchLayer` sends it (`screens_set_phone`, before the inset) and withdraws it when the controls are
+    hidden (`touch.tpad`; `touch.thide` only fades them). It is placed over the whole window, not in what the
+    controls leave (they may overlap it); the quick menu's inset scales it uniformly to make room and it comes
+    back at its size when the menu closes; G09 says «Dalla disposizione touch» and offers no cycle.
   - The default per OS is `NATIVE_VIDEO_DEFAULT` in `emudome-platform`: Linux uses the webview.
   - `Shared::frame` holds its pixels in an `Arc`: the sink converts the core's frame into a back buffer outside the
     lock and swaps it in; readers (texture upload, the webview's copy, PNG thumbnails and screenshots) clone the
@@ -699,7 +721,7 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   the arrival a section is opened for), held by App.vue and passed down as props; no module-level «mailbox»
   refs. Toasts and errors reach the user through `provide` / `inject` (`composables/useToasts.ts`:
   `useToasts`, `useErrorSink`), never through `error` / `notice` emits.
-- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 168 entries on 18 pages: key
+- **Settings engine** (`emudome_core::settings`): one static schema (`catalog.rs`, 169 entries on 18 pages: key
   `<prefix>.<key>`, page (its own field: «Avanzate» keeps the `perf.` / `cores.` / `adv.` keys), kind, default
   (with `default_rules`: another default on one device or for some consoles, first match wins, read by `resolve` at
   the Default level; e.g. `speed.rew` off on phones and for 3DS, Trello #89), accepted levels, per-device flag, platform

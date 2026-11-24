@@ -68,3 +68,11 @@ describe('lockReason of a layout editor row (Trello #111)', () => {
     )
   })
 })
+
+describe('isShown', () => {
+  it('hides the touch screens entry, edited with the touch.tedit row', async () => {
+    const { isShown } = await import('./settingsModel')
+    const entry = { phase: 1, kind: { type: 'touchScreens' } }
+    expect(isShown(entry as never, { currentPhase: 1 } as never)).toBe(false)
+  })
+})
