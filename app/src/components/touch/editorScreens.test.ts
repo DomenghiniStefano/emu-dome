@@ -8,8 +8,10 @@ import {
   ratioOf,
   resizeScreen,
   screensShown,
+  startArea,
   withScreen,
 } from './editorScreens'
+import { NO_INSET } from '@/components/game/inset'
 
 const area = { width: 360, height: 780 }
 const top = { id: 'top', x: 0, y: 0, w: 1, h: 0.35 } as const
@@ -60,6 +62,15 @@ describe("the editor's screens", () => {
     ] as const
     expect(ratioOf(shapes, 'top', false)).toBeCloseTo(400 / 240)
     expect(ratioOf(shapes, 'top', true)).toBeCloseTo(320 / 240)
+  })
+
+  it('starts the screens inside the edges the controls keep clear, as the game is placed', () => {
+    const inset = { ...NO_INSET, bottom: 234, align: 'bottom' as const }
+    expect(startArea(area, inset)).toEqual({
+      width: 360,
+      height: 780,
+      inset: { left: 0, top: 0, right: 0, bottom: 0.3, align: 'bottom', between: 0 },
+    })
   })
 
   it('shows the window-centre guides when a screen is centred', () => {

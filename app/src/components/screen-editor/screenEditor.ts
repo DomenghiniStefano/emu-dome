@@ -17,6 +17,10 @@ export const GRID = 32
 /** The smallest a screen gets, as a share of the area's width. */
 export const MIN_SIZE = 0.08
 
+/** The element of a screen's frame carries this attribute, with the screen's id (C09, and the
+ * C06 editor's screens). */
+export const SCREEN_ATTR = 'data-editor-screen'
+
 /** A screen's own pixels at 1×, by console (the aspect «Mantieni le proporzioni» keeps). */
 const SCREEN_PIXELS: Record<'nds' | '3ds', Record<EditorScreen, [number, number]>> = {
   nds: { top: [256, 192], bottom: [256, 192] },

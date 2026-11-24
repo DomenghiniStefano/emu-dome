@@ -5,7 +5,7 @@
 // move it (the editor's own steps, useScreenEditor).
 import { computed } from 'vue'
 import type { CustomScreen } from '@/emu'
-import { SCREEN_ATTR } from './useScreenEditor'
+import { SCREEN_ATTR } from './screenEditor'
 
 const props = defineProps<{
   screen: CustomScreen

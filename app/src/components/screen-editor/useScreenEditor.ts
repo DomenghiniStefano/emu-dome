@@ -18,6 +18,7 @@ import { readSetting } from '@/lib/settingsModel'
 import type { ErrorSink } from '@/i18n/labels'
 import {
   aspect,
+  SCREEN_ATTR,
   grow,
   moveTo,
   pick,
@@ -51,8 +52,6 @@ export interface ScreenEditorOptions {
   close: () => void
 }
 
-/** The element of a screen's frame carries this attribute, with the screen's id. */
-export const SCREEN_ATTR = 'data-editor-screen'
 /** The side panel's root carries this one. */
 export const PANEL_ATTR = 'data-editor-panel'
 

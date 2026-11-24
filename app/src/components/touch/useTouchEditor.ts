@@ -25,7 +25,7 @@ import {
 } from '@/emu'
 import type { ErrorSink } from '@/i18n/labels'
 import { NO_INSET } from '@/components/game/inset'
-import { SCREEN_ATTR } from '@/components/screen-editor/useScreenEditor'
+import { SCREEN_ATTR } from '@/components/screen-editor/screenEditor'
 import { latest } from '@/lib/latest'
 import { canRedo, canUndo, commit, historyOf, redo, undo, type History } from './editorHistory'
 import {
@@ -101,8 +101,15 @@ export function useTouchEditor(o: TouchEditorOptions) {
   const { boxOf } = useControlBoxes(o.root, () => draft.value)
   const scope = (): SettingsScope =>
     o.live ? { level: 'session' } : { level: 'console', console: o.console }
-  /** Where the screens start while the layout has no placement of its own. */
-  const startScreens = useStartScreens(o.console, scope(), area, o.onError)
+  /** The edges the controls keep clear of the game, as in game (TouchLayer): with no game open
+   * the editor draws where the screens would be in the rest (Trello #111). Of the history's
+   * present, so a drag on its way asks for nothing. */
+  const reserved = computed(() =>
+    reservedInset(history.value.present, area.value, boxOf, isDualScreen(o.console)),
+  )
+  /** Where the screens start while the layout has no placement of its own: where Rust puts them
+   * now, inside the edges the controls keep clear. */
+  const startScreens = useStartScreens(o.console, scope(), area, reserved, o.onError)
   /** The screens drawn: the layout's placement, else where they start. */
   const shownScreens = computed(() => screensShown(draft.value, startScreens.value))
   /** «Mantieni le proporzioni»: a screen's height follows its width. */
@@ -123,14 +130,12 @@ export function useTouchEditor(o: TouchEditorOptions) {
     opacityMax: setup.value?.opacityMax ?? 100,
   }))
   const addable = computed(() => missing(draft.value, setup.value?.available ?? []))
-  /** The edges the layout keeps clear of the game, as in game (TouchLayer): with no game open
-   * the editor draws where the screens would be in the rest (Trello #111). Of the history's
-   * present, so a drag on its way asks for nothing. While the layout places the screens itself
-   * nothing is kept clear: they go where it puts them. */
+  /** The edges the layout keeps clear of the game (`reserved`), of the history's present: once a
+   * screen change is committed the layout places the screens itself (fractions of the whole
+   * window) and nothing is kept clear. A drag on its way changes nothing here, the first one
+   * included. */
   const inset = computed(() =>
-    draft.value.screens.length > 0
-      ? NO_INSET
-      : reservedInset(history.value.present, area.value, boxOf, isDualScreen(o.console)),
+    history.value.present.screens.length > 0 ? NO_INSET : reserved.value,
   )
   /** Where the layout puts the screens, live while one is dragged (empty: none placed). */
   const placement = computed(() => draft.value.screens)

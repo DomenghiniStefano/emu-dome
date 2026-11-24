@@ -3,7 +3,15 @@
 // window (`CustomScreen`); the layout keeps every screen of the console or none (none: the game
 // is placed by the screens settings, the editor starts from Rust's `phoneStart`). Pure; the
 // rectangle rules (inside the window, the minimum, the proportions) are the C09 editor's.
-import type { CustomScreen, ScreenId, TouchControlId, TouchLayout, TouchScreenShape } from '@/emu'
+import type {
+  CustomScreen,
+  PointerArea,
+  ScreenId,
+  TouchControlId,
+  TouchLayout,
+  TouchScreenShape,
+} from '@/emu'
+import { insetShares, type InsetPx } from '@/components/game/inset'
 import { contain, resizeTo } from '@/components/screen-editor/screenEditor'
 import { GRID_PX, type Area } from './touchLayout'
 
@@ -12,6 +20,13 @@ export type ElementId = ScreenId | TouchControlId
 
 const SCREEN_IDS: readonly ElementId[] = ['main', 'top', 'bottom'] satisfies ScreenId[]
 export const isScreen = (id: ElementId): id is ScreenId => SCREEN_IDS.includes(id)
+
+/** What `phoneStart` is asked with: the window and the edges the layout keeps clear of the game
+ * (`reservedInset`), so the screens start where the game (or the Settings preview) is drawn now;
+ * Rust gives them back as fractions of the whole window. */
+export function startArea({ width, height }: Area, inset: InsetPx): PointerArea {
+  return { width, height, inset: insetShares(inset, width, height) }
+}
 
 /** The screens drawn: the layout's own placement, else where the editor starts them. */
 export function screensShown(layout: TouchLayout, start: readonly CustomScreen[]): CustomScreen[] {
