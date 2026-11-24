@@ -48,7 +48,7 @@ pub mod touch;
 pub mod updates;
 pub mod video_sink;
 
-pub use atomic::write_atomic;
+pub use atomic::{check_readable, write_atomic};
 pub use console::ConsoleId;
 pub use core::{GameFiles, StartError};
 pub use error::{ErrorCode, ImageProblem, IoCause, SignInProblem};

@@ -35,7 +35,9 @@
 //!
 //! What is in memory follows the disk: before each use, a file whose modification time or size
 //! changed since it was read (another process, sync, the user) is read again, so a change made
-//! elsewhere is neither missed nor written over by the next save.
+//! elsewhere is neither missed nor written over by the next save. Before a write the file is
+//! read again in full whatever its stamp: a file made unreadable since (a permission taken away,
+//! a lock held by another program) keeps its stamp, and is refused as above, never written over.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
@@ -235,7 +237,16 @@ impl Store {
     pub fn apply(&mut self, file: &FileId, changes: &[Change<'_>]) -> Result<(), ErrorCode> {
         let (device_changes, synced_changes): (Vec<&Change<'_>>, Vec<&Change<'_>>) =
             changes.iter().partition(|c| c.per_device);
-        // Both files are read before either is written: a refusal writes nothing at all.
+        // Both files are read before either is written: a refusal writes nothing at all. Read
+        // again in full, whatever the cached copy's stamp says: a file that can no longer be read
+        // (a permission taken away, a lock held elsewhere) keeps its modification time and size,
+        // and must not be written over from memory. The files are small.
+        if !synced_changes.is_empty() {
+            self.synced.remove(file);
+        }
+        if !device_changes.is_empty() {
+            self.device = None;
+        }
         let synced = if synced_changes.is_empty() {
             None
         } else {
@@ -460,7 +471,7 @@ fn changed_of(layer: &Layer) -> Vec<(String, u64)> {
 
 /// Reads a JSON file (the three outcomes of the module comment).
 fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Read<T> {
-    let text = match fs::read_to_string(path) {
+    let text = match crate::atomic::read_text(path) {
         Ok(text) => text,
         // A file in place of one of its folders: no file can be there either.
         Err(e)
@@ -853,6 +864,70 @@ mod tests {
         assert!(!dir.path("synced/global.json").exists());
         assert_eq!(dir.read("local/device.json/inside.txt"), "kept");
         assert_eq!(s.get(&FileId::Global, false, "video.scale"), None);
+    }
+
+    #[test]
+    fn a_file_made_unreadable_after_it_was_read_is_never_written_over() {
+        // Trello #178: `chmod 000` (or a lock held by another program) changes neither the
+        // modification time nor the size, so the cached copy's stamp still matches.
+        let dir = TestDir::new("store-unreadable-later");
+        dir.write(
+            "synced/global.json",
+            r#"{ "audio.vol": 40, "future.thing": true }"#,
+        );
+        let mut s = store(&dir);
+        assert_eq!(s.get(&FileId::Global, false, "audio.vol"), Some(json!(40)));
+        let before = dir.read("synced/global.json");
+        let path = dir.path("synced/global.json");
+        {
+            let _denied = crate::atomic::deny_reads(&path);
+            for _ in 0..2 {
+                let result = s.apply(&FileId::Global, &[set("video.scale", false, json!("fill"))]);
+                assert!(
+                    matches!(
+                        result,
+                        Err(crate::ErrorCode::SettingsReadFailed {
+                            cause: crate::IoCause::PermissionDenied
+                        })
+                    ),
+                    "{result:?}"
+                );
+            }
+            assert_eq!(dir.read("synced/global.json"), before);
+            // While it cannot be read, nothing from it is shown either.
+            assert_eq!(s.get(&FileId::Global, false, "audio.vol"), None);
+        }
+        // Readable again: the next change is saved over what the file holds.
+        s.apply(&FileId::Global, &[set("video.scale", false, json!("fill"))])
+            .unwrap();
+        assert_eq!(
+            json_of(&dir, "synced/global.json"),
+            json!({ "$schema": SCHEMA_VERSION, "audio.vol": 40, "future.thing": true, "video.scale": "fill" })
+        );
+    }
+
+    #[test]
+    fn a_device_file_made_unreadable_after_it_was_read_refuses_the_whole_change() {
+        let dir = TestDir::new("store-device-unreadable-later");
+        let mut s = store(&dir);
+        s.apply(&FileId::Global, &[set("video.vsync", true, json!(false))])
+            .unwrap();
+        let before = dir.read("local/device.json");
+        let _denied = crate::atomic::deny_reads(&dir.path("local/device.json"));
+        let result = s.apply(
+            &FileId::Global,
+            &[
+                set("video.scale", false, json!("fill")),
+                set("video.vsync", true, json!(true)),
+            ],
+        );
+        assert!(
+            matches!(result, Err(crate::ErrorCode::SettingsReadFailed { .. })),
+            "{result:?}"
+        );
+        // Neither file was written.
+        assert!(!dir.path("synced/global.json").exists());
+        assert_eq!(dir.read("local/device.json"), before);
     }
 
     #[test]

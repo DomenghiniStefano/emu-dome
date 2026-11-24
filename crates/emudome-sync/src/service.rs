@@ -356,8 +356,9 @@ struct StateData {
 
 /// `sync/state.json`: the pending pushes, the last sync, the conflicts found. Same rules as the
 /// index: not valid JSON → moved aside and started empty (a pending push then waits for the
-/// next «Sincronizza ora», which pushes every change all the same); there but unreadable →
-/// never written over, every change refused.
+/// next «Sincronizza ora», which pushes every change all the same); there but unreadable, or
+/// made unreadable after it was read (checked before each write) → never written over, every
+/// change refused.
 struct StateFile {
     path: PathBuf,
     data: StateData,
@@ -406,6 +407,20 @@ impl StateFile {
             }
             self.data = data;
             self.unreadable = None;
+        }
+        // Read once and written from memory: a file made unreadable since (a permission taken
+        // away, a lock held elsewhere) is never written over; it is read again at the next change.
+        if let Err(e) = emudome_core::check_readable(&self.path) {
+            log::warn!(
+                "cloud: {} cannot be read ({e}): not written",
+                self.path.display()
+            );
+            let cause = IoCause::of(&e);
+            self.unreadable = Some((cause, e.to_string()));
+            return Err(SyncError::IndexReadFailed(
+                cause,
+                format!("{}: {e}", self.path.display()),
+            ));
         }
         f(&mut self.data);
         self.data.schema = STATE_SCHEMA;

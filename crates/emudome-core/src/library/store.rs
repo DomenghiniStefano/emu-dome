@@ -9,7 +9,9 @@
 //! to `library.json.unreadable` and the library starts empty. A file that is there but cannot be
 //! read (permission, I/O error, or not parsed and not moved aside) is never written over: the
 //! library shows empty and every change is refused with `libraryReadFailed`, each one first
-//! trying to read the file again.
+//! trying to read the file again. The library is read once and written from memory, so every
+//! write first checks that the file can still be read (a permission taken away or a lock held by
+//! another program since): if not, it is refused the same way.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -460,9 +462,21 @@ impl Library {
     }
 
     /// Writes the file (the in-memory state stays as it is if this fails; the next write
-    /// carries it). Refused while the file could not be read: it is never written over.
-    pub fn save(&self) -> Result<(), ErrorCode> {
+    /// carries it). Refused while the file could not be read: it is never written over. The
+    /// file is checked first ([`crate::check_readable`]): one that cannot be read any more (a
+    /// permission taken away, a lock held elsewhere) is marked unreadable as a failed read is,
+    /// and the next change reads it again before anything is decided.
+    pub fn save(&mut self) -> Result<(), ErrorCode> {
         if let Some(cause) = self.read_failed {
+            return Err(ErrorCode::LibraryReadFailed { cause });
+        }
+        if let Err(e) = crate::check_readable(&self.file) {
+            log::warn!(
+                "libraryReadFailed: {}: {e}; not written, changes are refused until it reads",
+                self.file.display()
+            );
+            let cause = IoCause::of(&e);
+            self.read_failed = Some(cause);
             return Err(ErrorCode::LibraryReadFailed { cause });
         }
         let write_failed = |cause: IoCause, e: &dyn std::fmt::Display| {
@@ -537,7 +551,7 @@ enum ReadDb {
 }
 
 fn read_db(path: &Path) -> ReadDb {
-    let text = match fs::read_to_string(path) {
+    let text = match crate::atomic::read_text(path) {
         Ok(text) => text,
         // A file in place of one of its folders: no file can be there either.
         Err(e)

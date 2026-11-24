@@ -5,7 +5,8 @@
 //! Per device, never synced: `<app local data>/notifications.json`, written through
 //! [`crate::write_atomic`]. The file says its layout (`"$schema": 1`); one that is there but cannot
 //! be read (an I/O error, broken JSON, a newer layout) is never written over: [`Store`] refuses
-//! every change with [`ErrorCode::NotificationsReadFailed`] and reads it again at the next call.
+//! every change with [`ErrorCode::NotificationsReadFailed`] and reads it again at the next call;
+//! so is one made unreadable after it was read (checked before each write).
 //! An item of a kind this build does not know (written by a newer one) is kept as it is and not
 //! listed. At most [`MAX_KEPT`] items are kept, the oldest dropped first.
 //!
@@ -217,8 +218,20 @@ impl Store {
         Ok(changed)
     }
 
+    /// Writes what is in memory, once the file is seen to be still readable
+    /// ([`crate::check_readable`]): one made unreadable since it was read (a permission taken
+    /// away, a lock held elsewhere) is refused as a failed read, and read again at the next call.
     fn save(&mut self) -> Result<(), ErrorCode> {
         let bytes = self.ready()?.to_bytes();
+        if let Err(e) = crate::check_readable(&self.path) {
+            log::warn!(
+                "notifications not written, the file cannot be read ({}): {e}",
+                self.path.display()
+            );
+            let cause = IoCause::of(&e);
+            self.state = Err(cause);
+            return Err(ErrorCode::NotificationsReadFailed { cause });
+        }
         write(&self.path, &bytes).map_err(|e| {
             log::warn!("notifications not written ({}): {e}", self.path.display());
             ErrorCode::NotificationsWriteFailed {
@@ -230,8 +243,9 @@ impl Store {
 
 /// The file's notifications; why not (logged here with the OS's or the parser's text).
 fn read(path: &Path) -> Result<Notifications, IoCause> {
-    let (cause, detail) = match std::fs::read(path) {
-        Ok(bytes) => match Notifications::parse(&bytes) {
+    // As text: a file that is not UTF-8 is not valid JSON either, and is unreadable the same way.
+    let (cause, detail) = match crate::atomic::read_text(path) {
+        Ok(text) => match Notifications::parse(text.as_bytes()) {
             Ok(n) => return Ok(n),
             Err(detail) => (IoCause::Other, detail),
         },
@@ -313,6 +327,36 @@ mod tests {
         std::fs::write(&path, br#"{ "$schema": 1, "items": [] }"#).unwrap();
         store.record(pad("Xbox"), 2).unwrap();
         assert_eq!(store.list().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_file_made_unreadable_after_it_was_read_is_never_written_over() {
+        // Trello #178: read at start, then `chmod 000` or a lock held by another program.
+        let dir = scratch();
+        let path = dir.path("notifications.json");
+        let mut store = Store::open(path.clone());
+        store.record(pad("8BitDo"), 1).unwrap();
+        let before = std::fs::read(&path).unwrap();
+        {
+            let _denied = crate::atomic::deny_reads(&path);
+            assert!(matches!(
+                store.record(pad("Xbox"), 2),
+                Err(ErrorCode::NotificationsReadFailed {
+                    cause: crate::IoCause::PermissionDenied
+                })
+            ));
+            assert!(store.list().is_err());
+            assert_eq!(std::fs::read(&path).unwrap(), before);
+        }
+        // Readable again: read from the file, the refused one is not there.
+        store.record(pad("Steam"), 3).unwrap();
+        let names: Vec<Notice> = store
+            .list()
+            .unwrap()
+            .into_iter()
+            .map(|n| n.notice)
+            .collect();
+        assert_eq!(names, vec![pad("Steam"), pad("8BitDo")]);
     }
 
     #[test]

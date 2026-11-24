@@ -270,7 +270,9 @@ crates/emudome-core      libretro host: LoadedCore (libloading), Session (emulat
                          shell's tests, `Session::start_with`),
                          console.rs (`ConsoleId`, `ConsoleId::ALL`; re-exported as `settings::ConsoleId`),
                          atomic.rs (`write_atomic`: the one way user data is written: temp file
-                         `.<name>.<pid>-<n>.emudome-tmp`, fsync, rename, folder fsync where allowed),
+                         `.<name>.<pid>-<n>.emudome-tmp`, fsync, rename, folder fsync where allowed;
+                         `check_readable`: a store writing its copy in memory over a file first checks
+                         that the file can still be read),
                          hotkeys.rs (controller routing: game / combos / menu navigation, the combo table),
                          keyboard.rs (the keyboard's fixed keys `KEYBOARD_SHORTCUTS` and `KeyRouter`: keys in
                          game → game buttons and the same hotkey actions as the controllers; pure, unit-tested),
@@ -781,7 +783,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log; a file that is there but cannot be read is never
   written over (writes to it refused with `settingsReadFailed` until it reads again; the library does the same
-  with `libraryReadFailed`). Every file says its layout (`"$schema": 2`, written on save; none = 0; older ones go
+  with `libraryReadFailed`, the notifications and the sync index and state with theirs). A write reads the settings
+  file again in full first, and the library, notifications and sync stores check theirs with `check_readable`: a
+  file made unreadable after it was read (a permission taken away, a lock held elsewhere) keeps its mtime and size,
+  and is refused the same way. Every file says its layout (`"$schema": 2`, written on save; none = 0; older ones go
   through `store.rs`'s `MIGRATIONS` in memory: 1 → 2 reads the old touch styles as the new ones) and is read again before use when its mtime or size changed. The
   sync rules as they are today are tests (`settings/tests.rs`, «Sync rules»). Session = the quick menu's changes «in prova»:
   in memory, bound to the open game, committed to Game or Console (all or nothing), dropped on close.

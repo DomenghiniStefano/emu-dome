@@ -477,6 +477,23 @@ async fn the_marker_is_claimed_told_and_taken_off_by_the_push() {
 }
 
 #[tokio::test]
+async fn a_state_file_made_unreadable_after_it_was_read_is_never_written_over() {
+    // Trello #178: read when the service starts, then made unreadable (a permission taken away,
+    // a lock held elsewhere; here a folder in its place, which fails on every OS).
+    let drive = FakeDrive::new();
+    let pc = Peer::new("state-unreadable-later");
+    let s = pc.service(&drive, "PC");
+    s.mark_pending(&key()).unwrap();
+    fs::remove_file(pc.dir.path("sync/state.json")).unwrap();
+    fs::create_dir_all(pc.dir.path("sync/state.json/inside")).unwrap();
+    assert!(matches!(
+        s.mark_pending(&key()),
+        Err(SyncError::IndexReadFailed(..))
+    ));
+    assert!(pc.dir.path("sync/state.json/inside").is_dir(), "untouched");
+}
+
+#[tokio::test]
 async fn an_unreadable_state_file_is_never_written_over() {
     let drive = FakeDrive::new();
     let pc = Peer::new("state-unreadable");
