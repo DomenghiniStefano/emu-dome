@@ -14,7 +14,7 @@
 
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -139,6 +139,81 @@ fn is_tmp_of(file: &OsString, prefix: &OsString) -> bool {
         })
 }
 
+/// Opens `path` for reading. The stores read their file through here, so a test can make a file
+/// unreadable without the OS's permissions ([`deny_reads`]).
+pub(crate) fn open_for_read(path: &Path) -> io::Result<fs::File> {
+    #[cfg(test)]
+    if denied::is_denied(path) {
+        return Err(io::Error::from(io::ErrorKind::PermissionDenied));
+    }
+    fs::File::open(path)
+}
+
+/// Reads the whole of `path` as text, through [`open_for_read`].
+pub(crate) fn read_text(path: &Path) -> io::Result<String> {
+    let mut text = String::new();
+    open_for_read(path)?.read_to_string(&mut text)?;
+    Ok(text)
+}
+
+/// Before a store writes its copy in memory over `path` (engineering rule 1): `Ok` when the file
+/// can still be read, or when there is none (a missing file is created); the error otherwise.
+///
+/// A store trusts the copy it read earlier while the file's modification time and size stay the
+/// same, or always; a permission taken away (`chmod 000`), a lock held by another program or a
+/// folder put in its place changes neither, and the copy would replace a file that cannot be
+/// read. So the file is opened and its first byte read (an open alone succeeds on a folder on
+/// Linux and Android).
+pub fn check_readable(path: &Path) -> io::Result<()> {
+    let probed = open_for_read(path).and_then(|mut file| file.read(&mut [0_u8; 1]));
+    match probed {
+        Ok(_) => Ok(()),
+        // No file, or a file in place of one of its folders: no file there either.
+        Err(e)
+            if e.kind() == io::ErrorKind::NotFound || e.kind() == io::ErrorKind::NotADirectory =>
+        {
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// While the returned guard lives, every read of `path` on this thread through
+/// [`open_for_read`] fails with `PermissionDenied`: a file made unreadable after a store read it,
+/// the same on every OS (the OS gate keeps permission and lock helpers out of this crate).
+#[cfg(test)]
+pub(crate) fn deny_reads(path: &Path) -> denied::Guard {
+    denied::deny(path)
+}
+
+#[cfg(test)]
+pub(crate) mod denied {
+    use std::cell::RefCell;
+    use std::path::{Path, PathBuf};
+
+    thread_local! {
+        static DENIED: RefCell<Vec<PathBuf>> = const { RefCell::new(Vec::new()) };
+    }
+
+    pub(crate) fn is_denied(path: &Path) -> bool {
+        DENIED.with(|d| d.borrow().iter().any(|p| p == path))
+    }
+
+    pub(crate) fn deny(path: &Path) -> Guard {
+        DENIED.with(|d| d.borrow_mut().push(path.to_path_buf()));
+        Guard(path.to_path_buf())
+    }
+
+    /// Gives the reads back when dropped.
+    pub(crate) struct Guard(PathBuf);
+
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            DENIED.with(|d| d.borrow_mut().retain(|p| p != &self.0));
+        }
+    }
+}
+
 fn is_stale(entry: &fs::DirEntry) -> bool {
     entry
         .metadata()
@@ -165,6 +240,31 @@ mod tests {
             .collect();
         names.sort();
         names
+    }
+
+    #[test]
+    fn check_readable_refuses_only_a_file_that_is_there_and_cannot_be_read() {
+        let dir = TestDir::new("atomic-check-readable");
+        // Missing, or a file in place of a folder on its path: nothing to lose, writes create it.
+        assert!(super::check_readable(&dir.path("missing.json")).is_ok());
+        dir.write("plain", "x");
+        assert!(super::check_readable(&dir.path("plain/below.json")).is_ok());
+        // Readable, empty included.
+        dir.write("there.json", "{}");
+        assert!(super::check_readable(&dir.path("there.json")).is_ok());
+        dir.write("empty.json", "");
+        assert!(super::check_readable(&dir.path("empty.json")).is_ok());
+        // A folder in its place, on every OS.
+        dir.write("folder.json/inside.txt", "kept");
+        assert!(super::check_readable(&dir.path("folder.json")).is_err());
+        // Made unreadable (the test seam for a permission or a lock).
+        let path = dir.path("there.json");
+        {
+            let _denied = super::deny_reads(&path);
+            let e = super::check_readable(&path).unwrap_err();
+            assert_eq!(e.kind(), io::ErrorKind::PermissionDenied);
+        }
+        assert!(super::check_readable(&path).is_ok());
     }
 
     #[test]
