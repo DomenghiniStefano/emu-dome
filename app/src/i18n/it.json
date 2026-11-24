@@ -2343,6 +2343,10 @@
     "closeLid": "Chiudi il coperchio",
     "lidUnsupported": "L’emulatore di questo gioco non può chiudere il coperchio.",
     "layout": "Disposizione degli schermi",
+    "layoutPhone": {
+      "value": "Dalla disposizione touch",
+      "why": "Gli schermi sono dove li hai messi in Modifica la disposizione."
+    },
     "restartTitle": "Riavviare il gioco?",
     "restartText": "Il gioco riparte dall’inizio. I salvataggi restano, i progressi dall’ultimo salvataggio si perdono.",
     "restartConfirm": "Riavvia",

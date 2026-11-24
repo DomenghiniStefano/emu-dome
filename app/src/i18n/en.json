@@ -2343,6 +2343,10 @@
     "closeLid": "Close the lid",
     "lidUnsupported": "This game’s emulator can’t close the lid.",
     "layout": "Screen layout",
+    "layoutPhone": {
+      "value": "From the touch layout",
+      "why": "The screens are where you put them in Edit layout."
+    },
     "restartTitle": "Restart the game?",
     "restartText": "The game starts over. Your saves stay, progress since your last save is lost.",
     "restartConfirm": "Restart",
