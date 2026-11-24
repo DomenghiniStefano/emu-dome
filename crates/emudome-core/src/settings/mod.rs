@@ -227,19 +227,10 @@ impl Settings {
         match file_of(scope) {
             Some(file) => {
                 let at = (self.clock)();
-                let changes = checked
-                    .iter()
-                    .map(|(entry, _, value)| {
-                        let json = serde_json::to_value(value)
-                            .map_err(|e| store::write_failed(crate::IoCause::Other, &e))?;
-                        Ok(Change {
-                            key: entry.key,
-                            per_device: entry.per_device,
-                            value: Some(json),
-                            at: Some(at),
-                        })
-                    })
-                    .collect::<Result<Vec<_>, ErrorCode>>()?;
+                let mut changes = Vec::with_capacity(checked.len());
+                for (entry, _, value) in &checked {
+                    changes.push(self.change_to_store(entry, scope, value, at)?);
+                }
                 self.store.apply(&file, &changes)?;
             }
             None => {
@@ -309,8 +300,17 @@ impl Settings {
             CommitTarget::Game => (Level::Game, FileId::Game(session.game.clone())),
             CommitTarget::Console => (Level::Console, FileId::Console(session.console)),
         };
+        let scope = match target {
+            CommitTarget::Game => Scope::Game {
+                console: session.console,
+                game: session.game.clone(),
+            },
+            CommitTarget::Console => Scope::Console {
+                console: session.console,
+            },
+        };
         let at = (self.clock)();
-        let changes = session
+        let values = session
             .values
             .iter()
             .map(|(key, value)| {
@@ -318,16 +318,13 @@ impl Settings {
                 if !entry.levels.accepts(level) {
                     return Err(level_refused(entry, level));
                 }
-                let json = serde_json::to_value(value)
-                    .map_err(|e| store::write_failed(crate::IoCause::Other, &e))?;
-                Ok(Change {
-                    key: entry.key,
-                    per_device: entry.per_device,
-                    value: Some(json),
-                    at: Some(at),
-                })
+                Ok((entry, value.clone()))
             })
-            .collect::<Result<Vec<Change<'static>>, _>>()?;
+            .collect::<Result<Vec<_>, ErrorCode>>()?;
+        let mut changes: Vec<Change<'static>> = Vec::with_capacity(values.len());
+        for (entry, value) in &values {
+            changes.push(self.change_to_store(entry, &scope, value, at)?);
+        }
         let keys = changes.iter().map(|c| c.key).collect();
         self.store.apply(&file, &changes)?;
         self.session_mut()?.values.clear();
@@ -404,6 +401,47 @@ impl Settings {
             });
         }
         out
+    }
+
+    /// The change that stores `value` for `entry` at `scope`'s level (a file level). A value equal
+    /// to what the weaker levels give there removes the key instead: the level then has nothing
+    /// of its own, so the row is not «Modificato» and the file keeps only real differences. A
+    /// value equal to the default but different from a weaker level (a game back to the default
+    /// while its console has another value) is stored.
+    fn change_to_store(
+        &mut self,
+        entry: &'static Entry,
+        scope: &Scope,
+        value: &Value,
+        at: u64,
+    ) -> Result<Change<'static>, ErrorCode> {
+        let below = self.resolve_below(entry, scope)?;
+        let stored = if below.as_ref() == Some(value) {
+            None
+        } else {
+            Some(
+                serde_json::to_value(value)
+                    .map_err(|e| store::write_failed(crate::IoCause::Other, &e))?,
+            )
+        };
+        Ok(Change {
+            key: entry.key,
+            per_device: entry.per_device,
+            value: stored,
+            at: Some(at),
+        })
+    }
+
+    /// The value `entry` would have at `scope` with nothing stored at `scope`'s own level: the
+    /// weaker levels, then the Default as seen from `scope` (its device and console rules).
+    fn resolve_below(&mut self, entry: &Entry, scope: &Scope) -> Result<Option<Value>, ErrorCode> {
+        let own = level_of(scope);
+        let chain = self.chain(scope)?;
+        let found = chain
+            .into_iter()
+            .filter(|(level, _)| *level != own && entry.levels.accepts(*level))
+            .find_map(|(level, file)| self.stored(entry, level, file.as_ref()));
+        Ok(found.or_else(|| self.default_of(entry, scope)))
     }
 
     fn session_mut(&mut self) -> Result<&mut SessionLayer, ErrorCode> {

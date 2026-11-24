@@ -750,7 +750,10 @@ app/src                  Vue interface, placed as «Interface structure» says: 
   pages from `settings_schema` and never lists settings by hand. A key the interface names is a `SettingKey`
   (generated union); one the Rust code reads is a typed constant of `settings/keys.rs`, its default the catalogue's. Levels Default → Global → Console → Game →
   Session; `resolve` returns the value and the level it comes from; a level the entry does not accept is refused
-  (`settingLevelRefused`). Files: `<app data>/settings/{global,console/<id>,game/<console>-<hex>}.json` (synced later),
+  (`settingLevelRefused`). A value written at a level (or committed from the session) that equals what the weaker
+  levels give there, the Default with its `default_rules` included, removes the key at that level instead of
+  storing it, so a row set back to its default is no longer «Modificato»; one that differs (a game back to the
+  default while its console has another value) is stored. Files: `<app data>/settings/{global,console/<id>,game/<console>-<hex>}.json` (synced later),
   per-device values in `<app local data>/local-settings/device.json` (never synced); atomic writes, unknown keys
   kept, invalid values ignored with a `settingInvalidValue` log; a file that is there but cannot be read is never
   written over (writes to it refused with `settingsReadFailed` until it reads again; the library does the same
